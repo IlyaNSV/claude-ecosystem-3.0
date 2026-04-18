@@ -1,0 +1,36 @@
+# === IDE ===
+.idea/
+.vscode/
+*.iml
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Backups & swap ===
+*.bak
+*.backup
+*.swp
+*~
+
+# === Local secrets (NEVER commit) ===
+.env
+.env.local
+secrets/
+
+# === Logs ===
+*.log
+
+# === Node (if tooling added) ===
+node_modules/
+package-lock.json
+
+# === Drafts & intermediate (keep main clean) ===
+_drafts/
+_design-history/
+WORK-IN-PROGRESS.md
+*.draft.md
+
+# === Test artifacts ===
+.test-output/
+fixtures/local/

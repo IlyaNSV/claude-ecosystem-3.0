@@ -1,0 +1,91 @@
+# Ecosystem 3.0
+
+> **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D6 внешним инструментам через универсальный handoff.
+
+**Статус:** v1.0 — готова к pilot имплементации.
+**Целевая аудитория:** solo-разработчики, ведущие продуктовые проекты с Claude Code как primary tool.
+
+---
+
+## Концепция в одной строке
+
+Я детально контролирую процессы D1-D2 (продуктовая стратегия + поведенческая спецификация) через **Product Module** и **Design Module**, а внешние инструменты (D2-Technical, D3-D6) подключаются через **Integrator Module** и работают по принципу «я дал тебе всё о продукте через handoff — ты качественно выполнил свою зону».
+
+## Четыре модуля
+
+| Модуль | Ответственность | Статус |
+|---|---|---|
+| **Product Module** | D1 + D2-Behavioral: 22 типа артефактов, процессы P1-P5, handoff-генерация | ✅ SPEC v1.0 |
+| **Design Module** | D2-05 UI Design: итеративная генерация через Stitch/HTML, conditional на `has_ui=true` | ✅ SPEC v1.0 |
+| **Integrator Module** | Подключение/замена внешних инструментов под PMO-карту («сисадмин») | ✅ SPEC v1.0 |
+| **Orchestrator Module** | Запуск инструментов и оркестрация сценариев D3-D6 | 🔜 После Integrator MVP |
+
+## Что входит в репозиторий
+
+```
+claude-ecosystem-3.0/
+├── README.md, BOOTSTRAP.md, INSTALL-HUMAN.md, CHANGELOG.md
+├── .env.template, settings.json.template, gitignore.template
+├── docs/                     # SPECs (decларативная база)
+│   ├── product-module/
+│   ├── design-module/
+│   ├── integrator-module/
+│   └── pmo/
+│       ├── pmo-map.md, processes.md, validation.md
+│       └── artifacts/        # 22 типа артефактов
+├── commands/                 # slash-команды → .claude/commands/
+├── skills/                   # methodology → .claude/skills/
+├── agents/                   # subagents → .claude/agents/
+├── hooks/                    # automation → .claude/hooks/
+├── output-styles/            # → .claude/output-styles/
+└── templates/                # шаблоны для bootstrap
+```
+
+## Quick Start (для нового продуктового проекта)
+
+```bash
+# 1. Создай папку проекта и открой в IDE
+mkdir my-new-product && cd my-new-product
+code .  # или webstorm
+
+# 2. Запусти Claude Code
+claude
+
+# 3. Одна команда
+> Установи Ecosystem 3.0 из github.com/IlyaNSV/claude-ecosystem-3.0 и подготовь проект к работе
+```
+
+Claude Code:
+1. Клонирует ecosystem в `.claude/`
+2. Читает [BOOTSTRAP.md](./BOOTSTRAP.md) и следует инструкциям
+3. Запрашивает у тебя API-ключи (см. [INSTALL-HUMAN.md](./INSTALL-HUMAN.md))
+4. Устанавливает MCP stack через Integrator
+5. Готовит `.product/` skeleton
+6. Предлагает запустить `/product:init`
+
+**Перед первым запуском** — пройди чеклист в [INSTALL-HUMAN.md](./INSTALL-HUMAN.md): получи API ключи (Brave, Firecrawl, Exa), при необходимости — Stitch project.
+
+## Ключевые принципы
+
+1. **Assistant-led, human-approved** (DEC-P13). ИИ делает работу — человек принимает решения.
+2. **Tool-agnostic для D2-Tech и D3-D6** (DEC-A06). Внешние инструменты заменяемы через Integrator.
+3. **Self-contained handoff**. Универсальный markdown-snapshot для передачи фичи в любой реализатор.
+4. **Continuous consistency**. BG extraction, cascade protocol, bi-dir refs работают в фоне.
+5. **Adversarial validation**. Product DA review, magnitude-gated триггеры, 6 lenses.
+6. **Drift detection**. `confidence:` поле, `/product:drift-check`, `/product:patterns`, `/product:meta-feedback` — против дрифта при долгих сессиях.
+
+## Документация
+
+| Хочу узнать... | Смотри |
+|---|---|
+| Что такое каждый модуль и как они взаимодействуют | [docs/product-module/SPEC.md](docs/product-module/SPEC.md), [docs/design-module/SPEC.md](docs/design-module/SPEC.md), [docs/integrator-module/SPEC.md](docs/integrator-module/SPEC.md) |
+| Как передать фичу во внешний tool | [docs/product-module/handoff-spec.md](docs/product-module/handoff-spec.md) |
+| Какие есть типы артефактов | [docs/pmo/artifacts/README.md](docs/pmo/artifacts/README.md) |
+| PMO-карта (D1-D6) | [docs/pmo/pmo-map.md](docs/pmo/pmo-map.md) |
+| Процессы P1-P5 | [docs/pmo/processes.md](docs/pmo/processes.md) |
+| Валидационные правила | [docs/pmo/validation.md](docs/pmo/validation.md) |
+| История изменений и v1 модификации | [CHANGELOG.md](CHANGELOG.md) |
+
+## Поддержка
+
+Это персональная экосистема разработки. Issues и PR не ожидаются, но репозиторий открыт для clone/fork.

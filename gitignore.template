@@ -1,0 +1,43 @@
+# === Ecosystem 3.0 — recommended .gitignore for product projects ===
+# Copy this file to .gitignore in your product project root.
+
+# === Secrets (NEVER commit) ===
+.env
+.env.local
+.claude/integrator/secrets/
+
+# === Ephemeral session state (regenerated per session) ===
+.product/.sessions/
+.product/.pending/
+.claude/integrator/baseline.yaml
+
+# === Local backups (created by Integrator) ===
+.claude/integrator/backups/
+.claude/integrator/_backup/
+
+# === Source-controlled — DO NOT add these to gitignore ===
+# Keeping these comments to make the intent explicit:
+# .claude/integrator/active-tools.yaml     ← team-shared tool config
+# .claude/integrator/pmo-mapping.yaml      ← team-shared PMO mapping
+# .claude/integrator/contracts/             ← team-shared contracts
+# .claude/integrator/tool-docs/            ← documentation for Orchestrator
+# .claude/integrator/project-journal.md    ← project decision history
+# .product/                                 ← all artifacts (source of truth)
+# .product/.da-findings/                    ← DA review history
+# .product/handoffs/                        ← handoff snapshots
+
+# === Standard project ignores (uncomment as needed) ===
+# node_modules/
+# dist/
+# build/
+# coverage/
+# *.log
+
+# === IDE ===
+.idea/
+.vscode/
+*.iml
+
+# === OS ===
+.DS_Store
+Thumbs.db

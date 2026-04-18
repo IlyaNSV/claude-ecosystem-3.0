@@ -1,0 +1,33 @@
+{
+  "_comment": "Ecosystem 3.0 — Claude Code settings template. Bootstrap copies this to .claude/settings.json and customizes per project.",
+  "model": "claude-opus-4-7",
+  "_model_strategy": {
+    "main_session": "claude-opus-4-7",
+    "comment": "Subagents specify their own model in frontmatter: Opus for product/adversarial, Sonnet for mechanical, Haiku for hooks/scanners"
+  },
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(npx:*)",
+      "Bash(mkdir:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:npmjs.com)"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "_comment": "Hooks are wired by bootstrap when corresponding modules are activated. Empty by default; populated per phase.",
+    "PostToolUse": []
+  }
+}
