@@ -33,45 +33,40 @@ core, not "installed". Their coverage:
   - Integrator: infrastructure (this is me)
 ```
 
-### Step 2: Build coverage table (new schema per SPEC §4.3 / §4.5)
+### Step 2: Build coverage table (schema per SPEC §4.3)
 
-Read `.claude/integrator/pmo-mapping.yaml` per canonical schema. For each PMO process entry in `coverage:`, extract:
+Read `.claude/integrator/pmo-mapping.yaml`. For each PMO process entry in `coverage:`, extract:
 - Tool(s) covering it
-- `declared_confidence` (from tool profile §4.2)
-- `empirical_confidence` (from usage_stats §4.4, computed per §4.5)
-- `effective_confidence` = min(declared, empirical) when hybrid
-- `last_smoke_test` + `last_smoke_result`
+- `confidence` (declared, per tool profile §4.2)
+- `evidence` (brief rationale)
 - Contract status
+- Since date
 
 Display columns:
 
 ```
-| Process | Tool          | Declared | Empirical | Effective | Last Smoke | Flags |
-|---------|---------------|----------|-----------|-----------|------------|-------|
-| D1      | Product Module (core) | high | —        | high      | n/a (core) | ✓     |
-| D2-Behavioral | Product Module (core) | high | — | high  | n/a (core) | ✓     |
-| D2-05   | Design Module (core)  | high | —        | high      | n/a (core) | ⚡ if has_ui |
-| D2-Tech-02 | cc-sdd v2.3 | high     | high      | high      | 2026-04-18 pass | ✓ |
-| D3-01   | beads v1.2    | medium   | low       | low       | 2026-04-10 pass | ⚠ drift (empirical < declared) |
-| D4-01   | vitest v1.5   | high     | —         | high      | 2026-04-18 pass | ℹ️ new (<5 invoc) |
-| D4-02   | — (uncovered)  | —        | —        | —         | —          | 🟡 needed @ mvp tier |
-| D6      | Integrator (core) | high | —        | high      | n/a        | ✓     |
+| Process       | Tool                  | Confidence | Evidence         | Contracts |
+|---------------|-----------------------|------------|------------------|-----------|
+| D1            | Product Module (core) | high       | built-in         | —         |
+| D2-Behavioral | Product Module (core) | high       | built-in         | —         |
+| D2-05         | Design Module (core)  | high ⚡    | conditional has_ui | MK-sync |
+| D2-Tech-02    | cc-sdd v2.3           | high       | docs + example   | CNT-001   |
+| D3-01         | beads v1.2            | medium     | inferred from docs | CNT-003 |
+| D4-01         | — (uncovered)         | —          | —                | —         |
+| D6            | Integrator (core)     | high       | built-in         | —         |
 ```
 
-**Symbols для Effective column (primary visual):**
-- ✓ high — full confidence, smoke passed, stable
-- ◐ medium — partial confidence
-- ⚠ low — low confidence, needs attention
-- ❌ none — uncovered
-- ⏸️ deferred — explicitly out of scope (from `deferred_by_design` list)
+**Symbols для Confidence:**
+- `high` — явно документировано + evidence convincing
+- `medium` — documented, но неясна проверенность
+- `low` — inferred indirectly
+- `—` / `none` — uncovered
+- `deferred` — explicitly out of scope (из `deferred_by_design`)
 
-**Flags колонка (secondary signals):**
-- ✓ — healthy
-- ⚠ drift — declared/empirical differ by 1+ level (investigate)
-- ℹ️ new — <5 invocations, empirical not yet trustworthy
-- 🔴 broken — last_smoke_result: fail OR recent failures > 20%
-- 🟡 stale — last_smoke_test > 30 days
-- ⚡ conditional — active only if FM.has_ui=true (Design Module)
+**Flags (если applicable):**
+- ⚡ conditional — Design Module active только при FM.has_ui=true
+- 🟡 needs re-audit — `last_audit` > 60 days
+- ⚠ contract broken — contract verify failed last check
 
 ### Step 3: Visualize gaps and conflicts
 
@@ -80,47 +75,25 @@ After the table, summarize from `pmo-mapping.yaml`:
 ```
 Coverage summary:
   Covered processes: X / Y (Z%)
-    - high effective confidence: A
-    - medium: B
-    - low: C  ← investigate
+    - high confidence: A
+    - medium confidence: B
+    - low confidence: C  ← investigate
   Uncovered (needed): <from uncovered[] with severity filter>
   Deferred by design: <from deferred_by_design[]>
   Multi-tool zones: <list from coverage[].covered_by.length > 1>
   Contract health: N total, M valid, K broken
-
-Confidence source breakdown:
-  declared-only: D tools (need more invocations for empirical)
-  hybrid (both declared + empirical): E tools
-  empirical-downgraded: F tools (declared was optimistic)
-
-Smoke test status:
-  Recent passes: <count>
-  Recent failures: <count>
-  Skipped (e.g., deploy tools): <count>
-  Stale (>30 days): <count — warn these>
-  Never tested: <count — add to /integrator:verify queue>
+  Last audit: <date from meta.last_audit>
 ```
 
-**Confidence drift section (NEW per §4.5):**
-
-List zones where `declared_confidence != empirical_confidence`:
+**Если observed issues (из journal entries с тегом #drift-fix или #error-fix):**
 
 ```
-⚠ Confidence drift detected (declared ≠ empirical):
-
-  D3-01 (beads):
-    Declared: medium → Empirical: low
-    Reason: 22% failure rate over last 50 invocations
-    Suggested action: /product:meta-feedback (propose downgrade)
-                   OR /integrator:debug beads (address root cause)
-
-  D2-Tech-02 (cc-sdd):
-    Declared: medium → Empirical: high
-    Reason: 2% failure over 100+ invocations — tool more reliable than docs claim
-    Suggested action: /product:meta-feedback (propose upgrade)
+Recent issues (from journal):
+  D3-01 (beads): 3 debug sessions в last 14 days — rule of thumb, confidence may be too high
+    → Consider /product:meta-feedback propose downgrade, OR /integrator:debug <tool> если issue systematic
 ```
 
-This is the **main empirical insight** команды — drift signals are actionable.
+Это **human-discovered** feedback loop (не автоматический tracking). Journal — source of truth.
 
 ### Step 4: Recommendations
 
