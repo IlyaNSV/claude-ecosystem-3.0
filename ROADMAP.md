@@ -11,10 +11,10 @@
 ✅ Phase 1 — Integrator read-only + new business DA
 ✅ Pre-pilot fix — pmo-mapping.yaml formal schema (simplified)
 ✅ Bootstrap infrastructure — global installer + /ecosystem:bootstrap + /ecosystem:verify
+✅ Phase 2 — Product Module core (Discovery Quick + drift mechanisms)
 
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 2 — Product Module core (Discovery Quick + drift mechanisms)
 ⏳ Phase 3 — Planning + Feature Enrichment (P1.B + P2.A)
 ⏳ Phase 4 — Handoff + NFR + Product DA + Validation full
 ⏳ Phase 5 — Integrator Phase 2 (Installation + first adapter)
@@ -92,7 +92,9 @@ claude
 
 ---
 
-## Phase 2 — Product Module core
+## ✅ Phase 2 — Product Module core (COMPLETED)
+
+**Коммит:** будет следующим
 
 **Цель:** `/product:init` работает end-to-end для greenfield проекта в Quick mode. Discovery артефакты (PS → HYP) создаются.
 
@@ -130,7 +132,7 @@ claude
 - ✅ `bootstrap.md` — 12-step per-project setup
 - ✅ `verify.md` — non-destructive health check
 
-### Acceptance criteria
+### Acceptance criteria (to be validated in first pilot)
 
 - [ ] `/product:init "простое описание идеи"` в пустой папке → за 30-60 мин создаёт PS + MR + CA + SEG + VP + HYP, все в active
 - [ ] `/product:status` показывает актуальный dashboard
@@ -138,19 +140,18 @@ claude
 - [ ] Artifact-validate hook тихо queues findings при `status: draft`, surfaces на approve
 - [ ] Session recovery работает через `/product:init --continue` после interrupt
 
-### Estimated effort
+### Delivered (20 файлов)
 
-**3-5 часов focused work.**
+**commands/product/ (7):** init, status, config, drift-check, meta-feedback, patterns, promote-note
+**skills/product/ Discovery (7):** discovery-session, problem-discovery, market-research-protocol-quick, competitive-analysis-protocol-quick, segment-discovery, vp-design, hypothesis-formulation
+**skills/product/ drift mechanisms (4):** drift-detector, pattern-linter, meta-feedback, note-capture
+**hooks/product/ (2):** artifact-validate.js (tier-aware B1 + quiet-draft-mode B2), session-state.js
 
-### Dependencies
+### Known limitations / notes для pilot
 
-- Phase 0 ✅ (SPECs доступны)
-- Phase 1 ✅ (Integrator read-only для установки core MCP stack)
-
-### Risks
-
-- Skills для D1.2 MR и D1.3 CA Quick mode без Deep subagents могут быть слабоваты. Acceptable для pilot, flag для будущей доработки.
+- Skills для D1.2 MR и D1.3 CA Quick mode без Deep subagents — acceptable, flag для будущей доработки (subagents в Phase 3).
 - Hook interaction с Claude Code — первый реальный тест trigger semantics. Могут потребоваться корректировки.
+- `artifact-validate.js` в v1 покрывает basic rules (V-04, V-09, V-10, C2 confidence) — полный V-* catalog в validation-runner skill (Phase 4).
 
 ---
 

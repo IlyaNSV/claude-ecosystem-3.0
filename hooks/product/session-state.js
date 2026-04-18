@@ -1,0 +1,222 @@
+#!/usr/bin/env node
+/**
+ * session-state.js — PostToolUse hook for session progress snapshot.
+ *
+ * Snapshots .product/.sessions/current.yaml when artifact files in .product/
+ * are written or edited, enabling `/product:<command> --continue` recovery.
+ *
+ * Exit 0 always — non-blocking.
+ */
+
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+
+// ---------- Read hook input ----------
+
+let rawInput = '';
+try {
+  rawInput = fs.readFileSync(0, 'utf-8');
+} catch (e) {
+  process.exit(0);
+}
+
+let hookInput;
+try {
+  hookInput = JSON.parse(rawInput);
+} catch (e) {
+  process.exit(0);
+}
+
+const filePath = hookInput?.tool_input?.file_path;
+const toolName = hookInput?.tool_name;
+if (!filePath || !toolName) {
+  process.exit(0);
+}
+
+// ---------- Filter: .product/**/*.md, excluding session/pending internal files ----------
+
+const normalized = filePath.replace(/\\/g, '/');
+if (!/\.product\//.test(normalized)) {
+  process.exit(0);
+}
+if (normalized.includes('/.sessions/') || normalized.includes('/.pending/')) {
+  process.exit(0);
+}
+
+// ---------- Find project root ----------
+
+const projectRoot = findProjectRoot(normalized);
+if (!projectRoot) process.exit(0);
+
+const sessionsDir = path.join(projectRoot, '.product', '.sessions');
+try {
+  if (!fs.existsSync(sessionsDir)) {
+    fs.mkdirSync(sessionsDir, { recursive: true });
+  }
+} catch (e) {
+  process.exit(0);
+}
+
+const currentPath = path.join(sessionsDir, 'current.yaml');
+
+// ---------- Parse artifact frontmatter (minimal) ----------
+
+let artifactId = null;
+let artifactType = null;
+let artifactStatus = null;
+
+try {
+  const content = fs.readFileSync(filePath, 'utf-8');
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/m.exec(content);
+  if (m) {
+    const yaml = m[1];
+    const idMatch = /^id:\s*(.+)$/m.exec(yaml);
+    const typeMatch = /^type:\s*(.+)$/m.exec(yaml);
+    const statusMatch = /^status:\s*(\w+)/m.exec(yaml);
+    if (idMatch) artifactId = idMatch[1].trim().replace(/^["']|["']$/g, '').replace(/\s+#.*$/, '').trim();
+    if (typeMatch) artifactType = typeMatch[1].trim().replace(/^["']|["']$/g, '').replace(/\s+#.*$/, '').trim();
+    if (statusMatch) artifactStatus = statusMatch[1].trim();
+  }
+} catch (e) {
+  // Can't read — proceed with minimal snapshot (filepath only)
+}
+
+// ---------- Update current.yaml ----------
+
+const now = new Date().toISOString();
+const relPath = path.relative(projectRoot, filePath).replace(/\\/g, '/');
+
+let current = {};
+if (fs.existsSync(currentPath)) {
+  try {
+    const existing = fs.readFileSync(currentPath, 'utf-8');
+    current = parseYamlFlat(existing);
+  } catch (e) {
+    current = {};
+  }
+}
+
+// Initialize session if none present
+if (!current.session_id) {
+  current.session_id = `${now.replace(/[:.]/g, '-')}-${process.pid}`;
+  current.type = 'unknown'; // Command-issued sessions set this explicitly
+  current.started_at = now;
+}
+
+current.last_checkpoint = now;
+current.last_tool = toolName;
+current.last_artifact_path = relPath;
+if (artifactId) current.last_artifact_id = artifactId;
+if (artifactType) current.last_artifact_type = artifactType;
+if (artifactStatus) current.last_artifact_status = artifactStatus;
+
+// Increment edit counter (rough activity signal)
+current.edits_since_start = (parseInt(current.edits_since_start, 10) || 0) + 1;
+
+// Track recently touched artifacts (dedupe)
+let recent = current.recent_artifacts ? String(current.recent_artifacts).split(',').map((s) => s.trim()).filter(Boolean) : [];
+if (artifactId && !recent.includes(artifactId)) {
+  recent.unshift(artifactId);
+  recent = recent.slice(0, 10); // keep last 10
+}
+current.recent_artifacts = recent.join(', ');
+
+// Git head (optional — helps OQ-PM-02 concurrent session detection)
+try {
+  const headFile = path.join(projectRoot, '.git', 'HEAD');
+  if (fs.existsSync(headFile)) {
+    const head = fs.readFileSync(headFile, 'utf-8').trim();
+    // If ref: refs/heads/main, resolve to SHA
+    const refMatch = /^ref:\s+(\S+)/.exec(head);
+    if (refMatch) {
+      const refPath = path.join(projectRoot, '.git', refMatch[1]);
+      if (fs.existsSync(refPath)) {
+        current.git_head_sha = fs.readFileSync(refPath, 'utf-8').trim().slice(0, 12);
+      } else {
+        current.git_head_sha = 'detached';
+      }
+    } else {
+      current.git_head_sha = head.slice(0, 12);
+    }
+  }
+} catch (e) {
+  // Ignore — not critical
+}
+
+// ---------- Write back ----------
+
+try {
+  fs.writeFileSync(currentPath, formatYamlFlat(current));
+} catch (e) {
+  // Silent fail
+}
+
+process.exit(0);
+
+// ---------- Helpers ----------
+
+function findProjectRoot(filePath) {
+  let dir = path.dirname(path.resolve(filePath));
+  while (dir !== path.parse(dir).root) {
+    if (fs.existsSync(path.join(dir, '.claude')) && fs.existsSync(path.join(dir, '.product'))) {
+      return dir;
+    }
+    dir = path.dirname(dir);
+  }
+  return null;
+}
+
+function parseYamlFlat(text) {
+  const obj = {};
+  text.split(/\r?\n/).forEach((line) => {
+    if (/^\s*(#|$)/.test(line)) return;
+    const kv = /^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)$/.exec(line);
+    if (!kv) return;
+    const key = kv[1];
+    let val = kv[2].trim();
+    val = val.replace(/^["'](.*)["']$/, '$1');
+    obj[key] = val;
+  });
+  return obj;
+}
+
+function formatYamlFlat(obj) {
+  const lines = [
+    '# Session state — snapshot by session-state.js hook',
+    `# Used by /product:<command> --continue for recovery.`,
+    `# Regenerated on every .product/*.md write.`,
+    '',
+  ];
+  const order = [
+    'session_id',
+    'type',
+    'started_at',
+    'last_checkpoint',
+    'last_tool',
+    'last_artifact_id',
+    'last_artifact_type',
+    'last_artifact_status',
+    'last_artifact_path',
+    'edits_since_start',
+    'recent_artifacts',
+    'git_head_sha',
+  ];
+  order.forEach((k) => {
+    if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') {
+      const v = obj[k];
+      const valStr = typeof v === 'string' && /[:\s#]/.test(v) ? `"${v.replace(/"/g, '\\"')}"` : v;
+      lines.push(`${k}: ${valStr}`);
+    }
+  });
+  // Include unknown fields (extensibility)
+  Object.keys(obj).forEach((k) => {
+    if (!order.includes(k) && obj[k] !== undefined) {
+      const v = obj[k];
+      const valStr = typeof v === 'string' && /[:\s#]/.test(v) ? `"${v.replace(/"/g, '\\"')}"` : v;
+      lines.push(`${k}: ${valStr}`);
+    }
+  });
+  return lines.join('\n') + '\n';
+}
