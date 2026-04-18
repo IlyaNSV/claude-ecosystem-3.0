@@ -78,6 +78,7 @@ Claude Code:
 
 | Хочу узнать... | Смотри |
 |---|---|
+| **План имплементации и где мы сейчас** | **[ROADMAP.md](ROADMAP.md)** |
 | Что такое каждый модуль и как они взаимодействуют | [docs/product-module/SPEC.md](docs/product-module/SPEC.md), [docs/design-module/SPEC.md](docs/design-module/SPEC.md), [docs/integrator-module/SPEC.md](docs/integrator-module/SPEC.md) |
 | Как передать фичу во внешний tool | [docs/product-module/handoff-spec.md](docs/product-module/handoff-spec.md) |
 | Какие есть типы артефактов | [docs/pmo/artifacts/README.md](docs/pmo/artifacts/README.md) |
