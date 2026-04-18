@@ -15,6 +15,12 @@ Extract structured tool metadata into YAML profile per `docs/integrator-module/S
 
 ## Profile schema (full)
 
+Polный profile имеет **4 sections:** identity + metadata + declared coverage + empirical tracking. Смотри также:
+- `.claude/docs/integrator-module/SPEC.md §4.1` — authoritative schema
+- `.claude/docs/integrator-module/SPEC.md §4.4` — usage_stats details
+- `.claude/skills/integrator/usage-tracking.md` — как empirical data collected
+- `.claude/skills/integrator/smoke-test-protocols.md` — per-category verification
+
 ```yaml
 # ~/.claude/integrator/tool-catalog/<tool>.yaml
 
@@ -25,6 +31,8 @@ tool:
   source_spec: <full install spec>       # e.g., "beads@1.2.0", "github:org/repo#tag"
   installed_at: YYYY-MM-DD                # null if research only
   last_verified: YYYY-MM-DD
+  last_smoke_test: YYYY-MM-DDThh:mm       # per smoke-test-protocols skill
+  last_smoke_result: pass | fail | skipped | partial
   home_url: <homepage URL>
   docs_url: <documentation URL>
 
@@ -82,11 +90,28 @@ notes:
   - <known issues>
   - <usage tips>
 
-# v1 modification additions
+# v1 modification: profile meta-confidence (how sure YOU are about the profile)
 confidence:
   profiling: high | medium | low           # confidence in this profile's accuracy
   profiling_notes: "<what's verified vs assumed>"
   last_audit: YYYY-MM-DD                   # last time profile was verified against actual tool
+
+# v1 modification (gap 3 fix): empirical usage tracking (§4.4)
+# Collected per usage-tracking.md skill — не filled в при profile creation,
+# populated continuously by adapter autoinstrumentation
+usage_stats:
+  invocations: 0                           # incremented per invocation
+  successes: 0
+  failures: 0
+  failure_rate_percent: 0.0
+  last_success: null
+  last_failure: null
+  first_tracked: <will be set on first use>
+  stats_reset_at: <creation timestamp>
+  recent_failures: []                      # last 5
+  empirical_confidence: null               # computed when >=5 invocations
+  stats_window: "rolling-20"
+  confidence_last_computed: null
 ```
 
 ## Process
@@ -179,6 +204,48 @@ confidence:
   profiling_notes: "Based on docs + 2 community reviews; haven't run smoke test on our stack. Most data points verified, but PMO coverage for D2-04 is inferred from issue discussion, not docs."
   last_audit: 2026-04-18
 ```
+
+### Step 10: Initialize empirical tracking
+
+При создании profile — initialize `usage_stats` section пустым (no invocations yet):
+
+```yaml
+usage_stats:
+  invocations: 0
+  successes: 0
+  failures: 0
+  failure_rate_percent: 0.0
+  first_tracked: null                      # set at first invocation
+  stats_reset_at: 2026-04-18T15:30:00Z     # profile creation time
+  recent_failures: []
+  empirical_confidence: null               # no data yet
+  stats_window: "rolling-20"
+  confidence_last_computed: null
+```
+
+После первых invocations через Integrator adapters — autoinstrumentation (see `usage-tracking.md` skill) обновляет these fields. При `/integrator:add` — run smoke test per `smoke-test-protocols.md` — result фиксируется в `last_smoke_test` / `last_smoke_result`.
+
+### Step 11: Update pmo-mapping.yaml
+
+После создания profile — update project-local `.claude/integrator/pmo-mapping.yaml` per integrator SPEC §4.3 schema:
+
+```yaml
+# For each PMO process this tool covers
+coverage:
+  D2-Tech-02:
+    covered_by: [cc-sdd]                   # add this tool
+    primary: cc-sdd                        # set if first tool for this process
+    declared_confidence: high              # from this profile
+    empirical_confidence: null             # will populate after 5+ invocations
+    confidence_source: declared            # no empirical data yet
+    effective_confidence: high             # = declared when no empirical
+    since: 2026-04-18
+    last_smoke_test: 2026-04-18
+    last_smoke_result: pass
+    contracts: [CNT-001]                   # if contracts created together
+```
+
+Если несколько tools претендуют на ту же зону (OQ-I9 multi-tool) — добавь в `covered_by[]`, set `secondary[]`.
 
 ## Profile reuse
 

@@ -258,14 +258,210 @@ conflicts:
 notes:
   - "Supports parallel execution but we use sequential in this project"
   - "Known issue #123: timeouts on Windows, use WSL"
+
+# v1 modification (gap 3 fix): empirical usage tracking
+usage_stats:                             # см. §4.4
+  invocations: 47
+  successes: 43
+  failures: 4
+  failure_rate_percent: 8.5
+  last_success: 2026-04-18T14:30:00Z
+  last_failure: 2026-04-17T11:15:00Z
+  recent_failures:                       # последние 5 failures для debugging
+    - timestamp: 2026-04-17T11:15:00Z
+      context: "FM-007 spec-init"
+      journal_ref: DEC-INT-0073
+      resolved: true
+  empirical_confidence: medium           # derived per §4.5
+  stats_reset_at: 2026-04-01T00:00:00Z   # для version upgrades
 ```
 
-### 4.2. Confidence levels для PMO coverage
+### 4.2. Declared confidence levels для PMO coverage
 
-- **high** — явно задокументировано + проверено smoke-тестом
+- **high** — явно задокументировано + проверено smoke-тестом (см. §12a Smoke Test Protocols)
 - **medium** — задокументировано, но не проверено на нашем стеке
 - **low** — вывели по косвенным признакам (issue tracker, community posts)
 - **none** — явно не покрывает или не заявляет
+
+### 4.3. Aggregated PMO mapping (`pmo-mapping.yaml`)
+
+Profile каждого tool'а — **его собственное декларирование**. Но проекту нужен **агрегированный view**: «кто что покрывает в этом проекте». Это `.claude/integrator/pmo-mapping.yaml`.
+
+**Когда обновляется:**
+- `/integrator:add <tool>` — добавляет coverage entries от нового tool'а
+- `/integrator:remove <tool>` — удаляет coverage entries
+- `/integrator:update <tool>` — re-verify coverage при version change
+- `/integrator:verify` — periodic re-audit (smoke tests)
+
+**Схема:**
+
+```yaml
+# .claude/integrator/pmo-mapping.yaml
+version: 1
+last_updated: 2026-04-18T15:30:00Z
+project_tier: pilot | mvp | mmp | growth | mature
+integrator_version: 1.0
+
+coverage:
+  # Ключ — PMO process ID из pmo-map.md (D1-01 .. D6-NN)
+
+  D2-Tech-02:                            # Feature Specification process
+    covered_by: [cc-sdd]                 # список инструментов, покрывающих
+    primary: cc-sdd                      # preferred для этой зоны
+    secondary: []                        # fallback tools (OQ-I9 multi-tool)
+    declared_confidence: high            # из tool profiles (§4.2)
+    empirical_confidence: high           # из usage_stats (§4.5)
+    confidence_source: hybrid            # declared | empirical | hybrid
+    effective_confidence: high           # min(declared, empirical) в hybrid mode
+    since: 2026-04-18                    # когда добавлена coverage
+    last_smoke_test: 2026-04-18          # последняя verification через smoke
+    last_smoke_result: pass              # pass | fail | skipped | na
+    contracts: [CNT-001]                 # активные контракты
+
+  D3-01:                                 # Implementation process
+    covered_by: [beads, superpowers]     # multi-tool scenario (OQ-I9)
+    primary: beads
+    secondary: [superpowers]
+    declared_confidence: medium
+    empirical_confidence: low             # failure_rate высокий
+    confidence_source: empirical          # empirical downgraded vs declared
+    effective_confidence: low             # min → low
+    since: 2026-04-15
+    last_smoke_test: 2026-04-10
+    last_smoke_result: pass
+    contracts: [CNT-003, CNT-005]
+    notes: "beads failing 15% на больших фичах — см. DEC-INT-0042"
+
+uncovered:                               # процессы без активного tool'а
+  - process: D4-01
+    reason: "no testing tool installed"
+    severity: 🟡                        # blocking | important | nice | deferred
+    planned: "address when entering mvp tier"
+    since: 2026-04-01
+  - process: D5
+    reason: "deferred per DEC-P08 (v1 out of scope)"
+    severity: ⏸️ deferred
+    planned: "v1.1+ when monitoring infrastructure ready"
+
+deferred_by_design:                      # явно отложенные
+  - D1-10   # Pivot/Persevere — out of scope v1 (Q-11)
+  - D5-*    # Operations feedback — out of scope v1 (DEC-P08)
+  - D6-*    # Meta processes, пока только Integrator manual
+
+meta:
+  last_audit: 2026-04-18                 # последний /integrator:verify
+  audit_findings:
+    passed: 12
+    warnings: 1
+    failures: 0
+  multi_tool_zones: 1                    # OQ-I9 — сколько зон с 2+ tools
+```
+
+**Invariants:**
+- Каждый key в `coverage:` ↔ существует в pmo-map.md
+- `covered_by[]` не пустой (если процесс в `coverage`, он covered)
+- Если `covered_by` содержит 2+ tools — `primary` обязателен (OQ-I9 scaffolding)
+- `effective_confidence` автоматически вычисляется: `min(declared, empirical)` при hybrid source
+
+**Кто читает:**
+- `/integrator:map` — отображает полную таблицу
+- `/integrator:gaps` — derives uncovered + severity-assessed needed
+- `/integrator:status` — summary health
+- Future: Orchestrator Module — routing decisions per coverage
+
+### 4.4. Empirical tracking (`usage_stats`)
+
+**Зачем:** Declared confidence based на docs может расходиться с реальностью. Tool может **заявлять** «purpose: spec-gen для TypeScript», но в **практике** падать на 15% фичей из-за edge case. `usage_stats` ловит это.
+
+**Что трекается** (per tool, в его profile yaml):
+
+```yaml
+usage_stats:
+  invocations: <count всех вызовов>
+  successes: <count успешных>
+  failures: <count проваленных>
+  failure_rate_percent: <(failures / invocations) * 100>
+
+  last_success: <ISO timestamp>
+  last_failure: <ISO timestamp>
+
+  recent_failures:                # последние 5 для quick debugging
+    - timestamp: <ISO>
+      context: "<что делали>"
+      error_excerpt: "<краткое сообщение>"
+      journal_ref: DEC-INT-<NNN>
+      resolved: true | false
+
+  stats_reset_at: <ISO>           # сброс при major version upgrade
+  stats_window: "rolling-20"      # по скользящему окну последних N вызовов
+```
+
+**Как tracked:**
+
+1. **Autoinstrumented через Integrator:** когда tool invoke через Integrator adapter (handoff→tool), hook `integrator-usage-tracker.js` фиксирует outcome
+2. **Manually via command:** `/integrator:record-outcome <tool> <success|failure> [notes]` — для tools вызываемых вне adapter (например, из другого Claude Code chat)
+3. **Autoinstrumented через contract verify:** `/integrator:verify` запускает smoke tests, фиксирует outcomes
+
+**Threshold для action:**
+
+| Condition | Action |
+|---|---|
+| `failure_rate_percent > 20%` (за последние 20 invocations) | Integrator предлагает через `/product:meta-feedback` downgrade declared confidence |
+| `failure_rate_percent > 40%` | Automatic downgrade `empirical_confidence` до low |
+| 3+ consecutive failures | Integrator suggest `/integrator:debug <tool>` |
+| No invocations за 30 дней | mark `empirical_confidence: stale`, warn в `/integrator:status` |
+
+**Reset conditions:**
+- Major version upgrade tool'а (semver major) — stats reset, `stats_reset_at` updated
+- Manual reset через `/integrator:reset-stats <tool>` (редко, требует rationale в journal)
+- Smoke test pass после fix — не reset, но adds positive signal
+
+### 4.5. Empirical vs Declared Confidence
+
+**Философия:** Declared confidence — *что tool заявляет*. Empirical — *что мы видим на практике*. Обе нужны.
+
+**Правило effective confidence:**
+
+```
+effective_confidence = min(declared_confidence, empirical_confidence)
+                       # при наличии обоих (confidence_source: hybrid)
+
+if empirical data < 5 invocations:
+    confidence_source = declared
+    effective_confidence = declared_confidence
+    # empirical недостоверна на малой выборке
+
+if tool freshly added (< 24h ago):
+    confidence_source = declared
+    # дать время на накопление данных
+
+if failure_rate > 20% AND invocations >= 10:
+    confidence_source = empirical
+    effective_confidence = empirical_confidence  # typically ниже declared
+    integrator suggests /product:meta-feedback proposal
+```
+
+**Что показывает `/integrator:map`:** всегда `effective_confidence` в главной колонке, с indicators если declared/empirical расходятся:
+
+```
+| Process | Tool    | Declared | Empirical | Effective | Flags |
+|---------|---------|----------|-----------|-----------|-------|
+| D2-Tech | cc-sdd  | high     | high      | high      | ✓     |
+| D3-01   | beads   | medium   | low       | low       | ⚠ drift (empirical < declared) |
+| D4-01   | vitest  | high     | —         | high      | ℹ️ new (<5 invoc) |
+```
+
+**Surfacing:** при расхождении declared/empirical > 1 level — warning в `/integrator:status` + предложение `/product:meta-feedback`.
+
+### 4.6. Трёхслойная confidence обобщение
+
+| Слой | Источник | Обновление | Надёжность |
+|---|---|---|---|
+| **Declared** | Tool documentation, maintainer claims | При `/integrator:add/update` | Tool's self-report; биас возможен |
+| **Smoke-verified** | `/integrator:verify` + smoke tests | Periodic (cron/manual) | Реальная проверка на нашем стеке |
+| **Empirical** | Usage stats по факту работы | Continuous (autoinstrumented) | Статистика реального использования |
+
+`effective_confidence` = consolidated view, используется в display.
 
 ---
 

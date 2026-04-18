@@ -58,6 +58,16 @@ Initial release. Includes 12 architectural modifications applied to baseline des
 - Moved SPECs into `docs/` subdirectory to reflect clean separation: SPECs (reference) vs runtime artifacts (commands, skills, agents, hooks).
 - Removed design history files (`_decisions/`, audit reports, chat artifacts) — they belong to design archive, not operational ecosystem.
 
+### Added — Integrator PMO coverage foundation (pre-pilot gap fixes)
+
+Closed 3 foundational gaps in how Integrator measures PMO coverage, discovered during Phase 1 review:
+
+- **Gap 1: Formal `pmo-mapping.yaml` schema** — `.claude/integrator/pmo-mapping.yaml` is the project-local aggregated view of "who covers what". Full schema in `docs/integrator-module/SPEC.md §4.3` with invariants and update rules.
+- **Gap 2: Per-category smoke test protocols** — `skills/integrator/smoke-test-protocols.md` defines verification templates for each tool category (spec-gen, implementation, testing, monitoring, deploy-dry-run, infrastructure). Invoked at `/integrator:add` Stage 6 and `/integrator:verify`.
+- **Gap 3: Empirical usage tracking** — `usage_stats` section in every tool profile tracks invocations/successes/failures/recent_failures, computes `empirical_confidence` per rolling window. Separate from declared_confidence from docs. Full mechanism in `skills/integrator/usage-tracking.md` and `docs/integrator-module/SPEC.md §4.4`.
+- **Empirical vs Declared confidence model** — `effective_confidence = min(declared, empirical)` in hybrid mode. Surfaces drift between what tool claims (docs) and what's observed (stats). Integrates with C3 meta-feedback for automatic downgrade proposals. Details in `SPEC §4.5-4.6`.
+- **`/integrator:map` and `/integrator:status` enhanced** to display three-layer confidence (declared / empirical / effective) and surface drift as actionable signals.
+
 ---
 
 ## Future versions (planned)

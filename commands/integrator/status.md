@@ -44,15 +44,33 @@ Project: <name>
 Last verify: <date>
 Health: 🟢 Healthy | 🟡 Degraded | 🔴 Issues
 
-ACTIVE TOOLS (<count>)
-  ✓ <tool-1> v<version>   — <PMO zone>   — <last verified>
-  ✓ <tool-2> v<version>   — <PMO zone>   — <last verified>
-  ⚠ <tool-3> v<version>   — <PMO zone>   — drift detected
+ACTIVE TOOLS (<count>) — with empirical tracking (§4.4)
+
+  cc-sdd v2.3.0 — D2-Tech-02
+    Declared/Empirical/Effective: high / high / high
+    Invocations: 47 (43 ✓ / 4 ✗ = 8.5% failure rate)
+    Recent (last 10): ✓ ✓ ✓ ✓ ✓ ✓ ✗ ✓ ✓ ✓
+    Last smoke: 2026-04-18 pass
+    Status: ✓ healthy
+
+  beads v1.2.0 — D3-01
+    Declared/Empirical/Effective: medium / low / low
+    Invocations: 50 (39 ✓ / 11 ✗ = 22% failure rate)
+    Recent: ✗ ✓ ✗ ✗ ✓ ✗ ✓ ✓ ✓ ✓  (recovering)
+    Last smoke: 2026-04-10 pass
+    Status: ⚠ confidence drift (declared > empirical)
+    Action: /product:meta-feedback (pending proposal)
+
+  vitest v1.5.0 — D4-01
+    Declared/Empirical/Effective: high / — / high
+    Invocations: 3 (all ✓)
+    Last smoke: 2026-04-18 pass
+    Status: ℹ️ new (<5 invoc; empirical not yet meaningful)
 
 CONTRACTS (<count> total, <broken> broken)
-  ✓ CNT-001  product-handoff → cc-sdd spec-init
-  ✓ CNT-002  spec-tasks → beads
-  ⚠ CNT-003  custom contract — drift since 2026-04-15
+  ✓ CNT-001  product-handoff → cc-sdd spec-init  (last verified 2026-04-18)
+  ✓ CNT-002  spec-tasks → beads                   (last verified 2026-04-18)
+  ⚠ CNT-003  beads → git-flow                     (drift since 2026-04-15)
 
 PMO COVERAGE
   D1, D2-Behavioral: 100% (Product Module — core)
@@ -64,7 +82,15 @@ PMO COVERAGE
 PENDING ACTIONS (<count>)
   - 2 MCPs available for update (Brave Search 1.5 → 1.6)
   - 1 broken contract: /integrator:debug "CNT-003"
-  - Last verify >7 days ago: consider /integrator:verify
+  - 1 confidence drift: beads empirical < declared → /product:meta-feedback
+  - 1 stale smoke test (>30 days): vitest → /integrator:verify vitest
+  - Last global verify >7 days ago: consider /integrator:verify
+
+CONFIDENCE HEALTH (overview)
+  Hybrid confidence (declared+empirical): 2 tools
+  Declared-only (new, <5 invoc): 1 tool
+  Drifted (empirical downgraded): 1 tool
+  Stale smoke (>30 days): 1 tool
 
 GLOBAL CATALOG (~/.claude/integrator/)
   Profiled tools: <count>
