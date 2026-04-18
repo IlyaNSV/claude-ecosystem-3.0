@@ -727,11 +727,10 @@ stitch_usage:
 
 ### 14.1 Prerequisites
 
-- [ ] Product Module активен (Design Module — conditional sub-module)
-- [ ] Integrator Module установлен
+- [ ] `/ecosystem:bootstrap` выполнен (Product + Integrator core установлены, Design Module доступен как conditional sub-module)
 - [ ] Stitch account зарегистрирован, API доступ получен
-- [ ] Stitch MCP установлен через Integrator (`/integrator:add stitch-mcp`)
-- [ ] Bootstrap `.claude/design.yaml` для pilot проекта
+- [ ] Stitch MCP установлен через `/integrator:add stitch-mcp`
+- `.claude/design.yaml` — генерируется автоматически при активации Design Module (первое `/design:start` с has_ui=true), не отдельный prereq
 
 ### 14.2 First UI feature end-to-end
 

@@ -10,6 +10,7 @@
 ✅ Phase 0 — Scaffolding + SPECs + v1 modifications
 ✅ Phase 1 — Integrator read-only + new business DA
 ✅ Pre-pilot fix — pmo-mapping.yaml formal schema (simplified)
+✅ Bootstrap infrastructure — global installer + /ecosystem:bootstrap + /ecosystem:verify
 
 [We are here ─────────────────────────────────────]
 
@@ -21,7 +22,7 @@
 ⏳ Phase 6 — Design Module (conditional, activate on first UI feature)
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs/update)
 
-📦 Post-MVP (v1.1+): Orchestrator Module concept
+📦 Post-MVP (v1.1+): Orchestrator Module concept, /ecosystem:upgrade
 📦 v2: P3 Feedback, P5 Actuality Refresh, multi-tool zones, etc.
 ```
 
@@ -57,6 +58,37 @@
 - Формализована схема `pmo-mapping.yaml` (SPEC §4.3) — project-local aggregated view «кто что покрывает»
 - Single-layer declared confidence (отказались от smoke-verified и empirical layers как переусложнения для v1)
 - Confidence lifecycle — human-driven (add/update/remove/debug/verify), без автоматического tracking
+
+### ✅ Bootstrap infrastructure — global installer + setup commands
+
+**Коммит:** будет следующим
+
+**Проблема которую решили:** до клонирования ecosystem Claude Code физически не может автокомплит `/ecosystem:bootstrap`, потому что commands живут только в `.claude/commands/` (local) или `~/.claude/commands/` (user-global). Естественно-языковой trigger «Установи Ecosystem 3.0...» работал, но discoverability была нулевая.
+
+**Что сделано:**
+- `install.sh` (Unix/macOS/WSL) + `install.ps1` (Windows) — one-liner global installer:
+  - Клонирует ecosystem в `~/.claude/ecosystem/` (глобальный кэш)
+  - Копирует `commands/ecosystem/*.md` в `~/.claude/commands/ecosystem/`
+  - Идемпотентен — повторный запуск pulls latest
+- `commands/ecosystem/bootstrap.md` — полная slash-команда для per-project setup (12 steps с flags `--offline`, `--no-mcp`, `--force`)
+- `commands/ecosystem/verify.md` — non-destructive health check (post-install и periodic)
+- `templates/project/CLAUDE.md.template` — генерируется в корне нового проекта, даёт Claude Code immediate context
+- Упрощён root `BOOTSTRAP.md` (human-readable overview), детали выведены в slash-команду
+- Обновлены `README.md` (two-phase Quick Start) и `INSTALL-HUMAN.md` (Блок A — один раз на машину, Блок B — per project)
+
+**Результат пользовательского флоу:**
+
+```
+# Phase 1 (один раз на машину)
+curl -sSL https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.sh | bash
+
+# Phase 2 (per new project)
+mkdir my-product && cd my-product
+claude
+> /ecosystem:bootstrap     # ← автокомплит работает
+```
+
+Детали: [BOOTSTRAP.md](BOOTSTRAP.md), [commands/ecosystem/bootstrap.md](commands/ecosystem/bootstrap.md), [INSTALL-HUMAN.md](INSTALL-HUMAN.md).
 
 ---
 
@@ -94,9 +126,9 @@
 - `artifact-validate.js` — tier-aware (B1) + quiet-draft-mode (B2)
 - `session-state.js` — progress snapshot for recovery
 
-**commands/ecosystem/:**
-- `bootstrap.md` — one-command setup (per BOOTSTRAP.md)
-- `verify.md` — post-bootstrap health check
+**commands/ecosystem/:** ✅ **Выполнено** в Bootstrap infrastructure (до Phase 2).
+- ✅ `bootstrap.md` — 12-step per-project setup
+- ✅ `verify.md` — non-destructive health check
 
 ### Acceptance criteria
 

@@ -870,12 +870,11 @@ Deadlock protection (OQ-P4):
 
 ### 14.1 Prerequisites (однократно, до любой способности)
 
-- [ ] Ecosystem 3.0 `.claude/` skeleton создан
-- [ ] `~/.claude/memory/product/` bootstrap пустой
-- [ ] Integrator Module установлен и готов (для регистрации Product Module)
-- [ ] MCP core stack установлен (Sequential Thinking, Brave Search минимум)
-- [ ] Bootstrap `~/.claude/product-config.yaml`
+- [ ] `/ecosystem:bootstrap` успешно выполнен в проекте (создаёт `.claude/`, `.product/`, `.env`, `product.yaml`, `CLAUDE.md`)
+- [ ] Core MCP stack установлен через bootstrap (минимум: Sequential Thinking + Brave Search)
 - [ ] Pilot project chosen
+- `~/.claude/memory/product/` создаётся лениво (Memory MCP при первой записи) — не prereq
+- `~/.claude/product-config.yaml` — опционально (global defaults); бутстрап per-project достаточен
 
 ### 14.2 Discovery Quick (минимальный путь от идеи до HYP)
 

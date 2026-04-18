@@ -1000,10 +1000,10 @@ Orchestrator в будущем будет читать этот файл и по
 ## 12. Чек-лист готовности к имплементации
 
 **Перед стартом Фазы 1:**
-- [ ] Принять этот SPEC в целом (или внести правки)
-- [ ] Определить OQ-I8 (init процедура)
-- [ ] Определить OQ-I13 (язык)
-- [ ] Сгенерировать skeleton `~/.claude/integrator/` вручную (один раз)
+- [x] Принять этот SPEC в целом (v1.0)
+- [x] OQ-I8 (init процедура) → ЗАКРЫТО (DEC-INT-O08, lazy-init)
+- [x] OQ-I13 (язык tool-docs) → ЗАКРЫТО (DEC-INT-O13, universal technical English)
+- [x] Skeleton `~/.claude/integrator/` создаётся автоматически через `/ecosystem:bootstrap` или лениво при первом `/integrator:add`
 
 **Перед стартом Фазы 2:**
 - [ ] Product Module MVP готов (иначе нет handoff для тестирования)

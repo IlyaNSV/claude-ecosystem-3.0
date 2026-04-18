@@ -1,173 +1,180 @@
-# BOOTSTRAP.md — Instructions for Claude Code
+# BOOTSTRAP — Installation Overview
 
-> **For Claude Code:** This file contains step-by-step instructions for setting up Ecosystem 3.0 in a new product project. Follow these steps when the user invokes you with intent to install/bootstrap the ecosystem.
+> **For humans reading the repo.** This document explains **what** and **how** of installing Ecosystem 3.0. The executable instructions live in the `/ecosystem:bootstrap` slash command; this file describes the design.
 
-## Recognition triggers
+## Two-phase install
 
-User says one of:
-- "Установи Ecosystem 3.0"
-- "Bootstrap ecosystem in this project"
-- "Подготовь проект к работе с экосистемой"
-- "Set up Claude ecosystem"
-
-## Execution sequence
-
-### Step 1: Verify environment
+Ecosystem 3.0 uses a two-phase installation model:
 
 ```
-- Check current directory is empty or has only README/initial files
-- Check git is available
-- Check claude command itself is up-to-date (warn if old)
+  Phase 1: Global install                Phase 2: Per-project bootstrap
+  (once per machine)                      (per new product project)
+
+  ┌────────────────────┐                 ┌───────────────────────┐
+  │ install.sh / .ps1  │                 │ /ecosystem:bootstrap  │
+  │                    │                 │                       │
+  │ Clones repo to     │                 │ Clones ecosystem into │
+  │ ~/.claude/         │  ─────────►     │ <project>/.claude/    │
+  │   ecosystem/       │                 │ Initializes .product/ │
+  │                    │                 │ Generates CLAUDE.md   │
+  │ Registers global   │                 │ Sets up .env, config  │
+  │ /ecosystem:*       │                 │ Prompts MCP installs  │
+  │ commands           │                 │                       │
+  └────────────────────┘                 └───────────────────────┘
 ```
 
-If directory is NOT empty (has src/, package.json, etc.):
-- ASK USER: "В этой папке уже есть файлы. Установить ecosystem рядом (`.claude/` поверх существующего)? Или в чистую папку?"
-- DO NOT proceed without explicit approval.
+This separation solves a chicken-and-egg problem: Claude Code can only autocomplete slash commands it finds in `~/.claude/commands/` or `<project>/.claude/commands/`. Until something installs them, `/ecosystem:bootstrap` is unknown. The global installer (Phase 1) registers the command globally; `/ecosystem:bootstrap` (Phase 2) then sets up each project.
 
-### Step 2: Clone ecosystem into .claude/
+## Phase 1 — Global install
+
+**One-time per machine.**
+
+### Unix / macOS / WSL
 
 ```bash
-git clone https://github.com/IlyaNSV/claude-ecosystem-3.0.git .claude
+curl -sSL https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.sh | bash
 ```
 
-Verify clone succeeded by checking `.claude/README.md` exists.
+### Windows (PowerShell)
 
-### Step 3: Initialize project structure
+```powershell
+iwr -useb https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.ps1 | iex
+```
 
-Create directories (do not create files yet):
+### What it does
+
+1. Clones this repo to `~/.claude/ecosystem/` (global cache).
+   - If already present, pulls latest `main`.
+2. Copies `commands/ecosystem/*.md` to `~/.claude/commands/ecosystem/`.
+   - Makes `/ecosystem:bootstrap` and `/ecosystem:verify` available in any Claude Code session.
+3. Prints next-steps instructions.
+
+### Idempotent
+
+Re-running the installer updates the global cache to latest `main`. Safe to run anytime to refresh.
+
+### Uninstall
+
 ```bash
-mkdir -p .product/{segments,value-propositions,hypotheses,releases,features,scenarios,business-rules,lifecycles,verification,invariants,nfr,mockups,handoffs,notes,.sessions,.pending,.da-findings,.decisions}
+rm -rf ~/.claude/ecosystem ~/.claude/commands/ecosystem
 ```
 
-### Step 4: Set up environment variables
+No other system changes are made.
 
-1. Copy template: `cp .claude/.env.template .env`
-2. ASK USER for API keys (read from [INSTALL-HUMAN.md](./INSTALL-HUMAN.md) what's required):
-   - Brave Search API key
-   - Firecrawl API key
-   - Exa AI key
-   - GitHub token (optional)
-   - Stitch project URL (only if first feature has UI)
-3. Save to `.env` (NEVER print full keys back to user — confirm receipt only)
-4. Add `.env` to `.gitignore` (use template):
-   ```bash
-   cp .claude/gitignore.template .gitignore
-   ```
+## Phase 2 — Per-project bootstrap
 
-### Step 5: Configure Claude Code settings
+**Once per new product project.**
 
-1. Copy template: `cp .claude/settings.json.template .claude/settings.json`
-2. The default model is `claude-opus-4-7` for product/strategic work.
-3. Hooks are EMPTY at this stage — they get registered in subsequent phases when modules activate.
+After Phase 1 is done:
 
-### Step 6: Verify Integrator module is read-only ready
-
-Integrator Phase 1 commands (`research`, `map`, `gaps`, `status`, `journal`, `scan`) should be present at:
-```
-.claude/commands/integrator/
-```
-
-Verify by listing: `ls .claude/commands/integrator/`
-
-### Step 7: Install Core MCP stack
-
-Run:
-```
-/integrator:research "Core MCP stack for Ecosystem 3.0"
-```
-
-This presents the user with the recommended MCP stack:
-- Sequential Thinking
-- Memory MCP
-- Firecrawl
-- Brave Search
-- Exa AI
-- Context7
-- GitHub Official MCP
-
-Then for each MCP:
-```
-/integrator:add <mcp-name>
-```
-
-Get user approve per MCP. Skip ones user declines (e.g., GitHub MCP if no token).
-
-### Step 8: Create initial product config
-
-Create `.claude/product.yaml`:
-```yaml
-version: 1
-project_name: <ask user for project name>
-project_language: ru                     # or detected from user dialogue
-validation_tier: pilot                   # B1 modification — start minimal
-default_discovery_mode: quick
-nfr_default_tier: mvp
-
-# Confidence field handling (C2 modification)
-confidence_required_at_approve: true
-auto_approve_confirmation_artifacts:     # A1 modification
-  enabled: true
-  requires_high_confidence: true
-
-# Hooks behavior (B2 modification)
-draft_mode_quiet_hooks: true
-```
-
-### Step 9: Initialize git in product project
-
-If project is greenfield:
 ```bash
-git init
-git branch -m main
+mkdir my-new-product && cd my-new-product
+claude
 ```
 
-DO NOT auto-commit. Let user verify state first.
+Then in Claude Code:
 
-### Step 10: Final verification
-
-Run:
 ```
-/integrator:status
+> /ecosystem:bootstrap
 ```
 
-Expected output:
-- Active tools: 6-7 MCPs (depending on user choices)
-- Contracts: 0 (no D2-Tech tool yet)
-- PMO mapping: Product Module covering D1-D2-Behavioral, Design Module conditional, Integrator covering infrastructure
+(Autocomplete works — no need to remember the full command.)
 
-### Step 11: Ready prompt
+### What it does
 
-Tell user:
-> "Ecosystem 3.0 готова к работе. Что дальше?
->
-> [1] /product:init — начать новый продукт с Discovery (рекомендую начать с этого)
-> [2] /integrator:gaps — посмотреть, какие зоны PMO не покрыты
-> [3] /product:status — общий обзор `.product/` (пока пусто)
->
-> Если выбираешь /product:init — приготовься: 30-90 минут разговора (Quick mode) или 2-4 часа (Deep mode). В Quick mode можно прерваться и продолжить через --continue."
+The command is executed by Claude Code from the content of `.claude/commands/ecosystem/bootstrap.md` (or this repo's `commands/ecosystem/bootstrap.md` for reference).
 
-## Error handling
+High-level steps:
 
-| Error | Action |
+1. **Environment check** — verify working directory is writable and not a protected location.
+2. **Clone or copy ecosystem** into `<project>/.claude/`.
+3. **Initialize `.product/`** skeleton (empty directories, no artifacts yet).
+4. **Set up `.env`** from template, asking for API keys interactively (Brave, Firecrawl, Exa, etc.).
+5. **Set up `.gitignore`** — ecosystem-compatible entries.
+6. **Configure `.claude/settings.json`** — default model, permissions.
+7. **Create `.claude/product.yaml`** — project-specific config (name, language, validation tier).
+8. **Generate `CLAUDE.md`** at project root from `templates/project/CLAUDE.md.template` — gives Claude Code immediate context about the project's structure, conventions, and ecosystem integration.
+9. **Install Core MCP stack** (per approval) — Sequential Thinking, Memory, Firecrawl, Brave, Exa, Context7, GitHub.
+10. **Initialize git** (if greenfield) — creates repo but does NOT auto-commit.
+11. **Verify** via `/integrator:status`.
+12. **Ready prompt** — suggests next actions.
+
+See [`commands/ecosystem/bootstrap.md`](commands/ecosystem/bootstrap.md) for full details, error handling, flags (`--offline`, `--no-mcp`, `--force`), and resumability behavior.
+
+### Prerequisites for bootstrap
+
+See [INSTALL-HUMAN.md](./INSTALL-HUMAN.md) for the pre-install human checklist:
+- Claude Code installed and current
+- git configured
+- API keys obtained (Brave, Firecrawl, Exa minimum)
+- (Optional) Stitch project, GitHub token
+
+## Result structure after Phase 2
+
+```
+my-new-product/
+├── .claude/              ← ecosystem (commands, skills, agents, hooks, docs)
+│   ├── commands/
+│   ├── skills/
+│   ├── agents/
+│   ├── hooks/
+│   ├── docs/
+│   ├── product.yaml      ← project config
+│   ├── settings.json     ← Claude Code settings
+│   └── integrator/       ← lazy-created on first /integrator:add
+├── .product/             ← artifact workspace (empty skeleton)
+├── CLAUDE.md             ← project context for Claude Code
+├── .env                  ← API keys (gitignored)
+└── .gitignore            ← ecosystem-compatible
+```
+
+Your actual project code (`src/`, `app/`, `backend/`, etc.) lives alongside this, untouched by the ecosystem.
+
+## Verification
+
+To confirm everything's healthy at any point:
+
+```
+> /ecosystem:verify
+```
+
+Non-destructive health check. Reports state of `.claude/`, `.product/`, critical files, installed MCPs, git status. See [`commands/ecosystem/verify.md`](commands/ecosystem/verify.md).
+
+## Update later
+
+For v1.0, updates are manual:
+
+```bash
+# In your project folder
+cd .claude && git pull && cd ..
+```
+
+Or re-run Phase 1 installer to refresh global cache; then re-copy files into project's `.claude/` as needed.
+
+For v1.1, a `/ecosystem:upgrade` command will automate this with breaking-change migration support.
+
+## Troubleshooting
+
+| Issue | Fix |
 |---|---|
-| Git clone failed | Check network. Suggest manual clone. Do not proceed. |
-| Empty directory check failed | Ask user explicitly before proceeding. |
-| API key missing | Skip relevant MCP installation; warn user that some features will use fallback (WebFetch instead of Firecrawl, etc.) |
-| MCP installation failed | Log to journal, continue with rest. Surface at end as "MCP X failed, here's why". |
-| product.yaml exists | Read existing, ASK user before overwriting. |
+| `/ecosystem:bootstrap` not found in Claude Code | Phase 1 not done. Run the installer one-liner. |
+| "Directory not empty" error | Use `/ecosystem:bootstrap --force` only if you understand you're installing over existing files |
+| No network during bootstrap | Use `/ecosystem:bootstrap --offline` (copies from `~/.claude/ecosystem/` cache instead of git clone) |
+| API keys forgotten / skipped | Edit `.env` manually later; Deep mode research will use fallback until filled |
+| MCP install failed | Check `/integrator:journal` for error details; retry with `/integrator:add <mcp>` |
 
-## What NOT to do
+## For ecosystem developers
 
-- DO NOT auto-commit anything to git without explicit user approve.
-- DO NOT push API keys, secrets, or any `.env` content to any remote.
-- DO NOT install MCPs without per-MCP user approve (DEC-INT-P01).
-- DO NOT bypass any approve gate even if "looks safe".
-- DO NOT skip Step 4 environment setup — Discovery Deep mode will fail without keys.
-- DO NOT pre-create artifacts in `.product/` — that's Product Module's job via `/product:init`.
+If you're working **on** Ecosystem 3.0 (not just using it), you likely have this repo checked out directly:
 
-## Resumability
+```bash
+git clone https://github.com/IlyaNSV/claude-ecosystem-3.0.git
+cd claude-ecosystem-3.0
+```
 
-If bootstrap is interrupted:
-- Re-running this flow detects existing `.claude/` and `.product/`
-- Asks user: "Detected partial bootstrap. Continue from Step X or restart?"
-- Skips already-completed steps (verifies state, doesn't redo)
+To test changes locally without pushing to GitHub:
+1. Edit files in this repo.
+2. Run `install.sh` / `install.ps1` with `ECOSYSTEM_REPO_URL` pointing to local path, OR
+3. Manually copy edited commands into `~/.claude/commands/ecosystem/`.
+
+For development, `.idea/` is in `.gitignore`.

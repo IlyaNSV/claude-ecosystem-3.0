@@ -24,46 +24,71 @@
 
 ```
 claude-ecosystem-3.0/
-├── README.md, BOOTSTRAP.md, INSTALL-HUMAN.md, CHANGELOG.md
+├── README.md, BOOTSTRAP.md, INSTALL-HUMAN.md, CHANGELOG.md, ROADMAP.md
+├── install.sh, install.ps1                # global installers
 ├── .env.template, settings.json.template, gitignore.template
-├── docs/                     # SPECs (decларативная база)
+├── docs/                                   # SPECs (декларативная база)
 │   ├── product-module/
 │   ├── design-module/
 │   ├── integrator-module/
 │   └── pmo/
 │       ├── pmo-map.md, processes.md, validation.md
-│       └── artifacts/        # 22 типа артефактов
-├── commands/                 # slash-команды → .claude/commands/
-├── skills/                   # methodology → .claude/skills/
-├── agents/                   # subagents → .claude/agents/
-├── hooks/                    # automation → .claude/hooks/
-├── output-styles/            # → .claude/output-styles/
-└── templates/                # шаблоны для bootstrap
+│       └── artifacts/                      # 22 типа артефактов
+├── commands/                               # slash-команды → .claude/commands/
+│   ├── ecosystem/                          # /ecosystem:bootstrap, /ecosystem:verify
+│   └── integrator/                         # /integrator:* (6 read-only)
+├── skills/                                 # methodology → .claude/skills/
+├── agents/                                 # subagents → .claude/agents/
+├── hooks/                                  # automation → .claude/hooks/
+├── output-styles/                          # → .claude/output-styles/
+└── templates/                              # шаблоны (в т.ч. CLAUDE.md.template)
 ```
 
-## Quick Start (для нового продуктового проекта)
+## Quick Start — двухфазная установка
+
+### Фаза 1 — глобальная установка (один раз на машину)
+
+**Unix / macOS / WSL:**
 
 ```bash
-# 1. Создай папку проекта и открой в IDE
-mkdir my-new-product && cd my-new-product
-code .  # или webstorm
-
-# 2. Запусти Claude Code
-claude
-
-# 3. Одна команда
-> Установи Ecosystem 3.0 из github.com/IlyaNSV/claude-ecosystem-3.0 и подготовь проект к работе
+curl -sSL https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.sh | bash
 ```
 
-Claude Code:
-1. Клонирует ecosystem в `.claude/`
-2. Читает [BOOTSTRAP.md](./BOOTSTRAP.md) и следует инструкциям
-3. Запрашивает у тебя API-ключи (см. [INSTALL-HUMAN.md](./INSTALL-HUMAN.md))
-4. Устанавливает MCP stack через Integrator
-5. Готовит `.product/` skeleton
-6. Предлагает запустить `/product:init`
+**Windows (PowerShell):**
 
-**Перед первым запуском** — пройди чеклист в [INSTALL-HUMAN.md](./INSTALL-HUMAN.md): получи API ключи (Brave, Firecrawl, Exa), при необходимости — Stitch project.
+```powershell
+iwr -useb https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.ps1 | iex
+```
+
+Что делает installer:
+1. Клонирует репо в `~/.claude/ecosystem/` (глобальный кэш)
+2. Копирует `commands/ecosystem/*.md` в `~/.claude/commands/ecosystem/`
+3. После этого `/ecosystem:bootstrap` доступна в автокомплите в любой папке
+
+### Фаза 2 — bootstrap в новом проекте
+
+```bash
+mkdir my-new-product && cd my-new-product
+claude
+```
+
+В Claude Code:
+
+```
+> /ecosystem:bootstrap
+```
+
+Что произойдёт:
+1. Клонирует ecosystem в `<project>/.claude/`
+2. Инициализирует `.product/` skeleton
+3. Запрашивает API-ключи интерактивно (см. [INSTALL-HUMAN.md](./INSTALL-HUMAN.md))
+4. Генерирует `CLAUDE.md` в корне проекта (контекст для Claude Code)
+5. Устанавливает Core MCP stack через `/integrator:add` (по одному approve)
+6. Финальный `/integrator:status` → предлагает `/product:init`
+
+**Перед Фазой 2** — пройди чеклист в [INSTALL-HUMAN.md](./INSTALL-HUMAN.md): получи API ключи (Brave, Firecrawl, Exa), при необходимости — Stitch project.
+
+Подробности процесса bootstrap — в [`commands/ecosystem/bootstrap.md`](commands/ecosystem/bootstrap.md) и обзорно в [BOOTSTRAP.md](./BOOTSTRAP.md).
 
 ## Ключевые принципы
 
@@ -79,12 +104,14 @@ Claude Code:
 | Хочу узнать... | Смотри |
 |---|---|
 | **План имплементации и где мы сейчас** | **[ROADMAP.md](ROADMAP.md)** |
+| Как установить и запустить | [BOOTSTRAP.md](BOOTSTRAP.md) + [INSTALL-HUMAN.md](INSTALL-HUMAN.md) |
 | Что такое каждый модуль и как они взаимодействуют | [docs/product-module/SPEC.md](docs/product-module/SPEC.md), [docs/design-module/SPEC.md](docs/design-module/SPEC.md), [docs/integrator-module/SPEC.md](docs/integrator-module/SPEC.md) |
 | Как передать фичу во внешний tool | [docs/product-module/handoff-spec.md](docs/product-module/handoff-spec.md) |
 | Какие есть типы артефактов | [docs/pmo/artifacts/README.md](docs/pmo/artifacts/README.md) |
 | PMO-карта (D1-D6) | [docs/pmo/pmo-map.md](docs/pmo/pmo-map.md) |
 | Процессы P1-P5 | [docs/pmo/processes.md](docs/pmo/processes.md) |
 | Валидационные правила | [docs/pmo/validation.md](docs/pmo/validation.md) |
+| Команды `/ecosystem:*` | [commands/ecosystem/bootstrap.md](commands/ecosystem/bootstrap.md), [commands/ecosystem/verify.md](commands/ecosystem/verify.md) |
 | История изменений и v1 модификации | [CHANGELOG.md](CHANGELOG.md) |
 
 ## Поддержка

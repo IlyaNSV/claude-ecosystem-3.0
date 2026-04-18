@@ -1,10 +1,10 @@
 # INSTALL-HUMAN.md — Pre-install Checklist for Human
 
-> **Для человека:** этот чеклист — что нужно сделать **до** запуска `/ecosystem:bootstrap` в новом проекте. Один раз для каждого нового продуктового проекта.
+> **Для человека:** этот чеклист разделён на два блока — **одноразовые шаги** (один раз на машину) и **шаги для каждого нового проекта**.
 
-## Обязательные шаги
+## Блок A — один раз на машину
 
-### 1. Claude Code установлен и актуален
+### A.1 Claude Code установлен и актуален
 
 ```bash
 claude --version
@@ -12,13 +12,44 @@ claude --version
 
 Если не установлен — https://docs.claude.com/claude-code/quickstart
 
-### 2. Git установлен
+### A.2 Git установлен
 
 ```bash
 git --version
 ```
 
-### 3. API-ключи для Core MCP (Discovery Deep mode без них работает с fallback, но хуже)
+### A.3 Глобальная установка Ecosystem 3.0
+
+**Unix / macOS / WSL:**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.sh | bash
+```
+
+**Windows (PowerShell):**
+
+```powershell
+iwr -useb https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.ps1 | iex
+```
+
+Что делает installer:
+- Клонирует репо в `~/.claude/ecosystem/` (глобальный кэш)
+- Копирует `commands/ecosystem/*.md` в `~/.claude/commands/ecosystem/`
+- После этого `/ecosystem:bootstrap` доступна в автокомплите Claude Code
+
+**Обновить глобальную установку** позже — просто повтори one-liner: он идемпотентен (pulls latest `main`).
+
+### A.4 Получи API-ключи для Core MCP
+
+Нужны **три** ключа для нормальной работы Deep Discovery mode (без них работает с fallback на WebFetch/WebSearch, но хуже).
+
+---
+
+## Блок B — для каждого нового продукта
+
+Этот блок проходишь **один раз на каждый новый product project**, который захочешь вести через Ecosystem 3.0.
+
+### B.1 API-ключи (если ещё не получены)
 
 #### Brave Search API (бесплатно)
 
@@ -41,7 +72,7 @@ git --version
 3. Сгенерируй API key
 4. Сохрани
 
-### 4. Решение про Stitch (только если первая фича будет UI)
+### B.2 Решение про Stitch (только если первая фича будет UI)
 
 Если планируешь сразу писать UI-фичу (FM с has_ui=true):
 1. Получи доступ к Google Stitch: https://stitch.withgoogle.com/
@@ -49,6 +80,25 @@ git --version
 3. Скопируй URL проекта (понадобится при первом `/design:start`)
 
 Если первая фича без UI — пропусти, добавишь позже.
+
+### B.3 Запуск bootstrap
+
+```bash
+mkdir my-new-product && cd my-new-product
+claude
+```
+
+В Claude Code:
+
+```
+> /ecosystem:bootstrap
+```
+
+(Если в автокомплите команды нет — глобальная установка `A.3` не выполнена. Проверь `ls ~/.claude/commands/ecosystem/`.)
+
+Bootstrap сам спросит API-ключи интерактивно и настроит всё остальное.
+
+---
 
 ## Опциональные шаги
 
@@ -71,6 +121,7 @@ git --version
 
 - [ ] Claude Code работает (`claude --version`)
 - [ ] Git настроен (`git config user.name` возвращает имя)
+- [ ] Глобальная установка сделана (Блок A.3) — `ls ~/.claude/commands/ecosystem/` показывает `bootstrap.md` и `verify.md`
 - [ ] У тебя на руках 3 ключа: Brave, Firecrawl, Exa
 - [ ] Папка под новый проект создана и пустая (или ты OK ставить `.claude/` рядом с существующим)
 - [ ] Для UI-проектов: Stitch project создан, URL скопирован
@@ -85,18 +136,29 @@ git --version
 
 ## Сколько займёт первый запуск
 
-| Этап | Время |
-|---|---|
-| Bootstrap (Steps 1-11) | 10-20 мин (зависит от подтверждений) |
-| Discovery Quick (`/product:init`) | 30-90 мин разговора |
-| Discovery Deep (`/product:init --deep`) | 2-4 часа разговора + research |
-| Первая UI-фича end-to-end (Discovery + Planning + Feature + Design + Handoff) | Полдня — день |
+| Этап | Время | Частота |
+|---|---|---|
+| Блок A (глобальная установка + API keys) | 20-40 мин | один раз на машину |
+| Bootstrap `/ecosystem:bootstrap` (Блок B.3) | 10-20 мин | на каждый новый проект |
+| Discovery Quick (`/product:init`) | 30-90 мин разговора | на каждый новый продукт |
+| Discovery Deep (`/product:init --deep`) | 2-4 часа + research | опционально |
+| Первая UI-фича end-to-end | Полдня — день | per фича |
 
 ## Что делать если bootstrap прервался
 
 Просто запусти повторно:
 ```
-> Продолжи установку Ecosystem 3.0
+> /ecosystem:bootstrap
 ```
 
-Bootstrap детектит partial state и продолжает с нужного места.
+Bootstrap детектит partial state и продолжает с нужного места (см. "Resumability" в [commands/ecosystem/bootstrap.md](commands/ecosystem/bootstrap.md)).
+
+## Проверка что всё установилось правильно
+
+После bootstrap в Claude Code:
+
+```
+> /ecosystem:verify
+```
+
+Это non-destructive health check: проверяет наличие всех критичных файлов, состояние `.product/`, установленные MCP, git state. Покажет ✓ / 🟡 / ❌ per checkpoint.
