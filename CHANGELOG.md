@@ -71,6 +71,24 @@ Closed foundational gap in how Integrator measures PMO coverage:
 - **Smoke-verified confidence layer** (per-category smoke tests at `/integrator:add`) — considered but rejected as overhead for v1. Integrator's role is "sysadmin, not observer" per DEC-INT-F01. Verification of tool behavior is human-driven через normal usage.
 - **Empirical confidence layer** (autoinstrumented usage tracking from adapter invocations) — considered but rejected. Autoinstrumentation only captures invocations через Integrator adapters, missing direct slash-command invocations (e.g., `/kiro:spec-init`). Partial data worse than no data. Empirical feedback flows instead through human-noticed issues → `/integrator:debug` → journal entries → optional `/product:meta-feedback` propose downgrade.
 
+### Added — Hook auto-registration (Gap 4 closed)
+
+Previously, bootstrap copied hook JS files into `.claude/hooks/<module>/` but left `.claude/settings.json` hook array empty. This meant Phase 2 hooks (`artifact-validate.js`, `session-state.js`) were installed but **never fired** — Claude Code didn't know to invoke them.
+
+Fix — manifest-based auto-registration:
+
+- **New convention:** each `hooks/<module>/` directory has a `manifest.yaml` declaring event registrations per hook file. Schema documented in manifest headers (fields: `version`, `module`, `hooks[]` with `id`, `file`, `events[]` of `{type, matcher}`, `description`).
+
+- **`hooks/product/manifest.yaml`** — ships with Phase 2 hooks registered:
+  - `artifact-validate.js` → PostToolUse on `Write|Edit`
+  - `session-state.js` → PostToolUse on `Write|Edit`
+
+- **Bootstrap Step 6b** — new sub-step scans `hooks/*/manifest.yaml`, builds merged hook entries per `(event, matcher)` pair, merges with existing `.claude/settings.json` (preserves user-added hooks), writes back. Idempotent — re-running safe (dedupes by command string).
+
+- **Forward compatibility:** when future phases (Phase 3 adds bg-extractor, cascade-check, ic-change-da-trigger, br-change-review-trigger; Phase 4 adds handoff-gate; Design Phase 6 adds design-artifact-validate) ship new hooks — they just drop `.js` files + update `manifest.yaml`. Bootstrap picks up automatically.
+
+- **Existing projects:** bootstrapped before this fix can re-run `/ecosystem:bootstrap` to get hooks registered without losing data (idempotent merge with existing settings).
+
 ### Added — Bootstrap UX improvements (pilot-run feedback)
 
 Based on first real bootstrap run (2026-04-19):

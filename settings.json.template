@@ -27,7 +27,7 @@
     "deny": []
   },
   "hooks": {
-    "_comment": "Hooks are wired by bootstrap when corresponding modules are activated. Empty by default; populated per phase.",
+    "_comment": "Starts empty. /ecosystem:bootstrap Step 6b scans hooks/<module>/manifest.yaml files and auto-registers entries here. User-added hooks are preserved on re-run (merge-by-command-string).",
     "PostToolUse": []
   }
 }

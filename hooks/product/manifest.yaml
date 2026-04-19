@@ -1,0 +1,44 @@
+# Hook registration manifest — Product Module
+#
+# Auto-read by /ecosystem:bootstrap Step 6b to register hooks in
+# <project>/.claude/settings.json.
+#
+# Schema:
+#   version: <int>                     # manifest format version (currently 1)
+#   module: <string>                   # identifier, e.g., "product", "design", "integrator"
+#   hooks: [ ... ]                     # list of hook registrations
+#     - id: <string>                   # unique within module (no spaces, kebab-case)
+#       file: <filename>               # file in this same directory
+#       events:                        # can register same file under multiple events
+#         - type: <event-name>         # PostToolUse | PreToolUse | UserPromptSubmit | Stop | SessionStart | SessionEnd | PreCompact | Notification | SubagentStop
+#           matcher: <string>          # tool name regex, or "" for event types without tools
+#       description: <string>          # human-readable purpose
+#       enabled_when: <string>         # optional: "always" | "has_ui" | ...; default "always"
+#
+# How bootstrap processes this:
+#   1. Read all hooks/*/manifest.yaml files
+#   2. Group hook commands by (event, matcher) pair
+#   3. Merge into existing .claude/settings.json hooks (preserves user-added entries)
+#   4. Write merged hooks back to settings.json
+#
+# To add a new hook to an existing module: add entry here + drop the .js file
+# alongside. Re-run /ecosystem:bootstrap (which is idempotent) or /ecosystem:verify
+# will detect missing registration and offer to fix.
+
+version: 1
+module: product
+
+hooks:
+  - id: artifact-validate
+    file: artifact-validate.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Inline validation of .product/**/*.md per validation.md catalog. Tier-aware (B1 modification): pilot shows only 🔴 Blocking; mvp adds 🟡 Warning; full shows all. Quiet-draft-mode (B2): findings queued when artifact status=draft, surfaced on approve."
+
+  - id: session-state
+    file: session-state.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Snapshots .product/.sessions/current.yaml on .product/ artifact changes. Enables /product:<command> --continue recovery after session interrupt."

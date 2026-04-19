@@ -303,6 +303,8 @@ If `.gitignore` already exists at project root — merge strategically:
 
 ### Step 6: Configure Claude Code settings
 
+#### 6a. Copy base template
+
 ```bash
 cp .claude/settings.json.template .claude/settings.json
 ```
@@ -310,7 +312,73 @@ cp .claude/settings.json.template .claude/settings.json
 The template sets:
 - Default model: `claude-opus-4-7`
 - Minimum safe permissions allowlist
-- Empty hooks registration (hooks get wired per-phase as modules activate)
+- Empty hooks array (populated in 6b below)
+
+#### 6b. Auto-register hooks from module manifests
+
+Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module directory has a `manifest.yaml` describing which events + matchers each hook should register for. Bootstrap scans all manifests and merges registrations into `.claude/settings.json`.
+
+**Process:**
+
+1. **Scan** `.claude/hooks/*/manifest.yaml` files. If none exist → skip (no hooks to register).
+
+2. **Parse each manifest** per schema documented in the manifest file header (fields: `version`, `module`, `hooks[]` with `id`, `file`, `events[]`, `description`).
+
+3. **Build hook entries** per event type. For each `(event, matcher)` pair, collect all hook commands:
+   ```
+   "node .claude/hooks/<module>/<file>"
+   ```
+
+4. **Read existing** `.claude/settings.json` — preserve user-added hooks (merge, don't overwrite).
+
+5. **Merge logic:**
+   - For each event type (PostToolUse, PreToolUse, Stop, etc.):
+     - For each unique matcher: collect all command entries (existing + new), deduplicate by command string
+   - If user has custom hooks for same matcher — preserve them, add ecosystem hooks alongside
+   - Order: ecosystem hooks first, user customizations after (so user can react to ecosystem findings)
+
+6. **Write merged settings.json** back.
+
+7. **Log summary** to user:
+   ```
+   Hooks registered:
+     PostToolUse (matcher: Write|Edit):
+       - node .claude/hooks/product/artifact-validate.js (inline validation)
+       - node .claude/hooks/product/session-state.js (session snapshot)
+     PostToolUse (matcher: ...): ...
+
+   Total: N hooks across M event types
+   ```
+
+**Example result in `.claude/settings.json`** (after Phase 2 manifest processed):
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/product/artifact-validate.js"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/product/session-state.js"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+**Convention for future phases:** when adding new hook files, drop them alongside existing in `hooks/<module>/` AND add entry to `hooks/<module>/manifest.yaml`. Re-running `/ecosystem:bootstrap` (or future `/ecosystem:upgrade`) will re-scan manifests and update `settings.json`. Manifest is the single source of truth for hook registration.
+
+**Idempotency:** running Step 6b on already-registered settings.json is safe — merge dedupes by command string. No double-registration.
+
+**If manifest is missing for a module but hook files exist** → warn user, skip registration for that module. Suggest: create manifest.yaml per the convention in existing `hooks/product/manifest.yaml`.
 
 ### Step 7: Create `.claude/product.yaml`
 
