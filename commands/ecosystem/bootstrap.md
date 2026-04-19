@@ -22,39 +22,127 @@ User invoked: `/ecosystem:bootstrap $ARGUMENTS`
 ### Step 1: Environment verification
 
 Check prerequisites:
-- `git` available
+- `git` available (`git --version`)
 - Current directory exists and writable
 - Verify we are **NOT** in:
   - `$HOME` itself (user's home directory)
   - `~/.claude/` or any subdirectory (global config zone)
   - `~/.claude/ecosystem/` (the global cache itself — protect against self-install)
 
-If current directory is NOT empty (contains files other than common meta like `.git`, `README.md`, `.gitignore`):
-- Unless `--force` is passed, ASK USER:
-  > "В этой папке уже есть файлы (перечисли). Установить ecosystem рядом (создать `.claude/` поверх существующего) или отмена?"
-- DO NOT proceed without explicit user approval.
+#### 1a. Check project root (files OUTSIDE `.claude/`)
 
-### Step 2: Clone or copy ecosystem into `.claude/`
+List contents of current directory **excluding `.claude/`** (it's analyzed separately in 1b).
 
-**Default path (fresh from GitHub):**
+Common non-blocking files/dirs allowed:
+- `.git/`, `.gitignore`, `.gitattributes`
+- `README.md`, `LICENSE`, `LICENCE`
+
+Anything else (e.g., `src/`, `package.json`, existing code) → **user content present**.
+
+**If user content present:** unless `--force` passed, ASK USER:
+> "В проекте уже есть файлы: <list>. Установить ecosystem рядом с существующим кодом? (это нормально — `.claude/` и `.product/` просто добавятся рядом)"
+
+Proceed only with explicit approval.
+
+#### 1b. Check existing `.claude/` directory
+
+This is the critical check. Claude Code **automatically creates** files in `.claude/` when it runs (permission prompts → `settings.local.json`, session history → `projects/`, etc.). These are NOT a reason to block bootstrap.
+
+**Known Claude Code auto-generated files/directories** (safe to preserve, do NOT treat as blocker):
+- `settings.local.json` — user's permission approvals
+- `projects/` — session history
+- `todos/` — todo lists
+- `statsig/` — telemetry config
+- `shell-snapshots/` — shell state
+- `ide/` — IDE integration state
+- `plugins/` — plugin configurations
+
+**Ecosystem signature** (indicates prior ecosystem install — re-install scenario):
+- `docs/pmo/pmo-map.md` present
+- `commands/ecosystem/bootstrap.md` present
+- `docs/integrator-module/SPEC.md` present
+
+Decision tree for `.claude/`:
+
+| State | Action |
+|---|---|
+| `.claude/` doesn't exist | → proceed to Step 2 (fresh install) |
+| `.claude/` exists, empty | → proceed to Step 2 |
+| `.claude/` exists, only Claude Code auto-files | → proceed to Step 2 (will merge; auto-files preserved) |
+| `.claude/` has ecosystem signature | → re-install scenario: inform user, offer options below |
+| `.claude/` has other unknown files | → ask user (list them), offer options below |
+
+**For re-install or unknown-content cases, offer:**
+- `(a)` **Backup + fresh:** move current `.claude/` to `.claude-backup-<timestamp>/`, install fresh
+- `(b)` **Merge:** attempt to add ecosystem files alongside existing (safer for re-install than unknown content)
+- `(c)` **Abort**
+
+With `--force`, skip confirmation and default to `(b) Merge`.
+
+### Step 2: Clone ecosystem and merge into `.claude/`
+
+**Cannot use `git clone <url> .claude` directly** — git refuses to clone into non-empty directory (and `.claude/settings.local.json` is almost always present after Claude Code launch).
+
+**Strategy: clone to temp → merge into `.claude/` (no-clobber) → cleanup.**
+
+#### 2a. Determine source
+
+- **Default (online):** git clone from GitHub → latest main
+- **With `--offline`:** copy from global cache `~/.claude/ecosystem/` (fast, version snapshot)
+
+#### 2b. Online path (default)
+
 ```bash
-git clone https://github.com/IlyaNSV/claude-ecosystem-3.0.git .claude
+# Clone ecosystem to a TEMP directory inside current project (not .claude/)
+git clone --depth 1 https://github.com/IlyaNSV/claude-ecosystem-3.0.git .claude-ecosystem-tmp
+
+# Remove .git from temp to avoid creating a nested git repo inside .claude/
+rm -rf .claude-ecosystem-tmp/.git
+
+# Ensure .claude/ exists
+mkdir -p .claude
+
+# Merge temp → .claude/ with no-clobber (preserves existing files like settings.local.json)
+cp -rn .claude-ecosystem-tmp/. .claude/
+
+# Cleanup temp
+rm -rf .claude-ecosystem-tmp
 ```
 
-**With `--offline`:**
+#### 2c. Offline path (with `--offline` flag)
+
 ```bash
-cp -r ~/.claude/ecosystem/. .claude/
-# Then remove .git to avoid nested repo confusion, unless user wants update capability
+# Ensure .claude/ exists
+mkdir -p .claude
+
+# Copy from global cache (rsync-like semantics via cp -n)
+cp -rn ~/.claude/ecosystem/. .claude/
+
+# Remove any stray .git that may have been copied
 rm -rf .claude/.git
 ```
 
-After either path, verify:
-- `.claude/README.md` exists
-- `.claude/BOOTSTRAP.md` exists
-- `.claude/commands/integrator/` has 6 command files
-- `.claude/docs/pmo/artifacts/` has 22 artifact files
+#### 2d. Verify integrity
 
-If verification fails → abort with clear error, suggest re-running.
+Check presence of:
+- `.claude/README.md`
+- `.claude/BOOTSTRAP.md`
+- `.claude/commands/integrator/` contains 6 `.md` files (`research`, `map`, `gaps`, `status`, `journal`, `scan`)
+- `.claude/commands/ecosystem/bootstrap.md` (must be there — you just ran it, but verify propagation)
+- `.claude/docs/pmo/artifacts/` contains at least 22 artifact files + README
+- `.claude/docs/integrator-module/SPEC.md`
+- `.claude/docs/product-module/SPEC.md`
+- `.claude/templates/project/CLAUDE.md.template`
+
+If any missing → abort with clear error listing missing items. Suggest re-running with `--force` or checking network.
+
+#### 2e. Note on preserved files
+
+After Step 2, the `.claude/` directory contains:
+- Ecosystem content (commands, skills, agents, hooks, docs, templates, config templates)
+- **Preserved:** any Claude Code auto-generated files (`settings.local.json` etc.) that were there before — `cp -n` skips overwriting them.
+
+If a `settings.json` or `.env.template` already existed (rare, ecosystem re-install) — they were NOT overwritten. Check and let user decide manually if re-install needs those files refreshed.
 
 ### Step 3: Initialize `.product/` structure
 

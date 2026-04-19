@@ -1,4 +1,4 @@
-# Ecosystem 3.0 — Global Installer (Windows PowerShell)
+# Ecosystem 3.0 - Global Installer (Windows PowerShell)
 #
 # One-liner:
 #   iwr -useb https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/install.ps1 | iex
@@ -10,6 +10,17 @@
 $ErrorActionPreference = "Stop"
 
 # ============================================================
+# Output encoding (PowerShell 5.1 defaults to Windows-1252 which
+# mangles non-ASCII. Force UTF-8 for consistent rendering.)
+# ============================================================
+try {
+    [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+    $OutputEncoding = [System.Text.Encoding]::UTF8
+} catch {
+    # Non-fatal: just means box chars may render imperfectly on old consoles
+}
+
+# ============================================================
 # Configuration
 # ============================================================
 $RepoUrl       = if ($env:ECOSYSTEM_REPO_URL) { $env:ECOSYSTEM_REPO_URL } else { "https://github.com/IlyaNSV/claude-ecosystem-3.0.git" }
@@ -19,16 +30,16 @@ $EcosystemDir  = Join-Path $ClaudeHome "ecosystem"
 $CommandsDir   = Join-Path $ClaudeHome "commands\ecosystem"
 
 # ============================================================
-# Helpers
+# Helpers (ASCII-only output for PowerShell 5.1 compatibility)
 # ============================================================
-function Say     { param($msg) Write-Host "→ $msg" -ForegroundColor Cyan }
-function Ok      { param($msg) Write-Host "✓ $msg" -ForegroundColor Green }
-function Warn    { param($msg) Write-Host "⚠ $msg" -ForegroundColor Yellow }
-function Die     { param($msg) Write-Host "✗ $msg" -ForegroundColor Red; exit 1 }
-function Divider { Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor DarkGray }
+function Say     { param($msg) Write-Host "-> $msg" -ForegroundColor Cyan }
+function Ok      { param($msg) Write-Host "[ok] $msg" -ForegroundColor Green }
+function Warn    { param($msg) Write-Host "[warn] $msg" -ForegroundColor Yellow }
+function Die     { param($msg) Write-Host "[fail] $msg" -ForegroundColor Red; exit 1 }
+function Divider { Write-Host "=================================================" -ForegroundColor DarkGray }
 
 Divider
-Write-Host "  Ecosystem 3.0 — Global Installer (Windows)"
+Write-Host "  Ecosystem 3.0 - Global Installer (Windows)"
 Divider
 Write-Host ""
 
@@ -112,7 +123,7 @@ Write-Host "  3. In Claude Code, type (autocomplete available):"
 Write-Host "     > /ecosystem:bootstrap"
 Write-Host ""
 Write-Host "  The ecosystem will install itself into the project's .claude\"
-Write-Host "  and guide you through API keys, MCP setup, and initial config."
+Write-Host "  directory and guide you through API keys, MCP setup, and config."
 Write-Host ""
 Write-Host "  Docs:            $EcosystemDir\README.md"
 Write-Host "  Human checklist: $EcosystemDir\INSTALL-HUMAN.md"
