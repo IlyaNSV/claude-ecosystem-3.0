@@ -17,6 +17,38 @@ User invoked: `/ecosystem:bootstrap $ARGUMENTS`
 - `--no-mcp` — skip Step 9 (MCP installation)
 - `--force` — skip directory-not-empty check
 
+## ⚡ Quick install — two modes to minimize permission prompts
+
+Bootstrap involves ~20-30 tool invocations (git operations, file copies, settings writes, MCP installs). By default, Claude Code prompts per permission pattern. Two options to avoid click-through fatigue:
+
+### Mode A — Bypass permissions for install (🚀 fastest, recommended for first-time bootstrap)
+
+**Exit current Claude Code session and relaunch with:**
+
+```bash
+# Unix/macOS/WSL/Git Bash:
+claude --dangerously-skip-permissions
+
+# Windows PowerShell:
+claude --dangerously-skip-permissions
+```
+
+Then invoke `/ecosystem:bootstrap`. **Zero prompts for entire session.**
+
+After bootstrap completes:
+- Exit: `/exit`
+- Relaunch normally: `claude` (no flag) — returns to default permission prompts for daily work.
+
+**Safety rationale:** bootstrap is one-time install into a specific project directory. The flag bypasses prompts for one session; subsequent work is protected normally. Ecosystem's Step 1d allowlist (below) is the default for repeatability, but bypass mode is cleaner for fresh install.
+
+### Mode B — Interactive with pre-staged allowlist (default)
+
+Invoke `/ecosystem:bootstrap` in normal Claude Code session. Step 1d (see below) offers to pre-stage a broad allowlist in `.claude/settings.local.json` before heavy operations. Reduces prompts from ~25 to ~1-3.
+
+Use Mode B if:
+- You want an auditable record of what permissions were granted (allowlist file is human-readable)
+- You're uncertain about bypass mode and prefer safety defaults
+
 ## Execution sequence
 
 ### Step 1: Environment verification
@@ -132,7 +164,7 @@ If user confirms (or `--force`):
 
 **Step 3: Write merged JSON back to `.claude/settings.local.json`.**
 
-**Ecosystem allowlist to merge in:**
+**Ecosystem allowlist to merge in** (broad patterns to cover compound commands like `cmd1 && cmd2`):
 
 ```json
 {
@@ -144,33 +176,40 @@ If user confirms (or `--force`):
       "Glob",
       "Grep",
       "WebSearch",
+
       "Bash(pwd)",
       "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(echo:*)",
       "Bash(test:*)",
-      "Bash(git --version)",
-      "Bash(git config:*)",
-      "Bash(git status:*)",
-      "Bash(git init)",
-      "Bash(git branch:*)",
-      "Bash(git add:*)",
-      "Bash(git diff:*)",
-      "Bash(git log:*)",
-      "Bash(git check-ignore:*)",
-      "Bash(git clone --depth 1 https://github.com/IlyaNSV/claude-ecosystem-3.0.git:*)",
+      "Bash(touch:*)",
+      "Bash(which:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(awk:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(tr:*)",
+      "Bash(xargs:*)",
+
+      "Bash(git:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(npx:*)",
+      "Bash(claude:*)",
+
       "Bash(mkdir:*)",
       "Bash(cp:*)",
-      "Bash(rm -rf .claude-ecosystem-tmp:*)",
+      "Bash(mv:*)",
+      "Bash(chmod:*)",
+      "Bash(rmdir:*)",
+      "Bash(rm -rf .claude-ecosystem-tmp*)",
       "Bash(rm -rf .claude-ecosystem-tmp/.git)",
-      "Bash(find .claude:*)",
-      "Bash(find .product:*)",
-      "Bash(node --version)",
-      "Bash(npm --version)",
-      "Bash(npx --version)",
-      "Bash(claude --version)",
-      "Bash(claude mcp list:*)",
-      "Bash(claude mcp add:*)",
+
       "WebFetch(domain:api.search.brave.com)",
       "WebFetch(domain:www.firecrawl.dev)",
       "WebFetch(domain:firecrawl.dev)",
@@ -178,22 +217,32 @@ If user confirms (or `--force`):
       "WebFetch(domain:dashboard.exa.ai)",
       "WebFetch(domain:api.github.com)",
       "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:registry.npmjs.org)",
-      "WebFetch(domain:www.npmjs.com)"
+      "WebFetch(domain:www.npmjs.com)",
+      "WebFetch(domain:npmjs.com)"
     ]
   }
 }
 ```
 
-**Safety principles in this list:**
-- `Bash(rm -rf .claude-ecosystem-tmp:*)` — **scoped to bootstrap temp dir**, NOT general `rm -rf`. Cannot match `rm -rf .claude` or `rm -rf /`.
-- `Bash(git clone --depth 1 https://github.com/IlyaNSV/...:*)` — **specific repo URL**, not general git clone.
-- `WebFetch(domain:...)` — explicit allowlist of known service domains only.
-- Broad `Read`/`Write`/`Edit` — bootstrap legitimately needs to create ~8 files; approving once at session start is less risky than 8 individual approvals.
+**Note on compound commands:** Claude Code's permission matching applies to the **full command string**. A pattern like `Bash(git:*)` matches any command starting with `git` (e.g., `git status && git log` matches because the line starts with `git`). For compound commands where the FIRST invocation isn't a bash builtin (e.g., `rm -rf foo && cp -rn bar baz`), the first token must match a pattern — subsequent `&& ...` parts are part of the wildcard match.
+
+This allowlist covers:
+- **Single broad patterns** for common tools: `Bash(git:*)`, `Bash(node:*)`, `Bash(npm:*)`, `Bash(npx:*)`, `Bash(claude:*)` — matches ANY invocation including all subcommands
+- **Shell pipeline tools**: `grep`, `sed`, `awk`, `find`, `xargs`, etc. — all common patterns
+- **File operations**: `mkdir`, `cp`, `mv`, `touch`, `chmod`, `rmdir` — scoped to their own names
+- **Dangerous `rm -rf`**: ONLY scoped to `.claude-ecosystem-tmp*` (bootstrap temp dir). Cannot match `rm -rf .claude` or `rm -rf /`.
+
+**Safety principles:**
+- No `Bash(*)` wildcard — each pattern is scoped to a specific tool or prefix
+- No `Bash(rm:*)` wildcard — rm is scoped to bootstrap temp dir only
+- `WebFetch(domain:...)` — explicit allowlist of known service domains only
+- Broad `Read`/`Write`/`Edit` — bootstrap legitimately needs to create ~8 files; one approve < 8 approves
 
 **After bootstrap completes:** user can review `.claude/settings.local.json`, remove/tighten anything not needed for ongoing ecosystem use. The file is gitignored so changes are local-only.
 
-If user declines → skip. They'll get individual Claude Code permission prompts as bootstrap progresses. Still safe, just more friction.
+If user declines → skip. They'll get individual Claude Code permission prompts as bootstrap progresses. Still safe, just more friction. **Consider recommending `--dangerously-skip-permissions` CLI flag instead** (see "Quick install" note at top of this file).
 
 ### Step 2: Clone ecosystem and merge into `.claude/`
 

@@ -81,10 +81,45 @@ iwr -useb https://raw.githubusercontent.com/IlyaNSV/claude-ecosystem-3.0/main/in
 
 Если первая фича без UI — пропусти, добавишь позже.
 
-### B.3 Запуск bootstrap
+### B.3 Запуск bootstrap — два режима
 
-```bash
-mkdir my-new-product && cd my-new-product
+Bootstrap требует ~20-30 tool invocations (git, file ops, settings writes, MCP installs). Есть два варианта:
+
+#### B.3a — Bypass mode (🚀 fastest, рекомендую для первой установки)
+
+```powershell
+mkdir my-new-product; cd my-new-product
+claude --dangerously-skip-permissions
+```
+
+В Claude Code:
+
+```
+> /ecosystem:bootstrap
+```
+
+**Zero permission prompts** для всей сессии. Bootstrap пройдёт быстро и тихо.
+
+**После завершения:**
+
+```
+> /exit
+```
+
+Перезапусти claude **без флага** для обычной работы:
+
+```powershell
+claude
+```
+
+Это вернёт default permission prompts — для daily work безопаснее.
+
+**Почему это ok для bootstrap:** один раз в новый пустой проект, команды auditable (все перечислены в [commands/ecosystem/bootstrap.md](commands/ecosystem/bootstrap.md)). Для daily work — нет, там default mode нужен.
+
+#### B.3b — Standard mode (default, с pre-stage)
+
+```powershell
+mkdir my-new-product; cd my-new-product
 claude
 ```
 
@@ -94,9 +129,15 @@ claude
 > /ecosystem:bootstrap
 ```
 
-(Если в автокомплите команды нет — глобальная установка `A.3` не выполнена. Проверь `ls ~/.claude/commands/ecosystem/`.)
+Bootstrap Step 1d предложит pre-stage широкого allowlist в `.claude/settings.local.json`. Ответишь `Y` → ~1-3 prompt'а остаток пути (вместо ~25).
 
-Bootstrap сам спросит API-ключи интерактивно и настроит всё остальное.
+Этот режим лучше если:
+- Хочешь **auditable record** какие разрешения были выданы
+- Не доверяешь bypass mode по любой причине
+
+Оба режима приводят к тому же end-state.
+
+**Общее для обоих:** если в автокомплите команды `/ecosystem:bootstrap` нет — глобальная установка `A.3` не выполнена. Проверь `ls ~/.claude/commands/ecosystem/`.
 
 ---
 
