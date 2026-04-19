@@ -79,6 +79,122 @@ Decision tree for `.claude/`:
 
 With `--force`, skip confirmation and default to `(b) Merge`.
 
+#### 1c. Tooling prerequisites
+
+Before heavy operations, verify the full tool chain. Step 9 (MCP install) depends on `npx` which is a common failure point on Windows with `nvm4w`.
+
+```bash
+git --version               # ≥ 2.20 (required for Step 2)
+node --version              # ≥ 18 (required for Step 9 MCPs)
+npm --version               # required for Step 9
+npx --version               # required for Step 9 — MCPs launch via `npx -y <pkg>`
+claude --version            # ≥ 2.0 (sanity — we ARE running inside Claude Code)
+```
+
+**Failure handling:**
+
+| Missing tool | Impact | Action |
+|---|---|---|
+| `git` | Cannot clone ecosystem | **Abort.** Install Git first: https://git-scm.com/ |
+| `node` (< 18 or missing) | Step 9 MCP stack unusable | Warn; offer skip MCP (proceed to Step 2) OR abort |
+| `npm`/`npx` missing but node present | Step 9 unusable | Warn; common on Windows nvm4w with incomplete install. Offer skip MCP OR abort. Suggest `nvm list` → `nvm use <working-version>` → fresh shell |
+| `claude` | You can't read this message (we're inside it) | N/A |
+
+**If `npm`/`npx` missing:** present exactly this to user:
+
+> `npm`/`npx` не в PATH (node v<version> found, но npm/npx отсутствуют — частая проблема Windows nvm4w).
+>
+> Опции:
+> - `(skip-mcp)` — продолжить bootstrap без Step 9 (можно установить MCPs потом через `claude mcp add` после fix node env)
+> - `(abort)` — остановиться. Фикс:
+>   ```
+>   nvm list                    # список установленных
+>   nvm use <version>           # переключиться на рабочую
+>   # перезапусти shell, проверь node/npm/npx --version
+>   ```
+> - `(force)` — продолжить и попытаться в Step 9 (упадёт, но остальные шаги завершатся — эквивалентно skip-mcp по факту)
+
+Don't block bootstrap just because `npm`/`npx` are missing. Other steps (1-8, 10-12) don't need node.
+
+#### 1d. Pre-stage permissions (reduces prompts for rest of bootstrap)
+
+Bootstrap involves ~15 tool invocations with different `Bash(...)` patterns, each triggering a separate Claude Code permission prompt. Pre-staging an allowlist in `.claude/settings.local.json` (gitignored — machine-specific) reduces prompts to **one** (the Write itself).
+
+**Ask user** (unless `--force`):
+
+> Pre-stage permissions to reduce ~15 prompts during rest of bootstrap? The list scopes narrowly — no blanket `rm -rf` or `Bash(*)`. List written to `.claude/settings.local.json` (gitignored). [Y/n]
+
+If user confirms (or `--force`):
+
+**Step 1: Read existing `.claude/settings.local.json` if present** (Claude Code auto-creates it with approved permissions). Parse JSON.
+
+**Step 2: Merge ecosystem allowlist with existing** — union of `permissions.allow` arrays, deduplicated. **Never overwrite user's existing permissions.**
+
+**Step 3: Write merged JSON back to `.claude/settings.local.json`.**
+
+**Ecosystem allowlist to merge in:**
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Write",
+      "Edit",
+      "Glob",
+      "Grep",
+      "WebSearch",
+      "Bash(pwd)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(echo:*)",
+      "Bash(test:*)",
+      "Bash(git --version)",
+      "Bash(git config:*)",
+      "Bash(git status:*)",
+      "Bash(git init)",
+      "Bash(git branch:*)",
+      "Bash(git add:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git clone --depth 1 https://github.com/IlyaNSV/claude-ecosystem-3.0.git:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(rm -rf .claude-ecosystem-tmp:*)",
+      "Bash(rm -rf .claude-ecosystem-tmp/.git)",
+      "Bash(find .claude:*)",
+      "Bash(find .product:*)",
+      "Bash(node --version)",
+      "Bash(npm --version)",
+      "Bash(npx --version)",
+      "Bash(claude --version)",
+      "Bash(claude mcp list:*)",
+      "Bash(claude mcp add:*)",
+      "WebFetch(domain:api.search.brave.com)",
+      "WebFetch(domain:www.firecrawl.dev)",
+      "WebFetch(domain:firecrawl.dev)",
+      "WebFetch(domain:exa.ai)",
+      "WebFetch(domain:dashboard.exa.ai)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:registry.npmjs.org)",
+      "WebFetch(domain:www.npmjs.com)"
+    ]
+  }
+}
+```
+
+**Safety principles in this list:**
+- `Bash(rm -rf .claude-ecosystem-tmp:*)` — **scoped to bootstrap temp dir**, NOT general `rm -rf`. Cannot match `rm -rf .claude` or `rm -rf /`.
+- `Bash(git clone --depth 1 https://github.com/IlyaNSV/...:*)` — **specific repo URL**, not general git clone.
+- `WebFetch(domain:...)` — explicit allowlist of known service domains only.
+- Broad `Read`/`Write`/`Edit` — bootstrap legitimately needs to create ~8 files; approving once at session start is less risky than 8 individual approvals.
+
+**After bootstrap completes:** user can review `.claude/settings.local.json`, remove/tighten anything not needed for ongoing ecosystem use. The file is gitignored so changes are local-only.
+
+If user declines → skip. They'll get individual Claude Code permission prompts as bootstrap progresses. Still safe, just more friction.
+
 ### Step 2: Clone ecosystem and merge into `.claude/`
 
 **Cannot use `git clone <url> .claude` directly** — git refuses to clone into non-empty directory (and `.claude/settings.local.json` is almost always present after Claude Code launch).
@@ -254,23 +370,74 @@ If `CLAUDE.md` already exists at project root:
 
 ### Step 9: Install Core MCP stack (unless `--no-mcp`)
 
-Invoke (as a subprocess or follow-up step):
+**Pre-check:** verify `npx` availability from Step 1c. If missing → skip Step 9 with clear warning. User can install MCPs manually after fixing node env.
+
+**Note on `/integrator:add`:** Ecosystem v1.0 ships Integrator Phase 1 only (read-only commands: `research`, `map`, `gaps`, `status`, `journal`, `scan`). The full `/integrator:add` command arrives in Phase 5 (Installation) per [ROADMAP.md](../../ROADMAP.md). **Until then, use `claude mcp add` CLI directly** — same end result.
+
+Present the user with the Core MCP stack and proposed installs:
+
+| # | MCP | Package | Keys needed | Purpose |
+|---|---|---|---|---|
+| 1 | Sequential Thinking | `@modelcontextprotocol/server-sequential-thinking` | — | Multi-step reasoning (required for F.5 IC, F.9 DA, research synthesis) |
+| 2 | Memory | `@modelcontextprotocol/server-memory` | — | Cross-session knowledge graph, decision journal lookup |
+| 3 | Firecrawl | `firecrawl-mcp` | `FIRECRAWL_API_KEY` | Deep mode research web scraping |
+| 4 | Brave Search | `@modelcontextprotocol/server-brave-search` | `BRAVE_API_KEY` | Quick mode keyword lookups |
+| 5 | Exa AI | `exa-mcp-server` | `EXA_API_KEY` | Semantic search ("tools that solve X for Y") |
+| 6 | Context7 | `@upstash/context7-mcp` | — | Realtime package docs |
+| 7 | GitHub | `@modelcontextprotocol/server-github` | `GITHUB_TOKEN` (optional) | CA Deep dev-tools research, NFR benchmarks |
+
+#### Scope selection (important for security)
+
+MCP installs can be scoped at three levels — this matters because **API keys MUST NOT end up in committed files**.
+
+| Scope | Writes to | Committed? | Use when |
+|---|---|---|---|
+| `--scope local` | `.claude/settings.local.json` | ❌ gitignored | **Default.** Keys stay safe. Per-machine per-project. |
+| `--scope project` | `.mcp.json` at project root | ✅ tracked | Team-shared no-key MCPs. **Never for keys.** |
+| `--scope user` | `~/.claude/settings.json` | ❌ user-global only | MCPs you want across ALL projects. |
+
+**Ecosystem 3.0 default for bootstrap: `--scope local` for ALL MCPs.**
+
+Rationale:
+- Keys never risk leaking into git (pilot-safe).
+- Simpler mental model: «всё что установил bootstrap — local to this project».
+- User can promote specific MCPs to `--scope project` later when team collaboration starts (move them manually to `.mcp.json`, but ONLY no-key ones).
+
+#### Install commands
+
+For each MCP user approves (verify `.env` has the key first for key-required MCPs):
+
+```bash
+# No-key MCPs
+claude mcp add --scope local sequential-thinking -- npx -y @modelcontextprotocol/server-sequential-thinking
+claude mcp add --scope local memory -- npx -y @modelcontextprotocol/server-memory
+claude mcp add --scope local context7 -- npx -y @upstash/context7-mcp
+
+# Keys-required MCPs (read key values from .env, pass via -e)
+claude mcp add --scope local firecrawl -e FIRECRAWL_API_KEY=<value-from-env> -- npx -y firecrawl-mcp
+claude mcp add --scope local brave -e BRAVE_API_KEY=<value-from-env> -- npx -y @modelcontextprotocol/server-brave-search
+claude mcp add --scope local exa -e EXA_API_KEY=<value-from-env> -- npx -y exa-mcp-server
+
+# Optional (only if user provided GITHUB_TOKEN)
+claude mcp add --scope local github -e GITHUB_TOKEN=<value-from-env> -- npx -y @modelcontextprotocol/server-github
 ```
-/integrator:research "Core MCP stack for Ecosystem 3.0"
+
+Approve per-MCP. Skip any where user declined to provide key in Step 4.
+
+#### Verification
+
+```bash
+claude mcp list
 ```
 
-Present the user with the recommended Core MCP stack:
-- **Sequential Thinking** — required for multi-step reasoning
-- **Memory MCP** — required for cross-session knowledge graph
-- **Firecrawl** — recommended (Deep mode research)
-- **Brave Search** — recommended (Quick mode research)
-- **Exa AI** — recommended (semantic search)
-- **Context7** — recommended (realtime package docs)
-- **GitHub Official MCP** — optional (CA Deep mode, NFR benchmarks)
+Expected: installed MCPs with health indicator (`✓ Connected` or `⚠ Starting...`). If any show `✗ Failed` — note for user to debug via `/integrator:debug` (when Phase 5 lands) or manually via `claude mcp get <name>`.
 
-For each, user approves installation per-MCP via `/integrator:add <mcp>`. Skip ones user declines (e.g., GitHub if no token in Step 4).
+#### Skip scenarios
 
-If user passed `--no-mcp`, skip entirely and note in summary: "MCP stack skipped. Install later via /integrator:research + /integrator:add."
+If user passed `--no-mcp` OR npx missing from Step 1c:
+
+Skip Step 9 entirely. Note in final summary:
+> «MCP stack skipped (<reason>). Install later via `claude mcp add --scope local <name> -- npx -y <pkg>` — see [.claude/docs/integrator-module/SPEC.md §14](../../docs/integrator-module/SPEC.md) for full stack specification.»
 
 ### Step 10: Initialize git in project (if greenfield)
 
