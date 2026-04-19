@@ -34,3 +34,12 @@ WORK-IN-PROGRESS.md
 # === Test artifacts ===
 .test-output/
 fixtures/local/
+
+# === Claude Code state (anywhere inside ecosystem repo) ===
+# Ecosystem repo itself does NOT use .claude/ — its content lives in
+# commands/, skills/, etc. at root (they get COPIED to user's .claude/
+# during bootstrap). If Claude Code creates .claude/ anywhere inside
+# this repo (subagents with isolation=worktree, local experiments, etc.),
+# don't track it.
+.claude/
+**/.claude/
