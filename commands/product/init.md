@@ -33,6 +33,52 @@ If no mode flag:
 - MCP Core stack available (check which MCPs respond); if Deep mode requested but Firecrawl/Exa missing — warn + offer Quick fallback
 - No existing active PS (if PS active → ask: continue existing Discovery or restart?)
 
+### Step 3b: Initialize session state files
+
+Before loading `discovery-session` skill, initialize two session state files в `.product/.sessions/` (создать директорию если её нет).
+
+**`current.yaml`** — pre-set `type` и `started_at` чтобы `session-state.js` hook не defaulted к `'unknown'` на первом write:
+
+```yaml
+# Session state — initialized by /product:init command.
+# Subsequently managed by session-state.js hook on each .product/ write.
+
+session_id: "<ISO-timestamp>-discovery-<project_name>"
+type: discovery-session
+started_at: "<ISO timestamp>"
+```
+
+Hook (Step 4+) на первой Write/Edit в `.product/` прочитает existing `type`/`started_at` и сохранит их — не перезапишет defaults.
+
+**`discovery-progress.yaml`** — initial orchestration state для skill:
+
+```yaml
+session_id: "<same as current.yaml>"
+type: discovery-session
+mode: <quick|deep per Step 2>
+started_at: "<ISO timestamp>"
+project: "<from product.yaml.project_name>"
+language: "<from product.yaml.project_language>"
+
+current_step: D1.1
+last_completed_step: null
+last_approved_gates: []
+
+pending_drafts: []
+artifacts_active: []
+bg_candidates_queued: 0
+bg_synonym_warnings: 0
+
+next_steps:
+  - D1.1 Problem Discovery → G1
+
+progress_percent: 0
+```
+
+Этот файл обновляется skill'ом `discovery-session.md` на каждом approve gate (см. секцию "Session state management" в skill).
+
+**Если `--continue` flag:** читать существующие файлы вместо создания новых; resume с `current_step` в `discovery-progress.yaml`.
+
 ### Step 4: Delegate to discovery-session skill
 
 Load `discovery-session.md`. It handles:

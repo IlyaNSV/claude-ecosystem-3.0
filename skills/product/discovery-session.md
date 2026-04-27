@@ -133,22 +133,72 @@ Session state archived. Summary report (per `/product:init` Step 6).
 
 ## Session state management
 
-Throughout, `product-session-state.js` hook snapshots to `.product/.sessions/current.yaml`:
+Discovery Session использует **два файла session state** (в `.product/.sessions/`):
+
+**1. `current.yaml` — managed by `session-state.js` hook (не редактировать вручную).**
+
+Обновляется автоматически на каждый Write/Edit в `.product/**/*.md`. Содержит:
+- `session_id`, `type`, `started_at` (инициализируется `/product:init` command-ом до первого write)
+- `last_checkpoint`, `last_tool`, `last_artifact_id` / `_type` / `_status`, `last_artifact_path`
+- `edits_since_start`, `recent_artifacts` (last 10), `git_head_sha`
+
+Поля `last_artifact_id/type/status` атомарны — всегда описывают один и тот же файл (последний write). Для singletons без `id:` в frontmatter (problem.md, glossary.md) — `last_artifact_id` отсутствует в output.
+
+**2. `discovery-progress.yaml` — managed by этим skill (обновляется на каждом approve gate).**
+
+Структура:
 
 ```yaml
-session_id: "<timestamp>-discovery-<project>"
+session_id: "<same as current.yaml>"
 type: discovery-session
 mode: quick | deep
 started_at: <timestamp>
-current_step: D1.1 | D1.2 | ... | D1.5z | complete
-last_approved_gates: [G1, G4, G4a-VP001, G4a-VP002, G5-HYP001]
+project: <project_name>
+language: <from product.yaml>
+
+current_step: D1.1 | D1.2 | D1.3 | D1.4 | D1.4a | D1.5 | D1.5z | complete
+last_completed_step: <prior step or null>
+
+last_approved_gates:
+  - id: G1
+    artifact: PS
+    confidence: high | medium | low
+    approved_at: YYYY-MM-DD
+  # ...
+
 pending_drafts:
   - MR (draft, queued for DRC)
   - CA (draft, queued for DRC)
-progress_percent: ~30%
+
+artifacts_active:
+  - PS (problem.md)
+  # ...
+
+bg_candidates_queued: <count>
+bg_synonym_warnings: <count>
+
+next_steps:
+  - <description of immediate next action>
+
+progress_percent: <0-100>
 ```
 
-On interrupt: `/product:init --continue` reads этот state and resumes.
+**Когда обновлять `discovery-progress.yaml`** (после каждого approve gate — skill ответственен, не hook):
+
+| Момент | current_step → | last_approved_gates += | pending_drafts |
+|---|---|---|---|
+| approve PS (G1) | D1.2 | G1/PS | — |
+| MR draft готов | D1.3 | — | += MR |
+| CA draft готов | D1.4 | — | += CA |
+| approve каждого SEG (G4) | D1.4 (→ DRC после всех SEG) | G4/SEG-NNN | — |
+| DRC approve (MR+CA bundle) | D1.4a | DRC | cleared |
+| approve каждого VP (G4a) | D1.4a (→ D1.5 после всех VP) | G4a/VP-NNN | — |
+| approve каждого HYP (G5) | D1.5 (→ D1.5z после всех HYP) | G5/HYP-NNN | — |
+| BG extraction pass готов | complete | D1.5z | — |
+
+**Atomicity:** прочитать существующий файл, обновить поля, записать назад. Не терять прежние `last_approved_gates` при добавлении нового.
+
+**Recovery:** на interrupt `/product:init --continue` читает `discovery-progress.yaml` и возобновляет с `current_step`. Если `.product/` содержит артефакты, которых нет в `last_approved_gates` — эвристически reconcile (либо resume approve gate для них, либо попросить human подтвердить).
 
 ## Error handling
 

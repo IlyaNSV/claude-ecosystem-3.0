@@ -580,51 +580,52 @@ Approve bundle? (y/n/per-item)
 
 Правила, которые не могут быть автоматизированы, но **обязательны** как явные шаги процесса.
 
-### P-RULE-01: IC change mandates Product DA review (magnitude-gated, A3 modification)
-- **Replaces:** V-13 (IC non-conflict check — was proposed but not automatable)
-- **Statement:** **Significant** добавление / изменение / удаление IC-* триггерит Product DA review с фокусом на:
-  - Pairwise consistency: не конфликтует ли new/changed IC с existing IC?
-  - Recovery strategy: есть ли план при нарушении?
-  - Supporting rules: поддерживают ли BR действительно этот IC?
-- **Magnitude classifier (требует DA):**
+### P-RULE-01: IC change mandates Product DA review (adaptive-depth, refactored DEC-DEV-0012)
+- **Replaces:** V-13 (IC non-conflict check — not automatable)
+- **Statement:** **Любое** добавление / изменение / удаление IC-* триггерит Product DA review через subagent invocation. Subagent **сам адаптирует depth** в зависимости от характера change.
+- **Adaptive-depth model:**
+  - Subagent (Шаг 1, ~30 сек): classify change as `cosmetic` или `significant` (анализ git diff против HEAD)
+  - Subagent (Шаг 2): если `cosmetic` → quick consistency check (~5 мин output, 1 блок findings); если `significant` → full 6-lens review (~20-30 мин output)
+  - Single subagent invocation, no double LLM call
+- **Significant triggers (full 6-lens):**
   - Creation (новый IC)
-  - Severity change (любое движение to/from `critical`)
-  - Statement change (semantic — diff включает слова в логике инварианта)
+  - Severity change to/from `critical`
+  - Statement semantic change
   - Entity change (IC переходит на другую сущность)
-- **Magnitude classifier (НЕ требует DA — пропускается с записью в DA debt):**
-  - Cosmetic edits (typos, formatting)
-  - Reference list additions/removals в `rules[]` или `lifecycles[]`
+- **Cosmetic triggers (quick consistency check):**
+  - Typo / formatting / переформулировка без semantic change
+  - Reference list additions/removals в `rules[]` / `lifecycles[]`
   - Frontmatter metadata-only updates
-- **DA debt:** Skipped изменения накапливаются в `.product/.pending/da-debt.yaml`. На следующем approve gate parent FM — batch DA на все накопленные.
-- **Enforcement:** hook `ic-change-da-trigger.js` с magnitude classification logic. Создаёт TODO в /product:status: «Pending DA review for IC-<NNN>».
-- **Blocking:** IC нельзя перевести в active без DA review approval (для significant changes).
+- **Output format:** subagent returns `magnitude: cosmetic | significant` + `classification_rationale` + `findings`. См. processes.md §6.2 для детали.
+- **Enforcement:** hook `ic-change-trigger.js` invokes subagent on PostToolUse Write/Edit `.product/invariants/*.md`.
+- **Blocking:** IC нельзя в active без DA review approval (для both cosmetic + significant — cosmetic check тоже требует resolution найденных issues).
 
-### P-RULE-02: BR semantic conflict review at BR changes (magnitude-gated, A3 modification)
-- **Replaces:** V-14 semantic part (parameter-level — V-14a auto; semantic — manual)
-- **Statement:** При **significant** active BR change ассистент инициирует проверку:
-  - Semantic overlap с другими active BR — могут ли они interact неожиданно?
-  - Negative cases — что теперь может случиться, чего раньше не могло?
-  - Impact analysis (обязательное при BR change по DEC-P13 process)
-- **Magnitude classifier (требует DA):**
+### P-RULE-02: BR semantic conflict review at BR changes (adaptive-depth, refactored DEC-DEV-0012)
+- **Replaces:** V-14 semantic part (parameter-level — V-14a auto; semantic — manual через DA)
+- **Statement:** **Любое** active BR change триггерит DA subagent invocation. Subagent адаптирует depth (как P-RULE-01).
+- **Adaptive-depth model:** see P-RULE-01.
+- **Significant triggers (full 6-lens):**
   - Creation (новый BR)
-  - Parameter type change (enum→number, nullable flip, cardinality change)
+  - Parameter type change (enum→number, nullable flip, cardinality)
   - Category change (validation → calculation)
   - Statement rewrite (semantic diff)
-- **Magnitude classifier (НЕ требует DA):**
+- **Cosmetic triggers (quick consistency check):**
   - Parameter value tune в рамках того же type (`first_match` → `best_match`)
-  - Cosmetic edits
-  - Adding/removing scenarios refs (cascade-handled)
-- **DA debt:** аналогично P-RULE-01.
-- **Enforcement:** cascade protocol (§6) при BR change + magnitude classification; ассистент включает в bundle-approve diff BR при significant changes.
-- **Blocking:** BR нельзя в active без явного approve impact analysis (для significant changes).
+  - Typo / formatting
+  - Adding/removing scenarios refs (cascade-handled separately, но DA quick-checks impact)
+- **Enforcement:** hook `br-change-trigger.js` invokes subagent on PostToolUse `.product/business-rules/*.md`.
+- **Blocking:** BR нельзя в active без impact analysis approve (всех magnitudes).
 
-### Что magnitude classification спасает
+### Почему adaptive-depth вместо прежней magnitude-gated модели
 
-До A3: правка `linking_strategy: first_match → best_match` (один параметр) → обязательный DA с 6 линзами. Overhead, который превращает DA в формальность.
-
-После A3: тот же параметр-tune → автоматический skip + запись в DA debt. На следующем approve gate FM-003 — batch DA на все накопленные изменения BR-010 (если есть).
-
-Adversarial challenge остаётся для real semantic shifts, но не для cosmetic touches.
+> **Refactor history (DEC-DEV-0012, 2026-04-20):** ранее P-RULE-01/02 использовали magnitude-gated модель с **skip + DA debt** для cosmetic changes. Накопленный долг проверялся batch'ем на FM-level approve gate.
+>
+> **Проблемы прежней модели:**
+> 1. Классификация magnitude (нужен DA или нет) сама по себе требует analysis — почти столько же effort, сколько quick consistency check
+> 2. Decisions принимаются пост-фактум (batch later), а нужны в момент изменения
+> 3. DA debt accumulation создавал hidden risk — забытые changes
+>
+> **Adaptive-depth решает все три:** single subagent invocation, depth adapts to actual significance, decisions in-the-moment, no debt accumulation.
 
 ---
 

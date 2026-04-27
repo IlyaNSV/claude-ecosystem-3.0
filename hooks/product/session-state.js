@@ -98,19 +98,27 @@ if (fs.existsSync(currentPath)) {
   }
 }
 
-// Initialize session if none present
+// Initialize session if none present.
+// Command-issued sessions (e.g., /product:init) pre-write `type` and `started_at`
+// to current.yaml before the first artifact write — check `if (!current.X)` to
+// preserve those values instead of overwriting with defaults.
 if (!current.session_id) {
   current.session_id = `${now.replace(/[:.]/g, '-')}-${process.pid}`;
-  current.type = 'unknown'; // Command-issued sessions set this explicitly
-  current.started_at = now;
+  if (!current.type) current.type = 'unknown';
+  if (!current.started_at) current.started_at = now;
 }
 
 current.last_checkpoint = now;
 current.last_tool = toolName;
 current.last_artifact_path = relPath;
-if (artifactId) current.last_artifact_id = artifactId;
-if (artifactType) current.last_artifact_type = artifactType;
-if (artifactStatus) current.last_artifact_status = artifactStatus;
+// Update artifact fields atomically from current file (the last write).
+// For singletons without `id:` in frontmatter (e.g., problem.md, glossary.md),
+// artifactId is null — last_artifact_id is cleared so the three fields always
+// describe the same file. The YAML formatter skips null/undefined values, so
+// null fields don't appear in output.
+current.last_artifact_id = artifactId;
+current.last_artifact_type = artifactType;
+current.last_artifact_status = artifactStatus;
 
 // Increment edit counter (rough activity signal)
 current.edits_since_start = (parseInt(current.edits_since_start, 10) || 0) + 1;
