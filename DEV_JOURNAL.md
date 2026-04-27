@@ -600,6 +600,101 @@ Pre-existing skill drift (B.1 — `hypothesis-formulation.md` non-canonical fiel
 
 ---
 
+## DEC-DEV-0014 — Phase 3 implementation complete + lessons
+
+**Date:** 2026-04-27
+**Trigger:** Phase 3.J final — implementation across 10 sub-phases (A→J + prerequisite) completed; document outcome + accumulated lessons before Phase 4 readiness gate.
+**Tag:** #scope-change #refactor #ux #tooling
+
+### Context
+
+Phase 3 (Planning + Feature Enrichment per ROADMAP) implemented per scope refined в DEC-DEV-0012 + ambiguity resolutions / spec drift fixes locked в DEC-DEV-0013. Implementation took один focused day session (1 user message «Стартуем!» kicked off, 9 subsequent commits).
+
+**Sub-phases delivered:**
+
+| Sub-phase | Files | Lines | Commit |
+|---|---|---|---|
+| Prerequisite (A.1-A.4 spec drift + DEC-DEV-0013) | 8 modified | +221/-25 | d82b656 |
+| Phase 3.A — Planning core | 5 new (4 skills + 1 cmd) | +1384 | 044fdf0 |
+| Phase 3.B — Feature orchestrator | 2 new (1 skill + 1 cmd) | +731 | a7619cc |
+| Phase 3.C — F.2-F.7 derivation skills | 6 new skills | +1683 | 64c741b |
+| Phase 3.D — BG + cascade protocol | 2 new skills | +567 | 292b411 |
+| Phase 3.E — 4 hooks | 4 new hooks | +1279 (после bg-extractor JSDoc fix) | 52667e0 |
+| Phase 3.F — D2 overrides | 1 modified hook | +209/-28 | 6638b84 |
+| Phase 3.G + 3.H — cmds + manifest | 3 new cmds + manifest | +537/-1 | 4ab35eb |
+| Phase 3.I — static verification + smoke plan | 1 new doc | +298 | 5dd4d4c |
+| Phase 3.J — final docs (this entry) | CHANGELOG + ROADMAP + DEV_JOURNAL + Phase 4 readiness | TBD | TBD |
+
+**Total:** 23 new + 9 modified files; ~6800+ lines net additions across 10 commits.
+
+### Outcome
+
+**All Phase 3 acceptance criteria from ROADMAP met (modulo real run smoke test):**
+
+- [x] `/product:plan` command + planning-session/mvp-scoping/roadmap-planning/release-planning skills (Phase 3.A)
+- [x] `/product:feature` command + feature-session orchestrator + 6 per-step skills (F.2-F.7) (Phase 3.B + 3.C)
+- [x] BG extraction (bg-extractor.js Phase 1 + bg-extraction.md skill methodology) (Phase 3.D + 3.E)
+- [x] Cascade detection + V-11 auto-fix (cascade-check.js + cascade-protocol.md) per DEC-DEV-0012 C.4
+- [x] Adaptive-depth DA orchestration (br-change-trigger.js + ic-change-trigger.js + refactored devils-advocate.md) per DEC-DEV-0012 C.1 + DEC-DEV-0013 #8
+- [x] A1 auto-approve logic для 🟢 LC/VC/RPM (in-skill self-checks per DEC-DEV-0013 #2 + #7)
+- [x] D2 overrides runtime (artifact-validate.js extension per DEC-DEV-0012 C.5)
+- [x] Manual mass-rename (`/product:bg-rename`) per DEC-DEV-0012 D.2 (atomic deferred v1.1)
+- [x] Manifest registration для 4 new hooks (Phase 3.H)
+- [ ] **Real run smoke test pending** — see `dev/PHASE_3_SMOKE_TEST_PLAN.md`; results будет populate retroactive DEC-DEV-NNNN entry
+
+**Phase 3 placeholders surfaced (Phase 4/6 work, не bugs):**
+- F.5a NFR Review (Phase 4)
+- F.8 Design Module (Phase 6 conditional activation)
+- F.9 FM-level Product DA (Phase 4 manual `/product:da-review`)
+
+### Lessons
+
+#### Process lessons
+
+1. **Architectural readiness gate (DEC-DEV-0012) + ambiguity resolution gate (DEC-DEV-0013) saved entire Phase 3 from churn.** 9 ambiguities resolved + 4 spec drift fixes pre-kickoff = zero мid-phase blocking decisions. Without these, each ambiguity would have cost ~1 hour mid-implementation = 9-15 hours sunk cost. Pre-kickoff cost: ~3 hours of conversation. **ROI: ~3-5x.**
+
+2. **Per-sub-phase commits + commit messages with mental smoke tests** — disciplined cadence (10 commits, none «WIP»). Commit messages document architectural rationale immediately when decisions made; Phase 3 commits read as mini-DEV-JOURNAL entries.
+
+3. **Static verification suite valuable but doesn't replace real run.** Catches: missing files, broken cross-refs, syntax errors, frontmatter compliance. Doesn't catch: prompt-following correctness, A1 actually firing per spec, DA orchestration end-to-end, cascade triggering как expected. Both layers needed.
+
+4. **Cuttable scope discipline held throughout.** F.5a/F.8/F.9 surface placeholders without inline implementation; v1.1 deferrals (atomic mass-rename, full BFS cascade, bundle approve UX) preserved via dev/v1_1_backlog.md references вместо silent scope creep. **Pattern:** «defer не значит выкинуть» (DEC-DEV-0012 lesson) generalized.
+
+#### Architectural lessons
+
+5. **Per-FM session state pattern (`feature-<FM-id>-progress.yaml`) is correct architecture per DEC-DEV-0013 #1.** Rationale: switching между FMs mid-enrichment без overwrite. Singleton (planning-progress.yaml) works для Planning because MVP/RM are themselves singletons; per-FM correct for Features because features parallel.
+
+6. **A1 auto-approve self-check responsibility belongs к skill, не orchestrator.** Skill knows applicable V-* rules + can self-validate them. Orchestrator (feature-session.md) trusts but verifies через journal entry inspection. Cleaner separation; if A1 misfires — meta-feedback issue, не orchestrator bug.
+
+7. **DA orchestration through stderr → orchestrator → Agent tool — works around hook architectural constraint elegantly.** Hooks (PostToolUse) can't spawn subagents directly (run as bash, не имеют LLM context). Stderr-driven follow-up в next LLM action preserves «in-the-moment» semantic per DEC-DEV-0012 «no debt accumulation» claim. **Pattern перено
+
+симо on any future hook → subagent flow.**
+
+8. **Cascade scope discipline (V-11 only auto-fix; rest queue) — right tradeoff.** Broader auto-fix would risk silent breakage (e.g., V-08 terminology auto-add could create wrong BG entries). Manual review через `/product:cascade --pending` для non-V-11 — slower but safer для v1. Full BFS auto-fix has v1.1 trigger condition (pattern emerges from `cascade-pending.yaml` resolutions).
+
+#### Implementation traps avoided / patterns generalized
+
+9. **JSDoc + glob patterns conflict** — `/** ... .product/**/*.md ... */` block comment terminates at `*/` substring inside path. Caught by `node -c` syntax check. **Pattern:** avoid glob patterns в JSDoc /** ... */ blocks; use prose descriptions or escape sequences. Added к Phase 3.E commit message lessons; future hooks reference.
+
+10. **Spec docs sweep pattern proven again** — DEC-DEV-0012 update'ил processes.md §6.2 + validation.md §7 but не §14.2 (same document!). DEC-DEV-0013 grep run found 4 stale sections. **Pattern:** при architectural refactor — `grep stale terms` по entire `docs/` + `dev/` + agents/skills/commands/hooks/CHANGELOG **before** closing decision. Should be added to DEV_JOURNAL template note.
+
+11. **B.1 frontmatter convention discipline pays off.** All Phase 3 skills include explicit frontmatter templates с anti-pattern field name lists (per CLAUDE.md + DEC-DEV-0011 lesson). Anti-pattern field name lists especially important для FM (many fields), BR (parameters easy to misname), MVP/RL (target_launch vs target_date confusion). **Result:** zero PS-style drift expected в Phase 3 outputs (real run will verify).
+
+12. **Decision journal location convention (`.product/.decisions/journal.md`) emerged late but cleanly.** Не was в spec; Phase 3 A1 auto-approve forced existence. DEC-DEV-0013 #9 documented convention before code reference. **Pattern:** novel filesystem conventions → document в DEC-DEV-NNNN before first code reference.
+
+#### Open items для Phase 4 readiness
+
+- **Real run smoke test outcome** populates retroactive DEV_JOURNAL entry. If regressions found — fix before Phase 4 kick-off.
+- **A.1 / B.1 hypothesis** (no PS-drift в Phase 3 outputs) verified только by smoke test; static verification cannot prove this.
+- **`hypothesis-formulation.md` non-canonical fields** (B.1 finding из DEC-DEV-0013) — pre-existing Phase 2 drift, не addressed Phase 3. Should be queued для Phase 4 readiness audit.
+- **Decision journal volume.** Phase 3 introduces journal entries для every Strategic approve + every A1 auto-approve + every DA dismissal + every cascade resolution. Volume may grow large; consider periodic archive convention в Phase 4.
+
+### Next
+
+- **Phase 3.I real run smoke test** (user-driven, см. `dev/PHASE_3_SMOKE_TEST_PLAN.md`) → results to retroactive entry.
+- **Phase 4 readiness gate** перед Phase 4 kick-off (TBD when scheduled). See `dev/PHASE_4_READINESS.md` placeholder.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

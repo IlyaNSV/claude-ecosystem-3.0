@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-04-26.
+> **Последнее обновление:** 2026-04-27.
 
 ## Где мы сейчас
 
@@ -14,10 +14,13 @@
 ✅ Phase 2 — Product Module core (Discovery Quick + drift mechanisms)
 ✅ Phase 2 pilot validated (2026-04-20) — 14 artifacts на my-first-test/, all gates passed
 ✅ Phase 3 readiness gate (2026-04-20) — DEC-DEV-0012 architectural decisions consolidated
+✅ Phase 3 — Planning + Feature Enrichment + adaptive-depth DA + cascade detection (2026-04-27)
+   — 23 files (5 commands + 14 skills + 4 hooks + 1 hook extension + manifest update)
+   — Static verification passes; real run smoke test pending (dev/PHASE_3_SMOKE_TEST_PLAN.md)
 
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 3 — Planning + Feature Enrichment (P1.B + P2.A) — scope refined per DEC-DEV-0012
+⏳ Phase 3 smoke test (real run on my-first-test) — required before Phase 4
 ⏳ Phase 4 — Handoff + NFR (F.5a) + Product DA (F.9) + Validation full
 ⏳ Phase 5 — Integrator Phase 2 (Installation + first adapter)
 ⏳ 🎯 PILOT POINT — full end-to-end (handoff generation + external tool)
@@ -157,11 +160,13 @@ claude
 
 ---
 
-## Phase 3 — Planning + Feature Enrichment (P1.B + P2.A)
+## ✅ Phase 3 — Planning + Feature Enrichment (P1.B + P2.A) — COMPLETED 2026-04-27
 
 **Цель:** `/product:plan` + `/product:feature` создают MVP scope, roadmap, releases, FM skeletons, обогащают FM до handoff-ready behavioral spec (SC/BR/LC/VC/IC).
 
 > **Scope refined 2026-04-20** per DEC-DEV-0012. Deep mode subagents и atomic mass-rename перенесены в v1.1 (см. [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md)). DA debt mechanism dropped — заменён adaptive-depth DA на каждое изменение (см. [`docs/pmo/processes.md §6.2`](docs/pmo/processes.md)). NFR Review F.5a deferred Phase 4.
+>
+> **Implementation completed 2026-04-27** — 23 files (originally estimated 21, +2 for: devils-advocate.md adaptive-depth refactor per A.1 spec drift fix, dev/PHASE_3_SMOKE_TEST_PLAN.md). 9 commits across 10 sub-phases (A→J + prerequisite). Final lessons: DEC-DEV-0014 в DEV_JOURNAL.md. Real run smoke test pending — see [dev/PHASE_3_SMOKE_TEST_PLAN.md](dev/PHASE_3_SMOKE_TEST_PLAN.md).
 
 ### Deliverables (~21 файл)
 
