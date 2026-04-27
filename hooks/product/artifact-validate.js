@@ -5,9 +5,18 @@
  * v1 modifications:
  *   B1 — tier-aware (pilot: only 🔴 Blocking inline; mvp: + 🟡 Warning; full: all)
  *   B2 — quiet draft mode (findings queued when status=draft, surfaced on approve)
+ *   D2 — per-artifact overrides (validation_overrides + approve_overrides + expires_at)
+ *        Phase 3.F extension per DEC-DEV-0012 C.5 + DEC-DEV-0013
  *
- * Reads stdin (Claude Code hook JSON), parses artifact frontmatter, applies
- * applicable V-* rules per tier, writes findings (stderr or queue file).
+ * Reads stdin (Claude Code hook JSON), parses artifact frontmatter (+ D2 override
+ * sections), applies applicable V-* rules per tier filtered by overrides, writes
+ * findings (stderr or queue file).
+ *
+ * D2 override semantics (per validation.md §9.3-9.4):
+ *   - validation_overrides[]: permanent severity downgrade for this artifact (rule
+ *     skipped в this hook; logged со status: overridden in queue)
+ *   - approve_overrides[]: temporary gate pass with optional expires_at; if expired,
+ *     re-applies rule; if active, skipped с status: overridden + approval metadata
  *
  * Exit 0 always — non-blocking.
  *
@@ -99,6 +108,14 @@ if (!fm.id || !fm.type) {
   process.exit(0);
 }
 
+// ---------- Parse D2 overrides (Phase 3.F per DEC-DEV-0012 C.5) ----------
+
+const validationOverrides = parseOverridesSection(content, 'validation_overrides');
+const approveOverrides = parseOverridesSection(content, 'approve_overrides');
+
+// Build override sets for fast lookup
+const overrideMap = buildOverrideMap(validationOverrides, approveOverrides);
+
 // ---------- Load config: validation_tier + draft quiet mode ----------
 
 const projectRoot = findProjectRoot(normalized);
@@ -167,7 +184,7 @@ if (fm.status === 'active' && !fm.confidence) {
   });
 }
 
-// ---------- Filter by tier (B1 modification) ----------
+// ---------- Filter by tier (B1 modification) + D2 overrides ----------
 
 const tierAllowsSeverity = (severity) => {
   if (tier === 'pilot') return severity === 'blocking';
@@ -176,34 +193,35 @@ const tierAllowsSeverity = (severity) => {
   return severity === 'blocking'; // fallback
 };
 
-const toSurface = findings.filter((f) => tierAllowsSeverity(f.severity));
+// Phase 3.F: separate findings into «overridden» (logged со status: overridden
+// в pending queue) и «to surface» (normal flow). Per DEC-DEV-0012 C.5.
+const overriddenFindings = [];
+const toSurface = findings.filter((f) => {
+  if (!tierAllowsSeverity(f.severity)) return false;
+  const override = overrideMap.get(f.rule);
+  if (override) {
+    overriddenFindings.push({ ...f, override });
+    return false; // skip surfacing
+  }
+  return true;
+});
+
+// ---------- Queue overridden findings always (Phase 3.F audit log) ----------
+
+// Per DEC-DEV-0012 C.5 — overridden rules logged regardless of quiet mode for
+// audit trail. Different from B2 quiet-draft mode (which queues pending findings
+// only on draft). Override entries logged on every save с status: overridden.
+
+if (overriddenFindings.length > 0) {
+  queueValidationFindings(projectRoot, filePath, fm.id, overriddenFindings, 'overridden');
+}
 
 // ---------- Quiet mode (B2 modification) ----------
 
 if (fm.status === 'draft' && quietDraft) {
-  // Queue findings, don't surface
-  const pendingDir = path.join(projectRoot, '.product', '.pending');
-  try {
-    if (!fs.existsSync(pendingDir)) fs.mkdirSync(pendingDir, { recursive: true });
-    const queueFile = path.join(pendingDir, 'validation-pending.yaml');
-    let queue = [];
-    if (fs.existsSync(queueFile)) {
-      const existing = fs.readFileSync(queueFile, 'utf-8');
-      queue = parsePendingYaml(existing);
-    }
-    toSurface.forEach((f) => {
-      queue.push({
-        artifact: fm.id,
-        file: path.relative(projectRoot, filePath).replace(/\\/g, '/'),
-        rule: f.rule,
-        severity: f.severity,
-        message: f.message,
-        queued_at: new Date().toISOString(),
-      });
-    });
-    fs.writeFileSync(queueFile, formatPendingYaml(queue));
-  } catch (e) {
-    // Silent fail — don't break workflow
+  // Queue surface findings, don't write to stderr
+  if (toSurface.length > 0) {
+    queueValidationFindings(projectRoot, filePath, fm.id, toSurface, 'pending');
   }
   process.exit(0);
 }
@@ -273,7 +291,7 @@ function parsePendingYaml(text) {
 }
 
 function formatPendingYaml(queue) {
-  const lines = ['# Pending validation findings (B2 quiet draft mode)',
+  const lines = ['# Pending validation findings (B2 quiet draft mode + D2 overrides)',
                  '# Surfaced at: approve gate, /product:status, /product:validate', ''];
   queue.forEach((item) => {
     lines.push('-');
@@ -283,4 +301,167 @@ function formatPendingYaml(queue) {
     });
   });
   return lines.join('\n') + '\n';
+}
+
+// ---------- D2 Overrides parsing (Phase 3.F per DEC-DEV-0012 C.5) ----------
+
+/**
+ * Parse a list-of-objects override section from frontmatter YAML.
+ * Handles both `validation_overrides:` (per validation.md §9.3) and
+ * `approve_overrides:` (per validation.md §9.4) sections.
+ *
+ * Accepts standard YAML list format inside the frontmatter block:
+ *   <sectionName>:
+ *     - rule: V-XX
+ *       reason: "..."
+ *       approved: true                    # validation_overrides
+ *       approved_by: human                # approve_overrides
+ *       approved_at: 2026-04-18T15:30
+ *       expires_at: 2026-05-18            # optional, approve_overrides only
+ *
+ * Returns array of objects (possibly empty).
+ */
+function parseOverridesSection(text, sectionName) {
+  // Find the frontmatter block
+  const fmMatch = /^---\r?\n([\s\S]*?)\r?\n---/m.exec(text);
+  if (!fmMatch) return [];
+  const fmBody = fmMatch[1];
+
+  // Find the section header line (e.g., "validation_overrides:" at start of a line)
+  const sectionRe = new RegExp(`^${sectionName}\\s*:\\s*$`, 'm');
+  const sectionMatch = sectionRe.exec(fmBody);
+  if (!sectionMatch) return [];
+
+  // Extract lines after section header until next non-indented key or end of frontmatter
+  const startIdx = sectionMatch.index + sectionMatch[0].length;
+  const remaining = fmBody.slice(startIdx);
+  const lines = remaining.split(/\r?\n/);
+
+  const overrides = [];
+  let current = null;
+
+  for (const line of lines) {
+    if (/^\s*$/.test(line)) continue;
+    // New top-level key (no leading whitespace beyond comment) — end of section
+    if (/^[a-zA-Z_]/.test(line)) break;
+
+    // List item start: `  - rule: V-XX`
+    const listStart = /^\s*-\s+([a-zA-Z_]+)\s*:\s*(.*)$/.exec(line);
+    if (listStart) {
+      if (current) overrides.push(current);
+      current = {};
+      let val = listStart[2].trim().replace(/\s+#.*$/, '').replace(/^["'](.*)["']$/, '$1');
+      current[listStart[1]] = parseScalar(val);
+      continue;
+    }
+
+    // Continuation key inside current item: `    field: value`
+    const contKey = /^\s+([a-zA-Z_]+)\s*:\s*(.*)$/.exec(line);
+    if (contKey && current) {
+      let val = contKey[2].trim().replace(/\s+#.*$/, '').replace(/^["'](.*)["']$/, '$1');
+      current[contKey[1]] = parseScalar(val);
+      continue;
+    }
+  }
+  if (current) overrides.push(current);
+
+  return overrides;
+}
+
+function parseScalar(val) {
+  if (val === 'true') return true;
+  if (val === 'false') return false;
+  if (val === 'null' || val === '~' || val === '') return null;
+  if (/^-?\d+$/.test(val)) return parseInt(val, 10);
+  return val;
+}
+
+/**
+ * Build a Map from rule-id → override object for fast lookup.
+ * Per DEC-DEV-0012 C.5: approve_overrides с expires_at < now treat as inactive.
+ * validation_overrides всегда active (permanent severity downgrade).
+ *
+ * If both validation + approve override exist для same rule, validation_overrides
+ * wins (more permanent).
+ */
+function buildOverrideMap(validationOverrides, approveOverrides) {
+  const map = new Map();
+  const now = Date.now();
+
+  // approve_overrides first (potentially overridden by validation)
+  for (const ov of approveOverrides) {
+    if (!ov.rule) continue;
+    if (ov.expires_at) {
+      const expiry = Date.parse(ov.expires_at);
+      if (!isNaN(expiry) && expiry < now) {
+        // Expired — skip this override (re-apply rule)
+        continue;
+      }
+    }
+    map.set(ov.rule, { ...ov, _kind: 'approve' });
+  }
+
+  // validation_overrides second (wins if conflict — permanent severity downgrade)
+  for (const ov of validationOverrides) {
+    if (!ov.rule) continue;
+    if (ov.approved !== false) {
+      // approved field defaults to true if absent
+      map.set(ov.rule, { ...ov, _kind: 'validation' });
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Append finding entries to validation-pending.yaml with given status.
+ * status options: 'pending' (B2 quiet draft) | 'overridden' (D2 audit log).
+ */
+function queueValidationFindings(projectRoot, filePath, artifactId, findings, status) {
+  const pendingDir = path.join(projectRoot, '.product', '.pending');
+  try {
+    if (!fs.existsSync(pendingDir)) fs.mkdirSync(pendingDir, { recursive: true });
+  } catch (e) {
+    return;
+  }
+
+  const queueFile = path.join(pendingDir, 'validation-pending.yaml');
+  let queue = [];
+  if (fs.existsSync(queueFile)) {
+    try {
+      queue = parsePendingYaml(fs.readFileSync(queueFile, 'utf-8'));
+    } catch (e) {
+      queue = [];
+    }
+  }
+
+  const now = new Date().toISOString();
+  const relPath = path.relative(projectRoot, filePath).replace(/\\/g, '/');
+
+  findings.forEach((f) => {
+    const entry = {
+      artifact: artifactId,
+      file: relPath,
+      rule: f.rule,
+      severity: f.severity,
+      message: f.message,
+      status,
+      queued_at: now,
+    };
+    // For overridden entries — include audit metadata
+    if (status === 'overridden' && f.override) {
+      entry.override_kind = f.override._kind;
+      if (f.override.reason) entry.override_reason = f.override.reason;
+      if (f.override.approved_by) entry.override_approved_by = f.override.approved_by;
+      if (f.override.approved_at) entry.override_approved_at = f.override.approved_at;
+      if (f.override.expires_at) entry.override_expires_at = f.override.expires_at;
+    }
+    queue.push(entry);
+  });
+
+  try {
+    fs.writeFileSync(queueFile, formatPendingYaml(queue));
+  } catch (e) {
+    // Silent fail
+  }
 }
