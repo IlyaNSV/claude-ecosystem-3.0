@@ -54,7 +54,31 @@ Stop at 5-8 questions total. Don't overexplore in D1.1 — more research comes �
 
 ### Step 3: Draft PS
 
-Structure (per PS.md artifact spec):
+**Frontmatter** (canonical field names — per [PS.md artifact spec](../../docs/pmo/artifacts/PS.md)):
+
+```yaml
+---
+id: PS
+type: problem-statement
+title: "<short problem formulation, 5-10 слов>"
+status: draft                             # active after G1 approve
+confidence: high | medium | low           # C2 modification — required
+confidence_notes: |                       # REQUIRED if confidence != high; recommended всегда
+  <what's solid — evidence, direct signal>
+  <what's assumed — gaps, unverified claims>
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+version: 1
+---
+```
+
+**Canonical field names (НЕ варьировать — consistency с остальными 21 типами артефактов и C2 modification):**
+- `confidence` — **не** `confidence_level`, **не** `conf`
+- `confidence_notes` — **не** `confidence_rationale`, **не** `rationale`, **не** `confidence_reasoning`
+
+Проверка перед write: если ассистент склонен переназвать поле (например, «`confidence_rationale` звучит естественнее») — **нет, не переназывать.** Схема в PS.md зафиксирована; drift на уровне field names ломает tier-aware validation и будущие cross-artifact checks.
+
+**Body structure** (per PS.md artifact spec):
 
 ```markdown
 # Problem Statement

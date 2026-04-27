@@ -146,6 +146,27 @@ description: <one-line, для discovery>
 
 Lazy-loaded — Product Module load'ит per задаче (~3-5 одновременно).
 
+**Convention для skills, создающих артефакты** (codified DEC-DEV-0012, 2026-04-20):
+
+Каждый skill, создающий артефакт типа из каталога `docs/pmo/artifacts/`, **обязан содержать explicit frontmatter template** в теле skill (не только reference на artifact spec). Template должен:
+
+1. **Перечислить все canonical fields** с правильными именами (per artifact spec)
+2. **Включить anti-pattern warnings** — список запрещённых рядом-стоящих field names, которые AI склонен использовать «для естественности»
+3. **Использовать ASCII slug** в naming convention для filename (per `docs/pmo/artifacts/README.md` slug rule)
+
+**Reference implementation:**
+- [`skills/product/problem-discovery.md`](skills/product/problem-discovery.md) Step 3 (после DEC-DEV-0011 fix) — explicit PS frontmatter template + anti-pattern list (`confidence_rationale`, `rationale`, `confidence_reasoning` явно запрещены)
+- [`skills/product/note-promote.md`](skills/product/note-promote.md) Step 3 — explicit templates per target type (FM, SC, BR, IC, NFR, HYP) с anti-pattern warnings
+
+**Rationale:** Phase 2 PS drift (DEC-DEV-0011) показал: skills без explicit template подвержены AI-склонности «переименовать field для естественности». Inline templates + warnings — лучшая defensive programming в skill prompts.
+
+**При написании Phase 3 skill checklist:**
+- [ ] Frontmatter template присутствует
+- [ ] Все canonical fields перечислены
+- [ ] Anti-pattern warnings explicit
+- [ ] Filename slug rule referenced
+- [ ] DEV_JOURNAL entry если non-trivial design choice
+
 ## Что делать в этой сессии (Claude)
 
 При запуске сессии в этом репо:

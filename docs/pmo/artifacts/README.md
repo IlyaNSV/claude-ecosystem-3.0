@@ -213,6 +213,16 @@ draft ──────▶ active ──────▶ deprecated
 - Enumerable: `.product/<group>/<PREFIX>-<NNN>-<slug>.md` — `.product/segments/SEG-001-freelancers.md`
 - Cross-cutting: `.product/glossary.md`, `.product/design-system.md`
 
+**Slug derivation rule (codified DEC-DEV-0012, 2026-04-20):**
+- Slug = first 3-5 значимых words of `title`, lowercased, hyphenated, max 50 chars
+- **ASCII-only.** Cyrillic transliterate per ГОСТ 7.79-2000 System B (или эквивалент). Rationale: filesystem safety на Windows-cmd, git portability, search-replace tooling reliability, URL-safe export.
+- Stop-words exclude (the, a, an, и, для, с, на, etc.) — implementation hint, не strict rule
+- Examples:
+  - `title: "Freelance translators (rus-eng)"` → `freelance-translators` или `freelance-translators-rus-eng`
+  - `title: "Glossary retention drives conversion"` → `glossary-retention` (3 words sufficient)
+  - `title: "Фрилансеры-переводчики"` → `frilansery-perevodchiki` (transliterated)
+- Pilot reference: `my-first-test/.product/segments/SEG-001-solo-creators.md` (canonical pattern)
+
 ### Директория `.product/` — референсная структура
 
 ```

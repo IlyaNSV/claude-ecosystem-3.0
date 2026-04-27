@@ -729,49 +729,45 @@ Per-term actions:
 
 **Adversarial review** бизнес-артефактов — противовес confirmation bias ассистента и человека. Использует существующий `.claude/agents/devils-advocate.md` с business-prompts (DEC-I05).
 
-### 6.2 Когда запускается (magnitude-gated)
+### 6.2 Когда запускается (adaptive-depth, every change)
 
-**Обязательно (P-RULE-01, P-RULE-02 — magnitude-gated):**
+**Обязательно (P-RULE-01, P-RULE-02 — adaptive-depth):**
 
-DA триггерится только при **значимых** изменениях, не на каждый touch. Magnitude classifier:
+> **Refactored (DEC-DEV-0012, 2026-04-20):** ранее применялась magnitude-gated модель с `da-debt.yaml` mechanism (skip+batch для cosmetic changes). Опыт pilot и обсуждение C.1/C.2 показали: классификация magnitude стоит почти столько же, сколько сама проверка, а накопленный долг проверяется пост-фактум вместо момента принятия решения. Заменено на **adaptive-depth DA на каждое изменение**: один subagent invocation, который сам выбирает глубину анализа в зависимости от характера диффа. См. DEC-DEV-0012 в DEV_JOURNAL.
 
-**IC требует DA при:**
-- Creation (новый IC)
-- Severity change (любое движение to/from `critical`)
-- Statement change (semantic — если diff включает слова в логике инварианта, не только typos)
-- Entity change (IC переходит на другую сущность из BG)
+DA триггерится **на каждое** изменение active BR / IC, но subagent **сам адаптирует depth**:
 
-**IC НЕ требует DA при:**
-- Cosmetic edits (typos, formatting, переформулировка без изменения смысла)
-- Reference list additions/removals в `rules[]` или `lifecycles[]`
-- Frontmatter metadata updates (created/updated dates)
+**Шаг 1 (внутри subagent run, ~30 сек reasoning):**
+- Subagent анализирует git diff против HEAD
+- Классифицирует change как `cosmetic` или `significant`
+- Записывает rationale классификации в output
 
-**BR требует DA при:**
-- Creation (новый BR)
-- Parameter type change (enum→number, nullable flip, cardinality change)
-- Category change (validation → calculation)
-- Statement rewrite (semantic diff)
+**Шаг 2 (depth depends on Шаг 1):**
 
-**BR НЕ требует DA при:**
-- Parameter value tune в рамках того же type (`first_match` → `best_match`)
-- Cosmetic edits
-- Adding/removing scenarios refs (это cascade-handled, не DA-worthy)
+**Cosmetic** (~5 мин output):
+- Quick consistency check: «не сломал ли change существующие refs / supporting rules / lifecycle guards»
+- Один блок findings, без 6 линз
+- Triggers cosmetic: typo fixes, переформулировка без semantic change, reference list additions/removals (`rules[]`, `scenarios[]`, `lifecycles[]`), frontmatter metadata updates (created/updated/version)
 
-**DA debt mechanism:**
+**Significant** (~20-30 мин output):
+- Full 6-lens DA review per `agents/product/devils-advocate.md` template
+- Triggers significant:
+  - **IC:** creation, severity change to/from `critical`, statement semantic change, entity change
+  - **BR:** creation, parameter type change (enum→number, cardinality), category change, statement rewrite
 
-Если magnitude=skipped — изменение записывается в `.product/.pending/da-debt.yaml`. На следующем approve gate parent FM (или при /product:da-review --scope FM-xxx) — batch DA на накопленные изменения.
-
+**Output формат:**
+```yaml
+magnitude: cosmetic | significant
+classification_rationale: "Statement section unchanged; only parameter value tune from first_match to best_match"
+findings:
+  # full 6-lens block для significant; single consistency block для cosmetic
 ```
-.product/.pending/da-debt.yaml
-─────────────────────────────────
-- artifact: BR-010
-  changes:
-    - 2026-04-18T10:30: parameter linking_strategy first→best (skipped, low magnitude)
-    - 2026-04-18T11:15: added SC-007 to scenarios[] (skipped, ref add)
-- artifact: IC-003
-  changes:
-    - 2026-04-18T14:00: typo fix in statement (skipped)
-```
+
+**Преимущества vs прежней magnitude-gated модели:**
+- Никогда не пропускаем real changes (no skip → no debt накапливается)
+- Cost для cosmetic minimal (короткий context, короткий output)
+- Решения принимаются **в момент** изменения, не batched пост-фактум
+- Single subagent invocation (no double LLM call для classify + analyze)
 
 **Рекомендуется (optional):**
 - Перед generation handoff для complex фич (много SC, несколько 🔴 BR, UI-heavy)

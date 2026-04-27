@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-04-18.
+> **Последнее обновление:** 2026-04-26.
 
 ## Где мы сейчас
 
@@ -12,17 +12,19 @@
 ✅ Pre-pilot fix — pmo-mapping.yaml formal schema (simplified)
 ✅ Bootstrap infrastructure — global installer + /ecosystem:bootstrap + /ecosystem:verify
 ✅ Phase 2 — Product Module core (Discovery Quick + drift mechanisms)
+✅ Phase 2 pilot validated (2026-04-20) — 14 artifacts на my-first-test/, all gates passed
+✅ Phase 3 readiness gate (2026-04-20) — DEC-DEV-0012 architectural decisions consolidated
 
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 3 — Planning + Feature Enrichment (P1.B + P2.A)
-⏳ Phase 4 — Handoff + NFR + Product DA + Validation full
+⏳ Phase 3 — Planning + Feature Enrichment (P1.B + P2.A) — scope refined per DEC-DEV-0012
+⏳ Phase 4 — Handoff + NFR (F.5a) + Product DA (F.9) + Validation full
 ⏳ Phase 5 — Integrator Phase 2 (Installation + first adapter)
-⏳ 🎯 PILOT POINT — first greenfield end-to-end test
+⏳ 🎯 PILOT POINT — full end-to-end (handoff generation + external tool)
 ⏳ Phase 6 — Design Module (conditional, activate on first UI feature)
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs/update)
 
-📦 Post-MVP (v1.1+): Orchestrator Module concept, /ecosystem:upgrade
+📦 Post-MVP (v1.1+): Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, Orchestrator Module concept, /ecosystem:upgrade. Context: dev/v1_1_backlog.md
 📦 v2: P3 Feedback, P5 Actuality Refresh, multi-tool zones, etc.
 ```
 
@@ -159,63 +161,84 @@ claude
 
 **Цель:** `/product:plan` + `/product:feature` создают MVP scope, roadmap, releases, FM skeletons, обогащают FM до handoff-ready behavioral spec (SC/BR/LC/VC/IC).
 
-### Deliverables (~18 файлов)
+> **Scope refined 2026-04-20** per DEC-DEV-0012. Deep mode subagents и atomic mass-rename перенесены в v1.1 (см. [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md)). DA debt mechanism dropped — заменён adaptive-depth DA на каждое изменение (см. [`docs/pmo/processes.md §6.2`](docs/pmo/processes.md)). NFR Review F.5a deferred Phase 4.
 
-**commands/product/:**
+### Deliverables (~21 файл)
+
+**commands/product/ (5):**
 - `plan.md` — P1.B Planning Session
-- `feature.md` — P2.A Feature Enrichment (или P2.B Creation)
-- `cascade.md` — manual cascade check
+- `feature.md` — P2.A Feature Enrichment + P2.B Creation
+- `cascade.md` — manual cascade navigation (`<artifact-id>` или `--pending`)
 - `bg:review.md` — pending BG candidates batch review
-- `bg:rename.md` — mass-rename workflow
+- `bg:rename.md` — **manual preview workflow** (sed/IDE find-replace; atomic implementation → v1.1)
 
-**skills/product/ (9 feature skills):**
-- `planning-session.md` — P1.B orchestrator
-- `feature-session.md` — P2.A/B orchestrator
+**skills/product/ (12):**
+
+P1.B Planning:
+- `planning-session.md` — P1.B orchestrator (D1.6-D1.8)
 - `mvp-scoping.md` — MoSCoW discipline
 - `roadmap-planning.md` — 3-6 мес horizon
 - `release-planning.md` — RL-* с rollout plans
-- `scenario-authoring.md` — SC actor-verb format
-- `business-rule-extraction.md` — из SC steps
-- `invariant-discovery.md` — IC formalism, severity
+
+P2 Feature Definition:
+- `feature-session.md` — P2.A/B orchestrator (F.1-F.10) с placeholder'ами для F.5a NFR (Phase 4), F.8 Design (Phase 6), F.9 Product DA (Phase 4)
+- `scenario-authoring.md` — SC actor-verb format (F.2)
+- `business-rule-extraction.md` — из SC steps (F.3)
+- `lifecycle-derivation.md` — LC из SC + BR (F.4, с C.3 auto-approve logic)
+- `invariant-discovery.md` — IC formalism, severity (F.5)
+- `vc-derivation.md` — VC (Gherkin) из SC + BR + LC (F.6, с C.3 auto-approve logic)
+- `rpm-derivation.md` — RPM из SC.actors + BR authorization (F.7, с C.3 auto-approve logic)
+
+Cross-cutting:
 - `bg-extraction.md` — 5 phases algorithm
+- `cascade-protocol.md` — methodology document для navigation
 
-**skills/product/ (3 derivation skills):**
-- `lifecycle-derivation.md` — LC из SC + BR
-- `vc-derivation.md` — VC (Gherkin) из SC + BR + LC + NFR
-- `rpm-derivation.md` — RPM из SC.actors + BR authorization
+**hooks/product/ (3 new + 1 extension):**
+- `bg-extractor.js` — PostToolUse, Phase 1 Candidate Extraction → `.product/.pending/bg-candidates.yaml`
+- `cascade-check.js` — PostToolUse, **detection only + V-11 auto-fix**; full BFS auto-fix → v1.1
+- `br-change-trigger.js` — PostToolUse `.product/business-rules/*.md`, invokes DA-with-adaptive-depth subagent (P-RULE-02 refactored)
+- `ic-change-trigger.js` — PostToolUse `.product/invariants/*.md`, invokes DA-with-adaptive-depth subagent (P-RULE-01 refactored)
+- **Extension to `artifact-validate.js`** (Phase 2): parse `validation_overrides[]` + `approve_overrides[]` + inline `expires_at` check; log skipped rules в `validation-pending.yaml` со статусом `overridden` (per C.5)
 
-**subagents/product/:**
-- `market-researcher.md` — D1.2 Deep mode (8-phase pipeline)
-- `competitor-analyst.md` — D1.3 Deep mode
+**Deferred to v1.1+:** Deep mode subagents (`market-researcher.md`, `competitor-analyst.md`), atomic mass-rename, full BFS cascade auto-fix beyond V-11, bundle approve UX. Full context preserved в [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md).
 
-**hooks/product/:**
-- `bg-extractor.js` — PostToolUse, Phase 1 Candidate Extraction
-- `cascade-check.js` — BFS on approve
-- `ic-change-da-trigger.js` — P-RULE-01, magnitude-gated (A3)
-- `br-change-review-trigger.js` — P-RULE-02, magnitude-gated (A3)
+**Deferred to Phase 4:** F.5a NFR Review, F.9 Product DA Review (formal step), full V-* validation runner, `/product:handoff`.
+
+**Dropped (not deferred):** DA debt mechanism (per C.2 — adaptive-depth removes need).
 
 ### Acceptance criteria
 
-- [ ] `/product:plan` после Discovery → MVP scope, RM, RL-001, FM skeletons
-- [ ] `/product:feature FM-001` → полный P2.A: F.1 load context → F.10 FM in-progress
-- [ ] Cascade работает на реальном BR change (bundle approve)
-- [ ] BG extraction ловит bold terms, batched presentation работает
-- [ ] A1 auto-approve срабатывает для 🟢 артефактов с `confidence: high` + V-* passed
-- [ ] A3 magnitude-gating: minor BR tweak не триггерит DA review; semantic change — триггерит
-- [ ] Mass-rename через `/product:bg:rename` обновляет все 22 ссылки атомарно в single git commit
+- [ ] `/product:plan` после Discovery → MVP scope, RM, RL-001, FM skeletons (canonical frontmatter с ASCII slugs)
+- [ ] `/product:feature FM-001` → F.1-F.10 minus deferred Phase 4/6 steps; FM transitions planned → in-progress
+- [ ] `/product:feature "<идея>"` creation mode → F.0 D1-alignment + skeleton + enrichment
+- [ ] BG extraction ловит bold terms; `/product:bg:review` batched presentation работает
+- [ ] Cascade detection работает: edit BR → `.pending/cascade-pending.yaml` populated; V-11 bi-dir auto-fix работает; navigation через `/product:cascade`
+- [ ] Adaptive-depth DA: edit BR (semantic) → subagent invoked с full 6-lens; edit BR (cosmetic) → subagent invoked с lightweight consistency check; output содержит `magnitude` + `classification_rationale`
+- [ ] A1 auto-approve срабатывает для 🟢 артефактов (LC, VC, RPM) с `confidence: high` + applicable V-* tier rules passed; decision journal entry; conversational notification
+- [ ] D2 overrides: `validation_overrides`/`approve_overrides` parsed; expired overrides treat as inactive; skipped rules logged со статусом `overridden`
+- [ ] Manual mass-rename `/product:bg:rename` показывает preview + sed-suggest
 
 ### Estimated effort
 
-**4-6 часов.**
+**6-10 часов** (revised from 4-6 после DEC-DEV-0012 scope analysis):
+- 12 skills × 20-40 мин = 4-9 часов
+- 3 new hooks + 1 extension = 1-2 часа
+- 5 commands = 1-2 часа
+- Smoke test pilot = 1-2 часа
+- DEV_JOURNAL maintenance + spec sync = 30-60 мин
+
+Реалистично 2-3 рабочих сессии. После Phase 3 — pilot smoke test обязателен (CLAUDE.md «pilot after every phase» policy).
 
 ### Dependencies
 
 - Phase 2 (Discovery artifacts нужны как input для Planning и Feature)
+- Phase 2 pilot validated (DEC-DEV-0008) ✓
 
 ### Risks
 
-- Cascade protocol implementation на JS — самый хитрый hook. Если bi-dir refs auto-fix даёт false positives — пиши как warning, не блокировку.
-- Deep mode subagents требуют MCP (Firecrawl, Exa, GitHub). Quick mode fallback должен быть solid.
+- **Cascade protocol implementation на JS** — графовая операция; mitigation: detection-only scope для v1, V-11 auto-fix только.
+- **Adaptive-depth DA subagent prompt design** — single subagent invocation должен правильно классифицировать magnitude и адаптировать output; risk over/under-triggering. Mitigation: pilot test после Phase 3, refine через `/product:meta-feedback`.
+- **Skill frontmatter drift** — Phase 2 PS skill drift (DEC-DEV-0011) показал что AI rename fields. Mitigation: B.1 convention — explicit frontmatter template обязателен в каждом skill, создающем артефакт.
 
 ---
 
@@ -451,6 +474,13 @@ adapter invokes cc-sdd  → /kiro:spec-init → spec.json
 
 ## Post-MVP: v1.1 candidates
 
+**Deferred from Phase 3 (per DEC-DEV-0012, 2026-04-20):**
+- **Deep mode subagents** для D1.2/D1.3 Discovery — `market-researcher.md` + `competitor-analyst.md` (8-phase pipeline). Полный context для реализации в [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md). Bring-forward trigger: 2-3 real Discoveries показывают конкретные limits Quick mode.
+- **Atomic mass-rename** `/product:bg:rename` — git-stash workflow, conflict handling, rollback. v1 ships manual preview placeholder. Bring-forward trigger: 5+ mass-renames в течение месяца на active projects.
+- **Full BFS cascade auto-fix beyond V-11** — graph traversal с priority ordering, V-08 auto-fix, dependency status updates. v1 ships detection-only + V-11. Bring-forward trigger: pattern emerges из `cascade-pending.yaml` resolutions.
+- **Bundle approve UX для cascade** — consolidated diff + approve all/per-item. Tied to full BFS expansion.
+
+**Other v1.1+:**
 - **Orchestrator Module concept** — draft SPEC после реального pilot experience
 - **Pattern dictionary expansion** в `/product:patterns` — based on actual anti-patterns from pilot
 - **Automated periodic `/integrator:verify --light`** через ScheduleWakeup
