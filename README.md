@@ -96,7 +96,7 @@ claude
 2. **Tool-agnostic для D2-Tech и D3-D6** (DEC-A06). Внешние инструменты заменяемы через Integrator.
 3. **Self-contained handoff**. Универсальный markdown-snapshot для передачи фичи в любой реализатор.
 4. **Continuous consistency**. BG extraction, cascade protocol, bi-dir refs работают в фоне.
-5. **Adversarial validation**. Product DA review, magnitude-gated триггеры, 6 lenses.
+5. **Adversarial validation**. Product DA review, adaptive-depth триггеры (refactored DEC-DEV-0012 — single subagent invocation, self-classification), 6 lenses.
 6. **Drift detection**. `confidence:` поле, `/product:drift-check`, `/product:patterns`, `/product:meta-feedback` — против дрифта при долгих сессиях.
 
 ## Документация

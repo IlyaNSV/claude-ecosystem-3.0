@@ -3,7 +3,7 @@
 > **Статус:** v1.0 (2026-04-18)
 > **Роль:** ядро Ecosystem 3.0 — управление D1 (Discovery + Planning) и D2-Behavioral артефактами через унифицированный паттерн «Продуктовый ассистент draft → iterate → approve».
 > **Закрывает:** DEC-A08 (Product Assistant как отдельный agent), DEC-P13 (универсальный паттерн), DEC-ART01..11 (каталог), все итерации 1-9.
-> **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (magnitude-gated DA), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, meta-feedback, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
+> **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, meta-feedback, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
 
 ## 1. Philosophy & Role
 
@@ -74,7 +74,7 @@
 - Знанием всех 22 типов артефактов и их взаимосвязей
 - Умением вести structured dialogue: предлагать варианты, обосновывать, не навязывать
 - Памятью о решениях в проекте (через Memory MCP + decision journal)
-- Adversarial consciousness: magnitude-gated DA review (см. processes.md §6.2) — для significant changes, не cosmetic touches
+- Adversarial consciousness: adaptive-depth DA review (см. processes.md §6.2 — refactored DEC-DEV-0012): subagent сам classifies cosmetic vs significant и адаптирует depth в одном invocation
 - Итеративностью: готов к 3-4 раундам обсуждения перед approve, без frustration
 - **Confidence articulation (C2 modification):** перед каждым approve явно сообщает свою уверенность («Confidence: high — derived из 4 SC, transitions clear; единственная неопределённость — recovery path при concurrent edits») — даёт human point of leverage
 - **Self-meta-feedback (C3 modification):** замечает повторяющиеся false positives правил и предлагает downgrade через `/product:meta-feedback`
@@ -347,7 +347,7 @@
 
 - **`bg-extraction.md`** — алгоритм (processes.md §5), 5 phases, mass-rename
 - **`cascade-protocol.md`** — BFS обход, priority ordering, bundle approve (validation.md §6)
-- **`product-da-review.md`** — 6 линз, 3 tier findings, anti-sycophancy, magnitude-gated trigger logic (A3)
+- **`product-da-review.md`** — 6 линз, 3 tier findings, anti-sycophancy, adaptive-depth trigger logic (A3, refactored DEC-DEV-0012 — single subagent invocation, self-classification)
 - **`nfr-review.md`** — F.5a.0 Ask + F.5a.1 Define, sanity ranges integration
 - **`handoff-generator.md`** — 13 секций, DoR (mode-aware: draft/production per D1), hash computation, status determination
 - **`validation-runner.md`** — runs rules per context (inline, gate, on-demand), tier-aware (B1), quiet-mode-aware (B2), aggregates report
@@ -444,21 +444,32 @@
   next_step: D1.3 CA start
   ```
 
-### 6.4 `ic-change-da-trigger.js` (P-RULE-01, magnitude-gated per A3)
+### 6.4 `ic-change-trigger.js` (P-RULE-01, adaptive-depth per A3 + DEC-DEV-0012)
+
+> **Refactored DEC-DEV-0012, 2026-04-20.** Прежняя magnitude-gated модель (skip+batch для cosmetic с накоплением `.product/.pending/da-debt.yaml`) заменена на **adaptive-depth single subagent invocation**. См. processes.md §6.2 + validation.md §7 P-RULE-01. DA debt mechanism dropped permanently (см. dev/v1_1_backlog.md если кто-то предложит revival).
 
 - **Триггер:** Write/Edit на `.product/invariants/*.md`
-- **Действия:** Magnitude classification (validation.md §7 P-RULE-01):
-  - **Significant** (creation, severity change, semantic statement, entity change) → adds pending DA review в `.product/.pending/da-reviews.yaml`
-  - **Skip** (cosmetic, ref-only, metadata) → adds entry в `.product/.pending/da-debt.yaml`
-- **Effect:** IC cannot → active без approved DA review (для significant). Skipped — batched on next FM-level approve gate.
+- **Действия:** detect IC change → запись pending DA entry в `.product/.pending/da-pending.yaml` (artifact id + git diff против HEAD) + stderr signal. Active LLM session видит signal → orchestrator skill (feature-session.md) spawns `product-devils-advocate` subagent через Agent tool с `Mode: adaptive` brief.
+- **Subagent behavior:** Step 1 (~30 сек) — classify diff как `cosmetic | significant`, записывает rationale. Step 2 — adapt depth: `cosmetic` → quick consistency check (~5 мин output, single block); `significant` → full 6-lens review (~20-30 мин). Single LLM invocation, no double call.
+- **Output:** findings → `.product/.da-findings/IC-NNN-<YYYY-MM-DD>-<HHMM>.md` с frontmatter `magnitude` + `classification_rationale`.
+- **Effect:** IC cannot → active без resolved findings (для всех magnitudes — cosmetic check тоже может surface issue, требующий resolution).
 
-### 6.5 `br-change-review-trigger.js` (P-RULE-02, magnitude-gated per A3)
+### 6.5 `br-change-trigger.js` (P-RULE-02, adaptive-depth per A3 + DEC-DEV-0012)
+
+> **Refactored DEC-DEV-0012, 2026-04-20.** То же refactor что в §6.4 — magnitude-gated → adaptive-depth single invocation.
 
 - **Триггер:** Write/Edit на `.product/business-rules/*.md`
-- **Действия:** Magnitude classification:
-  - **Significant** (creation, parameter type change, category change, statement rewrite) → impact analysis + DA prompt
-  - **Skip** (parameter value tune, cosmetic, scenarios refs) → DA debt entry, cascade-only
-- **Effect:** BR cannot → active без impact analysis approve (для significant). Cascade protocol автоматически включается всегда.
+- **Действия:** detect BR change → pending DA entry + stderr signal. Orchestrator spawns subagent с `Mode: adaptive` brief.
+- **Subagent behavior:** Step 1 classify (cosmetic triggers: parameter value tune within same type, typo, refs change; significant triggers: parameter type change, category change, statement rewrite, creation), Step 2 adapt depth.
+- **Output:** findings → `.product/.da-findings/BR-NNN-<YYYY-MM-DD>-<HHMM>.md`.
+- **Effect:** BR cannot → active без resolved findings. Cascade protocol запускается отдельным `cascade-check.js` hook'ом независимо от DA (см. §6.7).
+
+### 6.7 `cascade-check.js` (PostToolUse, detection + V-11 auto-fix per DEC-DEV-0012)
+
+- **Триггер:** Write/Edit на `.product/**/*.md` (после артефактного активного изменения)
+- **Действия:** detection downstream artifacts через bi-dir refs; для V-11 (bi-dir consistency) — auto-fix add reverse ref если target в `active`; для остальных affected — записать pending entries в `.product/.pending/cascade-pending.yaml`. Full BFS auto-fix beyond V-11 → v1.1 (см. dev/v1_1_backlog.md).
+- **Quiet draft mode:** если target артефакт `status: draft` — skip auto-fix, queue только. Aligns B2.
+- **Output:** `.product/.pending/cascade-pending.yaml` + manual nav через `/product:cascade <artifact-id>` или `/product:cascade --pending`.
 
 ### 6.6 `product-handoff-gate.js` (PreToolUse)
 
@@ -900,7 +911,7 @@ Deadlock protection (OQ-P4):
 
 - [ ] `.claude/commands/product/feature.md`, `cascade.md`, `bg:review.md`, `bg:rename.md`
 - [ ] Skills: feature-session, scenario-authoring, business-rule-extraction, lifecycle-derivation, vc-derivation, rpm-derivation, invariant-discovery, bg-extraction, cascade-protocol
-- [ ] Hooks: bg-extractor, ic-change-da-trigger, br-change-review-trigger
+- [ ] Hooks: bg-extractor, cascade-check, ic-change-trigger, br-change-trigger (adaptive-depth per DEC-DEV-0012)
 - [ ] Артефакты: SC, BR, LC, VC, IC, RPM updates, BG continuous
 - [ ] Acceptance: одна FM обогащена end-to-end, cascade работает, BG extraction работает
 

@@ -1,9 +1,9 @@
 # Validation Rules Catalog — Ecosystem 3.0
 
 > **Версия:** 1.0 (2026-04-18)
-> **Объём:** 33 активных правила (V-*: 15, V-H-*: 10, V-MK-*: 8) + 2 process rules (magnitude-gated) + tier-based activation system
+> **Объём:** 33 активных правила (V-*: 15, V-H-*: 10, V-MK-*: 8) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
 > **Назначение:** единый каталог валидационных правил для артефактов D1-D2, handoff и Design Module.
-> **v1 modifications:** A3 (P-RULE-01/02 magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:meta-feedback` workflow), D2 (`approve_overrides` per artifact).
+> **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:meta-feedback` workflow), D2 (`approve_overrides` per artifact).
 
 ## 0. Critical Review Summary
 

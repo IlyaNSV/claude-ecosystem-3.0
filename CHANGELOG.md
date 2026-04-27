@@ -6,6 +6,88 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.0] — 2026-04-27
+
+Phase 3 release: Planning Module (P1.B) + Feature Definition Module (P2.A enrichment + P2.B creation) + adaptive-depth DA orchestration + cascade detection + BG extraction Phase 1. 23 new/modified files; ships 5 new slash commands, 14 new skills, 4 new hooks, 1 hook extension.
+
+Real-world smoke test pending — see `dev/PHASE_3_SMOKE_TEST_PLAN.md` (run by user в interactive Claude Code session с `cwd=my-first-test`).
+
+### Added — Planning Module (P1.B)
+
+- **`/product:plan`** — orchestrates D1.6 MVP Scope → D1.7 Product Roadmap → D1.8 Release Planning + FM skeletons. Per-artifact Strategic approve gates (per-MVP, per-RM, per-RL, per-FM). Singleton `planning-progress.yaml` session state per DEC-DEV-0013 #1.
+- **`skills/product/planning-session.md`** — orchestrator (D1.6-D1.8 sequence, gate management, decision journal entries).
+- **`skills/product/mvp-scoping.md`** — D1.6 MoSCoW prioritization. Discipline rules: MUST ≤8 items, WON'T mandatory, success copies primary HYP threshold exactly. Explicit MVP frontmatter template + anti-pattern field name list.
+- **`skills/product/roadmap-planning.md`** — D1.7 horizon goals + release sequence + validation cadence. 3-6 month horizon limit; goals must be measurable; each RL validates ≥1 HYP.
+- **`skills/product/release-planning.md`** — D1.8 two-phase output: RL-001 plan (Standard approve) → per-FM skeleton (Strategic per-FM approve). FM skeletons populate full canonical schema with empty arrays для D2 fields.
+
+### Added — Feature Definition Module (P2)
+
+- **`/product:feature`** — orchestrates F.0-F.10. Two modes:
+  - **Enrichment (`<FM-id>`)**: F.1-F.10 against planned FM skeleton
+  - **Creation (`"<idea>"`)**: F.0 idea parsing → F.0a D1-alignment check (top-2 SEG proposal per DEC-DEV-0013 #5) → F.0b skeleton creation → F.1-F.10
+  - **`--continue [<FM-id>]`**: resume per-FM session
+- **`skills/product/feature-session.md`** — orchestrator (F.0-F.10). Per-FM session state `feature-<FM-id>-progress.yaml` per DEC-DEV-0013 #1. Includes Phase 4/6 placeholders для F.5a (NFR), F.8 (Design), F.9 (FM-level DA).
+- **`skills/product/scenario-authoring.md`** — F.2 SC creation. Actor-verb format, BG term consistency, numbering convention (SC-NNN main + SC-NNNa alt + SC-NNNeN error).
+- **`skills/product/business-rule-extraction.md`** — F.3 BR formalization. Atomic rules с parameterization, categories (validation/calculation/authorization/workflow/constraint/state-transition). 🔴 Critical с auto-DA via br-change-trigger.js hook.
+- **`skills/product/lifecycle-derivation.md`** — F.4 LC derivation. Mermaid state diagrams. **A1 auto-approve eligible** per DEC-DEV-0013 #2: confidence: high + V-05 (states reachable) + V-06 (transitions trigger/guard) → auto-write status:active + journal entry + revert notification.
+- **`skills/product/invariant-discovery.md`** — F.5 IC formalization. Formal predicates с supporting BR refs, severity classification (critical/high/medium), recovery strategy. 🔴 Critical с auto-DA via ic-change-trigger.js hook.
+- **`skills/product/vc-derivation.md`** — F.6 VC Gherkin Given/When/Then. **A1 auto-approve eligible**: confidence: high + V-07 coverage check (main + alt + error flows covered).
+- **`skills/product/rpm-derivation.md`** — F.7 RPM incremental update. Preserves existing roles/actions/cells; adds new actors from SC.actors + actions from SC steps + conditional permissions from authorization BR. **A1 auto-approve eligible**: confidence: high + V-11 bi-dir refs valid.
+
+### Added — Cross-cutting skills
+
+- **`skills/product/bg-extraction.md`** — 5 phases of BG extraction algorithm methodology. Phase 1 (extraction) is hook-side; Phases 2-4 (classification/presentation/approval) handled via skill + `/product:bg-review` command. Mass-rename workflow (v1: manual preview; v1.1 atomic).
+- **`skills/product/cascade-protocol.md`** — cascade consistency methodology per DEC-DEV-0012 C.4. Detection + V-11 auto-fix only в v1; full BFS auto-fix beyond V-11 deferred v1.1. Cascade vs DA orchestration distinction (separate concerns, separate pending files).
+
+### Added — Phase 3 hooks
+
+- **`hooks/product/bg-extractor.js`** — Phase 1 of BG extraction. Bold term scanning with stoplist filtering, dedup against existing BG + rejected list, candidates appended to `.product/.pending/bg-candidates.yaml`.
+- **`hooks/product/cascade-check.js`** — cascade detection + V-11 (bi-dir refs) auto-fix. Skips auto-fix on draft target per DEC-DEV-0013 #3 quiet-draft consistency. Other rules queued к `.product/.pending/cascade-pending.yaml`.
+- **`hooks/product/br-change-trigger.js`** — P-RULE-02 enforcement. Captures git diff against HEAD, queues entry к `.product/.pending/da-pending.yaml` with `Mode: adaptive`, stderr signal для orchestrator (which spawns devils-advocate subagent через Agent tool).
+- **`hooks/product/ic-change-trigger.js`** — P-RULE-01 enforcement. Symmetric к br-change-trigger.js (different artifact directory, includes severity field).
+
+### Added — Auxiliary commands
+
+- **`/product:cascade`** — manual cascade navigation. Args: `<artifact-id>` для filter or `--pending` для full overview. Per-entry actions (re-validate / re-approve / dismiss с rationale / skip).
+- **`/product:bg-review`** — batch BG candidates review. Phases 2-4 of extraction algorithm (Phase 1 hook-side). Per-term actions (Y/edit/reject/M merge/K keep/R mass-rename).
+- **`/product:bg-rename`** — mass-rename BG term. v1 manual preview workflow (sed-suggest + IDE find-replace) + `--commit` finalize after manual apply. Atomic apply deferred v1.1 per DEC-DEV-0012 D.2.
+
+### Modified — D2 overrides runtime
+
+- **`hooks/product/artifact-validate.js`** extended per DEC-DEV-0012 C.5. New helpers `parseOverridesSection()` + `buildOverrideMap()` parse `validation_overrides[]` + `approve_overrides[]` from artifact frontmatter. Overridden findings logged со status: overridden в `.product/.pending/validation-pending.yaml` для audit trail. `expires_at` check для approve overrides (expired → re-applies rule).
+
+### Modified — Adaptive-depth DA refactor (cross-cutting)
+
+Per DEC-DEV-0013 spec drift fixes (A.1-A.4) — propagated DEC-DEV-0012 C.1 adaptive-depth model к остальным docs that DEC-DEV-0012 didn't sweep:
+
+- **`agents/product/devils-advocate.md`** refactored: `Mode: adaptive | full` brief field; new «Adaptive-depth mode» section (Step 1 classify cosmetic/significant + Step 2 adapt depth); dual output shapes (Shape A abbreviated for cosmetic; Shape B 3-tier for significant/full); anti-rationalization guard.
+- **`docs/product-module/SPEC.md`** §6.4-§6.5 refactored to adaptive-depth model + superseded blocks referencing DEC-DEV-0012; v1 modifications header + adversarial consciousness updated; §6.7 cascade-check.js documented (was missing).
+- **`docs/pmo/processes.md`** §14.2 hooks list updated (old names + magnitude-gated → new names + adaptive-depth).
+- **`docs/pmo/validation.md`** header + v1 modifications updated.
+- **`docs/pmo/pmo-map.md`** D2-08 row label.
+- **`README.md`** principle #5 (Adversarial validation) updated.
+- **`CHANGELOG.md`** earlier forward-compat note hook names corrected (1.0.0 section).
+
+### Added — Decision journal convention
+
+- **`.product/.decisions/journal.md`** — new convention per DEC-DEV-0013 #9. Created automatically by skills при first auto-approve / Strategic approve. Entry formats:
+  - `DEC-PLAN-NNN` — Strategic approve (manual gate)
+  - `DEC-AUTO-NNN` — A1 auto-approve (для 🟢 LC/VC/RPM)
+  - `DEC-CASCADE-NNN` — cascade entry resolution (especially dismissals с rationale)
+  - `DEC-PROMOTE-NNN` — NOTE → structured artifact (existing convention from Phase 2 D3 modification)
+
+### Added — Manifest registration (4 new hooks)
+
+- **`hooks/product/manifest.yaml`** — 4 new entries: bg-extractor, cascade-check, br-change-trigger, ic-change-trigger. All PostToolUse matcher `Write|Edit`; file-path filtering internal в JS per DEC-DEV-0013 #6. After bootstrap re-runs, all 6 hooks (2 Phase 2 + 4 Phase 3) registered automatically.
+
+### Notes
+
+- **Phase 3 estimate held:** 6-10 hours (revised from 4-6 после DEC-DEV-0012 scope analysis); actual implementation completed в один день focused work, including prerequisite spec drift fixes.
+- **B.1 frontmatter convention discipline pays off:** all Phase 3 skills include explicit frontmatter templates с anti-pattern field name lists (per CLAUDE.md + DEC-DEV-0011 lesson). No PS-style drift expected в Phase 3 outputs.
+- **Smoke test discipline:** static verification suite ran during Phase 3.I; real run requires interactive Claude Code session (deferred к user-driven execution per `dev/PHASE_3_SMOKE_TEST_PLAN.md`).
+
+---
+
 ## [1.0.0] — 2026-04-18
 
 Initial release. Includes 12 architectural modifications applied to baseline design (10 iterations of design from 2026-04-17).
@@ -100,7 +182,7 @@ Fix — manifest-based auto-registration:
 
 - **Bootstrap Step 6b** — new sub-step scans `hooks/*/manifest.yaml`, builds merged hook entries per `(event, matcher)` pair, merges with existing `.claude/settings.json` (preserves user-added hooks), writes back. Idempotent — re-running safe (dedupes by command string).
 
-- **Forward compatibility:** when future phases (Phase 3 adds bg-extractor, cascade-check, ic-change-da-trigger, br-change-review-trigger; Phase 4 adds handoff-gate; Design Phase 6 adds design-artifact-validate) ship new hooks — they just drop `.js` files + update `manifest.yaml`. Bootstrap picks up automatically.
+- **Forward compatibility:** when future phases (Phase 3 adds bg-extractor, cascade-check, ic-change-trigger, br-change-trigger; Phase 4 adds handoff-gate; Design Phase 6 adds design-artifact-validate) ship new hooks — they just drop `.js` files + update `manifest.yaml`. Bootstrap picks up automatically.
 
 - **Existing projects:** bootstrapped before this fix can re-run `/ecosystem:bootstrap` to get hooks registered without losing data (idempotent merge with existing settings).
 

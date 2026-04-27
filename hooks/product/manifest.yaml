@@ -34,7 +34,7 @@ hooks:
     events:
       - type: PostToolUse
         matcher: "Write|Edit"
-    description: "Inline validation of .product/**/*.md per validation.md catalog. Tier-aware (B1 modification): pilot shows only 🔴 Blocking; mvp adds 🟡 Warning; full shows all. Quiet-draft-mode (B2): findings queued when artifact status=draft, surfaced on approve."
+    description: "Inline validation of .product/ artifact files per validation.md catalog. Tier-aware (B1 modification): pilot shows only 🔴 Blocking; mvp adds 🟡 Warning; full shows all. Quiet-draft-mode (B2): findings queued when artifact status=draft, surfaced on approve. Phase 3.F D2 overrides: validation_overrides + approve_overrides parsed; overridden findings logged со status: overridden в .pending/validation-pending.yaml для audit trail."
 
   - id: session-state
     file: session-state.js
@@ -42,3 +42,31 @@ hooks:
       - type: PostToolUse
         matcher: "Write|Edit"
     description: "Snapshots .product/.sessions/current.yaml on .product/ artifact changes. Enables /product:<command> --continue recovery after session interrupt."
+
+  - id: bg-extractor
+    file: bg-extractor.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Phase 1 of BG extraction algorithm (per processes.md §5). Scans bold terms (markdown bold patterns) in .product/ artifact files; filters via stoplist (RU+EN function words + technical terms); dedupes against existing BG (glossary.md) + rejected list; appends candidates к .product/.pending/bg-candidates.yaml. Phases 2-4 handled by /product:bg-review command + bg-extraction.md skill."
+
+  - id: cascade-check
+    file: cascade-check.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Cascade detection + V-11 (bi-dir refs) auto-fix per DEC-DEV-0012 C.4. Identifies dependents through bi-dir refs; V-11 auto-fixes inline if target active (skip on draft per DEC-DEV-0013 #3 quiet-draft consistency); other rules queue к .product/.pending/cascade-pending.yaml для manual review via /product:cascade. Trigger matrix per processes.md §4.1 (D2-Behavioral focus в v1). Full BFS auto-fix beyond V-11 deferred v1.1."
+
+  - id: br-change-trigger
+    file: br-change-trigger.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "P-RULE-02 enforcement per adaptive-depth model (DEC-DEV-0012 + DEC-DEV-0013 #8). Filters internally к .product/business-rules/*.md only. Detects BR change → captures git diff против HEAD (best-effort) → appends entry к .product/.pending/da-pending.yaml с Mode: adaptive → stderr signal для orchestrator. Orchestrator (feature-session.md skill) reads stderr → spawns product-devils-advocate subagent с adaptive brief через Agent tool. Hook не вызывает subagent сам."
+
+  - id: ic-change-trigger
+    file: ic-change-trigger.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "P-RULE-01 enforcement per adaptive-depth model (DEC-DEV-0012 + DEC-DEV-0013 #8). Filters internally к .product/invariants/*.md only. Symmetric к br-change-trigger.js (same pattern, different artifact directory). Includes severity field в pending entry для subagent context. Stderr signal для orchestrator."

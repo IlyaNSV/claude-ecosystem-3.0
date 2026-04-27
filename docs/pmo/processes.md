@@ -1162,8 +1162,8 @@ NFR на solo-уровне — **очертания достаточности, 
 - `bg-extractor.js` — PostToolUse на `.product/**/*.md` save
 - `product-artifact-validate.js` — inline validation (tier-aware per `validation_tier` config)
 - `product-session-state.js` — session progress snapshot
-- `ic-change-da-trigger.js` — P-RULE-01 enforcement (magnitude-gated, см. §6.2)
-- `br-change-review-trigger.js` — P-RULE-02 enforcement (magnitude-gated)
+- `ic-change-trigger.js` — P-RULE-01 enforcement (adaptive-depth single subagent invocation, см. §6.2; refactored DEC-DEV-0012)
+- `br-change-trigger.js` — P-RULE-02 enforcement (adaptive-depth, см. §6.2; refactored DEC-DEV-0012)
 - `cascade-check.js` — на approve
 
 **B2: Quiet draft hooks behavior.** Все hooks при artifact `status: draft` работают в **quiet mode**:
