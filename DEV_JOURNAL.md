@@ -505,6 +505,101 @@ Phase 3 ROADMAP draft (2026-04-18) включала 18 файлов: 5 commands,
 
 ---
 
+## DEC-DEV-0013 — Phase 3 implementation kickoff + 9 ambiguity resolutions + 4 spec drift fixes
+
+**Date:** 2026-04-27
+**Trigger:** Per CLAUDE.md «Принципы работы § 1 DEV_JOURNAL обязателен» + Phase 3 implementation brief (Этап 3 «Decision gate»). Перед kickoff Phase 3 implementation работы — все validation findings и resolved ambiguities должны быть зафиксированы. User accepted findings + plan; этот entry consolidates resolutions для будущей справки.
+**Tag:** #architecture #scope-change #spec-revision #ux
+
+### Context
+
+Этап 1-2 загрузки контекста для Phase 3 implementation выявили:
+
+1. **9 ambiguities** в DEC-DEV-0012 outcome, требующих explicit resolution до implementation. Без резолюции skill prompts либо ambiguous, либо рискуют drift как PS skill DEC-DEV-0011.
+2. **4 spec drift'а** — superseded magnitude-gated language оставшийся в `docs/product-module/SPEC.md`, `docs/pmo/processes.md §14.2`, `agents/product/devils-advocate.md`, `CHANGELOG.md`. DEC-DEV-0012 update'ил `processes.md §6.2` + `validation.md §7`, но не sweep'нул другие docs — остаточные references противоречат refactored model.
+
+### Decisions — 9 ambiguity resolutions
+
+1. **planning-progress.yaml / feature-progress.yaml schema:** Per-FM file `.product/.sessions/feature-<FM-id>-progress.yaml`. Planning singleton `.product/.sessions/planning-progress.yaml` (только одна Planning сессия в момент времени). `current.yaml` tracks last-touched id для `--continue` defaults. **Rationale:** per-FM избегает overwrite при switching между features mid-enrichment; aligns DEC-DEV-0009 pattern (skill-managed orchestration vs hook-managed file metadata).
+
+2. **A1 conditions per 🟢 skill (auto-approve logic в C.3 implementation):**
+   - LC (lifecycle-derivation): V-05 (states reachable from initial via parsing transitions) + V-06 (transitions имеют trigger or guard) — оба auto-checkable in skill через parsing
+   - VC (vc-derivation): V-07 (count main/alt/error vs SC.flow_type)
+   - RPM (rpm-derivation): V-11 (bi-dir refs к SC.actors valid; нет orphan roles)
+   - All also require `confidence: high` + `confidence_notes` filled (C2 modification compliance)
+
+3. **cascade-check.js V-11 на draft target:** Skip auto-fix, queue только. Aligns B2 quiet draft mode — hook не surfacing на draft, queue findings для approve gate.
+
+4. **DA findings persistence:** `.product/.da-findings/<artifact-id>-<YYYY-MM-DD>-<HHMM>.md` per existing devils-advocate.md convention.
+
+5. **F.0 D1-alignment (P2.B creation mode):** AI proposes top-2 SEG candidates с rationale; user confirms или chooses новый SEG (mini-D1.4 invocation).
+
+6. **manifest.yaml entries для Phase 3 hooks:** Все 4 hooks PostToolUse, matcher `Write|Edit` (Claude Code matcher работает на tool name, не file path). File-path filtering — internal в JS (per Phase 2 pattern: artifact-validate.js, session-state.js).
+
+7. **A1 notification placement:** Skill записывает `status: active` + journal entry в `.product/.decisions/journal.md` + surfaces conversational notification user'у в orchestrator output (не stderr — user immediate sees + can revert через «revert <ID>»).
+
+8. **DA orchestration flow (NEW resolved):** Hooks (br-change-trigger.js / ic-change-trigger.js) PostToolUse — записывают pending entry в `.product/.pending/da-pending.yaml` + stderr signal. Active LLM session видит stderr → orchestrator skill (feature-session.md) spawns `product-devils-advocate` subagent через Agent tool с `Mode: adaptive` brief. Subagent внутри: Step 1 classify magnitude, Step 2 adapt depth (cosmetic → quick consistency / significant → full 6-lens). Findings → `.product/.da-findings/`. Approve gate (orchestrator) reads findings + presents to user.
+
+   **Critical architectural note:** hook не может spawn subagent напрямую (PostToolUse limitations — runs as bash, не в LLM context). Но stderr-driven follow-up в next LLM action preserves «in-the-moment» semantic per DEC-DEV-0012 — subagent invocation происходит на the same turn, не batched.
+
+9. **Decision journal location (NEW resolved):** `.product/.decisions/journal.md` — создаётся при первом auto-approve / DA decision (skill creates dir + file if not exists). Entry format:
+   ```
+   ## DEC-AUTO-NNN — Auto-approve <ARTIFACT-ID>
+   Date: <ISO>
+   Triggered by: <skill> A1 logic
+   Confidence: <high|medium|low>
+   Conditions met: [V-XX passed, ...]
+   Rationale: <one paragraph>
+   Revert: type 'revert <ARTIFACT-ID>' in conversation
+   ```
+   Convention новая для Phase 3, не в spec ранее. Documented в feature-session.md / planning-session.md skills.
+
+### Decisions — 4 spec drift fixes (executed pre-kickoff)
+
+**A.1 `agents/product/devils-advocate.md` refactor:**
+- Frontmatter description: добавлен adaptive-depth language; removed «Magnitude-gated trigger (A3)»
+- Brief format: `Mode: adaptive | full` field; для adaptive — `Diff (for adaptive mode):` field вместо pre-classified `Magnitude` от caller
+- Новая секция «Adaptive-depth mode» — Step 1 classify (cosmetic | significant с triggers per processes.md §6.2 + validation.md §7) + Step 2 adapt depth + Anti-rationalization guard (don't over-classify as cosmetic)
+- Output format split на Shape A (cosmetic abbreviated single-block) + Shape B (significant/full 3-tier); header теперь содержит `Mode`, `Magnitude`, `Classification rationale`
+
+**A.2 `docs/product-module/SPEC.md` refactor:**
+- Line 6 v1 modifications: «A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated)»
+- Line 77 (Adversarial consciousness): «adaptive-depth DA review» с reference на §6.2 refactored
+- Line 350 (`product-da-review.md` description): «adaptive-depth trigger logic» с DEC-DEV-0012 reference
+- §6.4 (`ic-change-trigger.js`): full refactor с superseded block referencing DEC-DEV-0012 + новая adaptive-depth flow description
+- §6.5 (`br-change-trigger.js`): same pattern
+- §6.7 added (`cascade-check.js`) — был не задокументирован в SPEC.md hooks section до DEC-DEV-0012 (только в processes.md / validation.md упоминался)
+- Line 903 hooks list: old hook names → new `ic-change-trigger`, `br-change-trigger`, `cascade-check`
+
+**A.3 `docs/pmo/processes.md` §14.2 hooks list (lines 1165-1166):** old names + «magnitude-gated» replaced на new + «adaptive-depth single subagent invocation»
+
+**A.4 `CHANGELOG.md` line 103 forward-compat note:** old hook names → new
+
+### Outcome
+
+All blocking spec inconsistencies resolved before Phase 3 implementation:
+- `devils-advocate.md` ready to be invoked с `Mode: adaptive` от new hooks (A.1) — будет работать как single subagent invocation per DEC-DEV-0012 C.1
+- `SPEC.md` / `processes.md` / `CHANGELOG` cleaned of magnitude-gated references (A.2-A.4) — нет ложных pointers для будущего читателя
+- 9 ambiguities documented с decisions for skill prompts to follow
+
+**Phase 3 plan revised:** 22 files (originally 21 + devils-advocate.md refactor counted as #20 в Phase 3.E), 10 sub-phases (A→J).
+
+Pre-existing skill drift (B.1 — `hypothesis-formulation.md` non-canonical fields `success_threshold`/`linked_segment` vs HYP.md spec `target_value`/`segment`) — out-of-scope Phase 3, noted for future audit. Pilot HYP-001..HYP-004 follow skill conventions, not spec — это accepted state per DEC-DEV-0011 «don't touch user data without permission».
+
+### Lessons
+
+- **Pre-kickoff sweep окупается.** 4 spec drift fixes найдены за 1 grep run по `magnitude-gated|da-debt|ic-change-da-trigger|br-change-review-trigger`; иначе бы каскадили в implementation как «спец говорит X, но что новый код должен делать?» blockers по 30 мин каждый. Total cost ~30 мин fix vs ~2-4 часа sunk cost при discovery в середине Phase 3.
+
+- **Spec docs не атомарны при refactor.** DEC-DEV-0012 update'ил `processes.md §6.2` + `validation.md §7`, но `processes.md §14.2` (hook list в том же документе) остался стейл — single-doc updates тоже могут leave hanging references. **Pattern для будущих architectural decisions:** при refactor — grep stale terms по всему `docs/` + `dev/` + agents/skills/commands/hooks/CHANGELOG перед закрытием decision. Add to checklist в DEV_JOURNAL template.
+
+- **«Single subagent invocation» constraint требует subagent-side classification.** Adaptive-depth model architecturally диктует, что subagent prompt должен handle оба mode'а internally — caller (hook) не может pre-classify (требует LLM call, ломает «no double LLM call» claim). Это меняет brief format и output format одновременно — refactor нужен полный, не cosmetic.
+
+- **«In-the-moment» semantics через stderr-driven orchestration.** PostToolUse hooks не могут directly spawn subagent (architectural boundary Claude Code), но stderr signals → next LLM action видит → spawns. Preserves DEC-DEV-0012 «no debt accumulation» claim, при этом respect'ит Claude Code architectural boundaries. **Pattern переносим на любой hook → subagent flow.**
+
+- **Decision journal location convention emerged late.** Phase 2 не создал `.product/.decisions/`, и spec не явно требовал. Phase 3 A1 auto-approve вынуждает существование — convention заводится здесь. Documenting в DEC-DEV-NNNN перед использованием в коде, не post-facto.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

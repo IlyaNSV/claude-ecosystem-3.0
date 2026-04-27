@@ -99,7 +99,7 @@
 | D2-Behavioral (SC/BR/LC/VC/IC/RPM/BG) | | ★ | ★ | ★ | ★ |
 | D2 NFR Review (F.5a, opt-in) | | ○ | ★ | ★ | ★ |
 | D2-05 (Design, если has_ui) | | ★ | ★ | ★ | ★ |
-| D2-08 (Adversarial Review, magnitude-gated) | | ★ | ★ | ★ | ★ |
+| D2-08 (Adversarial Review, adaptive-depth — refactored DEC-DEV-0012) | | ★ | ★ | ★ | ★ |
 | D2-Technical (через Integrator) | | ★ | ★ | ★ | ★ |
 | D3 (Development, через Integrator) | | ★ | ★ | ★ | ★ |
 | D4 (QA, через Integrator) | | ○ | ★ | ★ | ★ |
