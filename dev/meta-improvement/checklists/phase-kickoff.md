@@ -19,6 +19,53 @@
 
 ---
 
+## Invocation
+
+D7 checklist runs в одном из двух режимов:
+
+### Inline mode (current session)
+Если AI continued from prev work session и готов начать Phase <N> kickoff:
+> «Прогони dev/meta-improvement/checklists/phase-kickoff.md для Phase <N>»
+
+**Plus:** continuity. **Minus:** anchored к prev phase decisions; может miss что Phase <N> revealed нужно scope refactor.
+
+### Fresh-session mode (RECOMMENDED для bias-resistance)
+Открой **новый Claude Code session** в `cwd=claude-ecosystem-3.0`. Paste в качестве первого сообщения:
+
+```
+Я фрэш-сессия для Phase <N> kickoff на Ecosystem 3.0. Не загружай context из prev work — нужна clean view of next phase scope.
+
+Substrate (минимум):
+1. ROADMAP.md § «Где мы сейчас» + Phase <N> section
+2. CHANGELOG.md latest entry (что shipped к этому моменту)
+3. DEV_JOURNAL.md last 5 entries (recent decision context)
+4. dev/PHASE_<N>_READINESS.md (specific phase's readiness gate state)
+5. dev/v1_1_backlog.md (deferral context для cuttable scope discipline)
+6. dev/meta-improvement/CONVENTIONS.md (D7 conventions)
+7. dev/meta-improvement/checklists/phase-kickoff.md (то что executed)
+
+Затем execute phase-kickoff.md Section 1-5 на Phase <N>. Report architectural decisions, ambiguities, spec drifts found.
+
+Anti-bias guard: don't anchor к prev phase decisions automatically. Phase <N> может revealed что ROADMAP estimate wrong, scope wrong, dependencies wrong — surface честно даже если означает Phase scope refactor. Не «we already committed» reasoning — Phase plan = hypothesis, not contract (per CLAUDE.md «5. ROADMAP — гипотеза, не contract»).
+```
+
+After fresh-session reports → return для design refinement.
+
+### Why fresh-session matters
+
+Inline AI carries forward Phase N-1's mental model, may not see ambiguities introduced by Phase N's new scope. Fresh AI re-reads spec docs cold; closer к first-time reader experience того, кто будет implement.
+
+Особенно ценно для:
+- **Section 1 (architectural readiness)** — fresh AI questions «would I be guessing?» более honestly
+- **Section 3 (spec drift sweep)** — current AI остался при «old terms» в working memory
+- **Section 4 (scope discipline)** — current AI invested в prev decisions, may resist cutting
+
+### When to use which
+- **Inline:** small phases (e.g., maintenance Phase 7); rapid iteration cycles
+- **Fresh-session:** primary recommendation для substantive phases с architectural work; mandatory if Phase N-1 closure surfaced architectural findings (e.g., Phase 4 kickoff per DEC-DEV-0019 C.6 bootstrap finding)
+
+---
+
 ## Section 1 — Architectural readiness (≤30 min)
 
 **Цель:** identify decisions left implicit / ambiguous в Phase N spec; resolve before kickoff. Pattern from DEC-DEV-0012 (15 items resolved за ~3 conversation turns; ROI 3-5x vs sunk cost при mid-phase discovery).

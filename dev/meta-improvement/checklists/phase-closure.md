@@ -21,6 +21,51 @@ If any unchecked — abort closure, finish phase first.
 
 ---
 
+## Invocation
+
+D7 checklist runs в одном из двух режимов:
+
+### Inline mode (current session)
+Если AI just завершил Phase N implementation work:
+> «Прогони dev/meta-improvement/checklists/phase-closure.md на Phase <N>»
+
+**Plus:** быстрый, no setup. **Minus:** тот же AI bias может smooth over findings которые AI created («это intentional», «edge case acceptable»).
+
+### Fresh-session mode (RECOMMENDED для bias-resistance)
+Открой **новый Claude Code session** в `cwd=claude-ecosystem-3.0`. Paste в качестве первого сообщения:
+
+```
+Я фрэш-сессия для Phase <N> closure run на Ecosystem 3.0. Не загружай context из current ongoing work — нужна непредвзятая проверка.
+
+Substrate (минимум):
+1. CHANGELOG.md `[<latest version>]` секцию
+2. ROADMAP.md § «Где мы сейчас»
+3. DEV_JOURNAL.md last 5 entries
+4. dev/meta-improvement/CONVENTIONS.md (D7 conventions)
+5. dev/meta-improvement/checklists/phase-closure.md (то что executed)
+
+Затем execute phase-closure.md step-by-step на Phase <N>. Report findings inline.
+
+Anti-bias guard: НЕ «smooth over» findings to look good. AI которая designed Phase <N> могла бы rationalize («это intentional», «edge case acceptable»). Ты — independent observer без attachment к work product. Surface честно даже если outcome uncomfortable. Если steps reveal что-то wrong with the work — это правильное поведение.
+```
+
+After fresh-session reports findings → return main session для action / DEC-DEV entry.
+
+### Why fresh-session matters
+
+Inline AI biased к work just done; rationalize away findings. Fresh AI = independent observer. Особенно ценно для:
+- **Step 3 (consistency)** — current AI знает «I meant X», not «doc says Y»
+- **Step 5 (memory sync)** — current AI имеет updated mental model that doesn't match memory file
+- **Architectural findings (вроде DEC-DEV-0019 bootstrap)** — current AI tends к «later, focus current»; fresh AI surfaces «this blocks future phases»
+
+For solo dev — fresh session = available substitute для absent code reviewer.
+
+### When to use which
+- **Inline:** small / low-risk phase closures; pilot of D7 itself; rapid iteration cycles
+- **Fresh-session:** primary recommendation для each phase closure post-Stage 2 (per user agreement 2026-04-28); особенно для phases с substantive architectural work
+
+---
+
 ## Step 1 — Documentation health check (≤15 min)
 
 **Цель:** обход core ecosystem docs, поиск doc rot (stale references, outdated status banners, dangling pointers).
