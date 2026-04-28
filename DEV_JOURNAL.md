@@ -930,6 +930,149 @@ Phase 3 closure run = next step (DEC-DEV-0018) — first concrete application of
 
 ---
 
+## DEC-DEV-0018 — Phase 3 closure run + first D7 application
+
+**Date:** 2026-04-28
+**Trigger:** Apply `dev/meta-improvement/checklists/phase-closure.md` (Stage 2 D7 deliverable, DEC-DEV-0017) к Phase 3 immediately после design — first concrete D7 application; living ROI test of D7 utility per DESIGN_KICKOFF.md scope discipline.
+**Tag:** #pilot-finding #refactor #tooling
+
+### Context
+
+Per user's explicit request «применить D7 на текущем моменте». First instance of phase-closure.md run. Concurrent purposes:
+1. **Properly close Phase 3** (was open ended after DEC-DEV-0014; smoke test queued user-side но closure hygiene никто не делал)
+2. **Validate D7 design** (≤60 min budget; if 0 findings → over-engineered; if 5+ → pattern proven; baseline expectation: bootstrap regression already known + memory stale already known = 2 guaranteed findings)
+
+### Findings per checklist step
+
+**Pre-flight ✓:** Phase 3 commits merged, CHANGELOG updated, DEC-DEV-0014 closure entry exists, git status clean.
+
+**Step 1 — Doc health check (5 finds, all fixed inline):**
+1. `README.md` line 5 — «Статус: v1.0 — готова к pilot имплементации» → updated к «v1.1.0 — Phase 0-3 shipped; Phase 3 smoke test pending; Phase 4 next»
+2. `CLAUDE.md` § «Где мы сейчас» snapshot — listed Phase 3 как «⏳ Next» (stale; Phase 3 closed) → refreshed
+3. `CLAUDE.md` item 4 «Если starting Phase 3 — пройди dev/PHASE_3_READINESS.md» (stale + would dangle after archive) → generic «Перед стартом phase — phase-kickoff.md (D7) + dev/PHASE_<N>_READINESS.md»
+4. `CLAUDE.md` tree dev/ subdir showed только PHASE_3_READINESS.md (incomplete + Phase-3-specific) → generic listing с meta-improvement/, PHASE_<N>_READINESS.md, _archive/
+5. `dev/PHASE_4_READINESS.md` status banner ✓ (already correct, says «Phase 3 implementation complete»)
+
+**Step 2 — Bootstrap regression (1 finding queued, user execution required):**
+
+User's primary painpoint origin: bootstrap не обновляет `my-first-test/` с Phase 2 → Phase 3. Rule #2 cannot be self-executed from this session (interactive Claude Code needed in pilot project cwd).
+
+Inventory Phase 3 additions:
+- 5 commands: `plan`, `feature`, `cascade`, `bg-review`, `bg-rename`
+- 13 skills: planning-session, mvp-scoping, roadmap-planning, release-planning, feature-session, scenario-authoring, business-rule-extraction, lifecycle-derivation, invariant-discovery, vc-derivation, rpm-derivation, bg-extraction, cascade-protocol
+- 4 hooks: bg-extractor, cascade-check, br-change-trigger, ic-change-trigger
+- 1 hook extension: artifact-validate.js (D2 overrides)
+
+User-side execution + post-state verification documented в Closing section ниже.
+
+**Step 3 — Doc consistency (1 find fixed + others ✓):**
+1. **Skill count discrepancy:** ROADMAP.md line 18 + CHANGELOG.md line 11 stated «14 new skills» — actual filesystem = 13. Math check: «23 files = 5 cmds + 13 skills + 4 hooks + 1 ext» — sum ✓; «14 skills» variant gives 24 ≠ 23 (arithmetic disagrees with own claim). Both fixed inline.
+2. Hook names ✓ — `validation.md`, `processes.md`, `SPEC.md` всё use new names (`br-change-trigger`, `ic-change-trigger`, `cascade-check`, `bg-extractor`); old names (`br-change-review-trigger`, `ic-change-da-trigger`) только в historical refactor blocks или archived `dev/PHASE_3_READINESS.md` per DEC-DEV-0013 sweep.
+3. CHANGELOG additions resolve ✓ (spot check — `lifecycle-derivation.md`, hook manifest entries match files).
+4. B.1 convention spot check on `lifecycle-derivation.md` ✓ (description present + 9 frontmatter pattern matches confirming inline templates per CLAUDE.md «Skill конвенции»).
+
+**Step 4 — Cleanup (1 archive + ✓ rest):**
+1. `dev/PHASE_3_READINESS.md` → `dev/_archive/phase-3/PHASE_3_READINESS.md` (per E1 decision via `git mv`)
+2. `dev/PHASE_3_SMOKE_TEST_PLAN.md` kept active (smoke run pending — stays until run, then archive next closure)
+3. No orphan «TODO Phase 3» markers in shipped artifacts ✓
+4. `dev/` count post-archive: SPEC dirs + meta-improvement/ + 3 active phase docs + v1_1_backlog + _archive — reasonable per CONVENTIONS §5
+
+**Step 5 — Memory MCP sync (3 files updated):**
+1. `project_ecosystem_status.md` — was 8 days stale («Phase 3 ready to start»); now reflects «Phase 3 closed + D7 Stage 2 active + closure run»
+2. `project_ecosystem_architecture.md` — added D7 Meta-Improvement Module + Phase 3 architectural patterns (A1 auto-approve, adaptive-depth DA via stderr orchestration, per-FM session state, B.1 frontmatter convention)
+3. `MEMORY.md` index — descriptions refreshed for status + architecture + methodology entries
+
+### Time
+
+~45 min total (within ≤60 min budget):
+- Step 1: ~15 min (5 finds, multiple files)
+- Step 2: ~5 min (documentation only; user runs)
+- Step 3: ~10 min (count verification + grep sweeps + B.1 spot check)
+- Step 4: ~3 min (single archive operation)
+- Step 5: ~10 min (3 memory files rewrite)
+- Synthesis + this entry: ~5 min
+
+### Refinements applied к phase-closure.md (per CONVENTIONS §10)
+
+1. **Step 1 substep added:** Root doc snapshots + tree diagrams refresh (was implicit; Phase 3 closure caught 2 stale tree/snapshot blocks в CLAUDE.md). Pattern: snapshot phrases nominally honest disclaimers, but в практике require explicit closure-step refresh.
+
+2. **Step 3 substep added:** Count verification with explicit `ls | wc -l` ↔ ROADMAP/CHANGELOG arithmetic check. Phase 3 closure caught «14 skills» typo в обоих docs that contradicted own arithmetic.
+
+3. **Refinement tracker row** populated с Phase 3 actual: 9 findings, ~45 min, 2 refinements applied.
+
+### Outcome
+
+**Phase 3 closure complete на developer side.** Bootstrap regression (Step 2) pending user execution. Phase 4 readiness gate один step closer (per `dev/PHASE_4_READINESS.md` Section A — closure findings done; smoke test still queued).
+
+**D7 utility validated:** 9 findings vs 0-finding-over-engineered-baseline. Bootstrap regression + memory stale (2 known) + 7 emergent (5 doc rot + 1 count typo + 1 archive). All would've compounded across Phase 4-5 без closure ritual. ROI clearly positive.
+
+### Lessons
+
+#### D7 mechanism validation
+
+1. **Phase closure ritual catches real rot.** 9 issues в один Phase closure — not because Phase 3 was sloppy, but because hygiene activities are systematically deferred without explicit checklist. User's 10-15:1 add:cleanup ratio observation correct и actionable.
+
+2. **«Inline-step approach for cross-cutting concerns» (DEC-DEV-0017 lesson) validated.** Bootstrap regression as Step 2 (vs separate doc) + Memory sync as Step 5 — both natural fit во flow без navigation overhead. Promote-к-separate-doc trigger NOT met.
+
+3. **«Cuttable scope discipline» в meta-domain validated.** Stage 2 ships 3 files; closure runs в ≤60 min. Если бы я добавил pattern library starter + bootstrap-regression standalone + memory-sync skill — closure run был бы 2-3 hours, отстой ROI.
+
+#### Concrete pattern observations
+
+4. **Skill count typos propagate across docs.** Single source of truth = filesystem. ROADMAP/CHANGELOG estimates need verification. Refinement applied: Step 3 sub-step 5 (count verification).
+
+5. **CLAUDE.md «Где мы сейчас» snapshot is fragile but worth keeping.** Two options weighed: (a) refresh per closure (current); (b) remove snapshot, rely solely on ROADMAP. Option (a) chosen для AI loading-context utility; closure ritual handles rot. Snapshots deserved explicit Step 1 substep.
+
+6. **Tree diagrams в long-living root docs drift fast.** Phase-N specific entries в CLAUDE.md tree showed only PHASE_3_READINESS.md. Replaced с generic listing. Lesson: avoid Phase-N specific items в long-living root docs; use generic patterns / placeholders.
+
+7. **Memory MCP stale was substantial (8 days).** Confirms reference model component #5 importance. Manual update ~10 min для 3 files; not heavy enough для escalation к skill yet (per CONVENTIONS §6 trigger). Re-evaluate after Phase 4 closure.
+
+8. **Step 2 architectural constraint confirmed:** bootstrap regression cannot be self-executed from current session (no spawn-Claude-in-other-cwd capability). Documentation + read-only post-state verification = working pattern для Stage 2.
+
+#### Process-level
+
+9. **«Living application as ROI test» pattern proves out.** Built D7 → immediately applied → discovered refinements during application → updated artifacts in same session. Без application, refinements would've waited until Phase 4 closure (1+ phase delay). Pattern: «Stage 2 ship + immediate Stage 2 application» preserves refinement loop tight.
+
+10. **Closure run finds clarify D7 scope для Stage 3+.** 0 findings would've meant over-design; 5+ findings means pattern real (got 9). Stage 3+ formalization triggers (skill / command / hook) need 3+ closure runs showing same friction class. Phase 4 + 5 closures will reveal.
+
+### Open для Phase 4 readiness gate
+
+- **Bootstrap regression result** — populates retroactive update к этому entry (or separate DEC-DEV-NNNN if substantive findings)
+- **Memory MCP automation** — re-evaluate trigger после Phase 4 closure
+- **Phase-closure refinements adoption** — verify Step 1.4 + Step 3.5 actually run в Phase 4 closure (validates refinement protocol per CONVENTIONS §10)
+
+### Next
+
+**User executes (interactive Claude Code session in pilot project):**
+
+```
+cd C:/Users/pw201/WebstormProjects/my-first-test
+claude
+> /ecosystem:bootstrap
+```
+
+**Then back-verify here (read-only checks из этой сессии):**
+
+```bash
+# expect 12 commands (7 Phase 2 + 5 Phase 3)
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/commands/product/
+
+# expect 25 skills (12 Phase 2 + 13 Phase 3)
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/skills/product/
+
+# expect 6 hook files
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/hooks/product/
+
+# expect ≥6 hook command entries
+grep -c '"command"' C:/Users/pw201/WebstormProjects/my-first-test/.claude/settings.json
+
+# verify Phase 2 .product/ artifacts intact
+ls C:/Users/pw201/WebstormProjects/my-first-test/.product/
+```
+
+If bootstrap succeeds + all checks pass: Phase 3 closure 100% complete; Phase 4 readiness gate unblocked (modulo smoke test). If bootstrap regression: file specific issue, fix in `chore(bootstrap): Phase 3 regression` commit.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

@@ -2,7 +2,7 @@
 
 > **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D6 внешним инструментам через универсальный handoff.
 
-**Статус:** v1.0 — готова к pilot имплементации.
+**Статус:** v1.1.0 — Phase 0-3 shipped (Discovery + Planning + Feature Enrichment); Phase 3 real-run smoke test pending; Phase 4 (Handoff + NFR + Validation full) next. См. [CHANGELOG.md](CHANGELOG.md) и [ROADMAP.md](ROADMAP.md).
 **Целевая аудитория:** solo-разработчики, ведущие продуктовые проекты с Claude Code как primary tool.
 
 ---

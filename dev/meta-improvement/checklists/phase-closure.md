@@ -41,6 +41,11 @@ If any unchecked — abort closure, finish phase first.
 
 3. **Phase N-specific instructions в CLAUDE.md / README** — обычно есть текст вроде «Если starting Phase N — пройди dev/PHASE_<N>_READINESS.md». После closure он rot. Generic заменить на «Если starting next phase» или удалить если cleanup.
 
+4. **Root doc snapshots + tree diagrams** (added Phase 3 closure refinement, 2026-04-28):
+   - `CLAUDE.md` § «Где мы сейчас» (если есть snapshot block) — отрефреш list
+   - Tree diagrams в `CLAUDE.md` / `README.md` / docs/ — содержат ли Phase-N specific entries that drift? Заменить на generic patterns где возможно.
+   - Pattern fragility lesson: snapshot phrases вроде «На момент создания этого файла» nominally honest disclaimer, но в практике refresh requires explicit closure step.
+
 ### Pass
 
 - All status banners current
@@ -139,6 +144,15 @@ If any unchecked — abort closure, finish phase first.
 3. **CLAUDE.md skill conventions ↔ skills frontmatter** — pick 2-3 random new skills, verify follow B.1 convention (explicit frontmatter template + anti-pattern list per CLAUDE.md «Skill конвенции»).
 
 4. **ROADMAP Phase N section vs actual** — claimed «X commands + Y skills + Z hooks» — actually shipped?
+
+5. **Count verification** (added Phase 3 closure refinement, 2026-04-28):
+   ```bash
+   # filesystem truth
+   ls commands/<module>/*.md | wc -l
+   ls skills/<module>/*.md | wc -l
+   ls hooks/<module>/*.js | wc -l
+   ```
+   Сверить с ROADMAP claims + CHANGELOG `[<version>]` Added section breakdown. Math должна сходиться (e.g., «X cmds + Y skills + Z hooks + N ext = total» — проверь arithmetic). Phase 3 closure caught «14 skills» typo в обоих ROADMAP+CHANGELOG (actual = 13).
 
 ### Pass
 
@@ -260,6 +274,6 @@ If закрытие revealed что-то that should've been в Phase N implemen
 
 | Phase | Closure date | Findings count | Time | Refinements |
 |---|---|---|---|---|
-| Phase 3 | 2026-04-28 | TBD | TBD | TBD |
+| Phase 3 | 2026-04-28 | 9 (5 doc rot + 1 consistency + 1 archive + 3 memory + 1 bootstrap pending user) | ~45 min | Step 1.4 (root doc snapshots), Step 3.5 (count verification) |
 | Phase 4 | TBD | | | |
 | Phase 5 | TBD | | | |
