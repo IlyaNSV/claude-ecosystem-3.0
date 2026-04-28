@@ -141,6 +141,68 @@ Bootstrap Step 1d предложит pre-stage широкого allowlist в `.c
 
 ---
 
+## Блок C — обновление existing project
+
+После того как новая версия Ecosystem 3.0 вышла (например, после Phase 4-7 ship), обновить existing pilot project:
+
+### C.1 Update global cache (если нужна свежая команда `/ecosystem:update`)
+
+Если `/ecosystem:update` ещё нет в автокомплите — повторить `A.3` global installer. Idempotent.
+
+### C.2 В projects directory
+
+```powershell
+cd path/to/your/product
+claude
+```
+
+В Claude Code:
+
+```
+> /ecosystem:update --dry-run    # ← preview изменений
+```
+
+Smoke-проверить changeset preview. Затем без `--dry-run`:
+
+```
+> /ecosystem:update
+```
+
+Default behavior:
+- Backup `.claude/` → `.claude-backup-<timestamp>/` перед изменениями
+- Sync ecosystem zone (commands/skills/agents/hooks/docs/templates) — rsync-style (delete obsolete + copy fresh)
+- Re-derive hooks section в settings.json from latest manifest
+- Preserve user zone (settings.local.json, product.yaml, .env, integrator/, .product/)
+
+**Что НЕ trogает /ecosystem:update:**
+- `.product/` — артефакты (всегда intact)
+- `.env`, `.claude/settings.local.json`, `.claude/product.yaml` — user config
+- Claude Code auto-files (sessions, todos, etc.)
+
+### C.3 Verify
+
+```
+> /ecosystem:verify
+```
+
+Если что-то broken — rollback:
+
+```bash
+rm -rf .claude
+mv .claude-backup-<timestamp> .claude
+```
+
+`.product/` not touched → artifacts intact regardless.
+
+### C.4 Difference: bootstrap vs update
+
+- `/ecosystem:bootstrap` — для greenfield (нет .claude/ или нет ecosystem signature)
+- `/ecosystem:update` — для existing install (есть ecosystem signature)
+
+Bootstrap re-install option (b) Merge — DEPRECATED per [DEC-DEV-0019](DEV_JOURNAL.md), используй `/ecosystem:update`.
+
+---
+
 ## Опциональные шаги
 
 ### GitHub Personal Access Token

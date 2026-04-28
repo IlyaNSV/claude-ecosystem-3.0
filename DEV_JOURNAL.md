@@ -1217,6 +1217,157 @@ Both `phase-closure.md` and `phase-kickoff.md` extended с «Invocation» sectio
 
 ---
 
+## DEC-DEV-0020 — `/ecosystem:update` standalone command (closes DEC-DEV-0019 bootstrap findings)
+
+**Date:** 2026-04-28
+**Trigger:** DEC-DEV-0019 4 architectural bootstrap findings + Path Y recommendation. User chose «закроем эту задачу сейчас, не подмешивая в Phase 4». Standalone implementation track per Phase 4 readiness item C.6 resolution upfront.
+**Tag:** #architecture #tooling #ux
+
+### Context
+
+DEC-DEV-0019 surfaced 4 critical findings про `/ecosystem:bootstrap` re-install path. Path Y was recommended (split: bootstrap greenfield-only + new `/ecosystem:update` для existing projects). User opted для immediate implementation вместо deferring к Phase 4 architectural readiness.
+
+Mini-readiness gate (3 architectural decisions, all accepted «ага по всем»):
+
+**Q1: Allowlist vs blocklist?** Allowlist (только commands/, skills/, agents/, hooks/, docs/, templates/, output-styles/ subdirs + README/CHANGELOG/ROADMAP/BOOTSTRAP/install.sh/install.ps1/.env.template/gitignore.template root files). Anything else — never enters `.claude/`. Safer; explicit enumeration; защищает от future contamination if dev/ растёт.
+
+**Q2: Delete obsolete files в ecosystem zone?** Yes — rsync-style sync для allowlisted subdirs (delete files in `.claude/<subdir>/` not present в upstream + copy fresh). Risk mitigation: pre-update backup `.claude/` → `.claude-backup-<timestamp>/` (default; skip только с `--no-backup` flag).
+
+**Q3: Manifest + settings.json hooks sync?** Always overwrite manifest.yaml from upstream (it's в hooks/ subdir → in ecosystem zone). Re-derive hooks section в settings.json from new manifest. Preserve permissions section + other top-level fields verbatim. Idempotent.
+
+### Options considered (Path X / Y / Z из DEC-DEV-0019)
+
+- **Path X — refactor bootstrap.md zone-based merge** (one command, multi-mode). Pros: single command. Cons: bootstrap карьеры multi-mode complexity; greenfield + update flows mix; harder mental model.
+- **Path Y (chosen) — split: bootstrap greenfield-only + new /ecosystem:update.** Pros: cleaner separation match natural workflow («install once» vs «update each phase»); each command single-purpose; bootstrap stays simple. Cons: 2 commands instead of 1.
+- **Path Z — defer V1.1, document workaround.** Pros: zero new code now. Cons: tech debt compounds across Phase 4-7 для existing pilots; user pain persists.
+
+**Path Y rationale:** match natural conceptual cleavage. Bootstrap = «set everything up» (greenfield assumption); update = «sync to latest, preserve user state» (existing assumption). Mixing them в bootstrap caused all 4 DEC-DEV-0019 findings.
+
+### Decision
+
+**Implemented:**
+
+1. `commands/ecosystem/update.md` (new command, ~280 lines):
+   - 8 execution steps: signature check, backup, clone temp, compute changeset (с `--dry-run`), apply, re-derive hooks, cleanup+verify, summary
+   - Allowlist explicit (subdirs + root files), never-copy zone explicit (CLAUDE.md root, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md), user zone explicit (settings.local.json, product.yaml, integrator/, .product/)
+   - Flags: `--offline`, `--dry-run` (recommended first run), `--force`, `--no-backup`
+   - Rollback workflow documented
+   - Comparison table bootstrap vs update
+
+2. `commands/ecosystem/bootstrap.md` minor edit (re-install scenario):
+   - Added recommendation block to use `/ecosystem:update` instead of legacy (a)/(b)/(c) options
+   - Marked option (b) Merge as «LEGACY — use /ecosystem:update instead»
+   - Preserved (a)/(b)/(c) availability for edge cases (corruption recovery)
+
+3. `INSTALL-HUMAN.md` extended (Блок C — обновление existing project):
+   - C.1 update global cache (re-run installer)
+   - C.2 invocation в project (--dry-run first, then apply)
+   - C.3 verify + rollback procedure
+   - C.4 bootstrap vs update distinction
+
+4. `README.md` extended (Quick Start «Фаза 3 — обновление»):
+   - Brief invocation example + link к INSTALL-HUMAN Блок C
+   - Distinction note: bootstrap re-install (legacy) vs /ecosystem:update (recommended)
+
+### Outcome
+
+**4 DEC-DEV-0019 findings architecturally resolved:**
+- Finding A (dev contamination) → solved by allowlist-only copy + explicit never-copy zone
+- Finding B (cp -rn additive only — user's main concern) → solved by rsync-style sync (delete + copy fresh для each subdir; overwrite for root files)
+- Finding C (manifest preservation breaks hook registration) → solved by manifest.yaml в ecosystem zone (overwritten) + Step 6 hooks re-derivation
+- Finding D (re-install UX gap) → solved by dedicated `/ecosystem:update` command with «I want to update» semantic; bootstrap edit recommends update for re-install
+
+**Phase 4 readiness gate item C.6 RESOLVED upfront** — Phase 4 implementation kickoff не блокируется bootstrap update path; future Phase 4 deliverables (handoff.md, NFR commands, etc.) reach existing pilots via `/ecosystem:update`.
+
+**Discoverability path:** new command file added, but globally users получат command в autocomplete только после:
+- (a) Re-running install.sh/.ps1 (which copies `commands/ecosystem/*.md` к `~/.claude/commands/ecosystem/`), OR
+- (b) Running this very `/ecosystem:update` on existing project (which syncs `commands/ecosystem/update.md` к `.claude/commands/ecosystem/`)
+
+For my-first-test test (Step 5 below) — manual copy required since update.md doesn't exist там yet (chicken-and-egg).
+
+### Test execution (Step 5 — user runs interactive)
+
+**Critical caveat:** `/ecosystem:update` cannot be invoked в my-first-test/ until update.md exists в its `.claude/commands/ecosystem/`. Manual copy required для first time.
+
+**User-side test workflow:**
+
+```bash
+# Manual copy (one-time bootstrap of update.md itself)
+cp commands/ecosystem/update.md C:/Users/pw201/WebstormProjects/my-first-test/.claude/commands/ecosystem/update.md
+
+# In my-first-test/ interactively
+cd C:/Users/pw201/WebstormProjects/my-first-test
+claude
+> /ecosystem:update --dry-run
+```
+
+Expected dry-run output: changeset preview showing what would sync (likely no-op since pilot Claude already manually fixed everything в DEC-DEV-0019 Step 2 work).
+
+If dry-run looks correct:
+```
+> /ecosystem:update
+```
+
+After apply:
+- Verify `.claude/commands/ecosystem/update.md` present (self-update validation)
+- Verify backup directory `.claude-backup-<timestamp>/` created
+- Verify `.product/` intact (no changes)
+- Run `/ecosystem:verify` to confirm health
+
+**Read-only post-state verification (this session):**
+
+```bash
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/commands/ecosystem/
+ls -d C:/Users/pw201/WebstormProjects/my-first-test/.claude-backup-*/
+ls C:/Users/pw201/WebstormProjects/my-first-test/.product/
+```
+
+If test reveals issues — fix in follow-up commit OR rollback и address per failure mode.
+
+### Lessons
+
+#### Architectural
+
+1. **«Concerns split cleanly architecturally» test was right indicator.** Path Y separation matches natural workflow — sign that this is correct architectural cleavage, не just convenience. Pattern: when 4 distinct findings all share root cause «one mechanism doing two different things», split mechanism > patch mechanism.
+
+2. **Allowlist > blocklist для file copy/sync operations.** Explicit enumeration prevents future contamination if dev folder grows (e.g., adding `dev/proposals/`, `dev/_archive/phase-4/`). Blocklist requires updating with every new dev artifact type.
+
+3. **rsync-style sync с backup default = right safety/utility tradeoff.** Without backup, user fears running update; without sync (additive only), update doesn't update. Backup makes rsync semantics palatable.
+
+4. **«Replace, not merge» для ecosystem-managed sections.** Hooks section в settings.json — manifest is single source of truth post-update; merging old + new = ambiguous semantics. Replace = clear ownership. Merge would re-introduce DEC-DEV-0019 Finding C (preserved old manifest leads к stale hooks).
+
+#### Process
+
+5. **Mini-readiness gate (3 questions) before implementation paid off.** Without explicit Q1-Q3 decisions, я бы wandered between allowlist/blocklist mid-implementation, или skipped delete semantics. Pattern: even non-phase implementation work benefits от phase-kickoff.md Section 1 architectural readiness в miniature.
+
+6. **«Closing the task now, not mixing into Phase 4» preserves Phase 4 cognitive scope.** User's instinct to handle bootstrap fix immediately (vs deferring к Phase 4 architectural readiness) keeps Phase 4 focus pure (handoff/NFR/validation). Pattern: when finding crosses phase boundary, sometimes resolving immediately в standalone track simpler than phase-readiness-coordination.
+
+7. **Self-application of D7 helped surface this scope.** DEC-DEV-0018 phase-closure ritual found bootstrap regression need; DEC-DEV-0019 execution surfaced 4 findings; this commit resolves them. Без D7 closure ritual, bootstrap update gap would've been «obvious in hindsight» после Phase 4 deployment к existing pilots failed silently.
+
+8. **Self-update validation = nice debugging affordance.** Step 7 verify includes check that `commands/ecosystem/update.md` present after sync — incidentally validates that update successfully synced itself. If absent post-update: indicates allowlist filter wrong (excluded ecosystem/ subfolder of commands/) OR upstream missing file. Useful diagnostic.
+
+### Refinements applied to existing artifacts
+
+- `commands/ecosystem/bootstrap.md` — re-install section: recommend `/ecosystem:update`, mark legacy (b) Merge as DEPRECATED
+- `INSTALL-HUMAN.md` — added Блок C (3 sections: update global cache, invocation в project, verify+rollback)
+- `README.md` — added «Фаза 3 — обновление» section в Quick Start
+- `dev/PHASE_4_READINESS.md` Section C.6 — already references this work; status moves «pending decision» → «resolved DEC-DEV-0020»
+
+### Next
+
+**Test execution by user (interactive Claude Code в my-first-test):**
+1. Manual copy update.md к pilot's .claude/commands/ecosystem/
+2. Run `/ecosystem:update --dry-run`
+3. If looks correct → apply
+4. Report back results
+5. Я verify post-state read-only
+
+**После successful test:** Phase 3 closure cycle truly complete; Phase 4 implementation kickoff has clean ground. Phase 4 deliverables (handoff/NFR/validation) reach existing pilots via `/ecosystem:update`.
+
+**После Phase 4 ship:** re-run `/ecosystem:update` на my-first-test → first true production usage; populate retroactive update к этому entry с findings (если any).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

@@ -90,6 +90,17 @@ claude
 
 Подробности процесса bootstrap — в [`commands/ecosystem/bootstrap.md`](commands/ecosystem/bootstrap.md) и обзорно в [BOOTSTRAP.md](./BOOTSTRAP.md).
 
+### Фаза 3 — обновление existing project (когда вышла новая версия ecosystem)
+
+```
+> /ecosystem:update --dry-run    # preview changes
+> /ecosystem:update               # apply (с автобэкапом .claude/)
+```
+
+Sync ecosystem zone (commands, skills, agents, hooks, docs, templates) к latest upstream — rsync-style overwrite + delete obsolete + re-derive hooks. Preserves `.product/`, `.env`, `settings.local.json`, `product.yaml`, `integrator/` state. Подробности — [`commands/ecosystem/update.md`](commands/ecosystem/update.md), human-side guide — [INSTALL-HUMAN.md Блок C](./INSTALL-HUMAN.md).
+
+> **Не путать с** bootstrap re-install — `/ecosystem:bootstrap` для greenfield, `/ecosystem:update` для existing install. Per [DEC-DEV-0019](DEV_JOURNAL.md), legacy bootstrap merge mode (cp -rn additive only) не handle ecosystem updates корректно — use `/ecosystem:update`.
+
 ## Ключевые принципы
 
 1. **Assistant-led, human-approved** (DEC-P13). ИИ делает работу — человек принимает решения.

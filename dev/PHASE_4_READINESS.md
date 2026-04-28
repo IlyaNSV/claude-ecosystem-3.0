@@ -109,28 +109,24 @@ Phase 4 ROADMAP scope (~10 файлов):
 **Решение перед implementation:**
 - [ ] Phase 4 cleanup excludes MK/DS/NM check; Phase 6 extends? Or conditional flag в command?
 
-### C.6 Bootstrap update mechanism architecture (🔴 Blocker — surfaced DEC-DEV-0019, 2026-04-28)
+### C.6 Bootstrap update mechanism architecture — ✅ RESOLVED (DEC-DEV-0020, 2026-04-28)
 
-**Проблема:** stock `/ecosystem:bootstrap` на existing pilot project (Phase 3 closure DEC-DEV-0019 finding). 4 issues:
-- **Finding A:** Dev-only files копируются в `.claude/` (CLAUDE.md root, DEV_JOURNAL.md, dev/) — `.claude/CLAUDE.md` actively misleads future Claude sessions
-- **Finding B (user's main concern):** `cp -rn` additive only — content updates существующих файлов НЕ propagate; bug fixes / SPEC updates / refactored hooks don't reach existing pilots
-- **Finding C:** `manifest.yaml` preserved → new hooks installed but unregistered → silent failures
-- **Finding D:** Re-install default = (a) abort, не (b) merge — UX gap
+**Проблема (DEC-DEV-0019):** stock `/ecosystem:bootstrap` на existing pilot project имел 4 architectural issues — dev-only files contamination, cp -rn additive only, manifest.yaml preservation breaks hook auto-registration, re-install UX gap.
 
-**Result в DEC-DEV-0019:** Phase 3 additions reached pilot only после pilot Claude's 4 manual interventions (manifest copy + settings.json hook entries + contamination cleanup). Stock bootstrap silently broken для update path.
+**Resolution: Path Y implemented upfront** (per user request «закрыть сейчас, не подмешивать в Phase 4»).
 
-**3 paths considered (DEC-DEV-0019):**
-- **Path X** — refactor bootstrap.md zone-based merge (one command, multi-mode)
-- **Path Y (RECOMMENDED)** — split: bootstrap greenfield-only + new `/ecosystem:update` для existing projects с proper sync semantics (overwrite ecosystem zone, preserve user zone, sync manifest, update settings.json hooks, never copy dev zone)
-- **Path Z** — defer V1.1, document manual workaround в bootstrap.md
+`/ecosystem:update` standalone command shipped (commit `<TBD>`):
+- Allowlist-only sync (subdirs: commands/, skills/, agents/, hooks/, docs/, templates/, output-styles/; root files: README, BOOTSTRAP, CHANGELOG, ROADMAP, install.sh/.ps1, .env.template, gitignore.template)
+- rsync-style sync (delete obsolete + copy fresh)
+- Manifest.yaml overwrite + hooks section re-derivation в settings.json (preserve permissions section verbatim)
+- Backup-by-default `.claude/` → `.claude-backup-<timestamp>/`
+- Never-copy zone explicit (CLAUDE.md root, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md) — addresses Finding A contamination
+- `--dry-run` flag для preview перед apply
+- Bootstrap.md edited to recommend `/ecosystem:update` для re-install (closes Finding D UX gap; legacy (b) Merge marked DEPRECATED)
 
-**Решение перед implementation:**
-- [ ] Confirm Path Y (или alternative)?
-- [ ] If Path Y: `/ecosystem:update` design — single command, zone categorization (ecosystem / user / never-copy), idempotent semantics
-- [ ] If Path X: bootstrap.md refactor scope — multi-mode complexity acceptable?
-- [ ] Implementation Phase 4 deliverable OR pre-Phase-4 hotfix?
+**Phase 4 кickoff status:** UNBLOCKED. Phase 4 deliverables (handoff.md, NFR commands, validation runner, etc.) reach existing pilots via `/ecosystem:update`. C.6 no longer blocker.
 
-**Severity rationale:** HIGH/blocker. Без resolution, Phase 4 deliverables (handoff.md, NFR commands, validation runner, etc.) suffer same update gap. Каждый new phase compounds tech debt для existing pilots. Decision required перед Phase 4 implementation kickoff (per phase-kickoff.md Section 1).
+**Pending:** test execution на my-first-test (user-driven interactive session per DEC-DEV-0020 Step 5 instructions). After successful test, this item fully closed.
 
 ---
 
