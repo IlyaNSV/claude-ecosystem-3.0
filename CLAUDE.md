@@ -174,7 +174,8 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 2. **Загляни в [DEV_JOURNAL.md](DEV_JOURNAL.md)** — последние 3-5 entries, чтобы знать недавний контекст decisions
 3. **Проверь [ROADMAP.md](ROADMAP.md) секцию "Где мы сейчас"** — может быть устарела относительно git log
 4. **Если starting Phase 3** — пройди [dev/PHASE_3_READINESS.md](dev/PHASE_3_READINESS.md)
-5. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
+5. **После завершения phase** — пройди [dev/meta-improvement/checklists/phase-closure.md](dev/meta-improvement/checklists/phase-closure.md) (D7 module, Stage 2)
+6. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
 
 ## Memory
 

@@ -789,6 +789,147 @@ D7 substrate prepared. Design session in fresh chat continues per DESIGN_KICKOFF
 
 ---
 
+## DEC-DEV-0016 — D7 design session kickoff verified
+
+**Date:** 2026-04-28
+**Trigger:** Stage 2 D7 design session start per `dev/meta-improvement/DESIGN_KICKOFF.md` Этап 3 (Decision gate). Substrate (DEC-DEV-0015) loaded; 10 design decisions accepted by user. Per KICKOFF discipline — record kickoff verified entry перед mechanism design.
+**Tag:** #architecture #tooling
+
+### Context
+
+DESIGN_KICKOFF.md Этап 1-2 completed в opening session turn:
+- Substrate loaded: SPEC.md (513 lines), DESIGN_KICKOFF.md (310 lines), DEV_JOURNAL DEC-DEV-0007/0008/0011-0015, ROADMAP.md, dev/PHASE_3_*.md, v1_1_backlog.md, pmo-map.md, CHANGELOG.md
+- Existing capabilities verified (DEV_JOURNAL pattern, CLAUDE.md, Memory MCP, dev/ folder, hook manifest, B.1 frontmatter convention)
+- **Memory verified stale (8-day lag — «Phase 3 ready to start» vs actual «closed»).** Live instance reference model gap #5 (Memory & continuity automation absent).
+
+User затем explicitly requested «применить D7 на текущем моменте (только сделали реализацию phase 3)» с конкретным painpoint: bootstrap не обновляет my-first-test с Phase 2 → Phase 3. Это example user rule #2 (bootstrap install/update verification gap).
+
+### Decisions accepted (10 items, all «ага по всем»)
+
+**A. Naming & structure:**
+- A1: continue `DEC-DEV-NNNN` sequence (no separate DEC-META)
+- A2: no file prefix в `dev/meta-improvement/` (folder is namespace)
+
+**B. Stage 2 scope discipline:**
+- B1: bootstrap regression inline as step в phase-closure.md (NOT separate doc)
+- B2: memory sync as step #5 в phase-closure.md (real gap discovered live)
+
+**C. Phase 3 closure (immediate application):**
+- C1: run phase-closure.md inline this session
+- C2: I document exact bootstrap re-run steps; user executes; I verify post-state read-only
+- C3: findings = DEC-DEV-0018 (после design entry 0017)
+- C4: inline small fixes (≤10 min); queue bigger to PHASE_4_READINESS.md
+
+**D. Cross-cutting:**
+- D1: one-line pointer в CLAUDE.md «5. После завершения phase — phase-closure.md»
+- D2: 2 commits — design + application
+
+**E. Cleanup:**
+- E1: archive PHASE_3_READINESS.md в `dev/_archive/phase-3/`; KEEP PHASE_3_SMOKE_TEST_PLAN.md until smoke run
+
+### Decision
+
+**Substrate verified coherent + clarifications clear + no profanation risks.** Proceed Этап 4 (design tasks 4.A mandatory). 4.B stretch + 4.C deferred per KICKOFF discipline.
+
+### Outcome
+
+Proceeded к design output (DEC-DEV-0017). This entry serves as audit trail of decisions accepted перед mechanism design — separation от design output entry intentional per KICKOFF Этап 3 «record kickoff verified».
+
+### Lessons
+
+- **Substrate verification gate explicit перед design pays off** — prevents «built design ON unstable substrate» risk. Same pattern as DEC-DEV-0012 (Phase 3 readiness gate перед Phase 3 implementation). Now generalized для D7 (Section 1 phase-kickoff.md template).
+- **«ага по всем» pattern works для well-structured Q&A** — 10 questions с proposals + rationale = fast user agreement vs back-and-forth. Pattern reusable для future multi-decision gates: surface decisions as enumerated proposals (не «what do you think?») when substrate is clear.
+- **Live discovery of substrate gap (memory stale)** — captured как instance of reference model component #5. First-class evidence для phase-closure step #5 justification — без discovered live instance might've defer'ed memory sync to Stage 3+ on principle «pattern emerge before formalize».
+
+---
+
+## DEC-DEV-0017 — D7 Stage 2 — checklists + conventions
+
+**Date:** 2026-04-28
+**Trigger:** D7 Stage 2 design output per DESIGN_KICKOFF.md 4.A mandatory deliverables. Continues from DEC-DEV-0016 (kickoff verified).
+**Tag:** #architecture #tooling #scope-change
+
+### Context
+
+Stage 2 mandatory deliverables (per DESIGN_KICKOFF 4.A):
+- 4.A.1 phase-closure.md (primary user need — 4 user rules + memory sync)
+- 4.A.2 phase-kickoff.md (extract pattern from DEC-DEV-0012/0013 instances)
+- 4.A.3 CONVENTIONS.md (resolves SPEC §6 open questions + D6 vs D7 disambiguation)
+- 4.A.4 DEV_JOURNAL DEC-DEV entry (this one)
+
+Stage 2 stretch (4.B) deferred to Stage 3+:
+- pattern library starter (only 1 closure instance — DEC-DEV-0014 — premature abstraction risk per SPEC §4.2)
+- bootstrap regression as separate doc (kept inline as Step 2 в phase-closure.md per B1)
+- memory sync as separate doc (kept inline as Step 5 в phase-closure.md per B2)
+
+Stage 2 deferred (4.C, per KICKOFF):
+- Skill/command/hook formalization (no proven need — checklists sufficient first)
+- Full pattern library enumeration
+- D7 self-application via Product Module recursion (refused per SPEC §4.3)
+- Premature `.product/` creation для Ecosystem 3.0
+
+### Options considered (per SPEC §6 open questions)
+
+**6.1 Naming convention:**
+- Option A: separate `DEC-META-NNNN` sequence — adds dual-stack mental load для solo dev with ≤5 D7-specific entries/year expected
+- **Option B (chosen):** continue `DEC-DEV-NNNN` — one sequence, simpler navigation
+- Revisit trigger: if D7 entries dominate volume (>50% of new) — split
+
+**6.4 Cleanup criteria:**
+- Option A: aggressive archive (move all phase-N docs к _archive after closure)
+- **Option B (chosen):** selective archive — `PHASE_<N>_READINESS` archives post-closure; `PHASE_<N>_SMOKE_TEST_PLAN` stays until smoke run; `v1_1_backlog`, `PHASE_<N+1>_READINESS` stay active; DEV_JOURNAL never archived
+- Rationale: archive criterion = «obsolete + unneeded for current/next phase reference»
+
+**6.6 Pattern library timing:**
+- Option A: extract patterns now (Spec Drift Sweep, Readiness Gate, B.1 Frontmatter, etc.)
+- **Option B (chosen):** defer Stage 3+. Phase closure has 1 instance (DEC-DEV-0014); pattern emergence requires 3+ instances per SPEC §4.2
+- Trigger: после Phase 4 + 5 closures — extract first pattern set
+
+**Inline vs separate docs (B1, B2 в kickoff Q&A):**
+- Option A: separate `bootstrap-regression.md` + `memory-sync.md` docs
+- **Option B (chosen):** inline as steps в phase-closure.md
+- Rationale: SPEC §1.1 наблюдение про 10-15:1 add:cleanup ratio applies к D7 itself. Document count growth = anti-pattern. Promote to separate docs только если step grew complex (>15 min per phase closure).
+
+### Decision
+
+**Stage 2 ships:**
+
+1. `dev/meta-improvement/checklists/phase-closure.md` — 5-step checklist:
+   - Step 1: Doc health check (rule #1)
+   - Step 2: Bootstrap install/update verification (rule #2; user pain origin documented)
+   - Step 3: Doc consistency check (rule #3)
+   - Step 4: Cleanup/archive discipline (rule #4)
+   - Step 5: Memory MCP sync (discovered gap, marked refine-after-Phase-4)
+
+2. `dev/meta-improvement/checklists/phase-kickoff.md` — 5-section template:
+   - Architectural readiness (DEC-DEV-0012 pattern, ROI 3-5x)
+   - Ambiguity sweep (DEC-DEV-0013 pattern)
+   - Spec drift sweep (DEC-DEV-0013 A.1-A.4 pattern)
+   - Scope discipline (cuttable scope, v1.1+ deferrals)
+   - Plan refinement
+
+3. `dev/meta-improvement/CONVENTIONS.md` — 10 sections resolving SPEC §6 open questions; includes D6 vs D7 disambiguation table (terminological collision risk).
+
+**One new line к CLAUDE.md** (per D1 anti-bloat compromise):
+- After «4. Если starting Phase 3 — пройди [dev/PHASE_3_READINESS.md]» insert «5. После завершения phase — пройди [dev/meta-improvement/checklists/phase-closure.md]»
+- Existing item 5 («Перед commit-ом») renumber → 6
+
+### Outcome
+
+Stage 2 mandatory complete. Stage 3+ triggers identified (post-Phase-4-closure: pattern library extraction, memory-sync skill if manual proves heavy, bootstrap regression script if manual proves error-prone).
+
+Phase 3 closure run = next step (DEC-DEV-0018) — first concrete application of D7. Will populate findings + checklist refinement.
+
+### Lessons
+
+- **«Cuttable scope discipline» applies к meta-domain too.** Stage 2 ships 3 files vs the 7 tempting (бы добавил bootstrap-regression.md + memory-sync.md + patterns/<5>.md если бы scope не был резан). Living evidence для SPEC §4.1.
+- **Inline-step approach для cross-cutting concerns** (bootstrap regression, memory sync as steps в phase-closure rather than separate docs) reduces document count — само по себе anti-pattern в 10-15:1 add:cleanup ratio context. Promote to separate docs только if Phase 4-5 closures show step grew complex.
+- **Kickoff prompt + Q&A structure proven for fast multi-decision alignment.** 10 questions с proposals + rationale → user «ага по всем». Pattern: surface decisions as enumerated proposals (не «what do you think?») when substrate is clear.
+- **Live application как ROI test для D7.** Designing checklists + immediately applying them на Phase 3 closure = checks utility перед formalization. Если closure run finds 0 issues — design over-engineered. If finds 5+ — pattern proven. Bootstrap regression already known case (user explicit) — minimum 1 finding guaranteed.
+- **D6 vs D7 terminological disambiguation** — explicit table в CONVENTIONS.md §1.3 catches collision risk. pmo-map.md row uses «Meta: Ecosystem Governance» для D6 sense; D7 module also uses «meta» language (meta-improvement, meta-domain). Without explicit disambiguation reader confusion compounds.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
