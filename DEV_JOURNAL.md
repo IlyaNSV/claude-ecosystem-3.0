@@ -695,6 +695,100 @@ Phase 3 (Planning + Feature Enrichment per ROADMAP) implemented per scope refine
 
 ---
 
+## DEC-DEV-0015 — D7 Meta-Improvement Module preliminary spec + design kickoff prompt
+
+**Date:** 2026-04-27
+**Trigger:** Post-Phase-3-closure user observation: после major phase implementation systematically не выполняются hygiene activities (doc health check, bootstrap regression, doc consistency, cleanup discipline). 10-15:1 add:cleanup ratio is alarming для long-term healthy state. User proposed formalizing this as new module.
+**Tag:** #architecture #scope-change #tooling
+
+### Context
+
+User observed что Phase 3 closure missed several systematic post-phase activities:
+1. Documentation health check (ROADMAP, README, SPEC, processes, validation, artifacts)
+2. Bootstrap install/update verification (can /ecosystem:bootstrap install Phase N changes cleanly?)
+3. Documentation consistency check (cross-doc references after changes)
+4. Cleanup/archive obsolete information (counter to add-only growth)
+
+Methodological framing emerged through conversation:
+
+**Two-layer system:**
+- Level A (продуктовый): Ecosystem 3.0 как инструмент управления **чужими** продуктами (existing — Product/Design/Integrator/Orchestrator modules)
+- Level B (мета): **сама Ecosystem 3.0** как продукт, который мы строим с AI-assist'ом — нет formalized methodology
+
+**D6 vs D7 distinction:**
+- D6 (existing pmo-map.md «integrator-module») — governance over user's PMO (Level A)
+- D7 (new, this entry) — governance over Ecosystem 3.0 development itself (Level B)
+
+D6 ≠ D7. They address different concerns at different layers. User clarified explicitly (response #1).
+
+### Options considered
+
+User initially proposed combining with existing D6 or adding to CLAUDE.md. Through discussion:
+
+1. **Add rules к CLAUDE.md только** — minimal, но heavyweight CLAUDE.md grows; rules не codified for actual execution
+2. **Extend D6 (integrator-module) с meta-improvement subdomain** — мixes user-PMO governance с ecosystem-dev governance; muddles architectural cleanliness
+3. **New D7 module — meta-improvement, separate** — clean separation, owned by ecosystem creator (developer side, not user-of-Ecosystem)
+4. **Recursive Product Module application к самой Ecosystem** — дед'ом DEC-DEV-0008 проговорил dogfooding direction; user clarified (response #3) что это **НЕ направление** для D7
+
+### Decision
+
+**Option 3** — separate D7 module, named «meta-improvement».
+
+**Scope discipline applied к D7 itself per user response #4:**
+- **Stage 1 (this entry):** preliminary SPEC + design kickoff prompt for next session — capture only, не mechanism design
+- **Stage 2 (next session):** mechanism design (checklists primarily; skills/commands deferred until proven need)
+- **Stage 3+ (later):** formalization as skills/commands/hooks if multiple phase closures show pattern emergence
+
+**Stage 1 deliverables (this commit):**
+- `dev/meta-improvement/SPEC.md` (513 lines) — preliminary spec capturing:
+  - Origin observation (user's 4 rules)
+  - Two-layer methodological framing (Level A/B)
+  - D7 vs D6 distinction
+  - Reference model skeleton (7 components, gap analysis vs current capabilities)
+  - 10 open questions for design session
+  - Anti-patterns specific to meta-domain (8 enumerated)
+  - Initial principles (cuttable scope, pattern emerge before formalize, separate from product modules, dev/ location, real ROI focus, self-application without recursion)
+  - References (internal + external/methodological)
+  - Status update protocol
+  - Distillation of one principle (SPEC §9): «D7 — это «нашему развитию нужна **своя** дисциплина», не «та же дисциплина что мы даём пользователям»»
+
+- `dev/meta-improvement/DESIGN_KICKOFF.md` (310 lines) — self-contained kickoff prompt для new Claude Code session:
+  - Mirror structure of «Phase 3 implementation kickoff» prompt (proven pattern)
+  - 6 stages: context loading (5 levels) → validation → decision gate → design tasks → discipline → commit
+  - Design tasks divided: 4.A mandatory (phase closure checklist, phase kickoff template, conventions doc, DEV_JOURNAL entry), 4.B stretch (pattern library starter, bootstrap regression test plan, memory sync protocol), 4.C deferred (skills/commands/hooks, CLAUDE.md updates, full pattern library, .product/ for Ecosystem)
+  - Anti-pattern specific guards (8 enumerated, focus on premature formalization + Product Module recursion + scope creep)
+  - Pre-kickoff 6-question final check
+
+### Outcome
+
+D7 substrate prepared. Design session in fresh chat continues per DESIGN_KICKOFF.md:
+- Substrate sufficient for grounded design без re-discovery
+- 10 open questions explicit для resolution
+- Mandatory deliverables defined (4.A) — concrete + actionable
+- Stretch + deferred clearly marked — guards against scope creep
+- Reference model skeleton serves as substrate, not authoritative
+
+**Files created:**
+- `dev/meta-improvement/SPEC.md`
+- `dev/meta-improvement/DESIGN_KICKOFF.md`
+
+**No changes к:**
+- CLAUDE.md (defer to next session per user response #4 + premature update guard)
+- Product/Design/Integrator namespaces (separate per user response #3)
+- ROADMAP.md (D7 not part of Phase progression — это developer-side module, не product release artifact)
+- Memory MCP (defer; design session may decide synchronization protocol)
+
+### Lessons
+
+- **«Two-layer system» framing helps unblock self-referential collapse risk.** Trying to apply Product Module recursively к Ecosystem itself creates infinite complexity. Separating Level A (product) from Level B (meta-development) gives architectural cleanliness. User explicitly chose Level B / D7 distinct from Product Module recursion (response #3).
+- **Capture-then-design pattern proven again.** This is третий instance: DEC-DEV-0007 (DEV_JOURNAL framework conversation → next conversation implements), DEC-DEV-0012/0013 (Phase 3 readiness conversation → implementation conversation), now DEC-DEV-0015 (D7 substrate → design session). Pattern: «extract substrate в separate file pair (SPEC + KICKOFF) when transition between sessions imminent» reduces context drift, enables fresh-session deep work.
+- **«Cuttable scope discipline applies к meta-domain too».** D7 itself follows ecosystem principles — minimal first iteration, defer formalization until pattern emerges. Иначе D7 becomes ironic case: meta-doc о cleanup discipline что itself bloats. SPEC §4.1-4.6 codifies six initial principles, all expecting design session validation.
+- **Naming differentiation matters.** D6 (integrator-module — user's PMO) vs D7 (meta-improvement — ecosystem's dev) — without explicit naming distinction, confusion accumulates. User explicit numbering (response #1) sets clear separation.
+- **Pre-written design kickoff prompts are high-leverage artifacts.** Today's Phase 3 kickoff prompt (the very first message of this conversation) was extremely well-structured — multi-stage с context loading + validation + decision gates. Mirroring that structure для D7 design ensures fresh-session AI can ground itself без re-discovering rationale. Pattern: «pre-write self-contained kickoff prompt to file» вместо relying on user to remember structure.
+- **«Distillation of one principle» (SPEC §9) — useful epistemic discipline.** When document grows long, ask «if reader takes one thing, what should it be?» Forces clarity. SPEC §9: «D7 — это «нашему развитию нужна **своя** дисциплина», не «та же дисциплина что мы даём пользователям»». Захватывает critical avoidance pattern в одной фразе.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
