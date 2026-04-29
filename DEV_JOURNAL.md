@@ -1368,6 +1368,240 @@ If test reveals issues — fix in follow-up commit OR rollback и address per fa
 
 ---
 
+## DEC-DEV-0021 — D7 v1.0 final state (Stages 3-6 shipped)
+
+**Date:** 2026-04-28
+**Trigger:** User request «остальное давай сделаем сейчас, т.к. мне уже сейчас на ранних этапах нужны механизмы решения обозначенных проблем». Bundles Stages 3-6 of D7 roadmap (per prev conversation analysis) into single session — pattern library, memory sync skill, verification script, phase-closure reminder hook, CLAUDE.md restructure, SPEC v1.0 declaration.
+**Tag:** #architecture #tooling #scope-change
+
+### Context
+
+Per planned D7 roadmap (response в prev turn):
+- Stage 3 — pattern library extraction (5 patterns) — was scheduled после Phase 5 closure (3+ instances per SPEC §4.2)
+- Stage 4 — mechanism promotions (memory sync skill, bootstrap regression script, hook integration) — was conditional on triggers across Phase 5-7
+- Stage 5 — CLAUDE.md restructuring — when D7 references multiply
+- Stage 6 — SPEC v1.0 declaration — final state
+
+User overrode «pattern emerge before formalize» (SPEC §4.2) timing с rationale «нужны механизмы на ранних этапах». Adapted approach: ship patterns с **provisional** marker + explicit refinement triggers; formalize promotions с current evidence basis vs waiting Phase 5+ instance accumulation.
+
+User specifically prioritized concerns:
+- **Bootstrap regression script:** «убедиться что update работает корректно» → verification script для post-/ecosystem:update outcome (not standalone bootstrap regression test суите broadly)
+- **Hook integration:** «убедиться что хук точно будет триггериться и работать» → implement + test phase-closure reminder hook in this session
+- **Self-stability check:** explicitly «не нужен» → skipped
+- **Категория C (speculative):** explicitly «не нужна» → skipped
+
+### Stage 3 — Pattern library (5 patterns в `dev/meta-improvement/patterns/`)
+
+**Decision:** ship 5 patterns с **provisional** status; refinement triggers explicit (3+ instances → validated).
+
+**Patterns shipped:**
+- `spec-drift-sweep.md` (provisional, 2 instances: DEC-DEV-0013 A.1-A.4 + DEC-DEV-0018)
+- `readiness-gate.md` (provisional, 2 instances: DEC-DEV-0012 + DEC-DEV-0020)
+- `b1-frontmatter-convention.md` (validated — codified в CLAUDE.md «Skill конвенции»)
+- `cuttable-scope-discipline.md` (provisional, 3 instances: DEC-DEV-0012 + DEC-DEV-0017 + DEC-DEV-0020)
+- `smoke-test-plan.md` (provisional, 1 instance: Phase 3.I plan)
+
+**README.md index** в patterns/ с usage guidance + promotion criteria (provisional → validated transition).
+
+**Per-pattern doc structure:** name, when applicable, steps, outputs, examples (DEC-DEV refs), anti-patterns (over-applied / under-applied / misapplied), refinement triggers, related.
+
+**Trade-off accepted:** ranked early extraction (with provisional markers) over deferred extraction (per SPEC §4.2 strict). Risk: pattern shape revises through Phase 4-5 instances. Mitigation: provisional marker + explicit refinement triggers per pattern.
+
+### Stage 4a — Memory sync skill (`dev/meta-improvement/skills/memory-sync.md`)
+
+**Decision:** formalize phase-closure Step 5 procedure as standalone skill.
+
+**Format:** D7 skill (in `dev/meta-improvement/skills/`, not Product Module skills/). Frontmatter с `description:` per CLAUDE.md skill convention, but D7 location preserves namespace separation per CONVENTIONS §2.
+
+**Content:**
+- Inputs (memory MCP files + authoritative sources)
+- 5 steps (inventory → verify → update → index update → post-sync verify)
+- Anti-patterns (over-sync / under-sync / misapplication)
+- Time budget ~10 min (matches DEC-DEV-0018 measured)
+- Promotion triggers Stage 5+ (auto-detection, bidirectional sync, DEV_JOURNAL integration)
+- Fresh-session invocation prompt embedded
+
+**Trigger logic для skill invocation:** primary = phase-closure Step 5; secondary = standalone (long break return, AI cites stale data).
+
+### Stage 4b — Bootstrap update verification script (`dev/meta-improvement/scripts/verify-update.{sh,ps1}`)
+
+**Decision:** ship bash + PowerShell версии; user runs externally к Claude Code session (not skill invocation).
+
+**Scope (per user concern «убедиться что update работает корректно»):** verifies post-/ecosystem:update outcome, not broader bootstrap regression suite.
+
+**9 checks performed:**
+1. .claude/ directory present
+2. Ecosystem signature (3 critical files)
+3. Backup directory exists (post-update default rollback path)
+4. Allowlist subdirs present (commands/, skills/, agents/, hooks/, docs/, templates/)
+5. Hook manifest present + parseable (hooks count в manifest)
+6. settings.json valid + hooks section + count matches manifest
+7. **Dev contamination absent** (DEC-DEV-0019 Finding A — no .claude/CLAUDE.md, .claude/DEV_JOURNAL.md, .claude/INSTALL-HUMAN.md, ecosystem-internal в .claude/dev/)
+8. User zone preserved (settings.local.json, product.yaml, .product/)
+9. Self-update validation (.claude/commands/ecosystem/update.md present after sync)
+
+**Output:** colorized pass/fail/warn per check; summary с pass+fail+warn counts; exit code 0/1 для CI compatibility.
+
+**Usage:** `./verify-update.sh [path-to-pilot]` или `.\verify-update.ps1 -ProjectPath <path>`.
+
+### Stage 4c — Phase-closure reminder hook (`dev/meta-improvement/hooks/phase-closure-reminder.js`)
+
+**Decision:** PostToolUse hook on Bash matching `git commit` invocations; surfaces stderr reminder when phase-completion commit detected без closure entry.
+
+**Implementation:**
+- Reads stdin JSON (Claude Code hook contract)
+- Extracts tool_input.command from input
+- Pattern matches `\bgit\s+commit\b` (handles `-m`, `-am`, `--message`, HEREDOC)
+- Extracts commit message
+- Detects phase-completion pattern: `Phase <N>` + completion words (complete, done, finished, ship, implementation, closure, final)
+- Searches DEV_JOURNAL.md (walks up к 5 parent dirs) для closure entry: regex `## DEC-DEV-\\d+ — [^\\n]*Phase\\s+<N>[^\\n]*closure`
+- If pattern matched AND no closure entry → stderr reminder
+- Never blocks (failure-silent on errors)
+
+**Registration:** `.claude/settings.local.json` (ecosystem repo development) PostToolUse Bash. NOT в `hooks/<module>/manifest.yaml` per CONVENTIONS §2 (D7 hooks не deploy to user projects).
+
+**Manual test (per user concern «убедиться что хук точно будет триггериться»):**
+- Test 1 (Phase 99 «implementation complete», no closure entry) → ✅ stderr reminder fired correctly
+- Test 2 («fix: typo in README», no phase pattern) → ✅ silent (correct no trigger)
+- Test 3 («Phase 3 implementation complete», closure entry exists DEC-DEV-0018) → ✅ silent (closure entry detected, correct quiet)
+- Test 4 («ls -la», not git commit) → ✅ silent
+
+**4/4 tests pass.** Hook ships shipping behavior validated.
+
+### Stage 5 — CLAUDE.md D7 section restructure
+
+**Decision:** collapse 2 separate items (kickoff + closure) в single «D7 ritual» block с sub-bullets per mechanism.
+
+**Before:**
+```
+4. Перед стартом phase — phase-kickoff.md + dev/PHASE_<N>_READINESS.md
+5. После завершения phase — phase-closure.md (D7 module, Stage 2)
+6. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
+```
+
+**After:**
+```
+4. D7 ritual (см. dev/meta-improvement/):
+   - Перед phase: checklists/phase-kickoff.md + dev/PHASE_<N>_READINESS.md
+   - После phase: checklists/phase-closure.md
+   - При architectural decisions: patterns/ (5 patterns)
+   - При memory drift: skills/memory-sync.md
+   - Verify update outcome: scripts/verify-update.sh
+   - Hook reminder зарегистрирован (.claude/settings.local.json PostToolUse Bash) — fires на phase-completion commits
+5. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
+```
+
+**Rationale:** prevents item-by-item growth as D7 mechanisms multiply (anti-pattern from prev «Stage 5 — CLAUDE.md restructuring trigger» discussion). Single nested block contains все entry points.
+
+### Stage 6 — SPEC v1.0 declaration + CONVENTIONS update
+
+**SPEC.md changes:**
+- Header: «preliminary draft» → «v1.0 final state»
+- Added explicit list of v1.0 mechanisms (CONVENTIONS, checklists, patterns, skills, scripts, hooks)
+- Note: «Continued evolution через CONVENTIONS §10 refinement protocol; structural growth complete; ongoing changes are refinements, не expansions»
+
+**CONVENTIONS.md changes:**
+- Status: Stage 2 → v1.0 final
+- §3 mechanism ratio: «v1.0 status (mechanism mix)» showing checklists + patterns + skills + scripts + hooks balance; promotion criteria validated through Stages 3-4
+- §4 activation triggers: added skills/memory-sync, scripts/verify-update, hooks/phase-closure-reminder rows; activation type column
+- §6 Memory MCP sync: references skills/memory-sync.md as Stage 4 implementation
+- §7 Pattern library: Stage 3 shipped с 5 provisional patterns + refinement triggers
+- «Open questions» → «Resolutions» — 5 questions ✅ resolved (memory sync, pattern library structure, bootstrap regression scripting, hook integration, CLAUDE.md update strategy); 2 ongoing (provisional → validated, Stage 5+ promotions)
+
+### Outcome
+
+**D7 v1.0 final state shipped:**
+
+```
+dev/meta-improvement/
+├── SPEC.md                      # v1.0 spec (≈340 lines)
+├── DESIGN_KICKOFF.md            # archival (Stage 1)
+├── CONVENTIONS.md               # 10 sections + Open questions resolutions
+├── checklists/                  # Stage 2 + 2.5 refinements
+│   ├── phase-closure.md
+│   └── phase-kickoff.md
+├── patterns/                    # Stage 3 — 5 patterns + README index
+│   ├── README.md
+│   ├── spec-drift-sweep.md
+│   ├── readiness-gate.md
+│   ├── b1-frontmatter-convention.md
+│   ├── cuttable-scope-discipline.md
+│   └── smoke-test-plan.md
+├── skills/                      # Stage 4
+│   └── memory-sync.md
+├── scripts/                     # Stage 4
+│   ├── verify-update.sh
+│   └── verify-update.ps1
+└── hooks/                       # Stage 4
+    └── phase-closure-reminder.js
+```
+
+**11 new files (5 patterns + README + 1 skill + 2 scripts + 1 hook + 1 doc) + 4 modified (SPEC, CONVENTIONS, CLAUDE.md, settings.local.json).**
+
+**7 reference model components addressed (per SPEC §2.1):**
+1. ✅ Theory externalization — pattern library + DEV_JOURNAL
+2. ✅ Phase kickoff hygiene — phase-kickoff.md
+3. ✅ Phase closure hygiene — phase-closure.md (+ Stage 2.5 refinements)
+4. ✅ Drift management — Spec Drift Sweep pattern + B.1 Frontmatter Convention pattern + phase-closure Step 1
+5. ✅ Memory & continuity — memory-sync skill (formalizes Step 5)
+6. ✅ Validation gates — phase-closure Step 2 + verify-update.sh script (DEC-DEV-0019 → DEC-DEV-0020 → this verification)
+7. ✅ Self-application discipline — clarified Stage 1; not violated через Stages 2-6
+
+### Lessons
+
+#### Architectural
+
+1. **«Provisional pattern marker» enables early extraction without sacrificing emergence rigor.** Pattern docs ship с current evidence + explicit «refinement trigger» for promotion. Future closures refine OR retire patterns based on usage. Avoids both extremes (defer indefinitely vs lock-in based on 1 instance).
+
+2. **D7 hooks namespace cleanly separated от Product Module hooks.** D7 hook lives в `dev/meta-improvement/hooks/`, registered в `.claude/settings.local.json` (developer-only, not deployed). Product Module hooks live в `hooks/<module>/` registered via manifest.yaml (deployed к user projects). No collision; CONVENTIONS §2 enforced.
+
+3. **Verify-update script as external validator complements в-Claude-Code verification.** Not all verification fits skill chain (e.g., post-/ecosystem:update сessions cwd different от ecosystem repo cwd). External script gives user reliable validation outside Claude Code session, addresses concern «обеспечить что update корректно работает» systemically.
+
+4. **Hook test discipline pays off.** 4 simulated inputs covered trigger / non-trigger / closure-exists / non-applicable cases. Without testing, would've shipped silent-failing hook (pattern matching bugs common). Pattern: any hook implementation needs ≥3 simulated test cases before commit.
+
+#### Process
+
+5. **«Override SPEC §4.2 emerge timing с user authority» works для solo dev meta-domain.** SPEC §4.2 written conservatively assuming external review; for solo dev who knows own patterns intimately, earlier extraction acceptable если provisional marker preserves discipline. User has primary authority over their own development workflow.
+
+6. **Bundle Stages 3-6 в single session works когда trade-offs explicit.** Большая ceremony alternative was 4 separate sessions across Phase 4-7 closures. Bundle accelerates 4-month timeline → 1 session. Acceptable когда provisional markers + refinement triggers preserve future correction path.
+
+7. **Hook is most «substantive» mechanism shipped Stage 4.** Skills + scripts mostly formalize existing manual procedures; hook adds new capability (auto-detection of «forgot to run closure»). Highest value-per-LOC of D7 v1.0 mechanisms.
+
+8. **«Final state» semantically = «structural growth complete», не «no more changes».** Refinement protocol (CONVENTIONS §10) carries ongoing evolution. Structural growth = adding new mechanisms / sections; refinement = adjusting existing mechanisms. Distinction matters для signaling «D7 done» without implying «D7 frozen».
+
+#### D7 mechanism-specific
+
+9. **B.1 Frontmatter Convention pattern = only validated pattern Stage 3.** Other 4 patterns provisional (1-3 instances). B.1 codified в CLAUDE.md long ago, multiple skills implement it correctly = «validated» в pattern library sense. Future Phase closures will validate others.
+
+10. **Phase-closure reminder hook addresses class «forgot to invoke ritual».** Even с CLAUDE.md item «5. После phase — phase-closure.md», user может forget. Hook auto-fires reminder = belt-and-suspenders. Pattern: discoverability docs (CLAUDE.md) + auto-reminder hooks для critical rituals.
+
+11. **Verify-update.sh exit code 0/1 = CI-compatible.** Future automation possibility: run verify-update.sh as part of CI on `.claude-update` automation (если добавится). Stage 4 ships manual run; CI integration deferred.
+
+### Refinements applied this commit
+
+- `dev/meta-improvement/SPEC.md` — header v1.0 final state declaration
+- `dev/meta-improvement/CONVENTIONS.md` — 7 sections updated (status, layout, mechanism ratio, activation, memory sync, pattern library, open questions → resolutions)
+- `CLAUDE.md` — D7 ritual block restructured (collapse items 4+5 → single nested block)
+- `.claude/settings.local.json` — phase-closure-reminder.js hook registered
+
+### Open для future
+
+- **Provisional → validated patterns** через Phase 4-5 closures — patterns recheck'ются per CONVENTIONS §10
+- **Stage 5+ promotions если new triggers emerge** — bidirectional memory sync / verify-update CI integration / hook on DEV_JOURNAL.md
+- **D7 self-stability check** explicitly DEFERRED per user (2026-04-28); revisit only если accumulating «D7 itself drift» evidence
+
+### Next
+
+**D7 ready for next phase use.**
+- Phase 4 kickoff — recommended fresh-session invocation. C.6 (bootstrap update mechanism) уже resolved per DEC-DEV-0020. Other Phase 4 readiness items (C.1-C.5) pending architectural readiness gate execution.
+- Phase 4 implementation — D7 patterns referenced as needed (Cuttable Scope Discipline для scope cuts; Readiness Gate для architectural decisions; Spec Drift Sweep после refactor).
+- Phase 4 closure — fresh-session phase-closure run; D7 mechanisms validate via second instance (Stage 2.5 refinement opportunity).
+- Hook reminder fires automatically on Phase 4 completion commits — catches missed closure invocation.
+
+**Phase 3 closure cycle truly 100% closed.** All artifacts Phase 3 + closure findings + bootstrap fix + D7 v1.0 final state shipped в этой PR.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

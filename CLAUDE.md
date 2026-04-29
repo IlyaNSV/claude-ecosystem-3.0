@@ -175,9 +175,14 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 1. **Прочитай этот файл** (CLAUDE.md — auto-loaded)
 2. **Загляни в [DEV_JOURNAL.md](DEV_JOURNAL.md)** — последние 3-5 entries, чтобы знать недавний контекст decisions
 3. **Проверь [ROADMAP.md](ROADMAP.md) секцию "Где мы сейчас"** — может быть устарела относительно git log
-4. **Перед стартом phase** — пройди [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) (D7 module) + соответствующий `dev/PHASE_<N>_READINESS.md`
-5. **После завершения phase** — пройди [dev/meta-improvement/checklists/phase-closure.md](dev/meta-improvement/checklists/phase-closure.md) (D7 module, Stage 2)
-6. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
+4. **D7 ritual** (см. [`dev/meta-improvement/`](dev/meta-improvement/)):
+   - Перед phase: [`checklists/phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) + `dev/PHASE_<N>_READINESS.md`
+   - После phase: [`checklists/phase-closure.md`](dev/meta-improvement/checklists/phase-closure.md)
+   - При architectural decisions: [`patterns/`](dev/meta-improvement/patterns/) (5 patterns)
+   - При memory drift: [`skills/memory-sync.md`](dev/meta-improvement/skills/memory-sync.md)
+   - Verify update outcome: [`scripts/verify-update.sh`](dev/meta-improvement/scripts/verify-update.sh)
+   - Hook reminder зарегистрирован (`.claude/settings.local.json` PostToolUse Bash) — fires на phase-completion commits
+5. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
 
 ## Memory
 

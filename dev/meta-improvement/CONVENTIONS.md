@@ -2,9 +2,9 @@
 
 > **Назначение:** правила (когда какие — for what reason) для D7 module mechanisms.
 >
-> **Status:** Stage 2 (2026-04-28). Resolves 10 SPEC §6 open questions с conservative defaults.
+> **Status:** v1.0 final state (2026-04-28). Stages 1-6 shipped per DEC-DEV-0015..0021. SPEC §6 open questions resolved (8/10 settled v1.0; 2 open kept як ongoing refinement triggers).
 >
-> **Refinement:** triggers и updates documented per-convention. Update via `chore(meta-improvement): D7 refinement post-Phase-<N> closure` commit.
+> **Refinement:** triggers и updates documented per-convention. Update via `chore(meta-improvement): D7 refinement post-Phase-<N> closure` commit. Structural growth complete; ongoing changes refine existing mechanisms rather than add new ones.
 
 ---
 
@@ -52,18 +52,30 @@ When writing/reading «meta» / «governance» — disambiguate target audience:
 
 **Rationale:** D7 governs ecosystem dev (Level B), не user projects (Level A). Strict separation per SPEC §4.3 keeps architectural cleanliness, avoids self-referential collapse risk (SPEC §5.1).
 
-**Layout (Stage 2):**
+**Layout (v1.0 final state):**
 
 ```
 dev/meta-improvement/
-├── SPEC.md                      # preliminary spec (Stage 1)
-├── DESIGN_KICKOFF.md            # design session prompt (Stage 1)
-├── CONVENTIONS.md               # this file (Stage 2)
+├── SPEC.md                      # v1.0 spec (Stage 1 substrate + Stage 6 finalization)
+├── DESIGN_KICKOFF.md            # design session prompt (Stage 1, archival)
+├── CONVENTIONS.md               # this file (Stage 2 + Stage 6 update)
 ├── checklists/
-│   ├── phase-closure.md         # Stage 2
+│   ├── phase-closure.md         # Stage 2 + Stage 2.5 refinements
 │   └── phase-kickoff.md         # Stage 2
-└── (future) patterns/           # Stage 3+
-    └── ...
+├── patterns/                    # Stage 3 (5 patterns, mostly provisional)
+│   ├── README.md                # index
+│   ├── spec-drift-sweep.md
+│   ├── readiness-gate.md
+│   ├── b1-frontmatter-convention.md (validated)
+│   ├── cuttable-scope-discipline.md
+│   └── smoke-test-plan.md
+├── skills/                      # Stage 4
+│   └── memory-sync.md           # formalized phase-closure Step 5
+├── scripts/                     # Stage 4
+│   ├── verify-update.sh         # post-/ecosystem:update verification
+│   └── verify-update.ps1        # Windows version
+└── hooks/                       # Stage 4
+    └── phase-closure-reminder.js  # PostToolUse Bash, registered в .claude/settings.local.json
 ```
 
 ---
@@ -79,26 +91,39 @@ dev/meta-improvement/
 3. **Command** (`/<namespace>:<name>`) — explicit invocation. **Promote when:** skill has 10+ instances + needs argument support.
 4. **Hook** — automatic on event. **Promote when:** command needs to fire on commit/file-change без developer action.
 
-**Stage 2 status:** все D7 mechanisms = checklists. Promotion deferred Stage 3+ per SPEC §4.1 «cuttable scope».
+**v1.0 status (mechanism mix):**
+- **Checklists** (default): phase-closure.md, phase-kickoff.md
+- **Patterns** (Stage 3, mostly provisional): 5 в `patterns/`
+- **Skills** (Stage 4): memory-sync.md (formalizes phase-closure Step 5; manual run still default)
+- **Scripts** (Stage 4): verify-update.sh / .ps1 (post-/ecosystem:update verification, runs externally not via Claude Code skill chain)
+- **Hooks** (Stage 4): phase-closure-reminder.js (PostToolUse on Bash; surfaces stderr reminder when phase-completion commit detected без closure entry)
 
-**Rationale:** SPEC §5 anti-pattern #4 «Tooling over discipline» — first iteration must be manual to discover real workflow.
+**Rationale:** SPEC §5 anti-pattern #4 «Tooling over discipline» honored — checklist remained default; promotions made only когда manual proved insufficient (Memory sync skill formalizes ~10 min ritual; verify-update script enables external validation; hook addresses «forget to run closure» failure mode).
+
+**Promotion criteria (validated through Stages 3-4):**
+- Checklist → Skill: when 3+ instances + manual procedure stable enough к codify (memory-sync trigger)
+- Skill → Command: when needs argument support (deferred — no current trigger)
+- Command → Hook: когда auto-fire required (phase-closure-reminder trigger: «forget to invoke closure» class issue)
 
 ---
 
 ## 4. Activation triggers
 
-**Convention:** manual at phase boundaries. No automatic activation в Stage 2.
+**Convention:** manual at phase boundaries; auto-reminder hook добавлен Stage 4 для catching missed invocations.
 
-| Mechanism | Trigger | Cadence |
-|---|---|---|
-| `phase-kickoff.md` | Before Phase N implementation | Once per phase |
-| `phase-closure.md` | After Phase N implementation, before Phase N+1 readiness gate | Once per phase |
-| (future) bootstrap-regression script | Stage 3+ if manual proves error-prone | Per phase or per-commit |
-| (future) memory-sync skill | Stage 3+ if manual proves heavy | Per phase или quarterly |
+| Mechanism | Trigger | Cadence | Activation type |
+|---|---|---|---|
+| `phase-kickoff.md` | Before Phase N implementation | Once per phase | Manual (user types invocation) |
+| `phase-closure.md` | After Phase N implementation, before Phase N+1 readiness gate | Once per phase | Manual (user types invocation) |
+| `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | Manual (user types invocation) |
+| `scripts/verify-update.sh` | Post-/ecosystem:update | Per update | Manual (user runs externally) |
+| `hooks/phase-closure-reminder.js` | PostToolUse on Bash matching `git commit` с phase-completion pattern | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
 
 **Reminder integration:**
-- One-line pointer в `CLAUDE.md` § «Что делать в этой сессии (Claude)» — ensures discovery
+- D7 section в `CLAUDE.md` § «Что делать в этой сессии (Claude)» — ensures discovery (single block за all D7 mechanisms)
 - DEV_JOURNAL closure entry should reference `phase-closure.md` execution status
+- Hook auto-fires reminder если commit pattern matched но closure entry absent — catches «forgot to run closure» class issue
+- Hook never blocks commits — reminder only (per CONVENTIONS §8 failure handling)
 
 ---
 
@@ -135,30 +160,34 @@ git commit -m "chore(meta-improvement): archive PHASE_<N>_READINESS post-closure
 
 ## 6. Memory MCP sync
 
-**Convention:** manual review at phase closure (Step 5 of `phase-closure.md`). No automation Stage 2.
+**Convention:** manual review at phase closure (Step 5 of `phase-closure.md`); skill formalization shipped Stage 4 (`skills/memory-sync.md`).
 
-**Refinement trigger:** after Phase 4 closure — reassess. Если manual sync stays heavy (>10 min/closure) или drift discovered late — promote to skill (Stage 3).
+**Skill provides:** standalone procedure для phase-closure Step 5 OR ad-hoc invocation (long break return, AI cites stale data). ~10 min budget. Promotion к scheduled hook on DEV_JOURNAL.md write — deferred unless 3+ closures show «forgot to sync memory» pattern.
 
 **Files in scope:**
 - `~/.claude/projects/<project-slug>/memory/MEMORY.md` (index)
 - `~/.claude/projects/<project-slug>/memory/<entry>.md` (each tracked memory)
 
+**See also:** [`skills/memory-sync.md`](skills/memory-sync.md).
+
 ---
 
 ## 7. Pattern library
 
-**Convention:** defer to Stage 3+. Stage 2 ships без named patterns.
+**Convention:** Stage 3 shipped (2026-04-28). 5 patterns в `patterns/` directory. Most marked **provisional** (early extraction per user request override of SPEC §4.2 «pattern emerge before formalize» 3-instance rule). Refinement к validated status when 3+ instances accumulate per pattern.
 
-**Rationale:** SPEC §4.2 «pattern emerge before formalize» — phase closure has only 1 instance (DEC-DEV-0014). Need 3+ для emergence.
+**Patterns shipped:**
+- [Spec Drift Sweep](patterns/spec-drift-sweep.md) (provisional, 2 instances)
+- [Readiness Gate](patterns/readiness-gate.md) (provisional, 2 instances)
+- [B.1 Frontmatter Convention](patterns/b1-frontmatter-convention.md) (validated, codified в CLAUDE.md)
+- [Cuttable Scope Discipline](patterns/cuttable-scope-discipline.md) (provisional, 3 instances)
+- [Smoke Test Plan](patterns/smoke-test-plan.md) (provisional, 1 instance)
 
-**Promotion trigger:** after Phase 5 closure — extract first 3-5 patterns с full DEC-DEV references:
-- Spec Drift Sweep (DEC-DEV-0013 A.1-A.4)
-- Readiness Gate (DEC-DEV-0012)
-- B.1 Frontmatter Convention (DEC-DEV-0011)
-- Cuttable Scope Discipline (DEC-DEV-0012, cross-cutting)
-- Smoke Test Plan (DEC-DEV-0014, Phase 3.I)
+**Refinement triggers** (per pattern):
+- 3rd+ instance accumulated → status moves «provisional» → «validated»
+- Pattern fails validation (instances don't fit shape) → refine OR retire
 
-**Future location:** `dev/meta-improvement/patterns/<pattern-name>.md`.
+**See also:** [`patterns/README.md`](patterns/README.md) — index с usage guidance.
 
 ---
 
@@ -205,14 +234,19 @@ Updates committed как `chore(meta-improvement): D7 refinement post-Phase-<N> 
 
 ---
 
-## Open questions (revisit Stage 3+)
+## Open questions — resolutions (Stage 3-6)
 
-These are NOT settled in Stage 2 — flagged для re-evaluation после real instance accumulation:
+5 originally open questions resolved through Stage 3-6 work:
 
-- **Memory sync automation timing** — manual sufficient? или skill needed?
-- **Pattern library structure** — what format proven через Phase 4-5 closures?
-- **Bootstrap regression scripting** — manual recall в checklist OK, или test runner script?
-- **Hook integration** — какие D7 mechanisms require hook auto-trigger (e.g., commit message «Phase X done» fires phase-closure reminder)?
-- **CLAUDE.md update strategy** — when D7 mechanisms multiply, как keep CLAUDE.md от bloating?
+- ✅ **Memory sync automation timing** → Stage 4 (skill formalized; promotion к hook deferred unless 3+ closures show drift class)
+- ✅ **Pattern library structure** → Stage 3 (`patterns/<name>.md` с consistent format: name/when applicable/steps/outputs/examples/anti-patterns/refinement triggers)
+- ✅ **Bootstrap regression scripting** → Stage 4 (`scripts/verify-update.sh` + `.ps1` для post-/ecosystem:update validation; complements phase-closure Step 2)
+- ✅ **Hook integration** → Stage 4 (`hooks/phase-closure-reminder.js` PostToolUse on Bash; registered в `.claude/settings.local.json`; tested manually с 4 simulated inputs)
+- ✅ **CLAUDE.md update strategy** → Stage 5 (D7 ritual collapsed в single section с sub-bullets per mechanism; replaces 2-line item-by-item growth)
 
-These are NOT blocking Stage 2 ship. Each tracked в SPEC §6 originally; will close с DEC-DEV-NNNN entry as instance accumulates.
+**Still open (refine through usage):**
+
+- **Provisional → validated pattern promotion** — patterns extracted на early instance basis; validation requires 3+ instances per pattern. Refinement protocol (CONVENTIONS §10) handles за phase closures.
+- **Stage 5+ promotions** — if memory-sync skill, verify-update script, or hook reveal друг pattern (e.g., bidirectional memory sync, automated rollback in verify-update, hook на DEV_JOURNAL.md edits) → DEC-DEV-NNNN entry with rationale.
+
+**Continued evolution:** через CONVENTIONS §10 refinement protocol per phase closures. Structural growth complete v1.0; ongoing changes refine existing mechanisms.
