@@ -6,7 +6,7 @@
 >
 > **Owner:** developer (you). Manual checklist в Stage 2; automation candidate Stage 3+.
 >
-> **Time budget:** 30-60 min total. Если >60 — flag в Phase N+1 readiness, не upgrade в waterfall.
+> **Time budget:** 35-65 min total (Step 3 added DEC-DEV-0023 +5min). Если >65 — flag в Phase N+1 readiness, не upgrade в waterfall.
 
 ---
 
@@ -167,7 +167,50 @@ For solo dev — fresh session = available substitute для absent code reviewe
 
 ---
 
-## Step 3 — Documentation consistency check (≤10 min)
+## Step 3 — Hook runtime smoke (≤5 min)
+
+**Цель:** verify all `hooks/<module>/*.js` runtime-clean — syntax check + minimal exec без `ReferenceError`/`TypeError`/`SyntaxError`. Catches the kind of bug that slips через `git diff` review (TDZ, missing globals, broken parse logic) but blows up на every PostToolUse fire.
+
+> **Pain origin (DEC-DEV-0023):** Phase 3 smoke test executed on `my-first-test` revealed `bg-extractor.js` throwing `Cannot access 'STOPWORDS' before initialization` **119 раз** за 5.5-часовую сессию — silent (non-blocking attachment), полностью обнулил BG extraction Phase 1, прошёл всю Phase 3 implementation undetected. Pre-commit gate + closure step would have caught it на первом коммите.
+
+### Что делать
+
+```bash
+node dev/meta-improvement/scripts/verify-hooks.js
+```
+
+Или `npm run verify:hooks` (после однократного `npm install` для optional eslint enrichment).
+
+Per-hook protocol (внутри [smoke-hooks.js](../scripts/smoke-hooks.js)):
+1. `node --check <file>` — syntax check
+2. echo minimal `hookInput` JSON | `node <file>` — runtime sanity
+3. Assert exit 0 + stderr free of: `ReferenceError`, `TypeError`, `SyntaxError`, `Cannot access .* before initialization`, `is not defined`, `is not a function`, `Unexpected token`.
+
+Hooks should `process.exit(0)` для irrelevant inputs (file missing, bad path, etc.) per non-blocking contract.
+
+### Pass
+
+- All hooks listed в `hooks/*/manifest.yaml` smoke clean (`PASS` per file в output)
+- `verify-hooks.js` exits 0
+- (Optional) eslint `hooks/` clean if `node_modules/eslint` installed
+
+### Fail
+
+- Syntax error → fix inline (line/column в `node --check` output)
+- Runtime error → check для TDZ (`const`/`let` referenced before declaration line evaluated), undefined globals, missing helpers, broken regex
+- Persistent fail → flag в `DEC-DEV-NNNN` closure findings; fix prior к Phase N+1
+
+### Pre-commit complement
+
+Permanent prevention: install pre-commit hook once:
+```bash
+bash dev/meta-improvement/scripts/install-pre-commit.sh
+```
+Activates `verify-hooks.js` blocking gate когда `git commit` touches `hooks/`. Bypassable с `--no-verify` (use sparingly).
+
+---
+
+## Step 4 — Documentation consistency check (≤10 min)
 
 **Цель:** distinct from Step 1 — это cross-document semantic alignment (не status banners). Hook manifest ↔ processes.md ↔ SPEC; CHANGELOG additions ↔ actual files; ROADMAP claims ↔ actual deliverable count.
 
@@ -214,7 +257,7 @@ For solo dev — fresh session = available substitute для absent code reviewe
 
 ---
 
-## Step 4 — Cleanup / archive discipline (≤10 min)
+## Step 5 — Cleanup / archive discipline (≤10 min)
 
 **Цель:** counter the 10-15:1 add:cleanup ratio. Archive obsolete dev/ docs; identify dead refs.
 
@@ -261,7 +304,7 @@ For solo dev — fresh session = available substitute для absent code reviewe
 
 ---
 
-## Step 5 — Memory MCP sync (≤10 min)
+## Step 6 — Memory MCP sync (≤10 min)
 
 **Цель:** memory может drift away от DEV_JOURNAL/CLAUDE.md across phases. Live discovered gap (Phase 3 closure 2026-04-28 — memory said «Phase 3 ready», actually closed 8 days prior).
 
@@ -299,7 +342,7 @@ For solo dev — fresh session = available substitute для absent code reviewe
 
 ## Closing
 
-After all 5 steps:
+After all 6 steps:
 
 1. **Document findings** в `DEC-DEV-NNNN — Phase <N> closure run + checklist refinement`:
    - Steps passed / failed

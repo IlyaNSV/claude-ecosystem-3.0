@@ -160,6 +160,10 @@ CONTAMINATION_FILES=(
     ".claude/CLAUDE.md"
     ".claude/DEV_JOURNAL.md"
     ".claude/INSTALL-HUMAN.md"
+    # DEC-DEV-0023: hook lint pipeline artifacts — must NOT bootstrap к user .claude/
+    ".claude/package.json"
+    ".claude/package-lock.json"
+    ".claude/eslint.config.js"
 )
 for f in "${CONTAMINATION_FILES[@]}"; do
     if [ -f "$PROJECT_PATH/$f" ]; then
@@ -168,6 +172,13 @@ for f in "${CONTAMINATION_FILES[@]}"; do
         pass "$f correctly absent"
     fi
 done
+
+# .claude/node_modules/ check (separate — directory not file)
+if [ -d "$PROJECT_PATH/.claude/node_modules" ]; then
+    fail ".claude/node_modules/ PRESENT — dev contamination! Recommend: rm -rf $PROJECT_PATH/.claude/node_modules"
+else
+    pass ".claude/node_modules/ correctly absent"
+fi
 
 # .claude/dev/ check — accept user-added files like discovery_session_log.txt
 if [ -d "$PROJECT_PATH/.claude/dev" ]; then

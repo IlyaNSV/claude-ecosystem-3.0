@@ -114,6 +114,16 @@ or
 <Бизнес-обоснование — откуда rule взялось из MR / HYP / interviews>
 <Reference к specific evidence: «From MR section X», «Per intervju 5 freelancers»>
 
+## Telemetry plan
+<MANDATORY если BR has numeric parameter AND confidence ∈ {medium, low} — DEC-DEV-0023>
+
+<For confidence: high — section optional / "N/A — parameter standard / authoritative source.">
+
+- **Metric:** <event/funnel/counter to track post-launch>
+- **Threshold for revisit:** <signal that triggers re-tuning, e.g., ">1% legitimate users blocked">
+- **Window:** <period for collection, e.g., "first 4 weeks of launch / first 30 cohorts">
+- **Action on signal:** <relax / tighten / add exception — fold into RL-NN+1 backlog>
+
 ## Applied in scenarios
 - SC-<NNN> шаг N: <brief — primary use, success case>
 - SC-<NNN> шаг M: <alt branch — multi-match handling>
@@ -132,6 +142,26 @@ Output: <expected>
 Input (alt): <data>
 Output: <expected — illustrates parameter behavior>
 ```
+
+### Step 4a: Telemetry plan trigger (DEC-DEV-0023)
+
+**Required for any BR matching all of:**
+- `confidence: medium | low`
+- Body contains numeric / categorical parameter chosen as judgment call (e.g., session TTL=30d, max_devices=5, captcha_threshold=5, rate_limit=3/hour)
+
+**Skill MUST surface:**
+```
+BR-NNN parameter <name>=<value> chosen с confidence=medium и rationale "<industry varies / no internal data>".
+Per telemetry plan convention (DEC-DEV-0023):
+  - Metric: <propose what to track>
+  - Threshold for revisit: <propose>
+  - Window: <propose>
+  - Action: <propose>
+
+Edit или approve as-is.
+```
+
+**Pain origin:** my-first-test pilot's BR-013 (30-day session TTL), BR-014 (5-device limit), BR-018 (CAPTCHA threshold=5) — все judgment calls, все medium confidence, none had explicit revisit plan. Without telemetry plan, "we'll tune later" silently becomes "we never tune". DEC-DEV-0023 codifies discipline: parameter choice now formalizes its own validation pathway.
 
 ### Step 5: Filename
 

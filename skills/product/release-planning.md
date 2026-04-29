@@ -187,11 +187,34 @@ Each FM has D1 phase 1 (skeleton) fields filled; D2 phase 2 fields empty arrays 
 - Confirm FM.title (от RL-001 features list)
 - `has_ui` (true/false — определяется here at skeleton, not в D2)
 - `priority` (inherits MVP MoSCoW — `must` for MUST list features)
-- `jtbd[]` (which JTBD из primary SEG.body это решает? Map to JTBD-N references)
+- `jtbd[]` (which JTBD из primary SEG.body это решает? Map to JTBD-N references — see «JTBD mapping decision tree» ниже для foundational/measurement features)
 - `hypotheses[]` (which HYP validates)
 - `value_proposition` (which VP — usually primary SEG's VP)
 - `success_metric` (one measurable outcome of feature; ≠ HYP threshold but related)
 - `requires_nfr` (default false; flip true для high-risk: payments, PII, real-time, public API)
+
+##### JTBD mapping decision tree (codified DEC-DEV-0023)
+
+Some FMs не выполняют user job напрямую — auth/billing/dashboard support других FMs которые делают job. Three placement options для такой FM, с decision criteria:
+
+| Option | Mapping | When to use | Tradeoff |
+|---|---|---|---|
+| **A — empty array** | `jtbd: []` | FM не tied к user JTBD at all (e.g., internal admin tooling exclusive к ops team) | Honest signal; но V-10 blocking finding (`FM missing jtbd[]`) — нужен `validation_overrides[]` запись с rationale |
+| **B — supporting** (default для foundational) | `jtbd: [JTBD-X.Y]` со supporting JTBD из primary SEG; explain в `confidence_notes` («supporting infrastructure for JTBD-X.Y measurement / gateway») | Auth, billing, dashboards, instrumentation — **enable** primary JTBD без выполнения сами | V-10 passes; trace clear; но JTBD link semantically «supporting» а не direct outcome — note это в confidence_notes |
+| **C — demote priority** | `priority: should` (или `could`) + remove from MUST list | FM есть real but non-blocking для MVP HYP measurement | Only если HYP measurement не requires это FM — иначе scope cut breaks measurement |
+
+**Default decision:** option B для (auth / billing / dashboard / instrumentation foundational FMs), since:
+- V-10 satisfied (no override needed)
+- Traceability preserved (FM links к primary user JTBD via supporting role)
+- Confidence honesty maintained via `confidence_notes` note
+
+**Required confidence_notes addition** для option B:
+```
+JTBD-X.Y mapping — supporting (FM = <gateway|measurement|infrastructure> for primary SEG flow);
+не direct user job, но без него JTBD-X.Y невозможно <начать|измерить|выполнить>.
+```
+
+**Pain origin:** my-first-test pilot (DEC-DEV-0023) применил option B к FM-001 (auth), FM-005 (billing), FM-006 (dashboard) ad-hoc. Codification обеспечивает consistency + audit trail для future planners.
 
 #### Step B.2: Frontmatter
 

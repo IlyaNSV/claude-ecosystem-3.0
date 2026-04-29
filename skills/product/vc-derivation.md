@@ -27,6 +27,28 @@ Per SC:
 - **Error flow VC** (if SC-NNNeN exists): assert error handling
 - **Negative assertions**: что НЕ должно happen (side effects, idempotency, scope boundaries)
 
+#### Complexity threshold — when to split VC (DEC-DEV-0023)
+
+A single VC должна cover **one focused verification area**. Heuristic для split decision:
+
+| Signal | Action |
+|---|---|
+| VC covers >2 distinct rule clusters (e.g., validation + auth + security + state-transition) | Split: VC-NNN main, VC-NNNa alt, VC-NNNs security |
+| VC has >12 cases в Given/When/Then groups | Split |
+| VC frontmatter `covers_rules` array > ~6 BRs | Consider split — testing scope likely heterogeneous |
+| Test scenarios от different threat models / different lifecycle paths | Split definitionally |
+
+**Naming convention для splits** (mirrors SC numbering):
+- `VC-NNN` — main flow verification
+- `VC-NNNa` — alt flow verification
+- `VC-NNNs` — security-specific verification (если security cluster substantial)
+- `VC-NNNb` — boundary/edge verification (если boundary cluster substantial)
+
+**Split is NON-blocking для A1 auto-approve** — A1 condition (V-07 coverage) still valid for un-split VC. Split is a quality preference. Если AI unsure — surface к user в confidence_notes:
+> «VC-005 covers main + multi-device + security — possibly split rationale; consider VC-005a (multi-device) + VC-005s (security) for v1.1.»
+
+**Pain origin:** my-first-test FM-001 / VC-005 covered SC-002 main + multi-device + returnTo whitelist + IC-007 password storage в одной VC (15 cases, 5 BRs, 2 ICs). Functional но grain fine; split would clarify test scope ownership.
+
 ### Step 2: Per-VC drafting
 
 For each VC:

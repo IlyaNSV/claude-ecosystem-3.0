@@ -20,6 +20,40 @@
 const fs = require('fs');
 const path = require('path');
 
+// Stoplist: common RU + EN words; technical terms (not domain).
+// Conservative — false negatives (real domain term filtered) caught at Phase 4 review.
+//
+// Declared at module top (not co-located with termPasses below) because const has
+// no hoisting / lives in TDZ until evaluated. termPasses() is called from the
+// bold-term scan loop near line ~90 — long before its old position would have
+// initialized STOPWORDS. Triggered ReferenceError 119 times in Phase 3 smoke test
+// (DEC-DEV-0023 / first run без single hook smoke).
+const STOPWORDS = new Set([
+  // RU function words / pronouns / common verbs
+  'мы', 'они', 'вы', 'я', 'ты', 'он', 'она', 'оно', 'это', 'эти', 'тот', 'та', 'те',
+  'будет', 'будут', 'был', 'была', 'было', 'есть', 'нет', 'да',
+  'должен', 'должна', 'должно', 'может', 'можно', 'нужно', 'нужен',
+  'через', 'между', 'после', 'перед', 'когда', 'если', 'тогда', 'но', 'или', 'и', 'а',
+  'для', 'из', 'на', 'в', 'к', 'с', 'по', 'до', 'от', 'под', 'над', 'при', 'без',
+  'весь', 'все', 'всё', 'каждый', 'любой', 'некий',
+  // EN function words
+  'we', 'you', 'i', 'he', 'she', 'it', 'they', 'this', 'that', 'these', 'those',
+  'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must', 'have', 'has', 'had',
+  'is', 'are', 'was', 'were', 'be', 'been', 'being',
+  'do', 'does', 'did', 'done',
+  'and', 'or', 'but', 'if', 'then', 'when', 'while', 'because',
+  'for', 'from', 'in', 'on', 'at', 'to', 'of', 'with', 'by', 'as', 'about',
+  'all', 'each', 'every', 'any', 'some',
+  // Technical terms (not domain — implementation zone)
+  'database', 'db', 'api', 'endpoint', 'function', 'method', 'class', 'module',
+  'component', 'service', 'controller', 'model', 'view', 'route',
+  'request', 'response', 'json', 'yaml', 'http', 'https', 'url', 'uri',
+  'string', 'number', 'integer', 'boolean', 'array', 'object', 'null', 'undefined',
+  'true', 'false',
+  'frontend', 'backend', 'server', 'client',
+  'react', 'vue', 'angular', 'nodejs', 'python', 'java',
+]);
+
 // ---------- Read Claude Code hook input ----------
 
 let rawInput = '';
@@ -189,34 +223,6 @@ function parseMinimalFrontmatter(text) {
   });
   return obj;
 }
-
-// Stoplist: common RU + EN words; technical terms (not domain).
-// Conservative — false negatives (real domain term filtered) caught at Phase 4 review.
-const STOPWORDS = new Set([
-  // RU function words / pronouns / common verbs
-  'мы', 'они', 'вы', 'я', 'ты', 'он', 'она', 'оно', 'это', 'эти', 'тот', 'та', 'те',
-  'будет', 'будут', 'был', 'была', 'было', 'есть', 'нет', 'да',
-  'должен', 'должна', 'должно', 'может', 'можно', 'нужно', 'нужен',
-  'через', 'между', 'после', 'перед', 'когда', 'если', 'тогда', 'но', 'или', 'и', 'а',
-  'для', 'из', 'на', 'в', 'к', 'с', 'по', 'до', 'от', 'под', 'над', 'при', 'без',
-  'весь', 'все', 'всё', 'каждый', 'любой', 'некий',
-  // EN function words
-  'we', 'you', 'i', 'he', 'she', 'it', 'they', 'this', 'that', 'these', 'those',
-  'will', 'would', 'should', 'could', 'can', 'may', 'might', 'must', 'have', 'has', 'had',
-  'is', 'are', 'was', 'were', 'be', 'been', 'being',
-  'do', 'does', 'did', 'done',
-  'and', 'or', 'but', 'if', 'then', 'when', 'while', 'because',
-  'for', 'from', 'in', 'on', 'at', 'to', 'of', 'with', 'by', 'as', 'about',
-  'all', 'each', 'every', 'any', 'some',
-  // Technical terms (not domain — implementation zone)
-  'database', 'db', 'api', 'endpoint', 'function', 'method', 'class', 'module',
-  'component', 'service', 'controller', 'model', 'view', 'route',
-  'request', 'response', 'json', 'yaml', 'http', 'https', 'url', 'uri',
-  'string', 'number', 'integer', 'boolean', 'array', 'object', 'null', 'undefined',
-  'true', 'false',
-  'frontend', 'backend', 'server', 'client',
-  'react', 'vue', 'angular', 'nodejs', 'python', 'java',
-]);
 
 function termPasses(term) {
   // Length check

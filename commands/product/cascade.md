@@ -1,6 +1,6 @@
 ---
 description: Manual cascade navigation. Show pending cascade entries from .pending/cascade-pending.yaml and resolve per-entry. Detection-only (V-11 auto-fix happens automatically via cascade-check.js hook).
-argument-hint: "<artifact-id> | --pending | --pending --triggered-by <id>"
+argument-hint: "<artifact-id> | --pending | --pending --triggered-by <id> | --pending --revalidate | --pending --reset"
 ---
 
 # /product:cascade
@@ -25,11 +25,27 @@ Manual review and resolution of cascade pending entries collected by `cascade-ch
 
 - **`--pending --triggered-by <id>`** — explicit filter (alias к first form)
 
+- **`--pending --revalidate`** — re-run cascade detection on all currently active artifacts:
+  - Wipe `cascade-pending.yaml` entries
+  - For each artifact в `.product/{features,scenarios,business-rules,lifecycles,verification,invariants}/*.md` со status: active:
+    - Re-trigger cascade-check.js logic via Read+Write на тот же файл (no content change; hook fires on PostToolUse)
+  - Result: pending file refreshed с current state. Stale entries from outdated logic / past bugs cleared.
+  - Use case: после ecosystem upgrade или when accumulated entries don't match reality (e.g., DEC-DEV-0023 cascade-check fixes).
+
+- **`--pending --reset`** — destructive cleanup (требует explicit confirmation):
+  - Surface count: «<N> pending entries в cascade-pending.yaml. Reset will delete all без re-validation.»
+  - Confirmation prompt: «Type 'reset' to confirm.»
+  - Wipe `cascade-pending.yaml` к empty `entries: []` state.
+  - Decision journal: `DEC-CASCADE-NNN — Manual reset cascade-pending (N entries cleared, reason: <user input>)`.
+  - Use case: known-bad accumulation (e.g., legacy cascade-check pre-DEC-DEV-0023 false positives) where revalidate too slow OR entries irrelevant.
+
 - **No args** — show usage:
   ```
   Usage:
-    /product:cascade BR-010              # entries triggered by BR-010
-    /product:cascade --pending           # all pending entries grouped by source
+    /product:cascade BR-010                # entries triggered by BR-010
+    /product:cascade --pending             # all pending entries grouped by source
+    /product:cascade --pending --revalidate # re-detect; clears stale entries safely
+    /product:cascade --pending --reset      # nuke pending file (requires confirmation)
   ```
 
 ### Step 2: Read pending file
@@ -66,6 +82,50 @@ Cascade entry (auto-applied) BR-010 → SC-005:
   
   [continue]
 ```
+
+### Step 3a: Bulk operations (--revalidate / --reset)
+
+#### `--revalidate`
+
+```
+Re-running cascade detection across N active artifacts...
+  ✓ Wiped cascade-pending.yaml (was: M entries)
+  ✓ Triggered cascade-check on FM-001 (read+write touch — hook fires on PostToolUse)
+  ... (per artifact)
+
+Done. New pending state:
+  <K> entries (real cascades from current artifact graph)
+
+Compared к pre-revalidate (M):
+  - <M-K> stale entries cleared
+  - <K> real entries surfaced
+
+Use /product:cascade --pending для resolution.
+```
+
+Implementation: read product config, list `.product/<dir>/*.md` со status: active in frontmatter. For each, perform `Read` followed by `Write` of same content (no semantic change; PostToolUse Write hook fires cascade-check.js logic against current file state). After loop, surface diff summary.
+
+Note: `--revalidate` correctly handles DEC-DEV-0023 forward-driven logic (only real forward refs queued).
+
+#### `--reset`
+
+```
+Found <N> pending cascade entries в .product/.pending/cascade-pending.yaml.
+
+⚠ Reset is destructive — clears all entries без re-validation.
+  Use --revalidate instead если want to refresh с current detection logic.
+
+Continue? Type 'reset' to confirm:
+> _
+
+Reason for reset (logged к journal):
+> _
+
+Reset complete. cascade-pending.yaml — entries: [] empty.
+Journal: DEC-CASCADE-NNN — Manual reset (N cleared, reason: ...)
+```
+
+Implementation: write `entries: []` to cascade-pending.yaml; append decision journal entry.
 
 ### Step 4: Action handlers
 

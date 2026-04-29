@@ -186,8 +186,11 @@ function parseDaEntriesYaml(text) {
     let diffLines = [];
     block.split(/\r?\n/).forEach((line) => {
       if (inDiff) {
-        if (/^\s{4,}/.test(line) || line === '') {
-          diffLines.push(line.replace(/^\s{4}/, ''));
+        // Diff is multiline literal block (|), formatter emits 6-space indent.
+        // Parser must strip exactly 6 to round-trip cleanly; mismatch (was 4) caused
+        // exponential whitespace ladder accumulation across re-emits — DEC-DEV-0023.
+        if (/^\s{6,}/.test(line) || line === '') {
+          diffLines.push(line.replace(/^\s{6}/, ''));
         } else {
           inDiff = false;
         }

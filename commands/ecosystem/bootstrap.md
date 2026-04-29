@@ -277,6 +277,11 @@ rm -rf .claude-ecosystem-tmp/dev
 rm -f .claude-ecosystem-tmp/CLAUDE.md
 rm -f .claude-ecosystem-tmp/DEV_JOURNAL.md
 rm -f .claude-ecosystem-tmp/INSTALL-HUMAN.md
+# DEC-DEV-0023: hook lint infra is ecosystem-dev only — user projects don't need npm
+rm -f .claude-ecosystem-tmp/package.json
+rm -f .claude-ecosystem-tmp/package-lock.json
+rm -f .claude-ecosystem-tmp/eslint.config.js
+rm -rf .claude-ecosystem-tmp/node_modules
 
 # Ensure .claude/ exists
 mkdir -p .claude
@@ -330,11 +335,12 @@ If any missing → abort with clear error listing missing items. Suggest re-runn
 After Step 2, the `.claude/` directory contains:
 - Ecosystem content (commands, skills, agents, hooks, docs, templates, config templates)
 - **Preserved:** any Claude Code auto-generated files (`settings.local.json` etc.) that were there before — `cp -n` skips overwriting them.
-- **NOT copied (filtered per Step 2b/2c never-copy zone — DEC-DEV-0022):**
+- **NOT copied (filtered per Step 2b/2c never-copy zone — DEC-DEV-0022, extended DEC-DEV-0023):**
   - `dev/` — ecosystem developer artifacts (PHASE_*, meta-improvement/, v1_1_backlog.md)
   - `CLAUDE.md` (root) — ecosystem dev's CLAUDE.md (would mislead future Claude sessions to think they're working on ecosystem itself, не user's product)
   - `DEV_JOURNAL.md` — ecosystem dev's decision log
   - `INSTALL-HUMAN.md` — ecosystem dev guide
+  - `package.json`, `package-lock.json`, `eslint.config.js`, `node_modules/` — hook lint pipeline artifacts (ecosystem-dev only — user projects не нуждаются в npm)
 
 **Why this filter exists:** without it, naive `cp -rn` would copy ALL files from upstream repo, contaminating user's `.claude/` с ecosystem-dev artifacts. Phase 3 closure (DEC-DEV-0019 Finding A) caught this с pilot Claude observation that `.claude/CLAUDE.md` would be auto-loaded by future sessions. `/ecosystem:update` solves equivalent problem via allowlist (DEC-DEV-0020); bootstrap closes greenfield install path here (DEC-DEV-0022).
 

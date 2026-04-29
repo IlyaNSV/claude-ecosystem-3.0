@@ -2,7 +2,7 @@
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 4 (Handoff + NFR + Product DA + Validation full).
 >
-> **Status (2026-04-27):** placeholder. Populated incrementally as Phase 3 smoke test completes + Phase 4 architectural questions surface.
+> **Status (2026-04-29):** Phase 3 smoke-tested + 1.1.1 patch shipped (DEC-DEV-0023). Section A blocker LIFTED. Pre-Phase-4 architectural items C.1-C.5 + new D.5 + A.3 still pending.
 >
 > **Принцип:** не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждый item имеет severity: 🔴 Blocker, 🟡 Important, 🔵 Nice-to-have.
 
@@ -10,61 +10,78 @@
 
 ## Status banner
 
-⏳ **Phase 3 implementation complete (DEC-DEV-0014, 2026-04-27).**
+✅ **Phase 3 implementation complete (DEC-DEV-0014, 2026-04-27).**
+✅ **Phase 3 smoke test executed + 1.1.1 patch shipped (DEC-DEV-0023, 2026-04-29).**
 
 Pending перед Phase 4 kick-off:
-- [ ] **Phase 3 real run smoke test** (per `dev/PHASE_3_SMOKE_TEST_PLAN.md`) — required before Phase 4
-- [ ] Smoke test findings reviewed; regressions fixed if any
+- [x] **Phase 3 real run smoke test** — executed 2026-04-29 на my-first-test (5.5h integrated pipeline run, 12 findings, 1.1.1 fixes shipped)
+- [x] Smoke test findings reviewed; regressions fixed (4 hook bugs + 1 validation gap + 5 skill convention codifications + 1 schema deferral)
 - [ ] Phase 4 architectural questions answered (Section C below)
 - [ ] Phase 4 scope confirmed / discipline applied
+- [ ] R2 user-driven follow-up: `/ecosystem:update` on my-first-test (verifies 1.1.1 fixes propagation)
+- [ ] R4 user-driven follow-up: re-run smoke after fixes (validates F1-F5 in real workflow)
 
-**Once smoke test passes без regressions, can proceed к Phase 4 kick-off.**
+**Phase 3 gate fully closed. Phase 4 kick-off blocked only on architectural decisions C.1-C.5 + new D.5 + A.3.**
 
 ---
 
-## A. Phase 3 smoke test outcome (🔴 Blocker)
+## A. Phase 3 smoke test outcome (🟢 RESOLVED — DEC-DEV-0023)
 
 ### A.1 Real run на my-first-test
 
-- [ ] Test scenario 1 (`/product:plan`) ran к completion. Findings: <TBD>
-- [ ] Test scenario 2 (`/product:feature FM-001`) ran к completion. Findings: <TBD>
-- [ ] Test scenario 3 (`/product:bg-review`) ran. Findings: <TBD>
-- [ ] Test scenario 4 (`/product:cascade --pending`) ran. Findings: <TBD>
-- [ ] Test scenario 5 (D2 overrides) verified. Findings: <TBD>
+Executed 2026-04-29: integrated pipeline run (bootstrap → Discovery → Planning → enrichment FM-001) вместо isolated scenarios. Functionally satisfies acceptance — entire P1.B + P2.A flow exercised end-to-end.
 
-**Per smoke test plan acceptance:** 4+ scenarios pass → Phase 3 ships → Phase 4 unblocked.
+- [x] `/product:plan` flow ran к completion. Findings: 8 DEC-PLAN entries в test project journal; planning discipline OK.
+- [x] `/product:feature FM-001` ran к completion (F.1-F.10). Findings: 23 BR + 7 SC + 7 IC + 7 VC + 3 LC + RPM produced; A1 auto-approve fired correctly for LC/VC/RPM.
+- [x] BG candidate extraction — **failed silently**: bg-extractor.js TDZ bug (119 ReferenceError), 0 candidates extracted. Fix: F1 в DEC-DEV-0023.
+- [x] `/product:cascade --pending` exercised — 396 entries (most false-positives). Fix: F2/F3 forward-driven + dedup в DEC-DEV-0023.
+- [x] D2 overrides — not exercised в smoke (no override scenarios encountered); deferred к next pilot.
+- [x] DA orchestration via hooks — fired 55 times correctly, findings collected inline в DEC-PLAN-006 (4 important, 5 discussion).
+
+**Acceptance:** 4+ scenarios functionally exercised; 1.1.1 patch addresses regressions surfaced. Phase 3 ships → Phase 4 unblocked.
 
 ### A.2 Retroactive DEV_JOURNAL entry
 
-- [ ] DEC-DEV-NNNN — Phase 3 smoke test results populated. Lessons + findings recorded.
+- [x] **DEC-DEV-0023** — Phase 3 smoke test results populated (2026-04-29). Lessons + 12 findings + Path Z fix package + refinement table recorded.
 
-### A.3 Pre-existing concerns from DEC-DEV-0013 B.1
+### A.3 Pre-existing concerns from DEC-DEV-0013 B.1 (still pending)
 
 - [ ] `skills/product/hypothesis-formulation.md` non-canonical fields (per DEC-DEV-0013 B.1 observation) — addressed або explicitly deferred? `success_threshold` vs spec `target_value`; missing `segment` / `value_proposition` в template.
+- **Note:** не surfaced в DEC-DEV-0023 smoke test (existing HYPs from prior session — frontmatter не re-validated). Should address before Phase 4 kickoff OR explicit defer note.
 
 ---
 
 ## B. Phase 4 deliverables alignment (per ROADMAP)
 
-Phase 4 ROADMAP scope (~10 файлов):
+Phase 4 ROADMAP scope (~10 файлов; **состав без изменений** post DEC-DEV-0023, но appear новые inputs/constraints):
 
 **commands/product/:**
 - [ ] `handoff.md` — D1 modes (draft/production), D2 overrides
-- [ ] `validate.md` — on-demand full validation
-- [ ] `cleanup.md` — V-15 orphan detection (`--dry-run`)
-- [ ] `da-review.md` — manual F.9 trigger (Mode: full per refactored devils-advocate.md)
+- [ ] `validate.md` — on-demand full validation. **Inherit auto-purge pattern из artifact-validate.js (DEC-DEV-0023 F5).**
+- [ ] `cleanup.md` — V-15 orphan detection (`--dry-run`). **Consider integration с `/product:cascade --pending --revalidate` (Q7) + validation-pending stale entries** — see D.5 ниже.
+- [ ] `da-review.md` — manual F.9 trigger (Mode: full per refactored devils-advocate.md). **Output schema codified — use structured YAML `da_findings:` block per feature-session.md «Structured DA findings format» (DEC-DEV-0023 F8).**
 - [ ] `clarify.md` — receiver questions channel
-- [ ] `nfr-review.md` — F.5a Ask/Define
+- [ ] `nfr-review.md` — F.5a Ask/Define. **Input source codified — consume existing `NOTE-NNN` artifacts с `promote_target: NFR` (Q4 NOTE creation guidance в feature-session.md).**
 - [ ] `nfr-upgrade-tier.md` — batch review при tier change
 
 **skills/product/:**
 - [ ] `handoff-generator.md` — 13 sections, mode-aware DoR (D1), hash computation
-- [ ] `nfr-review.md` — sanity ranges integration, guardrails
-- [ ] `product-da-review.md` — invokes business DA agent (Mode: full), handles findings
-- [ ] `validation-runner.md` — tier-aware (B1), quiet-mode-aware (B2), 5 execution points
+- [ ] `nfr-review.md` — sanity ranges integration, guardrails. **Consume NOTE-NNN promote_target=NFR queue per Q4.**
+- [ ] `product-da-review.md` — invokes business DA agent (Mode: full), handles findings. **Output structured per F8 schema.**
+- [ ] `validation-runner.md` — tier-aware (B1), quiet-mode-aware (B2), 5 execution points. **Auto-purge pattern (F5) уже в artifact-validate.js — runner extends, не reinvent.**
 
 **hooks/product/:**
-- [ ] `product-handoff-gate.js` — PreToolUse блокировка без valid handoff (per SPEC §6.6)
+- [ ] `product-handoff-gate.js` — PreToolUse блокировка без valid handoff (per SPEC §6.6). **MUST pass `verify-hooks.js` smoke before commit (phase-closure Step 3 + pre-commit gate per DEC-DEV-0023 F6/R3).**
+
+### B.1 Hook quality gate (added DEC-DEV-0023)
+
+Все новые Phase 4 hooks (currently planned: `product-handoff-gate.js`) должны:
+
+1. Pass `node dev/meta-improvement/scripts/verify-hooks.js` (smoke runner) — exit 0 + no fatal stderr patterns.
+2. Если pre-commit installed (`bash dev/meta-improvement/scripts/install-pre-commit.sh`) — autoatomatically блокирует commit если verify-hooks fails.
+3. Phase-closure ritual Step 3 «Hook runtime smoke (≤5 min)» runs same verify after Phase 4 implementation completes.
+
+Для adding new hook к `smoke-hooks.js` test cases array — see [smoke-hooks.js TEST_CASES](meta-improvement/scripts/smoke-hooks.js).
 
 ---
 
@@ -90,6 +107,8 @@ Phase 4 ROADMAP scope (~10 файлов):
 
 **Проблема:** refactored devils-advocate.md supports Mode: full (always 6-lens). `/product:da-review` command (Phase 4) needs to construct brief properly.
 
+**Resolution status (DEC-DEV-0023 F8):** Output schema known — `da_findings:` structured YAML block с `revisit_trigger` mandatory для accepted/deferred resolutions. Documented в [skills/product/feature-session.md](../skills/product/feature-session.md) «Structured DA findings format в decision journal».
+
 **Решение перед implementation:**
 - [ ] Brief format для manual mode — symmetric к hook-driven adaptive? Или specific Mode: full template?
 - [ ] Output location — same `.product/.da-findings/` or separate (e.g., `.da-findings/manual/`)?
@@ -102,12 +121,19 @@ Phase 4 ROADMAP scope (~10 файлов):
 - [ ] Validation runner skill consumes V-* rules from validation.md catalog programmatically? Или hardcode rule list?
 - [ ] Reporting format — JSON + markdown (per validation.md §10.3 example)?
 
-### C.5 Cleanup orphan detection — Phase 6 Design coupling
+### C.5 Cleanup orphan detection — Phase 6 Design coupling + pending hygiene (extended DEC-DEV-0023)
 
 **Проблема:** V-15 orphan detection includes MK/DS/NM (Phase 6 artifacts). Phase 4 `/product:cleanup` ships without these (Phase 6 conditional).
 
+**DEC-DEV-0023 extension:** cleanup также должен handle stale entries в:
+- `.product/.pending/cascade-pending.yaml` — auto-clear obsolete cascade entries (либо invoke `/product:cascade --pending --revalidate` underneath, либо own purge logic).
+- `.product/.pending/validation-pending.yaml` — verify auto-purge applied (F5 pattern); flag inconsistencies.
+- `.product/.pending/da-pending.yaml` — flag entries для already-active artifacts (DA processed).
+
 **Решение перед implementation:**
 - [ ] Phase 4 cleanup excludes MK/DS/NM check; Phase 6 extends? Or conditional flag в command?
+- [ ] Cleanup invokes `/product:cascade --pending --revalidate` as sub-step? Или own purge?
+- [ ] Cleanup pending hygiene = mandatory (default behavior) или opt-in (`--pending-hygiene` flag)?
 
 ### C.6 Bootstrap update mechanism architecture — ✅ RESOLVED (DEC-DEV-0020, 2026-04-28)
 
@@ -158,6 +184,24 @@ Phase 4 `/product:validate --deep` ships «all V-*». Phase 6 handles V-MK-* (De
 
 - [ ] Phase 4 ships V-* + V-H-*; V-MK-* skipped с graceful note?
 
+### D.5 Cleanup integration с pending hygiene (added DEC-DEV-0023)
+
+`/product:cleanup` (Phase 4) и `/product:cascade --pending --revalidate` (1.1.1, DEC-DEV-0023 Q7) overlap в hygiene domain. Decision needed:
+
+- [ ] **Option A — single sweep:** `/product:cleanup` invokes cascade revalidate underneath + handles validation-pending purge + orphan detection в одном вызове. User runs cleanup periodically.
+- [ ] **Option B — separate concerns:** `/product:cleanup` = orphan detection only; cascade hygiene остаётся в `/product:cascade --pending --revalidate`. User runs обе команды per discipline.
+- [ ] **Option C — hybrid:** cleanup has `--pending-hygiene` flag; default = orphan-only (fast); flag enables full sweep.
+
+Recommendation на момент 2026-04-29: **Option C** — flexibility без forced bundle. Choose explicitly в Phase 4 kickoff.
+
+### D.6 v1.1+ deferrals — Phase 4 не constraint'нут (added DEC-DEV-0023)
+
+Following items deferred к v1.1+; Phase 4 should NOT attempt to resolve:
+
+- **BR.feature schema** (DEC-DEV-0023 Q2) — current scalar `feature: FM-NNN` works для Phase 4. v1.1 evaluates global/array/extends options (bring-forward trigger: second FM enrichment с shared rule reuse pain).
+- **Reverse-driven cascade additional review rules** (e.g., BR change → LC.rules contains BR → V-06 review) — v1.2. Phase 4 cascade-check.js stays forward-driven only; manual `/product:cascade --pending --revalidate` остаётся workaround если user explicitly wants reverse cases.
+- **Hook smoke runner extension** для new hooks — adds entry в `dev/meta-improvement/scripts/smoke-hooks.js` TEST_CASES array (low effort, do при adding hook).
+
 ---
 
 ## E. Pilot validation gate (🔴 Blocker — самый важный пункт)
@@ -180,8 +224,10 @@ Per Phase 3.I plan — see Section A above.
 ### F.1 Memory entries actualization
 
 Update memory after Phase 3 + smoke test:
-- [ ] `project_ecosystem_status.md` — reflect Phase 3 complete + Phase 4 next
-- [ ] `project_ecosystem_architecture.md` — add Phase 3 architectural patterns (A1 auto-approve, DA orchestration через stderr, cascade scope V-11 only, decision journal location)
+- [x] `project_ecosystem_status.md` — refreshed 2026-04-29 (DEC-DEV-0023 P3) reflects Phase 3 smoke-tested + 1.1.1 + Phase 4 unblocked
+- [x] `feedback_methodology.md` — added pt 4 (hook smoke runner mandatory pre-commit per DEC-DEV-0023)
+- [x] `MEMORY.md` — index refreshed
+- [ ] `project_ecosystem_architecture.md` — add Phase 3 architectural patterns (A1 auto-approve, DA orchestration через stderr, cascade scope V-11 only forward-driven post DEC-DEV-0023, decision journal location, structured DA findings schema)
 
 ### F.2 CHANGELOG vs DEV_JOURNAL discipline (continued)
 

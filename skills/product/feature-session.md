@@ -287,6 +287,53 @@ Next:
   (Phase 4 будущее: /product:handoff FM-<NNN> для handoff generation)
 ```
 
+## Deferral capture — NOTE creation guidance (DEC-DEV-0023)
+
+When F.2-F.5 surfaces что-то out-of-scope для current FM / RL — это становится `NOTE-NNN` artifact с `promote_target` field, picking up в RL-NN+1 planning. Critical для traceability + future-proofing.
+
+### `promote_target` decision tree
+
+Before writing NOTE, classify nature of deferred item — это determines `promote_target`:
+
+| Item nature | Examples (my-first-test pilot) | promote_target | Why |
+|---|---|---|---|
+| **Sub-feature with own UX/SC surface** | "Edit profile" flow (NOTE-002), "2FA" (NOTE-003), "Logout-all-sessions admin tool" (NOTE-005) | **FM** | Stand-alone feature; needs own SC/BR/UX в future RL |
+| **New rule modifying existing flow** | "OAuth-vs-email account merge logic" (NOTE-004 placeholder), "Hard account lockout policy" (NOTE-001) | **BR** | Modifies existing FM behavior; не stand-alone |
+| **Cross-cutting non-functional concern** | Throughput targets, latency budgets, security compliance (e.g., GDPR data export), accessibility AAA, retention policies | **NFR** | Quality attribute, не functional behavior; F.5a Phase 4 review handles |
+| **Open hypothesis / market question** | "Pivot pricing к freemium tier", "Test SEG-002 in late RL-002" | **HYP** | Empirical question requiring measurement |
+| **Domain insight без actionable form** | Competitor observation, user-interview anecdote | (no promote — keep as NOTE forever) | Idea-capture, не decision |
+
+### NFR vs FM — common confusion (security territory)
+
+Security-related deferrals часто looks like FM-candidates но actually fit NFR better. Heuristic:
+
+- **«User does X» в the deferred item description** → FM (functional)  
+  Example: "User can log out from all devices" → FM-NNN (account management feature)
+
+- **«System enforces X» / «Property holds X»** → NFR or BR  
+  Example: "After N failed logins, account locks for 1 hour" → BR (rule modifying SC-002e1) или NFR (security control)
+  - If the item is parameterized rule с specific behavior → BR
+  - If the item is qualitative property («account must be reasonably protected against brute force») → NFR
+
+- **Compliance / regulatory** → NFR by default  
+  Example: "GDPR data export within 72 hours" → NFR (regulatory quality attribute), trigger F.5a
+
+### Confidence-of-placement field
+
+Если AI unsure, encode uncertainty in NOTE:
+```yaml
+promote_target_confidence: medium
+promote_target_alternative: NFR  # альтернативный target если в planning RL-NN+1 reconsider
+```
+
+Then planning skill для RL-NN+1 surfaces к user: «NOTE-001 promote_target=BR с medium confidence; consider NFR alternative.»
+
+### Pain origin
+
+my-first-test pilot создал 5 NOTE'ов, все с `promote_target: FM | BR`. NOTE-001 (hard lockout) и NOTE-003 (2FA) — security territory; могли быть NFR кандидаты. AI правильно flagged для RL-002, но без NFR-vs-FM placement decision. Codified guard здесь обеспечивает explicit consideration.
+
+---
+
 ## DA orchestration flow (per DEC-DEV-0013 #8)
 
 After each BR or IC active write, hook (`br-change-trigger.js` или `ic-change-trigger.js`, Phase 3.E) автоматически runs:
@@ -332,6 +379,53 @@ After each BR or IC active write, hook (`br-change-trigger.js` или `ic-change
 9. After all critical findings resolved → BR/IC status → active
 
 **Important:** orchestrator не блокирует workflow если DA findings всё 🔵 Discussion (no critical/important). Auto-passes to active с notification.
+
+### Structured DA findings format в decision journal (DEC-DEV-0023)
+
+When orchestrator writes `DEC-PLAN-NNN` или `DEC-AUTO-NNN` entry summarizing F.3 / F.5 batch approve, **DA findings MUST be embedded structurally** (не free-text). Schema:
+
+```yaml
+da_findings:
+  - id: I1                                      # short local id (sequential per session)
+    severity: critical | important | discussion # per devils-advocate.md classification
+    artifact_ref: BR-008                        # what this finding is about
+    statement: >
+      <one-line statement of finding>
+    resolution: accepted | acted | deferred | dismissed
+    follow_up:
+      - action: <what done / what scheduled>
+        target_artifact: BR-008 | NOTE-005 | none   # where action lands
+        revisit_trigger: <metric / event / condition that triggers revisit>
+        revisit_window: <when, e.g., "RL-002 planning" / "if >1% events / month">
+```
+
+**Required for accepted и deferred resolutions** — without `revisit_trigger`, "accepted" silently becomes "forgotten." For acted resolutions — `revisit_trigger` optional (action already taken). For dismissed — rationale в `statement` field overrides need для revisit (decision is final).
+
+**Pain origin:** my-first-test DEC-PLAN-006 had 4 important findings + 5 discussion findings as free-text. Trace-friendly но не machine-readable; future agent захочет re-validate I4 «BR-011 resend rate-limit blocked >1% events» — нет structured query path. Codification обеспечивает trigger reproducibility.
+
+**Example (rendered from my-first-test DEC-PLAN-006):**
+
+```yaml
+da_findings:
+  - id: I1
+    severity: important
+    artifact_ref: BR-008
+    statement: BR-008 (duplicate-email explicit messaging) asymmetric с BR-016/020 anti-enumeration
+    resolution: accepted
+    follow_up:
+      - action: documented в BR-008 confidence_notes; periodic review
+        target_artifact: BR-008
+        revisit_trigger: enumeration attack signal в logs OR security audit finding
+        revisit_window: RL-002 planning OR triggered by signal
+  - id: I3
+    severity: important
+    artifact_ref: BR-014
+    statement: race condition concurrent logins при count=5 boundary
+    resolution: acted
+    follow_up:
+      - action: added DB row-lock requirement к BR-014 body (`SELECT ... FOR UPDATE`)
+        target_artifact: BR-014
+```
 
 ## A1 auto-approve flow (per DEC-DEV-0013 #2 + #7)
 

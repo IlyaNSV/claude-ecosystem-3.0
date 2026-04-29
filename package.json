@@ -1,0 +1,16 @@
+{
+  "name": "claude-ecosystem-3-0-dev",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Dev tooling for Ecosystem 3.0 — hook smoke runner + optional eslint. Not published; not bootstrapped to user projects (excluded by /ecosystem:bootstrap never-copy zone).",
+  "scripts": {
+    "smoke:hooks": "node dev/meta-improvement/scripts/smoke-hooks.js",
+    "smoke:hooks:verbose": "node dev/meta-improvement/scripts/smoke-hooks.js --verbose",
+    "lint:hooks": "eslint hooks/",
+    "verify:hooks": "node dev/meta-improvement/scripts/verify-hooks.js",
+    "verify": "npm run verify:hooks"
+  },
+  "devDependencies": {
+    "eslint": "^9.13.0"
+  }
+}

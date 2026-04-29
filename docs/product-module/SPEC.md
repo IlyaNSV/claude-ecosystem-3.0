@@ -415,6 +415,7 @@
 ### 6.1 `product-artifact-validate.js` (PostToolUse) — tier-aware + quiet-mode
 
 - **Триггер:** Write/Edit на `.product/**/*.md`
+- **Auto-purge (DEC-DEV-0023):** на каждом save сначала clears all prior `validation-pending.yaml` entries для `fm.id`. Current pass = authoritative state; rules that previously failed но now pass — entry cleared automatically. Without this, fixed issues remain pending forever.
 - **Действия:** inline validation (V-01..V-11, V-H-06) **filtered per `validation_tier`** (B1):
   - `pilot` tier → only 🔴 Blocking inline
   - `mvp` tier → 🔴 + 🟡
@@ -464,12 +465,31 @@
 - **Output:** findings → `.product/.da-findings/BR-NNN-<YYYY-MM-DD>-<HHMM>.md`.
 - **Effect:** BR cannot → active без resolved findings. Cascade protocol запускается отдельным `cascade-check.js` hook'ом независимо от DA (см. §6.7).
 
-### 6.7 `cascade-check.js` (PostToolUse, detection + V-11 auto-fix per DEC-DEV-0012)
+### 6.7 `cascade-check.js` (PostToolUse, detection + V-11 auto-fix per DEC-DEV-0012, refined DEC-DEV-0023)
 
 - **Триггер:** Write/Edit на `.product/**/*.md` (после артефактного активного изменения)
-- **Действия:** detection downstream artifacts через bi-dir refs; для V-11 (bi-dir consistency) — auto-fix add reverse ref если target в `active`; для остальных affected — записать pending entries в `.product/.pending/cascade-pending.yaml`. Full BFS auto-fix beyond V-11 → v1.1 (см. dev/v1_1_backlog.md).
+- **Действия:** detection downstream artifacts через **forward-driven map** (DEC-DEV-0023): для каждого forward-ref в saved frontmatter (e.g., SC.rules → BR, SC.feature → FM) lookup target file по ID; queue entry только для существующих refs. V-11 auto-fix добавляет reverse ref если target в `active`; для остальных affected — pending entries в `.product/.pending/cascade-pending.yaml`. Full BFS auto-fix beyond V-11 → v1.1; reverse-driven additional review rules (e.g., BR change → LC re-validate via LC.rules) → v1.2.
 - **Quiet draft mode:** если target артефакт `status: draft` — skip auto-fix, queue только. Aligns B2.
+- **Dedup:** entries deduplicated по composite key `(artifact, rule, triggered_by)` перед append (DEC-DEV-0023). Prevents monotonic growth от repeated saves of same artifact.
+- **Manual cleanup:** `/product:cascade --pending --revalidate` re-detects against current artifact graph (clears stale entries from outdated logic); `/product:cascade --pending --reset` destructive purge с confirmation.
 - **Output:** `.product/.pending/cascade-pending.yaml` + manual nav через `/product:cascade <artifact-id>` или `/product:cascade --pending`.
+
+#### 6.7.1 Forward-driven topology (per type)
+
+| saved.type | Forward field → target dir | Reverse field on target | Notes |
+|---|---|---|---|
+| `scenario` | `rules` → business-rules/ | `scenarios` (multi) | + V-06 review for lifecycle, + V-07 for verification |
+| `scenario` | `lifecycle` → lifecycles/ | `scenarios` (multi) | |
+| `scenario` | `verification` → verification/ | `scenario` (multi) | |
+| `scenario` | `feature` → features/ | `scenarios` (multi) | scalar |
+| `business-rule` | `scenarios` → scenarios/ | `rules` (multi) | |
+| `business-rule` | `feature` → features/ | `rules` (multi) | scalar |
+| `lifecycle` | `scenarios` → scenarios/ | `lifecycle` (multi) | |
+| `lifecycle` | `feature` → features/ | `lifecycles` (multi) | scalar |
+| `invariant-check` | `feature` → features/ | `invariants` (multi) | scalar |
+| `verification-criteria` | `scenario` → scenarios/ | `verification` (multi) | scalar |
+| `verification-criteria` | `feature` → features/ | `verification` (multi) | scalar |
+| `feature-map-entry` | (no cascade in v1.1 — embedded artifact saves cover) | | |
 
 ### 6.6 `product-handoff-gate.js` (PreToolUse)
 

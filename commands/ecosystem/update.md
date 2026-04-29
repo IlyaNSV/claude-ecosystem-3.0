@@ -109,6 +109,7 @@ rm -rf .claude-ecosystem-tmp/.git
 | `DEV_JOURNAL.md` | Ecosystem dev's decision log |
 | `dev/` (entire dir) | Internal phase docs, meta-improvement, archives |
 | `INSTALL-HUMAN.md` | Pre-install guide для humans (not для running ecosystem) |
+| `package.json`, `package-lock.json`, `eslint.config.js`, `node_modules/` | Hook lint pipeline (ecosystem-dev only — DEC-DEV-0023; user projects не нуждаются в npm) |
 | `.git/` | Already removed from temp в Step 3 |
 | `.gitignore`, `.gitattributes` (root) | Project's own |
 | Any other root files (e.g., LICENSE) | Not ecosystem-managed |

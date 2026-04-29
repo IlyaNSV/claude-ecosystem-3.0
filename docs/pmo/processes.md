@@ -564,6 +564,8 @@ auto_approve_confirmation_artifacts:
 | DS изменён | ALL MK using токен |
 | BG изменён | ALL artifacts using term (mass-rename flow) |
 
+**v1.1+ implementation note (DEC-DEV-0023):** `cascade-check.js` использует **forward-driven** map per saved artifact type — iterates только forward refs в saved frontmatter, не all candidate files. См. SPEC.md §6.7.1 для полной топологии. Reverse-driven cases (BR change → LC.rules contains BR → re-validate transition) deferred к v1.2; manual `/product:cascade --pending --revalidate` re-runs detection.
+
 ### 4.2 Bundle approve UX
 
 Пример из validation.md §6.3:

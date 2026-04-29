@@ -245,6 +245,67 @@ Beyond V-11 auto-fix, full BFS:
 
 ---
 
+## BR.feature schema — single vs array vs global directory
+
+**Originally planned:** Phase 3 (per DEC-DEV-0014; не считалось проблемой)
+**Surfaced:** 2026-04-29 per DEC-DEV-0023 (my-first-test pilot — BR-001 email format universal across all FMs, но schema = `feature: FM-001` scalar)
+**Defer rationale:** Phase 3 implementation shipped с scalar schema; pilot не блокировал но revealed ergonomic gap. Decision deferred к v1.1 чтобы не interrupt Phase 4 readiness; minor pilot workaround = duplicate BR per FM или manually edit schema.
+**Bring-forward trigger:** второй FM enrichment (FM-002 или другой) который reveals shared rule reuse pain. До тех пор — current scalar schema pragmatic.
+
+### Architectural intent
+
+Текущая схема BR frontmatter:
+```yaml
+owner_feature: FM-001                # scalar — primary FM
+scenarios: [SC-001, SC-002, ...]     # SCs где applied (всё равно multi)
+```
+
+Проблема: BR-001 (email format) логически универсально (RFC 5322 valid). При FM-002+ enrichment AI:
+- Либо дублирует BR-001 → drift риск + V-11 cascade complexity
+- Либо вручную меняет owner_feature на array (не supported by current cascade-check.js spec) → inconsistent
+
+### Three options для v1.1 evaluation
+
+**Option A — global rules dir (least invasive):**
+- Введение `.product/business-rules/global/BR-XXX.md` для shared rules
+- Scalar `owner_feature` остаётся; для global — `owner_feature: GLOBAL` или omit
+- cascade-check.js spec обновляется: BR в `global/` doesn't trigger FM-specific cascade
+- Pros: minimal schema change; clear separation
+- Cons: requires manual classification per BR (global vs FM-specific); some rules borderline
+
+**Option B — array schema (more flexibility):**
+- `owner_features: [FM-001, FM-002]` — array, multi-FM ownership
+- All BRs use this; rules used by 1 FM = single-element array
+- cascade-check.js V-11 updated для multi-FM bidir
+- Pros: uniform schema; flexible
+- Cons: V-11 logic more complex; array operations on single-FM BR feels heavy
+
+**Option C — separate rule reuse mechanism (most invasive):**
+- Introduce `BR-EXTENDS: BR-001` field — BR can extend / refine another BR
+- Each FM has own BR-NNN that extends shared base
+- Pros: explicit refinement model
+- Cons: graph complexity; over-engineering для current scope
+
+### Implementation notes
+
+When picking option (v1.1):
+- Option A wins на pragmatism; Option B wins на uniformity. C unlikely правильный.
+- Migration path: existing scalar BRs auto-classified — heuristic «BR используется в >1 FM after second FM enrichment → propose move к global/».
+- Update `docs/pmo/artifacts/BR.md` schema doc + `cascade-check.js getForwardSpecs('business-rule')` spec accordingly.
+
+### References to existing spec
+
+- `docs/pmo/artifacts/BR.md` — current BR schema
+- `hooks/product/cascade-check.js getForwardSpecs()` — current cascade map per type
+- DEC-DEV-0023 my-first-test smoke test findings — pilot evidence
+
+### Estimated effort при возврате
+
+- Option A: 2-3 часа (mkdir, schema doc note, cascade-check minor branch)
+- Option B: 4-6 часов (V-11 multi-FM bi-dir logic, migration script, doc updates)
+
+---
+
 ## Bundle approve UX для cascade
 
 **Originally planned:** Phase 3

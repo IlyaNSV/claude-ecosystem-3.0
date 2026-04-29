@@ -206,6 +206,15 @@ const toSurface = findings.filter((f) => {
   return true;
 });
 
+// ---------- Auto-purge prior pending entries for this artifact (DEC-DEV-0023) ----------
+
+// На каждом save этот validation pass = authoritative state для fm.id. Stale
+// entries from earlier saves (где правило падало) clear-ятся automatically when
+// it now passes. Without this, fixed issues remain в validation-pending.yaml
+// indefinitely (observed Phase 3 smoke test: FM-006 missing-jtbd entry оставалась
+// после option-B fix).
+purgeValidationPendingFor(projectRoot, fm.id);
+
 // ---------- Queue overridden findings always (Phase 3.F audit log) ----------
 
 // Per DEC-DEV-0012 C.5 — overridden rules logged regardless of quiet mode for
@@ -411,6 +420,26 @@ function buildOverrideMap(validationOverrides, approveOverrides) {
   }
 
   return map;
+}
+
+/**
+ * Remove all validation-pending entries for the given artifactId.
+ * Called at start of each hook run (DEC-DEV-0023) so stale entries from prior
+ * saves get cleared when the rule now passes. New findings (if any) re-queued
+ * by subsequent queueValidationFindings() call.
+ */
+function purgeValidationPendingFor(projectRoot, artifactId) {
+  const queueFile = path.join(projectRoot, '.product', '.pending', 'validation-pending.yaml');
+  if (!fs.existsSync(queueFile)) return;
+  try {
+    const text = fs.readFileSync(queueFile, 'utf-8');
+    const queue = parsePendingYaml(text);
+    const filtered = queue.filter((e) => e.artifact !== artifactId);
+    if (filtered.length === queue.length) return;  // No matching entries — skip rewrite
+    fs.writeFileSync(queueFile, formatPendingYaml(filtered));
+  } catch (e) {
+    // Silent — keep going; subsequent queue ops still work
+  }
 }
 
 /**

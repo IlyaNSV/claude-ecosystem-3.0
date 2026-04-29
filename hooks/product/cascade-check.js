@@ -193,7 +193,20 @@ if (fs.existsSync(cascadeFile)) {
   }
 }
 
-existing.push(...pendingEntries);
+// Dedup against existing entries by composite key (artifact, rule, triggered_by)
+// — original code unconditionally appended, growing монотонно (DEC-DEV-0023 fix).
+// Skip duplicates; keep first-seen entry (preserves earliest at: timestamp).
+const seenKeys = new Set(
+  existing.map((e) => `${e.artifact || ''}|${e.rule || ''}|${e.triggered_by || ''}`)
+);
+const newOnes = [];
+for (const e of pendingEntries) {
+  const k = `${e.artifact}|${e.rule}|${e.triggered_by}`;
+  if (seenKeys.has(k)) continue;
+  seenKeys.add(k);
+  newOnes.push(e);
+}
+existing.push(...newOnes);
 
 try {
   fs.writeFileSync(cascadeFile, formatEntriesYaml(existing));
@@ -303,101 +316,118 @@ function injectListField(content, fieldName, valueToAdd) {
 
 function identifyDependents(fm, projectRoot) {
   // Per processes.md §4.1 trigger matrix.
+  //
+  // v1.1 (DEC-DEV-0023): forward-driven cascade. For each forward ref в saved
+  // frontmatter, look up the target dependent file by ID and queue только его.
+  // Replaces v1's "include all candidates of dependent type" pattern, which
+  // generated false-positive V-11 entries for unrelated artifacts (e.g., FM-002..N
+  // flagged for missing SC reverse refs, even though SC.feature pointed at FM-001).
+  //
+  // Reverse-driven additional review rules (e.g., LC.rules contains BR → on BR
+  // change re-validate LC transitions) deferred to v1.2 — current v1.1 covers
+  // the V-11 bi-dir cases that matter most.
+  //
   // Returns list of {path, reverseField, reviewRules: [{rule, detail}]} entries.
-  const results = [];
   const productDir = path.join(projectRoot, '.product');
-
-  // Helper: list all .md files в a directory (recursive=false)
-  const listMd = (dir) => {
-    if (!fs.existsSync(dir)) return [];
-    return fs.readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => path.join(dir, f));
-  };
-
+  const results = [];
   const idStr = fm.id;
 
-  // Map: artifact type → who depends on it (via what reverse field)
-  // We scan files в potentially-dependent directories для refs к fm.id.
-
-  switch (fm.type) {
-    case 'scenario':
-      // SC changes → BR (rules), VC (verification), LC (lifecycle), FM (scenarios)
-      addDeps(results, listMd(path.join(productDir, 'business-rules')), 'scenarios', { rule: 'V-11', source: idStr });
-      addDeps(results, listMd(path.join(productDir, 'lifecycles')), 'scenarios', { rule: 'V-11', source: idStr, additionalRules: [{ rule: 'V-06', detail: `LC may need re-validation: SC ${idStr} steps changed` }] });
-      addDeps(results, listMd(path.join(productDir, 'verification')), 'scenario', { rule: 'V-11', source: idStr, additionalRules: [{ rule: 'V-07', detail: `VC coverage check: SC ${idStr} flow changed` }] });
-      addDeps(results, listMd(path.join(productDir, 'features')), 'scenarios', { rule: 'V-11', source: idStr });
-      break;
-
-    case 'business-rule':
-      // BR changes → SC (rules bi-dir), LC (rules), IC (rules), VC (rules), FM (rules)
-      addDeps(results, listMd(path.join(productDir, 'scenarios')), 'rules', { rule: 'V-11', source: idStr });
-      addDeps(results, listMd(path.join(productDir, 'lifecycles')), 'rules', { rule: 'V-11', source: idStr, additionalRules: [{ rule: 'V-06', detail: `LC guard references BR ${idStr}; re-validate transition logic` }] });
-      addDeps(results, listMd(path.join(productDir, 'invariants')), 'rules', { rule: 'V-11', source: idStr, additionalRules: [{ rule: 'P-RULE-01-derivative', detail: `IC supporting BR ${idStr} changed; re-verify IC support` }] });
-      addDeps(results, listMd(path.join(productDir, 'verification')), 'rules', { rule: 'V-11', source: idStr, additionalRules: [{ rule: 'V-07', detail: `VC verifies BR ${idStr}; re-check Then assertions` }] });
-      addDeps(results, listMd(path.join(productDir, 'features')), 'rules', { rule: 'V-11', source: idStr });
-      break;
-
-    case 'lifecycle':
-      // LC changes → SC (lifecycle), VC (lifecycle), FM (lifecycles)
-      addDeps(results, listMd(path.join(productDir, 'scenarios')), 'lifecycle', { rule: 'V-11', source: idStr, isScalar: true });
-      addDeps(results, listMd(path.join(productDir, 'verification')), 'lifecycle', { rule: 'V-11', source: idStr, isScalar: true });
-      addDeps(results, listMd(path.join(productDir, 'features')), 'lifecycles', { rule: 'V-11', source: idStr });
-      break;
-
-    case 'invariant-check':
-      // IC changes → FM (invariants); BR.invariants is bi-dir but skip for v1
-      addDeps(results, listMd(path.join(productDir, 'features')), 'invariants', { rule: 'V-11', source: idStr });
-      break;
-
-    case 'verification-criteria':
-      // VC changes → SC (verification), FM (verification)
-      addDeps(results, listMd(path.join(productDir, 'scenarios')), 'verification', { rule: 'V-11', source: idStr });
-      addDeps(results, listMd(path.join(productDir, 'features')), 'verification', { rule: 'V-11', source: idStr });
-      break;
-
-    case 'feature-map-entry':
-      // FM changes — minimal cascade в v1; status alignment with embedded artifacts
-      // Skip detailed cascade for FM; covered by individual artifact changes
-      break;
-
-    // Other types (PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, BG, RPM, NFR, MK, DS, NM, NOTE)
-    // Cascade impact per processes.md §4.1, но less common in P2 enrichment.
-    // For v1, focus on D2-Behavioral cascade.
+  const specs = getForwardSpecs(fm.type, idStr);
+  for (const spec of specs) {
+    const refs = parseRefValue(fm[spec.fieldName], spec.isScalar);
+    for (const refId of refs) {
+      const depFile = findArtifactFileById(productDir, spec.depDir, refId);
+      if (!depFile) continue;  // Forward ref to non-existent artifact — separate V-* concern
+      results.push({
+        path: depFile,
+        reverseField: spec.depReverseField,
+        reviewRules: spec.additionalRules || [],
+      });
+    }
   }
 
   return results;
 }
 
-function addDeps(results, candidateFiles, reverseField, options) {
-  const sourceId = options.source;
-  for (const f of candidateFiles) {
-    let content;
-    try {
-      content = fs.readFileSync(f, 'utf-8');
-    } catch (e) {
-      continue;
-    }
-    const fm = parseFrontmatterFlat(content);
-    if (!fm.id) continue;
-
-    // Check if this dependent references sourceId (forward ref present)
-    const forwardField = options.isScalar ? null : null;
-    // For bi-dir checking we need to know if the saved artifact references this dep.
-    // Conservatively: include all candidates of that type as potential dependents,
-    // and let V-11 check resolve to specific cases.
-    // To avoid false positives, only include if either:
-    // a) saved artifact references this dep.id (forward), OR
-    // b) this dep references saved artifact id (forward, reverse missing)
-
-    // For v1, simplified: include all artifacts of dependent type — V-11 check will
-    // skip those without actual ref relationship (since reverseField won't be missing).
-    // Acceptable for first iteration; refine in v1.1 if perf issue.
-
-    results.push({
-      path: f,
-      reverseField,
-      reviewRules: options.additionalRules || [],
-    });
+/**
+ * Forward-ref topology per artifact type.
+ * Each entry: which field on saved (`fieldName`) points at which dependent dir
+ * (`depDir`) and what reverse field on dep (`depReverseField`) should mirror it.
+ *
+ * isScalar=true treats fm[fieldName] as a single id; false treats as YAML list.
+ *
+ * additionalRules: extra review entries to queue alongside V-11 (semantic checks
+ * that humans should re-verify after the change cascades — e.g., LC mermaid
+ * diagram still reachable after SC step rewrite).
+ */
+function getForwardSpecs(type, sourceId) {
+  switch (type) {
+    case 'scenario':
+      return [
+        { fieldName: 'rules',        depDir: 'business-rules', depReverseField: 'scenarios', isScalar: false },
+        { fieldName: 'lifecycle',    depDir: 'lifecycles',     depReverseField: 'scenarios', isScalar: false,
+          additionalRules: [{ rule: 'V-06', detail: `LC may need re-validation: SC ${sourceId} steps changed` }] },
+        { fieldName: 'verification', depDir: 'verification',   depReverseField: 'scenario',  isScalar: false,
+          additionalRules: [{ rule: 'V-07', detail: `VC coverage check: SC ${sourceId} flow changed` }] },
+        { fieldName: 'feature',      depDir: 'features',       depReverseField: 'scenarios', isScalar: true },
+      ];
+    case 'business-rule':
+      return [
+        { fieldName: 'scenarios', depDir: 'scenarios', depReverseField: 'rules', isScalar: false },
+        { fieldName: 'feature',   depDir: 'features',  depReverseField: 'rules', isScalar: true },
+      ];
+    case 'lifecycle':
+      return [
+        { fieldName: 'scenarios', depDir: 'scenarios', depReverseField: 'lifecycle',  isScalar: false },
+        { fieldName: 'feature',   depDir: 'features',  depReverseField: 'lifecycles', isScalar: true },
+      ];
+    case 'invariant-check':
+      return [
+        { fieldName: 'feature', depDir: 'features', depReverseField: 'invariants', isScalar: true },
+      ];
+    case 'verification-criteria':
+      return [
+        { fieldName: 'scenario', depDir: 'scenarios', depReverseField: 'verification', isScalar: true },
+        { fieldName: 'feature',  depDir: 'features',  depReverseField: 'verification', isScalar: true },
+      ];
+    case 'feature-map-entry':
+      // FM changes — minimal cascade in v1; status alignment with embedded artifacts
+      // covered by individual artifact saves.
+      return [];
+    default:
+      // Other types (PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, BG, RPM, NFR, MK, DS, NM, NOTE)
+      // Cascade impact per processes.md §4.1, but less common in P2 enrichment.
+      return [];
   }
+}
+
+function parseRefValue(value, isScalar) {
+  if (value === undefined || value === null || value === '') return [];
+  if (isScalar) {
+    const s = String(value).trim();
+    if (!s || s === '[]') return [];
+    return [s];
+  }
+  return parseListField(value);
+}
+
+function findArtifactFileById(productDir, subdir, id) {
+  const dir = path.join(productDir, subdir);
+  if (!fs.existsSync(dir)) return null;
+  let files;
+  try {
+    files = fs.readdirSync(dir).filter((f) => f.endsWith('.md'));
+  } catch (e) {
+    return null;
+  }
+  // Convention per docs/pmo/artifacts/README.md: filename starts with `<id>-<slug>.md`
+  // OR exact `<id>.md`. Match both via prefix `^<id>[-.]`.
+  const escaped = id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`^${escaped}[-.]`);
+  for (const f of files) {
+    if (re.test(f)) return path.join(dir, f);
+  }
+  return null;
 }
 
 function parseEntriesYaml(text) {

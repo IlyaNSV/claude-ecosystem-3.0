@@ -1699,6 +1699,171 @@ Step 2e «Note on preserved files» updated с explicit «NOT copied (filtered)�
 
 ---
 
+## DEC-DEV-0023 — Phase 3 smoke test executed; 8 hook-class fixes + lint pipeline + skill refinements
+
+**Date:** 2026-04-29
+**Trigger:** User-driven Phase 3 smoke test on `my-first-test` project (5.5 hour real-run: bootstrap → Discovery → Planning → enrichment FM-001). Fresh post-test analysis revealed 119 silent hook failures + cascade false-positive accumulation + skill convention gaps. User reviewed findings list, approved subset, requested implementation pre-Phase-4.
+**Tag:** #smoke-test #regression-fixes #hooks #skill-refinements #phase-closure-gap
+
+### Context
+
+[CHANGELOG 1.1.0](CHANGELOG.md) shipped Phase 3 (Planning Module + Feature Definition Module + cascade detection + adaptive-depth DA + BG extraction Phase 1) с note «Real-world smoke test pending — see `dev/PHASE_3_SMOKE_TEST_PLAN.md` (run by user в interactive Claude Code session)». Plan was queued, never executed before Phase 4 work began. User executed real run 2026-04-29 — first time hook code touched real product workflow at scale (~70 markdown writes, 23 BR + 7 SC + 7 IC + 7 VC + 3 LC).
+
+Findings from session JSONL log + artifact inspection:
+
+**🔴 Critical hook bugs (silent regressions):**
+
+1. **`bg-extractor.js` TDZ — 119 failures.** `const STOPWORDS = new Set([...])` declared at line 195, but `termPasses(term)` (which uses STOPWORDS) called at line 88 — inside top-level execution, before the const declaration evaluated. Function declaration `termPasses` hoisted; `const STOPWORDS` lives in TDZ → `ReferenceError: Cannot access 'STOPWORDS' before initialization`. Result: **0 BG candidates extracted** entire session. Bug class catchable by `eslint --rule no-use-before-define` в один проход.
+
+2. **`cascade-check.js` over-eager dependents — 396 entries (most false positives).** `addDeps()` had explicit comment-sanctioned shortcut «Conservatively: include all candidates of that type as potential dependents ... Acceptable for first iteration; refine in v1.1 if perf issue.» Each SC save → V-11 missing-reverse-ref entry для **all 6 FMs**, even though SC.feature scalar pointed at only one FM. `cascade-pending.yaml` = 173 KB, 50 false positives per unrelated FM × 5 FMs.
+
+3. **`cascade-check.js` no dedup on append.** Line 196 `existing.push(...pendingEntries)` — every save appended всё without dedup. Compound с (2): 23 BRs × 7 SC × X re-emits = monotonic growth.
+
+4. **`br/ic-change-trigger.js` parser-formatter mismatch.** Formatter emits `      ${dl}` (6 spaces); parser strips `^\s{4}` (4 spaces). Each round-trip adds +2 leading whitespace per diff line. After 23 BR writes (sequential dedup re-rewrite all entries), BR-001's diff field had ~44 spaces leading per line. `da-pending.yaml` = 143 KB.
+
+**🟡 Validation lifecycle gap:**
+
+5. **`artifact-validate.js` no auto-purge.** FM-006 missing-jtbd[] flagged at 14:42:58 при первой генерации skeleton. User picked option B (jtbd: [JTBD-1.1] supporting), field added — but stale entry remained in `validation-pending.yaml` indefinitely. No mechanism to clear when rule passes на subsequent save.
+
+**🟡 Skill convention gaps surfaced:**
+
+6. JTBD «supporting» convention applied к FM-001/005/006 ad-hoc; not codified в release-planning.md. Future planners may diverge.
+7. VC-005 covered SC-002 + multi-device + security в одном файле (15 cases, 5 BRs, 2 ICs) — no split heuristic в vc-derivation.md.
+8. NOTE-001 (hard lockout) + NOTE-003 (2FA) — security territory; could be NFR candidates rather than FM. No NFR-vs-FM placement guard в feature-session.md.
+9. BR-013/014/018 — judgment-call numeric defaults (30-day TTL, 5 devices, captcha threshold=5) с medium confidence, but no telemetry plan для refinement post-launch.
+10. DEC-PLAN-006 captured 4 important DA findings as free-text — not machine-readable; future re-validation cannot programmatically resolve revisit triggers.
+11. BR.feature schema is scalar — BR-001 (email format universal) gets `feature: FM-001`, would duplicate or fight schema при FM-002 enrichment.
+12. `/product:cascade` had no `--reset` / `--revalidate` для cleanup of accumulated pending bloat.
+
+**📋 Process gap:** Phase 3 closure ritual (DEC-DEV-0018) had no «hook smoke run» step. Closure looked at files, не executed hooks. 119 failures прошли через closure undetected.
+
+### Options considered
+
+**Path X — defer всё до Phase 4 implementation as "fixed during Phase 4 work":**
+- Pros: focuses на forward Phase 4 deliverables.
+- Cons: Phase 4 builds on Phase 3 hooks; broken hooks degrade Phase 4 testing. False sense of stability.
+- Reject.
+
+**Path Y — minimal hot-fix только critical hooks (bg-extractor + cascade dedup):**
+- Pros: smallest diff; fast.
+- Cons: leaves whitespace ladder + skill convention gaps + no infra prevention. Same class re-emerges next phase.
+- Reject.
+
+**Path Z (chosen) — comprehensive fix package: 4 hook bugs + 1 validation gap + 5 skill conventions + 1 schema decision deferred + lint infra + closure ritual addition + test cleanup.**
+- Pros: closes all surfaced gaps; adds preventive infra (smoke runner + pre-commit + closure step) so не повторится; codifies discovered patterns. v1.1.1 patch release captures.
+- Cons: more files touched (25+); requires careful sequencing.
+- Accepted. User pre-approved scope (kept all F-items + Q1-Q5/Q7 + R3 + closure step + cleanup; cut Q6 standalone DA-review command + P1/P2/P4 ritual runs as not yet warranted).
+
+### Decision
+
+**Path Z applied 2026-04-29:**
+
+**Hook code fixes:**
+- F1: `hooks/product/bg-extractor.js` — moved STOPWORDS const + comment к module top (after requires). Added comment explaining TDZ history.
+- F2: `hooks/product/cascade-check.js` — replaced `identifyDependents()` switch + `addDeps()` "iterate all candidates" pattern с forward-driven `getForwardSpecs(type)` map + `findArtifactFileById()` lookup. Only candidates that saved actually forward-references queued. Reverse-driven additional review rules (BR change → LC re-validate) deferred к v1.2.
+- F3: `hooks/product/cascade-check.js` — dedup logic before `existing.push(...)` via composite-key Set (`artifact|rule|triggered_by`).
+- F4: `hooks/product/br-change-trigger.js` + `ic-change-trigger.js` — parser strip `/^\s{6}/` aligned с formatter emit (was `/^\s{4}/`).
+- F5: `hooks/product/artifact-validate.js` — `purgeValidationPendingFor(projectRoot, fm.id)` called at start of each hook run; clears stale entries; new findings re-queued via existing flow.
+
+**Lint infrastructure (F6 + R3):**
+- `dev/meta-improvement/scripts/smoke-hooks.js` — self-contained Node script: per hook does `node --check` + minimal hookInput JSON pipe + assert exit 0 + stderr free of `ReferenceError|TypeError|SyntaxError|TDZ patterns`. No npm deps required.
+- `dev/meta-improvement/scripts/verify-hooks.js` — wrapper: always runs smoke; conditionally runs eslint if `node_modules/eslint` installed.
+- `package.json` (root, ecosystem-dev only) — `npm run smoke:hooks | verify:hooks | verify`; `eslint` as devDep (optional install).
+- `eslint.config.js` (flat config v9) — rules: `no-use-before-define`, `no-undef`, `prefer-const`, `no-var`, `eqeqeq`. Catches TDZ class.
+- `dev/meta-improvement/scripts/pre-commit.sh` — git hook: blocks commits touching `hooks/` if verify-hooks fails.
+- `dev/meta-improvement/scripts/install-pre-commit.sh` — idempotent installer (backs up existing pre-commit).
+- Updated `commands/ecosystem/bootstrap.md` Step 2b/2c never-copy filter + `commands/ecosystem/update.md` allowlist + `dev/meta-improvement/scripts/verify-update.sh` Check 7 — exclude `package.json`, `package-lock.json`, `eslint.config.js`, `node_modules/` from user `.claude/`.
+
+**Phase-closure step:**
+- `dev/meta-improvement/checklists/phase-closure.md` — new Step 3 «Hook runtime smoke (≤5 min)»; existing steps 3/4/5 renumbered к 4/5/6. Time budget bumped 35-65 min. Pre-commit installer documented. Pain-origin reference к этому DEC.
+
+**Skill / command refinements:**
+- Q7: `commands/product/cascade.md` — added `--pending --revalidate` (re-detect cascade across active artifacts) and `--pending --reset` (destructive cleanup с confirmation) sub-actions. Step 3a documents bulk operation flow.
+- Q1: `skills/product/release-planning.md` — «JTBD mapping decision tree» с 3 options (empty array / supporting / demote priority) + decision criteria + required `confidence_notes` text для option B.
+- Q3: `skills/product/vc-derivation.md` — «Complexity threshold» heuristic (>2 rule clusters / >12 cases / >6 BRs covers_rules → split); naming convention `VC-NNNa | VC-NNNs`; non-blocking для A1.
+- Q4: `skills/product/feature-session.md` — «Deferral capture — NOTE creation guidance» section с promote_target decision tree + NFR vs FM placement heuristic.
+- Q5: `skills/product/business-rule-extraction.md` — Step 4 body template добавил `## Telemetry plan` section (mandatory для confidence: medium|low + numeric parameters); Step 4a trigger.
+- F8: `skills/product/feature-session.md` — «Structured DA findings format в decision journal» section — YAML schema с `revisit_trigger` mandatory для accepted/deferred resolutions.
+- Q2: `dev/v1_1_backlog.md` — «BR.feature schema — single vs array vs global directory» entry с 3 options + bring-forward trigger + estimated effort.
+
+**Test project cleanup:**
+- `my-first-test/.product/.pending/cascade-pending.yaml` — reset 4317 → ~10 lines (clean template + rationale comment).
+- `my-first-test/.product/.pending/da-pending.yaml` — reset 2397 → ~10 lines.
+- `my-first-test/.product/.pending/validation-pending.yaml` — stale FM-006 entry cleared.
+- Core artifacts (FM/SC/BR/IC/LC/VC/NOTE) untouched — quality verified clean в analysis.
+
+### Outcome
+
+После fixes:
+- `node dev/meta-improvement/scripts/verify-hooks.js` returns exit 0; all 6 hooks pass smoke (was: bg-extractor would have FAIL'd).
+- Test project pending files clean baseline; next Phase 4 enrichment will populate с correct (forward-driven, deduplicated, whitespace-clean) entries.
+- Phase-closure ritual now includes hook smoke step — same class regression catchable in 5 minutes.
+- 5 skill conventions codified — future planners explicit guidance instead of ad-hoc.
+
+User to do separately (out-of-scope этой commit):
+- R2 — `/ecosystem:update --dry-run` then apply on `my-first-test` to propagate fixes (verifies update path).
+- R4 — re-run smoke test after fixes (validate F1-F5 in real workflow).
+
+Phase 4 readiness items C.1-C.5 не unblocked этой commit; они независимы. C.6 уже resolved (DEC-DEV-0020).
+
+### Lessons
+
+1. **Smoke test gap = silent regression habit.** CHANGELOG 1.1.0 explicit said «smoke test pending» but Phase 3 closure (DEC-DEV-0018) didn't enforce. Phase implementation → closure ritual → smoke test execution must be **gated** не sequential. Closure step «Hook runtime smoke» is permanent fix for class.
+
+2. **Comment-sanctioned shortcuts age badly.** `cascade-check.js` had explicit comment «Conservatively: include all candidates ... Acceptable for first iteration; refine in v1.1 if perf issue.» Author thought perf; reality was correctness. Comment described a simplification, but hide the implication that simplification has bugs. Pattern: comments documenting «v1 simplification» need «known incorrect for X case» qualifier, not «acceptable».
+
+3. **Symmetric code = symmetric bugs.** br-change-trigger.js + ic-change-trigger.js had identical parser/formatter — both had the +2 whitespace ladder. Symmetry implementation is benefit, but symmetric bugs spread without help. Helper function extraction would have made fix one-line; consider for v1.2.
+
+4. **Static check infrastructure pays off на bug 1.** Smoke runner + eslint flat config = 6 KB scripts that would catch bg-extractor TDZ in 30 seconds. Same infra also catches future TDZ / undefined / typo class. ROI massive vs not having it.
+
+5. **Pilot evidence trumps spec proposals для skill refinements.** Q1 (JTBD supporting), Q3 (VC complexity), Q4 (NFR placement), Q5 (telemetry plan) — все codified из real ad-hoc choices in pilot. Without pilot, these would be hypothetical concerns at design time. Evidence-based codification > preemptive design.
+
+6. **Validation lifecycle: queues need purges.** «Append to pending; surface at gate» is half the story. Без purge, queues only grow. F5 «auto-purge on resolution» pattern applies к **any** validation-pending-style queue (cascade-pending will benefit too — но Q7's revalidate handles that user-initiated).
+
+7. **D7 phase-closure ritual self-improved through application.** Phase 3 closure (DEC-DEV-0018) caught 9 inline issues; this Phase 3 smoke test (DEC-DEV-0023) caught 12 more issues + introduces hook-smoke step that prevents recurrence. Each closure iteration refines the ritual. 3 instances now (DEC-DEV-0014 closure, DEC-DEV-0018 closure run, DEC-DEV-0023 smoke test) — pattern «closure-driven improvement» graduates from provisional к established.
+
+### Refinements applied
+
+| File | Change |
+|---|---|
+| `hooks/product/bg-extractor.js` | STOPWORDS hoisted к module top |
+| `hooks/product/cascade-check.js` | forward-driven `getForwardSpecs()` + dedup |
+| `hooks/product/br-change-trigger.js` | parser /^\s{6}/ aligned |
+| `hooks/product/ic-change-trigger.js` | parser /^\s{6}/ aligned |
+| `hooks/product/artifact-validate.js` | `purgeValidationPendingFor()` |
+| `dev/meta-improvement/scripts/smoke-hooks.js` | NEW |
+| `dev/meta-improvement/scripts/verify-hooks.js` | NEW |
+| `dev/meta-improvement/scripts/pre-commit.sh` | NEW |
+| `dev/meta-improvement/scripts/install-pre-commit.sh` | NEW |
+| `dev/meta-improvement/scripts/verify-update.sh` | Check 7 extended (lint files contamination) |
+| `dev/meta-improvement/checklists/phase-closure.md` | Step 3 «Hook runtime smoke»; renumbered |
+| `package.json` | NEW (ecosystem-dev only) |
+| `eslint.config.js` | NEW (ecosystem-dev only) |
+| `commands/ecosystem/bootstrap.md` | never-copy zone extended |
+| `commands/ecosystem/update.md` | never-copy zone extended |
+| `commands/product/cascade.md` | --reset / --revalidate sub-actions |
+| `skills/product/release-planning.md` | JTBD mapping decision tree |
+| `skills/product/vc-derivation.md` | VC complexity split heuristic |
+| `skills/product/feature-session.md` | Deferral capture guidance + structured DA findings schema |
+| `skills/product/business-rule-extraction.md` | Telemetry plan template |
+| `dev/v1_1_backlog.md` | BR.feature schema entry |
+| `my-first-test/.product/.pending/*.yaml` | reset clean |
+
+### Next
+
+**Immediate (this commit):**
+- CHANGELOG 1.1.1 patch release entry referencing this DEC.
+- Memory sync (feedback_methodology + project_ecosystem_status updates).
+- Possible SPEC.md / processes.md note about cascade behavior change.
+
+**User-driven follow-up (out of scope этой commit):**
+- R2: `/ecosystem:update --dry-run` then `--apply` on `my-first-test`.
+- R4: re-run smoke test after fixes — validate F1-F5 in real workflow.
+
+**Phase 4 readiness:** unblocked. Original C.1-C.5 architectural items pending readiness gate execution. C.6 (bootstrap update mechanism) уже resolved (DEC-DEV-0020). DEC-DEV-0023 fixes don't constrain Phase 4 scope.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

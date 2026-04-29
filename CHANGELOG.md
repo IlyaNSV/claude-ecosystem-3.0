@@ -6,6 +6,71 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.1.1] — 2026-04-29
+
+Patch release: Phase 3 smoke test executed on `my-first-test` (5.5h real run) revealed 4 critical hook bugs (silent regressions) + 1 validation lifecycle gap + 5 skill convention gaps. Comprehensive fix package + lint pipeline infrastructure to prevent recurrence. Per [DEC-DEV-0023](DEV_JOURNAL.md).
+
+**Backwards compatibility:** all hook behavior changes are **bug fixes** — no schema changes. Existing `.product/.pending/*` files с accumulated bloat: clear via new `/product:cascade --pending --reset` (DEC-DEV-0023 Q7) or `--revalidate` (re-run cascade-check fresh).
+
+### Fixed — Hook code
+
+- **`hooks/product/bg-extractor.js`** — TDZ bug: `const STOPWORDS` referenced inside `termPasses(term)` (called from line ~88) before declaration (line ~195). Threw `ReferenceError: Cannot access 'STOPWORDS' before initialization` 119 times in pilot smoke test → 0 BG candidates extracted entire session. Fix: hoisted STOPWORDS к module top after requires. Catchable by `eslint --rule no-use-before-define`.
+- **`hooks/product/cascade-check.js`** — over-eager dependents: `addDeps()` iterated all candidate files of dependent type без forward-ref check. Each SC save → V-11 missing-reverse-ref entry для all 6 FMs (50 false positives per unrelated FM). Fix: forward-driven `getForwardSpecs(type)` map + `findArtifactFileById()` lookup; only candidates that saved actually forward-references queued. Reverse-driven additional review rules (BR change → LC re-validate) deferred к v1.2.
+- **`hooks/product/cascade-check.js`** — no dedup on append: `existing.push(...pendingEntries)` unconditionally appended. 396 entries from ~70 saves. Fix: composite-key Set dedup (`artifact|rule|triggered_by`).
+- **`hooks/product/br-change-trigger.js`** + **`hooks/product/ic-change-trigger.js`** — parser-formatter mismatch: formatter emit `      ` (6 spaces); parser strip `^\s{4}` (4 spaces). Each round-trip added +2 leading whitespace per diff line; after 23 BR writes, BR-001 diff field had ~44 spaces leading per line. `da-pending.yaml` = 143 KB. Fix: parser strip `/^\s{6}/` aligned с emit.
+- **`hooks/product/artifact-validate.js`** — no auto-purge of resolved entries: stale `validation-pending.yaml` entries never cleared when rule passed on subsequent save. Fix: `purgeValidationPendingFor(projectRoot, fm.id)` at start of each hook run; new findings re-queued via existing flow.
+
+### Added — Hook lint pipeline
+
+- **`dev/meta-improvement/scripts/smoke-hooks.js`** — self-contained Node script: per hook does `node --check` + minimal `hookInput` JSON pipe + assert exit 0 + stderr free of `ReferenceError|TypeError|SyntaxError|Cannot access .* before initialization|is not defined|is not a function|Unexpected token`. No npm deps required.
+- **`dev/meta-improvement/scripts/verify-hooks.js`** — wrapper combining smoke + optional eslint (eslint runs only if `node_modules/eslint` installed, после `npm install`).
+- **`dev/meta-improvement/scripts/pre-commit.sh`** — git pre-commit hook: blocks commits touching `hooks/` if verify-hooks fails. Bypassable с `--no-verify`.
+- **`dev/meta-improvement/scripts/install-pre-commit.sh`** — idempotent installer (backs up existing hook).
+- **`package.json`** (root, ecosystem-dev only) — scripts `smoke:hooks`, `verify:hooks`, `verify`; eslint as devDep (optional install).
+- **`eslint.config.js`** (flat config v9) — rules: `no-use-before-define` (catches TDZ class), `no-undef`, `prefer-const`, `no-var`, `eqeqeq`.
+
+### Added — Phase-closure ritual step (D7)
+
+- **`dev/meta-improvement/checklists/phase-closure.md`** — new Step 3 «Hook runtime smoke (≤5 min)»; existing Steps 3/4/5 renumbered to 4/5/6. Time budget 35-65 min. Pre-commit installer documented. Pain-origin reference к DEC-DEV-0023 (Phase 3 closure missed 119 hook failures).
+
+### Added — Skill / command refinements
+
+- **`commands/product/cascade.md`** — new sub-actions:
+  - `/product:cascade --pending --revalidate` — re-detect cascade across active artifacts (clear stale entries safely after ecosystem upgrade)
+  - `/product:cascade --pending --reset` — destructive cleanup с explicit confirmation (logged как DEC-CASCADE-NNN)
+- **`skills/product/release-planning.md`** — «JTBD mapping decision tree» section: 3 options (empty array / supporting / demote priority) + decision criteria + required `confidence_notes` text для option B (foundational/measurement features). Pain origin: ad-hoc application к FM-001/005/006 в pilot.
+- **`skills/product/vc-derivation.md`** — «Complexity threshold» heuristic: split VC if covers >2 distinct rule clusters / >12 cases / `covers_rules` array > ~6 BRs. Naming convention `VC-NNN` / `VC-NNNa` / `VC-NNNs`. Non-blocking для A1.
+- **`skills/product/feature-session.md`** — two new sections:
+  - «Deferral capture — NOTE creation guidance»: `promote_target` decision tree (FM / BR / NFR / HYP); explicit NFR-vs-FM placement heuristic для security territory.
+  - «Structured DA findings format в decision journal»: YAML schema с mandatory `revisit_trigger` для accepted/deferred resolutions.
+- **`skills/product/business-rule-extraction.md`** — `## Telemetry plan` body section (mandatory если confidence: medium|low + numeric parameter); Step 4a trigger.
+
+### Added — Schema decision deferred к v1.1+
+
+- **`dev/v1_1_backlog.md`** — «BR.feature schema — single vs array vs global directory» entry: 3 options (global rules dir / array schema / extends mechanism) + bring-forward trigger (second FM enrichment reveals shared rule reuse pain) + estimated effort.
+
+### Modified — Bootstrap / update never-copy zone
+
+- **`commands/ecosystem/bootstrap.md`** Step 2b/2c — extended filter: `package.json`, `package-lock.json`, `eslint.config.js`, `node_modules/` excluded from greenfield install.
+- **`commands/ecosystem/update.md`** — same exclusions added to never-copy zone table.
+- **`dev/meta-improvement/scripts/verify-update.sh`** Check 7 — extended `CONTAMINATION_FILES` array + `node_modules/` directory check. Lint files arriving в user `.claude/` would be flagged.
+
+### Test project cleanup (`my-first-test/`)
+
+- `.product/.pending/cascade-pending.yaml` — reset 4317 lines / 396 entries → ~10 lines (clean template + DEC-DEV-0023 rationale comment). 51 KB → 800 bytes.
+- `.product/.pending/da-pending.yaml` — reset 2397 lines / ~30 entries → ~10 lines. 143 KB → 850 bytes.
+- `.product/.pending/validation-pending.yaml` — stale FM-006 missing-jtbd entry cleared.
+- Core artifacts (FM/SC/BR/IC/LC/VC/NOTE) untouched — quality verified clean during analysis.
+
+### Notes
+
+- **CHANGELOG 1.1.0 «Real-world smoke test pending» now resolved.** Smoke ran 2026-04-29; findings captured DEC-DEV-0023; fixes shipped 1.1.1.
+- **Pilot evidence > preemptive design.** Q1 (JTBD), Q3 (VC complexity), Q4 (NFR placement), Q5 (telemetry plan) — все codified из real ad-hoc choices in pilot. Without pilot, hypothetical only.
+- **D7 closure-driven improvement self-validating.** 3 instances now (DEC-DEV-0014 closure, DEC-DEV-0018 closure run, DEC-DEV-0023 smoke test). Pattern graduates provisional → established.
+- **Phase 4 readiness unaffected.** Items C.1-C.5 independent; C.6 already resolved (DEC-DEV-0020).
+
+---
+
 ## [1.1.0] — 2026-04-27
 
 Phase 3 release: Planning Module (P1.B) + Feature Definition Module (P2.A enrichment + P2.B creation) + adaptive-depth DA orchestration + cascade detection + BG extraction Phase 1. 23 new/modified files; ships 5 new slash commands, 13 new skills, 4 new hooks, 1 hook extension.
