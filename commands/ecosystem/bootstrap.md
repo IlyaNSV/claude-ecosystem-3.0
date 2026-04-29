@@ -271,6 +271,13 @@ git clone --depth 1 https://github.com/IlyaNSV/claude-ecosystem-3.0.git .claude-
 # Remove .git from temp to avoid creating a nested git repo inside .claude/
 rm -rf .claude-ecosystem-tmp/.git
 
+# Filter never-copy zone — ecosystem-dev artifacts that should NOT enter user's .claude/
+# (per CONVENTIONS §2 + DEC-DEV-0022 — closes DEC-DEV-0019 Finding A for greenfield install)
+rm -rf .claude-ecosystem-tmp/dev
+rm -f .claude-ecosystem-tmp/CLAUDE.md
+rm -f .claude-ecosystem-tmp/DEV_JOURNAL.md
+rm -f .claude-ecosystem-tmp/INSTALL-HUMAN.md
+
 # Ensure .claude/ exists
 mkdir -p .claude
 
@@ -284,14 +291,24 @@ rm -rf .claude-ecosystem-tmp
 #### 2c. Offline path (with `--offline` flag)
 
 ```bash
+# Stage global cache к temp (so we can filter без modifying cache)
+cp -r ~/.claude/ecosystem .claude-ecosystem-tmp
+rm -rf .claude-ecosystem-tmp/.git
+
+# Filter never-copy zone (same as 2b — see CONVENTIONS §2 + DEC-DEV-0022)
+rm -rf .claude-ecosystem-tmp/dev
+rm -f .claude-ecosystem-tmp/CLAUDE.md
+rm -f .claude-ecosystem-tmp/DEV_JOURNAL.md
+rm -f .claude-ecosystem-tmp/INSTALL-HUMAN.md
+
 # Ensure .claude/ exists
 mkdir -p .claude
 
-# Copy from global cache (rsync-like semantics via cp -n)
-cp -rn ~/.claude/ecosystem/. .claude/
+# Merge temp → .claude/
+cp -rn .claude-ecosystem-tmp/. .claude/
 
-# Remove any stray .git that may have been copied
-rm -rf .claude/.git
+# Cleanup temp
+rm -rf .claude-ecosystem-tmp
 ```
 
 #### 2d. Verify integrity
@@ -308,11 +325,18 @@ Check presence of:
 
 If any missing → abort with clear error listing missing items. Suggest re-running with `--force` or checking network.
 
-#### 2e. Note on preserved files
+#### 2e. Note on preserved + filtered files
 
 After Step 2, the `.claude/` directory contains:
 - Ecosystem content (commands, skills, agents, hooks, docs, templates, config templates)
 - **Preserved:** any Claude Code auto-generated files (`settings.local.json` etc.) that were there before — `cp -n` skips overwriting them.
+- **NOT copied (filtered per Step 2b/2c never-copy zone — DEC-DEV-0022):**
+  - `dev/` — ecosystem developer artifacts (PHASE_*, meta-improvement/, v1_1_backlog.md)
+  - `CLAUDE.md` (root) — ecosystem dev's CLAUDE.md (would mislead future Claude sessions to think they're working on ecosystem itself, не user's product)
+  - `DEV_JOURNAL.md` — ecosystem dev's decision log
+  - `INSTALL-HUMAN.md` — ecosystem dev guide
+
+**Why this filter exists:** without it, naive `cp -rn` would copy ALL files from upstream repo, contaminating user's `.claude/` с ecosystem-dev artifacts. Phase 3 closure (DEC-DEV-0019 Finding A) caught this с pilot Claude observation that `.claude/CLAUDE.md` would be auto-loaded by future sessions. `/ecosystem:update` solves equivalent problem via allowlist (DEC-DEV-0020); bootstrap closes greenfield install path here (DEC-DEV-0022).
 
 If a `settings.json` or `.env.template` already existed (rare, ecosystem re-install) — they were NOT overwritten. Check and let user decide manually if re-install needs those files refreshed.
 

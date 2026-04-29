@@ -1602,6 +1602,103 @@ dev/meta-improvement/
 
 ---
 
+## DEC-DEV-0022 — Bootstrap never-copy zone filter (closes Finding A для greenfield install)
+
+**Date:** 2026-04-28
+**Trigger:** User request «убедиться что [D7 changes] не попадут в продуктовые проекты при bootstrap / update». Verified `/ecosystem:update` correctly excludes dev/ via allowlist (DEC-DEV-0020), но `/ecosystem:bootstrap` Step 2b/2c still naive `cp -rn` — copies ALL upstream files including dev/, root CLAUDE.md, DEV_JOURNAL.md, INSTALL-HUMAN.md. Closing remaining gap before main merge.
+**Tag:** #bug-fix #architecture
+
+### Context
+
+DEC-DEV-0019 Finding A identified `.claude/CLAUDE.md` contamination как critical issue (auto-loaded by future Claude sessions, misleads them into thinking they work on ecosystem itself). DEC-DEV-0020 fixed это для existing projects (Path Y `/ecosystem:update` с allowlist). Но greenfield install path (`/ecosystem:bootstrap` Step 2b/2c) had **same vulnerability** — just hidden by «greenfield = empty .claude/» mental model.
+
+User's pre-merge verification request surfaced this. Both paths must filter never-copy zone.
+
+### Options considered
+
+**Path A — minimal `rm` filter в Step 2b/2c:**
+- Add 4 `rm` lines в both code blocks (remove dev/, CLAUDE.md, DEV_JOURNAL.md, INSTALL-HUMAN.md from temp staging dir before merge)
+- Pros: minimal change; preserves existing `cp -rn` semantics для user files; easy verify; small diff
+- Cons: blocklist approach (specifies what's NOT copied)
+
+**Path B — full allowlist conversion:**
+- Rewrite Step 2b/2c к explicit allowlist (loop через subdirs/files)
+- Mirror /ecosystem:update sync semantics
+- Pros: parallel structure с update; consistent allowlist в both commands
+- Cons: substantial bootstrap.md rewrite; risk regressions to existing greenfield flow; user already has working bootstrap
+
+**Path C — defer к v1.1:**
+- Document как known issue
+- Cons: contamination still possible на every fresh bootstrap; user explicit request «убедиться»
+
+### Decision
+
+**Path A — minimal `rm` filter.** Rationale: Path A solves immediate concern с smallest surface area; bootstrap stays simple; allowlist consistency можно achieve later if needed (Path B candidate для v1.1 если new contamination class emerges).
+
+**Implementation:**
+
+Step 2b (online path) — add filter after `.git` removal:
+```bash
+rm -rf .claude-ecosystem-tmp/dev
+rm -f .claude-ecosystem-tmp/CLAUDE.md
+rm -f .claude-ecosystem-tmp/DEV_JOURNAL.md
+rm -f .claude-ecosystem-tmp/INSTALL-HUMAN.md
+```
+
+Step 2c (offline path) — restructured к stage-and-filter pattern (mirror Step 2b):
+```bash
+cp -r ~/.claude/ecosystem .claude-ecosystem-tmp
+rm -rf .claude-ecosystem-tmp/.git
+# [same 4 rm commands]
+mkdir -p .claude
+cp -rn .claude-ecosystem-tmp/. .claude/
+rm -rf .claude-ecosystem-tmp
+```
+
+Step 2e «Note on preserved files» updated с explicit «NOT copied (filtered)» list + rationale referencing DEC-DEV-0019/0020.
+
+### Outcome
+
+**Both paths now safe:**
+- `/ecosystem:bootstrap` (greenfield) — Step 2b/2c filter never-copy zone before merge
+- `/ecosystem:update` (existing project) — allowlist explicit per DEC-DEV-0020
+
+**Verified D7 не propagates к user projects:**
+- `dev/meta-improvement/` (всё D7) — в never-copy zone, removed from temp перед cp
+- DEV_JOURNAL.md (root, ecosystem-dev's) — removed from temp
+- CLAUDE.md (root, ecosystem-dev's) — removed from temp
+- Bootstrap completing на user project leaves `.claude/{commands,skills,agents,hooks,docs,templates}` + root references (README, BOOTSTRAP, CHANGELOG, ROADMAP, install scripts, .env.template, gitignore.template) — нет contamination.
+
+**Verify-update.sh script** (DEC-DEV-0021 Stage 4b) Check 7 explicitly tests это — «Dev contamination absent (DEC-DEV-0019 Finding A)»:
+- `.claude/CLAUDE.md` correctly absent → PASS
+- `.claude/DEV_JOURNAL.md` correctly absent → PASS
+- `.claude/INSTALL-HUMAN.md` correctly absent → PASS
+- `.claude/dev/` only user files OR absent → PASS
+
+После this fix, fresh bootstrap of user project on clean dir → verify-update.sh would pass all 9 checks.
+
+### Lessons
+
+1. **«Verified by allowlist» ≠ «universally safe» — both copy paths need explicit filter.** Mental model «bootstrap = greenfield, no contamination concern» missed что greenfield ALSO copies dev/ from upstream. Pattern: any file-copy operation needs explicit zone treatment, regardless of source/target state.
+
+2. **User pre-merge verification requests are valuable.** «Убедиться что [X] не происходит» surfaced gap that automated testing didn't catch. Prompt: «verify that [behavior] cannot happen» = useful pre-merge audit pattern.
+
+3. **Path A vs Path B tradeoff captured.** Minimal blocklist filter (Path A) shipped now; full allowlist conversion (Path B) deferred unless contamination class evolves. Pattern: «smallest fix that closes gap» preferred unless larger refactor solves multiple problems.
+
+### Refinements applied
+
+- `commands/ecosystem/bootstrap.md` Step 2b — added 4-line filter
+- `commands/ecosystem/bootstrap.md` Step 2c — restructured к stage-and-filter
+- `commands/ecosystem/bootstrap.md` Step 2e — «Note on preserved + filtered files» с explicit list + rationale
+
+### Next
+
+**Immediate:** PR #3 ready для merge к main (this commit closes verification gap).
+
+**Future regression watch:** if new contamination class emerges (e.g., new ecosystem-dev folders в repo) → add к Step 2b/2c filter list + here. Verify-update.sh Check 7 catches на user side.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
