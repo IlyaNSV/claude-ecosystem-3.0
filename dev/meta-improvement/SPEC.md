@@ -1,10 +1,11 @@
-# D7 — Meta-Improvement Module — Preliminary Specification
+# D7 — Meta-Improvement Module — Specification (v1.0 final)
 
-> **Статус:** preliminary draft (2026-04-27). Awaiting full design session — см. [DESIGN_KICKOFF.md](DESIGN_KICKOFF.md).
-> **Назначение этого документа:** зафиксировать substrate (контекст, observations, references, open questions), извлечённый из conversation 2026-04-27, для **продолжения проектирования модуля в отдельной фрэш-сессии**.
-> **Принципиально НЕ содержит:** детальный design механизмов (skills/commands/hooks), naming conventions для entries, activation rules, structure final checklists. Это всё — задача design session.
+> **Статус:** v1.0 final state (2026-04-28). Stage 1-6 shipped per DEC-DEV-0015..0021. Original substrate (preliminary draft 2026-04-27) preserved в этом документе как «historical context»; v1.0 mechanisms = checklists + patterns + skills + scripts + hooks operational.
+> **Назначение этого документа:** authoritative spec для D7 — concerns, principles, mechanisms, conventions, refinement protocol. Substrate sections (origin observation, two-layer framing, reference model) preserved для context.
 > **Owner:** ecosystem creator (developer side), не end-user продуктового проекта.
-> **Местоположение:** `dev/meta-improvement/` — developer territory, не консьюмерская часть экосистемы (не копируется в user projects через `/ecosystem:bootstrap`).
+> **Местоположение:** `dev/meta-improvement/` — developer territory, не консьюмерская часть экосистемы (не копируется в user projects через `/ecosystem:bootstrap`/`/ecosystem:update`).
+> **Mechanisms (v1.0):** [`CONVENTIONS.md`](CONVENTIONS.md) §1-§10 + [`checklists/phase-{kickoff,closure}.md`](checklists/) + [`patterns/`](patterns/) (5) + [`skills/memory-sync.md`](skills/memory-sync.md) + [`scripts/verify-update.sh`](scripts/verify-update.sh) + [`hooks/phase-closure-reminder.js`](hooks/phase-closure-reminder.js).
+> **Continued evolution:** через CONVENTIONS §10 refinement protocol per phase closures. Structural growth complete; ongoing changes are refinements, не expansions.
 
 ---
 
