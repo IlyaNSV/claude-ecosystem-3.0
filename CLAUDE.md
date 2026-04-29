@@ -19,14 +19,12 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 ## Где мы сейчас
 
-См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас». На момент создания этого файла:
-- ✅ Phase 0 (scaffolding + 12 v1 modifications)
-- ✅ Phase 1 (Integrator read-only)
-- ✅ Bootstrap infrastructure (two-phase install)
-- ✅ Phase 2 (Product core, Discovery Quick + drift mechanisms)
-- ⏳ **Next: Phase 3** — Planning + Feature Enrichment
+См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-04-28):
+- ✅ Phase 0-2 (scaffolding, Integrator read-only, Bootstrap, Product Module Discovery + drift mechanisms)
+- ✅ Phase 3 (Planning + Feature Enrichment + adaptive-depth DA + cascade detection) — real-run smoke test pending
+- ⏳ **Next: Phase 4** — Handoff + NFR + Product DA + Validation full
 
-**Перед стартом Phase 3** обязательно пройти [dev/PHASE_3_READINESS.md](dev/PHASE_3_READINESS.md).
+**Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий `dev/PHASE_<N>_READINESS.md`.
 
 ## Принципы работы над экосистемой
 
@@ -80,8 +78,12 @@ claude-ecosystem-3.0/
 ├── README.md, BOOTSTRAP.md, INSTALL-HUMAN.md, CHANGELOG.md, ROADMAP.md
 ├── DEV_JOURNAL.md           # этот журнал (создан 2026-04-19)
 ├── CLAUDE.md                # этот файл — context для AI
-├── dev/
-│   └── PHASE_3_READINESS.md # checklist перед Phase 3
+├── dev/                                  # docs про разработку самой экосистемы
+│   ├── meta-improvement/                 # D7 module (SPEC + checklists + CONVENTIONS)
+│   ├── PHASE_<N>_READINESS.md            # readiness gate per phase
+│   ├── PHASE_<N>_SMOKE_TEST_PLAN.md      # smoke test plan (active until run)
+│   ├── v1_1_backlog.md                   # preserved deferred context
+│   └── _archive/                         # archived past-phase docs
 ├── install.sh, install.ps1  # global installers
 ├── .env.template, settings.json.template, gitignore.template
 ├── docs/
@@ -173,8 +175,9 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 1. **Прочитай этот файл** (CLAUDE.md — auto-loaded)
 2. **Загляни в [DEV_JOURNAL.md](DEV_JOURNAL.md)** — последние 3-5 entries, чтобы знать недавний контекст decisions
 3. **Проверь [ROADMAP.md](ROADMAP.md) секцию "Где мы сейчас"** — может быть устарела относительно git log
-4. **Если starting Phase 3** — пройди [dev/PHASE_3_READINESS.md](dev/PHASE_3_READINESS.md)
-5. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
+4. **Перед стартом phase** — пройди [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) (D7 module) + соответствующий `dev/PHASE_<N>_READINESS.md`
+5. **После завершения phase** — пройди [dev/meta-improvement/checklists/phase-closure.md](dev/meta-improvement/checklists/phase-closure.md) (D7 module, Stage 2)
+6. Перед commit-ом значимых изменений — спроси «нужна ли DEV_JOURNAL запись?»
 
 ## Memory
 

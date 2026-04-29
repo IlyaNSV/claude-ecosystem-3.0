@@ -2,7 +2,7 @@
 
 > **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D6 внешним инструментам через универсальный handoff.
 
-**Статус:** v1.0 — готова к pilot имплементации.
+**Статус:** v1.1.0 — Phase 0-3 shipped (Discovery + Planning + Feature Enrichment); Phase 3 real-run smoke test pending; Phase 4 (Handoff + NFR + Validation full) next. См. [CHANGELOG.md](CHANGELOG.md) и [ROADMAP.md](ROADMAP.md).
 **Целевая аудитория:** solo-разработчики, ведущие продуктовые проекты с Claude Code как primary tool.
 
 ---
@@ -89,6 +89,17 @@ claude
 **Перед Фазой 2** — пройди чеклист в [INSTALL-HUMAN.md](./INSTALL-HUMAN.md): получи API ключи (Brave, Firecrawl, Exa), при необходимости — Stitch project.
 
 Подробности процесса bootstrap — в [`commands/ecosystem/bootstrap.md`](commands/ecosystem/bootstrap.md) и обзорно в [BOOTSTRAP.md](./BOOTSTRAP.md).
+
+### Фаза 3 — обновление existing project (когда вышла новая версия ecosystem)
+
+```
+> /ecosystem:update --dry-run    # preview changes
+> /ecosystem:update               # apply (с автобэкапом .claude/)
+```
+
+Sync ecosystem zone (commands, skills, agents, hooks, docs, templates) к latest upstream — rsync-style overwrite + delete obsolete + re-derive hooks. Preserves `.product/`, `.env`, `settings.local.json`, `product.yaml`, `integrator/` state. Подробности — [`commands/ecosystem/update.md`](commands/ecosystem/update.md), human-side guide — [INSTALL-HUMAN.md Блок C](./INSTALL-HUMAN.md).
+
+> **Не путать с** bootstrap re-install — `/ecosystem:bootstrap` для greenfield, `/ecosystem:update` для existing install. Per [DEC-DEV-0019](DEV_JOURNAL.md), legacy bootstrap merge mode (cp -rn additive only) не handle ecosystem updates корректно — use `/ecosystem:update`.
 
 ## Ключевые принципы
 

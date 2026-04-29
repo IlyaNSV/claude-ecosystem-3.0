@@ -104,12 +104,19 @@ Decision tree for `.claude/`:
 | `.claude/` has ecosystem signature | → re-install scenario: inform user, offer options below |
 | `.claude/` has other unknown files | → ask user (list them), offer options below |
 
-**For re-install or unknown-content cases, offer:**
+**For re-install scenario (ecosystem signature found):**
+
+> **RECOMMENDED:** use `/ecosystem:update` instead. Это dedicated command для обновления existing install — handles все 4 architectural issues that legacy bootstrap merge had (per [DEC-DEV-0019](../../DEV_JOURNAL.md)): allowlist-only sync (no dev contamination), rsync-style overwrite (true content updates, not just additions), manifest re-derivation (new hooks auto-register), backup-by-default (rollback path).
+
+Legacy bootstrap re-install options remain available для edge cases (corruption recovery, force fresh start):
 - `(a)` **Backup + fresh:** move current `.claude/` to `.claude-backup-<timestamp>/`, install fresh
-- `(b)` **Merge:** attempt to add ecosystem files alongside existing (safer for re-install than unknown content)
+- `(b)` **Merge (LEGACY — use `/ecosystem:update` instead):** attempt to add ecosystem files alongside existing via `cp -rn` (additive only — does NOT update existing file content)
 - `(c)` **Abort**
 
-With `--force`, skip confirmation and default to `(b) Merge`.
+**For unknown-content cases (no ecosystem signature, but unknown files present):**
+Same options apply. (a) Backup + fresh is safest if you're not sure what's there.
+
+With `--force`, skip confirmation and default to `(b) Merge` (legacy behavior preserved для backward compat).
 
 #### 1c. Tooling prerequisites
 

@@ -789,6 +789,585 @@ D7 substrate prepared. Design session in fresh chat continues per DESIGN_KICKOFF
 
 ---
 
+## DEC-DEV-0016 — D7 design session kickoff verified
+
+**Date:** 2026-04-28
+**Trigger:** Stage 2 D7 design session start per `dev/meta-improvement/DESIGN_KICKOFF.md` Этап 3 (Decision gate). Substrate (DEC-DEV-0015) loaded; 10 design decisions accepted by user. Per KICKOFF discipline — record kickoff verified entry перед mechanism design.
+**Tag:** #architecture #tooling
+
+### Context
+
+DESIGN_KICKOFF.md Этап 1-2 completed в opening session turn:
+- Substrate loaded: SPEC.md (513 lines), DESIGN_KICKOFF.md (310 lines), DEV_JOURNAL DEC-DEV-0007/0008/0011-0015, ROADMAP.md, dev/PHASE_3_*.md, v1_1_backlog.md, pmo-map.md, CHANGELOG.md
+- Existing capabilities verified (DEV_JOURNAL pattern, CLAUDE.md, Memory MCP, dev/ folder, hook manifest, B.1 frontmatter convention)
+- **Memory verified stale (8-day lag — «Phase 3 ready to start» vs actual «closed»).** Live instance reference model gap #5 (Memory & continuity automation absent).
+
+User затем explicitly requested «применить D7 на текущем моменте (только сделали реализацию phase 3)» с конкретным painpoint: bootstrap не обновляет my-first-test с Phase 2 → Phase 3. Это example user rule #2 (bootstrap install/update verification gap).
+
+### Decisions accepted (10 items, all «ага по всем»)
+
+**A. Naming & structure:**
+- A1: continue `DEC-DEV-NNNN` sequence (no separate DEC-META)
+- A2: no file prefix в `dev/meta-improvement/` (folder is namespace)
+
+**B. Stage 2 scope discipline:**
+- B1: bootstrap regression inline as step в phase-closure.md (NOT separate doc)
+- B2: memory sync as step #5 в phase-closure.md (real gap discovered live)
+
+**C. Phase 3 closure (immediate application):**
+- C1: run phase-closure.md inline this session
+- C2: I document exact bootstrap re-run steps; user executes; I verify post-state read-only
+- C3: findings = DEC-DEV-0018 (после design entry 0017)
+- C4: inline small fixes (≤10 min); queue bigger to PHASE_4_READINESS.md
+
+**D. Cross-cutting:**
+- D1: one-line pointer в CLAUDE.md «5. После завершения phase — phase-closure.md»
+- D2: 2 commits — design + application
+
+**E. Cleanup:**
+- E1: archive PHASE_3_READINESS.md в `dev/_archive/phase-3/`; KEEP PHASE_3_SMOKE_TEST_PLAN.md until smoke run
+
+### Decision
+
+**Substrate verified coherent + clarifications clear + no profanation risks.** Proceed Этап 4 (design tasks 4.A mandatory). 4.B stretch + 4.C deferred per KICKOFF discipline.
+
+### Outcome
+
+Proceeded к design output (DEC-DEV-0017). This entry serves as audit trail of decisions accepted перед mechanism design — separation от design output entry intentional per KICKOFF Этап 3 «record kickoff verified».
+
+### Lessons
+
+- **Substrate verification gate explicit перед design pays off** — prevents «built design ON unstable substrate» risk. Same pattern as DEC-DEV-0012 (Phase 3 readiness gate перед Phase 3 implementation). Now generalized для D7 (Section 1 phase-kickoff.md template).
+- **«ага по всем» pattern works для well-structured Q&A** — 10 questions с proposals + rationale = fast user agreement vs back-and-forth. Pattern reusable для future multi-decision gates: surface decisions as enumerated proposals (не «what do you think?») when substrate is clear.
+- **Live discovery of substrate gap (memory stale)** — captured как instance of reference model component #5. First-class evidence для phase-closure step #5 justification — без discovered live instance might've defer'ed memory sync to Stage 3+ on principle «pattern emerge before formalize».
+
+---
+
+## DEC-DEV-0017 — D7 Stage 2 — checklists + conventions
+
+**Date:** 2026-04-28
+**Trigger:** D7 Stage 2 design output per DESIGN_KICKOFF.md 4.A mandatory deliverables. Continues from DEC-DEV-0016 (kickoff verified).
+**Tag:** #architecture #tooling #scope-change
+
+### Context
+
+Stage 2 mandatory deliverables (per DESIGN_KICKOFF 4.A):
+- 4.A.1 phase-closure.md (primary user need — 4 user rules + memory sync)
+- 4.A.2 phase-kickoff.md (extract pattern from DEC-DEV-0012/0013 instances)
+- 4.A.3 CONVENTIONS.md (resolves SPEC §6 open questions + D6 vs D7 disambiguation)
+- 4.A.4 DEV_JOURNAL DEC-DEV entry (this one)
+
+Stage 2 stretch (4.B) deferred to Stage 3+:
+- pattern library starter (only 1 closure instance — DEC-DEV-0014 — premature abstraction risk per SPEC §4.2)
+- bootstrap regression as separate doc (kept inline as Step 2 в phase-closure.md per B1)
+- memory sync as separate doc (kept inline as Step 5 в phase-closure.md per B2)
+
+Stage 2 deferred (4.C, per KICKOFF):
+- Skill/command/hook formalization (no proven need — checklists sufficient first)
+- Full pattern library enumeration
+- D7 self-application via Product Module recursion (refused per SPEC §4.3)
+- Premature `.product/` creation для Ecosystem 3.0
+
+### Options considered (per SPEC §6 open questions)
+
+**6.1 Naming convention:**
+- Option A: separate `DEC-META-NNNN` sequence — adds dual-stack mental load для solo dev with ≤5 D7-specific entries/year expected
+- **Option B (chosen):** continue `DEC-DEV-NNNN` — one sequence, simpler navigation
+- Revisit trigger: if D7 entries dominate volume (>50% of new) — split
+
+**6.4 Cleanup criteria:**
+- Option A: aggressive archive (move all phase-N docs к _archive after closure)
+- **Option B (chosen):** selective archive — `PHASE_<N>_READINESS` archives post-closure; `PHASE_<N>_SMOKE_TEST_PLAN` stays until smoke run; `v1_1_backlog`, `PHASE_<N+1>_READINESS` stay active; DEV_JOURNAL never archived
+- Rationale: archive criterion = «obsolete + unneeded for current/next phase reference»
+
+**6.6 Pattern library timing:**
+- Option A: extract patterns now (Spec Drift Sweep, Readiness Gate, B.1 Frontmatter, etc.)
+- **Option B (chosen):** defer Stage 3+. Phase closure has 1 instance (DEC-DEV-0014); pattern emergence requires 3+ instances per SPEC §4.2
+- Trigger: после Phase 4 + 5 closures — extract first pattern set
+
+**Inline vs separate docs (B1, B2 в kickoff Q&A):**
+- Option A: separate `bootstrap-regression.md` + `memory-sync.md` docs
+- **Option B (chosen):** inline as steps в phase-closure.md
+- Rationale: SPEC §1.1 наблюдение про 10-15:1 add:cleanup ratio applies к D7 itself. Document count growth = anti-pattern. Promote to separate docs только если step grew complex (>15 min per phase closure).
+
+### Decision
+
+**Stage 2 ships:**
+
+1. `dev/meta-improvement/checklists/phase-closure.md` — 5-step checklist:
+   - Step 1: Doc health check (rule #1)
+   - Step 2: Bootstrap install/update verification (rule #2; user pain origin documented)
+   - Step 3: Doc consistency check (rule #3)
+   - Step 4: Cleanup/archive discipline (rule #4)
+   - Step 5: Memory MCP sync (discovered gap, marked refine-after-Phase-4)
+
+2. `dev/meta-improvement/checklists/phase-kickoff.md` — 5-section template:
+   - Architectural readiness (DEC-DEV-0012 pattern, ROI 3-5x)
+   - Ambiguity sweep (DEC-DEV-0013 pattern)
+   - Spec drift sweep (DEC-DEV-0013 A.1-A.4 pattern)
+   - Scope discipline (cuttable scope, v1.1+ deferrals)
+   - Plan refinement
+
+3. `dev/meta-improvement/CONVENTIONS.md` — 10 sections resolving SPEC §6 open questions; includes D6 vs D7 disambiguation table (terminological collision risk).
+
+**One new line к CLAUDE.md** (per D1 anti-bloat compromise):
+- After «4. Если starting Phase 3 — пройди [dev/PHASE_3_READINESS.md]» insert «5. После завершения phase — пройди [dev/meta-improvement/checklists/phase-closure.md]»
+- Existing item 5 («Перед commit-ом») renumber → 6
+
+### Outcome
+
+Stage 2 mandatory complete. Stage 3+ triggers identified (post-Phase-4-closure: pattern library extraction, memory-sync skill if manual proves heavy, bootstrap regression script if manual proves error-prone).
+
+Phase 3 closure run = next step (DEC-DEV-0018) — first concrete application of D7. Will populate findings + checklist refinement.
+
+### Lessons
+
+- **«Cuttable scope discipline» applies к meta-domain too.** Stage 2 ships 3 files vs the 7 tempting (бы добавил bootstrap-regression.md + memory-sync.md + patterns/<5>.md если бы scope не был резан). Living evidence для SPEC §4.1.
+- **Inline-step approach для cross-cutting concerns** (bootstrap regression, memory sync as steps в phase-closure rather than separate docs) reduces document count — само по себе anti-pattern в 10-15:1 add:cleanup ratio context. Promote to separate docs только if Phase 4-5 closures show step grew complex.
+- **Kickoff prompt + Q&A structure proven for fast multi-decision alignment.** 10 questions с proposals + rationale → user «ага по всем». Pattern: surface decisions as enumerated proposals (не «what do you think?») when substrate is clear.
+- **Live application как ROI test для D7.** Designing checklists + immediately applying them на Phase 3 closure = checks utility перед formalization. Если closure run finds 0 issues — design over-engineered. If finds 5+ — pattern proven. Bootstrap regression already known case (user explicit) — minimum 1 finding guaranteed.
+- **D6 vs D7 terminological disambiguation** — explicit table в CONVENTIONS.md §1.3 catches collision risk. pmo-map.md row uses «Meta: Ecosystem Governance» для D6 sense; D7 module also uses «meta» language (meta-improvement, meta-domain). Without explicit disambiguation reader confusion compounds.
+
+---
+
+## DEC-DEV-0018 — Phase 3 closure run + first D7 application
+
+**Date:** 2026-04-28
+**Trigger:** Apply `dev/meta-improvement/checklists/phase-closure.md` (Stage 2 D7 deliverable, DEC-DEV-0017) к Phase 3 immediately после design — first concrete D7 application; living ROI test of D7 utility per DESIGN_KICKOFF.md scope discipline.
+**Tag:** #pilot-finding #refactor #tooling
+
+### Context
+
+Per user's explicit request «применить D7 на текущем моменте». First instance of phase-closure.md run. Concurrent purposes:
+1. **Properly close Phase 3** (was open ended after DEC-DEV-0014; smoke test queued user-side но closure hygiene никто не делал)
+2. **Validate D7 design** (≤60 min budget; if 0 findings → over-engineered; if 5+ → pattern proven; baseline expectation: bootstrap regression already known + memory stale already known = 2 guaranteed findings)
+
+### Findings per checklist step
+
+**Pre-flight ✓:** Phase 3 commits merged, CHANGELOG updated, DEC-DEV-0014 closure entry exists, git status clean.
+
+**Step 1 — Doc health check (5 finds, all fixed inline):**
+1. `README.md` line 5 — «Статус: v1.0 — готова к pilot имплементации» → updated к «v1.1.0 — Phase 0-3 shipped; Phase 3 smoke test pending; Phase 4 next»
+2. `CLAUDE.md` § «Где мы сейчас» snapshot — listed Phase 3 как «⏳ Next» (stale; Phase 3 closed) → refreshed
+3. `CLAUDE.md` item 4 «Если starting Phase 3 — пройди dev/PHASE_3_READINESS.md» (stale + would dangle after archive) → generic «Перед стартом phase — phase-kickoff.md (D7) + dev/PHASE_<N>_READINESS.md»
+4. `CLAUDE.md` tree dev/ subdir showed только PHASE_3_READINESS.md (incomplete + Phase-3-specific) → generic listing с meta-improvement/, PHASE_<N>_READINESS.md, _archive/
+5. `dev/PHASE_4_READINESS.md` status banner ✓ (already correct, says «Phase 3 implementation complete»)
+
+**Step 2 — Bootstrap regression (1 finding queued, user execution required):**
+
+User's primary painpoint origin: bootstrap не обновляет `my-first-test/` с Phase 2 → Phase 3. Rule #2 cannot be self-executed from this session (interactive Claude Code needed in pilot project cwd).
+
+Inventory Phase 3 additions:
+- 5 commands: `plan`, `feature`, `cascade`, `bg-review`, `bg-rename`
+- 13 skills: planning-session, mvp-scoping, roadmap-planning, release-planning, feature-session, scenario-authoring, business-rule-extraction, lifecycle-derivation, invariant-discovery, vc-derivation, rpm-derivation, bg-extraction, cascade-protocol
+- 4 hooks: bg-extractor, cascade-check, br-change-trigger, ic-change-trigger
+- 1 hook extension: artifact-validate.js (D2 overrides)
+
+User-side execution + post-state verification documented в Closing section ниже.
+
+**Step 3 — Doc consistency (1 find fixed + others ✓):**
+1. **Skill count discrepancy:** ROADMAP.md line 18 + CHANGELOG.md line 11 stated «14 new skills» — actual filesystem = 13. Math check: «23 files = 5 cmds + 13 skills + 4 hooks + 1 ext» — sum ✓; «14 skills» variant gives 24 ≠ 23 (arithmetic disagrees with own claim). Both fixed inline.
+2. Hook names ✓ — `validation.md`, `processes.md`, `SPEC.md` всё use new names (`br-change-trigger`, `ic-change-trigger`, `cascade-check`, `bg-extractor`); old names (`br-change-review-trigger`, `ic-change-da-trigger`) только в historical refactor blocks или archived `dev/PHASE_3_READINESS.md` per DEC-DEV-0013 sweep.
+3. CHANGELOG additions resolve ✓ (spot check — `lifecycle-derivation.md`, hook manifest entries match files).
+4. B.1 convention spot check on `lifecycle-derivation.md` ✓ (description present + 9 frontmatter pattern matches confirming inline templates per CLAUDE.md «Skill конвенции»).
+
+**Step 4 — Cleanup (1 archive + ✓ rest):**
+1. `dev/PHASE_3_READINESS.md` → `dev/_archive/phase-3/PHASE_3_READINESS.md` (per E1 decision via `git mv`)
+2. `dev/PHASE_3_SMOKE_TEST_PLAN.md` kept active (smoke run pending — stays until run, then archive next closure)
+3. No orphan «TODO Phase 3» markers in shipped artifacts ✓
+4. `dev/` count post-archive: SPEC dirs + meta-improvement/ + 3 active phase docs + v1_1_backlog + _archive — reasonable per CONVENTIONS §5
+
+**Step 5 — Memory MCP sync (3 files updated):**
+1. `project_ecosystem_status.md` — was 8 days stale («Phase 3 ready to start»); now reflects «Phase 3 closed + D7 Stage 2 active + closure run»
+2. `project_ecosystem_architecture.md` — added D7 Meta-Improvement Module + Phase 3 architectural patterns (A1 auto-approve, adaptive-depth DA via stderr orchestration, per-FM session state, B.1 frontmatter convention)
+3. `MEMORY.md` index — descriptions refreshed for status + architecture + methodology entries
+
+### Time
+
+~45 min total (within ≤60 min budget):
+- Step 1: ~15 min (5 finds, multiple files)
+- Step 2: ~5 min (documentation only; user runs)
+- Step 3: ~10 min (count verification + grep sweeps + B.1 spot check)
+- Step 4: ~3 min (single archive operation)
+- Step 5: ~10 min (3 memory files rewrite)
+- Synthesis + this entry: ~5 min
+
+### Refinements applied к phase-closure.md (per CONVENTIONS §10)
+
+1. **Step 1 substep added:** Root doc snapshots + tree diagrams refresh (was implicit; Phase 3 closure caught 2 stale tree/snapshot blocks в CLAUDE.md). Pattern: snapshot phrases nominally honest disclaimers, but в практике require explicit closure-step refresh.
+
+2. **Step 3 substep added:** Count verification with explicit `ls | wc -l` ↔ ROADMAP/CHANGELOG arithmetic check. Phase 3 closure caught «14 skills» typo в обоих docs that contradicted own arithmetic.
+
+3. **Refinement tracker row** populated с Phase 3 actual: 9 findings, ~45 min, 2 refinements applied.
+
+### Outcome
+
+**Phase 3 closure complete на developer side.** Bootstrap regression (Step 2) pending user execution. Phase 4 readiness gate один step closer (per `dev/PHASE_4_READINESS.md` Section A — closure findings done; smoke test still queued).
+
+**D7 utility validated:** 9 findings vs 0-finding-over-engineered-baseline. Bootstrap regression + memory stale (2 known) + 7 emergent (5 doc rot + 1 count typo + 1 archive). All would've compounded across Phase 4-5 без closure ritual. ROI clearly positive.
+
+### Lessons
+
+#### D7 mechanism validation
+
+1. **Phase closure ritual catches real rot.** 9 issues в один Phase closure — not because Phase 3 was sloppy, but because hygiene activities are systematically deferred without explicit checklist. User's 10-15:1 add:cleanup ratio observation correct и actionable.
+
+2. **«Inline-step approach for cross-cutting concerns» (DEC-DEV-0017 lesson) validated.** Bootstrap regression as Step 2 (vs separate doc) + Memory sync as Step 5 — both natural fit во flow без navigation overhead. Promote-к-separate-doc trigger NOT met.
+
+3. **«Cuttable scope discipline» в meta-domain validated.** Stage 2 ships 3 files; closure runs в ≤60 min. Если бы я добавил pattern library starter + bootstrap-regression standalone + memory-sync skill — closure run был бы 2-3 hours, отстой ROI.
+
+#### Concrete pattern observations
+
+4. **Skill count typos propagate across docs.** Single source of truth = filesystem. ROADMAP/CHANGELOG estimates need verification. Refinement applied: Step 3 sub-step 5 (count verification).
+
+5. **CLAUDE.md «Где мы сейчас» snapshot is fragile but worth keeping.** Two options weighed: (a) refresh per closure (current); (b) remove snapshot, rely solely on ROADMAP. Option (a) chosen для AI loading-context utility; closure ritual handles rot. Snapshots deserved explicit Step 1 substep.
+
+6. **Tree diagrams в long-living root docs drift fast.** Phase-N specific entries в CLAUDE.md tree showed only PHASE_3_READINESS.md. Replaced с generic listing. Lesson: avoid Phase-N specific items в long-living root docs; use generic patterns / placeholders.
+
+7. **Memory MCP stale was substantial (8 days).** Confirms reference model component #5 importance. Manual update ~10 min для 3 files; not heavy enough для escalation к skill yet (per CONVENTIONS §6 trigger). Re-evaluate after Phase 4 closure.
+
+8. **Step 2 architectural constraint confirmed:** bootstrap regression cannot be self-executed from current session (no spawn-Claude-in-other-cwd capability). Documentation + read-only post-state verification = working pattern для Stage 2.
+
+#### Process-level
+
+9. **«Living application as ROI test» pattern proves out.** Built D7 → immediately applied → discovered refinements during application → updated artifacts in same session. Без application, refinements would've waited until Phase 4 closure (1+ phase delay). Pattern: «Stage 2 ship + immediate Stage 2 application» preserves refinement loop tight.
+
+10. **Closure run finds clarify D7 scope для Stage 3+.** 0 findings would've meant over-design; 5+ findings means pattern real (got 9). Stage 3+ formalization triggers (skill / command / hook) need 3+ closure runs showing same friction class. Phase 4 + 5 closures will reveal.
+
+### Open для Phase 4 readiness gate
+
+- **Bootstrap regression result** — populates retroactive update к этому entry (or separate DEC-DEV-NNNN if substantive findings)
+- **Memory MCP automation** — re-evaluate trigger после Phase 4 closure
+- **Phase-closure refinements adoption** — verify Step 1.4 + Step 3.5 actually run в Phase 4 closure (validates refinement protocol per CONVENTIONS §10)
+
+### Next
+
+**User executes (interactive Claude Code session in pilot project):**
+
+```
+cd C:/Users/pw201/WebstormProjects/my-first-test
+claude
+> /ecosystem:bootstrap
+```
+
+**Then back-verify here (read-only checks из этой сессии):**
+
+```bash
+# expect 12 commands (7 Phase 2 + 5 Phase 3)
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/commands/product/
+
+# expect 25 skills (12 Phase 2 + 13 Phase 3)
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/skills/product/
+
+# expect 6 hook files
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/hooks/product/
+
+# expect ≥6 hook command entries
+grep -c '"command"' C:/Users/pw201/WebstormProjects/my-first-test/.claude/settings.json
+
+# verify Phase 2 .product/ artifacts intact
+ls C:/Users/pw201/WebstormProjects/my-first-test/.product/
+```
+
+If bootstrap succeeds + all checks pass: Phase 3 closure 100% complete; Phase 4 readiness gate unblocked (modulo smoke test). If bootstrap regression: file specific issue, fix in `chore(bootstrap): Phase 3 regression` commit.
+
+---
+
+## DEC-DEV-0019 — Bootstrap regression outcome + D7 v1 turnkey
+
+**Date:** 2026-04-28
+**Trigger:** Phase 3 closure Step 2 (bootstrap regression) execution by user в pilot Claude session yielded 4 substantive findings; user requested «D7 turnkey + fresh-session invocation» как finalization. This entry consolidates execution outcome + D7 v1 closeout work.
+**Tag:** #pilot-finding #architecture #ux
+
+### Context
+
+DEC-DEV-0018 closing said «Bootstrap regression result populates retroactive update». Pilot Claude executed `/ecosystem:bootstrap` в my-first-test:
+
+1. Bootstrap detected ecosystem signature → asked user (a) abort / (b) merge / (c) backup+fresh per DEC-DEV-0004 design
+2. User chose (b) merge — successful clone к temp + `cp -rn` into .claude/
+3. **Manual interventions required** by pilot Claude после merge:
+   - Manifest.yaml preserved by cp -rn → new hooks installed but unregistered → pilot Claude manually copied upstream manifest
+   - Settings.json hooks list только had 2 entries → pilot Claude manually added 4 new hook command entries
+   - Dev-only files contaminated .claude/ (root CLAUDE.md, DEV_JOURNAL.md, dev/ directory) → pilot Claude flagged + cleaned после user confirm
+
+### Bootstrap test outcome
+
+**Technical pass** — Phase 3 additions present в pilot project after merge + manual fixes:
+- 12 commands (7 Phase 2 + 5 Phase 3) ✓
+- 25 skills (12 Phase 2 + 13 Phase 3) ✓
+- 6 hook files + 6 hook command entries в settings.json ✓
+- .product/ Phase 2 artifacts intact ✓
+- Cleanup of contamination ✓
+
+**Functional fail без manual interventions** — stock bootstrap (no manual hand-fixes) would have left:
+- Hooks installed but unregistered → silent failures
+- Dev contamination в `.claude/CLAUDE.md` → future sessions misled («I'm working on the ecosystem» vs «I'm working on user's product»)
+
+### 4 architectural findings (substantive)
+
+**Finding A — Dev-only files copy contamination (CRITICAL):**
+
+`.claude-ecosystem-tmp` clones full upstream repo, then `cp -rn .claude-ecosystem-tmp/. .claude/` brings root files (CLAUDE.md, DEV_JOURNAL.md) and dev/ subfolder. Эти ecosystem-developer-only — should never enter user's `.claude/`.
+
+Worst: `.claude/CLAUDE.md` would be read by future Claude Code sessions and mislead them.
+
+**Root cause:** bootstrap.md spec assumes upstream repo == packaged release. Real upstream = full developer repo with dev artifacts.
+
+**Finding B — `cp -rn` additive only (CRITICAL, user's main concern):**
+
+`cp -rn` (no-clobber) **only adds new files**, **never updates existing**. Implication:
+- Bug fixes к commands/skills/hooks shipped в upstream НЕ propagate to user's `.claude/`
+- SPEC updates remain stale для existing pilots
+- Refactored hooks (e.g., DEC-DEV-0013 A.1 devils-advocate.md adaptive-depth refactor) НЕ reach existing projects
+
+**Root cause:** «merge» semantics designed для «extend ecosystem» не «sync ecosystem to latest». DEC-DEV-0002 idempotent merge promise covers add but not update.
+
+**Finding C — manifest.yaml preservation breaks hook auto-registration (CRITICAL):**
+
+Bootstrap Step 6b auto-registers hooks из `manifest.yaml`. Но `cp -rn` preserves user's existing manifest.yaml — которое omits new hooks. Result: new hooks installed but not registered → silent fails.
+
+**Special case of Finding B** but distinct severity потому что: hooks runtime-required, manifest single-source-of-truth для registration, automatic-but-incomplete merge gives false confidence «bootstrap done».
+
+**Finding D — Re-install default = (a) abort, не (b) merge (UX):**
+
+Per DEC-DEV-0004 signature detection, re-install scenarios force user choice (a)/(b)/(c). Default = (a). Для post-Phase-N update path (the common case для any active pilot project), (b) is correct — but user must know to pick it.
+
+«Bootstrap не обновляет» perception (user's words) = «default option doesn't update», technically «can update только after manual choice».
+
+### Decision: Path Y for bootstrap update mechanism
+
+**3 paths considered:**
+- **Path X** — refactor bootstrap.md zone-based merge (add zone filter + overwrite semantics для ecosystem zone + preserve user zone). One command, multi-mode.
+- **Path Y** — split: `/ecosystem:bootstrap` greenfield-only (per DEC-DEV-0001 envision); new `/ecosystem:update` для existing projects с proper sync (overwrite ecosystem zone, preserve user zone, sync manifest, update settings.json hooks, never copy dev zone). Two commands, single-mode each.
+- **Path Z** — defer V1.1, document workaround в bootstrap.md «for re-install, manual: rm -rf .claude/{commands,skills,...,docs}; re-bootstrap; restore product.yaml + .env»
+
+**Chosen: Path Y** — cleaner separation match natural workflow («install once» vs «update each phase»). Bootstrap не несёт multi-mode complexity. Each command single-purpose.
+
+**Status:** decision deferred к Phase 4 architectural readiness gate (per `dev/PHASE_4_READINESS.md` Section C.6 added в этом commit). Implementation = Phase 4 deliverable. NOT shipped в этом commit.
+
+### D7 v1 turnkey deliverables (this commit)
+
+**Fresh-session invocation pattern** (per user's idea — bias-resistance via independent observer):
+
+Both `phase-closure.md` and `phase-kickoff.md` extended с «Invocation» section:
+- **Inline mode** — current session runs (fast; small phase OK)
+- **Fresh-session mode** — copy-paste prompt для new Claude Code session, loads minimal substrate (CHANGELOG, ROADMAP, last 5 DEV_JOURNAL entries, CONVENTIONS), executes checklist independently. **Anti-bias guard explicit** в prompt («не smooth over findings to look good для AI which designed Phase N»).
+
+**Rationale:** SPEC §6.8 «failure mode handling» implicitly assumed inline execution. User's observation that AI which just designed Phase N may rationalize away closure findings = sharp methodological refinement. Fresh-session = independent observer pattern (substitute для absent code reviewer in solo dev context).
+
+**No new mechanism types added** — still markdown checklists, just с invocation section. Per CONVENTIONS §3 mechanism hierarchy preserved (checklist remains default).
+
+### Outcome
+
+**Phase 3 closure 100% complete:**
+- DEC-DEV-0018 — design-time closure findings (9 issues fixed inline + refinements applied)
+- DEC-DEV-0019 — execution outcome (4 architectural bootstrap findings + Phase 4 path)
+- Total: 13 findings surfaced by D7 v1 closure ritual on first phase
+
+**D7 v1 ships как turnkey (per user request):**
+- 2 checklists (phase-closure, phase-kickoff) с dual-mode invocation
+- 1 conventions doc (10 sections + Stage 3+ open questions)
+- D7 conventions established (DEC-DEV continued sequence; folder=namespace; checklist-first hierarchy; selective archive; manual sync; pattern library deferred)
+- 5 DEV_JOURNAL entries (DEC-DEV-0015 substrate + 0016 kickoff verified + 0017 design output + 0018 closure findings + 0019 execution + turnkey)
+- One-line CLAUDE.md pointer для discoverability
+
+**Phase 4 readiness gate updated:**
+- Section C.6 added — bootstrap update mechanism architecture с Path Y recommendation. Decision required перед Phase 4 implementation kickoff (else Phase 4 deliverables suffer same update gap).
+
+### Lessons
+
+#### Bootstrap-specific architectural
+
+1. **«Idempotent merge» promise (DEC-DEV-0002) covered hook registration, не file content updates.** Original promise was «hooks fire after install»; reality requires «ecosystem zone files reach latest after each phase update». Two distinct concerns; DEC-DEV-0002 covered только first.
+
+2. **Upstream repo ≠ packaged release.** Bootstrap design treated full clone как ship-ready; reality = clone includes developer artifacts (dev/, DEV_JOURNAL.md, root CLAUDE.md). Need explicit zone categorization (ecosystem / user / never-copy) для proper update semantics.
+
+3. **Manifest preservation = silent failure mode.** Hooks installed без registration = worst kind of silence (no error, no fire). Pattern: any «auto-derived from manifest» mechanism needs «manifest update» step in update path.
+
+4. **«Update vs install» concerns split cleanly architecturally.** Bootstrap (greenfield) и update (existing project) have different semantics: install = «set up everything»; update = «sync to latest, preserve user state». Path Y splitting follows this architectural cleavage.
+
+#### D7 mechanism-specific
+
+5. **Fresh-session invocation = methodological refinement worth shipping.** User's observation about self-rationalization bias was sharp. Implementation cost = trivial (markdown section). Value = high (catches what inline mode would smooth over). Pattern: when reviewer ≠ implementer, bias drops; для solo dev, fresh session = available «reviewer» substitute.
+
+6. **«Living application as ROI test» pattern doubled value here.** Phase 3 closure → 9 inline finds (DEC-DEV-0018). Phase 3 closure Step 2 execution → 4 architectural finds (DEC-DEV-0019). Both rounds от единственной Phase 3 «pilot» of D7. Без D7, эти 13 findings would've compounded across Phase 4-5.
+
+7. **Closure ritual surfaces architectural debt that work-mode rationalizes.** During Phase 3 implementation, bootstrap update path was «не нужно сейчас, Phase 3 focus». Closure ritual forced revisit; revealed это actually critical для Phase 4-7 deployment to existing pilots. Pattern: hygiene rituals выявляют debt that work-mode discounts.
+
+#### Process-level
+
+8. **Pilot Claude manual interventions = signal что mechanism под-design'нен.** When external AI session needs 4 manual fixes для completing bootstrap (manifest copy, settings.json edit, contamination cleanup, dev-only file removal) — signal mechanism doesn't fit real use case. «Asking user for permission to fix» = workaround, не proper design.
+
+9. **Severity classification helped scope Phase 4.** Findings A/B/C all CRITICAL (block silent failures); D = UX gap. Path Y решает все 4 architecturally; не required immediate hotfix потому что Phase 3 deployment к my-first-test работает (after manual interventions). Phase 4 architectural readiness gate appropriate location.
+
+### Refinements applied this commit
+
+- `phase-closure.md` — Invocation section added (top, after Pre-flight)
+- `phase-kickoff.md` — Invocation section added (top, after Pre-flight)
+- `dev/PHASE_4_READINESS.md` — Section C.6 «Bootstrap update mechanism architecture» added с Path Y recommendation
+
+### Next
+
+**Phase 3 fully closed.** Next D7 mechanism use = Phase 4 kickoff (когда user decides to start Phase 4 work). Phase 4 readiness gate must address C.6 bootstrap update path **перед Phase 4 implementation kickoff** — else Phase 4 deliverables (handoff.md, NFR commands, etc.) would suffer same update gap к existing pilots.
+
+**Stage 3+ D7 work** triggered после Phase 4 + 5 closures:
+- Pattern library extraction (3+ instances для emergence per CONVENTIONS §7)
+- Memory sync skill if manual proves heavy
+- Bootstrap regression script if `/ecosystem:update` doesn't fully resolve
+
+---
+
+## DEC-DEV-0020 — `/ecosystem:update` standalone command (closes DEC-DEV-0019 bootstrap findings)
+
+**Date:** 2026-04-28
+**Trigger:** DEC-DEV-0019 4 architectural bootstrap findings + Path Y recommendation. User chose «закроем эту задачу сейчас, не подмешивая в Phase 4». Standalone implementation track per Phase 4 readiness item C.6 resolution upfront.
+**Tag:** #architecture #tooling #ux
+
+### Context
+
+DEC-DEV-0019 surfaced 4 critical findings про `/ecosystem:bootstrap` re-install path. Path Y was recommended (split: bootstrap greenfield-only + new `/ecosystem:update` для existing projects). User opted для immediate implementation вместо deferring к Phase 4 architectural readiness.
+
+Mini-readiness gate (3 architectural decisions, all accepted «ага по всем»):
+
+**Q1: Allowlist vs blocklist?** Allowlist (только commands/, skills/, agents/, hooks/, docs/, templates/, output-styles/ subdirs + README/CHANGELOG/ROADMAP/BOOTSTRAP/install.sh/install.ps1/.env.template/gitignore.template root files). Anything else — never enters `.claude/`. Safer; explicit enumeration; защищает от future contamination if dev/ растёт.
+
+**Q2: Delete obsolete files в ecosystem zone?** Yes — rsync-style sync для allowlisted subdirs (delete files in `.claude/<subdir>/` not present в upstream + copy fresh). Risk mitigation: pre-update backup `.claude/` → `.claude-backup-<timestamp>/` (default; skip только с `--no-backup` flag).
+
+**Q3: Manifest + settings.json hooks sync?** Always overwrite manifest.yaml from upstream (it's в hooks/ subdir → in ecosystem zone). Re-derive hooks section в settings.json from new manifest. Preserve permissions section + other top-level fields verbatim. Idempotent.
+
+### Options considered (Path X / Y / Z из DEC-DEV-0019)
+
+- **Path X — refactor bootstrap.md zone-based merge** (one command, multi-mode). Pros: single command. Cons: bootstrap карьеры multi-mode complexity; greenfield + update flows mix; harder mental model.
+- **Path Y (chosen) — split: bootstrap greenfield-only + new /ecosystem:update.** Pros: cleaner separation match natural workflow («install once» vs «update each phase»); each command single-purpose; bootstrap stays simple. Cons: 2 commands instead of 1.
+- **Path Z — defer V1.1, document workaround.** Pros: zero new code now. Cons: tech debt compounds across Phase 4-7 для existing pilots; user pain persists.
+
+**Path Y rationale:** match natural conceptual cleavage. Bootstrap = «set everything up» (greenfield assumption); update = «sync to latest, preserve user state» (existing assumption). Mixing them в bootstrap caused all 4 DEC-DEV-0019 findings.
+
+### Decision
+
+**Implemented:**
+
+1. `commands/ecosystem/update.md` (new command, ~280 lines):
+   - 8 execution steps: signature check, backup, clone temp, compute changeset (с `--dry-run`), apply, re-derive hooks, cleanup+verify, summary
+   - Allowlist explicit (subdirs + root files), never-copy zone explicit (CLAUDE.md root, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md), user zone explicit (settings.local.json, product.yaml, integrator/, .product/)
+   - Flags: `--offline`, `--dry-run` (recommended first run), `--force`, `--no-backup`
+   - Rollback workflow documented
+   - Comparison table bootstrap vs update
+
+2. `commands/ecosystem/bootstrap.md` minor edit (re-install scenario):
+   - Added recommendation block to use `/ecosystem:update` instead of legacy (a)/(b)/(c) options
+   - Marked option (b) Merge as «LEGACY — use /ecosystem:update instead»
+   - Preserved (a)/(b)/(c) availability for edge cases (corruption recovery)
+
+3. `INSTALL-HUMAN.md` extended (Блок C — обновление existing project):
+   - C.1 update global cache (re-run installer)
+   - C.2 invocation в project (--dry-run first, then apply)
+   - C.3 verify + rollback procedure
+   - C.4 bootstrap vs update distinction
+
+4. `README.md` extended (Quick Start «Фаза 3 — обновление»):
+   - Brief invocation example + link к INSTALL-HUMAN Блок C
+   - Distinction note: bootstrap re-install (legacy) vs /ecosystem:update (recommended)
+
+### Outcome
+
+**4 DEC-DEV-0019 findings architecturally resolved:**
+- Finding A (dev contamination) → solved by allowlist-only copy + explicit never-copy zone
+- Finding B (cp -rn additive only — user's main concern) → solved by rsync-style sync (delete + copy fresh для each subdir; overwrite for root files)
+- Finding C (manifest preservation breaks hook registration) → solved by manifest.yaml в ecosystem zone (overwritten) + Step 6 hooks re-derivation
+- Finding D (re-install UX gap) → solved by dedicated `/ecosystem:update` command with «I want to update» semantic; bootstrap edit recommends update for re-install
+
+**Phase 4 readiness gate item C.6 RESOLVED upfront** — Phase 4 implementation kickoff не блокируется bootstrap update path; future Phase 4 deliverables (handoff.md, NFR commands, etc.) reach existing pilots via `/ecosystem:update`.
+
+**Discoverability path:** new command file added, but globally users получат command в autocomplete только после:
+- (a) Re-running install.sh/.ps1 (which copies `commands/ecosystem/*.md` к `~/.claude/commands/ecosystem/`), OR
+- (b) Running this very `/ecosystem:update` on existing project (which syncs `commands/ecosystem/update.md` к `.claude/commands/ecosystem/`)
+
+For my-first-test test (Step 5 below) — manual copy required since update.md doesn't exist там yet (chicken-and-egg).
+
+### Test execution (Step 5 — user runs interactive)
+
+**Critical caveat:** `/ecosystem:update` cannot be invoked в my-first-test/ until update.md exists в its `.claude/commands/ecosystem/`. Manual copy required для first time.
+
+**User-side test workflow:**
+
+```bash
+# Manual copy (one-time bootstrap of update.md itself)
+cp commands/ecosystem/update.md C:/Users/pw201/WebstormProjects/my-first-test/.claude/commands/ecosystem/update.md
+
+# In my-first-test/ interactively
+cd C:/Users/pw201/WebstormProjects/my-first-test
+claude
+> /ecosystem:update --dry-run
+```
+
+Expected dry-run output: changeset preview showing what would sync (likely no-op since pilot Claude already manually fixed everything в DEC-DEV-0019 Step 2 work).
+
+If dry-run looks correct:
+```
+> /ecosystem:update
+```
+
+After apply:
+- Verify `.claude/commands/ecosystem/update.md` present (self-update validation)
+- Verify backup directory `.claude-backup-<timestamp>/` created
+- Verify `.product/` intact (no changes)
+- Run `/ecosystem:verify` to confirm health
+
+**Read-only post-state verification (this session):**
+
+```bash
+ls C:/Users/pw201/WebstormProjects/my-first-test/.claude/commands/ecosystem/
+ls -d C:/Users/pw201/WebstormProjects/my-first-test/.claude-backup-*/
+ls C:/Users/pw201/WebstormProjects/my-first-test/.product/
+```
+
+If test reveals issues — fix in follow-up commit OR rollback и address per failure mode.
+
+### Lessons
+
+#### Architectural
+
+1. **«Concerns split cleanly architecturally» test was right indicator.** Path Y separation matches natural workflow — sign that this is correct architectural cleavage, не just convenience. Pattern: when 4 distinct findings all share root cause «one mechanism doing two different things», split mechanism > patch mechanism.
+
+2. **Allowlist > blocklist для file copy/sync operations.** Explicit enumeration prevents future contamination if dev folder grows (e.g., adding `dev/proposals/`, `dev/_archive/phase-4/`). Blocklist requires updating with every new dev artifact type.
+
+3. **rsync-style sync с backup default = right safety/utility tradeoff.** Without backup, user fears running update; without sync (additive only), update doesn't update. Backup makes rsync semantics palatable.
+
+4. **«Replace, not merge» для ecosystem-managed sections.** Hooks section в settings.json — manifest is single source of truth post-update; merging old + new = ambiguous semantics. Replace = clear ownership. Merge would re-introduce DEC-DEV-0019 Finding C (preserved old manifest leads к stale hooks).
+
+#### Process
+
+5. **Mini-readiness gate (3 questions) before implementation paid off.** Without explicit Q1-Q3 decisions, я бы wandered between allowlist/blocklist mid-implementation, или skipped delete semantics. Pattern: even non-phase implementation work benefits от phase-kickoff.md Section 1 architectural readiness в miniature.
+
+6. **«Closing the task now, not mixing into Phase 4» preserves Phase 4 cognitive scope.** User's instinct to handle bootstrap fix immediately (vs deferring к Phase 4 architectural readiness) keeps Phase 4 focus pure (handoff/NFR/validation). Pattern: when finding crosses phase boundary, sometimes resolving immediately в standalone track simpler than phase-readiness-coordination.
+
+7. **Self-application of D7 helped surface this scope.** DEC-DEV-0018 phase-closure ritual found bootstrap regression need; DEC-DEV-0019 execution surfaced 4 findings; this commit resolves them. Без D7 closure ritual, bootstrap update gap would've been «obvious in hindsight» после Phase 4 deployment к existing pilots failed silently.
+
+8. **Self-update validation = nice debugging affordance.** Step 7 verify includes check that `commands/ecosystem/update.md` present after sync — incidentally validates that update successfully synced itself. If absent post-update: indicates allowlist filter wrong (excluded ecosystem/ subfolder of commands/) OR upstream missing file. Useful diagnostic.
+
+### Refinements applied to existing artifacts
+
+- `commands/ecosystem/bootstrap.md` — re-install section: recommend `/ecosystem:update`, mark legacy (b) Merge as DEPRECATED
+- `INSTALL-HUMAN.md` — added Блок C (3 sections: update global cache, invocation в project, verify+rollback)
+- `README.md` — added «Фаза 3 — обновление» section в Quick Start
+- `dev/PHASE_4_READINESS.md` Section C.6 — already references this work; status moves «pending decision» → «resolved DEC-DEV-0020»
+
+### Next
+
+**Test execution by user (interactive Claude Code в my-first-test):**
+1. Manual copy update.md к pilot's .claude/commands/ecosystem/
+2. Run `/ecosystem:update --dry-run`
+3. If looks correct → apply
+4. Report back results
+5. Я verify post-state read-only
+
+**После successful test:** Phase 3 closure cycle truly complete; Phase 4 implementation kickoff has clean ground. Phase 4 deliverables (handoff/NFR/validation) reach existing pilots via `/ecosystem:update`.
+
+**После Phase 4 ship:** re-run `/ecosystem:update` на my-first-test → first true production usage; populate retroactive update к этому entry с findings (если any).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

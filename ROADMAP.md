@@ -15,7 +15,7 @@
 ✅ Phase 2 pilot validated (2026-04-20) — 14 artifacts на my-first-test/, all gates passed
 ✅ Phase 3 readiness gate (2026-04-20) — DEC-DEV-0012 architectural decisions consolidated
 ✅ Phase 3 — Planning + Feature Enrichment + adaptive-depth DA + cascade detection (2026-04-27)
-   — 23 files (5 commands + 14 skills + 4 hooks + 1 hook extension + manifest update)
+   — 23 files (5 commands + 13 skills + 4 hooks + 1 hook extension; manifest update modify)
    — Static verification passes; real run smoke test pending (dev/PHASE_3_SMOKE_TEST_PLAN.md)
 
 [We are here ─────────────────────────────────────]
