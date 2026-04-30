@@ -1864,6 +1864,113 @@ Phase 4 readiness items C.1-C.5 не unblocked этой commit; они неза�
 
 ---
 
+## DEC-DEV-0023-A — Addendum: severity correction + second smoke session findings
+
+**Date:** 2026-04-30
+**Trigger:** Second smoke session on `my-first-test` (FM-002 enrichment, 6.3h, log `e361cf0c-...jsonl`). User analyzed log per «есть ли ошибки, которые мы еще не починили». R2 task (propagate 1.1.1 к test project via `/ecosystem:update`) **was NOT yet performed** — session ran on stale 1.1.0 hooks/skills. Result: same bugs fired again, plus revealed что DEC-DEV-0023 finding 2 was **understated в severity**.
+**Tag:** #severity-correction #smoke-test-2 #propagation-lag #cascade-corruption
+
+### Context
+
+Между первой смок-сессией (DEC-DEV-0023) и второй пользователь не выполнил R2 follow-up (`/ecosystem:update` on my-first-test). Test project's `.claude/hooks/`, `.claude/skills/`, `.claude/commands/` остались на pre-1.1.1. FM-002 enrichment запустился с **buggy** hooks. Three classes of finding emerged.
+
+### Finding N1 — Severity correction для F2 (cascade-check destructive auto-fix)
+
+**Original DEC-DEV-0023 description:** «over-eager dependents — 396 false positives in pending file».
+
+**Corrected severity:** cascade-check.js v1 auto-fix branch (`if depFm.status === 'active'`) **silently writes к active artifact's frontmatter via `injectListField()`**. Это не just queue noise — это **active data corruption**.
+
+**Evidence из second smoke session (2026-04-30):**
+
+302 unintended `auto-fixed` actions during FM-002 enrichment, distributed по triggering artifact:
+
+| Triggered by | Unintended writes к FM-001 artifacts |
+|---|---|
+| SC-010 creation | 33 (BR-001..023, LC-001..003, IC-001..007 polluted) |
+| SC-010a, SC-010e1, SC-010e2, SC-010e3, SC-011 (× 5) | 33 each = 165 |
+| LC-004 creation | 20 (FM-001 SC.lifecycle / VC.covers_lifecycles polluted) |
+| VC-008..VC-013 (× 6) | 13 each = 78 |
+| VC-001 edit | 6 |
+
+**Worst case — scalar field destruction:** VC-002..VC-007 в FM-001 имели scalar `scenario: SC-001a` (без brackets). Cascade-check's `parseListField()` returns `[]` for unbracketed scalars; `injectListField()` then writes new bracketed array, **overwriting original SC ref**:
+
+```
+Before: VC-002.scenario = SC-001a
+After:  VC-002.scenario = [SC-010, SC-011, SC-010a, SC-010e1, SC-010e2, SC-010e3]
+```
+
+Original SC-001a fully erased. Recovered только manual sed (4 cleanup batches by AI during session). Without vigilance — 302 cross-FM bi-dir refs would have stuck permanently.
+
+**Implication для F2 fix:** forward-driven `getForwardSpecs()` + `findArtifactFileById()` (DEC-DEV-0023) corrects the over-eager iteration — only candidates that saved actually forward-references queued. Скан-all-of-type pattern полностью убран. Therefore F2 fix architecturally addresses the destruction, not just queue noise. **Code fix остаётся правильным**; только описание impact в DEC-DEV-0023 надо считать дополненным.
+
+**Lesson:** «v1 simplification» comment («Acceptable for first iteration; refine in v1.1 if perf issue») described pattern as performance concern. Reality: correctness concern с silent data corruption. When future commit-sanctioned shortcuts surface, audit для real worst case, не assumed perf pattern.
+
+### Finding N2 — Bash bypasses PostToolUse hook (intentional design, observed worth documenting)
+
+**Observation:** AI's recovery cleanup использовал `sed -i` через Bash tool. Each sed batch modified `.product/*.md` files но **не triggered cascade-check.js / artifact-validate.js / bg-extractor.js**. Reason: hook matcher = `"matcher": "Write|Edit"` (Claude Code tool names); Bash invocations don't match.
+
+**Это properties:**
+- ✓ **Intentional дизайн** — lets cleanup workflow operate without recursive cascade re-fire.
+- ✓ Used productively in this session — AI cleaned up 33+33+33+33 cross-FM pollution без racing с cascade-check (которое уже broken).
+- ⚠ **Side effect:** sed/awk правки .product/*.md через Bash bypass V-* validation, BG extraction, cascade detection entirely. Manual edit mistake = silent insert.
+
+**Decision:** keep current matcher behavior. Bash-driven mass operations (sed, awk, bulk file moves) — power-user territory. If future telemetry shows sed misuse — revisit с pattern detection в Bash hook layer. **Не блокер** для Phase 4.
+
+**Documentation impact:** добавить mention в `dev/meta-improvement/CONVENTIONS.md` или similar — «Mass operations via Bash bypass PostToolUse hooks; trade-off documented».
+
+### Finding N3 — Skills (не только hooks) propagate via `/ecosystem:update`
+
+**Observation:** Originally я фокусировался на hooks при cleanup и в DEC-DEV-0023 narrative. Test project's `.claude/skills/` were also stale (Q1, Q3, Q4, Q5, Q7, F8 codifications absent; counts = 0).
+
+**Effect on second smoke session:**
+
+| Codification (1.1.1) | FM-002 enrichment behavior |
+|---|---|
+| Q1 JTBD supporting decision tree | N/A — FM-002 had legitimate JTBD-1.1; codification not exercised |
+| Q3 VC complexity threshold | VC-013 (trial cap verification) covers SC-010e3 + 6 BRs + 3 ICs — borderline split candidate; AI proceeded без heuristic |
+| Q4 NOTE NFR placement guard | 3 new NOTEs (NOTE-006/007/008): asset retention, multi-target email, trial cap reset — **all** `promote_target: BR`. NOTE-006 + NOTE-008 — typical NFR territory (data lifecycle / quota policy) but Q4 framework absent → AI defaulted к BR |
+| Q5 telemetry plan template | **0 of 24 new BRs** (BR-024..BR-043) include `## Telemetry plan` section. Several judgment-call defaults (BR-031 trial_cap=30 min, BR-035 signed URL TTL) without revisit-trigger codified |
+| Q7 `/product:cascade --reset/--revalidate` | Not available in test project — AI used manual sed для cleanup instead of structured command |
+| F8 structured DA findings YAML | DEC-PLAN-009..017 в decision journal — free-text format (legacy). Not machine-readable |
+
+**Implication:** `/ecosystem:update` (R2) propagates BOTH `hooks/` AND `skills/` AND `commands/` per allowlist (DEC-DEV-0020). User running `/ecosystem:update` once enables all 1.1.1 benefits simultaneously. Single propagation step — uniform expectation.
+
+### Outcome
+
+После second smoke session:
+
+- **Bug F1 (bg-extractor TDZ):** fired 57 times (vs 119 in first session — shorter session). Fix correctness verified в master via smoke runner. Awaiting propagation.
+- **Bug F2 (cascade over-eager):** fired 302 active-artifact corruptions + 143 queue entries. Severity now correctly understood. Fix correctness verified.
+- **Bug F3 (cascade dedup):** cascade-pending grew к 3120 lines / 445 entries. Fix correctness verified.
+- **Bug F4 (BR/IC trigger whitespace):** da-pending 159 KB. Fix correctness verified.
+- **Bug F5 (validation auto-purge):** N/A в этой session (no validation rules failed).
+- **AI's discipline in handling cascade incident:** strong — recognized bug at minute 4 of cascade fire; recorded incident in `feature-FM-002-progress.yaml` cascade_incident_2026-04-30 block; correctly classified as ecosystem (not product) issue (no NOTE-* spawn для tooling bug); recommended `/ecosystem:update` в next_steps.
+- **FM-002 final artifact quality:** high — 6 SC + 20 BR + 1 LC + 6 IC + 6 VC + 3 NOTE; LC-004 LocalizationJob с 8 states + 12 transitions; BR-039 error classification taxonomy clever architectural choice; cross-feature ICs proper (e.g., IC-012 RESOLVES F.3 BR-033 DA flag).
+
+### Action items
+
+1. **🔴 USER:** `/ecosystem:update --dry-run` then `--apply` on `my-first-test` — propagates 1.1.1 hooks + skills + commands. Single step closes all five F-fixes + Q1-Q7 + F8 для будущих enrichment sessions.
+2. **🟢 (this commit):** addendum в DEV_JOURNAL preserves correction trace для future audit / pattern-emergence (D7 Stage 5+).
+3. **🟡 Optional (опять-таки this commit или separate):** brief mention в `dev/meta-improvement/CONVENTIONS.md` про Bash-bypasses-PostToolUse documentary observation (low priority — power-user territory).
+
+### Lessons (additions к DEC-DEV-0023 lessons block)
+
+8. **Severity assessment requires execution evidence, не just code review.** DEC-DEV-0023 first-pass narrative described F2 as queue noise. Second smoke session evidence (302 unintended writes + scalar destruction) revealed active corruption. Code review can verify mechanism existence; runtime evidence quantifies impact + worst case.
+
+9. **Propagation lag = compound risk.** Period between fix-in-master и fix-in-pilot is high-risk window. User explicitly deferred R2 («сделаю сам»); 1 day lapse → second smoke ran on stale code → 302 corruption events that wouldn't have occurred с propagated fix. Pattern: when fix and pilot are decoupled, propagation should have explicit time-bound expectation.
+
+10. **«Bash bypasses hooks» is feature, not bug — but worth documenting.** Manual cleanup workflows benefit from this; auto-validation bypass risk is real but bounded к explicit user/AI sed actions. Trade-off accepted; document.
+
+### Next
+
+**Immediate:** этот PR landed с addendum. No code changes — pure documentation severity correction.
+
+**Awaiting user (out of scope этой PR):**
+- R2: `/ecosystem:update` on my-first-test (urgent before next FM enrichment)
+- R4: third smoke session с propagated 1.1.1 — should show 0 hook errors + clean cascade-pending growth + Q5 telemetry plans applied automatically.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
