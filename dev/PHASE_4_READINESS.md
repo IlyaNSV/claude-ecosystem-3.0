@@ -1,278 +1,278 @@
-# Phase 4 Readiness Checklist
+# Чек-лист готовности к Phase 4
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 4 (Handoff + NFR + Product DA + Validation full).
 >
-> **Status (2026-04-29):** Phase 3 smoke-tested + 1.1.1 patch shipped (DEC-DEV-0023). Section A blocker LIFTED. Pre-Phase-4 architectural items C.1-C.5 + new D.5 + A.3 still pending.
+> **Статус (2026-04-29):** Phase 3 прошла smoke test, патч 1.1.1 выпущен (DEC-DEV-0023). Блокер из секции A снят. Архитектурные пункты C.1-C.5 + новый D.5 + A.3 — всё ещё в ожидании.
 >
-> **Принцип:** не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждый item имеет severity: 🔴 Blocker, 🟡 Important, 🔵 Nice-to-have.
+> **Принцип:** не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждому пункту присвоен приоритет: 🔴 блокер, 🟡 важный, 🔵 необязательный.
 
 ---
 
-## Status banner
+## Статус-баннер
 
-✅ **Phase 3 implementation complete (DEC-DEV-0014, 2026-04-27).**
-✅ **Phase 3 smoke test executed + 1.1.1 patch shipped (DEC-DEV-0023, 2026-04-29).**
+✅ **Реализация Phase 3 завершена (DEC-DEV-0014, 2026-04-27).**
+✅ **Smoke test Phase 3 проведён, патч 1.1.1 выпущен (DEC-DEV-0023, 2026-04-29).**
 
-Pending перед Phase 4 kick-off:
-- [x] **Phase 3 real run smoke test** — executed 2026-04-29 на my-first-test (5.5h integrated pipeline run, 12 findings, 1.1.1 fixes shipped)
-- [x] Smoke test findings reviewed; regressions fixed (4 hook bugs + 1 validation gap + 5 skill convention codifications + 1 schema deferral)
-- [ ] Phase 4 architectural questions answered (Section C below)
-- [ ] Phase 4 scope confirmed / discipline applied
-- [ ] R2 user-driven follow-up: `/ecosystem:update` on my-first-test (verifies 1.1.1 fixes propagation)
-- [ ] R4 user-driven follow-up: re-run smoke after fixes (validates F1-F5 in real workflow)
+Что осталось до старта Phase 4:
+- [x] **Реальный smoke test Phase 3** — проведён 2026-04-29 на `my-first-test` (5.5 часа сквозного прогона, 12 находок, исправления вошли в 1.1.1)
+- [x] Находки smoke test разобраны; регрессии исправлены (4 hook-бага + 1 пробел в lifecycle валидации + кодификация 5 skill-конвенций + 1 решение по схеме отложено)
+- [ ] Архитектурные вопросы Phase 4 решены (секция C ниже)
+- [ ] Объём Phase 4 подтверждён, дисциплина scope применена
+- [ ] Действие пользователя R2: `/ecosystem:update` на `my-first-test` (проверяет, что исправления 1.1.1 распространяются)
+- [ ] Действие пользователя R4: повторный прогон smoke test после исправлений (валидирует F1-F5 в реальном workflow)
 
-**Phase 3 gate fully closed. Phase 4 kick-off blocked only on architectural decisions C.1-C.5 + new D.5 + A.3.**
-
----
-
-## A. Phase 3 smoke test outcome (🟢 RESOLVED — DEC-DEV-0023)
-
-### A.1 Real run на my-first-test
-
-Executed 2026-04-29: integrated pipeline run (bootstrap → Discovery → Planning → enrichment FM-001) вместо isolated scenarios. Functionally satisfies acceptance — entire P1.B + P2.A flow exercised end-to-end.
-
-- [x] `/product:plan` flow ran к completion. Findings: 8 DEC-PLAN entries в test project journal; planning discipline OK.
-- [x] `/product:feature FM-001` ran к completion (F.1-F.10). Findings: 23 BR + 7 SC + 7 IC + 7 VC + 3 LC + RPM produced; A1 auto-approve fired correctly for LC/VC/RPM.
-- [x] BG candidate extraction — **failed silently**: bg-extractor.js TDZ bug (119 ReferenceError), 0 candidates extracted. Fix: F1 в DEC-DEV-0023.
-- [x] `/product:cascade --pending` exercised — 396 entries (most false-positives). Fix: F2/F3 forward-driven + dedup в DEC-DEV-0023.
-- [x] D2 overrides — not exercised в smoke (no override scenarios encountered); deferred к next pilot.
-- [x] DA orchestration via hooks — fired 55 times correctly, findings collected inline в DEC-PLAN-006 (4 important, 5 discussion).
-
-**Acceptance:** 4+ scenarios functionally exercised; 1.1.1 patch addresses regressions surfaced. Phase 3 ships → Phase 4 unblocked.
-
-### A.2 Retroactive DEV_JOURNAL entry
-
-- [x] **DEC-DEV-0023** — Phase 3 smoke test results populated (2026-04-29). Lessons + 12 findings + Path Z fix package + refinement table recorded.
-
-### A.3 Pre-existing concerns from DEC-DEV-0013 B.1 (still pending)
-
-- [ ] `skills/product/hypothesis-formulation.md` non-canonical fields (per DEC-DEV-0013 B.1 observation) — addressed або explicitly deferred? `success_threshold` vs spec `target_value`; missing `segment` / `value_proposition` в template.
-- **Note:** не surfaced в DEC-DEV-0023 smoke test (existing HYPs from prior session — frontmatter не re-validated). Should address before Phase 4 kickoff OR explicit defer note.
+**Гейт Phase 3 полностью закрыт. Старт Phase 4 заблокирован только архитектурными решениями C.1-C.5 + новым D.5 + A.3.**
 
 ---
 
-## B. Phase 4 deliverables alignment (per ROADMAP)
+## A. Результаты smoke test Phase 3 (🟢 ЗАКРЫТО — DEC-DEV-0023)
 
-Phase 4 ROADMAP scope (~10 файлов; **состав без изменений** post DEC-DEV-0023, но appear новые inputs/constraints):
+### A.1 Реальный прогон на my-first-test
+
+Проведён 2026-04-29: интегрированный сквозной прогон pipeline (bootstrap → Discovery → Planning → enrichment FM-001) вместо изолированных сценариев. Функционально критерии приёмки выполнены — весь поток P1.B + P2.A прогнан end-to-end.
+
+- [x] `/product:plan` flow доведён до завершения. Находки: 8 записей DEC-PLAN в журнале решений тестового проекта; дисциплина планирования в норме.
+- [x] `/product:feature FM-001` доведён до завершения (F.1-F.10). Находки: создано 23 BR + 7 SC + 7 IC + 7 VC + 3 LC + RPM; A1 auto-approve корректно сработал для LC/VC/RPM.
+- [x] Извлечение BG-кандидатов — **молча упало**: TDZ-баг в `bg-extractor.js` (119 ReferenceError), 0 кандидатов извлечено. Исправление: F1 в DEC-DEV-0023.
+- [x] `/product:cascade --pending` отработан — 396 записей (большинство ложные срабатывания). Исправление: F2/F3 forward-driven + дедупликация в DEC-DEV-0023.
+- [x] Проверка D2 overrides — в smoke не отработана (сценариев override не возникло); отложена до следующего пилота.
+- [x] Оркестрация DA через хуки — отработала 55 раз корректно, находки собраны inline в DEC-PLAN-006 (4 важных, 5 обсуждение).
+
+**Приёмка:** функционально прогнано 4+ сценария; патч 1.1.1 закрывает выявленные регрессии. Phase 3 поставлена → Phase 4 разблокирована.
+
+### A.2 Ретроактивная запись в DEV_JOURNAL
+
+- [x] **DEC-DEV-0023** — результаты smoke test Phase 3 зафиксированы (2026-04-29). Записаны уроки + 12 находок + пакет исправлений Path Z + таблица refinement.
+
+### A.3 Унаследованные проблемы из DEC-DEV-0013 B.1 (всё ещё открыты)
+
+- [ ] Неканонические поля в `skills/product/hypothesis-formulation.md` (по наблюдению DEC-DEV-0013 B.1) — закрыть или явно отложить? `success_threshold` вместо канонического `target_value`; в шаблоне отсутствуют `segment` / `value_proposition`.
+- **Замечание:** в smoke test DEC-DEV-0023 не всплыло (существующие HYP из прошлой сессии — frontmatter повторно не валидировался). Нужно решить до старта Phase 4 либо явно зафиксировать отсрочку.
+
+---
+
+## B. Соответствие deliverables Phase 4 (по ROADMAP)
+
+Объём Phase 4 по ROADMAP (~10 файлов; **состав без изменений** после DEC-DEV-0023, но появились новые входные данные и ограничения):
 
 **commands/product/:**
 - [ ] `handoff.md` — D1 modes (draft/production), D2 overrides
-- [ ] `validate.md` — on-demand full validation. **Inherit auto-purge pattern из artifact-validate.js (DEC-DEV-0023 F5).**
-- [ ] `cleanup.md` — V-15 orphan detection (`--dry-run`). **Consider integration с `/product:cascade --pending --revalidate` (Q7) + validation-pending stale entries** — see D.5 ниже.
-- [ ] `da-review.md` — manual F.9 trigger (Mode: full per refactored devils-advocate.md). **Output schema codified — use structured YAML `da_findings:` block per feature-session.md «Structured DA findings format» (DEC-DEV-0023 F8).**
-- [ ] `clarify.md` — receiver questions channel
-- [ ] `nfr-review.md` — F.5a Ask/Define. **Input source codified — consume existing `NOTE-NNN` artifacts с `promote_target: NFR` (Q4 NOTE creation guidance в feature-session.md).**
-- [ ] `nfr-upgrade-tier.md` — batch review при tier change
+- [ ] `validate.md` — полная валидация по требованию. **Унаследовать паттерн auto-purge из `artifact-validate.js` (DEC-DEV-0023 F5).**
+- [ ] `cleanup.md` — детекция orphan'ов V-15 (`--dry-run`). **Рассмотреть интеграцию с `/product:cascade --pending --revalidate` (Q7) + чистка stale-записей в `validation-pending`** — см. D.5 ниже.
+- [ ] `da-review.md` — ручной триггер F.9 (Mode: full по обновлённому `devils-advocate.md`). **Схема вывода кодифицирована — использовать структурированный YAML-блок `da_findings:` по разделу «Structured DA findings format» в `feature-session.md` (DEC-DEV-0023 F8).**
+- [ ] `clarify.md` — канал вопросов получателя
+- [ ] `nfr-review.md` — F.5a Ask/Define. **Источник входа кодифицирован — потреблять существующие артефакты `NOTE-NNN` с `promote_target: NFR` (Q4 NOTE creation guidance в `feature-session.md`).**
+- [ ] `nfr-upgrade-tier.md` — пакетный пересмотр при смене tier
 
 **skills/product/:**
-- [ ] `handoff-generator.md` — 13 sections, mode-aware DoR (D1), hash computation
-- [ ] `nfr-review.md` — sanity ranges integration, guardrails. **Consume NOTE-NNN promote_target=NFR queue per Q4.**
-- [ ] `product-da-review.md` — invokes business DA agent (Mode: full), handles findings. **Output structured per F8 schema.**
-- [ ] `validation-runner.md` — tier-aware (B1), quiet-mode-aware (B2), 5 execution points. **Auto-purge pattern (F5) уже в artifact-validate.js — runner extends, не reinvent.**
+- [ ] `handoff-generator.md` — 13 секций, mode-aware DoR (D1), вычисление хеша
+- [ ] `nfr-review.md` — интеграция sanity ranges, guardrails. **Потреблять очередь NOTE-NNN с `promote_target=NFR` по Q4.**
+- [ ] `product-da-review.md` — вызывает business DA agent (Mode: full), обрабатывает находки. **Вывод структурирован по схеме F8.**
+- [ ] `validation-runner.md` — tier-aware (B1), quiet-mode-aware (B2), 5 точек выполнения. **Паттерн auto-purge (F5) уже в `artifact-validate.js` — runner расширяет, не переизобретает.**
 
 **hooks/product/:**
-- [ ] `product-handoff-gate.js` — PreToolUse блокировка без valid handoff (per SPEC §6.6). **MUST pass `verify-hooks.js` smoke before commit (phase-closure Step 3 + pre-commit gate per DEC-DEV-0023 F6/R3).**
+- [ ] `product-handoff-gate.js` — PreToolUse-блокировка без валидного handoff (по SPEC §6.6). **ОБЯЗАН пройти `verify-hooks.js` smoke до коммита (phase-closure Шаг 3 + pre-commit gate по DEC-DEV-0023 F6/R3).**
 
-### B.1 Hook quality gate (added DEC-DEV-0023)
+### B.1 Quality gate для хуков (добавлено в DEC-DEV-0023)
 
-Все новые Phase 4 hooks (currently planned: `product-handoff-gate.js`) должны:
+Все новые хуки Phase 4 (на текущий момент запланирован: `product-handoff-gate.js`) должны:
 
-1. Pass `node dev/meta-improvement/scripts/verify-hooks.js` (smoke runner) — exit 0 + no fatal stderr patterns.
-2. Если pre-commit installed (`bash dev/meta-improvement/scripts/install-pre-commit.sh`) — autoatomatically блокирует commit если verify-hooks fails.
-3. Phase-closure ritual Step 3 «Hook runtime smoke (≤5 min)» runs same verify after Phase 4 implementation completes.
+1. Пройти `node dev/meta-improvement/scripts/verify-hooks.js` (smoke runner) — exit 0 + отсутствие фатальных паттернов в stderr.
+2. Если установлен pre-commit (`bash dev/meta-improvement/scripts/install-pre-commit.sh`) — он автоматически блокирует коммит, если verify-hooks падает.
+3. Шаг 3 «Hook runtime smoke (≤5 мин)» в phase-closure ритуале запускает тот же verify после завершения реализации Phase 4.
 
-Для adding new hook к `smoke-hooks.js` test cases array — see [smoke-hooks.js TEST_CASES](meta-improvement/scripts/smoke-hooks.js).
-
----
-
-## C. Architectural questions for Phase 4 (🟡 Important)
-
-### C.1 Handoff hash computation на CRLF
-
-**Проблема:** V-H-04 SHA-256 hash drift detection; CRLF auto-conversion на Windows может cause false drift detection.
-
-**Решение перед implementation:**
-- [ ] Hash computation normalizes line endings (LF only)? Или hash includes CRLF?
-- [ ] Test на Windows + Unix to verify consistent hash
-
-### C.2 NFR sanity ranges enforcement strength
-
-**Проблема:** NFR.md spec §5 includes sanity-check ranges per tier. F.5a workflow proposes defaults; user can override с rationale (sanity_check: overridden).
-
-**Решение перед implementation:**
-- [ ] Override workflow strict (require Product DA review per overridden NFR)? Или informational warning sufficient?
-- [ ] Tier auto-detection — read RM.current_phase, или ask user explicitly per F.5a invocation?
-
-### C.3 Manual /product:da-review Mode: full integration
-
-**Проблема:** refactored devils-advocate.md supports Mode: full (always 6-lens). `/product:da-review` command (Phase 4) needs to construct brief properly.
-
-**Resolution status (DEC-DEV-0023 F8):** Output schema known — `da_findings:` structured YAML block с `revisit_trigger` mandatory для accepted/deferred resolutions. Documented в [skills/product/feature-session.md](../skills/product/feature-session.md) «Structured DA findings format в decision journal».
-
-**Решение перед implementation:**
-- [ ] Brief format для manual mode — symmetric к hook-driven adaptive? Или specific Mode: full template?
-- [ ] Output location — same `.product/.da-findings/` or separate (e.g., `.da-findings/manual/`)?
-
-### C.4 Validation runner skill — 5 execution points
-
-**Проблема:** validation.md §3 lists 5 execution points (inline / approve gate / handoff / on-demand / periodic). Phase 4 implements `/product:validate` for on-demand. Other points handled by hooks already.
-
-**Решение перед implementation:**
-- [ ] Validation runner skill consumes V-* rules from validation.md catalog programmatically? Или hardcode rule list?
-- [ ] Reporting format — JSON + markdown (per validation.md §10.3 example)?
-
-### C.5 Cleanup orphan detection — Phase 6 Design coupling + pending hygiene (extended DEC-DEV-0023)
-
-**Проблема:** V-15 orphan detection includes MK/DS/NM (Phase 6 artifacts). Phase 4 `/product:cleanup` ships without these (Phase 6 conditional).
-
-**DEC-DEV-0023 extension:** cleanup также должен handle stale entries в:
-- `.product/.pending/cascade-pending.yaml` — auto-clear obsolete cascade entries (либо invoke `/product:cascade --pending --revalidate` underneath, либо own purge logic).
-- `.product/.pending/validation-pending.yaml` — verify auto-purge applied (F5 pattern); flag inconsistencies.
-- `.product/.pending/da-pending.yaml` — flag entries для already-active artifacts (DA processed).
-
-**Решение перед implementation:**
-- [ ] Phase 4 cleanup excludes MK/DS/NM check; Phase 6 extends? Or conditional flag в command?
-- [ ] Cleanup invokes `/product:cascade --pending --revalidate` as sub-step? Или own purge?
-- [ ] Cleanup pending hygiene = mandatory (default behavior) или opt-in (`--pending-hygiene` flag)?
-
-### C.6 Bootstrap update mechanism architecture — ✅ RESOLVED (DEC-DEV-0020, 2026-04-28)
-
-**Проблема (DEC-DEV-0019):** stock `/ecosystem:bootstrap` на existing pilot project имел 4 architectural issues — dev-only files contamination, cp -rn additive only, manifest.yaml preservation breaks hook auto-registration, re-install UX gap.
-
-**Resolution: Path Y implemented upfront** (per user request «закрыть сейчас, не подмешивать в Phase 4»).
-
-`/ecosystem:update` standalone command shipped (commit `<TBD>`):
-- Allowlist-only sync (subdirs: commands/, skills/, agents/, hooks/, docs/, templates/, output-styles/; root files: README, BOOTSTRAP, CHANGELOG, ROADMAP, install.sh/.ps1, .env.template, gitignore.template)
-- rsync-style sync (delete obsolete + copy fresh)
-- Manifest.yaml overwrite + hooks section re-derivation в settings.json (preserve permissions section verbatim)
-- Backup-by-default `.claude/` → `.claude-backup-<timestamp>/`
-- Never-copy zone explicit (CLAUDE.md root, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md) — addresses Finding A contamination
-- `--dry-run` flag для preview перед apply
-- Bootstrap.md edited to recommend `/ecosystem:update` для re-install (closes Finding D UX gap; legacy (b) Merge marked DEPRECATED)
-
-**Phase 4 кickoff status:** UNBLOCKED. Phase 4 deliverables (handoff.md, NFR commands, validation runner, etc.) reach existing pilots via `/ecosystem:update`. C.6 no longer blocker.
-
-**Pending:** test execution на my-first-test (user-driven interactive session per DEC-DEV-0020 Step 5 instructions). After successful test, this item fully closed.
+Чтобы добавить новый хук в массив TEST_CASES в `smoke-hooks.js` — см. [smoke-hooks.js TEST_CASES](meta-improvement/scripts/smoke-hooks.js).
 
 ---
 
-## D. Scope discipline для Phase 4 (🟡 Important — против over-engineering)
+## C. Архитектурные вопросы Phase 4 (🟡 важно)
 
-### D.1 Handoff modes (D1) — both modes ship?
+### C.1 Вычисление хеша handoff на CRLF
 
-ROADMAP says both `--mode draft` (3 blockers) и `--mode production` (8 blockers). Both must work for D1 modification to be complete.
+**Проблема:** V-H-04 — детекция drift по SHA-256; авто-конвертация CRLF на Windows может вызывать ложные срабатывания drift detection.
 
-- [ ] Both modes implemented + tested? Or production-only first, draft в minor follow-up?
+**Решить до реализации:**
+- [ ] Вычисление хеша нормализует line endings (только LF)? Или хеш включает CRLF?
+- [ ] Тест на Windows + Unix для подтверждения консистентности хеша
 
-### D.2 NFR Review — F.5a.0 Ask + F.5a.1 Define split
+### C.2 Жёсткость enforcement sanity ranges для NFR
 
-Per processes.md §3.2 F.5a — two phases:
-- F.5a.0 Ask (mandatory)
-- F.5a.1 Define (conditional on user choice [Y])
+**Проблема:** В spec NFR.md §5 прописаны sanity-check диапазоны по tier. Workflow F.5a предлагает дефолты; пользователь может переопределить с rationale (`sanity_check: overridden`).
 
-- [ ] Both phases ship Phase 4? Or Ask only first, Define через separate command?
+**Решить до реализации:**
+- [ ] Workflow для override строгий (требовать ревью Product DA для каждого переопределённого NFR)? Или informational warning достаточно?
+- [ ] Авто-определение tier — читать `RM.current_phase` или явно спрашивать у пользователя при каждом вызове F.5a?
 
-### D.3 Product DA Review F.9 — separate /product:da-review command
+### C.3 Интеграция ручного `/product:da-review` Mode: full
 
-Existing per-BR/per-IC DA happens automatically (Phase 3 hooks). F.9 = explicit FM-level pre-handoff review (Mode: full).
+**Проблема:** Обновлённый `devils-advocate.md` поддерживает Mode: full (всегда 6-lens). Команда `/product:da-review` (Phase 4) должна корректно конструировать brief.
 
-- [ ] F.9 manual trigger via `/product:da-review FM-<NNN>` command в Phase 4? Or auto-triggered before /product:handoff?
+**Статус решения (DEC-DEV-0023 F8):** Схема вывода известна — структурированный YAML-блок `da_findings:` с обязательным `revisit_trigger` для accepted/deferred резолюций. Задокументировано в [skills/product/feature-session.md](../skills/product/feature-session.md), раздел «Structured DA findings format в decision journal».
+
+**Решить до реализации:**
+- [ ] Формат brief для ручного режима — симметричный hook-driven adaptive? Или специфичный шаблон Mode: full?
+- [ ] Куда писать вывод — в тот же `.product/.da-findings/` или в отдельный (например, `.da-findings/manual/`)?
+
+### C.4 Validation runner skill — 5 точек выполнения
+
+**Проблема:** В `validation.md` §3 перечислены 5 точек выполнения (inline / approve gate / handoff / on-demand / periodic). Phase 4 реализует `/product:validate` для on-demand. Остальные точки уже покрыты хуками.
+
+**Решить до реализации:**
+- [ ] Validation runner skill читает V-* правила из каталога `validation.md` программно? Или хардкодит список правил?
+- [ ] Формат отчёта — JSON + markdown (по примеру в `validation.md` §10.3)?
+
+### C.5 Cleanup orphan detection — связка с Phase 6 Design + чистка pending (расширено в DEC-DEV-0023)
+
+**Проблема:** Детекция orphan'ов V-15 включает MK/DS/NM (артефакты Phase 6). Phase 4 `/product:cleanup` поставляется без них (Phase 6 условная).
+
+**Расширение DEC-DEV-0023:** cleanup также должен обрабатывать stale-записи в:
+- `.product/.pending/cascade-pending.yaml` — авто-чистка устаревших записей cascade (либо вызывать `/product:cascade --pending --revalidate` под капотом, либо иметь собственную purge-логику).
+- `.product/.pending/validation-pending.yaml` — проверять, что auto-purge применён (паттерн F5); сигнализировать о несоответствиях.
+- `.product/.pending/da-pending.yaml` — флагировать записи для уже active артефактов (DA уже обработала).
+
+**Решить до реализации:**
+- [ ] Phase 4 cleanup исключает проверку MK/DS/NM; Phase 6 расширяет? Или условный флаг в команде?
+- [ ] Cleanup вызывает `/product:cascade --pending --revalidate` как под-шаг? Или собственная purge-логика?
+- [ ] Pending hygiene в cleanup = обязательное (поведение по умолчанию) или opt-in (флаг `--pending-hygiene`)?
+
+### C.6 Архитектура bootstrap update mechanism — ✅ ЗАКРЫТО (DEC-DEV-0020, 2026-04-28)
+
+**Проблема (DEC-DEV-0019):** Stock `/ecosystem:bootstrap` на существующем pilot-проекте имел 4 архитектурных проблемы — контаминация dev-only файлами, `cp -rn` только дополняет, перезапись `manifest.yaml` ломает auto-registration хуков, дыра в UX при re-install.
+
+**Решение: Path Y реализован заранее** (по запросу пользователя «закрыть сейчас, не подмешивать в Phase 4»).
+
+Standalone-команда `/ecosystem:update` поставлена (коммит `<TBD>`):
+- Allowlist-only sync (поддиректории: `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `output-styles/`; root-файлы: README, BOOTSTRAP, CHANGELOG, ROADMAP, install.sh/.ps1, .env.template, gitignore.template)
+- Sync в стиле rsync (удаляет obsolete + копирует свежее)
+- Перезапись `manifest.yaml` + повторное выведение секции hooks в `settings.json` (раздел permissions сохраняется дословно)
+- Бэкап по умолчанию: `.claude/` → `.claude-backup-<timestamp>/`
+- Зона never-copy явно прописана (CLAUDE.md в root, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md) — закрывает контаминацию из Finding A
+- Флаг `--dry-run` для предпросмотра перед apply
+- В `bootstrap.md` добавлена рекомендация использовать `/ecosystem:update` для re-install (закрывает дыру в UX из Finding D; legacy опция (b) Merge помечена как DEPRECATED)
+
+**Статус для kickoff Phase 4:** РАЗБЛОКИРОВАНО. Deliverables Phase 4 (`handoff.md`, NFR-команды, validation runner и т.д.) дойдут до существующих пилотов через `/ecosystem:update`. C.6 больше не блокер.
+
+**Осталось:** прогон теста на `my-first-test` (интерактивная сессия пользователя по инструкциям в DEC-DEV-0020 Шаг 5). После успешного теста пункт полностью закрыт.
+
+---
+
+## D. Дисциплина scope для Phase 4 (🟡 важно — против over-engineering)
+
+### D.1 Handoff modes (D1) — оба режима поставляем?
+
+В ROADMAP сказано про оба: `--mode draft` (3 блокера) и `--mode production` (8 блокеров). Оба должны работать, чтобы модификация D1 считалась полной.
+
+- [ ] Оба режима реализованы и протестированы? Или сначала только production, draft в minor follow-up?
+
+### D.2 NFR Review — разделение F.5a.0 Ask + F.5a.1 Define
+
+По `processes.md §3.2` F.5a — две фазы:
+- F.5a.0 Ask (обязательная)
+- F.5a.1 Define (условная — по выбору пользователя [Y])
+
+- [ ] Обе фазы поставляем в Phase 4? Или сначала только Ask, Define через отдельную команду?
+
+### D.3 Product DA Review F.9 — отдельная команда `/product:da-review`
+
+DA по каждому BR/IC уже происходит автоматически (Phase 3 hooks). F.9 = явный pre-handoff ревью на уровне FM (Mode: full).
+
+- [ ] F.9 — ручной триггер через `/product:da-review FM-<NNN>` в Phase 4? Или авто-триггер перед `/product:handoff`?
 
 ### D.4 Validation full — 33 V-* + 10 V-H-* + 8 V-MK-*?
 
-Phase 4 `/product:validate --deep` ships «all V-*». Phase 6 handles V-MK-* (Design module conditional).
+Phase 4 `/product:validate --deep` выпускает «все V-*». Phase 6 покрывает V-MK-* (условный Design module).
 
-- [ ] Phase 4 ships V-* + V-H-*; V-MK-* skipped с graceful note?
+- [ ] Phase 4 поставляет V-* + V-H-*; V-MK-* пропускаются с graceful note?
 
-### D.5 Cleanup integration с pending hygiene (added DEC-DEV-0023)
+### D.5 Интеграция cleanup и pending hygiene (добавлено в DEC-DEV-0023)
 
-`/product:cleanup` (Phase 4) и `/product:cascade --pending --revalidate` (1.1.1, DEC-DEV-0023 Q7) overlap в hygiene domain. Decision needed:
+`/product:cleanup` (Phase 4) и `/product:cascade --pending --revalidate` (1.1.1, DEC-DEV-0023 Q7) пересекаются по hygiene-домену. Нужно решение:
 
-- [ ] **Option A — single sweep:** `/product:cleanup` invokes cascade revalidate underneath + handles validation-pending purge + orphan detection в одном вызове. User runs cleanup periodically.
-- [ ] **Option B — separate concerns:** `/product:cleanup` = orphan detection only; cascade hygiene остаётся в `/product:cascade --pending --revalidate`. User runs обе команды per discipline.
-- [ ] **Option C — hybrid:** cleanup has `--pending-hygiene` flag; default = orphan-only (fast); flag enables full sweep.
+- [ ] **Вариант A — единый sweep:** `/product:cleanup` под капотом вызывает cascade revalidate + обрабатывает purge `validation-pending` + детекцию orphan'ов в одном вызове. Пользователь периодически запускает cleanup.
+- [ ] **Вариант B — раздельные обязанности:** `/product:cleanup` = только детекция orphan'ов; cascade hygiene остаётся в `/product:cascade --pending --revalidate`. Пользователь по дисциплине запускает обе команды.
+- [ ] **Вариант C — гибрид:** в cleanup есть флаг `--pending-hygiene`; по умолчанию = только orphan'ы (быстро); флаг включает полный sweep.
 
-Recommendation на момент 2026-04-29: **Option C** — flexibility без forced bundle. Choose explicitly в Phase 4 kickoff.
+Рекомендация на 2026-04-29: **Вариант C** — гибкость без принудительного бандла. Выбрать явно на kickoff Phase 4.
 
-### D.6 v1.1+ deferrals — Phase 4 не constraint'нут (added DEC-DEV-0023)
+### D.6 Отсрочки до v1.1+ — Phase 4 ими не ограничена (добавлено в DEC-DEV-0023)
 
-Following items deferred к v1.1+; Phase 4 should NOT attempt to resolve:
+Следующие пункты отложены до v1.1+; Phase 4 НЕ должна пытаться их закрыть:
 
-- **BR.feature schema** (DEC-DEV-0023 Q2) — current scalar `feature: FM-NNN` works для Phase 4. v1.1 evaluates global/array/extends options (bring-forward trigger: second FM enrichment с shared rule reuse pain).
-- **Reverse-driven cascade additional review rules** (e.g., BR change → LC.rules contains BR → V-06 review) — v1.2. Phase 4 cascade-check.js stays forward-driven only; manual `/product:cascade --pending --revalidate` остаётся workaround если user explicitly wants reverse cases.
-- **Hook smoke runner extension** для new hooks — adds entry в `dev/meta-improvement/scripts/smoke-hooks.js` TEST_CASES array (low effort, do при adding hook).
-
----
-
-## E. Pilot validation gate (🔴 Blocker — самый важный пункт)
-
-### E.1 Real /product:plan + /product:feature на my-first-test
-
-Per Phase 3.I plan — see Section A above.
-
-### E.2 Decision: продолжать с Phase 4 как есть, или revise?
-
-**После smoke test results:**
-- [ ] If 4+ scenarios pass — proceed Phase 4 with checklist below
-- [ ] If 3 or fewer pass — review findings, fix Phase 3 regressions, re-smoke before Phase 4
-- [ ] If smoke test reveals architectural rethink needed — escalate; possibly Phase 4 scope changes
+- **Схема BR.feature** (DEC-DEV-0023 Q2) — текущий скаляр `feature: FM-NNN` для Phase 4 работает. v1.1 рассмотрит варианты global/array/extends (триггер для bring-forward: вторая FM enrichment с болью переиспользования общих правил).
+- **Reverse-driven cascade — дополнительные правила ревью** (например, изменение BR → LC.rules содержит BR → ревью V-06) — v1.2. cascade-check.js в Phase 4 остаётся forward-driven; ручной `/product:cascade --pending --revalidate` остаётся обходом, если пользователь явно хочет покрыть reverse-кейсы.
+- **Расширение smoke runner для новых хуков** — добавление записи в массив TEST_CASES в `dev/meta-improvement/scripts/smoke-hooks.js` (мало усилий, делается при добавлении хука).
 
 ---
 
-## F. Meta (🔵 Nice-to-have)
+## E. Гейт пилотной валидации (🔴 блокер — самый важный пункт)
 
-### F.1 Memory entries actualization
+### E.1 Реальные `/product:plan` + `/product:feature` на my-first-test
 
-Update memory after Phase 3 + smoke test:
-- [x] `project_ecosystem_status.md` — refreshed 2026-04-29 (DEC-DEV-0023 P3) reflects Phase 3 smoke-tested + 1.1.1 + Phase 4 unblocked
-- [x] `feedback_methodology.md` — added pt 4 (hook smoke runner mandatory pre-commit per DEC-DEV-0023)
-- [x] `MEMORY.md` — index refreshed
-- [ ] `project_ecosystem_architecture.md` — add Phase 3 architectural patterns (A1 auto-approve, DA orchestration через stderr, cascade scope V-11 only forward-driven post DEC-DEV-0023, decision journal location, structured DA findings schema)
+По плану Phase 3.I — см. секцию A выше.
 
-### F.2 CHANGELOG vs DEV_JOURNAL discipline (continued)
+### E.2 Решение: продолжать с Phase 4 как есть или пересматривать?
 
-- [ ] Each significant Phase 4 fix/decision → DEV_JOURNAL entry (per CLAUDE.md guidelines)
-- [ ] CHANGELOG updated only при release-worthy changes (e.g., 1.2.0 после Phase 4)
+**По результатам smoke test:**
+- [ ] Если 4+ сценариев проходят — переходить к Phase 4 по чек-листу ниже
+- [ ] Если 3 или меньше — разобрать находки, исправить регрессии Phase 3, повторить smoke до Phase 4
+- [ ] Если smoke выявит необходимость архитектурного переосмысления — эскалировать; возможно изменение scope Phase 4
 
-### F.3 Dogfood check
+---
 
-- [ ] Reconsider — should Ecosystem 3.0 itself have `.product/` setup? Phase 3 was huge; might benefit from explicit FM-* для commands/skills/hooks. Out-of-scope для Phase 4 work; flag для future consideration.
+## F. Мета (🔵 необязательно)
 
-### F.4 v1.1 backlog priorities review
+### F.1 Актуализация записей в memory
 
-After 2-3 real Discoveries / Features:
-- [ ] Atomic mass-rename — frequency check (5+ renames/month?)
-- [ ] Deep mode subagents — Quick mode limits hit?
-- [ ] Full BFS cascade auto-fix — pattern emerges from cascade-pending resolutions?
-- [ ] Bundle approve UX — high enough volume для UX investment?
+Обновить memory после Phase 3 + smoke test:
+- [x] `project_ecosystem_status.md` — обновлено 2026-04-29 (DEC-DEV-0023 P3); отражает: Phase 3 прошла smoke + 1.1.1 + Phase 4 разблокирована
+- [x] `feedback_methodology.md` — добавлен пункт 4 (smoke runner для хуков обязателен в pre-commit, по DEC-DEV-0023)
+- [x] `MEMORY.md` — индекс обновлён
+- [ ] `project_ecosystem_architecture.md` — добавить архитектурные паттерны Phase 3 (A1 auto-approve, оркестрация DA через stderr, scope cascade — только V-11 forward-driven после DEC-DEV-0023, расположение журнала решений, схема structured DA findings)
+
+### F.2 Дисциплина CHANGELOG vs DEV_JOURNAL (продолжение)
+
+- [ ] Каждое значимое исправление/решение в Phase 4 → запись в DEV_JOURNAL (по правилам CLAUDE.md)
+- [ ] CHANGELOG обновляется только при release-worthy изменениях (например, 1.2.0 после Phase 4)
+
+### F.3 Проверка dogfood
+
+- [ ] Пересмотреть — нужен ли самой Ecosystem 3.0 свой `.product/`? Phase 3 получилась объёмной; могло бы дать пользу явное FM-* для commands/skills/hooks. Out-of-scope для Phase 4; пометить для будущего рассмотрения.
+
+### F.4 Ревью приоритетов backlog'а v1.1
+
+После 2-3 реальных Discoveries / Features:
+- [ ] Atomic mass-rename — проверить частоту (5+ переименований в месяц?)
+- [ ] Subagents в Deep mode — упёрлись в лимиты Quick mode?
+- [ ] Полный BFS cascade auto-fix — проявляется ли паттерн из резолюций cascade-pending?
+- [ ] Bundle approve UX — достаточный объём, чтобы инвестировать в UX?
 
 ---
 
 ## G. Definition of Done для Phase 4
 
 Phase 4 считается «done», когда:
-- [ ] `/product:handoff FM-<NNN> --mode draft` → status: partial handoff for PoC (3 blockers)
-- [ ] `/product:handoff FM-<NNN> --mode production` → all 8 blockers enforced
-- [ ] SHA-hash drift detection works between `.product/` and handoff (CRLF safe)
-- [ ] `/product:validate --deep` covers V-01..V-16 + V-H-01..V-H-10 (V-MK-* deferred Phase 6)
-- [ ] `/product:da-review FM-<NNN>` invokes business DA с Mode: full
-- [ ] DA findings recorded в `.product/.da-findings/`
-- [ ] NFR F.5a.0 Ask + F.5a.1 Define split works; sanity ranges enforced
-- [ ] `approve_overrides` (D2) works — temporary blocker pass с rationale
-- [ ] **Phase 4 smoke test:** прогнать `/product:handoff` + `/product:da-review` + `/product:validate` на my-first-test FM-001 (если smoke test 3.I prerequisite met)
-- [ ] DEV_JOURNAL обновлён with Phase 4 findings + key decisions
-- [ ] CHANGELOG обновлён ([1.2.0] или similar)
+- [ ] `/product:handoff FM-<NNN> --mode draft` → status: partial — handoff для PoC (3 блокера)
+- [ ] `/product:handoff FM-<NNN> --mode production` → все 8 блокеров обеспечены
+- [ ] Детекция drift по SHA-хешу работает между `.product/` и handoff (CRLF-safe)
+- [ ] `/product:validate --deep` покрывает V-01..V-16 + V-H-01..V-H-10 (V-MK-* отложены до Phase 6)
+- [ ] `/product:da-review FM-<NNN>` запускает business DA в Mode: full
+- [ ] Находки DA пишутся в `.product/.da-findings/`
+- [ ] Разделение F.5a.0 Ask + F.5a.1 Define работает; sanity ranges обеспечены
+- [ ] `approve_overrides` (D2) работают — временный пропуск blocker'а с rationale
+- [ ] **Smoke test Phase 4:** прогнать `/product:handoff` + `/product:da-review` + `/product:validate` на `my-first-test` FM-001 (если предусловие smoke 3.I выполнено)
+- [ ] DEV_JOURNAL обновлён: находки и ключевые решения Phase 4
+- [ ] CHANGELOG обновлён ([1.2.0] или аналог)
 
 ---
 
-## Совет: как использовать этот checklist
+## Совет: как пользоваться этим чек-листом
 
-1. **Сначала Section A** (Phase 3 smoke test). Без results — Phase 4 не unblocked.
-2. **Потом Section C** (architectural questions) — каждый пункт = решение, которое нужно принять и записать в DEV_JOURNAL DEC-DEV-NNNN.
-3. **Потом Section D** (scope discipline) — отрезать всё, что не must-have для Phase 4 done.
-4. **Section E.2** — explicit decision based on smoke test outcome.
+1. **Сначала секция A** (smoke test Phase 3). Без результатов — Phase 4 не разблокирована.
+2. **Потом секция C** (архитектурные вопросы) — каждый пункт = решение, которое надо принять и зафиксировать в DEV_JOURNAL как DEC-DEV-NNNN.
+3. **Потом секция D** (дисциплина scope) — отрезать всё, что не must-have для Phase 4 done.
+4. **Секция E.2** — явное решение по результатам smoke test.
 5. **B и F** — параллельно, по мере необходимости.
 
-**Когда всё ☑ → начинать Phase 4 implementation.**
+**Когда всё ☑ → начинать реализацию Phase 4.**
 
-**Если в процессе Phase 4 вскроется что-то, что должно было быть здесь** — добавь сюда сейчас (для Phase 5 readiness) + запиши в DEV_JOURNAL.
+**Если в процессе Phase 4 вскроется что-то, что должно было быть здесь** — добавь сюда сейчас (для готовности Phase 5) + запиши в DEV_JOURNAL.
