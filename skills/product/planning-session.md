@@ -2,6 +2,8 @@
 description: P1.B Planning Session orchestrator. Manages D1.6-D1.8 steps + per-artifact approve gates. Used by /product:plan after Discovery complete.
 ---
 
+> **User-facing output language:** Russian (per CLAUDE.md § Language and tone). Keep identifiers, file paths, commands/flags, technical terms, abbreviations, and code blocks verbatim — don't translate or inflect them.
+
 # Planning Session — Orchestrator Skill
 
 Used by `/product:plan`. Orchestrates **P1.B Planning Session** per `.claude/docs/pmo/processes.md §3.2` (D1.6 MVP → D1.7 RM → D1.8 RL-001 + FM skeletons).

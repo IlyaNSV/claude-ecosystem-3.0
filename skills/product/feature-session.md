@@ -2,6 +2,8 @@
 description: P2 Feature Definition orchestrator (F.0-F.10). Manages enrichment mode (FM-id) and creation mode ("idea"). Per-FM session state, A1 auto-approve flow для 🟢 skills, DA orchestration via stderr signals, cascade handling.
 ---
 
+> **User-facing output language:** Russian (per CLAUDE.md § Language and tone). Keep identifiers, file paths, commands/flags, technical terms, abbreviations, and code blocks verbatim — don't translate or inflect them.
+
 # Feature Session — Orchestrator Skill
 
 Used by `/product:feature`. Orchestrates **P2 Feature Definition** per `.claude/docs/pmo/processes.md §3.2` (P2.A enrichment + P2.B creation).

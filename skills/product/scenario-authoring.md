@@ -2,6 +2,8 @@
 description: F.2 step — author User Scenarios (SC-*) from FM context. Per-FM 2-4 main SC + alternative + error flows. Actor-verb format. Strategic per-SC approve. Called by feature-session.
 ---
 
+> **User-facing output language:** Russian (per CLAUDE.md § Language and tone). Keep identifiers, file paths, commands/flags, technical terms, abbreviations, and code blocks verbatim — don't translate or inflect them.
+
 # Scenario Authoring — F.2 Skill
 
 Create User Scenarios (SC-*) for a feature. Each SC = one flow (main / alternative / error). Step format = actor-verb с явными data references.
