@@ -320,3 +320,102 @@ When picking option (v1.1):
 ### Estimated effort
 
 1-2 часа (часть full BFS expansion).
+
+---
+
+## D.7 Release-level DA aspirational layer
+
+**Originally planned:** Phase 4 (per DEC-DEV-0026, D.7 decision 2026-05-10)
+**Deferred (aspirational layer):** 2026-05-12 per DEC-DEV-0030 (D.7 core/aspirational split)
+**Defer rationale:** Phase 4 ships D.7 core (`scope: release` schema field, `/product:da-review RL-NNN` routing, release sub-mode в `devils-advocate.md`, basic 6-lens brief через RL.features[] + FM frontmatter reads). Aspirational layer (recursive auto drill-down + cross-FM structural dependency graph) требует evidence что text-parsing FM bodies для cross-FM concerns insufficient. Premature без real pilot evidence.
+**Bring-forward trigger:**
+- First release-level DA flagged false positive/negative из-за text parsing inadequacy
+- ИЛИ user request structural `FM.depends_on` (cross-feature workflow demonstrably blocked)
+- ИЛИ 3+ FM bodies revealed inconsistent dependency representation patterns
+
+### Architectural intent
+
+**Aspirational features (deferred):**
+
+1. **Recursive auto drill-down.**
+   `suggested_drill_down: /product:da-review FM-001` field в release-level finding автоматически fires per-FM DA при user confirmation. Currently Phase 4: hint surfaced в frontmatter; user manually invokes если wants. v1.1: prompt `[Y/N/skip]` per hint, auto-spawn если [Y]. Single consolidated decision journal entry для cross-level findings chain (release → FM).
+
+2. **Cross-FM structural dependency graph.**
+   - FM frontmatter extension: `depends_on: [FM-NNN, ...]` (currently dependencies в FM body §12 free text)
+   - V-11-DEP bi-dir rule: if FM-A.depends_on contains FM-B, то FM-B should имеет FM-A в `dependent_features[]` (или auto-derived view from inverse map)
+   - `cascade-check.js` extension: dependency change → cascade re-validate dependents
+   - Release-level brief composes dependency graph structurally (not text parsing)
+
+### Implementation notes
+
+**FM.depends_on migration:**
+- Optional field, defaults to `[]`
+- Existing FM bodies parsed at migration time для seed values (best-effort, low-confidence flag за каждое derived dependency)
+- New FM creation flow (P1.B `release-planning.md` skeleton): explicit prompt про dependencies
+- Validation V-11-DEP: bi-dir consistency между `depends_on` / `dependent_features` (или derived inverse map)
+
+**Recursive drill-down UX:**
+- При finding с `suggested_drill_down`: prompt user `[Y/N/skip]`
+- Если [Y] — auto-spawn `/product:da-review FM-NNN` within same session
+- Single consolidated decision journal entry для cross-level findings (release-level → FM-level chain)
+
+### References to existing spec
+- DEC-DEV-0026 (release-level DA core в Phase 4)
+- DEC-DEV-0030 (core/aspirational split decision)
+- `agents/product/devils-advocate.md` sub-mode `scope: release` (Phase 4 core)
+- `docs/pmo/artifacts/FM.md` (`depends_on` field would extend schema)
+- `hooks/product/cascade-check.js` (would extend для FM-level dependency cascades)
+
+### Estimated effort при возврате
+- `FM.depends_on` schema + migration: ~1 ч
+- V-11-DEP rule + `cascade-check.js` update: ~1-2 ч
+- Release-level brief refactor для structural graph: ~1 ч
+- Recursive drill-down UX: ~1-2 ч
+- Smoke test: ~1 ч
+- **Total: ~5-7 ч focused work**
+
+---
+
+## /product:clarify — Receiver questions channel
+
+**Originally planned:** Phase 4 (per ROADMAP draft 2026-04-18 → reaffirmed в Phase 4 deliverables list)
+**Deferred:** 2026-05-12 per DEC-DEV-0030 (scope discipline cut)
+**Defer rationale:** Receiver не существует до Phase 5 (cc-sdd adapter installation). До Phase 5 нет реального use case для clarify channel — внешний tool ещё не interacts с Product Module. Contract receiver↔Product Module (как receiver вызывает: через MCP? CLI? human-mediated?) также не определён.
+**Bring-forward trigger:** First adapter (Phase 5) live + receiver demonstrably needs question channel (например, implementer не понимает SC step, handoff ambiguity).
+
+### Architectural intent
+
+`/product:clarify <FM-id>` — receiver-initiated question channel:
+
+1. External tool / human implementer запускает команду с FM-id + question text
+2. Product Module:
+   - Logs question в `.product/.clarifications/FM-NNN-questions.yaml` с timestamp + question id
+   - Surfaces к product owner (на следующей session или через async signal — TBD)
+3. Product owner отвечает per question:
+   - Update artifact (FM body, BR statement, etc.) — answer = behavior change
+   - Add к Dependencies section — answer = scope clarification
+   - Add к Out of Scope — answer = explicit exclusion
+   - Approve override — temporary acceptance с rationale
+4. Decision journal entry per resolved clarification
+
+### Implementation notes
+
+**Contract surface (определить в v1.1+ при возврате):**
+- Synchronous CLI: `claude /product:clarify FM-001 "Question text"` — requires Claude Code running
+- MCP server export для external tools — major architecture work, не для v1.1
+- File-based async: external tool writes к shared location, Product Module polls при session start — simplest для PoC
+
+**Recommendation для v1.1:** start с file-based async pattern + simple CLI wrapper. MCP integration — v2.
+
+### References to existing spec
+- `ROADMAP.md` Phase 4 deliverables list (originally included; ROADMAP update per Phase 4 closure отражает defer)
+- DEC-DEV-0030 (defer decision)
+- `docs/product-module/SPEC.md §3.2` (упоминает `/product:clarify <FM-id>` как future capability)
+- `docs/pmo/processes.md` (нет formal process для clarifications)
+
+### Estimated effort при возврате
+- Command + skill: ~30-45 мин
+- File format + storage: ~15 мин
+- Integration с decision journal: ~15 мин
+- Smoke test: ~30 мин
+- **Total: ~2 ч**

@@ -2227,6 +2227,114 @@ Pre-decision проверено: в существующих планах (ROADM
 
 ---
 
+## DEC-DEV-0030 — Phase 4 pre-implementation kickoff: ambiguity resolutions + scope cuts (Sections 2-5 outcomes)
+
+**Date:** 2026-05-12
+**Trigger:** Fresh-session Phase 4 implementation kickoff (per [`dev/meta-improvement/checklists/phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) Sections 2-5) после finalized DEC-DEV-0024..0029 архитектурного gate. Анти-bias guard на «we already committed» — pre-implementation ambiguity sweep + drift sweep + scope discipline + plan refinement.
+**Tag:** #architecture #scope-decision #spec-revision #kickoff
+
+### Context
+DEC-DEV-0024..0029 закрыли архитектурный gate (13 решений). Fresh-session kickoff Sections 2-5 surfaced дополнительно:
+- 26 ambiguities (3 блокирующих старт sub-phase H/E, 23 mid-implementation)
+- 0 active spec drifts требующих prerequisite commit (все inline в sub-phase implementation)
+- 2 scope cut candidates
+
+Pre-existing блокер среды: commit `c5edfab` с DEC-DEV-0024..0029 жил только на `claude/unruffled-grothendieck-9fa5de`, не slit в main. Cherry-picked в текущий branch как commit `08ed467` до kickoff complete.
+
+### Decisions
+
+**A. 3 critical ambiguities (block sub-phase start):**
+
+1. **DA findings schema location (Ambiguity 1; блокер sub-phase H):**
+   Unified format. `.product/.da-findings/<artifact-id>-<YYYY-MM-DD>-<HHMM>.md` имеет canonical frontmatter schema (`id`, `severity`, `artifact_ref`, `source`, `scope`, `affected_artifacts`, `suggested_drill_down`, `resolution`, `follow_up`) + markdown body с 6-lens content. Decision journal entries (`DEC-PLAN-NNN` / `DEC-AUTO-NNN`) embed выжимку (`id`, `severity`, `artifact_ref`, `statement`, `resolution`, `follow_up.revisit_trigger`). Один source of truth — предотвращает drift между двумя форматами. DEC-DEV-0026 schema extension fields живут именно в `.da-findings/<id>.md` frontmatter.
+
+2. **Release-level brief data source (Ambiguity 2; блокер sub-phase H, связан с D.7 split):**
+   Best-effort text parsing FM body §12 «Dependencies on other features» для cross-FM dependency reconstruction. Subagent явно flags low-confidence в classification_rationale. `FM.depends_on` structural schema field → v1.1 aspirational layer (см. `dev/v1_1_backlog.md`).
+
+3. **normalizeForHash contract (Ambiguity 3; блокер sub-phase E):**
+   - **Location:** utility module `hooks/product/lib/hash.js` — single source of truth для алгоритма. Skill `handoff-generator.md` документирует invariant + ссылается на utility. Hook `product-handoff-gate.js` импортирует тот же модуль.
+   - **Content scope:** body markdown **без frontmatter** (per user 2026-05-12). Rationale: hash detection отражает изменения содержимого как trigger для других процессов экосистемы; frontmatter (metadata: version, status, refs) — vehicle для версионирования, не behavioral spec; не должен dirtyить hash при mechanical updates типа `updated:` field.
+   - **Algorithm:** strip CR (`\r\n` → `\n`); SHA-256 UTF-8 bytes; output format `sha256:<hex64>`.
+
+**B. 23 lighter ambiguities (en bloc):**
+
+Resolution per Phase 4 kickoff report Section 2 table. Notable closures:
+- Ambiguity 5: `sample_size_minimum` убираем из `hypothesis-formulation.md` (не canonical в `docs/pmo/artifacts/HYP.md` schema).
+- Ambiguity 9: `NFR.sanity_check: failed` state — deprecate либо redefine в sub-phase D; workflow per DEC-DEV-0025 использует только `passed | overridden`.
+- Ambiguity 22: existing `--scope` flag в `docs/product-module/SPEC.md:217` / `docs/pmo/processes.md:779` удалить — collision с DEC-DEV-0026 `scope:` schema field. ID-prefix routing (FM-NNN / RL-NNN) вместо flag.
+- Ambiguity 26 CLOSED retrospectively: `docs/pmo/artifacts/FM.md:37` уже декларирует `nfr_status: pending|active|declined` — sub-phase D edits frontmatter, не вводит новое поле.
+
+Mid-implementation resolution per соответствующая sub-phase. Полная таблица — Phase 4 kickoff report (chat transcript этой сессии; durable reference).
+
+**C. Spec drift sweep — 0 prerequisite commits required:**
+
+Все active drifts inline в соответствующих sub-phase:
+- HYP frontmatter refs (5 hits в production skills) → sub-phase A
+- `/product:cleanup` orphan-only refs → sub-phase G
+- `/product:da-review` FM-only assumptions + `--scope` flag collision → sub-phase H
+- F.9 placeholder text → sub-phase H
+
+D.1 handoff modes spec уже в sync (нет drift). Class E «release-level bundle handoff» — expansion (не drift), inline в sub-phase H.
+
+**D. Scope cuts (per CLAUDE.md «cuttable scope — default»):**
+
+1. **D.7 release-level DA core/aspirational split:**
+   - **Core (Phase 4):** `scope: release` schema field, `/product:da-review RL-NNN` ID-prefix routing, третий sub-mode в `devils-advocate.md` с release lenses, basic 6-lens brief (RL.features[] + FM frontmatter reads).
+   - **Aspirational (v1.1):** recursive auto drill-down (`suggested_drill_down` auto-fires) + cross-FM structural dependency graph (`FM.depends_on` field, V-11 expansion, cascade-check update).
+   - Effort save: ~15-20% vs full implementation. User intent (DEC-DEV-0026) preserved через core capability.
+
+2. **/product:clarify deferred → v1.1.**
+   Defer rationale: receiver не существует до Phase 5 adapter; contract surface (CLI/MCP/file-async) undefined. Effort save: ~30-45 мин.
+
+Effective Phase 4 scope: ~10-12 ч focused work (vs ROADMAP base 3-4 ч; 2.5-3x). Backlog entries в `dev/v1_1_backlog.md`.
+
+**E. Sub-phase decomposition A→K с dependency chain:**
+
+```
+A. HYP frontmatter fix (DEC-DEV-0024)          [no deps]
+B. Language discipline (DEC-DEV-0029)          [no deps]
+   │
+   ▼
+C. Validation runner + /product:validate       (DEC-DEV-0025 C.4)
+   │
+   ▼
+D. NFR review + commands                       (DEC-DEV-0028 D.2 + DEC-DEV-0025 C.2)
+   │
+   ▼
+E. Handoff generator + /product:handoff        (DEC-DEV-0025 C.1 + DEC-DEV-0028 D.1)
+   │  │
+   ▼  ▼
+   F (gate hook)    H (DA expansion core)      [parallel after E]
+   │
+   ▼
+G. Cleanup + pending hygiene                   (DEC-DEV-0027)
+   │
+   ▼
+J. Phase 4 smoke test                          (per dev/PHASE_4_SMOKE_TEST_PLAN.md)
+   │
+   ▼
+K. Phase 4 closure                             (DEV_JOURNAL + CHANGELOG 1.2.0 + Phase 5 readiness)
+```
+
+Sub-phase I (`/product:clarify`) cut to v1.1. Order critical: C→D→E→F/H — DoR через handoff потребляет validation runner + NFR; handoff `--with-da-review` consumes DA expansion API.
+
+### Outcome
+Phase 4 implementation разблокирован. Substrate complete в working tree. Sub-phase A ready to start.
+
+### Lessons
+
+1. **Fresh-session kickoff value beyond architectural readiness.** DEC-DEV-0024..0029 закрыли архитектуру; fresh Section 2-5 sweep surfaced 3 critical ambiguities блокирующие sub-phase start + 2 scope cuts. ROI confirms `phase-kickoff.md` predicted pattern: ~30 мин sweep catches ~2-4 ч mid-phase resurfacing.
+
+2. **Core/aspirational split — better default than full cut.** D.7 user explicit commit (DEC-DEV-0026) сохраняется через core capability; sophistication откладывается через clear v1.1 entry. Pattern для CONVENTIONS §3 refinement: «X added 30-40% scope» → first «what's core / what's aspirational» before «cut X».
+
+3. **«Spec drift» vs «scope expansion» — different classes.** Phase 3 drift sweep (DEC-DEV-0013 A.1-A.4) caught refs к superseded model → prerequisite commits. Phase 4 «drift» — actually expansion (cleanup делает больше; DA принимает RL-NNN). Inline fix в sub-phase, не prerequisite commit. Pattern candidate для `dev/meta-improvement/patterns/spec-drift-sweep.md` refinement: classify drift-from-supersession vs drift-from-expansion как separate handling.
+
+4. **Branch substrate как hard pre-requisite check.** DEC-DEV-0024..0029 жили не в main; kickoff session не могла прочитать без `git show`. Future fresh-session kickoff: add check в Pre-flight `phase-kickoff.md`: «git show HEAD:dev/PHASE_<N>_DECISIONS.md или substrate equivalent accessible в working tree».
+
+5. **Effort estimate revision pattern.** ROADMAP Phase N estimate consistently optimistic (Phase 2: 4-6h → ~10h actual; Phase 3: 4-6h initial → 6-10h revised → ~12h actual; Phase 4: 3-4h base → 10-12h после kickoff). Pattern: 2-3x multiplier стандартный после kickoff scope refinement. Update в `ROADMAP.md` § «How this roadmap evolves» с этим empirical signal — кандидат для следующего D7 refinement.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
