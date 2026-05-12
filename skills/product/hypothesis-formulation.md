@@ -77,18 +77,22 @@ Thresholds должны быть:
 - **Time-bound** — «over 3 months of testing»
 - **Context-aware** — different tier (pilot vs MMP) = different threshold
 
-Three zones:
-- **success_threshold** — evidence enough to validate, invest more
-- **invalidation_threshold** — evidence enough to invalidate, pivot or abandon
-- **deferred_zone** — between the two — continue testing, не выводов yet
+Two frontmatter thresholds + one body zone (per canonical [HYP.md schema](../../docs/pmo/artifacts/HYP.md)):
+- **target_value** (frontmatter) — evidence enough to validate, invest more
+- **invalidation_threshold** (frontmatter) — evidence enough to invalidate, pivot or abandon
+- **Deferred zone** (body section «## Between X and Y») — между двумя порогами; continue testing, не выводов yet
 
 Example:
-```
-success_threshold: ≥10% conversion free → paid over 3 months
-invalidation_threshold: <3% conversion
-deferred_zone: 3-10% (continue data collection, consider variations)
-testing_period: 3 months from MVP release
-sample_size_minimum: 50 active pilot users
+```yaml
+# Frontmatter fields (canonical)
+target_value: "≥10% conversion free→paid over 3 months"
+invalidation_threshold: "<3% conversion"
+testing_period: "3 months"
+testing_started: 2026-05-15
+
+# Body section (rendered separately, not in frontmatter)
+## Between 3% and 10%
+`deferred` — continue data collection, consider variations
 ```
 
 ### Step 5: Suggest primary HYP
@@ -99,6 +103,8 @@ Primary HYP = «if this one fails, the entire premise fails». Usually:
 - The one whose success unlocks the most
 
 Suggest one candidate with rationale. Human can overrule.
+
+**Mapping to frontmatter:** «Primary» — display/rhetorical label (Step 6 dialog ниже). В frontmatter primary HYP получает `priority: critical`; other HYPs — `important` или `exploratory`. **Не emit** `priority: primary` — это display concept, не canonical enum value per [HYP.md schema](../../docs/pmo/artifacts/HYP.md).
 
 ### Step 6: Present draft portfolio
 
@@ -143,19 +149,49 @@ Adjust based on user + re-check portfolio balance.
 
 Per HYP:
 - Status → `testing` (special HYP lifecycle, не `active`)
-- Frontmatter includes:
+- Frontmatter (canonical field names — per [HYP.md artifact spec](../../docs/pmo/artifacts/HYP.md); enforce per CLAUDE.md B.1 convention):
+
   ```yaml
-  id: HYP-00N
+  ---
+  id: HYP-<NNN>
   type: hypothesis
-  priority: primary | secondary | exploratory
-  status: testing
-  success_threshold: "≥10% conversion free→paid over 3mo"
-  invalidation_threshold: "<3%"
-  deferred_zone: "3-10%"
-  testing_period: "3mo from MVP release"
-  confidence: high | medium | low
-  confidence_notes: "..."
+  title: "Короткая формулировка гипотезы"
+  status: testing                          # → validated | invalidated | deferred per outcome
+  segment: SEG-<NNN>                       # кого касается, required
+  value_proposition: VP-<NNN>              # какой VP проверяет, optional
+  features: [FM-<NNN>, ...]                # через какие фичи валидируется
+  validation_metric: "string"              # имя метрики, e.g., "freelance-to-paid conversion"
+  target_value: "string"                   # порог успеха, e.g., ">= 10%"
+  invalidation_threshold: "string"         # порог провала, e.g., "< 3%"
+  testing_period: "string"                 # длительность валидации, e.g., "3 months"
+  testing_started: YYYY-MM-DD              # дата старта testing
+  priority: critical | important | exploratory   # one HYP per portfolio = critical (primary)
+  confidence: high | medium | low          # C2 modification — required
+  confidence_notes: |                      # required если confidence != high; recommended всегда
+    <what's solid: metric reasoning, threshold basis>
+    <what's assumed: testing_period, sample size, market reaction>
+  created: YYYY-MM-DD
+  updated: YYYY-MM-DD
+  version: 1
+  ---
   ```
+
+  **Deferred zone** (между `target_value` и `invalidation_threshold`) — describe в body section «## Between X and Y», **не в frontmatter** (не canonical поле per HYP.md schema).
+
+**Anti-pattern field names — НЕ варьировать (per DEC-DEV-0011 / DEC-DEV-0024 lesson; AI tendency to rename для естественности → drift; B.1 convention enforces explicit template):**
+- ❌ `success_threshold`, `success_value`, `success_metric_value` → canonical = `target_value`
+- ❌ `deferred_zone`, `deferred_range`, `inconclusive_threshold` → describe в body section «## Between X and Y», НЕ frontmatter
+- ❌ `sample_size_minimum`, `min_sample_size`, `n_minimum` → НЕ canonical поле; включить в body «## Testing approach» section если нужно
+- ❌ `linked_segment`, `for_segment`, `segment_id` → canonical = `segment`
+- ❌ `vp`, `vp_link`, `linked_vp` → canonical = `value_proposition`
+- ❌ `metric`, `success_metric`, `kpi_metric` → canonical = `validation_metric`
+- ❌ `period`, `validation_period`, `test_duration` → canonical = `testing_period`
+- ❌ `start_date`, `test_start`, `started` → canonical = `testing_started`
+- ❌ `priority: primary | secondary` → canonical enum = `critical | important | exploratory` (см. Step 5 mapping)
+- ❌ `confidence_rationale`, `confidence_reasoning`, `rationale` → canonical = `confidence_notes`
+- ❌ `confidence_level`, `conf` → canonical = `confidence`
+
+**Filename slug rule** (per `docs/pmo/artifacts/README.md`): ASCII slug from title — `HYP-001-freelancers-pay-centralization.md`, не Cyrillic. Title в frontmatter может быть на любом языке.
 
 ### Step 9: Post-approve
 

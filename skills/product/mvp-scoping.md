@@ -50,7 +50,7 @@ Per candidate, classify:
 
 ### Step 4: Define success criteria
 
-«MVP achieved» means primary HYP validated per its `success_threshold`. Не reword; copy paste из HYP.body.
+«MVP achieved» means primary HYP validated per its `target_value` (canonical HYP frontmatter field; см. [HYP.md](../../docs/pmo/artifacts/HYP.md)). Не reword; copy paste из HYP.body / frontmatter.
 
 ### Step 5: Identify top 3 risks
 
@@ -99,7 +99,7 @@ version: 1
 HYP-<NNN>: <одно предложение из HYP statement>
 
 ## Success definition
-<«MVP achieved» means primary HYP validated per success_threshold from HYP body>
+<«MVP achieved» means primary HYP validated per `target_value` from HYP frontmatter + context from body>
 <Sample size, period, measurement method — copy from HYP>
 
 ## Scope — MUST have

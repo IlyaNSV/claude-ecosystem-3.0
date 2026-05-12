@@ -99,7 +99,7 @@ Load `.claude/skills/product/hypothesis-formulation.md`.
 Из SEG + VP + MR ассистент предлагает 3-5 HYP с H.A.R.M.E.D. structure. Human утверждает метрики и пороги.
 
 **Gate G5 (🟠 Strategic, per-HYP):**
-- Per HYP — approve с explicit thresholds (success_threshold, invalidation_threshold, deferred_zone)
+- Per HYP — approve с explicit thresholds (canonical: `target_value`, `invalidation_threshold` в frontmatter + deferred zone в body section, per [HYP.md](../../docs/pmo/artifacts/HYP.md))
 - Approved HYP → `.product/hypotheses/HYP-00N-*.md` status=`testing` (per HYP lifecycle)
 - One HYP tagged `priority: primary` (by human or suggested by assistant based on VP alignment)
 
