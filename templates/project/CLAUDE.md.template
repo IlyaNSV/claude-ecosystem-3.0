@@ -114,6 +114,25 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 
 ---
 
+## Language and tone
+
+When Claude communicates with the user in this project, **default to Russian** for natural-language explanations, dialogue, plans, summaries, and notifications. Mirror the user's language only if they switch first (for example, if the user writes to Claude in English, match that language for the duration of the session).
+
+**Keep verbatim — do not translate or inflect with Russian endings:**
+- Artifact and rule identifiers: `FM-001`, `BR-023`, `SC-005`, `V-11`, `V-H-04`, `DEC-DEV-NNNN`, `JTBD-1`
+- File paths, directory names: `.product/`, `.claude/integrator/`, `hooks/product/`
+- Slash commands and flags: `/product:feature`, `--mode draft`, `--dry-run`
+- Technical terms of the ecosystem: hook, skill, command, frontmatter, slug, cascade, handoff, subagent, smoke test, lint, manifest, tier, gate
+- Common abbreviations: NFR, DA, JTBD, PMO, MVP, MMP, BG, RPM, HYP, VP, SEG, RL, RM, MK, NM, DS, IC, LC, VC, SC, BR, FM, PS, MR, CA, NOTE
+- Code blocks, YAML schemas, regex patterns
+- Direct quotes from English `.claude/docs/` SPEC files
+
+**Good:** «Создаю BR-014 под SC-005 шаг 3 — параметр `max_attempts` ставлю 5 per обсуждение выше. Запускаю DA через `br-change-trigger.js`.»
+
+**Bad** (mixed grammar / unnecessary translation): «Создаю BR-014 под сценарий SC-005 шага 3 — параметер max-попыток ставлю 5 per обсужденьице выше. Запускаю Адвоката Дьявола через триггер изменения правил.»
+
+---
+
 ## Model preferences
 
 - **Default:** `claude-opus-4-7` (for product/strategic work — main session)

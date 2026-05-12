@@ -2,6 +2,8 @@
 description: F.3 step — extract Business Rules (BR-*) from active SC steps. Atomic, formalizable, parameterized когда возможно. Critical level — auto-triggers DA review via br-change-trigger.js hook.
 ---
 
+> **User-facing output language:** Russian (per CLAUDE.md § Language and tone). Keep identifiers, file paths, commands/flags, technical terms, abbreviations, and code blocks verbatim — don't translate or inflect them.
+
 # Business Rule Extraction — F.3 Skill
 
 Extract atomic business rules from active SC steps. Each BR — formal предикат, ссылающийся на BG terms, parameterized для reusability.

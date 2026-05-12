@@ -2,6 +2,8 @@
 description: D1.8 step — define RL-001 detailed plan + create FM skeletons for features in RL. Two-phase output (RL plan, then per-FM skeleton). Called by planning-session.
 ---
 
+> **User-facing output language:** Russian (per CLAUDE.md § Language and tone). Keep identifiers, file paths, commands/flags, technical terms, abbreviations, and code blocks verbatim — don't translate or inflect them.
+
 # Release Planning — D1.8 Skill
 
 **Two outputs:**

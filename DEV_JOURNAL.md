@@ -1971,6 +1971,370 @@ Original SC-001a fully erased. Recovered только manual sed (4 cleanup batc
 
 ---
 
+## DEC-DEV-0024 — Закрытие drift во frontmatter HYP (наследие DEC-DEV-0013 B.1)
+
+**Date:** 2026-05-10
+**Trigger:** Phase 4 readiness review (`dev/PHASE_4_DECISIONS.md` A.3) — pre-Phase-4 нужно закрыть унаследованный пункт A.3 о неканонических полях в `skills/product/hypothesis-formulation.md`.
+**Tag:** #spec-revision #drift-fix #refactor
+
+### Context
+DEC-DEV-0013 B.1 (Phase 3 readiness) наблюдала: skill `skills/product/hypothesis-formulation.md` создаёт HYP с полями, расходящимися с каноническим spec в `docs/pmo/artifacts/HYP.md`:
+- `success_threshold` вместо канонического `target_value`
+- В шаблоне отсутствуют поля `segment` и `value_proposition`
+
+Это пример AI-склонности «переименовать поле для естественности» (DEC-DEV-0011) — точно тот класс drift, против которого DEC-DEV-0012 ввёл convention «explicit frontmatter template + anti-pattern warnings» в каждом skill, создающем артефакт. Reference implementations: `problem-discovery.md` Step 3, `note-promote.md` Step 3.
+
+В DEC-DEV-0023 smoke test пункт не всплыл — существующие HYP из прошлой сессии не re-валидировались, но при следующем `/product:init` или при создании новой HYP drift воспроизведётся.
+
+### Options considered
+1. **A. Fix сейчас.** Обновить skill: добавить explicit YAML template + список запрещённых имён полей (`success_threshold` явно warn). 15-30 минут работы.
+2. **B. Отложить в v1.1.** Защита pattern-linter (C4) недостаточна — если skill сам «легализует» неправильное имя, linter может пропустить.
+
+### Decision
+**A — fix в Phase 4 implementation.** Закрытие drift до распространения дешевле чем cleanup batch later. Convention уже отработана в двух skills.
+
+### Outcome
+Будет применено в Phase 4 implementation как первый кандидат deliverable (низкая сложность, явный pattern). После — обновить project_ecosystem_status memory + DEV_JOURNAL по итогу.
+
+### Lessons
+1. **Inherited issues compound.** Pre-phase readiness gates ловят их; phase-closure ритуал (D7) должен явно snapshot'ить нерешённые открытые пункты, не только новые findings.
+2. **«Skill что генерирует артефакт» — high-risk drift surface.** Каждый такой skill — кандидат на B.1 frontmatter convention review. Можно добавить в phase-closure checklist Step 4 (Spec drift sweep).
+
+---
+
+## DEC-DEV-0025 — Phase 4 архитектурные решения: handoff hash + NFR sanity + validation runner (C.1 + C.2 + C.4)
+
+**Date:** 2026-05-10
+**Trigger:** Phase 4 readiness gate — три связанных архитектурных вопроса для implementation (`dev/PHASE_4_DECISIONS.md` C.1/C.2/C.4).
+**Tag:** #architecture #spec-decision
+
+### Context
+Три implementation choice для Phase 4 deliverables, тесно связанных с поведением `handoff.md` / `nfr-review.md` / `validate.md`:
+
+**C.1 — handoff hash на CRLF.** Правило валидации V-H-04 детектит drift между `.product/` и `.handoff/` через сравнение SHA-256. На Windows автоконвертация CRLF (`core.autocrlf=true`) даст разный хеш для того же логического контента → ложные срабатывания при checkout на разных платформах.
+
+**C.2 — жёсткость NFR sanity ranges.** При создании NFR пользователь может переопределить значение sanity-диапазона (например, latency=10s где typical=1s) с rationale. Вопрос: требовать ли Product DA review для каждого override, или informational warning достаточно?
+
+**C.3 — validation runner program vs hardcode.** `/product:validate --deep` запускает ~50 правил из `validation.md`. Парсить каталог программно (две точки изменения, хрупкий markdown parser) или хардкодить в skill (дублирование с каталогом, drift risk)?
+
+### Options considered + Decisions
+
+| # | Options | Decision | Rationale |
+|---|---|---|---|
+| C.1 | A. Нормализация LF перед хешем / B. Хеш как есть + `.gitattributes` / C. Построчное хеширование | **A** | Простейший cross-platform fix без зависимости от внешней конфигурации. Helper `normalizeForHash(content)` в `skills/product/handoff-generator.md` + переиспользуется в `product-handoff-gate.js` |
+| C.2 | A. Strict (DA review per override) / B. Informational warning / C. Hybrid by magnitude | **B** | Override уже требует rationale (барьер). Strict добавляет ceremony к каждому реалистичному use case (batch jobs, planned degradation). Hybrid усложняет workflow без явного value (магнитуду «насколько большой override» легко undermine выбором typical-значения) |
+| C.4 | A. Программно из каталога / B. Hardcode list / C. Hybrid + linter | **B сейчас, C — кандидат v1.1** | На текущем количестве правил (~50) hardcode проще + надёжнее. Markdown-парсер каталога — overengineering для статической data structure. Linter каталог↔runner добавить когда правил станет 100+ или drift реально проявится |
+
+### Outcome
+Будет применено в Phase 4 implementation. Конкретные deliverables:
+- `skills/product/handoff-generator.md` — `normalizeForHash()` helper, hash spec в §SHA-256
+- `hooks/product/product-handoff-gate.js` — переиспользует helper
+- `skills/product/nfr-review.md` — sanity workflow «warn + log to frontmatter `sanity_check: overridden` + rationale; не блокировать»
+- `skills/product/validation-runner.md` — explicit table правил с pointer на implementation; добавление правила = двойная запись (катаlog + runner) как осознанный tradeoff
+
+### Lessons
+1. **Когда parser complexity > value at current scale — hardcode wins, даже если «feels duplicative».** Explicit drift-detection (C для C.4) — pattern для v1.1 при росте.
+2. **Cross-platform consistency требует explicit normalization, не assumption.** `.gitattributes` хрупкий; helper в коде надёжнее.
+3. **Override как «запись с rationale» = sufficient governance в большинстве случаев.** Дополнительный gate (DA review per override) — over-engineering до накопления evidence о вреде.
+
+---
+
+## DEC-DEV-0026 — Расширение архитектуры DA: brief format + manual/auto trigger + release-level scope (C.3 + D.3 + D.7)
+
+**Date:** 2026-05-10
+**Trigger:** Phase 4 readiness gate + новый user-driven запрос на release-level DA capability (`dev/PHASE_4_DECISIONS.md` C.3/D.3/D.7).
+**Tag:** #architecture #scope-extension #da
+
+### Context
+Существующая иерархия DA после Phase 3:
+- **single-artifact / adaptive** — hook-driven (BR/IC change → adaptive depth subagent), Phase 3 ✅
+- **FM-level / Mode: full** — manual `/product:da-review FM-NNN`, planned for Phase 4
+
+Три связанных решения переопределяют DA архитектуру:
+
+**C.3 — формат brief для manual `/product:da-review` + локация output.** FM-level review требует своих lenses (cross-rule consistency, JTBD alignment, scope creep), не симметричный hook-driven brief.
+
+**D.3 — F.9 trigger: ручной, авто, или гибрид.** Auto перед `/product:handoff` может surprise, manual теряет easy-path для «review-then-ship».
+
+**D.7 — release-level DA review (новое, user-requested).** Полностью отсутствует в roadmap. Нужен для cross-FM consistency, release scope coverage vs HYP, dependencies, bundle handoff readiness. В `handoff-spec.md:110` есть concept «bundle handoff для release» — это release-level snapshot, но без semantic review.
+
+Pre-decision проверено: ни в `agents/product/devils-advocate.md`, ни в `RL.md`, ни в `release-planning.md`, ни в Phase 4-7 roadmap release-level DA не описан. Не дубликат — реальный gap.
+
+### Options considered + Decisions
+
+**C.3 brief format:**
+- A. Symmetric (тот же hook-driven шаблон) — недодаст FM-level lenses
+- B. **Separate template для Mode: full** — explicit lenses для cross-rule + scope ✅
+- Output: единый `.product/.da-findings/` с полем `source` в frontmatter (раздельные подпапки усложняют поиск)
+
+**D.3 F.9 trigger:**
+- A. Manual only — теряет easy-path
+- B. Auto перед handoff — surprise effect
+- C. **Hybrid** — manual `/product:da-review FM-NNN` + флаг `--with-da-review` для `/product:handoff` (one-shot review-then-ship). Soft warning в DoR `--mode production` если DA не было / >7 дней назад. Per user explicit choice ✅
+
+**D.7 release-level scope:**
+- A. **Расширить `/product:da-review` принимать RL-NNN** — ID-prefix routing (existing pattern: `/product:cascade <id>`); единая команда для всех уровней DA ✅
+- B. Отдельная команда `/product:release-review` — разрастание команд, фрагментация DA concept
+- C. Defer to v1.1 — оставит release-handoff = «leap of faith» в pilot
+
+### Decision
+**C.3 = B + единый каталог; D.3 = C; D.7 = A.** Together — новый sub-mode в `agents/product/devils-advocate.md`:
+
+| Mode | Scope | Trigger | Output |
+|---|---|---|---|
+| `adaptive` | single artifact | hook (existing) | per-finding в `.product/.da-findings/`, `source: hook-driven`, `scope: artifact` |
+| `full` + `scope: feature` | FM + linked SC/BR/IC/LC/VC | `/product:da-review FM-NNN` или `/product:handoff FM-NNN --with-da-review` | FM-level findings, `source: manual`/`auto-pre-handoff`, `scope: feature` |
+| **`full` + `scope: release`** (новое) | RL + all FM в RL | `/product:da-review RL-NNN` или `/product:handoff RL-NNN --with-da-review` | release-level + drill-down hints, `source: manual`/`auto-pre-handoff`, `scope: release` |
+
+**Schema extension к structured DA findings YAML (DEC-DEV-0023 F8):**
+- `source: hook-driven | manual | auto-pre-handoff`
+- `scope: artifact | feature | release` (новое поле)
+- `affected_artifacts: [FM-001, FM-002]` для cross-artifact findings (новое)
+- `suggested_drill_down: /product:da-review FM-001` для иерархической навигации (новое)
+
+**Brief design для release scope:**
+- Заголовок: RL summary + список FM + cross-FM dependency graph
+- 6 lenses адаптируются: «Cross-FM consistency», «Release scope vs HYP coverage», «Rollout dependencies», «Bundle handoff readiness», «Scope creep на уровне release», «Steelmanning release scope»
+- Decision journal entries за период от создания RL до текущего момента — feed в context
+
+### Outcome
+Будет применено в Phase 4 implementation. Cost: ~30-40% дополнительно к Phase 4 base estimate (новый sub-mode в devils-advocate.md, расширение product-da-review.md, secondary command logic в `/product:da-review`, extended brief template). Закрывает «release-handoff = leap of faith» gap до пилота.
+
+Affects:
+- `agents/product/devils-advocate.md` — третий sub-mode + extended lenses
+- `commands/product/da-review.md` — ID-prefix routing (FM-* vs RL-*)
+- `commands/product/handoff.md` — флаг `--with-da-review` + DoR soft-warning
+- `skills/product/product-da-review.md` — release-level branch с brief template
+- `skills/product/handoff-generator.md` — DoR check + warning logic
+
+### Lessons
+1. **User-requested capabilities в late readiness gate — valuable evidence.** Никакой upstream план (ROADMAP, SPEC, backlog v1.1) не поймал release-level DA gap. Pre-Phase readiness как surface для user-discovered scope = pattern.
+2. **Three-tier hierarchy (artifact / feature / release) — cleaner than ad-hoc commands.** ID-prefix routing уже established (`/product:cascade <id>`) — extends gracefully.
+3. **Coupled architectural decisions = group в один DEC.** C.3 + D.3 + D.7 нельзя decide независимо — schema поля и trigger workflow переплетены. Группировка в один entry preserves coherence для reader.
+
+---
+
+## DEC-DEV-0027 — Cleanup + pending hygiene: hybrid с флагом `--pending-hygiene` (C.5 + D.5)
+
+**Date:** 2026-05-10
+**Trigger:** Phase 4 readiness gate — overlap между `/product:cleanup` (изначально orphan detection) и `/product:cascade --pending --revalidate` (DEC-DEV-0023 Q7) (`dev/PHASE_4_DECISIONS.md` C.5/D.5).
+**Tag:** #architecture #scope-decision
+
+### Context
+`/product:cleanup` (Phase 4) изначально планировалась как детекция orphan'ов (V-15). После DEC-DEV-0023 в `.product/.pending/` накапливаются три файла со stale entries:
+- `cascade-pending.yaml` — после ручной/cascade resolution
+- `validation-pending.yaml` — после auto-purge (F5) могут оставаться edge cases
+- `da-pending.yaml` — после DA processed артефакта
+
+Пересечение с `/product:cascade --pending --revalidate` (Q7 в DEC-DEV-0023). Один и тот же вопрос всплыл в двух разных секциях readiness checklist (architectural C.5 vs scope D.5) — signal что вопрос structurally ambiguous.
+
+### Options considered
+1. **A. Single sweep** — `/product:cleanup` делает всё (orphan + cascade revalidate + pending purge). Один периодический запуск.
+2. **B. Separate concerns** — cleanup только orphan, cascade hygiene отдельно. По дисциплине.
+3. **C. Hybrid** — default `/product:cleanup` = orphan only (быстро); флаг `--pending-hygiene` (или `--full`) добавляет cascade revalidate + verify pending purge + flag stale da-pending entries для already-active artifacts.
+
+### Decision
+**C — hybrid.** Default fast и predictable; флаг для periodic maintenance. Independent modules для testing. C.5 и D.5 collapsed в одну тему.
+
+### Outcome
+Будет применено в Phase 4 implementation:
+- `commands/product/cleanup.md` — default behaviour + флаг `--pending-hygiene` (alias `--full`)
+- Внутри cleanup: orphan detection (V-15) — всегда; pending hygiene — conditional на флаг, под капотом вызывает `/product:cascade --pending --revalidate` + verify-purge logic для validation-pending + flag-only review для da-pending
+
+### Lessons
+1. **Same question в двух местах checklist = structurally ambiguous; collapse early.** Architectural C.5 vs scope D.5 — одна и та же тема под разными углами. Pattern: при readiness gate, если одна и та же проблема всплывает в C-секции (architecture) и D-секции (scope) → объединить в одно решение.
+2. **Hybrid default-fast + opt-in-deep** — хороший паттерн для maintenance commands. Применимо к будущим командам типа `/product:status --deep`, `/integrator:verify --deep`.
+
+---
+
+## DEC-DEV-0028 — Подтверждение scope Phase 4: handoff modes + NFR phases + V-* coverage (D.1 + D.2 + D.4)
+
+**Date:** 2026-05-10
+**Trigger:** Phase 4 readiness gate scope discipline section (`dev/PHASE_4_DECISIONS.md` D.1/D.2/D.4).
+**Tag:** #scope-discipline #spec-decision
+
+### Context
+Три вопроса о том, ship ли full feature в Phase 4 или incremental:
+- **D.1 handoff modes** — оба (`--mode draft` + `--mode production`) или production первым, draft в minor?
+- **D.2 NFR Ask/Define** — обе фазы (F.5a.0 Ask + F.5a.1 Define) сразу или Ask only first?
+- **D.4 V-* validation scope** — какие validation rules покрывает Phase 4 `/product:validate --deep`?
+
+### Options considered + Decisions
+
+| # | Decision | Rationale |
+|---|---|---|
+| **D.1** | **A — оба режима в Phase 4** | Same template, разница только в required-set; ~30 мин дополнительно для второго режима. Splitting = artificial fragmentation + версионная сложность (1.2.0 без draft, 1.2.1 с draft). Для пилота нужен именно draft — без него нечего тестировать на FM, ещё не production-ready |
+| **D.2** | **A — обе фазы в Phase 4** | Ask без Define создаёт orphan record (Ask=Y has no place to land). Полный F.5a в одной сессии — естественнее. Continue через `--continue` если NFR много |
+| **D.4** | **A — V-01..V-16 + V-H-01..V-H-10 в Phase 4; V-MK-01..V-MK-08 → Phase 6** | Соответствует «Phase 6 conditional» принципу. Stub (always-pass с note) хуже чем skip — даёт ложную уверенность. `/product:validate` emits graceful note если user explicitly asks for V-MK-* в non-Design project |
+
+### Outcome
+Phase 4 deliverables fully scoped. Никаких follow-up minor-релизов для этих dimensions не требуется.
+
+### Lessons
+1. **«Ship both halves of a workflow together» — паттерн повторяется.** Ask без Define, draft без production — все создают state with no resolution path. Cuttable scope (CLAUDE.md принцип #4) — хороший принцип, но cuts не должны оставлять half-features.
+2. **Stub vs skip для conditional functionality** — skip честнее. Stub с always-pass даёт false confidence; skip с graceful note явно communicates «not yet».
+
+---
+
+## DEC-DEV-0029 — Дисциплина языка общения экосистемы (D.6)
+
+**Date:** 2026-05-10
+**Trigger:** User pain в реальной сессии — экосистема генерирует output на смешанном русско-английском («CRLF auto-conversion на Windows может cause false drift detection»). Зафиксировано в `dev/PHASE_4_DECISIONS.md` D.6 как новое расширение scope Phase 4.
+**Tag:** #ux #scope-extension #language-policy
+
+### Context
+Два root cause проверены при readiness review:
+1. **`templates/project/CLAUDE.md.template` целиком на английском**, не задаёт language policy для пользовательского проекта вообще. Claude не имеет инструкции про preferred output language.
+2. **User-facing skills написаны на смешанном русско-английском** (planning-session, feature-session, scenario-authoring, business-rule-extraction, release-planning + connector commands plan/feature) — Claude генерирует output в стиле prompts (mirroring effect).
+
+Pre-decision проверено: в существующих планах (ROADMAP, SPEC, backlog v1.1) нет упоминаний language guidance / локализации. Не дубликат.
+
+**Целевое поведение:** Claude общается с пользователем по-русски, без перевода:
+- идентификаторов (FM-001, BR-023, V-11, DEC-DEV-NNNN)
+- имён файлов / путей / команд / флагов (`/product:feature`, `--dry-run`)
+- технических терминов проекта (hook, skill, command, frontmatter, slug, cascade, handoff, smoke test, lint, manifest)
+- аббревиатур (NFR, DA, JTBD, PMO, MVP, BG, RPM)
+- кодовых фрагментов и YAML-схем
+- цитат из английских spec / источников
+
+### Options considered
+1. **A. Минимум — language section в CLAUDE.md.template.** Малый объём, work for new bootstrap'нутых проектов. Минус: skills всё равно имеют смешанный style prompts, mirroring может частично сохраниться.
+2. **B. A + полный rewrite skills.** ~5 user-facing skills + connector commands. Большой объём (4-8 часов), но root cause.
+3. **C. A + inline language reminder в каждый skill, генерирующий user output.** Короткий блок «User-facing language: Russian per CLAUDE.md» в начало каждого skill. Меньше объёма, эффективно — Claude видит explicit reminder при загрузке skill.
+
+### Decision
+**A + C.** A ставит baseline в template (попадает в каждый bootstrap). C даёт reminder в point-of-use (когда skill активно работает с пользователем). Полный rewrite skills (B) — кандидат в v1.1 после первого реального пилота с уже-fixed CLAUDE.md.template.
+
+**Конкретная реализация в Phase 4:**
+1. Секция «Language and tone» в `templates/project/CLAUDE.md.template` (~15 строк) с правилами + примером good/bad.
+2. Inline блок «User-facing output: Russian per CLAUDE.md Language section» в начало 5 user-facing skills:
+   - `skills/product/planning-session.md`
+   - `skills/product/feature-session.md`
+   - `skills/product/scenario-authoring.md`
+   - `skills/product/business-rule-extraction.md`
+   - `skills/product/release-planning.md`
+3. Опциональный D7 pattern «Language discipline» в `dev/meta-improvement/patterns/` — convention для будущих skills.
+
+**Объём:** ~1-2 часа всего.
+
+### Outcome
+Будет применено в Phase 4 implementation. Эффект: чище UX в user sessions; precedent для language-policy в similar projects.
+
+### Lessons
+1. **User-facing UX issues hide in untouched config.** `CLAUDE.md.template` не был в deliverables ни одной phase. Pre-phase readiness review surfaced когда user читает actual generated output. Pattern: каждые ~3 phase — explicit review «что user реально видит».
+2. **Mirroring effect (model copies prompt style) is real and structural.** Fixing prompt explicit instructions надёжнее чем expecting model to «just know». Reminder в начале skill — minimal-change максимально-effective intervention.
+3. **«Не дубликат» проверка при добавлении новой фичи в scope** — Grep по существующему spec + ROADMAP + backlog. Сэкономило бы кучу времени, если бы не зафиксировали проверку. Pattern: добавляя новый scope item → grep.
+
+---
+
+## DEC-DEV-0030 — Phase 4 pre-implementation kickoff: ambiguity resolutions + scope cuts (Sections 2-5 outcomes)
+
+**Date:** 2026-05-12
+**Trigger:** Fresh-session Phase 4 implementation kickoff (per [`dev/meta-improvement/checklists/phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) Sections 2-5) после finalized DEC-DEV-0024..0029 архитектурного gate. Анти-bias guard на «we already committed» — pre-implementation ambiguity sweep + drift sweep + scope discipline + plan refinement.
+**Tag:** #architecture #scope-decision #spec-revision #kickoff
+
+### Context
+DEC-DEV-0024..0029 закрыли архитектурный gate (13 решений). Fresh-session kickoff Sections 2-5 surfaced дополнительно:
+- 26 ambiguities (3 блокирующих старт sub-phase H/E, 23 mid-implementation)
+- 0 active spec drifts требующих prerequisite commit (все inline в sub-phase implementation)
+- 2 scope cut candidates
+
+Pre-existing блокер среды: commit `c5edfab` с DEC-DEV-0024..0029 жил только на `claude/unruffled-grothendieck-9fa5de`, не slit в main. Cherry-picked в текущий branch как commit `08ed467` до kickoff complete.
+
+### Decisions
+
+**A. 3 critical ambiguities (block sub-phase start):**
+
+1. **DA findings schema location (Ambiguity 1; блокер sub-phase H):**
+   Unified format. `.product/.da-findings/<artifact-id>-<YYYY-MM-DD>-<HHMM>.md` имеет canonical frontmatter schema (`id`, `severity`, `artifact_ref`, `source`, `scope`, `affected_artifacts`, `suggested_drill_down`, `resolution`, `follow_up`) + markdown body с 6-lens content. Decision journal entries (`DEC-PLAN-NNN` / `DEC-AUTO-NNN`) embed выжимку (`id`, `severity`, `artifact_ref`, `statement`, `resolution`, `follow_up.revisit_trigger`). Один source of truth — предотвращает drift между двумя форматами. DEC-DEV-0026 schema extension fields живут именно в `.da-findings/<id>.md` frontmatter.
+
+2. **Release-level brief data source (Ambiguity 2; блокер sub-phase H, связан с D.7 split):**
+   Best-effort text parsing FM body §12 «Dependencies on other features» для cross-FM dependency reconstruction. Subagent явно flags low-confidence в classification_rationale. `FM.depends_on` structural schema field → v1.1 aspirational layer (см. `dev/v1_1_backlog.md`).
+
+3. **normalizeForHash contract (Ambiguity 3; блокер sub-phase E):**
+   - **Location:** utility module `hooks/product/lib/hash.js` — single source of truth для алгоритма. Skill `handoff-generator.md` документирует invariant + ссылается на utility. Hook `product-handoff-gate.js` импортирует тот же модуль.
+   - **Content scope:** body markdown **без frontmatter** (per user 2026-05-12). Rationale: hash detection отражает изменения содержимого как trigger для других процессов экосистемы; frontmatter (metadata: version, status, refs) — vehicle для версионирования, не behavioral spec; не должен dirtyить hash при mechanical updates типа `updated:` field.
+   - **Algorithm:** strip CR (`\r\n` → `\n`); SHA-256 UTF-8 bytes; output format `sha256:<hex64>`.
+
+**B. 23 lighter ambiguities (en bloc):**
+
+Resolution per Phase 4 kickoff report Section 2 table. Notable closures:
+- Ambiguity 5: `sample_size_minimum` убираем из `hypothesis-formulation.md` (не canonical в `docs/pmo/artifacts/HYP.md` schema).
+- Ambiguity 9: `NFR.sanity_check: failed` state — deprecate либо redefine в sub-phase D; workflow per DEC-DEV-0025 использует только `passed | overridden`.
+- Ambiguity 22: existing `--scope` flag в `docs/product-module/SPEC.md:217` / `docs/pmo/processes.md:779` удалить — collision с DEC-DEV-0026 `scope:` schema field. ID-prefix routing (FM-NNN / RL-NNN) вместо flag.
+- Ambiguity 26 CLOSED retrospectively: `docs/pmo/artifacts/FM.md:37` уже декларирует `nfr_status: pending|active|declined` — sub-phase D edits frontmatter, не вводит новое поле.
+
+Mid-implementation resolution per соответствующая sub-phase. Полная таблица — Phase 4 kickoff report (chat transcript этой сессии; durable reference).
+
+**C. Spec drift sweep — 0 prerequisite commits required:**
+
+Все active drifts inline в соответствующих sub-phase:
+- HYP frontmatter refs (5 hits в production skills) → sub-phase A
+- `/product:cleanup` orphan-only refs → sub-phase G
+- `/product:da-review` FM-only assumptions + `--scope` flag collision → sub-phase H
+- F.9 placeholder text → sub-phase H
+
+D.1 handoff modes spec уже в sync (нет drift). Class E «release-level bundle handoff» — expansion (не drift), inline в sub-phase H.
+
+**D. Scope cuts (per CLAUDE.md «cuttable scope — default»):**
+
+1. **D.7 release-level DA core/aspirational split:**
+   - **Core (Phase 4):** `scope: release` schema field, `/product:da-review RL-NNN` ID-prefix routing, третий sub-mode в `devils-advocate.md` с release lenses, basic 6-lens brief (RL.features[] + FM frontmatter reads).
+   - **Aspirational (v1.1):** recursive auto drill-down (`suggested_drill_down` auto-fires) + cross-FM structural dependency graph (`FM.depends_on` field, V-11 expansion, cascade-check update).
+   - Effort save: ~15-20% vs full implementation. User intent (DEC-DEV-0026) preserved через core capability.
+
+2. **/product:clarify deferred → v1.1.**
+   Defer rationale: receiver не существует до Phase 5 adapter; contract surface (CLI/MCP/file-async) undefined. Effort save: ~30-45 мин.
+
+Effective Phase 4 scope: ~10-12 ч focused work (vs ROADMAP base 3-4 ч; 2.5-3x). Backlog entries в `dev/v1_1_backlog.md`.
+
+**E. Sub-phase decomposition A→K с dependency chain:**
+
+```
+A. HYP frontmatter fix (DEC-DEV-0024)          [no deps]
+B. Language discipline (DEC-DEV-0029)          [no deps]
+   │
+   ▼
+C. Validation runner + /product:validate       (DEC-DEV-0025 C.4)
+   │
+   ▼
+D. NFR review + commands                       (DEC-DEV-0028 D.2 + DEC-DEV-0025 C.2)
+   │
+   ▼
+E. Handoff generator + /product:handoff        (DEC-DEV-0025 C.1 + DEC-DEV-0028 D.1)
+   │  │
+   ▼  ▼
+   F (gate hook)    H (DA expansion core)      [parallel after E]
+   │
+   ▼
+G. Cleanup + pending hygiene                   (DEC-DEV-0027)
+   │
+   ▼
+J. Phase 4 smoke test                          (per dev/PHASE_4_SMOKE_TEST_PLAN.md)
+   │
+   ▼
+K. Phase 4 closure                             (DEV_JOURNAL + CHANGELOG 1.2.0 + Phase 5 readiness)
+```
+
+Sub-phase I (`/product:clarify`) cut to v1.1. Order critical: C→D→E→F/H — DoR через handoff потребляет validation runner + NFR; handoff `--with-da-review` consumes DA expansion API.
+
+### Outcome
+Phase 4 implementation разблокирован. Substrate complete в working tree. Sub-phase A ready to start.
+
+### Lessons
+
+1. **Fresh-session kickoff value beyond architectural readiness.** DEC-DEV-0024..0029 закрыли архитектуру; fresh Section 2-5 sweep surfaced 3 critical ambiguities блокирующие sub-phase start + 2 scope cuts. ROI confirms `phase-kickoff.md` predicted pattern: ~30 мин sweep catches ~2-4 ч mid-phase resurfacing.
+
+2. **Core/aspirational split — better default than full cut.** D.7 user explicit commit (DEC-DEV-0026) сохраняется через core capability; sophistication откладывается через clear v1.1 entry. Pattern для CONVENTIONS §3 refinement: «X added 30-40% scope» → first «what's core / what's aspirational» before «cut X».
+
+3. **«Spec drift» vs «scope expansion» — different classes.** Phase 3 drift sweep (DEC-DEV-0013 A.1-A.4) caught refs к superseded model → prerequisite commits. Phase 4 «drift» — actually expansion (cleanup делает больше; DA принимает RL-NNN). Inline fix в sub-phase, не prerequisite commit. Pattern candidate для `dev/meta-improvement/patterns/spec-drift-sweep.md` refinement: classify drift-from-supersession vs drift-from-expansion как separate handling.
+
+4. **Branch substrate как hard pre-requisite check.** DEC-DEV-0024..0029 жили не в main; kickoff session не могла прочитать без `git show`. Future fresh-session kickoff: add check в Pre-flight `phase-kickoff.md`: «git show HEAD:dev/PHASE_<N>_DECISIONS.md или substrate equivalent accessible в working tree».
+
+5. **Effort estimate revision pattern.** ROADMAP Phase N estimate consistently optimistic (Phase 2: 4-6h → ~10h actual; Phase 3: 4-6h initial → 6-10h revised → ~12h actual; Phase 4: 3-4h base → 10-12h после kickoff). Pattern: 2-3x multiplier стандартный после kickoff scope refinement. Update в `ROADMAP.md` § «How this roadmap evolves» с этим empirical signal — кандидат для следующего D7 refinement.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

@@ -57,12 +57,13 @@ fs.mkdirSync(path.join(TMP_DIR, '.claude'), { recursive: true });
 
 // Per-hook test cases: file_path must match the hook's filter regex.
 const TEST_CASES = [
-  { hook: 'hooks/product/artifact-validate.js', filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
-  { hook: 'hooks/product/bg-extractor.js',      filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
-  { hook: 'hooks/product/cascade-check.js',     filePath: path.join(TMP_PRODUCT, 'scenarios', 'SC-001-test.md') },
-  { hook: 'hooks/product/br-change-trigger.js', filePath: path.join(TMP_PRODUCT, 'business-rules', 'BR-001-test.md') },
-  { hook: 'hooks/product/ic-change-trigger.js', filePath: path.join(TMP_PRODUCT, 'invariants', 'IC-001-test.md') },
-  { hook: 'hooks/product/session-state.js',     filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
+  { hook: 'hooks/product/artifact-validate.js',     filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
+  { hook: 'hooks/product/bg-extractor.js',          filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
+  { hook: 'hooks/product/cascade-check.js',         filePath: path.join(TMP_PRODUCT, 'scenarios', 'SC-001-test.md') },
+  { hook: 'hooks/product/br-change-trigger.js',     filePath: path.join(TMP_PRODUCT, 'business-rules', 'BR-001-test.md') },
+  { hook: 'hooks/product/ic-change-trigger.js',     filePath: path.join(TMP_PRODUCT, 'invariants', 'IC-001-test.md') },
+  { hook: 'hooks/product/session-state.js',         filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
+  { hook: 'hooks/product/product-handoff-gate.js',  filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
 ];
 
 // Patterns в stderr that signal real bugs (vs benign log).

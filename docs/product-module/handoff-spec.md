@@ -954,31 +954,35 @@ Journal integration:
 
 ## 15. Checklist для Product Assistant при генерации handoff
 
-(Для skill `handoff-generator.md` — будет в product-module/skills/.)
+Implemented в skill [`skills/product/handoff-generator.md`](../../skills/product/handoff-generator.md) (Phase 4.E). Skill executes этот checklist mode-aware (production = full; draft = relaxed B1/B2/B5 only).
 
-- [ ] FM.status == in-progress проверено
-- [ ] Все SC, BR, LC, VC, IC фичи в active
-- [ ] Если has_ui=true — MK, NM существуют и в active
-- [ ] DS snapshot готов (если has_ui)
-- [ ] BG extraction запущена, все релевантные термины в BG
-- [ ] RPM содержит все роли из SC
-- [ ] Все 13 секций body заполнены
-- [ ] Frontmatter валиден, все обязательные поля заполнены
-- [ ] artifact_hashes computed для всех embedded
-- [ ] DoR validation run, все blocking passed
-- [ ] V-H-01..V-H-10 passed (или явно known-warn)
-- [ ] Запись в decision journal Integrator (если adapter уже существует)
+- [x] FM.status == in-progress (или shipped) проверено — B1
+- [x] Все SC, BR, LC, VC, IC фичи в active — B2, B3, B4
+- [x] Если has_ui=true — MK, NM существуют и в active — B7
+- [x] DS snapshot готов (если has_ui) — embedded в section 10
+- [x] BG extraction запущена, все релевантные термины в BG — B5 + V-H-07
+- [x] RPM содержит все роли из SC — B8
+- [x] Все 13 секций body заполнены — V-H-01 + V-H-03
+- [x] Frontmatter валиден, все обязательные поля заполнены — V-H-06
+- [x] `artifact_hashes` computed для всех embedded через `hooks/product/lib/hash.js` (body markdown без frontmatter, LF-normalized, SHA-256, `sha256:<hex64>`) — V-H-02
+- [x] DoR validation run, все blocking passed (mode-aware: production 8, draft 3) — overall DoR
+- [x] V-H-01..V-H-10 passed (или явно known-warn) — full V-H-* coverage
+- [x] Запись в decision journal Integrator (если adapter уже существует) — Phase 5+ когда adapter installed
 
-## 16. Следующие шаги
+## 16. Implementation status
 
-- [ ] Закрыть OQ-03 (NFR) для заполнения секции 11
-- [ ] Реализовать `/product:handoff` команду (Product Module итерация)
-- [ ] Реализовать skill `handoff-generator.md` с checklist из §15
-- [ ] Написать первый adapter (handoff → cc-sdd) через Integrator
-- [ ] Smoke test: сгенерировать handoff для test-фичи, прогнать через adapter, проверить что cc-sdd принимает
+- [x] **OQ-03 (NFR) closed** — Phase 3 (NFR artifact введён); Phase 4.D F.5a workflow shipped; section 11 three cases (active / declined / pending) implemented per `handoff-generator.md`
+- [x] **`/product:handoff` command** — Phase 4.E shipped; `commands/product/handoff.md`
+- [x] **Skill `handoff-generator.md`** — Phase 4.E shipped с full §15 checklist + mode-aware DoR (DEC-DEV-0028 D.1) + hash utility integration (DEC-DEV-0025 C.1)
+- [x] **Cross-platform hash invariant** — `hooks/product/lib/hash.js` shipped (Phase 4.E); body markdown без frontmatter, LF-normalized; same module used by Phase 4.F gate hook
+- [ ] **`product-handoff-gate.js` PreToolUse hook** — Phase 4.F (next); blocks edits FM.status: in-progress если handoff exists с status: stale
+- [ ] **`--with-da-review` flag actual DA invocation** — Phase 4.H (DA expansion DEC-DEV-0026); Phase 4.E ships flag parsing + soft warning logic placeholder
+- [ ] **RL-NNN bundle handoff** — v1.1+ (deferred per scope discipline); Phase 4 ships FM-NNN scope only
+- [ ] **Первый adapter (handoff → cc-sdd) через Integrator** — Phase 5 deliverable
+- [ ] **Smoke test handoff → adapter → external tool** — Phase 5 closure (после adapter shipped)
 
 ---
 
 **Конец спецификации.**
 
-Статус: **готов к имплементации.** Блокирует OQ-03 (NFR) для полноты секции 11 — но handoff может создаваться с placeholder-NFR уже сейчас.
+Статус: **Phase 4.E shipped.** Universal handoff generation работает в обоих режимах; receiver-side adapter — Phase 5.
