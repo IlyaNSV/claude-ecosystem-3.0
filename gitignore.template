@@ -9,6 +9,7 @@
 # === Ephemeral session state (regenerated per session) ===
 .product/.sessions/
 .product/.pending/
+.product/.reports/                       # /product:validate output (regeneratable)
 .claude/integrator/baseline.yaml
 
 # === Local backups (created by Integrator) ===
