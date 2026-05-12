@@ -70,3 +70,10 @@ hooks:
       - type: PostToolUse
         matcher: "Write|Edit"
     description: "P-RULE-01 enforcement per adaptive-depth model (DEC-DEV-0012 + DEC-DEV-0013 #8). Filters internally к .product/invariants/*.md only. Symmetric к br-change-trigger.js (same pattern, different artifact directory). Includes severity field в pending entry для subagent context. Stderr signal для orchestrator."
+
+  - id: product-handoff-gate
+    file: product-handoff-gate.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Handoff drift detection per V-H-04 (handoff-spec §10). Scans .product/handoffs/*.md after .product/ artifact saves; если edited artifact appears в handoff artifact_hashes — recomputes current hash через hooks/product/lib/hash.js (DEC-DEV-0025 C.1 + DEC-DEV-0030 contract: body markdown без frontmatter, LF-normalized, SHA-256, sha256:<hex64>). Mismatch → stderr warning suggesting /product:handoff <FM-id> --regenerate. Non-blocking — informs про staleness only (V-H-04 declared Warning level, не Blocking; aligns с CLAUDE.md «Hook never blocks»). Phase 4.F deliverable."
