@@ -95,7 +95,7 @@ Starting F.2 Scenario Authoring.
 
 If `has_ui=true` — note: «Will trigger F.8 Design Module step (placeholder в Phase 3 — manual fallback) after F.7.»
 
-If FM.requires_nfr=true OR FM body содержит high-risk keywords (payments, PII, real-time, billing, public API) — note: «Will trigger F.5a NFR Review step (placeholder Phase 3 — defers to Phase 4).»
+If FM.requires_nfr=true OR FM body содержит high-risk keywords (payments, PII, real-time, billing, public API, concurrent editing) — note: «Will trigger F.5a NFR Review step (Phase 4 implementation per DEC-DEV-0028 D.2 — Ask mandatory + Define conditional).»
 
 ### F.2 Scenario Authoring → SC-* approve
 
@@ -163,23 +163,29 @@ After per-IC approve:
 - Update FM.invariants[] += IC-NNN
 - Update BR.invariants[] for supporting BRs (V-11)
 
-### F.5a NFR Review → PLACEHOLDER (Phase 4)
+### F.5a NFR Review (Phase 4 — DEC-DEV-0028 D.2)
 
-**Skipped в Phase 3 implementation** per ROADMAP / DEC-DEV-0012 D.3 decision.
+Two-phase NFR Review per `.claude/docs/pmo/processes.md §3.2`:
+- **F.5a.0 Ask (mandatory):** «Есть ли у этой FM measurable NFR? [Y/N/D]»
+- **F.5a.1 Define (conditional on [Y]):** create NFR-NNN artifacts с sanity range checks per [`docs/pmo/artifacts/NFR.md §5`](../../docs/pmo/artifacts/NFR.md)
 
-Surface к user:
-```
-F.5a NFR Review skipped в Phase 3 (planned для Phase 4).
+Load skill `.claude/skills/product/nfr-review.md` для full methodology.
 
-FM.nfr_status remains: pending (default).
-NFR will be reviewed when /product:nfr:review FM-<NNN> command becomes available (Phase 4).
+**Inline invocation (during feature enrichment, after F.5):**
+- Skill auto-consumes NOTE-NNN с `promote_target: NFR` queue для current FM (DEC-DEV-0023 F8 Q4 NOTE creation guidance)
+- High-risk auto-detect surfaces warning если FM body contains keywords (payments, PII, billing, real-time, public API, concurrent editing) OR `FM.requires_nfr=true`
+- Tier auto-detected per Ambiguity 10 fallback chain (`RM.current_phase` → `product.yaml.product_tier` → MVP default); surface к user для confirmation, не silent fallback
+- F.5a.1 per-NFR creation + sanity range warning (informational, **не block** per DEC-DEV-0025 C.2) + per-NFR Strategic approve gate
+- Atomic FM update: `nfr_status` + (`nfr_decline_reason` | `nfr[]`) + `nfr_reviewed_at` + `version++` (per Ambiguity 25)
 
-If FM.requires_nfr=true OR high-risk indicators present, consider:
-- Manually creating NOTE-NNN с NFR concerns для future review
-- Or wait для Phase 4 implementation
+**Standalone invocation (re-trigger after FM enrichment complete или при tier change):**
+- `/product:nfr-review FM-<NNN>` — post-enrichment review (если skipped inline)
+- `/product:nfr-upgrade-tier <new-tier>` — batch re-review при product tier change (MVP→MMP etc)
 
-Continuing к F.6 VC Derivation.
-```
+**Outcome:**
+- `FM.nfr_status: active | declined` (no longer `pending` after Ask answer accepted)
+- Decision journal entry `DEC-NFR-NNN` recorded per skill template
+- Continue к F.6 VC Derivation (VC inputs могут include NFR-derived acceptance criteria если `nfr_status: active`)
 
 ### F.6 Verification Criteria → VC-* (🟢 Confirmation, A1 auto-approve eligible)
 
