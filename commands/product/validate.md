@@ -95,7 +95,7 @@ Top blocking:
 Next actions:
   /product:validate --rule V-01      # focus single blocking
   /product:validate --deep           # strict pre-release pass
-  /product:cleanup --dry-run         # V-15 orphan detection separate (Phase 4.G)
+  /product:cleanup --dry-run         # V-15 orphan detection preview (Phase 4.G; default = orphan-only, --pending-hygiene для full sweep)
 ```
 
 При **0 findings**: «✅ Validation clean (tier: <effective>). N rules evaluated.»
@@ -128,7 +128,7 @@ Report files живут в `.product/.reports/`. Directory:
 - Inline hook (Phase 2): `.claude/hooks/product/artifact-validate.js`
 - Pending state: `.product/.pending/validation-pending.yaml`
 - Related commands:
-  - `/product:cleanup` (Phase 4.G) — V-15 orphan focus + pending hygiene
+  - `/product:cleanup` (Phase 4.G shipped) — V-15 orphan detection (default) + `--pending-hygiene` для cascade/validation/da pending sweep
   - `/product:handoff` (Phase 4.E) — DoR consumes V-H-* subset (re-uses hash utility)
   - `/product:status` — counts pending findings (high-level dashboard)
   - `/product:cascade --pending` — cascade-pending review

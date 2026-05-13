@@ -209,10 +209,11 @@
 - Handoff status per FM
 - Last Discovery / Planning / Feature sessions
 
-**`/product:cleanup --dry-run`**
-- V-15 orphan detection
-- Предлагает per orphan: archive / delete / re-link
-- Без `--dry-run` — применяет approved действия
+**`/product:cleanup [--dry-run] [--pending-hygiene | --full]`** (Phase 4.G per DEC-DEV-0027)
+- Default (без флагов): V-15 orphan detection — graph analysis по reverse-refs, per-orphan recommendation (archive / re-link / delete).
+- `--dry-run`: preview без apply destructive actions (orphan archive не applied; pending hygiene actions surfaced as «would»).
+- `--pending-hygiene` (alias `--full`): дополнительно sweep'ает 3 pending файла — cascade pending (delegates `/product:cascade --pending --revalidate`) + validation-pending purge (re-evaluate per entry, purge currently passing per DEC-DEV-0023 F5 pattern) + da-pending stale flag (artifact.status == active).
+- Design module проверки (MK/DS/NM orphan check) — conditional на `commands/design/` directory existence или `product.yaml.modules.design.enabled` (Phase 6 schema extension).
 
 **`/product:da-review <FM-id | --scope>`**
 - Ручной запуск Product DA Review

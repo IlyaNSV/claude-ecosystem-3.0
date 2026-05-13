@@ -789,7 +789,7 @@ approve_overrides:
 - **Inline validation** — hook `product-artifact-validate.js` (JS, PostToolUse)
 - **On-demand validation** — slash-command `/product:validate` с опциями `--rule V-07`, `--tier blocking`, `--scope SC-*`
 - **Cascade validation** — skill `cascade-validator.md` + sub-component для обхода графа
-- **Orphan detection (V-15)** — standalone команда `/product:cleanup --dry-run`
+- **Orphan detection (V-15)** — standalone команда `/product:cleanup` (default: V-15 orphan-only; `--dry-run` для preview без apply). Расширенный режим `--pending-hygiene` (alias `--full`) дополнительно sweep'ает 3 pending файла (cascade revalidate + validation-pending purge + da-pending stale flag) per Phase 4.G / DEC-DEV-0027.
 
 ### 10.2 Severity определение runtime
 
@@ -858,7 +858,7 @@ Actionable: /product:validate --fix (auto-fixes where possible: V-11 bi-dir refs
 - [x] **Hook `hooks/product/artifact-validate.js`** (inline check для V-01..V-11 + V-H-06) — Phase 2 shipped; D2 overrides (`validation_overrides[]` / `approve_overrides[]`) Phase 3.F extension; auto-purge pattern DEC-DEV-0023 F5
 - [x] **Skill `skills/product/validation-runner.md`** для `/product:validate` (V-01..V-16 + V-H-01..V-H-11 hardcoded; tier-aware; quiet-mode-aware; JSON+markdown report) — Phase 4.C shipped per DEC-DEV-0025 C.4; V-H-11 NFR section conformity добавлен в R5 fix-up sweep (post-review)
 - [x] **V-16 NFR Review status tracking** — Phase 4.C runner encodes severity matrix conditionally per `nfr_status × product_tier × high_risk` (OQ-03 closed; NFR artifact активен)
-- [ ] **Command `/product:cleanup --dry-run`** для V-15 (orphan detection) + `--pending-hygiene` flag (cascade revalidate + validation-pending purge + da-pending stale flag) — Phase 4.G per DEC-DEV-0027
+- [x] **Command `/product:cleanup`** для V-15 (orphan detection, default) + `--pending-hygiene` flag (cascade revalidate + validation-pending purge + da-pending stale flag) — Phase 4.G shipped per DEC-DEV-0027 (skill `cleanup-detector.md` + command `cleanup.md`)
 - [ ] **Fixture tests** на real `.product/` snapshots (regression coverage) — v1.1+ candidate
 - [ ] **Catalog↔runner sync linter** (drift detection между этим документом и `validation-runner.md` hardcoded table) — v1.1+ candidate при росте rules count >100 или first observed drift
 - [ ] **V-MK-01..V-MK-08** реализация — Phase 6 conditional (Design Module)

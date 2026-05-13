@@ -906,7 +906,8 @@ Mapping команды → процессы → артефакты:
 | `/product:validate` | On-demand validation (validation.md) | Validation report |
 | `/product:validate --deep` | Full validation + V-12 stale + refresh_by check | Comprehensive report |
 | `/product:status` | Dashboard | Счётчики по статусам, stale drafts, pending BG, pending DA |
-| `/product:cleanup --dry-run` | V-15 orphan detection | List orphans + recommendation |
+| `/product:cleanup [--dry-run]` | V-15 orphan detection (default) | List orphans + per-orphan recommendation |
+| `/product:cleanup --pending-hygiene` (alias `--full`) | V-15 + 3 pending files sweep | Orphans + cascade revalidate + validation purge + da-pending stale flag |
 | `/product:da-review <FM-id>` | F.9 Product DA | DA findings file |
 | `/product:cascade <artifact-id>` | P4 manual cascade | Cascade report |
 | `/product:bg:review` | Manual BG extraction review | Pending BG terms batch |
@@ -1071,7 +1072,7 @@ Commit: "BG rename: Revision → Edit (22 refs updated across 6 artifacts)"
 | Approve gate (BG entry) | V-08 (terminology usage), V-11 refs |
 | /product:handoff | DoR (V-H-01..V-H-11) + embedded V-01..V-15 |
 | Cascade at any change | V-11 auto-fix + all applicable per dependent type |
-| /product:cleanup | V-15 orphan detection |
+| /product:cleanup | V-15 orphan detection (default); `--pending-hygiene` adds 3 pending files sweep |
 | /product:validate --deep | Все V-*, V-H-*, V-MK-*, V-12 stale, refresh_by check |
 
 ---
