@@ -64,7 +64,7 @@ Each pattern has: applicable scope, heuristic, false-positive rate, severity, fi
 - **Heuristic:** Count artifacts в status=`draft` с `updated:` more than 14 days ago.
   - Threshold configurable via `.claude/product.yaml.stale_draft_days`
 - **Severity:** 🟡
-- **Fix suggestion:** `/product:cleanup --dry-run` для review; archive or resume per draft
+- **Fix suggestion:** `/product:cleanup --dry-run` для preview orphan list; archive or resume per draft (V-15 picks up drafts referenced nowhere). Note: V-12 (stale drafts as such) — `/product:validate --rule V-12`; cleanup focuses на orphan refs graph.
 
 ### Pattern 6: `synonym-candidates-in-BG`
 

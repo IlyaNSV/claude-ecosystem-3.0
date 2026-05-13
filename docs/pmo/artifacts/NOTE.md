@@ -197,7 +197,7 @@ uihewfjknbsdfk dsfn jksd nfksdj    ❌ NOTE — не sandbox, минимум с�
 
 ## Cleanup mechanism
 
-`/product:cleanup --dry-run` (V-15 orphan detection) **не трогает** NOTE-*. Они вне graph и могут быть «orphan» по design.
+`/product:cleanup` (V-15 orphan detection — default mode; `--dry-run` для preview; `--pending-hygiene` для full sweep) **не трогает** NOTE-*. Они вне dependency graph и могут быть «orphan» по design (cleanup-detector skill skip'ает NOTE среди root artifacts).
 
 Отдельная команда (future): `/product:notes:cleanup` — предлагает archive/promote/delete для NOTE старше N дней без изменений.
 

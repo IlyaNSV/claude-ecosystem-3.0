@@ -116,52 +116,73 @@ Parse FM.frontmatter (через Read + manual YAML parse):
 
 Per Ambiguity 14 / DEC-DEV-0030: `--regenerate` force version++ даже без drift (user explicit intent).
 
-### Step 4: `--with-da-review` handling (per DEC-DEV-0026 hybrid)
+### Step 4: `--with-da-review` handling (per DEC-DEV-0026 hybrid + Phase 4.H wiring)
 
 **Если `--with-da-review` flag passed:**
 
-1. **Pre-flight: Phase 4.H availability check** (B3 safe-guard — post-review 2026-05-13).
-   Phase 4.E ships flag parsing + soft warning logic, но actual DA invocation = Phase 4.H deliverable. Поэтому проверь существование skill файла перед попыткой invoke:
+1. **Pre-flight: skill availability safe-guard** (B3 defensive check — DEC-DEV-0031).
+   Phase 4.H shipped `skills/product/product-da-review.md` — default state passes. Defensive check на случай incomplete bootstrap (older project с outdated `.claude/`):
 
    ```bash
    test -f .claude/skills/product/product-da-review.md
    ```
 
-   Если skill отсутствует — Phase 4.H ещё не shipped. Surface к user понятный feedback и предложить fallback:
+   Если skill отсутствует (incomplete bootstrap / older `.claude/`) — surface к user fallback:
 
    ```
-   ⚠ --with-da-review требует Phase 4.H deliverable (skill product-da-review.md),
-     который ещё не shipped. Текущий Phase 4.E ships только flag parsing.
+   ⚠ --with-da-review требует skill product-da-review.md, который отсутствует
+     в этом проекте. Likely cause: incomplete /ecosystem:bootstrap или outdated
+     .claude/. Run /ecosystem:update для refresh.
 
    Варианты:
      [c] Continue без DA invocation — soft warning fallback (если последний
          FM-level DA review > 7 days старый, увидите advisory; иначе silent).
-     [a] Abort — выйти из handoff generation, дождаться Phase 4.H landing.
+     [a] Abort — выйти из handoff generation, run /ecosystem:update first.
    ```
 
    При выборе [c] — fall through к soft warning branch ниже (как если бы flag не был passed).
    При [a] — refuse generation, exit cleanly.
 
-2. **Если skill доступен** — invoke `/product:da-review FM-<NNN>` (delegated к skill `product-da-review.md`).
-3. Wait DA findings written к `.product/.da-findings/FM-<NNN>-<timestamp>.md`.
-4. Если 🔴 Critical findings unresolved → block generation, surface к user, refuse continue.
-5. Иначе → continue к Step 5.
+2. **Если skill доступен (default Phase 4.H+ state)** — invoke real DA через SlashCommand:
+   - SlashCommand tool: `/product:da-review FM-<NNN>` — handoff caller passes provenance через handoff-generator session context (skill `product-da-review.md` Step 4 spawns subagent с `Mode: full, Scope: feature, Trigger: auto-pre-handoff`).
+   - Skill writes findings к `.product/.da-findings/FM-<NNN>-<YYYY-MM-DD>-<HHMM>.md` per canonical schema (DEC-DEV-0030 A.1).
+3. **Wait findings file written** — orchestrator (Claude) waits skill completion; glob `.product/.da-findings/FM-<NNN>-<TODAY>-*.md` для confirm.
+4. **Parse findings frontmatter** — verify `id, severity, artifact_ref, source, scope` per canonical schema. Source check: для `--with-da-review` invocation, `source: auto-pre-handoff` ожидается. Frontmatter drift (e.g., `confidence_rationale` вместо `resolution`) → surface к user, refuse continue.
+5. **Critical gate:** count findings с `severity: critical` AND `resolution: pending`:
+   - **≥1 critical pending** → block handoff generation. Surface:
+     ```
+     Handoff generation для FM-001 blocked: 🔴 <N> critical DA findings unresolved.
+
+     Critical findings:
+       F1 [Cross-rule consistency] BR-022 нарушает IC-003 invariant
+            Suggested action: либо update IC-003 (с rationale), либо переформулировать BR-022
+       F2 ...
+
+     Resolve findings:
+       /product:da-review FM-001    # re-open для per-finding [Act/Defer/Dismiss/Skip]
+
+     Then re-invoke /product:handoff FM-001 --with-da-review.
+     ```
+     Refuse generation; exit early.
+   - **0 critical pending** (но possibly important/discussion) → handoff proceeds. Warnings (important/discussion) appended к handoff frontmatter `warnings[]`.
+6. **Continue к Step 5** с DA context attached (handoff frontmatter записывает `da_review_reference: FM-NNN-<timestamp>.md`).
 
 **Иначе (default — flag not passed OR fallback [c]):** soft DoR warning (per DEC-DEV-0026 D.3 hybrid):
-- Glob `.product/.da-findings/FM-<NNN>-*.md` (если directory exists)
-- Найти most recent finding с `scope: feature` для этой FM
-- Age check: > 7 days from now → warning:
-  ```
-  ⚠ Last FM-level DA review для FM-001: <date> (>7 days ago)
-  Consider:
-    /product:da-review FM-001                    # explicit pre-gen review
-    /product:handoff FM-001 --with-da-review     # combined flow (после Phase 4.H)
-  
-  Continue без fresh DA? [y/n]
-  ```
-- < 7 days OR не exists fresh — proceed silent (V-H-* DoR rules уже cover это conceptually).
 
-**Phase 4.E placeholder note:** actual subagent invocation в Step 4 delegated к Phase 4.H skill. В sub-phase E shipped: parse flag, age-check logic, soft warning, **+ B3 safe-guard который detects missing Phase 4.H deliverables и предлагает explicit [c]/[a] choice вместо silent fail**. Actual DA invocation natural'но активируется когда Phase 4.H landит skill.
+1. Glob `.product/.da-findings/FM-<NNN>-*.md` (если directory exists)
+2. Найти most recent finding файл с `scope: feature` для этой FM (по frontmatter parse)
+3. Age check: > 7 days from now → warning:
+   ```
+   ⚠ Last FM-level DA review для FM-001: <date> (>7 days ago)
+   Consider:
+     /product:da-review FM-001                    # explicit pre-gen review
+     /product:handoff FM-001 --with-da-review     # combined flow
+   
+   Continue без fresh DA? [y/n]
+   ```
+4. < 7 days OR не exists fresh — proceed silent (но V-H-* B6 уже cover это conceptually).
+
+**Per DEC-DEV-0030 D.7 cut (aspirational layer deferred):** recursive auto drill-down (`suggested_drill_down` finding field auto-fires per-FM DA) — v1.1. Phase 4 ships hints surfaced к user; user manually invokes `/product:da-review FM-NNN` per recommendation.
 
 ### Step 5: DoR validation per mode
 
@@ -499,7 +520,7 @@ Alternative: /product:handoff FM-001 --mode draft (relaxed DoR для PoC).
 
 4. **References вместо embedded — нарушает self-contained принцип.** Per handoff-spec.md AP-2: «See SC-005 в .product/scenarios/» — receiver may not have access. Embed full content.
 
-5. **`--with-da-review` placeholder в Phase 4.E — никаких silent fails.** Real DA invocation = Phase 4.H. В sub-phase E: parse flag, soft warning logic, + **B3 safe-guard** который проверяет наличие `skills/product/product-da-review.md` перед попыткой invoke. Если skill отсутствует — explicit [c] continue без DA / [a] abort prompt к user, не silent fall-through. Document explicitly until H lands. Когда H поставится — check natural'но проходит, flag становится functional без extra работы.
+5. **`--with-da-review` critical gate — non-bypassable + B3 safe-guard preserved.** Phase 4.H shipped real DA invocation через SlashCommand к `/product:da-review FM-<NNN>`. Findings с `severity: critical` AND `resolution: pending` MUST block handoff. Не «warn and continue» — refuse generation; refer user к `/product:da-review FM-NNN` для interactive [Act/Defer/Dismiss/Skip] resolution. Bypass only через explicit defer/dismiss в DA workflow. **B3 safe-guard** (pre-flight existence check `skills/product/product-da-review.md`) preserved для defense против incomplete bootstrap: если skill отсутствует (older `.claude/`) — explicit [c] continue без DA / [a] abort prompt к user, не silent fall-through. Default Phase 4.H+ state passes safe-guard natural'но → real invocation path активен.
 
 6. **Не emit blocked handoff к диску.** Если blocked → no file write. Inconsistent handoffs с `dor_validation_passed=false` confuse receiver + create stale-detection false positives.
 
@@ -519,7 +540,7 @@ Alternative: /product:handoff FM-001 --mode draft (relaxed DoR для PoC).
 - Gate hook (Phase 4.F): `hooks/product/product-handoff-gate.js` — PostToolUse non-blocking warning при drift между saved artifact и embedded hash в `.product/handoffs/*.md` (uses same hash utility)
 - DoR validation: `.claude/skills/product/validation-runner.md` V-H-* checks (shared logic conceptually)
 - NFR section (Phase 4.D consumed): `FM.nfr_status` + NFR-* artifacts; three cases per handoff-spec §6 Раздел 11
-- DA pre-handoff (Phase 4.H): `--with-da-review` invokes `/product:da-review FM-NNN` (skill `product-da-review.md`)
+- DA pre-handoff (Phase 4.H shipped): `--with-da-review` invokes `/product:da-review FM-NNN` через SlashCommand; consumes findings file (`source: auto-pre-handoff`); critical pending findings block handoff per Step 4 gate
 - Receiver-side adapter (Phase 5+): generated by `/integrator:add <tool>` consuming this handoff
 - V-H-* full spec: `.claude/docs/pmo/validation.md §5.2`
 - Validation cross-ref: `validation-runner.md` V-H-* matrix

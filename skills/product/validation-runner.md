@@ -260,7 +260,7 @@ Stale pending purged: 5 entries from validation-pending.yaml
 Actionable next:
   /product:validate --rule V-01      # focus single blocking
   /product:validate --deep           # strict pre-release pass
-  /product:cleanup --dry-run         # V-15 orphan detection separate (Phase 4.G)
+  /product:cleanup --dry-run         # V-15 orphan detection preview (Phase 4.G shipped; default = orphan-only, --pending-hygiene для full sweep)
 ```
 
 ## Anti-patterns
@@ -286,4 +286,4 @@ Actionable next:
 - Reports output: `.product/.reports/validate-<YYYYMMDD-HHMM>.{json,md}` (gitignored)
 - Phase 4 dependencies:
   - sub-phase E (handoff) consumes V-H-* runner для DoR check (re-uses hash utility `hooks/product/lib/hash.js`)
-  - sub-phase G (cleanup) reuses V-15 logic + adds `--pending-hygiene` orchestration
+  - sub-phase G (cleanup) — shipped: `skills/product/cleanup-detector.md` + `commands/product/cleanup.md` (V-15 standalone + `--pending-hygiene` orchestration)

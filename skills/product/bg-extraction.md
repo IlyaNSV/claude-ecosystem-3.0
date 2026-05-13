@@ -241,7 +241,7 @@ Per [processes.md §5.3](../../docs/pmo/processes.md) + DEC-DEV-0012 D.2 — а�
 
 Per [processes.md §5.5](../../docs/pmo/processes.md):
 - Terms с empty `used_in` field → orphans
-- Surfaced via `/product:cleanup --dry-run` (V-15) — Phase 4 implementation
+- Surfaced via `/product:cleanup` (V-15 orphan detection; `--dry-run` для preview без apply) — Phase 4.G shipped per DEC-DEV-0027
 - Action options: deprecate (status=deprecated; alternative link required) или delete (only after no usage в active artifacts)
 
 ## Anti-patterns
@@ -251,7 +251,7 @@ Per [processes.md §5.5](../../docs/pmo/processes.md):
 3. **Synonym duplication.** «правка», «комментарий», «замечание» as separate BG entries → terminology drift. Phase 2 classification + Phase 3 synonym warnings prevent.
 4. **Marketing terms в BG.** «Magic inbox» — not domain term. Reject in Phase 4.
 5. **Tech terms в BG.** «database», «API endpoint» — implementation zone. Hook stoplist filters; if leaks through, reject in Phase 4.
-6. **BG бесконечный grow.** 100+ terms = пере-регулирование. 10-30 ключевых для MVP. Periodic cleanup via /product:cleanup (Phase 4).
+6. **BG бесконечный grow.** 100+ terms = пере-регулирование. 10-30 ключевых для MVP. Periodic cleanup via `/product:cleanup` (Phase 4.G; default = V-15 orphan-only, `--pending-hygiene` для full sweep).
 7. **Mass-rename без preview.** v1 — preview обязателен (atomic apply v1.1). User должен видеть scope before apply.
 8. **Variant field names в BG entry** (terms внутри глоссария) — use canonical structure per BG.md spec.
 

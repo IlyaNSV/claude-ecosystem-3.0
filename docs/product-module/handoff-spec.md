@@ -977,7 +977,7 @@ Implemented в skill [`skills/product/handoff-generator.md`](../../skills/produc
 - [x] **Skill `handoff-generator.md`** — Phase 4.E shipped с full §15 checklist + mode-aware DoR (DEC-DEV-0028 D.1) + hash utility integration (DEC-DEV-0025 C.1)
 - [x] **Cross-platform hash invariant** — `hooks/product/lib/hash.js` shipped (Phase 4.E); body markdown без frontmatter, LF-normalized; same module used by Phase 4.F gate hook
 - [x] **`product-handoff-gate.js` PostToolUse non-blocking hook** — Phase 4.F shipped; V-H-04 drift detection: после save артефакта в `.product/` сканирует handoffs, recomputes hashes через `lib/hash.js`, warns в stderr при mismatch (suggests `/product:handoff <FM-id> --regenerate`)
-- [ ] **`--with-da-review` flag actual DA invocation** — Phase 4.H (DA expansion DEC-DEV-0026); Phase 4.E ships flag parsing + soft warning logic placeholder
+- [x] **`--with-da-review` flag actual DA invocation** — Phase 4.H shipped per DEC-DEV-0026: SlashCommand → `/product:da-review FM-NNN` (skill `product-da-review.md`) → consumes findings file with `source: auto-pre-handoff` → critical pending findings refuse handoff continue. B3 safe-guard pre-flight check preserved для defense против incomplete bootstrap
 - [ ] **RL-NNN bundle handoff** — v1.1+ (deferred per scope discipline); Phase 4 ships FM-NNN scope only
 - [ ] **Первый adapter (handoff → cc-sdd) через Integrator** — Phase 5 deliverable
 - [ ] **Smoke test handoff → adapter → external tool** — Phase 5 closure (после adapter shipped)
