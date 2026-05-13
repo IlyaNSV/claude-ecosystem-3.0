@@ -6,6 +6,96 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.0] — 2026-05-13
+
+Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline + HYP frontmatter canonical**. 6 new commands + 6 new/refactored skills + 1 new hook + 1 hook utility + 1 agent refactor + 5 skill language reminders + Language section в template. Ships through 10 sub-phase commits (A-H implementation + J static smoke + b8f16bc review fix-up + K1 closure docs). Per [DEC-DEV-0024..0032](DEV_JOURNAL.md).
+
+**Backwards compatibility:** Phase 4 introduces schema extensions для DA findings frontmatter (canonical fields per DEC-DEV-0030 A.1) — existing `.product/.da-findings/*.md` from Phase 3 hook-driven adaptive DA остаются valid (Shape A — cosmetic check; subset of canonical fields). Mode/scope fields добавляются inferred (legacy: `source: hook-driven`, `scope: artifact`). Никакой migration script не требуется. Phase 3 hooks (`br-change-trigger.js`, `ic-change-trigger.js`) поведенчески неизменны.
+
+**Runtime smoke pending** — see `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B (S1-S13 + S15). Static verification Section A 8/8 PASS (включая `product-handoff-gate.js` functional layer от b8f16bc). User-driven Claude Code session с `.product/` data invokes runtime scenarios; findings → retroactive `DEC-DEV-NNNN — Phase 4 smoke test results` entry. Precedent: Phase 3 = DEC-DEV-0023.
+
+### Added — Validation runner (Phase 4.C / DEC-DEV-0025 C.4)
+
+- **`commands/product/validate.md`** + **`skills/product/validation-runner.md`** — on-demand `/product:validate` runs V-01..V-16 + V-H-01..V-H-11 (V-MK-* Phase 6 conditional skipped с graceful note). Tier-aware (B1 per `product.yaml.validation_tier`); quiet-mode-aware (B2 — drafts queue findings). `--rule`, `--scope`, `--tier`, `--deep`, `--report-format` filters. JSON + markdown report к `.product/.reports/validate-<YYYYMMDD-HHMM>.{json,md}`. Auto-purge stale `validation-pending.yaml` entries (DEC-DEV-0023 F5 pattern reuse). V-11 inline auto-fix counted separately.
+- **V-16 NFR severity matrix** — conditional severity per `nfr_status × product_tier × high_risk` matrix (OQ-03 closed for runtime evaluation).
+- **V-H-11 NFR section conformity** (added в b8f16bc review fix-up per DEC-DEV-0031) — NFR section в handoff body соответствует FM.nfr_status three cases (A active / B declined / C pending) с conditional severity (active без embedded NFR → 🔴 Blocking; declined high-risk без rationale → 🔴 Blocking; etc.)
+
+### Added — NFR review F.5a (Phase 4.D / DEC-DEV-0028 D.2 + DEC-DEV-0025 C.2)
+
+- **`commands/product/nfr-review.md`** + **`skills/product/nfr-review.md`** — `/product:nfr-review FM-NNN` запускает F.5a.0 Ask + F.5a.1 Define в одной session. Ask=Y → Define proceeds через categories (latency, availability, throughput, etc.). Tier auto-detected from `RM.current_phase`. Override (`sanity_check: overridden` + rationale) → informational warning, не blocking. Continue via `/product:nfr-review FM-NNN --continue` если много NFR.
+- **`commands/product/nfr-upgrade-tier.md`** — batch re-review при `product_tier` upgrade (e.g., mvp → mmp). Все FM с `nfr_status: declined` or `pending` queued; per-FM action [Re-review/Keep/Defer].
+
+### Added — Handoff generator (Phase 4.E / DEC-DEV-0025 C.1 + DEC-DEV-0028 D.1)
+
+- **`commands/product/handoff.md`** + **`skills/product/handoff-generator.md`** — `/product:handoff FM-NNN [--mode draft|production] [--regenerate] [--with-da-review]` generates `.product/handoffs/FM-NNN-handoff.md`. 13-section markdown с embedded artifact excerpts + SHA-256 hashes per artifact (drift detection).
+- **`--mode production`** (default): 8-blocker DoR (B1-B8). status: ready если passed; status: blocked если any fails (no file write); status: partial если warnings only. **Never auto-downgrades к draft** (Ambiguity 13).
+- **`--mode draft`**: 3-blocker DoR (B1/B2/B5). Always status: partial; «⚠ Draft Mode Warnings» section listed mode markers.
+- **`approve_overrides[]` (D2)** — temporary blocker bypass с rationale; expires_at check; logged в handoff frontmatter `dor_overrides`.
+- **NFR section three cases** — body §11 conditional на `FM.nfr_status`: A active (embedded NFRs); B declined (rationale + tier defaults); C pending (warning + most-conservative defaults).
+- **`--with-da-review`** — invoke pre-handoff DA через SlashCommand `/product:da-review FM-NNN`; critical pending findings refuse handoff (Phase 4.H wiring; safe-guard preserves graceful fallback для incomplete bootstrap).
+
+### Added — Cross-platform hash utility (Phase 4.E)
+
+- **`hooks/product/lib/hash.js`** — shared utility module. `computeArtifactHash(filePath)` returns `sha256:<hex64>`. Content scope: body markdown **без frontmatter** (per DEC-DEV-0025 C.1 + DEC-DEV-0030 user choice 2026-05-12). LF-normalized (CR stripped). Same module imported by Phase 4.F gate hook (single source of truth). Frontmatter mechanical updates (version, updated) НЕ влияют на hash.
+
+### Added — Handoff drift gate hook (Phase 4.F / DEC-DEV-0025)
+
+- **`hooks/product/product-handoff-gate.js`** — PostToolUse non-blocking warning hook. После save артефакта в `.product/`: scans existing handoffs, recomputes hashes через `lib/hash.js`, warns в stderr при mismatch (suggests `/product:handoff <FM-id> --regenerate`). Registered в `manifest.yaml`. Regex bug fixed в b8f16bc review fix-up (line-based parser для multi-entry `artifact_hashes` блоков, DEC-DEV-0031 A1).
+- **Smoke runner extension** — `dev/meta-improvement/scripts/smoke-hooks.js` TEST_CASES schema добавил optional `setup(ctx)` + `expectStderrIncludes` для functional assertions. Phase 4.F gate hook теперь тестируется в 2 cases: `[no-handoff]` (exit clean) + `[drift-on-second-artifact]` (multi-entry handoff с wrong SC-005 stored hash → assert stderr содержит «Handoff drift detected»). 8/8 PASS post-rebase (per DEC-DEV-0031 lesson 1 — «smoke `no crash` ≠ correct behavior»).
+
+### Added — Cleanup + pending hygiene (Phase 4.G / DEC-DEV-0027)
+
+- **`commands/product/cleanup.md`** + **`skills/product/cleanup-detector.md`** — `/product:cleanup [--dry-run] [--pending-hygiene | --full]`. Default = V-15 orphan detection only (fast graph analysis). `--pending-hygiene` = full sweep: cascade revalidate (delegates `/product:cascade --pending --revalidate`) + validation-pending purge (re-evaluate per entry, purge currently passing) + da-pending stale flag (artifact.status == active; flag-only, не auto-delete).
+- **Design module conditional** — MK/DS/NM orphan checks активны только если `commands/design/` directory exists (file-based) или `product.yaml.modules.design.enabled` (config fallback per Ambiguity 16). NOTE artifacts skipped (root artifact rule).
+- **Per-orphan interactive action** — [Y]es archive / [N]o / [R]e-link / [D]elete (с explicit «delete» confirmation + decision journal entry) / [S]kip.
+
+### Added — DA expansion core (Phase 4.H / DEC-DEV-0026 + DEC-DEV-0030 A.1/18/22)
+
+- **`agents/product/devils-advocate.md`** refactored — third sub-mode `Mode: full + scope: release`. 6 release-level lenses: Cross-FM consistency, Release scope vs HYP coverage, Rollout dependencies, Bundle handoff readiness, Scope creep release-level, Steelmanning release scope. Cross-FM findings include `affected_artifacts[]` + `suggested_drill_down`. Best-effort text parsing FM body §12 «Dependencies on other features» с explicit low-confidence flag (Ambiguity 2).
+- **`skills/product/product-da-review.md`** — FM-level (Branch A) + RL-level (Branch B) orchestration. Brief construction с scope-specific context (FM linked artifacts vs RL.features[] + cross-FM dependency graph + decision journal entries за период RL.created..now + prior FM-level findings). Agent invocation; canonical schema verification post-write.
+- **`commands/product/da-review.md`** — ID-prefix routing per Ambiguity 18. FM-NNN/RL-NNN accepted; BR/IC/SC/LC/VC/RPM/MK refused с structured guidance pointing к correct invocation path. Interactive [Act/Defer/Dismiss/Skip] flow; dismissal requires rationale (anti-sycophancy).
+- **Canonical DA findings schema (DEC-DEV-0030 A.1)** — unified `.product/.da-findings/<id>-<YYYY-MM-DD>-<HHMM>.md` frontmatter: `id, severity, artifact_ref, source, scope, affected_artifacts, suggested_drill_down, resolution, follow_up`. Decision journal entries embed выжимку (`id, severity, artifact_ref, statement, resolution, follow_up.revisit_trigger`). B.1 anti-pattern list: 6 forbidden field-name variants explicit (`findings_severity`, `referenced_artifact`, `invocation_source`, `review_scope`, `cross_refs`, `drill_down_hint`).
+- **`--with-da-review` wiring в handoff-generator** — real SlashCommand invocation, source: auto-pre-handoff passed-through. Critical pending findings refuse handoff (non-bypassable gate). B3 safe-guard preserved для incomplete bootstrap fallback.
+
+### Added — HYP frontmatter canonical fix (Phase 4.A / DEC-DEV-0024)
+
+- **`skills/product/hypothesis-formulation.md`** — drift fix: canonical fields `target_value`, `segment`, `value_proposition` (per `docs/pmo/artifacts/HYP.md` schema). Anti-pattern warning explicit для `success_threshold` (forbidden alternative). B.1 convention pattern from `problem-discovery.md` + `note-promote.md`.
+
+### Added — Language discipline (Phase 4.B / DEC-DEV-0029)
+
+- **`templates/project/CLAUDE.md.template`** — new «Language and tone» section: Russian default для user dialogue; identifiers / paths / commands / flags / technical terms / abbreviations (NFR, DA, JTBD, PMO, MVP, BG, RPM) / code fragments / English spec quotes — verbatim, не переводить/склонять. Good/bad examples.
+- **Inline language reminders** добавлены в 5 user-facing skills: `planning-session.md`, `feature-session.md`, `scenario-authoring.md`, `business-rule-extraction.md`, `release-planning.md`. Point-of-use enforcement против AI mirroring effect от mixed-language prompts.
+- Full skill rewrite (Option B в DEC-DEV-0029) deferred к v1.1 — ROI лучше после real pilot с fixed CLAUDE.md.template.
+
+### Added — Phase 4 smoke test plan (Phase 4.J)
+
+- **`dev/PHASE_4_SMOKE_TEST_PLAN.md`** — 15 scenarios mapping к sub-phases A→H deliverables. Section A static verification executed AI session (8/8 PASS): hook smoke runner, file structure, frontmatter compliance, canonical schema fields, anti-pattern list, `--scope` flag collision removed, cross-references resolve, SlashCommand added к handoff allowed-tools. Section B runtime scenarios S1-S13 + S15 deferred к user-driven Claude Code session с `.product/` data.
+
+### Added — Phase 5 readiness skeleton
+
+- **`dev/PHASE_5_READINESS.md`** — kickoff substrate для Phase 5 (Integrator Phase 2 + first cc-sdd adapter). Pre-kickoff items: handoff format validated by real run; Integrator read-only baseline working; cc-sdd evaluated as first adapter target. Architectural questions queued для kickoff session (DEC-DEV-NNNN gate before sub-phase A start).
+
+### Fixed (b8f16bc review fix-up / DEC-DEV-0031, merged между Phase 4.F и Phase 4.G)
+
+- **`hooks/product/product-handoff-gate.js` extractArtifactHashFromHandoff regex** — ловил только первую запись `artifact_hashes`. Drift detection silently не работал для embedded SC/BR/IC/LC/VC/NFR/MK/NM (non-FM artifacts). Заменён на line-based parser robust к multi-entry blocks + CRLF + edge cases. 5 unit cases verified. Smoke runner functional test [drift-on-second-artifact] guards против regression.
+- **PreToolUse → PostToolUse non-blocking** drift doc cleanup — handoff-generator.md, handoff.md, handoff-spec.md updated к accurate semantics (Phase 4.F design deviation properly documented).
+
+### Modified — Drift sweeps inline
+
+- **`docs/product-module/SPEC.md`** §3.2 — `/product:cleanup` signature expanded (3 modes), `/product:da-review` signature replaced (FM-NNN/RL-NNN ID-prefix routing; `--scope` removed per Ambiguity 22).
+- **`docs/pmo/processes.md`** §6.2 + §8 — manual DA invocation routing rephrased; command table row added для RL-NNN release scope.
+- **`docs/pmo/validation.md`** §10.1 + §11 — `/product:cleanup` mode documented; V-15 status flip к [x]; V-H-11 added (B1 expansion в b8f16bc).
+- **`docs/product-module/handoff-spec.md`** §15-16 — implementation status: Phase 4.E/F/H entries flipped к [x] с accurate wording.
+- **`skills/product/bg-extraction.md`** + **`pattern-linter.md`** — cosmetic refs к `/product:cleanup` updated к new mode signature.
+
+### Notes
+
+- **DEC-DEV-0030 cuts:** `/product:clarify` channel deferred к v1.1 (no Phase 5 adapter receiver); D.7 aspirational layer (recursive auto drill-down + `FM.depends_on` graph) deferred (core shipped, evidence-gated bring-forward).
+- **Effort actual: 12-15h** vs ROADMAP base 3-4h (3-4x multiplier — pattern stable Phase 2/3/4; ROADMAP «How this roadmap evolves» refinement candidate).
+- **Closure ritual (Unit 2) pending** — D7 phase-closure.md 6 steps will run в next session (fresh-session preferred per anti-bias guard); will produce own `DEC-DEV-NNNN — Phase 4 closure run + checklist refinement` entry.
+
+---
+
 ## [1.1.1] — 2026-04-29
 
 Patch release: Phase 3 smoke test executed on `my-first-test` (5.5h real run) revealed 4 critical hook bugs (silent regressions) + 1 validation lifecycle gap + 5 skill convention gaps. Comprehensive fix package + lint pipeline infrastructure to prevent recurrence. Per [DEC-DEV-0023](DEV_JOURNAL.md).
