@@ -10,35 +10,106 @@
 
 ## Статус-баннер
 
-⏳ **Phase 4 implementation completed (DEC-DEV-0032, 2026-05-13).**
-⏳ **Phase 4 closure ritual (Unit 2) pending fresh-session run.**
+✅ **Phase 4 implementation completed (DEC-DEV-0032, 2026-05-13).**
+✅ **Phase 4 closure ritual (Unit 2) executed 2026-05-13 — DEC-DEV-0033** — 9 findings, 5 fixed inline (F1/F2/F3/F7/F8), 3 queued ниже (F5/F6/F9), 1 pending user (F4 — interactive `/ecosystem:update`).
 ⏳ **Phase 4 runtime smoke (S1-S13+S15) pending user-driven Claude Code session.**
 
 **Перед стартом Phase 5 implementation:**
-- [ ] **Phase 4 closure ritual (Unit 2 — D7 phase-closure.md 6 steps)** — fresh-session preferred per anti-bias guard. Produces own `DEC-DEV-NNNN — Phase 4 closure run + checklist refinement` entry. Findings might surface refinements applicable к Phase 5 (e.g., bootstrap regression coverage, doc consistency gap).
+- [x] **Phase 4 closure ritual (Unit 2 — D7 phase-closure.md 6 steps)** — executed 2026-05-13 fresh-session per anti-bias guard. Findings + refinements в DEC-DEV-0033. См. Section A ниже.
 - [ ] **Phase 4 runtime smoke** (S1-S13+S15 per `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B) — user-driven Claude Code session с existing `.product/` data (либо `my-first-test` либо dogfood `.product/` для Ecosystem 3.0). Findings → retroactive `DEC-DEV-NNNN — Phase 4 smoke test results` entry. Precedent: Phase 3 = DEC-DEV-0023.
+- [ ] **Closure queued findings (Section A.4)** — F5 SPEC.md §6.6 rewrite, F6 naming consistency sweep, F9 architecture memory refresh — fix перед Phase 5 implementation.
+- [ ] **Phase 4 bootstrap regression (F4)** — `/ecosystem:update` в `my-first-test/.claude/` чтобы pilot получил Phase 4 deliverables. Можно скомбинировать с runtime smoke run.
 - [ ] **Phase 5 readiness gate** — этот checklist completed; architectural questions resolved (Section C below); scope confirmed (Section D); pilot validation prepared (Section E).
 
-**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual + runtime smoke + Phase 5 readiness — non-blocking pour user, recommended последовательность перед Phase 5 implementation start.
+**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke + queued findings + Phase 5 readiness — non-blocking для user, recommended последовательность перед Phase 5 implementation start.
 
 ---
 
-## A. Результаты Phase 4 closure ritual (Unit 2) — pending
+## A. Результаты Phase 4 closure ritual (Unit 2) — executed 2026-05-13
 
 ### A.1 Fresh-session phase-closure.md 6 steps
 
-Per `dev/meta-improvement/checklists/phase-closure.md`. Recommended fresh-session per anti-bias guard. Template invocation message в checklist «Invocation» section.
+Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run executed 2026-05-13 (anti-bias guard active). Findings recorded в DEC-DEV-0033.
 
-- [ ] Step 1 — Documentation health check (≤15 min): doc rot sweep; status banners current; cross-doc Phase 4 references resolved
-- [ ] Step 2 — Bootstrap install/update verification (≤20 min): re-bootstrap или `/ecosystem:update` на pilot project (`my-first-test` или dogfood); verify Phase 4 additions installed; hook count expected = 7 (including `product-handoff-gate.js`)
-- [ ] Step 3 — Hook runtime smoke (≤5 min): `node dev/meta-improvement/scripts/verify-hooks.js`; expect 8/8 PASS (incl. functional [drift-on-second-artifact] case)
-- [ ] Step 4 — Documentation consistency check (≤10 min): hook manifest ↔ processes.md ↔ SPEC alignment; CHANGELOG `[1.2.0]` Added entries resolve; B.1 convention compliance в random sample skills
-- [ ] Step 5 — Cleanup / archive discipline (≤10 min): verify `PHASE_4_READINESS.md` + `PHASE_4_DECISIONS.md` archived (done in K1); orphan «TODO Phase 4» markers grep; dev/ count reasonable
-- [ ] Step 6 — Memory MCP sync (≤10 min): `~/.claude/projects/<slug>/memory/project_ecosystem_status.md` current; architecture file reflects Phase 4 patterns
+- [x] Step 1 — Documentation health check (~5 min): 🔴 F1 (README status banner) + 🔴 F2 (CLAUDE.md snapshot) + 🟡 F3 (ROADMAP Phase 2/3 acceptance unchecked) — **все исправлены inline**
+- [x] Step 2 — Bootstrap install/update verification (read-only side; interactive `/ecosystem:update` отложен пользователю): ⚠️ F4 (`my-first-test/` в Phase 3 state — missing 6 cmds + 5 skills + 2 hook items; stale hypothesis-formulation.md + devils-advocate.md). `.product/` data intact. Запросное действие: `/ecosystem:update` в pilot session
+- [x] Step 3 — Hook runtime smoke (1 min): ✅ 8/8 PASS, incl. `[drift-on-second-artifact]` functional case
+- [x] Step 4 — Documentation consistency check (~10 min): 🔴 F5 (SPEC.md §6.6 product-handoff-gate описание устарело — PreToolUse vs реально PostToolUse, body описывает legacy «block external tool» дизайн) + 🔴 F6 (command naming colons vs hyphens drift в SPEC.md/processes.md — `/product:nfr:review` vs filesystem `/product:nfr-review`, Phase 4 добавил 6 новых colon-form refs) + 🔴 F7 (SPEC.md §14.5 phase tracker unchecked + §14.2/14.4 unchecked для completed phases) — **F7 исправлен inline (вместе с §14.2/14.3/14.4); F5/F6 queued ниже**
+- [x] Step 5 — Cleanup / archive discipline (~2 min): ✅ PASS — PHASE_4_READINESS + PHASE_4_DECISIONS архивированы; нет dead Phase 4 markers; dev/ count чист
+- [x] Step 6 — Memory MCP sync (~5 min): 🟡 F8 (MEMORY.md index устарел — Phase 3 wording) — **исправлен inline**; 🟡 F9 (project_ecosystem_architecture.md устарел на D7 v1.0 state — claim «Stage 2 manual checklists, Stage 3+ deferred», но Stages 3-6 shipped per DEC-DEV-0021) — **queued ниже**
+
+**Time actual:** ~35 min (within ≤60 min budget).
 
 ### A.2 Closure ritual DEC-DEV entry
 
-- [ ] **DEC-DEV-NNNN — Phase 4 closure run + checklist refinement** записан с findings ритуала + refinements к checklist если pain emerged
+- [x] **DEC-DEV-0033 — Phase 4 closure run + checklist refinement** записан с findings ритуала + refinements к checklist (см. Section H ниже)
+
+### A.3 Inline fixes applied (5 findings closed)
+
+| # | Файл | Fix |
+|---|---|---|
+| F1 | `README.md:5` | v1.1.0 / Phase 0-3 shipped / Phase 4 next → v1.2.0 / Phase 0-4 shipped / Phase 5 next |
+| F2 | `CLAUDE.md:22-25` | Snapshot 2026-04-28 → 2026-05-13; добавлен Phase 4 shipped row |
+| F3 | `ROADMAP.md` Phase 2 acceptance (5 боксов) + Phase 3 acceptance (9 боксов) | [ ] → [x]; добавлен subtitle с reference DEC-DEV-0008/0023; исправлено наименование `/product:bg-review` / `/product:bg-rename` (часть F6 closure) |
+| F7 | `docs/product-module/SPEC.md` §14.2 (Phase 2), §14.3 (Phase 3 Planning часть), §14.4 (Phase 3 P2), §14.5 (Phase 4 без external-tool-adapter acceptance) | Чекбоксы переведены в [x] для shipped, оставлены [ ] для legitimately pending (Deep mode v1.1, adapter consumption Phase 5); section subtitles добавлены с DEC-DEV references; command names corrected `nfr:` → `nfr-`, `bg:` → `bg-` |
+| F8 | `~/.claude/projects/<slug>/memory/MEMORY.md` | Project status index entry обновлён к Phase 4 shipped (1.2.0, DEC-DEV-0032); Phase 5 unblocked |
+
+### A.4 Queued к Phase 5 readiness Section A (3 findings — fix перед Phase 5 implementation)
+
+#### A.4.1 — F5 SPEC.md §6.6 product-handoff-gate.js spec drift
+
+**Класс:** critical spec drift (post-design-deviation). Body §6.6 описывает legacy v1.0 / pre-Phase-4.F намерение (PreToolUse hook блокирующий external tool invocation); реальная имплементация (после b8f16bc / DEC-DEV-0031 A3) — PostToolUse non-blocking drift detection между `.product/` source и handoff hashes (через `lib/hash.js`).
+
+**Файл:** `docs/product-module/SPEC.md:498-503`
+**Reference:** `docs/product-module/handoff-spec.md:979` корректно описывает actual behavior; SPEC body должен синхронизироваться.
+
+**Действие:** rewrite §6.6:
+1. Header: `### 6.6 product-handoff-gate.js (PostToolUse, non-blocking)`
+2. Триггер: «save артефакта в `.product/`» (вместо «invocation external tool»)
+3. Действия: «recompute hash через `lib/hash.js`; compare against stored `artifact_hashes` в существующих handoff frontmatter»
+4. Effect: «stderr warning при mismatch, suggestion `/product:handoff <FM-id> --regenerate`; не блокирует Write/Edit»
+5. Reference DEC-DEV-0025 C.1 (hash утилита) + DEC-DEV-0031 A1 (line-based parser fix)
+6. Опция «Integrator register external commands» — удалить (legacy design)
+
+**Effort:** ~15-20 мин (careful rewrite + cross-check against handoff-spec.md §6 wording).
+
+#### A.4.2 — F6 Command naming colons-vs-hyphens drift
+
+**Класс:** naming inconsistency, may surface как «command not found» для пользователя который копирует команды из docs.
+
+**Filesystem truth (hyphens):** `commands/product/nfr-review.md`, `nfr-upgrade-tier.md`, `bg-review.md`, `bg-rename.md`.
+
+**Drift files (colons):**
+- `docs/product-module/SPEC.md` строки 281, 286, 291, 295, 619, 936, 944
+- `docs/pmo/processes.md` строки 360, 693, 914-915, 1027, 1108
+- `commands/product/status.md` строки 82, 124 (pre-Phase-4 era; bg refs)
+
+**Действие:** systematic find-replace:
+- `/product:bg:review` → `/product:bg-review`
+- `/product:bg:rename` → `/product:bg-rename`
+- `/product:nfr:review` → `/product:nfr-review`
+- `/product:nfr:upgrade-tier` → `/product:nfr-upgrade-tier`
+- В SPEC.md §14.4 — `bg:review.md`/`bg:rename.md` → `bg-review.md`/`bg-rename.md`
+
+**Effort:** ~10 мин (sed/IDE find-replace, проверка что не сломано processes.md table formatting).
+
+#### A.4.3 — F9 project_ecosystem_architecture.md memory stale на D7 state
+
+**Класс:** memory drift; status memory знает текущее состояние, architecture memory — нет.
+
+**Файл:** `~/.claude/projects/<slug>/memory/project_ecosystem_architecture.md:14`
+
+**Текущее:** `D7 ... Stage 2 mechanisms = manual checklists (phase-closure, phase-kickoff); Stage 3+ formalization deferred.`
+
+**Должно отражать (per DEC-DEV-0021):** D7 v1.0 final shipped Stages 3-6:
+- Stage 3: 5 patterns в `dev/meta-improvement/patterns/` (spec-drift-sweep, readiness-gate, b1-frontmatter-convention validated, cuttable-scope-discipline, smoke-test-plan)
+- Stage 4: memory-sync skill + verify-update.sh/.ps1 + phase-closure-reminder.js hook + smoke-hooks.js + verify-hooks.js + pre-commit.sh
+- Stage 5: CLAUDE.md D7 ritual collapsed section
+- Stage 6: SPEC.md v1.0 final
+
+**Действие:** Edit memory file inline (Read first, then Edit с corrected D7 line).
+
+**Effort:** ~5 мин.
 
 ---
 
@@ -173,9 +244,9 @@ Per `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B. 15 scenarios:
 
 ### F.1 Memory sync after Phase 4
 
-- [ ] `project_ecosystem_status.md` updated в K1 (already done as part of closure docs)
-- [ ] `project_ecosystem_architecture.md` — add Phase 4 architectural patterns (three-tier DA hierarchy, canonical DA findings schema, hash utility, V-H-* extension, language discipline section)
-- [ ] `MEMORY.md` index updated
+- [x] `project_ecosystem_status.md` updated в K1 (already done as part of closure docs)
+- [ ] `project_ecosystem_architecture.md` — refresh D7 state per F9 (Stages 3-6 shipped, не Stage 2 only) + add Phase 4 architectural patterns (three-tier DA hierarchy, canonical DA findings schema, hash utility, V-H-* extension, language discipline section). См. Section A.4.3 above.
+- [x] `MEMORY.md` index updated (closure F8 inline fix)
 
 ### F.2 Дисциплина CHANGELOG vs DEV_JOURNAL (продолжение)
 
@@ -194,6 +265,91 @@ Per `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B. 15 scenarios:
 - [ ] D.7 aspirational layer — bring-forward triggers met?
 - [ ] `/product:clarify` channel — Phase 5 adapter revealed receiver needs?
 - [ ] Subagents в Deep mode — упёрлись в лимиты Quick mode?
+
+---
+
+## H. Refinement кандидаты для phase-closure.md (per DEC-DEV-0033)
+
+**Контекст:** closure run обнаружил повторяющиеся patterns:
+- F1, F2 — recurring rot, который Step 1.4 (root doc snapshot refresh, добавлен Phase 3 closure DEC-DEV-0018) должен был ловить, но не поймал
+- F5 — DEC-DEV-0031 lesson 2 («git grep `<old wording>` после design deviation = mandatory pre-commit check») провалился внутри того же DEC-DEV cycle
+- F3, F7 — phase tracker checkbox flip от [ ] к [x] не происходит автоматически; checklist это не enforces
+- F6 — naming consistency между filesystem paths и doc references не sweep target
+
+Checklist-as-text недостаточно для recurring class issues. **Кандидаты на promotion (checklist → automated script):**
+
+### H.1 — Step 1 root-doc snapshot diff check (high ROI)
+
+**Закрывает:** F1, F2 класс (recurring 3 instances: DEC-DEV-0018 + DEC-DEV-0033).
+
+**Идея:** node script (~30-40 строк) который:
+1. Читает `ROADMAP.md` секцию «Где мы сейчас»
+2. Читает `README.md` line 5 status banner
+3. Читает `CLAUDE.md` секцию «Где мы сейчас» snapshot
+4. Сравнивает Phase X completion claims между трёх документов
+5. Flag если desync: «README claims Phase 0-3 shipped; ROADMAP claims Phase 0-4 shipped — drift»
+
+**Location:** `dev/meta-improvement/scripts/check-root-doc-snapshots.js`
+**Integration:** add к `verify-hooks.js` chain (or separate `verify:docs` script в package.json)
+**Phase 4 closure proof:** F1+F2 fixes — точно такой diff каждый раз; ROI confirmed.
+
+**Effort:** ~30 мин implementation + ~10 мин integration к phase-closure.md Step 1.
+
+### H.2 — Step 4 phase tracker [ ] → [x] sweep (medium ROI)
+
+**Закрывает:** F3, F7 класс (recurring: Phase 3 acceptance не закрыто к Phase 3 closure; same pattern surfaced Phase 4 closure).
+
+**Идея:** node script который parses ROADMAP.md + SPEC.md §14 для секций «### N — Phase M …» где статус-баннер начинается с ✅ или COMPLETED, и проверяет всех `[ ]` checkbox'ов в following acceptance list — flag если их > 0.
+
+**Edge cases:**
+- Phase 4 acceptance `[ ]` для legitimately pending (runtime smoke deferred) — нужно white-list через subtitle marker «pending» / «→ Phase N+1»
+- Phase 3 Planning shipped, Deep deferred — partial completion needs nuance
+
+**Effort:** ~45-60 мин (parsing is straightforward; edge case handling нужен).
+
+### H.3 — SPEC.md hook section sync check (medium ROI)
+
+**Закрывает:** F5 класс (post-design-deviation drift в SPEC). Lesson 2 of DEC-DEV-0031 уже codified, но мануально не enforced.
+
+**Идея:** для каждого `hooks/<module>/*.js`:
+1. Extract `// @event` JSDoc tag (или first comment block с event type info)
+2. Find corresponding section в `docs/<module>/SPEC.md` (heuristic: section header containing the hook filename)
+3. Verify event type wording matches («PreToolUse» / «PostToolUse» / «UserPromptSubmit» / etc.)
+4. Flag если mismatch
+
+**Caveat:** SPEC body может быть outdated independently of header; full body validation сложнее. Header check — first iteration.
+
+**Effort:** ~45 мин (~75 мин если body validation добавляется).
+
+### H.4 — Command path filesystem vs docs consistency check (medium ROI, low effort)
+
+**Закрывает:** F6 класс.
+
+**Идея:** one-liner script:
+```bash
+for f in commands/<module>/*.md; do
+  cmd_name=$(basename "$f" .md)
+  # Find references that use ':' where filesystem uses '-'
+  grep -rE "/<module>:${cmd_name//-/[:-]}" docs/ skills/ commands/ \
+    | grep -v "/<module>:${cmd_name}"
+done
+```
+
+Catches `/product:nfr:review` references когда file = `/product:nfr-review`.
+
+**Effort:** ~15 мин (script + integration к Step 4).
+
+### H.5 — Promote Step 1.4 (root doc snapshot refresh) from text-only к automated
+
+**Текущий статус:** [phase-closure.md:89-93](dev/meta-improvement/checklists/phase-closure.md:89) — text instructions only. Phase 3 closure introduced this; Phase 4 closure showed text не enforces.
+
+**Действие:** integrate H.1 script в Step 1; pass = exit 0; fail = surface diff inline + offer one-shot edit.
+
+---
+
+**Recommendation для Phase 5 closure (DEC-DEV-NNNN):** implement H.1 + H.4 (highest ROI, lowest effort, closes 2 recurring classes). H.2 + H.3 — candidates если H.1/H.4 surface ещё recurring patterns. Don't promote prematurely (CONVENTIONS §3 hierarchy: checklist → script only когда manual proves repeatable + heavy).
+
+**Anti-pattern предупреждение:** не превращать D7 в полностью автоматизированный inspector. Manual closure ritual важен для surfacing судебных findings (e.g., F5 spec drift) которые automation не поймает. Scripts — для recurring mechanical class issues, не для semantic analysis.
 
 ---
 
