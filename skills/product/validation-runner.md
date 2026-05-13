@@ -1,5 +1,5 @@
 ---
-description: On-demand validation runner — executes V-01..V-16 + V-H-01..V-H-10 catalog. Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4.
+description: On-demand validation runner — executes V-01..V-16 + V-H-01..V-H-11 catalog. Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4 (V-H-11 added post-review per R5/B1 fix-up).
 ---
 
 # Validation Runner — Phase 4 skill
@@ -98,7 +98,7 @@ ELIF nfr_status == 'pending':
 
 On tier upgrade (MVP → MMP) — все FM со `nfr_status: declined | pending` re-evaluated; см. `/product:nfr:upgrade-tier` (Phase 4.D).
 
-### V-H-01..V-H-10 — Handoff validation
+### V-H-01..V-H-11 — Handoff validation
 
 | Rule | Severity | Check method | Description |
 |---|---|---|---|
@@ -112,6 +112,35 @@ On tier upgrade (MVP → MMP) — все FM со `nfr_status: declined | pending
 | V-H-08 | 🔴 Blocking | if `FM.has_ui=true`, body section 10 non-empty + MK/DS/NM embedded | UI Specification filled если has_ui |
 | V-H-09 | 🟡 Warning | parse FM body §12 «Dependencies» → cross-check handoff §12 mentions all | Dependencies section lists prerequisites |
 | V-H-10 | 🟡 Warning | body section 13 non-empty (даже «ничего явно не excluded — это тоже info») | Out of Scope section non-empty |
+| V-H-11 | varies | `FM.nfr_status` × handoff section 11 content matrix (см. ниже) | NFR section 11 conformity к FM.nfr_status three cases (active / declined / pending) |
+
+### V-H-11 NFR section conformity matrix (special — conditional logic per `handoff-spec.md §6 Раздел 11`)
+
+Per handoff с embedded FM, determine severity by `FM.nfr_status` × section 11 content presence:
+
+```
+nfr_status = FM.frontmatter.nfr_status            # active | declined | pending
+has_decline_rationale = bool(FM.frontmatter.nfr_decline_reason)
+high_risk = FM.frontmatter.requires_nfr OR FM body high-risk keywords (same set as V-16)
+section11_has_embedded_nfr = handoff body section 11 содержит full NFR-NNN bodies
+section11_has_decline_rationale = handoff body section 11 содержит rationale text
+section11_has_warning_text = handoff body section 11 содержит pending warning + receiver guidance
+
+IF nfr_status == 'active':
+    IF section11_has_embedded_nfr:                  severity = pass             # ✅
+    ELSE:                                            severity = blocking         # 🔴 (inconsistent state)
+
+ELIF nfr_status == 'declined':
+    IF high_risk AND NOT has_decline_rationale:     severity = blocking         # 🔴 (V-16 intersection)
+    ELIF section11_has_decline_rationale:           severity = pass             # ✅
+    ELSE:                                            severity = warning          # 🟡 (rationale missing в handoff body)
+
+ELIF nfr_status == 'pending':
+    IF section11_has_warning_text:                  severity = warning          # 🟡 (advisory; warnings[] entry; handoff status: partial)
+    ELSE:                                            severity = blocking         # 🔴 (Case C boilerplate отсутствует — receiver не получит guidance)
+```
+
+V-H-11 пересекается с V-16 (artifact-level NFR tracking): V-16 проверяет `FM.nfr_status` frontmatter; V-H-11 проверяет handoff body section 11 соответствие тому статусу. При high-risk FM declined без rationale — оба правила блокируют (defense in depth).
 
 ### V-MK-* — Skipped в Phase 4 (per DEC-DEV-0028 D.4)
 

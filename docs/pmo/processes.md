@@ -1069,7 +1069,7 @@ Commit: "BG rename: Revision → Edit (22 refs updated across 6 artifacts)"
 | Approve gate (VC) | V-07 (coverage check) |
 | Approve gate (MK, has_ui) | V-MK-01..V-MK-08 |
 | Approve gate (BG entry) | V-08 (terminology usage), V-11 refs |
-| /product:handoff | DoR (V-H-01..V-H-10) + embedded V-01..V-15 |
+| /product:handoff | DoR (V-H-01..V-H-11) + embedded V-01..V-15 |
 | Cascade at any change | V-11 auto-fix + all applicable per dependent type |
 | /product:cleanup | V-15 orphan detection |
 | /product:validate --deep | Все V-*, V-H-*, V-MK-*, V-12 stale, refresh_by check |

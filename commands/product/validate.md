@@ -1,5 +1,5 @@
 ---
-description: On-demand validation of .product/ artifacts. Runs V-01..V-16 + V-H-01..V-H-10 catalog per tier in product.yaml. Filtering --rule, --scope, --tier. --deep for severity uplift. Output: markdown report inline + JSON file.
+description: On-demand validation of .product/ artifacts. Runs V-01..V-16 + V-H-01..V-H-11 catalog per tier in product.yaml. Filtering --rule, --scope, --tier. --deep for severity uplift. Output: markdown report inline + JSON file.
 argument-hint: "[--rule V-NN] [--scope <glob>] [--tier blocking|warning|info] [--deep] [--report-format json|markdown|both]"
 allowed-tools: Read, Glob, Grep, Edit, Write, Bash(node:*), Bash(date:*)
 ---

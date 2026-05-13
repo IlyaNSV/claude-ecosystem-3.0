@@ -10,7 +10,7 @@
 Документ заменяет и консолидирует валидации из:
 - ART §7 (V-01..V-13 оригинальный набор)
 - Audit секция 4.4 (предложения V-14..V-17)
-- handoff-spec §8 (V-H-01..V-H-10)
+- handoff-spec §8 (V-H-01..V-H-11)
 - MK.md § Content Rules (V-MK-01..V-MK-08)
 - ART §7 (V-20..V-23 для экосистемы)
 
@@ -51,7 +51,7 @@
 | Namespace | Префикс | Покрытие | Кол-во |
 |---|---|---|---|
 | Artifact validation | V-01..V-16 | Интегральная проверка артефактов `.product/` | 15 |
-| Handoff validation | V-H-01..V-H-10 | Структурная целостность handoff.md | 10 |
+| Handoff validation | V-H-01..V-H-11 | Структурная целостность handoff.md | 11 |
 | Design validation | V-MK-01..V-MK-08 | UI spec completeness (conditional has_ui) | 8 |
 | Integrator validation | V-I-* | Cross-boundary (контракты с внешними инструментами) | future |
 | Process rules | P-RULE-* | Обязательные ручные проверки (не автоматизация) | 2 |
@@ -175,7 +175,7 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 - DoR checks + все V-H-* rules
 - При 🔴 failure — файл не создаётся (`status=blocked`)
 
-**Применимые правила:** V-H-01..V-H-10 (все handoff) + V-01..V-15 (артефактные embedded).
+**Применимые правила:** V-H-01..V-H-11 (все handoff) + V-01..V-15 (артефактные embedded).
 
 ### 3.4 On-demand (/product:validate)
 
@@ -381,7 +381,7 @@ NOTE-* — unstructured catch-all артефакт (см. [pmo/artifacts/NOTE.md
 
 **НЕ применяются:** V-01..V-15, V-MK-*, V-H-* (NOTE не embed в handoff). Cascade не работает (NOTE-* не имеет dependencies).
 
-### 5.2 Handoff Validation (V-H-01..V-H-10)
+### 5.2 Handoff Validation (V-H-01..V-H-11)
 
 #### V-H-01: All mandatory sections present
 - **Tier:** 🔴 Blocking
@@ -453,6 +453,21 @@ NOTE-* — unstructured catch-all артефакт (см. [pmo/artifacts/NOTE.md
 - **Automation:** ✅ Non-empty check
 - **When:** Handoff generation
 - **On failure:** Warning. Практика показала (AP-4 в handoff-spec): без явного списка scope creep.
+
+#### V-H-11: NFR section reflects FM.nfr_status correctly
+- **Tier:** 🟡 Warning (при `nfr_status: pending` или `declined` без rationale у high-risk FM); ✅ pass при `nfr_status: active` (всё содержимое embedded) или `declined` с rationale (применимы defaults)
+- **Statement:** Секция 11 Non-Functional Requirements handoff body должна соответствовать `FM.nfr_status` per три case-а в `handoff-spec §6 Раздел 11`:
+  - **Case A** (`active`) — все NFR-* из `FM.nfr[]` embedded полностью; receiver guidance present
+  - **Case B** (`declined`) — rationale из `FM.nfr_decline_reason` present; tier defaults из `NFR.md §5` listed; receiver guidance present
+  - **Case C** (`pending`) — warning text present; receiver guidance про conservative defaults present
+- **Automation:** ✅ Section presence + cross-check фронтматтер `nfr_status` ↔ embedded content
+- **When:** Handoff generation
+- **On failure:**
+  - `nfr_status: active` без embedded NFR → 🔴 Blocking (inconsistent state)
+  - `nfr_status: pending` → 🟡 Warning; `warnings[]` entry в frontmatter; status = `partial`
+  - `nfr_status: declined` высокорискованная FM без `nfr_decline_reason` → 🔴 Blocking (V-16 пересечение)
+  - Иначе ✅ pass
+- **Связано с:** V-16 (artifact-level NFR tracking); V-H-11 проверяет handoff section conformity, V-16 — frontmatter FM.
 
 ### 5.3 Design Validation (V-MK-01..V-MK-08)
 
@@ -841,7 +856,7 @@ Actionable: /product:validate --fix (auto-fixes where possible: V-11 bi-dir refs
 ## 11. Implementation status
 
 - [x] **Hook `hooks/product/artifact-validate.js`** (inline check для V-01..V-11 + V-H-06) — Phase 2 shipped; D2 overrides (`validation_overrides[]` / `approve_overrides[]`) Phase 3.F extension; auto-purge pattern DEC-DEV-0023 F5
-- [x] **Skill `skills/product/validation-runner.md`** для `/product:validate` (V-01..V-16 + V-H-01..V-H-10 hardcoded; tier-aware; quiet-mode-aware; JSON+markdown report) — Phase 4.C shipped per DEC-DEV-0025 C.4
+- [x] **Skill `skills/product/validation-runner.md`** для `/product:validate` (V-01..V-16 + V-H-01..V-H-11 hardcoded; tier-aware; quiet-mode-aware; JSON+markdown report) — Phase 4.C shipped per DEC-DEV-0025 C.4; V-H-11 NFR section conformity добавлен в R5 fix-up sweep (post-review)
 - [x] **V-16 NFR Review status tracking** — Phase 4.C runner encodes severity matrix conditionally per `nfr_status × product_tier × high_risk` (OQ-03 closed; NFR artifact активен)
 - [ ] **Command `/product:cleanup --dry-run`** для V-15 (orphan detection) + `--pending-hygiene` flag (cascade revalidate + validation-pending purge + da-pending stale flag) — Phase 4.G per DEC-DEV-0027
 - [ ] **Fixture tests** на real `.product/` snapshots (regression coverage) — v1.1+ candidate
