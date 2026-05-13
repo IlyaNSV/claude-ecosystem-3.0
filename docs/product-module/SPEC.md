@@ -911,42 +911,42 @@ Deadlock protection (OQ-P4):
 - `~/.claude/memory/product/` создаётся лениво (Memory MCP при первой записи) — не prereq
 - `~/.claude/product-config.yaml` — опционально (global defaults); бутстрап per-project достаточен
 
-### 14.2 Discovery Quick (минимальный путь от идеи до HYP)
+### 14.2 Discovery Quick (минимальный путь от идеи до HYP) — Phase 2 shipped, pilot-validated DEC-DEV-0008
 
-- [ ] `.claude/commands/product/init.md`
-- [ ] `.claude/commands/product/status.md`
-- [ ] `.claude/commands/product/config.md`
-- [ ] Skills: discovery-session, problem-discovery, market-research-protocol (Quick), competitive-analysis-protocol (Quick), segment-discovery, vp-design, hypothesis-formulation
-- [ ] Hooks: product-artifact-validate, product-session-state
-- [ ] Артефакты: PS, MR, CA, SEG, VP, HYP — создаются end-to-end
-- [ ] Acceptance: `/product:init` от идеи до HYP на pilot проекте без ручной правки документации
+- [x] `.claude/commands/product/init.md`
+- [x] `.claude/commands/product/status.md`
+- [x] `.claude/commands/product/config.md`
+- [x] Skills: discovery-session, problem-discovery, market-research-protocol (Quick), competitive-analysis-protocol (Quick), segment-discovery, vp-design, hypothesis-formulation
+- [x] Hooks: artifact-validate, session-state
+- [x] Артефакты: PS, MR, CA, SEG, VP, HYP — создаются end-to-end
+- [x] Acceptance: `/product:init` от идеи до HYP на pilot проекте без ручной правки документации
 
-### 14.3 Planning + Discovery Deep mode
+### 14.3 Planning + Discovery Deep mode — Planning shipped (Phase 3, DEC-DEV-0014); Deep deferred к v1.1 (DEC-DEV-0012)
 
-- [ ] `.claude/commands/product/plan.md`
-- [ ] Skills: planning-session, mvp-scoping, roadmap-planning, release-planning
-- [ ] Subagents: `market-researcher.md`, `competitor-analyst.md`
-- [ ] Skills: deep-research-8-phase, competitive-intel
-- [ ] MCP: Firecrawl, Exa AI активны
-- [ ] Артефакты: MVP, RM, RL, FM (skeletons)
-- [ ] Acceptance: Deep Discovery + Planning на реальной теме с credibility-scored research
+- [x] `.claude/commands/product/plan.md`
+- [x] Skills: planning-session, mvp-scoping, roadmap-planning, release-planning
+- [ ] Subagents: `market-researcher.md`, `competitor-analyst.md` — Deep mode (v1.1)
+- [ ] Skills: deep-research-8-phase, competitive-intel — Deep mode (v1.1)
+- [ ] MCP: Firecrawl, Exa AI активны — Deep mode (v1.1)
+- [x] Артефакты: MVP, RM, RL, FM (skeletons)
+- [ ] Acceptance: Deep Discovery + Planning на реальной теме с credibility-scored research — Planning часть validated DEC-DEV-0023; Deep часть → v1.1
 
-### 14.4 Feature Definition (D2-Behavioral)
+### 14.4 Feature Definition (D2-Behavioral) — Phase 3 shipped (DEC-DEV-0014), smoke-tested DEC-DEV-0023
 
-- [ ] `.claude/commands/product/feature.md`, `cascade.md`, `bg:review.md`, `bg:rename.md`
-- [ ] Skills: feature-session, scenario-authoring, business-rule-extraction, lifecycle-derivation, vc-derivation, rpm-derivation, invariant-discovery, bg-extraction, cascade-protocol
-- [ ] Hooks: bg-extractor, cascade-check, ic-change-trigger, br-change-trigger (adaptive-depth per DEC-DEV-0012)
-- [ ] Артефакты: SC, BR, LC, VC, IC, RPM updates, BG continuous
-- [ ] Acceptance: одна FM обогащена end-to-end, cascade работает, BG extraction работает
+- [x] `.claude/commands/product/feature.md`, `cascade.md`, `bg-review.md`, `bg-rename.md`
+- [x] Skills: feature-session, scenario-authoring, business-rule-extraction, lifecycle-derivation, vc-derivation, rpm-derivation, invariant-discovery, bg-extraction, cascade-protocol
+- [x] Hooks: bg-extractor, cascade-check, ic-change-trigger, br-change-trigger (adaptive-depth per DEC-DEV-0012)
+- [x] Артефакты: SC, BR, LC, VC, IC, RPM updates, BG continuous
+- [x] Acceptance: одна FM обогащена end-to-end, cascade работает, BG extraction работает
 
-### 14.5 Handoff + NFR + Product DA
+### 14.5 Handoff + NFR + Product DA — Phase 4 shipped (1.2.0, DEC-DEV-0032); adapter consumption → Phase 5
 
-- [ ] Commands: `/product:handoff`, `/product:nfr:review`, `/product:nfr:upgrade-tier`, `/product:da-review`, `/product:validate`, `/product:cleanup`
-- [ ] Skills: handoff-generator, nfr-review, product-da-review, validation-runner
-- [ ] Subagent: product-devils-advocate
-- [ ] Hook: product-handoff-gate
-- [ ] Артефакты: NFR, Handoff files
-- [ ] Acceptance: handoff.md проходит DoR, handoff читается как минимум одним внешним tool через adapter
+- [x] Commands: `/product:handoff`, `/product:nfr-review`, `/product:nfr-upgrade-tier`, `/product:da-review`, `/product:validate`, `/product:cleanup`
+- [x] Skills: handoff-generator, nfr-review, product-da-review, validation-runner, cleanup-detector + hypothesis-formulation (drift fix)
+- [x] Subagent: product-devils-advocate (three sub-modes: adaptive / full+feature / full+release per DEC-DEV-0026)
+- [x] Hook: product-handoff-gate (PostToolUse non-blocking drift detection per Phase 4.F + DEC-DEV-0031 A3) + utility lib/hash.js
+- [x] Артефакты: NFR, Handoff files
+- [ ] Acceptance: handoff.md проходит DoR (✅ DoR shipped); handoff читается как минимум одним внешним tool через adapter (⏳ → Phase 5 cc-sdd adapter)
 
 ### 14.6 Polish & Integration
 

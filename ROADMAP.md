@@ -144,13 +144,13 @@ claude
 - ✅ `bootstrap.md` — 12-step per-project setup
 - ✅ `verify.md` — non-destructive health check
 
-### Acceptance criteria (to be validated in first pilot)
+### Acceptance criteria (validated in first pilot — DEC-DEV-0008, 2026-04-20)
 
-- [ ] `/product:init "простое описание идеи"` в пустой папке → за 30-60 мин создаёт PS + MR + CA + SEG + VP + HYP, все в active
-- [ ] `/product:status` показывает актуальный dashboard
-- [ ] `/product:drift-check` работает на минимальном state
-- [ ] Artifact-validate hook тихо queues findings при `status: draft`, surfaces на approve
-- [ ] Session recovery работает через `/product:init --continue` после interrupt
+- [x] `/product:init "простое описание идеи"` в пустой папке → за 30-60 мин создаёт PS + MR + CA + SEG + VP + HYP, все в active
+- [x] `/product:status` показывает актуальный dashboard
+- [x] `/product:drift-check` работает на минимальном state
+- [x] Artifact-validate hook тихо queues findings при `status: draft`, surfaces на approve
+- [x] Session recovery работает через `/product:init --continue` после interrupt
 
 ### Delivered (20 файлов)
 
@@ -218,17 +218,17 @@ Cross-cutting:
 
 **Dropped (not deferred):** DA debt mechanism (per C.2 — adaptive-depth removes need).
 
-### Acceptance criteria
+### Acceptance criteria (validated by smoke test — DEC-DEV-0023, 2026-04-29)
 
-- [ ] `/product:plan` после Discovery → MVP scope, RM, RL-001, FM skeletons (canonical frontmatter с ASCII slugs)
-- [ ] `/product:feature FM-001` → F.1-F.10 minus deferred Phase 4/6 steps; FM transitions planned → in-progress
-- [ ] `/product:feature "<идея>"` creation mode → F.0 D1-alignment + skeleton + enrichment
-- [ ] BG extraction ловит bold terms; `/product:bg:review` batched presentation работает
-- [ ] Cascade detection работает: edit BR → `.pending/cascade-pending.yaml` populated; V-11 bi-dir auto-fix работает; navigation через `/product:cascade`
-- [ ] Adaptive-depth DA: edit BR (semantic) → subagent invoked с full 6-lens; edit BR (cosmetic) → subagent invoked с lightweight consistency check; output содержит `magnitude` + `classification_rationale`
-- [ ] A1 auto-approve срабатывает для 🟢 артефактов (LC, VC, RPM) с `confidence: high` + applicable V-* tier rules passed; decision journal entry; conversational notification
-- [ ] D2 overrides: `validation_overrides`/`approve_overrides` parsed; expired overrides treat as inactive; skipped rules logged со статусом `overridden`
-- [ ] Manual mass-rename `/product:bg:rename` показывает preview + sed-suggest
+- [x] `/product:plan` после Discovery → MVP scope, RM, RL-001, FM skeletons (canonical frontmatter с ASCII slugs)
+- [x] `/product:feature FM-001` → F.1-F.10 minus deferred Phase 4/6 steps; FM transitions planned → in-progress
+- [x] `/product:feature "<идея>"` creation mode → F.0 D1-alignment + skeleton + enrichment
+- [x] BG extraction ловит bold terms; `/product:bg-review` batched presentation работает
+- [x] Cascade detection работает: edit BR → `.pending/cascade-pending.yaml` populated; V-11 bi-dir auto-fix работает; navigation через `/product:cascade`
+- [x] Adaptive-depth DA: edit BR (semantic) → subagent invoked с full 6-lens; edit BR (cosmetic) → subagent invoked с lightweight consistency check; output содержит `magnitude` + `classification_rationale`
+- [x] A1 auto-approve срабатывает для 🟢 артефактов (LC, VC, RPM) с `confidence: high` + applicable V-* tier rules passed; decision journal entry; conversational notification
+- [x] D2 overrides: `validation_overrides`/`approve_overrides` parsed; expired overrides treat as inactive; skipped rules logged со статусом `overridden`
+- [x] Manual mass-rename `/product:bg-rename` показывает preview + sed-suggest
 
 ### Estimated effort
 

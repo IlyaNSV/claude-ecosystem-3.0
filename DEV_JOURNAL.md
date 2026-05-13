@@ -2534,6 +2534,76 @@ Implementation выполнялась в 8 sub-phase commits (A-H) + 1 static sm
 
 ---
 
+## DEC-DEV-0033 — Phase 4 closure ritual run (Unit 2) + checklist refinement candidates
+
+**Date:** 2026-05-13
+**Trigger:** Fresh-session Phase 4 closure ritual (D7 phase-closure.md 6 steps) per DEC-DEV-0032 outstanding action. Anti-bias guard activated — independent observer без attachment к work product.
+**Tag:** #closure #d7-refinement #doc-rot
+
+### Context
+
+Phase 4 implementation closure (Unit 1) shipped в DEC-DEV-0032 (ee9bbca). Per [`phase-closure.md`](dev/meta-improvement/checklists/phase-closure.md) discipline, Unit 2 (D7 6-step ritual) выделен в отдельную fresh-session run per anti-bias guard — текущая AI которая designed Phase 4 могла rationalize findings («это intentional», «edge case acceptable»). Substrate: CHANGELOG `[1.2.0]` + ROADMAP § «Где мы сейчас» + DEV_JOURNAL last 5 entries (DEC-DEV-0028..0032) + CONVENTIONS.md + phase-closure.md.
+
+### Findings — 9 total
+
+| # | Severity | Step | File | Class | Status |
+|---|---|---|---|---|---|
+| F1 | 🔴 | 1 | `README.md:5` | Status banner stale (v1.1.0 → v1.2.0; Phase 0-3 shipped → Phase 0-4 shipped) | ✅ inline fixed |
+| F2 | 🔴 | 1 | `CLAUDE.md:22-25` | «Где мы сейчас» snapshot 2026-04-28 не отражает Phase 4 shipped | ✅ inline fixed |
+| F3 | 🟡 | 1 | `ROADMAP.md:149-153, 223-231` | Phase 2/3 acceptance criteria unchecked despite shipped + validated (DEC-DEV-0008/0023) | ✅ inline fixed |
+| F4 | ⚠️ | 2 | `my-first-test/.claude/` | Pilot at Phase 3 state — missing 6 cmds + 5 skills + 2 hook items; stale hypothesis-formulation + devils-advocate (Phase 4.A/H drift) | ⏳ user `/ecosystem:update` |
+| F5 | 🔴 | 4 | `docs/product-module/SPEC.md:498-503` | §6.6 product-handoff-gate.js: header `(PreToolUse)` + body describes legacy «block external tool» design; actual = PostToolUse non-blocking drift detection per Phase 4.F + DEC-DEV-0031 A3 | ⏳ queued Phase 5 readiness A.4.1 |
+| F6 | 🔴 | 4 | SPEC.md (6 hits) + processes.md (5 hits) + status.md (2 hits) | Command naming drift: `/product:nfr:review` / `/product:bg:review` (colons) vs filesystem `/product:nfr-review` / `/product:bg-review` (hyphens). Phase 4 added 6 new colon-form refs без filesystem alignment check | ⏳ queued Phase 5 readiness A.4.2 |
+| F7 | 🔴 | 4 | `docs/product-module/SPEC.md` §14.2/14.3/14.4/14.5 | Implementation phase tracker checkboxes unchecked для shipped phases | ✅ inline fixed (с nuance для Phase 5 acceptance overlap) |
+| F8 | 🟡 | 6 | `~/.claude/projects/<slug>/memory/MEMORY.md` | Index entry устарел на Phase 3 wording — но `project_ecosystem_status.md` actually current (internal inconsistency) | ✅ inline fixed |
+| F9 | 🟡 | 6 | `<memory>/project_ecosystem_architecture.md:14` | D7 claim «Stage 2 manual; Stage 3+ deferred» — но Stages 3-6 shipped per DEC-DEV-0021 | ⏳ queued Phase 5 readiness A.4.3 |
+
+Passes (no findings): Step 3 (hook smoke 8/8 PASS, incl. functional [drift-on-second-artifact] case), Step 5 (archive discipline + no dead Phase 4 markers + dev/ count clean).
+
+### Decision — closure actions
+
+**A. Inline fixes (5 findings):** F1, F2, F3, F7, F8. Effort ~20 min total.
+
+**B. Queue к Phase 5 readiness Section A.4 (3 findings):**
+- F5 SPEC.md §6.6 rewrite — careful (~15-20 min): новая body + reference DEC-DEV-0025 C.1 + DEC-DEV-0031 A1
+- F6 naming sweep — find-replace (~10 min)
+- F9 architecture memory refresh (~5 min)
+
+**C. User action (1 finding):** F4 `/ecosystem:update` в pilot — interactive session, не AI-executable. Можно скомбинировать с Phase 4 runtime smoke run (S1-S13+S15).
+
+**D. Refinement candidates (Section H в PHASE_5_READINESS):** 5 mechanism promotion candidates surfaced:
+- H.1 — Root-doc snapshot diff script (closes F1+F2 recurring class; high ROI, Phase 3+4 closures обе показали same rot)
+- H.2 — Phase tracker [ ] → [x] sweep script (closes F3+F7 recurring class)
+- H.3 — SPEC.md hook section sync check (closes F5 recurring class; DEC-DEV-0031 lesson 2 «git grep после design deviation» провалился inside same DEC-DEV cycle)
+- H.4 — Command path filesystem-vs-docs consistency check (closes F6)
+- H.5 — Promote Step 1.4 (root doc snapshot refresh) from text-only к automated
+
+Recommendation для Phase 5 closure: implement H.1 + H.4 (highest ROI/effort ratio; closes 2 recurring classes).
+
+### Outcome
+
+Phase 4 closure ritual completed; 5 findings closed inline в этом commit; 3 queued к Phase 5 readiness A.4 (тот же commit); 1 pending user action (F4). PHASE_5_READINESS.md статус-баннер обновлён (Unit 2 ✅ executed). Refinement candidates surface H.1-H.5 для Phase 5 closure consideration.
+
+Total time actual: ~35 min (substrate + execution + report) + ~25 min (inline fixes + queue + DEV_JOURNAL + commit prep) = ~60 min total. Within ≤60 min budget per checklist refinement tracker.
+
+### Lessons
+
+1. **Step 1.4 text-only недостаточно — promotion candidate к automated script.** F1, F2 — recurring exactly the same rot pattern caught Phase 3 closure (DEC-DEV-0018) + Phase 4 closure (this entry). Two instances of same class with same checklist instruction in place = text guidance не enough. Pattern: promote К script (H.1) when text-step fails twice. **Apply Phase 5 closure.**
+
+2. **DEC-DEV-0031 lesson 2 («git grep `<old wording>` после design deviation») provals внутри того же DEC-DEV cycle.** Lesson codified Phase 4.F handoff hook PreToolUse→PostToolUse rewording в 3 files (handoff-generator, handoff, handoff-spec) — но SPEC.md §6.6 НЕ был swept. Lessons-as-text имеют same enforcement weakness как checklist-as-text. Apply: H.3 script для hook section sync; ALSO add «SPEC.md §6 sections» к explicit grep targets в `phase-closure.md` Step 4. **Pattern recurring 2 instances: codify в `dev/meta-improvement/patterns/spec-drift-sweep.md` refinement.**
+
+3. **Phase tracker [ ] → [x] flip — recurring rot pattern.** ROADMAP Phase 2 acceptance unchecked since Phase 2 closure (DEC-DEV-0008 didn't flip); Phase 3 acceptance unchecked since Phase 3 closure (DEC-DEV-0018 didn't flip); Phase 4 acceptance partially handled в DEC-DEV-0032 (Phase 4 done, but cascading visibility — Phase 2/3 sections не получили flip). SPEC.md §14 same pattern. **Pattern:** phase tracker hygiene должен happen в phase implementation closure (Unit 1), не в phase-closure ritual (Unit 2). Apply к Phase 5 K1 closure docs commit checklist.
+
+4. **Anti-bias fresh-session validates own existence.** AI который designed Phase 4 (closure Unit 1) обновил `project_ecosystem_status.md` proactively — but missed `MEMORY.md` index (F8), missed CLAUDE.md snapshot (F2), missed SPEC.md §14 phase tracker (F7), missed README banner (F1). Fresh-session caught каждый — total 9 findings vs zero if Unit 2 был skipped. **D7 anti-bias principle validated третий раз (Phase 3 = DEC-DEV-0018, Phase 4 = DEC-DEV-0033 + Section H surfaces). Promote to «established» status in CONVENTIONS.md.**
+
+5. **Memory MCP partial self-consistency loss is non-obvious failure mode.** F8/F9 — status memory знал текущее состояние (proactively updated K1), но MEMORY.md index + architecture memory не были propagated. Suggests memory-sync skill (DEC-DEV-0021 Stage 4) должен check cross-file consistency, не just per-file freshness. Apply: refine `skills/memory-sync.md` с «cross-file consistency check» as additional step.
+
+6. **F4 demonstrates DEC-DEV-0020 mechanism (`/ecosystem:update`) недостаточно — нужен trigger.** Phase 3 closure (DEC-DEV-0018) revealed pilot lag; DEC-DEV-0020 created `/ecosystem:update`. But pilot **all еще** at Phase 3 state after Phase 4 ship — mechanism not triggered. Suggests Phase 4.K1 closure docs commit should include «pilot update reminder» step OR `/ecosystem:bootstrap` re-run mention. Apply к Phase 5 K1 closure template.
+
+7. **Effort actual для closure ritual ~60 min total** (substrate 5 min + execution 25 min + inline fixes 15 min + queue/journal 15 min). Was within 35-65 min budget per checklist Step 3 update (DEC-DEV-0023). Time accounting holds for 2nd consecutive instance.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
