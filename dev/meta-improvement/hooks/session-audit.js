@@ -136,6 +136,7 @@ process.exit(0);
 
 // === Helpers ===
 function findRepoRoot(start) {
+  // Walk up from cwd first — works when hook runs inside ecosystem repo.
   let dir = path.resolve(start);
   while (dir !== path.parse(dir).root) {
     if (
@@ -145,6 +146,17 @@ function findRepoRoot(start) {
       return dir;
     }
     dir = path.dirname(dir);
+  }
+  // Fallback: derive from script location. Hook lives at
+  // dev/meta-improvement/hooks/session-audit.js → ecosystem repo root is 3
+  // levels up. This makes the hook usable from external projects (e.g.,
+  // my-first-test) where cwd has no DEV_JOURNAL.md.
+  const scriptRepoRoot = path.resolve(__dirname, '..', '..', '..');
+  if (
+    fs.existsSync(path.join(scriptRepoRoot, 'CLAUDE.md')) &&
+    fs.existsSync(path.join(scriptRepoRoot, 'DEV_JOURNAL.md'))
+  ) {
+    return scriptRepoRoot;
   }
   return null;
 }
