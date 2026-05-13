@@ -1,7 +1,7 @@
 ---
 description: Generate universal handoff для FM-NNN — 13-section markdown с embedded artifact excerpts + SHA-256 hashes для drift detection. Two modes — --mode draft (3-blocker DoR, status partial) и --mode production (8-blocker DoR, status ready). --regenerate force version++. --with-da-review invokes pre-gen DA. Output: .product/handoffs/FM-NNN-handoff.md.
 argument-hint: "<FM-id> [--mode draft|production] [--regenerate] [--with-da-review]"
-allowed-tools: Read, Glob, Grep, Edit, Write, Bash(node:*), Bash(mkdir:*), Bash(date:*)
+allowed-tools: Read, Glob, Grep, Edit, Write, SlashCommand, Bash(node:*), Bash(mkdir:*), Bash(date:*)
 ---
 
 # /product:handoff
@@ -15,7 +15,7 @@ Generates universal handoff для FM-NNN. Loads skill `handoff-generator.md`.
 - `<FM-id>` — required (e.g., `FM-001`)
 - `--mode draft | production` — default `production`
 - `--regenerate` — force regeneration version++ даже без drift (Ambiguity 14)
-- `--with-da-review` — invoke `/product:da-review FM-<NNN>` перед generation (DEC-DEV-0026 hybrid; Phase 4.H deliverable)
+- `--with-da-review` — invoke `/product:da-review FM-<NNN>` перед generation (DEC-DEV-0026 hybrid; Phase 4.H shipped — real SlashCommand invocation, critical pending findings block handoff)
 - **RL-NNN bundle handoff:** deferred к v1.1+; Phase 4 ships FM-NNN scope only
 
 Invalid args → show usage:
@@ -44,7 +44,7 @@ Usage:
 4. **Execute** per skill instructions:
    - Step 1-2: parse + load FM frontmatter
    - Step 3: drift detection (если handoff file exists)
-   - Step 4: `--with-da-review` flag handling (Phase 4.H delegated) или soft DoR warning (>7 days old DA)
+   - Step 4: `--with-da-review` flag handling (Phase 4.H shipped: SlashCommand → `/product:da-review FM-<NNN>`, critical pending findings block handoff) или soft DoR warning (>7 days old DA)
    - Step 5: DoR validation per mode (V-H-* checks)
    - Step 6: `approve_overrides[]` handling (D2 modification)
    - Step 7: Compute artifact hashes via `hooks/product/lib/hash.js`
@@ -79,7 +79,7 @@ Sub-phase F (`product-handoff-gate.js` PostToolUse non-blocking hook) испол
 
 4. **Hash drift ignored — silent stale handoff.** Per V-H-04: drift → `status: stale`. Receivers must check status field перед consuming.
 
-5. **`--with-da-review` без Phase 4.H availability — handled через B3 safe-guard.** Phase 4.E ships flag parsing + soft warning logic + explicit pre-flight check на existence of `skills/product/product-da-review.md`. Если skill missing — user получит [c] continue без DA / [a] abort prompt (см. `handoff-generator.md` Step 4). Natural'ная активация когда Phase 4.H landит skill — никаких config flag-ов не нужно flip-ать.
+5. **`--with-da-review` bypass via manual edit.** Phase 4.H shipped skill `product-da-review.md` + real SlashCommand invocation + critical-pending gate. Pre-flight safe-guard (existence check для skill file per b8f16bc B3) теперь natural'но passes — skill exists; flow proceeds к real DA invocation. Не bypass через editing handoff frontmatter manually; критические DA findings блокируют generation by design. Resolve через `/product:da-review FM-NNN` interactive [Act/Defer/Dismiss/Skip] до re-invoke handoff.
 
 ## Related
 
@@ -91,5 +91,5 @@ Sub-phase F (`product-handoff-gate.js` PostToolUse non-blocking hook) испол
   - sub-phase C: `validation-runner.md` V-H-* matrix shared
   - sub-phase D: handoff §11 NFR consumes `FM.nfr_status` + NFR artifacts
   - sub-phase F: `product-handoff-gate.js` PostToolUse non-blocking re-uses `lib/hash.js` для V-H-04 drift detection
-  - sub-phase H: `--with-da-review` invokes `/product:da-review` (Phase 4.H deliverable)
+  - sub-phase H (shipped): `--with-da-review` invokes `/product:da-review` через SlashCommand; consumes `.product/.da-findings/FM-<NNN>-<timestamp>.md` с `source: auto-pre-handoff`; critical pending findings refuse continue
 - Receiver chain: handoff → adapter (Integrator Phase 5+) → external tool (cc-sdd, Kiro, etc.)

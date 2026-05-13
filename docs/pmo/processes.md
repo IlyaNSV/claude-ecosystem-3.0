@@ -776,7 +776,7 @@ findings:
 - При transition MVP → achieved (валидация что MVP действительно достиг цели)
 - При HYP invalidation (проверка reasoning перед pivot)
 
-**Ручной запуск:** `/product:da-review <FM-id>` или `/product:da-review --scope <scope>`
+**Ручной запуск:** `/product:da-review FM-<NNN>` (feature scope) или `/product:da-review RL-<NNN>` (release scope per DEC-DEV-0026 — cross-FM consistency, HYP coverage, rollout dependencies). Иначе — `--with-da-review` флаг для `/product:handoff` (one-shot review-then-ship; DEC-DEV-0026 hybrid trigger). ID-prefix routing per DEC-DEV-0030 Ambiguity 18 — BR/IC/SC/LC/VC/RPM/MK prefixes refused (purposely routed через hooks или approve gates).
 
 ### 6.3 6 линз DA
 
@@ -908,7 +908,8 @@ Mapping команды → процессы → артефакты:
 | `/product:status` | Dashboard | Счётчики по статусам, stale drafts, pending BG, pending DA |
 | `/product:cleanup [--dry-run]` | V-15 orphan detection (default) | List orphans + per-orphan recommendation |
 | `/product:cleanup --pending-hygiene` (alias `--full`) | V-15 + 3 pending files sweep | Orphans + cascade revalidate + validation purge + da-pending stale flag |
-| `/product:da-review <FM-id>` | F.9 Product DA | DA findings file |
+| `/product:da-review FM-<NNN>` | F.9 Product DA (feature scope) | DA findings file (.product/.da-findings/FM-NNN-<timestamp>.md) |
+| `/product:da-review RL-<NNN>` | Release-level Product DA (DEC-DEV-0026) | Cross-FM findings + drill-down hints (.product/.da-findings/RL-NNN-<timestamp>.md) |
 | `/product:cascade <artifact-id>` | P4 manual cascade | Cascade report |
 | `/product:bg:review` | Manual BG extraction review | Pending BG terms batch |
 | `/product:bg:rename <old> <new>` | BG mass-rename | Bundle of artifact updates |

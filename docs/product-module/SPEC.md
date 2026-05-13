@@ -215,11 +215,14 @@
 - `--pending-hygiene` (alias `--full`): дополнительно sweep'ает 3 pending файла — cascade pending (delegates `/product:cascade --pending --revalidate`) + validation-pending purge (re-evaluate per entry, purge currently passing per DEC-DEV-0023 F5 pattern) + da-pending stale flag (artifact.status == active).
 - Design module проверки (MK/DS/NM orphan check) — conditional на `commands/design/` directory existence или `product.yaml.modules.design.enabled` (Phase 6 schema extension).
 
-**`/product:da-review <FM-id | --scope>`**
-- Ручной запуск Product DA Review
-- Spawn subagent `product-devils-advocate`
-- Output: `.product/.da-findings/FM-NNN-<timestamp>.md`
-- 6 линз × 3 tier findings
+**`/product:da-review <FM-NNN | RL-NNN>`** (Phase 4.H per DEC-DEV-0026)
+- Ручной запуск Product DA Review с ID-prefix routing.
+- `FM-NNN` → feature scope: FM-level review (cross-rule consistency, JTBD alignment, scope creep). Subagent `product-devils-advocate` в `Mode: full + scope: feature`.
+- `RL-NNN` → release scope: cross-FM review (consistency между FM, HYP coverage, rollout dependencies, bundle readiness, scope creep release-level, steelmanning). Subagent в `Mode: full + scope: release`.
+- Refused prefixes (BR/IC/SC/LC/VC/RPM/MK) — per-artifact concerns surfaced через hooks (BR/IC) или approve gates (SC/LC/VC) или FM-level review (RPM/MK).
+- Output: `.product/.da-findings/<ID>-<YYYY-MM-DD>-<HHMM>.md` с canonical frontmatter schema (per DEC-DEV-0030 A.1: `id, severity, artifact_ref, source, scope, affected_artifacts, suggested_drill_down, resolution, follow_up`).
+- Decision journal entries embed выжимку (`id, severity, artifact_ref, statement, resolution, follow_up.revisit_trigger`).
+- 6 lenses × 3 severity tiers (feature scope: per devils-advocate.md «Methodology — feature scope»; release scope: «Methodology — release scope» — adapted lens set).
 
 **`/product:cascade <artifact-id>`**
 - Ручной запуск cascade check (обычно cascades в background через approve)
