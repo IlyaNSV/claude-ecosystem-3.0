@@ -2409,6 +2409,131 @@ Updated 4 файла: `docs/pmo/validation.md` (catalog #5.2 + §0 table + §3.3
 
 ---
 
+## DEC-DEV-0032 — Phase 4 implementation closure (Unit 1 — outcomes + lessons)
+
+**Date:** 2026-05-13
+**Trigger:** Phase 4 implementation sub-phases A→J shipped; PR #10 (G+H+J commits) prepared. Closure ritual (Unit 2 — D7 phase-closure run) выделен в next session per discipline phase-closure.md Pre-flight ordering. Этот entry — substantive closure documentation для Unit 1 deliverables.
+**Tag:** #closure #phase-4 #release
+
+### Context
+
+Phase 4 — Handoff + NFR + Product DA + Validation full. Старт implementation после трёх kickoff layers:
+1. **Architectural readiness** (2026-05-10) — DEC-DEV-0024..0029, 13 решений (C.1-C.5, D.1-D.5, A.3, +D.6 language, +D.7 release DA)
+2. **Pre-implementation kickoff** (2026-05-12) — DEC-DEV-0030, 26 ambiguity resolutions + 2 scope cuts (D.7 aspirational layer, `/product:clarify` channel)
+3. **Per-sub-phase decomposition** (A→K) с dependency chain
+
+Implementation выполнялась в 8 sub-phase commits (A-H) + 1 static smoke commit (J) + 1 post-rebase fix commit. K (закрытие) разделено per D7 discipline на Unit 1 (этот entry + closure docs) и Unit 2 (independent ritual run в next session).
+
+### Outcome
+
+**Phase 4 implementation deliverables shipped:**
+
+`commands/product/` (6 new commands):
+- `validate.md` (Phase 4.C) — on-demand validation, V-01..V-16 + V-H-01..V-H-11, tier-aware, JSON+markdown report
+- `nfr-review.md` (Phase 4.D) — F.5a.0 Ask + F.5a.1 Define, tier auto-detection from RM
+- `nfr-upgrade-tier.md` (Phase 4.D) — batch re-review при product_tier upgrade
+- `handoff.md` (Phase 4.E) — `--mode draft|production`, `--regenerate`, `--with-da-review`
+- `cleanup.md` (Phase 4.G) — V-15 orphan detection + opt-in `--pending-hygiene` (3-pending sweep)
+- `da-review.md` (Phase 4.H) — ID-prefix routing FM-NNN/RL-NNN, interactive [Act/Defer/Dismiss/Skip]
+
+`skills/product/` (6 new/refactored skills):
+- `validation-runner.md` (Phase 4.C) — hardcode rule catalog, V-H-* incl. V-H-11 NFR section conformity
+- `nfr-review.md` (Phase 4.D) — sanity ranges integration, informational warning override pattern
+- `handoff-generator.md` (Phase 4.E + 4.H) — 13 sections, mode-aware DoR, hash utility integration, real `--with-da-review` invocation
+- `cleanup-detector.md` (Phase 4.G) — V-15 algorithm + 3-pending-file orchestration + Design module conditional
+- `product-da-review.md` (Phase 4.H) — FM-level + RL-level branches, brief construction, Agent invocation, canonical schema verify
+- `hypothesis-formulation.md` (Phase 4.A) — drift fix; canonical fields `target_value`, `segment`, `value_proposition`; anti-pattern warning `success_threshold` explicit
+
+`agents/product/`:
+- `devils-advocate.md` (Phase 4.H refactor) — third sub-mode `Mode: full + scope: release`; 6 release lenses; canonical frontmatter schema (DEC-DEV-0030 A.1: 9 fields + 6 anti-pattern variants); Shape A/B/C output per scope
+
+`hooks/product/`:
+- `product-handoff-gate.js` (Phase 4.F + b8f16bc review fix) — PostToolUse non-blocking warning; line-based parser fix (DEC-DEV-0031 regex bug); smoke runner functional layer (8/8 PASS)
+- `lib/hash.js` (Phase 4.E shared utility) — body-only LF-normalized SHA-256, cross-platform
+
+`templates/`:
+- `templates/project/CLAUDE.md.template` (Phase 4.B) — Language section («Language and tone») + identifiers/paths/commands/abbreviations verbatim list
+
+`skills/product/` language reminders (Phase 4.B):
+- Inline reminder в `planning-session.md`, `feature-session.md`, `scenario-authoring.md`, `business-rule-extraction.md`, `release-planning.md` (5 user-facing skills)
+
+**Schema introductions (cross-cutting):**
+- Canonical DA findings schema (DEC-DEV-0030 A.1) — unified `.product/.da-findings/<id>-<YYYY-MM-DD>-<HHMM>.md` frontmatter
+- Three-tier DA hierarchy (artifact / feature / release) per ID-prefix routing
+- `V-H-11` NFR section conformity rule (b8f16bc / DEC-DEV-0031)
+- B3 safe-guard pattern для cross-sub-phase placeholder flags
+
+**Drift fixes inline:**
+- HYP frontmatter drift (DEC-DEV-0024) — `success_threshold` → `target_value`
+- `/product:da-review --scope` flag collision removed (Ambiguity 22) — SPEC.md, processes.md
+- B.1 convention extended к handoff frontmatter schema (DEC-DEV-0031 B2)
+- PreToolUse → PostToolUse non-blocking drift cleanup (DEC-DEV-0031 A3) в handoff-generator/spec docs
+
+**Pre-implementation kickoff cuts (deferred к v1.1+):**
+- `/product:clarify` receiver channel — Phase 5 dependency (adapter не существует до Phase 5)
+- D.7 aspirational layer (recursive auto drill-down + `FM.depends_on` structural graph) — core shipped, aspirational deferred при отсутствии pilot evidence
+
+**Sub-phase delivery cadence:**
+
+| Sub-phase | Commit | DEC-DEV | Scope |
+|---|---|---|---|
+| A | 5455f75 | 0024 | HYP frontmatter canonical |
+| B | e160143 | 0029 | Language discipline (template + 5 skills) |
+| C | f44856b | 0025 C.4 | Validation runner + /product:validate |
+| D | 35c56f7 | 0028 D.2 + 0025 C.2 | NFR review F.5a + tier upgrade |
+| E | 81ff845 | 0025 C.1 + 0028 D.1 | Handoff generator + /product:handoff |
+| F | d0c3052 | 0025 + smoke entry | Handoff drift gate hook |
+| (review fix-up) | b8f16bc | 0031 | regex bug + V-H-11 + safe-guards + functional smoke layer |
+| G | e635ee7 | 0027 | Cleanup + pending hygiene |
+| H | c0ce2ff | 0026 + 0030 A.1/18/22 | DA expansion core (FM/RL routing + canonical schema) |
+| J | 39ac0c2 | — | Smoke test plan + static verification 8/8 PASS |
+| K (Unit 1) | (this commit) | 0032 | Phase 4 implementation closure |
+
+**Quality gates:**
+- `node dev/meta-improvement/scripts/smoke-hooks.js` — 8/8 PASS (incl. `product-handoff-gate.js [drift-on-second-artifact]` functional case)
+- Static smoke 8/8 PASS (Phase 4.J Section A)
+- Cross-rebase preserved canonical schema integrity (9/9 fields, 6/6 anti-pattern variants, `--scope` clean across repo)
+
+**Effort actual vs planned:**
+- ROADMAP base estimate: 3-4h
+- Architectural kickoff revised: 6-10h
+- Pre-implementation kickoff (DEC-DEV-0030) revised: 10-12h
+- Actual через sub-phases A→J: ~12-15h (close к kickoff estimate; 3-4x ROADMAP base)
+- Pattern: 2-3x multiplier consistently observed (Phase 2/3 same pattern; ROADMAP «How this roadmap evolves» — pending refinement в Phase 5)
+
+### Outstanding (next session)
+
+**Unit 2 — D7 phase-closure ritual run (independent activity):**
+- Pre-flight: Unit 1 merged к main; этот entry + CHANGELOG 1.2.0 + ROADMAP «Где мы сейчас» updated
+- 6 steps execute (fresh-session preferred per anti-bias guard):
+  1. Documentation health check (doc rot sweep)
+  2. Bootstrap install/update verification (re-bootstrap pilot или dogfood)
+  3. Hook runtime smoke (8/8 PASS expected)
+  4. Documentation consistency check (cross-doc semantic align)
+  5. Cleanup / archive discipline (catch missed archives)
+  6. Memory MCP sync
+- Own `DEC-DEV-NNNN — Phase 4 closure run + checklist refinement` entry per phase-closure.md Closing action
+
+**Runtime smoke S1-S13 + S15 (also pending user execution):**
+- `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B — 13 runtime scenarios deferred к Claude Code session с `.product/` data
+- Findings → retroactive `DEC-DEV-NNNN — Phase 4 smoke test results` entry (precedent: Phase 3 = DEC-DEV-0023 ретро)
+
+### Lessons
+
+1. **D7 discipline phase-closure ≠ Phase implementation closure.** Initially планировалось K = single sub-phase covering both. Closer reading checklist Pre-flight revealed: ritual assumes closure entry + CHANGELOG уже done. Поэтому K разделён: Unit 1 (Phase 4 ends) → merge → Unit 2 (independent observer ritual). Pattern для CONVENTIONS refinement: «Phase N closure» (implementation last step) ≠ «Phase N closure ritual» (D7 6-step sequel). Naming clarity prevents future confusion.
+
+2. **Mid-phase rebase на shipped review-fix — adds ~30 min overhead но preserves integrity.** PR #9 (b8f16bc DEC-DEV-0031) merged между моими G+H+J commits и push. Rebase surfaced 3 conflict files (handoff.md, handoff-generator.md, handoff-spec.md) + 1 stats update (smoke 7/7 → 8/8). Resolution preserved both semantic layers: review-fix safe-guards (B3 pre-flight, V-H-11, PostToolUse correctness) + my H additions (real SlashCommand invocation, canonical schema, three-tier hierarchy). Pattern: review fix-ups в parallel branches предполагают eventual rebase; budget ~30-45 min per fix-up overlap; document conflict resolution rationale в closure entry.
+
+3. **Three-tier DA hierarchy extension через ID-prefix routing — clean.** `/product:cascade <id>` existing pattern; `/product:da-review FM-NNN | RL-NNN` extends gracefully. Refused prefixes (BR/IC/SC/LC/VC/RPM/MK) — explicit message с suggested correct invocation path защищает против typos и conceptual confusion. Pattern для future DA expansions: ID-prefix routing > flag proliferation.
+
+4. **Canonical frontmatter schema location centralization works.** DEC-DEV-0030 A.1 decided: schema lives в `.product/.da-findings/<id>.md` frontmatter (unified location); decision journal embeds выжимку. Prevents drift между two formats. B.1 convention applied — 6 forbidden field-name variants explicit, anti-pattern enforcement built into agent prompt. Phase 4.J static check verified 9/9 canonical fields + 6/6 anti-patterns preserved post-rebase. Pattern: any schema living в multiple write locations needs canonical location + embedded subset с explicit field mapping.
+
+5. **Static smoke 8/8 ≠ runtime smoke S1-S13 verified.** Phase 4.J ships 15-scenario plan; static checks (A.1-A.8) catch B.1 violations + canonical drift + reference resolution + hook syntax. Runtime checks (S1-S13) require interactive Claude Code session с `.product/` data — deferred per AI session capability boundary. Pattern: ROADMAP acceptance criteria split into «static-verifiable» (AI session) и «runtime-verifiable» (user session) — separate done-gates. Phase 5 readiness skeleton should reflect this split в acceptance criteria template.
+
+6. **Effort multiplier pattern stable: 2-3x ROADMAP estimate after kickoff revision.** Phase 2: 4-6h → ~10h. Phase 3: 4-6h → 6-10h revised → ~12h actual. Phase 4: 3-4h → 10-12h → ~12-15h actual. Pattern hardens after 3 phases. ROADMAP «How this roadmap evolves» refinement candidate (next phase): add «empirical multiplier» note к ROADMAP planning estimates («ROADMAP base × 2-3 = realistic after kickoff»).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
