@@ -2335,6 +2335,80 @@ Phase 4 implementation разблокирован. Substrate complete в working
 
 ---
 
+## DEC-DEV-0031 — Phase 4 A-F mid-review fix-up: regex bug + doc drift + V-H-11 + safe-guards
+
+**Date:** 2026-05-13
+**Trigger:** Fresh-session anti-bias review Phase 4 sub-phases A-F surfaced 1 functional bug (critical) + 4 классов drift/gap. Fix sweep до старта sub-phase G чтобы не сидеть на сломанном foundation.
+**Tag:** #bugfix #spec-revision #quality-gate #post-review
+
+### Context
+
+Multi-agent fresh review Phase 4 sub-phases A-F (commits `5455f75..d0c3052`) с anti-bias guard surfaced:
+
+1. **CRITICAL** — `hooks/product/product-handoff-gate.js:197` regex `^artifact_hashes:\s*\n([\s\S]*?)(?=\n[a-z_]+:|$)/m` captured только первую запись из `artifact_hashes:` блока. `$` в multiline matches end-of-line, lazy quantifier stops at first line-break. Drift detection silently не работал для embedded SC/BR/IC/LC/VC/NFR/MK/NM — все non-FM artifacts. Smoke runner не surface — handoffs dir отсутствовал в tmp fixture, hook exit на line 80 ДО regex. 7/7 PASS — false confidence.
+
+2. **Doc drift PreToolUse→PostToolUse** — Phase 4.F осознанно ушёл от «PreToolUse-блокировки» к «PostToolUse non-blocking warning» (per JSDoc rationale + commit message d0c3052), но dependent docs не backport: `skills/product/handoff-generator.md:477`, `commands/product/handoff.md:70+93`, `docs/product-module/handoff-spec.md:978` + чекбокс `[ ]` хотя F shipped.
+
+3. **Wrong V-H-08 reference** — `skills/product/handoff-generator.md:314` ссылался V-H-08 в NFR Case C context, но V-H-08 в catalog = «UI Specification filled if has_ui=true» 🔴 Blocking. NFR section не имел dedicated V-H-* rule вообще.
+
+4. **B.1 anti-pattern field-name list missing** в `skills/product/handoff-generator.md` Step 9 (frontmatter assembly). Strict B.1 не применим (handoff schema в `handoff-spec.md`, не в `docs/pmo/artifacts/`), но same drift risk apply.
+
+5. **`--with-da-review` placeholder silent fail** — flag parsed, age-check работает, но при попытке actual DA invocation (Phase 4.H deliverable, ещё не shipped) поведение undefined.
+
+### Decisions
+
+**A1 — Regex fix gate hook:** заменил regex-based парсинг `artifact_hashes:` блока на line-based parser. Iterate lines from frontmatter, track «inside artifact_hashes block» state, match `^\s+<ID>:\s*"sha256:..."` per line. Robust to multi-entry blocks, CRLF, edge cases (single entry, block last in frontmatter, no block). Diff +18 lines vs +1 line minimal regex tweak — trade-off в пользу robustness и legibility (regex для YAML — known foot-gun).
+
+**A2 + B4 — Smoke runner setup function pattern:** расширил `dev/meta-improvement/scripts/smoke-hooks.js` schema добавлением optional `setup(ctx)` + `expectStderrIncludes` fields per TEST_CASES entry. ctx exposes `tmpDir`, `tmpProduct`, `ecoRoot`, `fs`, `path`, `hash` (lib/hash.js). Добавил test case `product-handoff-gate.js [drift-on-second-artifact]` — fixture с multi-entry handoff (FM-001 + SC-005 + BR-010), stored hash для SC-005 заведомо wrong, edit к SC-005 → assert stderr contains `Handoff drift detected`. Без A1 fix этот test fails; с fix — 8/8 PASS.
+
+**A3 — PreToolUse→PostToolUse cleanup:** 4 docs обновлены (handoff-generator:477, handoff:70+93, handoff-spec:978), чекбокс §16 flipped `[ ]` → `[x]`.
+
+**B1 — V-H-11 NFR section conformity:** ввёл новое правило V-H-11 в catalog. Rationale:
+- NFR section имеет нетривиальное conditional behavior (3 cases A/B/C); explicit rule делает это visible в validation catalog
+- Symmetric с V-H-08 (UI Spec conditional on has_ui): обе — про conditional sections в handoff body
+- Defense in depth с V-16 (artifact-level): V-16 проверяет FM frontmatter `nfr_status`; V-H-11 проверяет handoff body section 11 соответствие тому статусу
+
+Severity matrix:
+- `active` без embedded NFR → 🔴 Blocking (inconsistent state)
+- `declined` high-risk без rationale → 🔴 Blocking (V-16 intersection)
+- `pending` без warning text → 🔴 Blocking (Case C boilerplate missing — receiver получит no guidance)
+- `pending` с warning text → 🟡 Warning (advisory; `warnings[]` entry; handoff status: partial)
+- `active` с embedded или `declined` с rationale → ✅ pass
+
+Updated 4 файла: `docs/pmo/validation.md` (catalog #5.2 + §0 table + §3.3 + §11), `docs/product-module/handoff-spec.md §8` (rules table), `skills/product/validation-runner.md` (V-H-* table + matrix описание + frontmatter description), `skills/product/handoff-generator.md:314` (заменил wrong V-H-08 ref + поверхностный «10/10» → «11/11»). Также plus refs в `commands/product/handoff.md`, `commands/product/validate.md`, `docs/pmo/processes.md` для V-H-01..V-H-11 range consistency.
+
+**B2 — B.1 anti-pattern field-name list:** добавил 14 ❌ bullets в `handoff-generator.md` Step 9 (после frontmatter template, перед Step 10). Covers: `artifact_hashes` plural, `dor_validation_passed`, `dor_overrides`, `embedded_artifacts` object, `target_adapter`/`target_tool`/`target_tool_version` separation, `generated_at` vs `created`/`updated`, `regenerated_from` enum, `previous_version` ID, `current_product_tier`, `nfr_status`/`nfr_decline_reason`, `validation_rules_passed`/`validation_rules_failed`. Plus filename slug rule reference.
+
+**B3 — `--with-da-review` safe-guard:** добавил pre-flight check в Step 4 — `test -f .claude/skills/product/product-da-review.md` перед попыткой invoke. При missing — explicit `[c] continue без DA / [a] abort` prompt к user, не silent fall-through. Когда Phase 4.H landит skill — check natural'но проходит, flag activates без config flag-ов. Anti-pattern #5 в обоих skill и command updated.
+
+### Outcome
+
+Все 7 findings из R5/R7 review закрыты. Smoke runner 8/8 PASS (включая новый functional drift test). Phase 4 sub-phase G ready to start на корректном foundation.
+
+| Finding | Класс | Fix | Files touched |
+|---|---|---|---|
+| A1 | bug (critical) | line-based parser | `hooks/product/product-handoff-gate.js` |
+| A2 | tooling gap | setup function + drift test | `dev/meta-improvement/scripts/smoke-hooks.js` |
+| A3 | doc drift | PreToolUse → PostToolUse | 4 файла |
+| B1 | spec gap | V-H-11 NFR conformity rule | 7 файлов (catalog/spec/runner/cmd refs) |
+| B2 | convention gap | 14 ❌ anti-pattern bullets | `skills/product/handoff-generator.md` |
+| B3 | UX safety | pre-flight skill check + [c]/[a] prompt | `skills/product/handoff-generator.md` + `commands/product/handoff.md` |
+| B4 | tooling | setup function pattern в smoke schema | (см. A2) |
+
+### Lessons
+
+1. **Smoke «no crash» ≠ «correct behavior».** Phase 3 lesson DEC-DEV-0023 R3 был «hooks must have runtime smoke»; Phase 4 уточняет: для hook'ов с complex behavior (regex parsing, conditional logic) — smoke должен включать functional assertion на expected output, не только absence of fatal patterns. `expectStderrIncludes` + `setup(ctx)` pattern в `smoke-hooks.js` — generalizable infrastructure для future hook'ов. **Pattern candidate** для `dev/meta-improvement/patterns/` — «Hook smoke testing: crash vs functional layers».
+
+2. **Doc backport discipline для design deviations.** Phase 4.F осознанно deviation от PHASE_4_READINESS § B.1 («PreToolUse-блокировка» → PostToolUse warning) с JSDoc rationale, но dependent docs (3 файла + 1 чекбокс) не были backport-нуты в том же commit. Lesson: когда design decision deviates от substrate wording — sweep dependent docs **в том же commit** что implements deviation, не «оставлю на потом». Pattern: `git grep "<old wording>" -- skills/ commands/ docs/` после design deviation = mandatory pre-commit check.
+
+3. **Regex для YAML — known foot-gun, prefer line-based parsing.** A1 баг — classic case: `(?=...|$)` с `m` flag matches end-of-line вместо end-of-input; lazy quantifier минимизирует к first match. Cost line-based parser vs regex: +15 строк кода ради robust к multi-line YAML blocks + CRLF + edge cases. **Practice rule:** для frontmatter parsing где «extract block until next top-level key» — line-based loop preferable, regex acceptable только для single-value extraction (`^key:\s*(.*)$`).
+
+4. **B.1 convention extends beyond strict `docs/pmo/artifacts/` scope.** Convention изначально была pegged к канонической artifact catalog; B2 fix показал что handoff frontmatter (handoff-spec.md) имеет identical drift risk. **Spec refinement candidate** для `dev/meta-improvement/patterns/b1-frontmatter-convention.md` — extend scope language от «artifact из каталога `docs/pmo/artifacts/`» к «любой artifact с frontmatter, создаваемый skill-ом, включая artifacts с schema в module-specific spec docs (handoff-spec, design-spec и т. д.)».
+
+5. **Placeholder flags нуждаются в safe-guard, не silent fail.** `--with-da-review` (B3) — first instance в Phase 4 где flag parsed но actual functionality deferred к following sub-phase. Без B3 safe-guard первый pilot user, попробовавший flag до Phase 4.H, получил бы undefined behavior. Pattern для future cross-sub-phase placeholder flags: pre-flight check на existence of deliverable + explicit user prompt при missing — не silent skip. Когда delivery lands — check natural'но проходит, никаких feature flags не нужно flip.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

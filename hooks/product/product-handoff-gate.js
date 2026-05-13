@@ -189,20 +189,36 @@ function parseFrontmatterFlat(content) {
 }
 
 function extractArtifactHashFromHandoff(handoffContent, artifactId) {
-  const fmMatch = handoffContent.match(/^---\n([\s\S]*?)\n---/);
+  // Frontmatter extraction first (normalized to LF to handle CRLF-on-Windows).
+  const normalized = handoffContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const fmMatch = normalized.match(/^---\n([\s\S]*?)\n---/);
   if (!fmMatch) return null;
   const fm = fmMatch[1];
 
-  // Locate `artifact_hashes:` block, capture until next top-level key (or end)
-  const hashesMatch = fm.match(/^artifact_hashes:\s*\n([\s\S]*?)(?=\n[a-z_]+:|$)/m);
-  if (!hashesMatch) return null;
-
-  const hashesBlock = hashesMatch[1];
-  const entryRe = new RegExp(`^\\s+${escapeRegex(artifactId)}:\\s*["']?(sha256:[a-f0-9]{64})["']?`, 'm');
-  const entryMatch = hashesBlock.match(entryRe);
-  if (!entryMatch) return null;
-
-  return entryMatch[1];
+  // Line-based parser — robust to multi-entry `artifact_hashes:` block.
+  // Previous regex-based approach (lazy [\s\S]*?(?=\n[a-z_]+:|$)/m) silently
+  // captured only the first hash entry because $ in multiline mode matches
+  // end-of-line, so drift detection broke для всех embedded SC/BR/IC/LC/VC/NFR/MK/NM
+  // (R5/A1 fix-up — post-review 2026-05-13).
+  const lines = fm.split('\n');
+  const entryRe = new RegExp(`^\\s+${escapeRegex(artifactId)}:\\s*["']?(sha256:[a-f0-9]{64})["']?\\s*$`);
+  let inHashesBlock = false;
+  for (const line of lines) {
+    if (/^artifact_hashes:\s*$/.test(line)) {
+      inHashesBlock = true;
+      continue;
+    }
+    if (!inHashesBlock) continue;
+    // Exit block on first non-indented line (next top-level YAML key or blank-followed-by-key).
+    // YAML continuation для блока — indented (>=1 space); top-level key starts at column 0.
+    if (/^\S/.test(line)) {
+      inHashesBlock = false;
+      continue;
+    }
+    const m = line.match(entryRe);
+    if (m) return m[1];
+  }
+  return null;
 }
 
 function escapeRegex(s) {

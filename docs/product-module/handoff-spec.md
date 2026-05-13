@@ -515,6 +515,7 @@ Receiver видит, что blocker был «overridden by author with rationale
 | **V-H-08** | Если has_ui=true, UI Specification секция заполнена | 🔴 Blocking |
 | **V-H-09** | Dependencies секция перечисляет все FM, упомянутые как prerequisites | 🟡 Warn |
 | **V-H-10** | Out of Scope секция не пуста (даже если «ничего явно не excluded — это тоже info») | 🟡 Warn |
+| **V-H-11** | NFR section 11 conformity: содержимое соответствует `FM.nfr_status` per три case-а в §6 Раздел 11 (active → embedded NFR; declined → rationale + tier defaults; pending → warning + receiver guidance) | 🔴 Blocking при inconsistent active/embedded или high-risk declined без rationale; 🟡 Warn при pending |
 
 ## 9. Adapter Pattern
 
@@ -966,7 +967,7 @@ Implemented в skill [`skills/product/handoff-generator.md`](../../skills/produc
 - [x] Frontmatter валиден, все обязательные поля заполнены — V-H-06
 - [x] `artifact_hashes` computed для всех embedded через `hooks/product/lib/hash.js` (body markdown без frontmatter, LF-normalized, SHA-256, `sha256:<hex64>`) — V-H-02
 - [x] DoR validation run, все blocking passed (mode-aware: production 8, draft 3) — overall DoR
-- [x] V-H-01..V-H-10 passed (или явно known-warn) — full V-H-* coverage
+- [x] V-H-01..V-H-11 passed (или явно known-warn) — full V-H-* coverage
 - [x] Запись в decision journal Integrator (если adapter уже существует) — Phase 5+ когда adapter installed
 
 ## 16. Implementation status
@@ -975,7 +976,7 @@ Implemented в skill [`skills/product/handoff-generator.md`](../../skills/produc
 - [x] **`/product:handoff` command** — Phase 4.E shipped; `commands/product/handoff.md`
 - [x] **Skill `handoff-generator.md`** — Phase 4.E shipped с full §15 checklist + mode-aware DoR (DEC-DEV-0028 D.1) + hash utility integration (DEC-DEV-0025 C.1)
 - [x] **Cross-platform hash invariant** — `hooks/product/lib/hash.js` shipped (Phase 4.E); body markdown без frontmatter, LF-normalized; same module used by Phase 4.F gate hook
-- [ ] **`product-handoff-gate.js` PreToolUse hook** — Phase 4.F (next); blocks edits FM.status: in-progress если handoff exists с status: stale
+- [x] **`product-handoff-gate.js` PostToolUse non-blocking hook** — Phase 4.F shipped; V-H-04 drift detection: после save артефакта в `.product/` сканирует handoffs, recomputes hashes через `lib/hash.js`, warns в stderr при mismatch (suggests `/product:handoff <FM-id> --regenerate`)
 - [ ] **`--with-da-review` flag actual DA invocation** — Phase 4.H (DA expansion DEC-DEV-0026); Phase 4.E ships flag parsing + soft warning logic placeholder
 - [ ] **RL-NNN bundle handoff** — v1.1+ (deferred per scope discipline); Phase 4 ships FM-NNN scope only
 - [ ] **Первый adapter (handoff → cc-sdd) через Integrator** — Phase 5 deliverable

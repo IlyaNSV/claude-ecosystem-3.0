@@ -67,7 +67,7 @@ Single utility = source of truth для cross-platform hash (per DEC-DEV-0025 C.
 - LF normalized (strip CR)
 - SHA-256 → `sha256:<hex64>`
 
-Sub-phase F (`product-handoff-gate.js` PreToolUse hook) использует тот же module.
+Sub-phase F (`product-handoff-gate.js` PostToolUse non-blocking hook) использует тот же module.
 
 ## Anti-patterns
 
@@ -79,17 +79,17 @@ Sub-phase F (`product-handoff-gate.js` PreToolUse hook) использует т�
 
 4. **Hash drift ignored — silent stale handoff.** Per V-H-04: drift → `status: stale`. Receivers must check status field перед consuming.
 
-5. **`--with-da-review` без Phase 4.H availability.** Phase 4.E ships flag parsing + soft warning logic; actual DA invocation = Phase 4.H. Если pre-H invocation surfaces к user — explain placeholder («DA expansion в Phase 4.H; flag будет functional после H lands»).
+5. **`--with-da-review` без Phase 4.H availability — handled через B3 safe-guard.** Phase 4.E ships flag parsing + soft warning logic + explicit pre-flight check на existence of `skills/product/product-da-review.md`. Если skill missing — user получит [c] continue без DA / [a] abort prompt (см. `handoff-generator.md` Step 4). Natural'ная активация когда Phase 4.H landит skill — никаких config flag-ов не нужно flip-ать.
 
 ## Related
 
 - Skill: `.claude/skills/product/handoff-generator.md`
 - Hash utility: `.claude/hooks/product/lib/hash.js`
 - Spec: `.claude/docs/product-module/handoff-spec.md` (full handoff format reference)
-- DoR validation: V-H-01..V-H-10 (см. `skills/product/validation-runner.md` V-H-* matrix и `docs/pmo/validation.md §5.2`)
+- DoR validation: V-H-01..V-H-11 (см. `skills/product/validation-runner.md` V-H-* matrix и `docs/pmo/validation.md §5.2`)
 - Phase 4 cross-refs:
   - sub-phase C: `validation-runner.md` V-H-* matrix shared
   - sub-phase D: handoff §11 NFR consumes `FM.nfr_status` + NFR artifacts
-  - sub-phase F (next): `product-handoff-gate.js` PreToolUse re-uses `lib/hash.js`
+  - sub-phase F: `product-handoff-gate.js` PostToolUse non-blocking re-uses `lib/hash.js` для V-H-04 drift detection
   - sub-phase H: `--with-da-review` invokes `/product:da-review` (Phase 4.H deliverable)
 - Receiver chain: handoff → adapter (Integrator Phase 5+) → external tool (cc-sdd, Kiro, etc.)
