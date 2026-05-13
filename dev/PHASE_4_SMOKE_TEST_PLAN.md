@@ -12,29 +12,27 @@
 
 ## A. Static verification (executed in Phase 4.J AI session)
 
-### A.1 Hook smoke runner — ✅ PASS (7/7)
+### A.1 Hook smoke runner — ✅ PASS (8/8)
 
 ```
-node dev/meta-improvement/scripts/verify-hooks.js
+node dev/meta-improvement/scripts/smoke-hooks.js
 ```
 
-Output:
+Output (post-rebase на main с merged b8f16bc functional layer extension):
 ```
-=== smoke-hooks ===
 PASS  hooks/product/artifact-validate.js
 PASS  hooks/product/bg-extractor.js
 PASS  hooks/product/cascade-check.js
 PASS  hooks/product/br-change-trigger.js
 PASS  hooks/product/ic-change-trigger.js
 PASS  hooks/product/session-state.js
-PASS  hooks/product/product-handoff-gate.js
+PASS  hooks/product/product-handoff-gate.js [no-handoff]
+PASS  hooks/product/product-handoff-gate.js [drift-on-second-artifact]
 
-Total: 7 hook(s) tested; 0 failure(s).
-
-SKIP  eslint hooks/ (run `npm install` to enable richer static analysis)
+Total: 8 hook(s) tested; 0 failure(s).
 ```
 
-Exit code: `0`. Phase 4.F `product-handoff-gate.js` запущен через `smoke-hooks.js TEST_CASES` array. Phase 3 baseline (6 hooks) extended к 7 без regression. Соответствует quality gate per DEC-DEV-0023 F6/R3.
+Exit code: `0`. Phase 4.F `product-handoff-gate.js` запущен в двух кейсах: базовый `no-handoff` (PostToolUse non-blocking exit clean) + `drift-on-second-artifact` (functional layer от b8f16bc DEC-DEV-0031 — multi-entry artifact_hashes block с wrong SC-005 stored hash → assert stderr содержит «Handoff drift detected»). 8/8 PASS подтверждает что Phase 4.H rebase preserved Phase 4.F integrity. Phase 3 baseline (6 hooks) extended к 7 в Phase 4.F + functional cases в Phase 4 review fix-up. Соответствует quality gate per DEC-DEV-0023 F6/R3 + DEC-DEV-0031 lesson 1 («smoke `no crash` ≠ correct behavior»).
 
 ### A.2 File structure — ✅ PASS
 
@@ -436,9 +434,9 @@ node -e "const h=require('.claude/hooks/product/lib/hash.js'); console.log(h.com
 node dev/meta-improvement/scripts/verify-hooks.js
 ```
 
-Output: `Total: 7 hook(s) tested; 0 failure(s).` Exit code 0.
+Output: `Total: 8 hook(s) tested; 0 failure(s).` Exit code 0.
 
-Phase 4.F `product-handoff-gate.js` smoke entry confirmed working. Phase 3 baseline preserved.
+Phase 4.F `product-handoff-gate.js` smoke entry confirmed working в двух functional cases (no-handoff + drift-on-second-artifact от b8f16bc/DEC-DEV-0031 review fix-up). Phase 3 baseline preserved.
 
 ### S15 — Phase 4 closure ritual (Phase 4.K)
 
