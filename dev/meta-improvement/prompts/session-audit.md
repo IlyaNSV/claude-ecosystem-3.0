@@ -200,6 +200,19 @@ findings_count:
   warning: <int>
   info: <int>
   uncertain: <int>
+scenarios:
+  S1: COVERED | PARTIAL | FAIL | NOT-COVERED | UNCERTAIN
+  S2: COVERED | PARTIAL | FAIL | NOT-COVERED | UNCERTAIN
+  # ... one entry per scenario in the smoke plan, even if NOT-COVERED.
+  # Skip this block entirely in catalog-only mode.
+findings:
+  # One list entry per finding from Process catalog (Step 3).
+  # Skip block entirely if no findings.
+  - check_id: A | B | C | D | E | F | G
+    severity: blocking | warning | info | uncertain
+    confidence: high | medium | low | uncertain
+    artifact: <path or artifact id, e.g., BR-022 or .product/business-rules/BR-022-...md>
+    snippet: <≤80 chars summary of the issue>
 ---
 
 # Session audit — {{SESSION_ID}}
