@@ -1,40 +1,61 @@
 #!/usr/bin/env node
 /**
- * session-audit.js — SessionEnd hook for post-session conformance audit.
+ * session-audit.js — SessionEnd hook (marker writer mode, Phase 4.1).
  *
- * Reads the session's JSONL transcript, spawns a headless `claude -p`
- * auditor against docs/pmo/processes.md + validation.md + B.1 frontmatter
- * conventions, and writes findings to
- * dev/meta-improvement/audit-reports/<session-id>.md.
+ * Appends a Pending row to dev/meta-improvement/audit-index.md for the
+ * completed session, so that /meta:audit-smoke (or scripts/audit-smoke.js)
+ * can later batch-audit accumulated markers against the active phase
+ * smoke test plan.
+ *
+ * Refactored from the prototype (8a83562 + 06e718b) which spawned a
+ * detached `claude -p` auditor per session. New design separates capture
+ * (this hook, idempotent) from audit (manual command, on-demand). See
+ * DEC-DEV-0034.
+ *
+ * Behaviour:
+ *   - Reads SessionEnd payload from stdin (JSON).
+ *   - Locates ecosystem repo root (via __dirname fallback if cwd has no
+ *     DEV_JOURNAL.md — supports registration from external pilot projects).
+ *   - Reads audit-index.md, skips if session_id is already in Pending or
+ *     Processed (idempotent on retry / resume / fork).
+ *   - Appends one row to the Pending section between the sentinel
+ *     comments PENDING_ROWS_START / PENDING_ROWS_END.
+ *   - Never spawns the auditor. Never modifies anything outside
+ *     audit-index.md.
  *
  * Exit 0 always — SessionEnd cannot block per Claude Code hooks spec.
  *
- * Skip conditions:
- *   - transcript_path missing in payload, or file unreadable
- *   - session contains no Write/Edit to .product/ files (nothing to audit)
+ * Failure modes:
+ *   - Missing audit-index.md → stderr warning, exit 0 (operator must run
+ *     git pull or check Phase 4.1 install).
+ *   - Corrupted sentinels → stderr warning, exit 0 (operator fixes file
+ *     manually; loud error guides them).
+ *   - Missing transcript_path → stderr warning, exit 0.
+ *   - JSON parse error on payload → silent exit 0 (likely test harness).
  *
- * Activation: registered in .claude/settings.local.json SessionEnd hook.
- *
- * Configuration:
- *   CLAUDE_CLI_PATH — override path to the `claude` binary (default: PATH lookup)
- *
- * Limitations (prototype):
- *   - Pre-filter only catches .product/ writes. Extend MATCH_PATHS below to
- *     audit dev/meta-improvement/ or docs/ work.
- *   - JSONL schema assumed to follow Anthropic API content-block shape
- *     (rec.message.content[].type === 'tool_use'). If Claude Code changes
- *     transcript format, the pre-filter silently misses and audit is skipped.
- *   - Auditor runs detached fire-and-forget. No retry, no progress signal to
- *     the user beyond the stderr line on hook exit.
+ * Activation: register in the TARGET project's .claude/settings.local.json:
+ *   {
+ *     "hooks": {
+ *       "SessionEnd": [{
+ *         "hooks": [{
+ *           "type": "command",
+ *           "command": "node <ABS_PATH>/dev/meta-improvement/hooks/session-audit.js"
+ *         }]
+ *       }]
+ *     }
+ *   }
+ * Use /ecosystem:enable-d7-audit for automated setup.
  */
 
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
 
-const MATCH_PATHS = ['.product/', '.product\\'];
+const PENDING_START = '<!-- PENDING_ROWS_START -->';
+const PENDING_END = '<!-- PENDING_ROWS_END -->';
+const PROCESSED_START = '<!-- PROCESSED_ROWS_START -->';
+const PROCESSED_END = '<!-- PROCESSED_ROWS_END -->';
 
 // === Read SessionEnd payload ===
 let payload;
@@ -54,84 +75,71 @@ if (!fs.existsSync(transcript_path)) {
   process.exit(0);
 }
 
-// === Pre-filter: did the session touch .product/ ? ===
-let touched = false;
-try {
-  const lines = fs.readFileSync(transcript_path, 'utf-8').split('\n');
-  outer: for (const line of lines) {
-    if (!line.trim()) continue;
-    let rec;
-    try { rec = JSON.parse(line); } catch { continue; }
-    const content = rec?.message?.content;
-    if (!Array.isArray(content)) continue;
-    for (const block of content) {
-      if (block?.type !== 'tool_use') continue;
-      const tn = block.name;
-      if (tn !== 'Write' && tn !== 'Edit' && tn !== 'NotebookEdit') continue;
-      const fp = String(block.input?.file_path || '');
-      if (MATCH_PATHS.some((p) => fp.includes(p))) {
-        touched = true;
-        break outer;
-      }
-    }
-  }
-} catch (e) {
-  process.stderr.write(`[session-audit] transcript read failed: ${e.message}\n`);
-  process.exit(0);
-}
-if (!touched) {
-  process.stderr.write('[session-audit] no .product/ changes in session; skipping\n');
-  process.exit(0);
-}
-
-// === Locate repo root + prompt template ===
+// === Locate ecosystem repo root ===
 const repoRoot = findRepoRoot(cwd || process.cwd());
 if (!repoRoot) {
   process.stderr.write('[session-audit] could not locate ecosystem repo root; skipping\n');
   process.exit(0);
 }
-const promptTemplate = path.join(repoRoot, 'dev', 'meta-improvement', 'prompts', 'session-audit.md');
-if (!fs.existsSync(promptTemplate)) {
-  process.stderr.write(`[session-audit] prompt template missing: ${promptTemplate}\n`);
-  process.exit(0);
-}
 
-// === Prepare output path ===
-const reportsDir = path.join(repoRoot, 'dev', 'meta-improvement', 'audit-reports');
-try { fs.mkdirSync(reportsDir, { recursive: true }); } catch {}
-const reportPath = path.join(reportsDir, `${session_id}.md`);
-
-// === Build prompt ===
-let prompt;
-try {
-  prompt = fs.readFileSync(promptTemplate, 'utf-8')
-    .replace(/\{\{SESSION_ID\}\}/g, session_id)
-    .replace(/\{\{TRANSCRIPT_PATH\}\}/g, transcript_path)
-    .replace(/\{\{REPO_ROOT\}\}/g, repoRoot)
-    .replace(/\{\{REPORT_PATH\}\}/g, reportPath)
-    .replace(/\{\{SESSION_END_REASON\}\}/g, reason || 'unknown');
-} catch (e) {
-  process.stderr.write(`[session-audit] prompt template read failed: ${e.message}\n`);
-  process.exit(0);
-}
-
-// === Spawn headless claude auditor (detached, fire-and-forget) ===
-const claudeBin = process.env.CLAUDE_CLI_PATH || 'claude';
-try {
-  const child = spawn(claudeBin, ['-p', prompt], {
-    cwd: repoRoot,
-    stdio: 'ignore',
-    detached: true,
-    shell: process.platform === 'win32',
-  });
-  child.unref();
+// === Locate audit-index.md ===
+const indexPath = path.join(repoRoot, 'dev', 'meta-improvement', 'audit-index.md');
+if (!fs.existsSync(indexPath)) {
   process.stderr.write(
-    `[session-audit] auditor spawned (PID ${child.pid}); report → ${path.relative(repoRoot, reportPath)}\n`
+    `[session-audit] audit-index.md not found at ${indexPath}; skipping (run /ecosystem:update or git pull)\n`
   );
-} catch (e) {
-  process.stderr.write(`[session-audit] spawn failed: ${e.message}\n`);
+  process.exit(0);
 }
 
+let indexContent;
+try {
+  indexContent = fs.readFileSync(indexPath, 'utf-8');
+} catch (e) {
+  process.stderr.write(`[session-audit] audit-index.md read failed: ${e.message}\n`);
+  process.exit(0);
+}
+
+// === Idempotency: skip if session_id already present ===
+if (indexContent.includes(`| \`${session_id}\` |`)) {
+  process.stderr.write(`[session-audit] session ${session_id} already in audit-index; skipping\n`);
+  process.exit(0);
+}
+
+// === Locate Pending sentinels ===
+const pendingStartIdx = indexContent.indexOf(PENDING_START);
+const pendingEndIdx = indexContent.indexOf(PENDING_END);
+if (pendingStartIdx === -1 || pendingEndIdx === -1 || pendingEndIdx < pendingStartIdx) {
+  process.stderr.write(
+    `[session-audit] audit-index.md sentinels missing or malformed (expected ${PENDING_START} ... ${PENDING_END}); skipping\n`
+  );
+  process.exit(0);
+}
+
+// === Build marker row ===
+const targetProject = cwd ? path.basename(path.resolve(cwd)) : '(unknown)';
+const endedAt = new Date().toISOString();
+const reasonNote = reason ? ` (reason: ${reason})` : '';
+const row = `| \`${session_id}\` | ${endedAt} | ${targetProject} | \`${transcript_path}\`${reasonNote} |`;
+
+// === Insert row between sentinels ===
+const head = indexContent.slice(0, pendingStartIdx + PENDING_START.length);
+const tail = indexContent.slice(pendingStartIdx + PENDING_START.length);
+const updated = `${head}\n${row}${tail}`;
+
+// === Atomic-ish write: tmp file + rename ===
+const tmpPath = `${indexPath}.tmp.${process.pid}`;
+try {
+  fs.writeFileSync(tmpPath, updated);
+  fs.renameSync(tmpPath, indexPath);
+} catch (e) {
+  process.stderr.write(`[session-audit] audit-index write failed: ${e.message}\n`);
+  try { fs.unlinkSync(tmpPath); } catch {}
+  process.exit(0);
+}
+
+process.stderr.write(
+  `[session-audit] marker written for ${session_id} (target: ${targetProject}); run /meta:audit-smoke to process\n`
+);
 process.exit(0);
 
 // === Helpers ===
@@ -149,8 +157,8 @@ function findRepoRoot(start) {
   }
   // Fallback: derive from script location. Hook lives at
   // dev/meta-improvement/hooks/session-audit.js → ecosystem repo root is 3
-  // levels up. This makes the hook usable from external projects (e.g.,
-  // my-first-test) where cwd has no DEV_JOURNAL.md.
+  // levels up. Makes the hook usable from external pilot projects where
+  // cwd has no DEV_JOURNAL.md (precedent: 06e718b).
   const scriptRepoRoot = path.resolve(__dirname, '..', '..', '..');
   if (
     fs.existsSync(path.join(scriptRepoRoot, 'CLAUDE.md')) &&

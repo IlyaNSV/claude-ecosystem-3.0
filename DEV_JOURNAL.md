@@ -2604,6 +2604,95 @@ Total time actual: ~35 min (substrate + execution + report) + ~25 min (inline fi
 
 ---
 
+## DEC-DEV-0034 — D7 Log Conformance Auditor (Phase 4.1 / 1.2.1)
+
+**Date:** 2026-05-14
+**Trigger:** User observation 2026-05-14: нужен механизм-анализатор логов сессий по чек-листу (`PHASE_<N>_SMOKE_TEST_PLAN.md`), сверяющий действия пилот-сессий с ожидаемым поведением + ведущий журнал идемпотентности. Существующий прототип session-audit ([8a83562](https://github.com/) + [06e718b](https://github.com/)) покрывает generic `.product/` writes против process catalog, но НЕ привязан к smoke plan и не имеет защиты от re-audit. Расширяем прототип до production-ready mechanism в рамках Phase 4.1 (patch).
+**Tag:** #d7 #audit #phase-4-1 #conformance
+
+### Context
+
+Прототип session-audit (shipped без DEC entry в `8a83562`) собрал минимальный SessionEnd hook + auditor prompt с 7 generic checks (A–G: B.1 frontmatter, P-RULE-01/02, V-11, D1 sequence, skill discipline, phase boundary). Прототип:
+- Не зарегистрирован в shared settings (per design — «prototype only»)
+- Pre-filter ограничен `.product/` writes
+- Trigger only auto на SessionEnd (один spawn `claude -p` на каждую сессию)
+- Output — single-shot `<session-id>.md` без журнала; нет защиты от повторного audit'а
+- Не использует smoke test plan как ground truth — checks только на generic processes
+
+User usecase: smoke test фазы выполняется в пилотном проекте (`my-first-test`) за N сессий; нужен механизм, который ПОСЛЕ smoke выполнения сверяет действия (transcripts) с `PHASE_<N>_SMOKE_TEST_PLAN.md`, классифицирует покрытие S1..Sn scenarios, пишет отчёт + ведёт журнал для идемпотентности.
+
+SPEC §2.3 D7 gaps уже перечисляет «Validation gates» (#6) и «Phase closure hygiene» (#3) как concerns модуля — usecase ровно туда укладывается.
+
+### Options considered
+
+**Размещение компонента:**
+1. Самостоятельный модуль (`dev/audit/`) — clean separation, но дублирует D7 hooks/prompts/scripts machinery и нарушает SPEC §1
+2. **Расширение D7 — выбрано.** Естественная эволюция прототипа; gaps §2.3 #3 + #6 ровно про этот usecase; CONVENTIONS §3 уже допускает hybrid mechanism mix
+3. Поднять в product module (deployed) — нарушает CONVENTIONS §2 «D7 NEVER deployed»; smoke plan и отчёты живут в репо экосистемы, нет смысла копировать в пилот
+
+**Trigger model:**
+- Auto-only (как прототип) — много `claude -p` spawn'ов, плохо для multi-session smoke
+- Manual-only — забываемо, теряем session marker между сессиями
+- **Hybrid (выбрано)** — hook пишет marker без spawn, command consumes batch при manual invocation
+
+**Input model для аудитора:**
+- Только smoke plan — narrow, теряем 7 existing checks
+- Только processes catalog — не покрывает primary usecase coverage trace
+- **Plan PRIMARY + processes SECONDARY (выбрано)** — coverage trace на плане + generic findings в process catalog как secondary section
+
+**Discovery model:**
+- Только явный path / session_id — теряем «найти логи по давности»
+- Только auto-discovery — нет escape hatch для edge cases
+- **Auto-discovery + override (выбрано)** — default scan `~/.claude/projects/<slug>/*.jsonl`, флаги `--transcript`/`--session-id` для контроля
+
+**Aggregator (phase summary):**
+- Script-only — counts надёжны, narrative и conflict resolution отсутствуют
+- AI-only — fabrication risk на counts (классический failure mode «AI считает суммы»)
+- **Hybrid script→AI (выбрано)** — script вычисляет mechanical aggregate в `phase-<N>-aggregate.json` (coverage matrix + dedupped findings + counts); AI делает narrative synthesis с явным запретом пересчитывать числа
+
+### Decision
+
+Phase 4.1 (patch release 1.2.1) расширяет D7 session-audit прототип до full conformance auditor mechanism. Scope разовый, без разбиения на v1/v1.1 этапы.
+
+**Architecture (детальные spec'и — в файлах ниже):**
+
+| Component | File | Status |
+|---|---|---|
+| Marker-writer hook (refactor) | [`hooks/session-audit.js`](dev/meta-improvement/hooks/session-audit.js) | refactored: убран spawn, добавлен write в audit-index |
+| Per-session auditor prompt (extend) | [`prompts/session-audit.md`](dev/meta-improvement/prompts/session-audit.md) | extended: Step 0 identify phase + Step 2.5 coverage trace + расширенный schema; 7 existing checks → secondary catalog |
+| Phase aggregator prompt (new) | [`prompts/phase-audit-summary.md`](dev/meta-improvement/prompts/phase-audit-summary.md) | new: input script-computed JSON + per-session reports + plan; output narrative с conflict resolution |
+| CLI orchestrator (new) | [`scripts/audit-smoke.js`](dev/meta-improvement/scripts/audit-smoke.js) | new Node CLI: parse plan, query index, transcript pre-process, spawn auditor, compute aggregate, spawn aggregator |
+| Index helper (new) | [`scripts/audit-index.js`](dev/meta-improvement/scripts/audit-index.js) | new Node module: addPending / markProcessed / listPending / listProcessed |
+| Slash command D7-internal (new) | [`commands/audit-smoke.md`](dev/meta-improvement/commands/audit-smoke.md) | new: wrapper над `node scripts/audit-smoke.js`; не deployed, доступен из cwd репо экосистемы |
+| Enable command для пилота (new) | [`commands/ecosystem/enable-d7-audit.md`](commands/ecosystem/enable-d7-audit.md) | new opt-in: пишет SessionEnd hook entry в пилотный `.claude/settings.local.json` с абсолютным путём к ecosystem repo |
+| Audit journal (new) | [`audit-index.md`](dev/meta-improvement/audit-index.md) | new Markdown: Pending + Processed sections |
+| User instruction + checklist (new) | [`checklists/audit-smoke-workflow.md`](dev/meta-improvement/checklists/audit-smoke-workflow.md) | new: smoke-then-audit ritual для developer |
+
+**Connection экосистема ↔ пилот:** hook script лежит в ecosystem repo `dev/meta-improvement/hooks/session-audit.js`; пилот регистрирует его в своём `.claude/settings.local.json` SessionEnd hook через абсолютный путь (one-time setup, либо `/ecosystem:enable-d7-audit`, либо вручную). Отчёты пишутся обратно в ecosystem repo, отдельно от пилотного `.product/`. Соблюдает CONVENTIONS §2.
+
+**Trigger flow:**
+1. Smoke в пилоте → SessionEnd → hook пишет marker в `audit-index.md` Pending (ecosystem repo через `findRepoRoot` fallback из [06e718b](https://github.com/))
+2. Developer повторяет шаг 1 N раз (multi-session smoke допустим)
+3. Developer cwd → ecosystem repo → `/meta:audit-smoke --phase=N` (или `node dev/meta-improvement/scripts/audit-smoke.js --phase=N`)
+4. CLI: parse plan → query Pending → per-session spawn auditor → compute aggregate JSON → spawn aggregator → move markers Pending → Processed → print summary
+5. Reports: `audit-reports/<session-id>.md` (per-session) + `audit-reports/phase-<N>-summary.md` (aggregate)
+
+**Decisions сделанные по ходу:**
+- CLI primary в Node.js (single source of truth), bash/ps1 wrappers — defer (если потребуются)
+- Slash command в `dev/meta-improvement/commands/` (новая convention для D7-internal commands) — НЕ в `commands/<namespace>/` (которые deployed)
+- Bootstrap auto-registration — отдельная команда `/ecosystem:enable-d7-audit`, не флаг к `/ecosystem:bootstrap` (меньше cognitive load на главный bootstrap, opt-in явный)
+- audit-index format — Markdown (human-readable + git-diffable; парсинг через Node helper, не shell)
+
+### Outcome
+
+(Filled retroactively after Phase 4.1 ships + dogfood validation на real Phase 4 smoke.)
+
+### Lessons
+
+(Filled retroactively after smoke validation run.)
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
