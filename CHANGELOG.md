@@ -6,6 +6,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.2.1] — 2026-05-14
+
+Phase 4.1 patch release: **D7 Log Conformance Auditor** — расширение прототипа `session-audit` (8a83562) к production mechanism для валидации smoke-сессий пилотных проектов против `PHASE_<N>_SMOKE_TEST_PLAN.md`. Hook-collects-state + command-consumes-batch composite pattern с журналом идемпотентности. Per [DEC-DEV-0034](DEV_JOURNAL.md).
+
+**No backwards compatibility impact** — D7 internal infrastructure только. Existing pilot installations keep working без изменений; opt-in `/ecosystem:enable-d7-audit` нужен только если developer хочет аудитить smoke в данном пилоте.
+
+### Added — D7 conformance auditor mechanism (DEC-DEV-0034)
+
+- **`dev/meta-improvement/hooks/session-audit.js`** (refactored from prototype) — SessionEnd marker writer. Без spawn. Идемпотентен. Регистрируется в пилотном проекте через absolute path; пишет Pending row в `audit-index.md` репо экосистемы.
+- **`dev/meta-improvement/scripts/audit-smoke.js`** — Node CLI orchestrator. Parses `PHASE_<N>_SMOKE_TEST_PLAN.md`, queries Pending markers (фильтры `--since`, `--target-project`, `--session-id`, `--transcript`), pre-processes transcripts (filter `tool_use` blocks, truncate >2k char content), spawns per-session `claude -p` auditor, computes deterministic aggregate JSON (coverage matrix + dedupped findings), spawns AI aggregator. Exit codes: 0/1/2/3. Flags: `--phase`, `--force`, `--dry-run`, `--no-plan`, `--skip-aggregate`.
+- **`dev/meta-improvement/scripts/audit-index.js`** — Node helper module: parse/format/append Pending + Processed rows; atomic writes via tmp+rename.
+- **`dev/meta-improvement/prompts/session-audit.md`** (extended) — per-session auditor prompt с Step 0 (identify phase), Step 2.5 (smoke plan coverage trace — primary), expanded YAML schema (`mode`, `coverage_summary`, `scenarios`, `findings` machine-readable blocks). Existing 7 checks (A-G frontmatter/P-RULE/V-11/D1/skill/phase) сохранены как secondary process catalog.
+- **`dev/meta-improvement/prompts/phase-audit-summary.md`** (new) — aggregator prompt: synthesize narrative из script-computed JSON; explicit «never recount» rule (anti-fabrication on numbers); coverage matrix + conflict resolution + recommendations sections.
+- **`dev/meta-improvement/audit-index.md`** (new) — Pending + Processed journal с sentinel-based insertion anchors для hook и CLI. Markdown table format, human-readable, git-diffable.
+- **`dev/meta-improvement/audit-reports/`** — output directory: `<session-id>.md` per session, `phase-<N>-summary.md` aggregate, `phase-<N>-aggregate.json` script-computed input.
+- **`.claude/commands/meta/audit-smoke.md`** — slash command wrapper для `/meta:audit-smoke`; доступен только из cwd репо экосистемы (D7 mechanisms NOT deployed в user projects).
+- **`commands/ecosystem/enable-d7-audit.md`** — opt-in setup command для пилотного проекта; регистрирует SessionEnd hook в `.claude/settings.local.json` с absolute path к репо экосистемы. Идемпотентно.
+- **`dev/meta-improvement/checklists/audit-smoke-workflow.md`** — developer ritual: one-time setup → per-phase smoke → audit → DEV_JOURNAL retroactive entry. Включает pre-flight + post-audit checklists, troubleshooting table.
+
+### Modified — D7 conventions
+
+- **`dev/meta-improvement/CONVENTIONS.md`** §3, §4 — added audit mechanism rows; new composite pattern «hook-collects + command-consumes».
+- **`.gitignore`** — exception для `.claude/commands/` subtree чтобы D7-internal slash commands могли быть tracked (settings.local.json + worktrees/ остаются ignored).
+
+### Connection ecosystem ↔ pilot
+
+Hook script лежит в репо экосистемы; пилот регистрирует его через absolute path в `.claude/settings.local.json` (one-time setup via `/ecosystem:enable-d7-audit`). Отчёты пишутся в репо экосистемы. Пилот не загрязнён meta-артефактами. См. `dev/meta-improvement/checklists/audit-smoke-workflow.md` для full ритуала.
+
+### Runtime smoke pending
+
+Sam mechanism Phase 4.1 ещё не прогонялся на real Phase 4 transcript'е (его smoke test pending user execution per Phase 4 closure — DEC-DEV-0032/0033). Findings dogfood validation будут retroactive в `DEC-DEV-0034 — Outcome/Lessons` после первого реального run.
+
+---
+
 ## [1.2.0] — 2026-05-13
 
 Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline + HYP frontmatter canonical**. 6 new commands + 6 new/refactored skills + 1 new hook + 1 hook utility + 1 agent refactor + 5 skill language reminders + Language section в template. Ships through 10 sub-phase commits (A-H implementation + J static smoke + b8f16bc review fix-up + K1 closure docs). Per [DEC-DEV-0024..0032](DEV_JOURNAL.md).

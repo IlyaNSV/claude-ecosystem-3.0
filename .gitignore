@@ -41,5 +41,13 @@ fixtures/local/
 # during bootstrap). If Claude Code creates .claude/ anywhere inside
 # this repo (subagents with isolation=worktree, local experiments, etc.),
 # don't track it.
-.claude/
+#
+# Exception (Phase 4.1, DEC-DEV-0034): track ecosystem-repo-local slash
+# commands under .claude/commands/ so /meta:* surfaces when working in
+# the ecosystem repo itself. settings.local.json, worktrees/, and other
+# private state stay ignored.
 **/.claude/
+!/.claude/
+/.claude/*
+!/.claude/commands/
+!/.claude/commands/**

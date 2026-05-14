@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-13.
+> **Последнее обновление:** 2026-05-14.
 
 ## Где мы сейчас
 
@@ -23,11 +23,15 @@
    — 8 sub-phase commits (A-H) + J static smoke + b8f16bc review fix-up (DEC-DEV-0031) + K1 closure docs
    — Static smoke 8/8 PASS; runtime smoke S1-S13+S15 deferred к user execution
    — DEC-DEV-0032 closure entry; 1.2.0 release
+✅ Phase 4 closure ritual (Unit 2) — DEC-DEV-0033, 9 findings (5 inline fixed; 3 queued Phase 5; 1 user F4)
+✅ Phase 4.1 — D7 Log Conformance Auditor (2026-05-14)
+   — Hook marker writer + CLI orchestrator + AI aggregator + slash command + pilot opt-in command
+   — `/meta:audit-smoke --phase=<N>` сверяет smoke-сессии с `PHASE_<N>_SMOKE_TEST_PLAN.md`; журнал идемпотентности
+   — DEC-DEV-0034 entry; 1.2.1 patch release; runtime dogfood pending
 
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 4 closure ritual (D7 Unit 2 — fresh-session run per phase-closure.md 6 steps)
-⏳ Phase 4 runtime smoke test (S1-S13+S15 — user-driven Claude Code session с .product/ data)
+⏳ Phase 4 runtime smoke test (S1-S13+S15 — user-driven Claude Code session с .product/ data; первый usecase для Phase 4.1 auditor)
 ⏳ Phase 5 readiness gate — kickoff session per dev/PHASE_5_READINESS.md
 ⏳ Phase 5 — Integrator Phase 2 (Installation + first cc-sdd adapter)
 ⏳ 🎯 PILOT POINT — full end-to-end (handoff generation + external tool)
