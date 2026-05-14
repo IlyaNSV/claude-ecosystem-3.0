@@ -2685,11 +2685,35 @@ Phase 4.1 (patch release 1.2.1) расширяет D7 session-audit протот
 
 ### Outcome
 
-(Filled retroactively after Phase 4.1 ships + dogfood validation на real Phase 4 smoke.)
+Phase 4.1 shipped (1.2.1) через 3 commits:
 
-### Lessons
+| Commit | SHA | Scope |
+|---|---|---|
+| 1 | `79d5861` | Hook refactor (marker writer) + extended session-audit prompt + audit-index initial + audit-reports/README update + DEC skeleton |
+| 2 | `c53eb41` | scripts/audit-index.js helper + scripts/audit-smoke.js CLI + prompts/phase-audit-summary.md aggregator + .claude/commands/meta/audit-smoke.md slash command + .gitignore exception for .claude/commands/ |
+| 3 | (this commit) | commands/ecosystem/enable-d7-audit.md + checklists/audit-smoke-workflow.md + CONVENTIONS §3/§4 update + CHANGELOG [1.2.1] + ROADMAP refresh + this entry populated |
 
-(Filled retroactively after smoke validation run.)
+**Total deliverables:** 11 new/refactored files. ~1,500 lines net (audit-smoke.js — ~470; prompts ~350+200; workflow ~250; enable command ~140; helper ~150; CONVENTIONS/CHANGELOG/ROADMAP refresh ~80; DEC entry ~120).
+
+**Sanity validated в этой сессии:**
+- `node -c` syntax check passes on both scripts
+- `audit-smoke.js --help` prints usage correctly
+- `audit-smoke.js --phase=99 --dry-run` handles missing plan gracefully (falls back to catalog-only, empty Pending → exit 0 «No sessions to audit»)
+- `.gitignore` exception verified via `git check-ignore`: `.claude/commands/meta/audit-smoke.md` un-ignored; `.claude/settings.local.json` + `.claude/worktrees/**` остаются ignored
+
+**Runtime dogfood pending:** mechanism Phase 4.1 ещё не прогонялся на real Phase 4 transcript'е (см. user F4 в DEC-DEV-0033 — pilot `my-first-test` не обновлён к Phase 4 state; runtime smoke S1-S13 deferred к user execution). После первого реального run эта секция получит «Lessons» populated retroactively (precedent: DEC-DEV-0023 Phase 3 smoke ретро).
+
+### Lessons (design-time, pending runtime)
+
+1. **B.1 convention применяется и к meta-domain reports.** Schema for per-session audit report (Step 4 in `session-audit.md`) явно перечисляет anti-pattern field names: `status_overall`/`coverage`/`findings`/`scenarios_summary`/`phase_number` — все запрещены, canonical only. Aggregator prompt тоже: `summary`/`agg_status` запрещены. Pattern: **любой artifact, который AI генерирует с structured frontmatter, подвержен «natural rename» drift; defensive anti-pattern list — preventive, не reactive**. Applies во всех новых D7 mechanisms где AI пишет structured output.
+
+2. **Hybrid script→AI aggregator — новый precedent в mechanism mix.** Раньше D7 mechanisms были либо чистый script (verify-update.sh), либо чистый AI prompt (memory-sync.md), либо checklist. Phase 4.1 ввёл composite: script вычисляет mechanical truth (counts, dedup, matrix) → AI делает narrative synthesis на этом lockedinput. Anti-fabrication через explicit «never recount» rule в prompt. **Surfacing для CONVENTIONS §3 next refinement: добавить «hybrid script→AI» как distinct mechanism class между «pure script» и «pure prompt»**, когда счёт правильности критичен.
+
+3. **Hook-collects-state + command-consumes-batch — отдельный composite pattern.** Hook `session-audit.js` пишет markers (idempotent, low-effort на каждой SessionEnd); command `/meta:audit-smoke` обрабатывает batch вручную. Это **не** «hook fires on event → action» (классический pattern); это **«hook accumulates → command consumes»**. Preserves bach control + cost discipline (AI auditor дорогой; не запускаем per-session). Pattern для future D7 mechanisms где computation cost > collection cost: hook собирает cheap state, command spawn'ит expensive analysis batch'ем.
+
+4. **`.gitignore` exception для `.claude/commands/` — first precedent для D7-internal slash commands.** До Phase 4.1 все slash commands жили в `commands/<namespace>/` верхнего уровня (deployed bootstrap'ом в user projects). D7 mechanisms «NEVER deployed» per CONVENTIONS §2, поэтому `/meta:audit-smoke` нужно жить в `.claude/commands/meta/` (видимо Claude Code в cwd репо экосистемы), но `.claude/` был fully gitignored. Pattern для будущих D7 slash commands: `.claude/commands/` subtree tracked via exception, остальное `.claude/` (settings.local.json, worktrees/) остаётся ignored.
+
+5. **Documentation-first scope разъяснение для one-shot session работает.** Перед началом implementation 3 questions через `AskUserQuestion` (trigger model, input model, discovery model) + явное обсуждение «связь репо ↔ пилот» + «aggregator AI vs script tradeoff» в 2-3 итерациях диалога. Это сжало ambiguity space до точки где имплементация шла линейно через 3 commits без architectural backtracking. **Pattern для будущих single-session multi-component features: invest 20-30% session time в design clarity ДО первого Write tool call.** Recurring 2 instances (Phase 4.H release-scope DA — DEC-DEV-0030; Phase 4.1 audit — this entry); candidate для CONVENTIONS refinement «pre-implementation design lock» как explicit step.
 
 ---
 

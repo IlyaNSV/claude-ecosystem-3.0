@@ -92,11 +92,13 @@ dev/meta-improvement/
 4. **Hook** — automatic on event. **Promote when:** command needs to fire on commit/file-change без developer action.
 
 **v1.0 status (mechanism mix):**
-- **Checklists** (default): phase-closure.md, phase-kickoff.md
+- **Checklists** (default): phase-closure.md, phase-kickoff.md, audit-smoke-workflow.md (Phase 4.1)
 - **Patterns** (Stage 3, mostly provisional): 5 в `patterns/`
 - **Skills** (Stage 4): memory-sync.md (formalizes phase-closure Step 5; manual run still default)
-- **Scripts** (Stage 4): verify-update.sh / .ps1 (post-/ecosystem:update verification, runs externally not via Claude Code skill chain)
-- **Hooks** (Stage 4): phase-closure-reminder.js (PostToolUse on Bash; surfaces stderr reminder when phase-completion commit detected без closure entry)
+- **Scripts** (Stage 4 + Phase 4.1): verify-update.sh / .ps1 (post-/ecosystem:update verification); audit-smoke.js + audit-index.js (Phase 4.1 D7 conformance auditor CLI)
+- **Hooks** (Stage 4 + Phase 4.1): phase-closure-reminder.js (PostToolUse on Bash; surfaces stderr reminder when phase-completion commit detected без closure entry); session-audit.js (SessionEnd marker writer for pilot projects, Phase 4.1)
+- **Slash commands** (Phase 4.1): `/meta:audit-smoke` (.claude/commands/meta/, ecosystem-repo-local), `/ecosystem:enable-d7-audit` (deployable but D7-internal — opt-in setup для pilot)
+- **Composite mechanism** (Phase 4.1): hook-collects-state + command-consumes-batch pattern — `session-audit.js` пишет markers в `audit-index.md`, `/meta:audit-smoke` обрабатывает batch'ем
 
 **Rationale:** SPEC §5 anti-pattern #4 «Tooling over discipline» honored — checklist remained default; promotions made only когда manual proved insufficient (Memory sync skill formalizes ~10 min ritual; verify-update script enables external validation; hook addresses «forget to run closure» failure mode).
 
@@ -118,6 +120,9 @@ dev/meta-improvement/
 | `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | Manual (user types invocation) |
 | `scripts/verify-update.sh` | Post-/ecosystem:update | Per update | Manual (user runs externally) |
 | `hooks/phase-closure-reminder.js` | PostToolUse on Bash matching `git commit` с phase-completion pattern | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
+| `hooks/session-audit.js` | SessionEnd in pilot project | Per session | **Auto** (registered в pilot's `.claude/settings.local.json` via `/ecosystem:enable-d7-audit`) — writes marker only, no spawn |
+| `/meta:audit-smoke` (+ `scripts/audit-smoke.js`) | Post-smoke, after N sessions in pilot accumulated markers | Once per phase smoke | Manual (developer types invocation from ecosystem repo cwd) |
+| `checklists/audit-smoke-workflow.md` | Developer reference for the smoke-then-audit ritual | Per phase | Manual (developer reads) |
 
 **Reminder integration:**
 - D7 section в `CLAUDE.md` § «Что делать в этой сессии (Claude)» — ensures discovery (single block за all D7 mechanisms)
