@@ -1,0 +1,41 @@
+# DA review pending entries (managed by br-change-trigger.js + ic-change-trigger.js)
+# Orchestrator (feature-session.md) reads → spawns product-devils-advocate subagent
+# Mode: adaptive — subagent self-classifies cosmetic vs significant per DEC-DEV-0012
+# Schema per skills/product/feature-session.md DA orchestration flow
+#
+# This is a Phase 4 smoke fixture (3 entries, pre-existing from 2026-05-13).
+# Used by PHASE_4_SMOKE_TEST_PLAN.md Setup step to seed non-empty
+# da-pending state for S12 verification (anti-pattern #2 + session-window guard).
+#
+# All 3 referenced artifacts have status: active в current .product/ → entries
+# qualify as "stale" per skill logic, должны быть flagged-not-deleted. queued_at
+# in past (2026-05-13) → session-window guard НЕ срабатывает (entries pre-exist).
+
+entries:
+  - artifact: BR-046
+    artifact_type: business-rule
+    title: Glossary term per-user uniqueness on (owner_id, source_phrase, source_language, target_language), active-only scope
+    status: active
+    file: .product/business-rules/BR-046-glossary-term-per-user-uniqueness.md
+    trigger: P-RULE-02
+    hook: br-change-trigger.js
+    mode: adaptive
+    queued_at: "2026-05-13T10:24:28.423Z"
+  - artifact: BR-047
+    artifact_type: business-rule
+    title: Glossary term ownership anti-enumeration — server returns generic 404 for cross-owner reads
+    status: active
+    file: .product/business-rules/BR-047-glossary-term-ownership-anti-enumeration.md
+    trigger: P-RULE-02
+    hook: br-change-trigger.js
+    mode: adaptive
+    queued_at: "2026-05-13T11:01:00.217Z"
+  - artifact: IC-001
+    artifact_type: invariant
+    title: Email uniqueness — single active account per email
+    status: active
+    file: .product/invariants/IC-001-email-uniqueness.md
+    trigger: P-RULE-01
+    hook: ic-change-trigger.js
+    mode: adaptive
+    queued_at: "2026-05-13T14:38:54.236Z"
