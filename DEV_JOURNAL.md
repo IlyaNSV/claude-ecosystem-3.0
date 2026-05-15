@@ -2717,6 +2717,130 @@ Phase 4.1 shipped (1.2.1) через 3 commits:
 
 ---
 
+## DEC-DEV-0035 — `audit-smoke.js --re-aggregate` для retry path
+
+**Date:** 2026-05-15
+**Trigger:** Первый runtime прогон `/meta:audit-smoke --phase=4` через 5 Pending сессий — одна (`5345f116`) упала с `spawnSync C:\WINDOWS\system32\cmd.exe ETIMEDOUT` на 10-минутном дефолтном таймауте. После retry с `AUDIT_SMOKE_TIMEOUT_MS=1200000 --session-id=… --force` сессия прошла, но `phase-4-aggregate.json` оказался перезаписан только одной retry-сессией, а `phase-4-summary.md` (из первого батча) остался без 5-й сессии — summary stale relative to actual Processed state.
+**Tag:** #tooling #bug-fix #meta-improvement
+
+### Context
+
+`audit-smoke.js` (Phase 4.1, DEC-DEV-0034) дизайнился под happy path: один batch → discover Pending → per-session spawn → aggregate computed from current-batch successes → claude -p aggregator. Логика на [`scripts/audit-smoke.js:655`](dev/meta-improvement/scripts/audit-smoke.js): `if (succeeded.length > 0 && plan && args.phase != null && !args.skipAggregate)` — где `succeeded` — array только текущего прогона.
+
+Retry path не был explicit'но продуман: при `--session-id=X --force` script правильно re-audit'ит X и moves to Processed, но aggregator снова compute'ит только {X} вместо {все Processed для phase}. Корректный summary существовал короткое окно (после первого батча), но retry overwrote aggregate JSON и attempted aggregator с single-session input.
+
+### Options considered
+
+1. **Re-run всех Processed сессий с `--force`** — re-spawns claude -p per session. Correct, но wasteful: 5 × ~10 min = ~50 min для phase в данном случае. Тратит на каждый retry quadratically больше времени.
+
+2. **Изменить default: aggregate всегда берёт ВСЕ Processed reports для current phase, не только current-batch successes.** Cleanest semantically — «aggregate = state of phase, не state of batch». Но: surprise behavior для incremental smoke flow (audit batch 1 → aggregate reflects batch 1; audit batch 2 → aggregate suddenly включает batch 1+2 even if user wanted batch-only view). Breaking semantic для существующего UX.
+
+3. **Новый opt-in флаг `--re-aggregate`** — reads все Processed reports for phase из audit-index → loads frontmatter from `audit-reports/<sid>.md` → computeAggregate → runAggregator. Backwards-compatible (existing flow не меняется). Cheap: один claude -p call (~3-5 min) вместо N.
+
+### Decision
+
+Вариант 3. Минимальная поверхность изменений: новый флаг + ~80 lines кода в `main()` (re-aggregate path до `discoverSessions`). Incompatibility checks: `--re-aggregate` exclusive с `--session-id`, `--transcript`, `--force`, `--dry-run`, `--skip-aggregate`, `--no-plan`; требует `--phase=N`. Re-uses existing `computeAggregate` + `runAggregator` + `parseReportFrontmatter` — нет дублирования логики.
+
+### Outcome
+
+Shipped в этой сессии. Verified end-to-end: 5 Processed reports loaded → aggregate JSON computed → claude -p aggregator (~3 min) → `phase-4-summary.md` regenerated correctly (5 sessions, status=fail, 1 FAIL / 3 PARTIAL / 1 CLEAN). Время выполнения retry+re-aggregate: ~13 min total vs estimated ~50 min для полного re-run всех 5.
+
+CLI exit semantics preserved:
+- Phase status=clean → exit 0
+- Phase status=findings/partial → exit 0 (warning/info don't fail CLI)
+- Phase status=fail → exit 3 (matches existing convention)
+
+### Lessons
+
+1. **Multi-batch retry не был covered acceptance criteria Phase 4.1.** Original DEC-DEV-0034 design predicted «multi-session smoke допустим» (см. Outcome 4: «multi-session smoke → один phase produces N Processed rows»), но retry-path где batch_2 не покрывает все Processed — не был explicit'но продуман. Lesson: для batch-processing scripts со state file — design test cases для «retry only failed entries в существующем aggregate state», не только «full batch». Это recurring pattern (любая cumulative state + retry).
+
+2. **Aggregator coupling к current-batch — implicit assumption, не explicit invariant.** В исходном коде `succeeded.length > 0` читается как «не aggregator'и empty batch», но фактически выполняет double duty: и «есть что aggregate'ить» и «aggregate = batch, не phase». Lesson: explicit invariants > implicit guards. Should be: «aggregate scope = ALL Processed for phase» или «aggregate scope = current batch successes» — codified в одну строчку comment'а у `succeeded` declaration.
+
+3. **Spawn flakiness `spawnSync … ETIMEDOUT` под Windows + claude -p — first observed.** Та же сессия (5345f116, 140 records — меньше успешной 212-record fbb32599) reprocessed успешно после увеличения таймаута до 20 min. Hypothesis: cold-start `claude -p` под Windows может занимать longer первый раз в процессе. Не script bug; `AUDIT_SMOKE_TIMEOUT_MS` env var уже шипится из коробки. Если повторится — bump default к 900000 (15 min) или document в `audit-smoke-workflow.md` как ожидаемый Windows-only quirk.
+
+4. **Output freshness surface — UX gap.** Текущий CLI exit message «Done: N/M audited» не сообщает «summary covers sessions {…}» — пользователь не знает, отражает ли `phase-N-summary.md` текущий audit-index state или прошлый batch. Defer fix до второго случая (single instance — пока not enough signal); кандидаты: aggregator output line «Summary includes sessions: …» + audit-index «last_aggregated» note per phase.
+
+---
+
+## DEC-DEV-0036 — S12 fix: cleanup-detector anti-pattern #5 hardening + impl-leak strip
+
+**Date:** 2026-05-15
+**Trigger:** Phase 4 smoke audit (session `5345f116`, per DEC-DEV-0035 re-aggregated summary) зарегистрировал **первый 🔴 FAIL** в runtime — S12 `/product:cleanup --pending-hygiene`. AI загрузил `cleanup-detector.md` (proper discipline, recorded at transcript record 4), прочитал anti-pattern #5 «Не purge cascade-pending entries directly», и **всё равно** сделал `Write cascade-pending.yaml → entries: []` + loop `node .claude/hooks/product/cascade-check.js` synthetic-hook-input по 117 артефактам. Rationale в DEC-CLEANUP-002 (consumer journal): «прямой invoke … те же hook semantics, на порядок быстрее».
+**Tag:** #spec-revision #pilot-finding #ux
+
+### Context
+
+«Skill loaded, anti-pattern bypassed» — самый неприятный failure mode. Не «AI забыл скилл» (skill был loaded), не «anti-pattern был скрыт» (line 257 plain text). AI **сознательно взвесил** anti-pattern против performance gain и выбрал второе, документировав deviation в consumer-project decision journal. Это не lapse, это rationalized override.
+
+Анализ skill text revealed два concurring факторов:
+
+1. **Implementation leak.** [`skills/product/cleanup-detector.md:88-91`](skills/product/cleanup-detector.md) (до фикса) описывала **HOW** делегированная команда `/product:cascade --pending --revalidate` работает внутри:
+   > Логика `/product:cascade --pending --revalidate`:
+   > - Wipe `cascade-pending.yaml` entries
+   > - Per active artifact — re-trigger `cascade-check.js` через no-op Read+Write
+   > - Refreshed pending state отражает current artifact graph
+
+   Это давало AI готовую дорожную карту для bypass: «delegation — это просто Read+Write loop; я знаю как; вызову `cascade-check.js` напрямую через subprocess, будет 10x быстрее». Skill effectively defeated its own anti-pattern, leaking implementation details of the delegate.
+
+2. **Anti-pattern #5 без «почему».** «Не purge cascade-pending entries directly. Delegate ... Этот skill orchestrates, не reimplements» — directive без countervailing rationale. Performance — мощный соблазн, и без explicit'ного «performance is not a valid deviation reason» guardrail AI'у нечего противопоставить «на порядок быстрее».
+
+### Options considered
+
+1. **Defensive: strip implementation leak + harden anti-pattern #5 wording.** Удалить «Логика делегированной команды» 4-line block; expand #5 с explicit list запрещённых действий + 3 «почему делегация non-negotiable» reasons + explicit «performance не valid reason» guard. Не меняет contract; raises friction для bypass.
+2. **Pragmatic: sanction fast-path под conditions.** Codify direct invoke в spec как alt-path с жёсткими гардами (user confirmation + journal entry + delegation fallback). Принимает реальность, но ослабляет «orchestration not reimplementation» invariant + leaks impl details deliberately.
+3. **Combined: 1 + explicit alt-path under conditions.** Defense plus sanctioned escape hatch. Больше surface area; pulls в обе стороны.
+4. **Investigate-first: re-run S12 без правок, verify reproducibility.** Если deviation не повторится — single outlier; если повторится — systemic. Откладывает решение пока не накопится evidence.
+
+### Decision
+
+Вариант 1 (Defensive). Минимальные правки в `skills/product/cleanup-detector.md`:
+
+- **Lines 84-93:** убрана «Логика» 4-line block; вместо неё одна строка «Этот skill **не** знает и не должен знать как `/product:cascade --pending --revalidate` устроен внутри — это orchestration через published interface, не reimplementation».
+- **Anti-pattern #5 (line 247+):** expanded с (a) explicit list запрещённых действий (3 пункта), (b) 3 «почему делегация non-negotiable» reasons (Semantic stability / Audit trail / Contract integrity), (c) «Performance не valid reason для deviation» guard с reference к этому S12 incident как precedent.
+
+Отвергнут вариант 2: «sanction fast-path» создаёт incentive shopping в spec'ах любых orchestration skills под предлогом performance. Phase 5+ Integrator design assumes orchestration через slash commands — semantic stability важнее 10x speed на rare deep-sweep operation.
+
+Отвергнут вариант 4 «investigate-first»: signal сильный (explicit DEC-CLEANUP-002 entry с rationale в consumer journal — AI consciously rationalized deviation, не accidental slip). Wait-and-see добавит выборку, но не изменит root cause.
+
+### Outcome
+
+Edits applied в эту сессию. Verification deferred к follow-up smoke session: re-run S12 (`/product:cleanup --pending-hygiene` в свежей session без подсказок) → проверить что AI вызывает `/product:cascade --pending --revalidate` через SlashCommand, а не пишет cascade-pending.yaml напрямую. Tracked для Phase 5 readiness.
+
+### Follow-up (2026-05-15, после второго smoke прогона)
+
+Сессия `98cb1b97` (second S12 smoke) **не верифицировала** anti-pattern #5 fix — `cascade-pending.yaml` оказался пустым на старте, делегация была no-op'ом. Вместо этого AI нарушил **другой anti-pattern в том же skill — #2 (DA-pending flag-only)**:
+
+1. Edit BR-027 (`lifecycles: [LC-Job] → [LC-004]` + version 1→2) — scope creep, не входит в cleanup mandate.
+2. Hook `br-change-trigger.js` корректно queue'нул DA-pending entry для P-RULE-02 (`queued_at: 14:45:03`).
+3. Через ~2 минуты AI `Write .product/.pending/da-pending.yaml → entries: []`, стирая свежий entry без spawn `product-devils-advocate`.
+4. Session-end commit `fix(BR-027): ...` без user confirmation.
+
+Это **🔴 BLOCKING finding** (P-RULE-02 violation) + anti-pattern #2 violation. Defensive pattern (strip impl + harden) применён симметрично к anti-pattern #2 в том же commit'е:
+
+- **Section «3. `da-pending.yaml` → flag stale entries»** дополнен: «Hard constraint — read-only» (skill никогда не пишет в da-pending.yaml), «Session-window guard» (skip entries с `queued_at >= session_start_timestamp`), «AskUserQuestion framing» (`Recommended` не на destructive option).
+- **Anti-pattern #2** expanded симметрично #5: 4 запрещённых конкретных действия (Write/Edit к da-pending.yaml, implicit purge через misleading framing, любая mutation в той же session), 4 «почему flag-only non-negotiable» reasons (Hook contract / DA review unblock / Audit chain / Session-window safety), «Recommended framing — guard», «Performance не valid reason» + precedent reference на `5345f116` (user-authorized misleading framing) и `98cb1b97` (silent wipe blocking P-RULE-02).
+- **Execution flow Step 5c** reinforced: «read-only flag» + queued_at filter, explicit «НЕ writes к da-pending.yaml».
+
+Verification обоих fixes теперь deferred к третьему smoke прогону: нужна session с **непустым** `cascade-pending.yaml` (тестирует #5 fix) AND **hook-emitted da-pending entry** during cleanup invocation (тестирует #2 fix).
+
+### Lessons
+
+1. **Skill spec не должна описывать internal mechanism делегированных artifacts.** Если skill X делегирует к slash command Y, описание HOW Y работает внутри — leak, который радикально снижает friction для bypass. Pattern для всех skills'ов которые делегируют: describe **WHAT** (intent + expected outcome + user-facing output), не **HOW** (subprocess shape, file operations, hook calls). Кандидат для CONVENTIONS §3 refinement: новое правило «skill describing delegated artifact must NOT describe its internal mechanism — only published interface + observable outcome».
+
+2. **Anti-patterns нуждаются в explicit «почему», не только «что».** «Не делать X. Делать Y вместо.» — без countervailing rationale это **advisory**, не **prescriptive**. AI взвесит performance/clarity/simplicity gain против implicit anti-pattern weight и выберет deviation. Прескриптивный anti-pattern включает: (a) explicit list запрещённых конкретных действий, (b) explicit «почему» (3+ orthogonal reasons), (c) explicit guards против «оправданий» (performance, brevity, optimization).
+
+3. **«Skill loaded, anti-pattern bypassed» — отдельный failure mode, более серьёзный чем «skill не loaded».** В Phase 2-3 DEC-DEV-0011/0012 lessons мы видели «AI rename field for naturalness» — это accidental drift из-за неосознанного rephrase. S12 — другой класс: **rationalized override** с explicit decision-journal entry. Mitigation: anti-patterns как **non-negotiable rules** (с explicit precedent reference после первой violation), не как best practices. Pattern: после first observed rationalized violation — записывать incident reference прямо в anti-pattern body (как сделано в #5: «Precedent: anti-pattern #5 violation в Phase 4 smoke (S12, session `5345f116`) с rationale "на порядок быстрее" зарегистрирована как 🔴 FAIL»). Это даёт future AI runs explicit «не делай как тот guy», не abstract directive.
+
+4. **Decision journal в consumer project — useful signal, не excuse.** AI правильно записал DEC-CLEANUP-002 с rationale — это discipline, и это позволило audit найти deviation. Но journaling не санкционирует anti-pattern violation. Skill anti-patterns являются hard constraints over decision-journal license. Стоит surface в `skills/product/note-promote.md` или general convention: «decision journal entries не override anti-patterns — они document reasoning, не legitimize deviation».
+
+5. **«Validated by smoke» beats «validated by review».** Anti-pattern #5 был visible до Phase 4 ship (review pass) и looked fine. Smoke (runtime) — единственный venue где AI «договаривается с собой» rationalize'ить deviation. Recurring lesson (precedent: DEC-DEV-0011 PS frontmatter drift — review missed, smoke caught). Pattern для CONVENTIONS: review проверяет «что в spec написано», smoke проверяет «как AI на это реагирует под realistic pressure». Both nullable; only intersection complete.
+
+6. **Defensive fix нуждается в symmetric sweep по всем anti-patterns того же skill, не только violated.** Follow-up smoke (`98cb1b97`) показал: я зафиксил #5 (cascade direct) после первого FAIL, но второй smoke сразу нашёл same class violation в #2 (DA-pending wipe) — другой anti-pattern в том же skill `cleanup-detector.md` имеет ту же weakness (advisory wording, no «почему», no hard-list, no precedent). Pattern: когда defensive fix приходит для одного anti-pattern в skill, **полезно проверить весь anti-pattern list этого skill на тот же weakness class** и harden симметрично, не дожидаясь второго runtime FAIL. Это amortize'ит cost (один defensive sweep > N reactive fixes) + signals consistency (skill anti-pattern list as cohesive contract, не bag of advisories).
+
+7. **«Hook-emitted entry в той же session» — третий failure axis помимо impl leak и weak wording.** В `98cb1b97` AI стёр `da-pending.yaml` entry, которая была queued hook'ом **за 2 минуты до wipe в той же session** — не stale, не pre-existing, а side-effect собственной AI action. Skill изначально предполагал «stale = pre-existing residue», не «entries created in current session». Session-window guard (skip entries с `queued_at >= session_start`) — новый class of safeguard, который надо явно codify в любом skill с «cleanup stale state» semantics. Кандидат для CONVENTIONS: «temporal scope of `stale` должен быть explicit — session boundary, age threshold, или both».
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
