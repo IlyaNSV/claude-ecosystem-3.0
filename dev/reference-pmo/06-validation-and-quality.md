@@ -1,63 +1,63 @@
-# 06. Validation и quality safeguards
+# 06. Валидация и защитные механизмы качества
 
-> **Назначение:** функциональные требования к **validation** — каталог правил, severity tiers, override discipline, automated vs process rules.
+> **Назначение:** функциональные требования к **валидации** — каталог правил, уровни серьёзности (severity tiers), дисциплина переопределений (override discipline), разграничение автоматических и процессных правил.
 
 ---
 
 ## 06.1 Индустриальный референс
 
-### 06.1.1 Severity tiers (lint/typecheck/test analogies)
+### 06.1.1 Уровни серьёзности (severity tiers — аналогии с lint / typecheck / test)
 
-Software engineering знает разделение по severity:
-- **Lint warnings** — стилистика, suggestions
-- **Type errors** — likely bugs, blocking compilation
-- **Test failures** — actual bugs, blocking deploy
+В программной инженерии принято разделение по severity (серьёзности):
+- **Lint-предупреждения** — стилистические замечания, рекомендации
+- **Ошибки типов** — вероятные баги, блокируют компиляцию
+- **Падения тестов** — реальные баги, блокируют деплой
 
-Tiered linting (ESLint configs «strict» vs «recommended» vs «relaxed»; Ruff strict/standard) — practitioner pattern.
+Многоуровневый линтинг (tiered linting) — конфигурации ESLint «strict» / «recommended» / «relaxed», режимы Ruff strict/standard — устоявшийся практический паттерн.
 
-### 06.1.2 Process rules (non-automatable)
+### 06.1.2 Процессные правила (не поддающиеся автоматизации)
 
-Индустрия знает, что некоторые правила не могут быть автоматизированы. Pattern: declare them as **process rules** (mandatory steps), not validation rules. Examples:
-- **Code review** as process (not automatable; required step)
-- **Threat modeling** as process (Shostack)
-- **Architectural review** (ATAM as process)
+Индустрия признаёт: некоторые правила невозможно автоматизировать. Паттерн: объявлять их **процессными правилами** (обязательными шагами), а не правилами валидации. Примеры:
+- **Code review** как процесс (не автоматизируется; обязательный шаг)
+- **Моделирование угроз** (threat modeling) как процесс (Shostack)
+- **Архитектурное ревью** (ATAM как процесс)
 
-### 06.1.3 Override discipline
+### 06.1.3 Дисциплина переопределений (override discipline)
 
-ADR practice (Nygard 2011) — when you override default, document **why**. Linter rule disable comments must include reason (community practice).
+Практика ADR (Architecture Decision Record; Nygard, 2011): переопределяя поведение по умолчанию — документируй **почему**. Комментарии, отключающие правило линтера, обязаны содержать причину (практика сообщества).
 
-### 06.1.4 Bidirectional and forward/backward checks
+### 06.1.4 Двунаправленные проверки и проверки вперёд/назад
 
-RTM (Wiegers) defines forward (requirement → test) and backward (test → requirement) traces. Validation runs both directions.
+RTM (Requirements Traceability Matrix — матрица трассируемости требований; Wiegers) определяет прямые трассы (требование → тест) и обратные (тест → требование). Валидация проверяет оба направления.
 
 ### 06.1.5 Ключевые источники
 
-- ESLint / Ruff documentation — tiered linting practice.
-- Shostack, *Threat Modeling* (2014) — STRIDE process rule.
-- Bass, Clements, Kazman, *Software Architecture in Practice* — ATAM as process.
-- Nygard, ADR pattern (2011).
-- Wiegers & Beatty, *Software Requirements* (2013) ch. 30 — RTM bi-directional checks.
-- ISO/IEC/IEEE 29148 — requirements engineering verification standard.
+- ESLint / Ruff documentation — практика многоуровневого линтинга.
+- Shostack, *Threat Modeling* (2014) — процессное правило STRIDE.
+- Bass, Clements, Kazman, *Software Architecture in Practice* — ATAM как процесс.
+- Nygard, паттерн ADR (2011).
+- Wiegers & Beatty, *Software Requirements* (2013), гл. 30 — двунаправленные проверки RTM.
+- ISO/IEC/IEEE 29148 — стандарт верификации в инженерии требований.
 
 ---
 
 ## 06.2 Перечень функций
 
-| Функция | Industry-canonical | Source | Maturity |
+| Функция | Индустриальный канон | Источник | Зрелость |
 |---|---|---|---|
-| Catalog of named validation rules | Linter rules; static analysis catalog | (industry — ESLint, sonarqube) | MATURE |
-| Severity tier system (blocking/warning/info) | ESLint severity; PMD priorities | (industry) | MATURE |
-| Inline vs deferred validation | Linter --fix vs CI lint vs pre-commit | (industry) | MATURE |
-| Tier-aware activation | Tiered linting profiles | ESLint config layers; Ruff | MATURE-ISH |
-| Per-rule override discipline | Linter disable comments with reason | (community practice) | MATURE |
-| Per-artifact override | (нет канонического PMO; closest: per-file linter override) | (industry) | MATURE-ISH |
-| Process rules (non-automatable) | ATAM as process; threat modeling; code review | Bass; Shostack | MATURE |
-| Auto-fix where possible | Linter --fix; codemods | (industry) | MATURE |
-| Bidirectional ref consistency | RTM bi-directional | Wiegers ch. 30 | MATURE |
-| Stale artifact detection | Code dead detection; LSP unused detection | (industry) | MATURE |
-| Orphan artifact detection | RTM forward-trace zero hits | Wiegers ch. 30 | MATURE |
-| Validation на multiple execution points | Linter at IDE / commit / CI / scheduled | (industry composite) | MATURE |
-| Quiet-draft mode (validate but don't surface during draft) | (нет канонического; emerging UX) | (closest: lint deferral until commit) | EMERGING |
+| Каталог именованных правил валидации | Правила линтера; каталог статического анализа | (индустрия — ESLint, SonarQube) | MATURE |
+| Система уровней серьёзности (blocking/warning/info) | Severity в ESLint; приоритеты PMD | (индустрия) | MATURE |
+| Немедленная (inline) vs отложенная валидация | Linter --fix vs CI lint vs pre-commit | (индустрия) | MATURE |
+| Активация с учётом уровня (tier) | Профили многоуровневого линтинга | Слои конфигов ESLint; Ruff | MATURE-ISH |
+| Дисциплина переопределений по каждому правилу | Комментарии отключения правил линтера с указанием причины | (практика сообщества) | MATURE |
+| Переопределение по каждому артефакту | (нет канонического PMO-аналога; ближайший — переопределение линтера по файлу) | (индустрия) | MATURE-ISH |
+| Процессные правила (не автоматизируемые) | ATAM как процесс; моделирование угроз; code review | Bass; Shostack | MATURE |
+| Автоисправление где возможно | Linter --fix; codemods | (индустрия) | MATURE |
+| Двунаправленная согласованность ссылок | Двунаправленность RTM | Wiegers, гл. 30 | MATURE |
+| Обнаружение устаревших артефактов | Обнаружение мёртвого кода; обнаружение неиспользуемого через LSP | (индустрия) | MATURE |
+| Обнаружение артефактов-сирот | Нулевые попадания при прямой трассировке RTM | Wiegers, гл. 30 | MATURE |
+| Валидация в нескольких точках выполнения | Линтер в IDE / при коммите / в CI / по расписанию | (составной индустриальный паттерн) | MATURE |
+| Режим «тихого черновика» (quiet-draft: валидировать, но не показывать пока артефакт в черновике) | (нет канонического аналога; формирующийся UX-паттерн) | (ближайший — откладывание линтинга до коммита) | EMERGING |
 
 ---
 
@@ -65,92 +65,92 @@ RTM (Wiegers) defines forward (requirement → test) and backward (test → requ
 
 | # | Функция | Покрытие | Маркер | Locus | Примечание |
 |---|---|---|---|---|---|
-| 1 | Catalog of named validation rules | ● 3 | `[C]` | CC | V-01..V-15 (artifact integrity), V-H-01..V-H-10 (handoff structural), V-MK-01..V-MK-08 (UI completeness), P-RULE-01/02 (process rules). 33+2 named rules в `validation.md`. |
-| 2 | Severity tier system | ● 3 | `[C]` | CC | 🔴 Blocking / 🟡 Warning / 🔵 Info — explicit per rule. Direct port of linter severity. |
-| 3 | Inline vs deferred | ● 3 | `[C]` | CC | 5 execution points: inline (PostToolUse hook), approve gate, handoff generation, on-demand `/product:validate`, periodic (deferred v2). |
-| 4 | Tier-aware activation | ● 3 | `[F]` | CC | B1 modification: `validation_tier: pilot \| mvp \| full` — pilot tier inline только 🔴 Blocking, mvp inline 🔴+🟡, full inline all. **Strong fitness extension** of tiered linting practice. |
-| 5 | Per-rule override discipline | ● 3 | `[C]` | CC | `.claude/integrator/validation-config.yaml` global_overrides.rules.{V-XX}: severity + rationale + (для disabled) approved_by + approved_at. Direct ADR-style logging. |
-| 6 | Per-artifact override | ● 3 | `[C]` | CC | `validation_overrides[]` в frontmatter (permanent severity change для one artifact). Different from `approve_overrides[]` (temporary gate pass). |
-| 7 | Process rules (non-automatable) | ● 3 | `[C]` | CC | P-RULE-01 (IC change → DA review with adaptive depth), P-RULE-02 (BR change → DA + impact analysis). Pattern direct from ATAM-as-process tradition. |
-| 8 | Auto-fix where possible | ◐ 2 | `[F/C]` | CC | V-11 bi-dir auto-fix works (add reverse ref when target active); other rules detection-only. **Conscious cut:** full BFS auto-fix beyond V-11 deferred v1.1. |
-| 9 | Bidirectional ref consistency | ● 3 | `[C]` | CC | V-11 🔴 with auto-fix. Direct port of RTM bi-directional principle. |
-| 10 | Stale artifact detection | ● 3 | `[C]` | CC | V-12 (drafts >14 days configurable) → flagged in `/product:status`. Configurable threshold. |
-| 11 | Orphan artifact detection | ● 3 | `[C]` | CC | V-15 + `/product:cleanup --dry-run`. Direct RTM forward-trace pattern. |
-| 12 | Validation на multiple execution points | ● 3 | `[C]` | CC | 5 points listed в `validation.md` §3. Periodic deferred v2. |
-| 13 | Quiet-draft mode | ● 3 | `[F]` | CC | B2 modification: hooks в quiet mode при status:draft; findings queued в `.product/.pending/`. **Frontier UX pattern**; emerging in AI-driven tooling. |
+| 1 | Каталог именованных правил валидации | ● 3 | `[C]` | CC | V-01..V-15 (целостность артефактов), V-H-01..V-H-10 (структура handoff), V-MK-01..V-MK-08 (полнота UI), P-RULE-01/02 (процессные правила). 33+2 именованных правила в `validation.md`. |
+| 2 | Система уровней серьёзности | ● 3 | `[C]` | CC | 🔴 Blocking / 🟡 Warning / 🔵 Info — явно указан для каждого правила. Прямой перенос severity из линтеров. |
+| 3 | Немедленная vs отложенная | ● 3 | `[C]` | CC | 5 точек выполнения: немедленная (хук PostToolUse), gate при approve, генерация handoff, по запросу `/product:validate`, периодическая (отложена до v2). |
+| 4 | Активация с учётом уровня (tier) | ● 3 | `[F]` | CC | Модификация B1: `validation_tier: pilot \| mvp \| full` — на уровне pilot немедленно проверяются только 🔴 Blocking, на mvp — 🔴+🟡, на full — все. **Сильное fitness-расширение** практики многоуровневого линтинга. |
+| 5 | Дисциплина переопределений по каждому правилу | ● 3 | `[C]` | CC | `.claude/integrator/validation-config.yaml` — global_overrides.rules.{V-XX}: severity + rationale + (для отключённых) approved_by + approved_at. Прямое логирование в стиле ADR. |
+| 6 | Переопределение по каждому артефакту | ● 3 | `[C]` | CC | `validation_overrides[]` во frontmatter (постоянное изменение severity для одного артефакта). Отличается от `approve_overrides[]` (временный проход через gate). |
+| 7 | Процессные правила (не автоматизируемые) | ● 3 | `[C]` | CC | P-RULE-01 (изменение IC → ревью DA с адаптивной глубиной), P-RULE-02 (изменение BR → DA + анализ влияния). Паттерн напрямую из традиции «ATAM как процесс». |
+| 8 | Автоисправление где возможно | ◐ 2 | `[F/C]` | CC | Автоисправление V-11 (двунаправленность) работает (добавляет обратную ссылку, когда цель активна); остальные правила — только обнаружение. **Сознательное сокращение:** полное BFS-автоисправление за пределами V-11 отложено до v1.1. |
+| 9 | Двунаправленная согласованность ссылок | ● 3 | `[C]` | CC | V-11 🔴 с автоисправлением. Прямой перенос принципа двунаправленности RTM. |
+| 10 | Обнаружение устаревших артефактов | ● 3 | `[C]` | CC | V-12 (черновики старше 14 дней — настраивается) → помечаются в `/product:status`. Настраиваемый порог. |
+| 11 | Обнаружение артефактов-сирот | ● 3 | `[C]` | CC | V-15 + `/product:cleanup --dry-run`. Прямой паттерн прямой трассировки RTM. |
+| 12 | Валидация в нескольких точках выполнения | ● 3 | `[C]` | CC | 5 точек перечислены в `validation.md` §3. Периодическая отложена до v2. |
+| 13 | Режим «тихого черновика» | ● 3 | `[F]` | CC | Модификация B2: хуки работают в тихом режиме при status:draft; находки ставятся в очередь в `.product/.pending/`. **Передовой UX-паттерн**; формируется в AI-инструментарии. |
 
-**Итог:** 12 × ● 3, 1 × ◐ 2 (#8 auto-fix), 0 × ◔ 1 / ✗ 0. Strong coverage. Single partial — auto-fix beyond V-11 deferred v1.1.
+**Итог:** 12 × ● 3, 1 × ◐ 2 (#8 — автоисправление), 0 × ◔ 1 / ✗ 0. Сильное покрытие. Единственное частичное — автоисправление за пределами V-11 отложено до v1.1.
 
 ---
 
 ## 06.4 Нарративный анализ соответствия
 
-### 06.4.1 Validation catalog — strong match
+### 06.4.1 Каталог валидации — сильное соответствие
 
-**Match.** 33 + 2 named rules — среди наиболее тщательных living-spec validation systems. Direct port of linter discipline applied to product spec.
+**Соответствие.** 33 + 2 именованных правила — один из наиболее тщательно проработанных среди систем валидации «живых спецификаций» (living-spec). Прямой перенос дисциплины линтеров, применённый к продуктовой спецификации.
 
-### 06.4.2 Tier-aware activation — fitness frontier
+### 06.4.2 Активация с учётом уровня — передний край fitness
 
-**Match с extension.** Индустрия имеет tiered linting (ESLint strict/standard); ты расширил это до lifecycle-stage activation (pilot/mvp/full validation_tier). **Stronger** because tier reflects product maturity, not just code style preference.
+**Соответствие с расширением.** В индустрии есть многоуровневый линтинг (ESLint strict/standard); ты расширил его до активации по стадии жизненного цикла (`validation_tier`: pilot/mvp/full). **Сильнее**, потому что уровень отражает зрелость продукта, а не просто предпочтения по стилю кода.
 
-### 06.4.3 Process rules — proper non-automation handling
+### 06.4.3 Процессные правила — корректная обработка неавтоматизируемого
 
-**Match.** Industry pattern: when rule can't be automated, declare as process step rather than fake validation. P-RULE-01 (IC → DA) и P-RULE-02 (BR → DA + impact analysis) follow this pattern correctly. Better than systems that fake automation with false positives.
+**Соответствие.** Индустриальный паттерн: если правило нельзя автоматизировать — объявляй его процессным шагом, а не имитируй валидацию. P-RULE-01 (IC → DA) и P-RULE-02 (BR → DA + анализ влияния) корректно следуют этому паттерну. Лучше, чем системы, которые имитируют автоматизацию ценой ложных срабатываний.
 
-### 06.4.4 Override discipline — mature
+### 06.4.4 Дисциплина переопределений — зрелая
 
-**Match.** Three levels of override:
-- Project-level (`validation-config.yaml` rules.severity)
-- Per-artifact permanent (`validation_overrides[]`)
-- Per-artifact temporary gate-pass (`approve_overrides[]`)
+**Соответствие.** Три уровня переопределения:
+- Уровень проекта (`validation-config.yaml` — rules.severity)
+- Постоянное по артефакту (`validation_overrides[]`)
+- Временный проход через gate по артефакту (`approve_overrides[]`)
 
-This is more granular than typical systems (linter disable comment is the closest analog, но не имеет temporary-pass mechanism).
+Это более гранулярно, чем в типичных системах (ближайший аналог — комментарий отключения правила линтера, но в нём нет механизма временного прохода).
 
-### 06.4.5 Auto-fix limited — conscious cut
+### 06.4.5 Ограниченное автоисправление — сознательное сокращение
 
-**Conscious gap.** Только V-11 (bi-dir) auto-fixes; full BFS auto-fix deferred v1.1. **Rationale (DEC-DEV-0012):** «Cascade protocol implementation на JS — графовая операция; mitigation: detection-only scope для v1, V-11 auto-fix только.» Reasonable for v1; bring-forward trigger is pattern emergence in cascade-pending.yaml.
+**Сознательный пробел.** Автоисправление есть только у V-11 (двунаправленность); полное BFS-автоисправление отложено до v1.1. **Обоснование (DEC-DEV-0012):** «Реализация каскадного протокола на JS — графовая операция; смягчение: для v1 ограничиться только обнаружением, автоисправление — только V-11». Разумно для v1; триггер досрочной реализации — появление паттерна в `cascade-pending.yaml`.
 
-### 06.4.6 Quiet-draft mode — fitness frontier
+### 06.4.6 Режим «тихого черновика» — передний край fitness
 
-**Match с frontier.** Индустрия имеет «defer until commit» (pre-commit hooks); ты operationalized «defer until status:draft → active». Subtler timing, more contextual. **Frontier UX** — not a standard practice in living spec systems.
+**Соответствие на переднем крае.** В индустрии есть «откладывать до коммита» (pre-commit-хуки); ты операционализировал «откладывать до перехода status:draft → active». Более тонкий момент срабатывания, более контекстный. **Передовой UX** — не стандартная практика в системах «живых спецификаций».
 
-### 06.4.7 Что не покрыто (потенциальные additions)
+### 06.4.7 Что не покрыто (потенциальные дополнения)
 
-1. **Validation regression suite.** Когда сами validation rules меняются, ловят ли они regressions? **Не explicit.** Индустрия: snapshot tests. Можно добавить: fixture-based tests per rule. Acknowledged в `validation.md` §10.5 «Test coverage» как future work.
-2. **Performance budgets для validation.** `<100ms inline` documented (§10.4) but not enforced. Индустрия: linter speed tracking. Track in snapshot if validation slowdowns appear.
-3. **Validation cross-rule conflict detection.** Два правила могут оба fire on same artifact с conflicting recommendations. Индустрия: linter rule conflict matrices. Не addressed currently.
-4. **Validation telemetry.** False positive rate per rule, fix rate, dismiss rate — needed to drive `/product:meta-feedback`. Implicit but not codified.
+1. **Регрессионный набор тестов для валидации.** Когда меняются сами правила валидации — ловят ли они регрессии? **Явно не реализовано.** В индустрии: snapshot-тесты. Можно добавить: тесты на фикстурах для каждого правила. Признано в `validation.md` §10.5 «Test coverage» как будущая работа.
+2. **Бюджеты производительности для валидации.** `<100ms inline` задокументировано (§10.4), но не контролируется принудительно. В индустрии: отслеживание скорости линтера. Отслеживать в снапшоте, если появятся замедления валидации.
+3. **Обнаружение конфликтов между правилами валидации.** Два правила могут оба сработать на одном артефакте с противоречащими рекомендациями. В индустрии: матрицы конфликтов правил линтера. Сейчас не проработано.
+4. **Телеметрия валидации.** Доля ложных срабатываний по каждому правилу, доля исправлений, доля отклонений — нужны, чтобы питать `/product:meta-feedback`. Подразумевается, но не кодифицировано.
 
 ---
 
 ## 06.5 Анти-паттерны для отслеживания
 
-1. **Validation theater.** Симптомы: rules pass; reality differs. False positives ignored long enough that `/product:meta-feedback` has accumulated proposals to downgrade many rules. **Source:** general validation discipline.
-2. **Tier abuse — pilot forever.** Уже в Section 02. Validation tier never upgrades despite product maturing.
-3. **Override accumulation.** Симптомы: 10+ rules with overrides в `validation-config.yaml`; trending up. **Source:** ADR — overrides should be exceptions.
-4. **Auto-fix over-confidence.** Симптомы: auto-fix invoked on edge cases; user corrects often. **Source:** general automation discipline.
-5. **Quiet-draft as escape hatch.** Симптомы: artifacts permanently in draft to avoid validation; never promoted. **Source:** B2 design intent.
-6. **Process rule skipped silently.** Симптомы: BR/IC changed; DA findings file absent; artifact в active. **Source:** P-RULE-01/02 design intent.
-7. **Cascade pending unresolved for weeks.** Симптомы: `cascade-pending.yaml` accumulating; rate of resolution lags rate of detection. **Source:** Section 07 discipline.
-8. **Rules added but never removed.** Симптомы: rule count grows monotonically. No retirement of rules that no longer pull weight. **Source:** linter rule entropy анти-паттерн.
+1. **«Театр валидации» (validation theater).** Симптомы: правила проходят, но реальность отличается. Ложные срабатывания игнорировались достаточно долго, чтобы в `/product:meta-feedback` накопились предложения понизить severity у многих правил. **Источник:** общая дисциплина валидации.
+2. **Злоупотребление уровнем — «pilot навсегда».** Уже упоминалось в разделе 02. validation_tier никогда не повышается, несмотря на взросление продукта.
+3. **Накопление переопределений.** Симптомы: 10+ правил с переопределениями в `validation-config.yaml`; число растёт. **Источник:** ADR — переопределения должны быть исключениями.
+4. **Избыточная уверенность в автоисправлении.** Симптомы: автоисправление срабатывает на граничных случаях; пользователь часто его правит. **Источник:** общая дисциплина автоматизации.
+5. **«Тихий черновик» как лазейка.** Симптомы: артефакты вечно в статусе draft, чтобы избежать валидации; никогда не повышаются до active. **Источник:** замысел дизайна B2.
+6. **Процессное правило молча пропущено.** Симптомы: BR/IC изменены; файл с находками DA отсутствует; артефакт уже в active. **Источник:** замысел дизайна P-RULE-01/02.
+7. **Каскадные изменения неразрешены неделями.** Симптомы: `cascade-pending.yaml` разрастается; скорость разрешения отстаёт от скорости обнаружения. **Источник:** дисциплина раздела 07.
+8. **Правила добавляются, но никогда не удаляются.** Симптомы: число правил растёт монотонно. Правила, переставшие оправдывать себя, не выводятся из эксплуатации. **Источник:** анти-паттерн энтропии правил линтера.
 
 ---
 
 ## 06.6 Сигналы для сравнения снапшотов
 
-1. **Total rule count.** Stable? Growing? Was anything retired?
-2. **Severity distribution per validation namespace** (V-* / V-H-* / V-MK-* / P-RULE-*).
-3. **Active validation_tier.** pilot / mvp / full.
-4. **Количество overrides в `validation-config.yaml`.** Per rule with rationale.
-5. **`validation_overrides[]` per artifact distribution.** Heavy on certain rules?
-6. **`approve_overrides[]` rates.** То же.
-7. **Auto-fix invocation count.** V-11 stably firing? Other auto-fixes added?
-8. **`cascade-pending.yaml` size and resolution rate.**
-9. **DA debt** механизм mentioned in earlier docs but **dropped** per DEC-DEV-0012. Confirmed dropped в snapshot? No accumulating `da-debt.yaml`?
-10. **Validation regression test fixtures** добавлены? (anticipated future work).
-11. **Performance metrics для validation hooks.** Are they tracked?
-12. **Предложения `/product:meta-feedback` on validation rules.** Frequency.
-13. **NOTE:** §07.3 of consistency-mechanisms был перерендерен в новый формат; old yes/partial format больше не используется.
+1. **Общее число правил.** Стабильно? Растёт? Было ли что-то выведено из эксплуатации?
+2. **Распределение severity по пространствам имён валидации** (V-* / V-H-* / V-MK-* / P-RULE-*).
+3. **Активный validation_tier.** pilot / mvp / full.
+4. **Количество переопределений в `validation-config.yaml`.** По каждому правилу, с обоснованием.
+5. **Распределение `validation_overrides[]` по артефактам.** Перекос в сторону определённых правил?
+6. **Частота `approve_overrides[]`.** Аналогично.
+7. **Число срабатываний автоисправления.** V-11 срабатывает стабильно? Добавлены ли другие автоисправления?
+8. **Размер `cascade-pending.yaml` и скорость разрешения.**
+9. **Механизм «долга DA» (DA debt)** упоминался в более ранних документах, но **отменён** согласно DEC-DEV-0012. Подтверждено ли в снапшоте, что он отменён? Нет ли накапливающегося `da-debt.yaml`?
+10. **Добавлены ли фикстуры регрессионных тестов валидации?** (ожидаемая будущая работа).
+11. **Метрики производительности хуков валидации.** Отслеживаются ли они?
+12. **Предложения `/product:meta-feedback` по правилам валидации.** Частота.
+13. **ПРИМЕЧАНИЕ:** §07.3 документа consistency-mechanisms был перерисован в новый формат; старый формат yes/partial больше не используется.
 
 ---
 
