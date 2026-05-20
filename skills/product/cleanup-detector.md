@@ -83,14 +83,9 @@ V-15 включает MK/DS/NM проверки **только если Design m
 
 ### 1. `cascade-pending.yaml` → invoke `/product:cascade --pending --revalidate`
 
-**Action:** delegate к existing command (already shipped в 1.1.1 per DEC-DEV-0023 Q7).
+**Action:** delegate к existing command (already shipped в 1.1.1 per DEC-DEV-0023 Q7). Этот skill **не** знает и не должен знать как `/product:cascade --pending --revalidate` устроен внутри — это орchestration через published interface, не reimplementation. См. anti-pattern #5.
 
-Логика `/product:cascade --pending --revalidate`:
-- Wipe `cascade-pending.yaml` entries
-- Per active artifact — re-trigger `cascade-check.js` через no-op Read+Write
-- Refreshed pending state отражает current artifact graph
-
-Implementation: surface к user message «Invoking /product:cascade --pending --revalidate to refresh cascade-pending entries...» + execute (или, в `--dry-run` mode, surface «Would invoke /product:cascade --pending --revalidate (N entries currently queued)»).
+**Implementation:** surface к user message «Invoking /product:cascade --pending --revalidate to refresh cascade-pending entries...» + execute (или, в `--dry-run` mode, surface «Would invoke /product:cascade --pending --revalidate (N entries currently queued)»).
 
 ### 2. `validation-pending.yaml` → re-run inline validation per entry's artifact
 
@@ -108,16 +103,29 @@ Implementation: surface к user message «Invoking /product:cascade --pending --
 
 ### 3. `da-pending.yaml` → flag stale entries для already-active artifacts
 
-**Action:** для each entry в `da-pending.yaml`:
+**Hard constraint — read-only.** Этот skill **никогда не пишет** в `.product/.pending/da-pending.yaml` (ни overwrite, ни partial edit, ни через Write, ни через Edit). DA-pending hygiene — exclusively surfacing к user, не destruction. Запись discharge'ется только через canonical paths: hook'и (`br-change-trigger.js`, `ic-change-trigger.js` — owner of the file), либо explicit user action на следующем session step. См. anti-pattern #2.
+
+**Session-window guard.** Skip entries с `queued_at >= session_start_timestamp` — entries созданные в текущей session нельзя классифицировать как stale (DA review ещё не имел шанса run'нуть). Особенно применимо если `--pending-hygiene` запущен после hook-emitting actions в той же session (semantic BR/IC edit → hook queue → pending-hygiene wipe бы пропустил required DA spawn).
+
+**Per-entry flow:**
+
 - Read referenced artifact (`entry.file`)
+- Check `queued_at`: если ≥ session start → skip (not stale; just-created)
 - Check artifact's current `status`:
-  - Если **artifact.status == active** → DA review был completed (orchestrator pattern: DA runs → user resolves findings → artifact transitions к active). Entry стala stale.
-  - **Flag** (не auto-delete): surface к user в output «Stale DA-pending entry: <artifact> already active. Review .product/.da-findings/<artifact>-*.md или manually remove entry.»
+  - Если **artifact.status == active** → DA review был completed (orchestrator pattern: DA runs → user resolves findings → artifact transitions к active). Entry стала stale.
+  - **Flag** (surface к user в output): «Stale DA-pending entry: <artifact> already active. Review `.product/.da-findings/<artifact>-*.md` или manually remove entry.»
   - Если **artifact.status == draft** → DA review still relevant; keep entry untouched.
 
-**Rationale за flag-not-delete:** DA findings содержат критическое содержание (диффы, rationale). Авто-удаление stale entries рискует терять контекст если orchestrator workflow был interrupted. Surface к user — позволяет manual cleanup с осознанным выбором.
+**Rationale за read-only:** DA findings содержат критическое содержание (диффы, rationale, severity assessment). Авто-удаление stale entries:
+- **теряет контекст** если orchestrator workflow был interrupted (DA findings file ещё может ждать user resolution).
+- **разрывает audit chain** — DA-pending entry это claim на work owed; wipe без resolution оставляет hook contract нарушенным.
+- **invalidates downstream** — если entry queued в той же session (например, после BR semantic edit), wipe пропускает required DA spawn (P-RULE-02 violation).
+
+Surface к user — позволяет manual cleanup с осознанным выбором (read finding file, decide accept/reject, потом manual `entries:` edit если applicable).
 
 **`--dry-run`:** surface «Would flag N stale DA-pending entries для review» (output identical к non-dry — это flag-only action, no destructive side-effect).
+
+**AskUserQuestion framing.** Если flow решает спросить user о purge, `Recommended` метка **только** на «Keep + open finding file для manual review»; destructive option separate, **без endorsement framing**. Default-recommended всегда conservative.
 
 ## Execution flow
 
@@ -132,7 +140,7 @@ Implementation: surface к user message «Invoking /product:cascade --pending --
 5. **If `--pending-hygiene` (или `--full`):**
    - 5a. Cascade pending hygiene: invoke `/product:cascade --pending --revalidate`
    - 5b. Validation pending hygiene: re-evaluate per entry, purge passing ones
-   - 5c. DA pending hygiene: flag stale entries (artifact.status == active)
+   - 5c. DA pending hygiene: **read-only flag** stale entries (artifact.status == active AND queued_at < session_start). НЕ writes к da-pending.yaml. См. section 3 + anti-pattern #2.
 6. **Compose report:** orphan list + (если flag) hygiene actions summary.
 7. **If `--dry-run`:** surface preview only, не apply any destructive changes (archive / purge / cascade revalidate).
 8. **Если NOT `--dry-run`:** apply approved actions:
@@ -248,13 +256,41 @@ SUMMARY (dry-run):
 
 1. **Не запускать `--pending-hygiene` после каждой active session.** Default `/product:cleanup` (orphan-only) — daily / per-session. Hygiene mode — weekly / per-release / при visible pending bloat (>50 entries в any pending file). Излишний deep sweep — wasteful + risk false positives (cascade revalidate touches every active artifact).
 
-2. **Не auto-delete da-pending entries даже если flag stale.** Flag-only — DA findings содержат критический контекст; авто-удаление = lost data risk. Pattern symmetric к cascade-pending: `/product:cascade --pending --reset` тоже требует explicit user confirmation.
+2. **Не auto-delete da-pending entries даже если flag stale — Write к da-pending.yaml в pending-hygiene flow запрещён.** Flag-only — DA findings содержат критический контекст; авто-удаление = lost data risk. Pattern symmetric к cascade-pending: `/product:cascade --pending --reset` тоже требует explicit user confirmation.
+
+   **Запрещены вне зависимости от rationale:**
+   - `Write .product/.pending/da-pending.yaml → entries: []` (any form, including partial wipe)
+   - `Edit .product/.pending/da-pending.yaml` к removed entries
+   - Implicit purge после user `Recommended` choice, если choice сам framed misleading
+   - Любая mutation `da-pending.yaml` из cleanup-flow (даже «исправление шага раньше» в той же session)
+
+   **Почему flag-only non-negotiable:**
+   - **Hook contract integrity.** `.product/.pending/da-pending.yaml` owned by `br-change-trigger.js` / `ic-change-trigger.js`. Skill — orchestrator, не owner. Write от skill ломает single-writer invariant.
+   - **DA review unblock.** Pending entry == «work owed». Wipe == «pretend work was done». P-RULE-02 / P-RULE-01 require Devil's Advocate run на BR/IC changes — без entry hook не может re-trigger.
+   - **Audit chain.** DA findings file (`.product/.da-findings/<artifact>-<ts>.md`) + journal `DEC-DA-*` + da-pending entry — three-record trail. Wipe одного breaks navigation.
+   - **Session-window safety.** Entries queued during current session (queued_at ≥ session start) — by definition not stale; cleanup-flow видит только pre-existing queue, не результат собственных side-effects.
+
+   **«Recommended» framing — guard.** Если flow требует AskUserQuestion с destructive option (manual purge of stale entries) — `Recommended` метка только на «Keep + open finding file для manual review»; destructive option separate, без endorsement. Default-recommended всегда conservative.
+
+   **Performance / brevity — не valid reason.** Если listing «(N) stale entries» громоздкий — fix output formatter, не bypass flag-only. Precedent: anti-pattern #2 violation в Phase 4 smoke зарегистрирована дважды — `5345f116` (user-authorized purge через misleading `Recommended` framing) и `98cb1b97` (silent Write `entries: []` для session-fresh entry, blocking P-RULE-02) — обе как 🔴 FAIL.
 
 3. **Не treat MK/DS/NM as orphan если Design module disabled.** Surface как «unexpected Design artifacts» note, не blocking finding. Conditional detection per Ambiguity 16 — Design module file-based check.
 
 4. **Не reinvent validation rule evaluation в этом skill.** `validation-pending.yaml` purge re-uses `artifact-validate.js` patterns (same rule definitions). Если этот skill encodes отдельную rule semantics — drift risk. High-level orchestration only.
 
-5. **Не purge cascade-pending entries directly.** Delegate к `/product:cascade --pending --revalidate` (existing command, well-tested per DEC-DEV-0023 Q7). Этот skill orchestrates, не reimplements.
+5. **Не purge cascade-pending entries directly — даже если это быстрее.** Delegate к `/product:cascade --pending --revalidate` (existing command, well-tested per DEC-DEV-0023 Q7). Этот skill orchestrates через published slash-command interface, не через internal hooks.
+
+   **Запрещены вне зависимости от rationale:**
+   - Direct `Write .product/.pending/cascade-pending.yaml → entries: []`
+   - Direct invoke `node .claude/hooks/product/cascade-check.js` (включая synthetic hook input subprocess loop)
+   - Любой custom loop, перевычисляющий cascade state в обход `/product:cascade`
+
+   **Почему делегация non-negotiable:**
+   - **Semantic stability.** Если `cascade-check.js` меняется (новые edges, batch logic, output format) — delegated path inherits automatically; direct invoke ломается тихо.
+   - **Audit trail.** `/product:cascade --pending --revalidate` пишет user-visible output + decision journal entry; raw subprocess loop оставляет немой transcript.
+   - **Contract integrity.** Skills orchestrate через slash commands (public API), не через `.claude/hooks/` (internal). Invariant Phase 3+ design (DEC-DEV-0023).
+
+   **Performance — не valid reason для deviation.** Если delegation медленна на large queue — это bug в `/product:cascade`, surface к user / open issue, не bypass. Precedent: anti-pattern #5 violation в Phase 4 smoke (S12, session `5345f116`) с rationale «на порядок быстрее» зарегистрирована как 🔴 FAIL.
 
 6. **Не promote orphan детекцию из 🟡 Warning к 🔴 Blocking.** V-15 — informational by design (per `validation.md §V-15`). Orphan artifacts не блокируют handoff / approve gates; они signal cleanup opportunity. Severity uplift через `/product:validate --deep` остаётся в validation runner scope, не в cleanup.
 

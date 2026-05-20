@@ -19,6 +19,9 @@
  *   --force                 Re-audit sessions already in Processed (overwrite report)
  *   --dry-run               Print what would be audited; don't spawn auditor
  *   --skip-aggregate        Skip phase-summary aggregator (per-session only)
+ *   --re-aggregate          Rebuild phase aggregate + summary from all Processed
+ *                           reports for the phase, without re-running per-session
+ *                           audits. Requires --phase=<N>.
  *   --help, -h              Print help
  *
  * Env:
@@ -56,7 +59,8 @@ const RELEVANT_TOOLS = new Set([
 function parseArgs(argv) {
   const out = {
     phase: null, since: null, target: null, sessionId: null, transcript: null,
-    force: false, dryRun: false, noPlan: false, skipAggregate: false, help: false,
+    force: false, dryRun: false, noPlan: false, skipAggregate: false,
+    reAggregate: false, help: false,
   };
   for (const arg of argv) {
     if (arg === '--help' || arg === '-h') out.help = true;
@@ -64,6 +68,7 @@ function parseArgs(argv) {
     else if (arg === '--dry-run') out.dryRun = true;
     else if (arg === '--no-plan') out.noPlan = true;
     else if (arg === '--skip-aggregate') out.skipAggregate = true;
+    else if (arg === '--re-aggregate') out.reAggregate = true;
     else if (arg.startsWith('--phase=')) out.phase = parseInt(arg.slice(8), 10);
     else if (arg.startsWith('--since=')) out.since = arg.slice(8);
     else if (arg.startsWith('--target-project=')) out.target = arg.slice(17);
@@ -77,7 +82,7 @@ function parseArgs(argv) {
 function printHelp() {
   const header = `${path.basename(__filename)} — D7 conformance auditor CLI`;
   process.stdout.write(`${header}\n\n`);
-  process.stdout.write(fs.readFileSync(__filename, 'utf-8').split('\n').slice(2, 35).join('\n').replace(/^ \* ?/gm, '') + '\n');
+  process.stdout.write(fs.readFileSync(__filename, 'utf-8').split('\n').slice(2, 38).join('\n').replace(/^ \* ?/gm, '') + '\n');
 }
 
 // ============================================================================
@@ -264,7 +269,14 @@ function runAuditor(opts) {
     .replace(/\{\{PHASE\}\}/g, opts.phase != null ? String(opts.phase) : 'none')
     .replace(/\{\{SMOKE_PLAN_PATH\}\}/g, opts.smokePlanPath || 'none');
 
-  return spawnSync(opts.claudeBin, ['-p'], {
+  const transcriptDir = path.dirname(opts.transcriptPath);
+  const cliArgs = [
+    '-p',
+    '--permission-mode', 'acceptEdits',
+    '--add-dir', transcriptDir,
+  ];
+
+  return spawnSync(opts.claudeBin, cliArgs, {
     input: prompt,
     encoding: 'utf-8',
     timeout: AUDITOR_TIMEOUT_MS,
@@ -288,7 +300,7 @@ function runAggregator(opts) {
     .replace(/\{\{REPORT_PATH\}\}/g, opts.reportPath)
     .replace(/\{\{REPO_ROOT\}\}/g, opts.repoRoot);
 
-  return spawnSync(opts.claudeBin, ['-p'], {
+  return spawnSync(opts.claudeBin, ['-p', '--permission-mode', 'acceptEdits'], {
     input: prompt,
     encoding: 'utf-8',
     timeout: AUDITOR_TIMEOUT_MS,
@@ -511,7 +523,20 @@ function main() {
   }
 
   // Validate
-  if (args.phase == null && !args.noPlan && !args.sessionId && !args.transcript) {
+  if (args.reAggregate) {
+    if (args.phase == null) {
+      process.stderr.write('Error: --re-aggregate requires --phase=<N>.\n');
+      process.exit(2);
+    }
+    if (args.noPlan) {
+      process.stderr.write('Error: --re-aggregate is incompatible with --no-plan (aggregator needs the plan).\n');
+      process.exit(2);
+    }
+    if (args.sessionId || args.transcript || args.force || args.dryRun || args.skipAggregate) {
+      process.stderr.write('Error: --re-aggregate is incompatible with --session-id, --transcript, --force, --dry-run, --skip-aggregate.\n');
+      process.exit(2);
+    }
+  } else if (args.phase == null && !args.noPlan && !args.sessionId && !args.transcript) {
     process.stderr.write('Error: --phase=<N> is required (or pass --no-plan, --session-id, --transcript).\n');
     process.exit(2);
   }
@@ -531,6 +556,91 @@ function main() {
     } else {
       process.stdout.write(`Smoke plan not found for Phase ${args.phase}; running catalog-only.\n`);
     }
+  }
+
+  // Re-aggregate path: rebuild aggregate JSON + summary from existing Processed reports
+  if (args.reAggregate) {
+    if (!plan) {
+      process.stderr.write(`Error: --re-aggregate requires a loadable smoke plan for phase ${args.phase}.\n`);
+      process.exit(1);
+    }
+    const reportsDir = path.join(repoRoot, 'dev', 'meta-improvement', 'audit-reports');
+    fs.mkdirSync(reportsDir, { recursive: true });
+
+    const indexContent = auditIndex.readIndex(repoRoot);
+    const processed = auditIndex.parseProcessed(indexContent);
+    const phaseStr = String(args.phase);
+    const targetRows = processed.filter((p) => String(p.phase) === phaseStr);
+
+    if (targetRows.length === 0) {
+      process.stderr.write(`Error: no Processed sessions found for phase ${args.phase} in audit-index.\n`);
+      process.exit(1);
+    }
+
+    process.stdout.write(`Re-aggregating ${targetRows.length} Processed session(s) for phase ${args.phase}…\n`);
+
+    const reports = [];
+    for (const row of targetRows) {
+      const reportPath = path.join(reportsDir, `${row.session_id}.md`);
+      if (!fs.existsSync(reportPath)) {
+        process.stderr.write(`  warning: report missing for ${row.session_id} at ${path.relative(repoRoot, reportPath)}; skipping\n`);
+        continue;
+      }
+      let frontmatter;
+      try {
+        const reportContent = fs.readFileSync(reportPath, 'utf-8');
+        frontmatter = parseReportFrontmatter(reportContent);
+      } catch (e) {
+        process.stderr.write(`  warning: report parse failed for ${row.session_id}: ${e.message}\n`);
+        continue;
+      }
+      if (!frontmatter) {
+        process.stderr.write(`  warning: report frontmatter unparseable for ${row.session_id}\n`);
+        continue;
+      }
+      reports.push({
+        session: { session_id: row.session_id, target_project: row.target_project },
+        frontmatter,
+        reportPath,
+      });
+      process.stdout.write(`  loaded ${row.session_id} (status=${frontmatter.status})\n`);
+    }
+
+    if (reports.length === 0) {
+      process.stderr.write('Error: no parseable per-session reports found for phase.\n');
+      process.exit(1);
+    }
+
+    process.stdout.write(`\nComputing aggregate from ${reports.length} report(s)…\n`);
+    const aggregate = computeAggregate(reports, plan, args.phase);
+    const aggregatePath = path.join(reportsDir, `phase-${args.phase}-aggregate.json`);
+    fs.writeFileSync(aggregatePath, JSON.stringify(aggregate, null, 2));
+    process.stdout.write(`Aggregate JSON: ${path.relative(repoRoot, aggregatePath)}\n`);
+
+    const summaryPath = path.join(reportsDir, `phase-${args.phase}-summary.md`);
+    process.stdout.write('Running aggregator…\n');
+    const aggResult = runAggregator({
+      aggregateJsonPath: aggregatePath,
+      reportsDir,
+      smokePlanPath,
+      phase: args.phase,
+      reportPath: summaryPath,
+      repoRoot,
+      claudeBin: DEFAULT_CLAUDE_BIN,
+    });
+    if (aggResult.status === 0 && fs.existsSync(summaryPath)) {
+      process.stdout.write(`Phase summary: ${path.relative(repoRoot, summaryPath)}\n`);
+    } else {
+      process.stderr.write(`Aggregator failed (exit ${aggResult.status}).\n`);
+      if (aggResult.error) process.stderr.write(`  error: ${aggResult.error.message}\n`);
+      if (aggResult.stderr) process.stderr.write(`  stderr: ${String(aggResult.stderr).slice(0, 500)}\n`);
+      process.exit(1);
+    }
+
+    const failed = reports.filter((r) => r.frontmatter.status === 'fail').length;
+    const partial = reports.filter((r) => r.frontmatter.status === 'partial').length;
+    process.stdout.write(`\nDone: ${reports.length} session(s) re-aggregated; ${failed} FAIL; ${partial} PARTIAL\n`);
+    process.exit(failed > 0 ? 3 : 0);
   }
 
   // Discover sessions
@@ -605,6 +715,8 @@ function main() {
     }
     if (!fs.existsSync(reportPath)) {
       process.stderr.write(`  auditor finished but report missing at ${reportPath}\n`);
+      if (result.stdout) process.stderr.write(`  stdout (head): ${String(result.stdout).slice(0, 1000)}\n`);
+      if (result.stderr) process.stderr.write(`  stderr (head): ${String(result.stderr).slice(0, 1000)}\n`);
       continue;
     }
 

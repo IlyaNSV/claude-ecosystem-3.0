@@ -1,0 +1,377 @@
+{
+  "phase": 4,
+  "aggregated_at": "2026-05-15T15:08:03.333Z",
+  "sessions": [
+    "98cb1b97-d338-435b-b152-182d4aec90d3",
+    "5345f116-93ff-455f-92f4-77410fd3a37d",
+    "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55",
+    "fbb32599-4066-435b-a92d-54374b683596",
+    "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d",
+    "8f10e02f-816c-4b56-a364-cdc925d00f6f"
+  ],
+  "sessions_count": 6,
+  "status": "fail",
+  "coverage_summary": {
+    "total_scenarios": 15,
+    "covered": 2,
+    "partial": 5,
+    "fail": 1,
+    "not_covered": 7,
+    "uncertain": 0
+  },
+  "coverage_matrix": {
+    "S1": {
+      "title": "HYP frontmatter canonical (Phase 4.A / DEC-DEV-0024)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "NOT-COVERED",
+      "conflict": false
+    },
+    "S2": {
+      "title": "Language discipline (Phase 4.B / DEC-DEV-0029)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "UNCERTAIN",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "COVERED",
+      "conflict": true
+    },
+    "S3": {
+      "title": "Full validation (Phase 4.C / DEC-DEV-0025 C.4)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "NOT-COVERED",
+      "conflict": false
+    },
+    "S4": {
+      "title": "NFR review F.5a Ask/Define (Phase 4.D / DEC-DEV-0028 D.2)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "NOT-COVERED",
+      "conflict": false
+    },
+    "S5": {
+      "title": "Handoff mode draft (Phase 4.E / DEC-DEV-0028 D.1)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "PARTIAL",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "COVERED",
+      "conflict": true
+    },
+    "S6": {
+      "title": "Handoff mode production (Phase 4.E)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "PARTIAL",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "PARTIAL",
+      "conflict": false
+    },
+    "S7": {
+      "title": "Cross-platform hash invariant (Phase 4.E + 4.F)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "NOT-COVERED",
+      "conflict": false
+    },
+    "S8": {
+      "title": "DA review FM-NNN (Phase 4.H / DEC-DEV-0026)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "PARTIAL",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "PARTIAL",
+      "conflict": false
+    },
+    "S9": {
+      "title": "DA review RL-NNN (Phase 4.H release scope)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "NOT-COVERED",
+      "conflict": false
+    },
+    "S10": {
+      "title": "Handoff `--with-da-review` (Phase 4.H wiring)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "PARTIAL",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "PARTIAL",
+      "conflict": false
+    },
+    "S11": {
+      "title": "Cleanup orphan detection (Phase 4.G / DEC-DEV-0027)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "PARTIAL",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "PARTIAL",
+      "conflict": false
+    },
+    "S12": {
+      "title": "Cleanup `--pending-hygiene` (Phase 4.G)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "FAIL",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "FAIL",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "FAIL",
+      "conflict": false
+    },
+    "S13": {
+      "title": "NFR tier upgrade (Phase 4.D)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "PARTIAL"
+      },
+      "best_verdict": "PARTIAL",
+      "conflict": false
+    },
+    "S14": {
+      "title": "`verify-hooks.js` smoke runner",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "NOT-COVERED",
+      "conflict": false
+    },
+    "S15": {
+      "title": "Phase 4 closure ritual (Phase 4.K)",
+      "by_session": {
+        "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
+        "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
+        "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
+        "fbb32599-4066-435b-a92d-54374b683596": "NOT-COVERED",
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
+      },
+      "best_verdict": "NOT-COVERED",
+      "conflict": false
+    }
+  },
+  "findings": [
+    {
+      "check_id": "C",
+      "severity": "blocking",
+      "confidence": "high",
+      "artifact": ".product/business-rules/BR-027-pipeline-stage-ordering.md",
+      "snippet": "BR semantic edit wiped da-pending entry without invoking product-devils-advocate",
+      "sessions": [
+        "98cb1b97-d338-435b-b152-182d4aec90d3"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "warning",
+      "confidence": "high",
+      "artifact": ".product/.pending/da-pending.yaml",
+      "snippet": "Auto-delete of fresh DA-pending entry violates cleanup-detector.md anti-pattern 2",
+      "sessions": [
+        "98cb1b97-d338-435b-b152-182d4aec90d3"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "warning",
+      "confidence": "medium",
+      "artifact": ".product/business-rules/BR-027-pipeline-stage-ordering.md",
+      "snippet": "BR edit + git commit attempted within /product:cleanup scope — skill scope creep",
+      "sessions": [
+        "98cb1b97-d338-435b-b152-182d4aec90d3"
+      ]
+    },
+    {
+      "check_id": "A",
+      "severity": "info",
+      "confidence": "medium",
+      "artifact": ".product/business-rules/BR-027-pipeline-stage-ordering.md",
+      "snippet": "Body text still references «LC-Job» after frontmatter fix to LC-004",
+      "sessions": [
+        "98cb1b97-d338-435b-b152-182d4aec90d3"
+      ]
+    },
+    {
+      "check_id": "D",
+      "severity": "uncertain",
+      "confidence": "low",
+      "artifact": "subagent V-15 orphan detection",
+      "snippet": "Explore subagent timed out (389s); final orphan list never surfaced in transcript",
+      "sessions": [
+        "98cb1b97-d338-435b-b152-182d4aec90d3"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "info",
+      "confidence": "high",
+      "artifact": ".claude/skills/product/cleanup-detector.md",
+      "snippet": "cleanup-detector skill loaded via Read at record 4 — proper discipline",
+      "sessions": [
+        "5345f116-93ff-455f-92f4-77410fd3a37d"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "uncertain",
+      "confidence": "low",
+      "artifact": "skills/product/cleanup-detector.md anti-pattern #2",
+      "snippet": "DA-pending wipe was user-authorised but framed as Recommended — borderline",
+      "sessions": [
+        "5345f116-93ff-455f-92f4-77410fd3a37d"
+      ]
+    },
+    {
+      "check_id": "A",
+      "severity": "warning",
+      "confidence": "high",
+      "artifact": ".product/notes/NOTE-013-fm002-polish-backlog.md",
+      "snippet": "NOTE-013 missing required `version` field; `related_artifacts` used вместо canonical `related`",
+      "sessions": [
+        "fbb32599-4066-435b-a92d-54374b683596"
+      ]
+    },
+    {
+      "check_id": "A",
+      "severity": "warning",
+      "confidence": "medium",
+      "artifact": ".product/.da-findings/FM-002-2026-05-15-0030.md",
+      "snippet": "per-finding fields rendered как markdown bold-text вместо canonical YAML per-finding frontmatter",
+      "sessions": [
+        "fbb32599-4066-435b-a92d-54374b683596"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "warning",
+      "confidence": "high",
+      "artifact": "Agent invocation (FM-002 DA review)",
+      "snippet": "subagent_type=general-purpose used вместо canonical product-devils-advocate",
+      "sessions": [
+        "fbb32599-4066-435b-a92d-54374b683596"
+      ]
+    },
+    {
+      "check_id": "C",
+      "severity": "info",
+      "confidence": "high",
+      "artifact": "BR-036, BR-043, BR-053",
+      "snippet": "BR edits derived from DA findings F1-F4; no fresh DA spawn (anti-circular by design)",
+      "sessions": [
+        "fbb32599-4066-435b-a92d-54374b683596"
+      ]
+    },
+    {
+      "check_id": "D",
+      "severity": "info",
+      "confidence": "low",
+      "artifact": "SC-010, BR-043",
+      "snippet": "V-11 bi-dir refs claimed auto-fixed by cascade-check.js; not directly verified in transcript",
+      "sessions": [
+        "fbb32599-4066-435b-a92d-54374b683596"
+      ]
+    },
+    {
+      "check_id": "A",
+      "severity": "warning",
+      "confidence": "medium",
+      "artifact": ".product/.da-findings/FM-003-2026-05-15-1149.md",
+      "snippet": "DA findings file uses nested review_metadata + findings[] block instead of flat canonical fields",
+      "sessions": [
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "warning",
+      "confidence": "high",
+      "artifact": "Agent tool invocation (toolu_01JpQvz8Xs8oiuwa45MpC9QG)",
+      "snippet": "subagent_type=general-purpose instead of product-devils-advocate (skill anti-pattern #5)",
+      "sessions": [
+        "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "info",
+      "confidence": "medium",
+      "artifact": "/product:nfr-upgrade-tier",
+      "snippet": "skill invoked via SlashCommand; attributionSkill confirms loader fired",
+      "sessions": [
+        "8f10e02f-816c-4b56-a364-cdc925d00f6f"
+      ]
+    }
+  ],
+  "findings_count": {
+    "blocking": 1,
+    "warning": 7,
+    "info": 5,
+    "uncertain": 2
+  }
+}
