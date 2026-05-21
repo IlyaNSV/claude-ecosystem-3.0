@@ -1,7 +1,10 @@
 {
   "phase": 4,
-  "aggregated_at": "2026-05-15T15:08:03.333Z",
+  "aggregated_at": "2026-05-20T11:32:23.353Z",
   "sessions": [
+    "bbb68ac9-0d05-43c4-9566-87891e44a6cf",
+    "e1615a0c-149d-446f-9111-7ca8d49d46ab",
+    "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b",
     "98cb1b97-d338-435b-b152-182d4aec90d3",
     "5345f116-93ff-455f-92f4-77410fd3a37d",
     "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55",
@@ -9,20 +12,23 @@
     "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d",
     "8f10e02f-816c-4b56-a364-cdc925d00f6f"
   ],
-  "sessions_count": 6,
+  "sessions_count": 9,
   "status": "fail",
   "coverage_summary": {
-    "total_scenarios": 15,
-    "covered": 2,
-    "partial": 5,
-    "fail": 1,
-    "not_covered": 7,
+    "total_scenarios": 13,
+    "covered": 3,
+    "partial": 6,
+    "fail": 2,
+    "not_covered": 4,
     "uncertain": 0
   },
   "coverage_matrix": {
     "S1": {
-      "title": "HYP frontmatter canonical (Phase 4.A / DEC-DEV-0024)",
+      "title": "HYP frontmatter canonical",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "FAIL",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -30,12 +36,15 @@
         "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
         "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
       },
-      "best_verdict": "NOT-COVERED",
+      "best_verdict": "FAIL",
       "conflict": false
     },
     "S2": {
-      "title": "Language discipline (Phase 4.B / DEC-DEV-0029)",
+      "title": "Language discipline",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -47,8 +56,11 @@
       "conflict": true
     },
     "S3": {
-      "title": "Full validation (Phase 4.C / DEC-DEV-0025 C.4)",
+      "title": "Full validation",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "PARTIAL",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -56,12 +68,15 @@
         "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
         "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
       },
-      "best_verdict": "NOT-COVERED",
+      "best_verdict": "PARTIAL",
       "conflict": false
     },
     "S4": {
-      "title": "NFR review F.5a Ask/Define (Phase 4.D / DEC-DEV-0028 D.2)",
+      "title": "NFR review (Ask + Define)",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -69,12 +84,15 @@
         "9da2652a-7d70-452a-9e74-fe6cbfcc4b3d": "NOT-COVERED",
         "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
       },
-      "best_verdict": "NOT-COVERED",
+      "best_verdict": "COVERED",
       "conflict": false
     },
     "S5": {
-      "title": "Handoff mode draft (Phase 4.E / DEC-DEV-0028 D.1)",
+      "title": "Handoff draft",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -86,8 +104,11 @@
       "conflict": true
     },
     "S6": {
-      "title": "Handoff mode production (Phase 4.E)",
+      "title": "Handoff production",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -99,8 +120,11 @@
       "conflict": false
     },
     "S7": {
-      "title": "Cross-platform hash invariant (Phase 4.E + 4.F)",
+      "title": "Cross-platform hash",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -112,8 +136,11 @@
       "conflict": false
     },
     "S8": {
-      "title": "DA review FM-NNN (Phase 4.H / DEC-DEV-0026)",
+      "title": "DA review FM",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "FAIL",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -122,11 +149,14 @@
         "8f10e02f-816c-4b56-a364-cdc925d00f6f": "NOT-COVERED"
       },
       "best_verdict": "PARTIAL",
-      "conflict": false
+      "conflict": true
     },
     "S9": {
-      "title": "DA review RL-NNN (Phase 4.H release scope)",
+      "title": "DA review RL",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -138,8 +168,11 @@
       "conflict": false
     },
     "S10": {
-      "title": "Handoff `--with-da-review` (Phase 4.H wiring)",
+      "title": "Handoff `--with-da-review`",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -151,8 +184,11 @@
       "conflict": false
     },
     "S11": {
-      "title": "Cleanup orphan detection (Phase 4.G / DEC-DEV-0027)",
+      "title": "Cleanup orphan detection",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "PARTIAL",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -164,8 +200,11 @@
       "conflict": false
     },
     "S12": {
-      "title": "Cleanup `--pending-hygiene` (Phase 4.G)",
+      "title": "Cleanup `--pending-hygiene` ⚠ CRITICAL (verifies DEC-DEV-0036 fixes)",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "FAIL",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "FAIL",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -177,8 +216,11 @@
       "conflict": false
     },
     "S13": {
-      "title": "NFR tier upgrade (Phase 4.D)",
+      "title": "NFR tier upgrade",
       "by_session": {
+        "bbb68ac9-0d05-43c4-9566-87891e44a6cf": "NOT-COVERED",
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab": "NOT-COVERED",
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b": "NOT-COVERED",
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
         "5ba3ee30-592c-4e45-9ef6-08aa22e0ef55": "NOT-COVERED",
@@ -190,7 +232,7 @@
       "conflict": false
     },
     "S14": {
-      "title": "`verify-hooks.js` smoke runner",
+      "title": "(not in plan)",
       "by_session": {
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
@@ -203,7 +245,7 @@
       "conflict": false
     },
     "S15": {
-      "title": "Phase 4 closure ritual (Phase 4.K)",
+      "title": "(not in plan)",
       "by_session": {
         "98cb1b97-d338-435b-b152-182d4aec90d3": "NOT-COVERED",
         "5345f116-93ff-455f-92f4-77410fd3a37d": "NOT-COVERED",
@@ -217,6 +259,76 @@
     }
   },
   "findings": [
+    {
+      "check_id": "A",
+      "severity": "warning",
+      "confidence": "high",
+      "artifact": ".product/invariants/IC-019..IC-023 (5 files)",
+      "snippet": "type: invariant (canonical: invariant-check); owner_feature/scenarios extra; severity/entity/testable_as missing",
+      "sessions": [
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab"
+      ]
+    },
+    {
+      "check_id": "B",
+      "severity": "warning",
+      "confidence": "high",
+      "artifact": ".product/invariants/IC-019..IC-023 (5 files)",
+      "snippet": "IC creation (P-RULE-01 'significant') — no product-devils-advocate subagent; inline self-DA only",
+      "sessions": [
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab"
+      ]
+    },
+    {
+      "check_id": "C",
+      "severity": "warning",
+      "confidence": "high",
+      "artifact": ".product/business-rules/BR-054..BR-062 (9 files)",
+      "snippet": "BR-cluster DA ran via subagent_type general-purpose, not canonical product-devils-advocate",
+      "sessions": [
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab"
+      ]
+    },
+    {
+      "check_id": "D",
+      "severity": "warning",
+      "confidence": "medium",
+      "artifact": ".product/scenarios/SC-015..SC-015e2 (4 files)",
+      "snippet": "SC written with rules: [] / verification: []; BR/VC reverse refs never backfilled (V-11 gap)",
+      "sessions": [
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab"
+      ]
+    },
+    {
+      "check_id": "F",
+      "severity": "info",
+      "confidence": "medium",
+      "artifact": ".product/hypotheses/HYP-005-onboarding-tour-ttft.md",
+      "snippet": "HYP-005 created by direct Write; no HYP-creation skill loaded (hypothesis-formulation.md в разработке)",
+      "sessions": [
+        "e1615a0c-149d-446f-9111-7ca8d49d46ab"
+      ]
+    },
+    {
+      "check_id": "B",
+      "severity": "info",
+      "confidence": "high",
+      "artifact": ".product/invariants/IC-020-last-ready-artifacts-consistency.md, IC-021-regen-counters-consistency.md",
+      "snippet": "IC-020/IC-021 semantically edited as da-review Act-remediation; P-RULE-01 intent satisfied (edits derive from the DA review itself)",
+      "sessions": [
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b"
+      ]
+    },
+    {
+      "check_id": "C",
+      "severity": "info",
+      "confidence": "high",
+      "artifact": ".product/business-rules/BR-054,055,056,057,061,063",
+      "snippet": "6 BRs semantically edited as da-review Act-remediation; P-RULE-02 intent satisfied; post-edit artifacts not independently re-reviewed",
+      "sessions": [
+        "bf7eaea4-d53f-4b0d-b736-fd78a6193f8b"
+      ]
+    },
     {
       "check_id": "C",
       "severity": "blocking",
@@ -370,8 +482,8 @@
   ],
   "findings_count": {
     "blocking": 1,
-    "warning": 7,
-    "info": 5,
+    "warning": 11,
+    "info": 8,
     "uncertain": 2
   }
 }

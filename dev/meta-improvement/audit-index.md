@@ -20,6 +20,9 @@ Sessions already audited. Re-audit requires `--force` (will overwrite per-sessio
 | session_id | audited_at | target | phase | mode | status | coverage (cov/part/fail/nc/unc) | findings (b/w/i) | report |
 |---|---|---|---|---|---|---|---|---|
 <!-- PROCESSED_ROWS_START -->
+| `bbb68ac9-0d05-43c4-9566-87891e44a6cf` | 2026-05-20T11:31:17Z | my-first-test | 4 | full | clean | 0/0/0/13/0 | 0/0/0 | [`bbb68ac9-0d05-43c4-9566-87891e44a6cf.md`](audit-reports/bbb68ac9-0d05-43c4-9566-87891e44a6cf.md) |
+| `e1615a0c-149d-446f-9111-7ca8d49d46ab` | 2026-05-20T13:00:00Z | my-first-test | 4 | full | fail | 2/1/1/9/0 | 0/4/1 | [`e1615a0c-149d-446f-9111-7ca8d49d46ab.md`](audit-reports/e1615a0c-149d-446f-9111-7ca8d49d46ab.md) |
+| `bf7eaea4-d53f-4b0d-b736-fd78a6193f8b` | 2026-05-20T11:00:23Z | my-first-test | 4 | full | fail | 1/0/1/11/0 | 0/0/2 | [`bf7eaea4-d53f-4b0d-b736-fd78a6193f8b.md`](audit-reports/bf7eaea4-d53f-4b0d-b736-fd78a6193f8b.md) |
 | `98cb1b97-d338-435b-b152-182d4aec90d3` | 2026-05-15T15:30:00Z | my-first-test | 4 | full | fail | 0/0/1/14/0 | 1/2/1 | [`98cb1b97-d338-435b-b152-182d4aec90d3.md`](audit-reports/98cb1b97-d338-435b-b152-182d4aec90d3.md) |
 | `5345f116-93ff-455f-92f4-77410fd3a37d` | 2026-05-15T12:00:00Z | my-first-test | 4 | full | fail | 0/1/1/13/0 | 0/0/1 | [`5345f116-93ff-455f-92f4-77410fd3a37d.md`](audit-reports/5345f116-93ff-455f-92f4-77410fd3a37d.md) |
 | `5ba3ee30-592c-4e45-9ef6-08aa22e0ef55` | 2026-05-15T00:00:00Z | my-first-test | 4 | full | clean | 0/0/0/15/0 | 0/0/0 | [`5ba3ee30-592c-4e45-9ef6-08aa22e0ef55.md`](audit-reports/5ba3ee30-592c-4e45-9ef6-08aa22e0ef55.md) |

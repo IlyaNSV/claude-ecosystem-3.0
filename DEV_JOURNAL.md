@@ -2841,6 +2841,116 @@ Verification обоих fixes теперь deferred к третьему smoke п
 
 ---
 
+## DEC-DEV-0037 — audit-smoke.js: salvage отчёта при таймауте/ошибке аудитора + stdout-диагностика
+
+**Date:** 2026-05-20
+**Trigger:** Второй runtime прогон `/meta:audit-smoke --phase=4` (3 Pending: `bf7eaea4`, `bbb68ac9`, `e1615a0c`) — **0/3 audited**. Два разных режима отказа: две сессии `auditor exited 1` с пустым stderr (причина отброшена CLI), одна — `spawnSync … ETIMEDOUT` на 10-минутном таймауте, **притом что `claude -p` успел дописать полный валидный отчёт** до того, как процесс был убит.
+**Tag:** #tooling #bug-fix #meta-improvement
+
+### Context
+
+DEC-DEV-0035 (lesson 3) предсказал рецидив `spawnSync … ETIMEDOUT` под Windows + `claude -p` и предложил «если повторится — bump default к 900000». Повторилось — и оказалось хуже прогноза.
+
+Диагностика вскрыла два независимых бага в `audit-smoke.js`:
+
+1. **Завершённый аудит выбрасывался.** Сессия `e1615a0c`: `claude -p` полностью отработал 13-сценарный аудит и записал валидный отчёт (`status: fail`, полный coverage trace, 5 findings) — но процесс не успел *завершиться* в пределах 10-минутного окна `spawnSync`, таймаут убил его уже после записи файла. Per-session loop в ветке обработки результата `runAuditor()` делал `if (result.error) { …; continue; }` — `continue` **без проверки `fs.existsSync(reportPath)`**. Готовый отчёт отброшен, сессия не перенесена в Processed.
+
+2. **Причина `exit 1` нигде не сохранялась.** Ветка `status !== 0` печатала только `result.stderr`; `claude -p` отдаёт API-ошибки в **stdout**. Две сессии упали с `exit 1` и пустым stderr → root cause невидим. Ручное воспроизведение самой маленькой сессии (`bbb68ac9`, 29 записей) в standalone прошло за 221 с → отказ не детерминированный.
+
+### Options considered
+
+1. **Только bump таймаута** (предложение DEC-DEV-0035). Закрывает ETIMEDOUT на медленных сессиях, но не «выброшенный готовый отчёт» и не слепоту к причине `exit 1`. Недостаточно.
+2. **Bump таймаута + salvage-on-error + stdout-on-failure.** Файл отчёта = source of truth: ненулевой exit / spawn error больше не отбрасывает сессию автоматически, если валидный parseable-отчёт уже записан. Если отчёта нет — печатается голова stdout. Минимальная поверхность, чинит все три наблюдаемые проблемы.
+3. **Retry-loop на транзиентные API-ошибки в CLI.** Автоматически переживал бы stream-idle-timeout, но больше поверхность, а ручной `--session-id` retry уже работает. Отложено.
+
+### Decision
+
+Вариант 2. Три правки в `audit-smoke.js`:
+
+- `AUDITOR_TIMEOUT_MS` default `600000 → 1200000` (20 мин) — крупным транскриптам (260+ записей) хватает на штатное завершение И выход.
+- Реструктурирован блок после `runAuditor()`: `exitProblem` вычисляется один раз; `fs.existsSync(reportPath)` проверяется **до** bail-а. Отчёт есть и frontmatter парсится → salvage с пометкой `⚠` в stdout. Отчёта нет → hard-fail с печатью голов stdout+stderr (1500 симв.).
+- Старая отдельная ветка «report missing» свёрнута в общий путь. Happy path не изменён.
+
+### Outcome
+
+Перезапуск после патча:
+- `bf7eaea4` ✓ `fail`, `e1615a0c` ✓ `fail` — обе завершились в пределах 20 мин и вышли штатно (salvage не понадобился — остался как страховка).
+- `bbb68ac9` `exit 1` — и stdout **теперь показал причину**: `API Error: Stream idle timeout - partial response received` (транзиент). Retry только этой сессии → ✓ `clean`. Все 3 → Processed.
+- `--re-aggregate --phase=4` пересобрал `phase-4-summary.md` по всем 9 Processed-сессиям Phase 4: `status: fail`, 2 сценария FAIL (S1, S12), 1 blocking finding, 3/13 COVERED.
+
+Подтверждено: отказы `exit 1` — транзиентные API stream-idle-timeout, не баг конфигурации.
+
+### Lessons
+
+1. **Существование файла-артефакта — авторитетный сигнал успеха, не exit-код.** DEC-DEV-0035 (lesson 3) «если повторится — bump таймаут» недооценил проблему: рецидив вскрыл, что таймаут не просто прерывает медленный аудит, а **выбрасывает завершённый**, потому что loop не проверял отчёт перед `continue`. Pattern для «spawn subprocess, который пишет файл»: проверяй `fs.existsSync(artifact)` до того, как трактовать ненулевой exit как провал. Ненулевой exit после записи артефакта — process-lifecycle quirk, не провал задачи.
+2. **Ветки обработки ошибок должны логировать больше, чем success-ветки, не меньше.** CLI печатал stdout только в success-ветке «report missing», а в `status !== 0` — лишь stderr. `claude -p` пишет API-ошибки в stdout → два батч-прогона упали с невидимой причиной. Error-путь — ровно то место, где нужен максимум вывода.
+3. **Отказы `exit 1` транзиентны и воспроизводятся только в батче** (3 последовательных `claude -p`), не в standalone. Сейчас обходится ручным retry; in-CLI retry-loop на транзиентные API-ошибки (вариант 3) — отложенный кандидат, если нестабильность батча повторится.
+4. **Попутно вскрыт, но НЕ исправлен отдельный баг.** Агрегатор честно отметил (`phase-4-summary.md`, секция «Skipped / out-of-scope»): в `computeAggregate` компоненты `coverage_summary` суммируются в 15 при `total_scenarios: 13` — matrix подмешивает вне-плановые S14/S15 из frontmatter отчётов. Оставлено maintainer'у (per surface-only правило аудитора); кандидат на отдельную правку.
+
+---
+
+## DEC-DEV-0038 — Phase 4 runtime smoke results + условное закрытие фазы
+
+**Date:** 2026-05-20
+**Trigger:** Первый runtime smoke Phase 4 — 9 пилотных сессий (`my-first-test`) проаудированы через `/meta:audit-smoke --phase=4` (после фикса CLI DEC-DEV-0037). Aggregate `audit-reports/phase-4-summary.md`: **status=fail**. User-решение по итогам: не чинить inline сейчас, перевести Phase 4 в «условно закрытую» с отложенной перепроверкой.
+**Tag:** #pilot-finding #validation #phase-4-closure
+
+### Context
+
+Phase 4 implementation shipped 1.2.0 (DEC-DEV-0032), closure ritual Unit 2 выполнен 2026-05-13 (DEC-DEV-0033). Последний открытый гейт Phase 4 — runtime smoke S1-S13 — был deferred к user-driven сессии. По факту smoke прошёл не одной guided-сессией (как предполагал `PHASE_4_SMOKE_TEST_PLAN.md`), а размазался по 9 частичным пилотным сессиям (2 из них — чистый setup/meta, ничего не триггерили). Аудит выполнен D7-аудитором (Phase 4.1, DEC-DEV-0034) — это был его первый реальный dogfood-прогон, вскрывший попутно 2 бага CLI (исправлены в DEC-DEV-0037).
+
+### Outcome — smoke results
+
+Aggregate: **status=fail**. Покрытие 13 сценариев: 3 COVERED · 6 PARTIAL · 2 FAIL · 2 NOT-COVERED (S7, S9). Findings: 1 blocking · 11 warning · 8 info · 2 uncertain.
+
+| Сценарий | Verdict | Заметка |
+|---|---|---|
+| S1 HYP frontmatter | 🔴 FAIL | HYP-005 с неканоническими полями — рассинхрон smoke-плана и пилота, **не AI-регрессия** (пилотные HYP-001..005 используют ту же неканоническую схему) |
+| S2 Language · S4 NFR review · S5 Handoff draft | ✅ COVERED | — |
+| S3 · S6 · S10 · S11 · S13 | 🟡 PARTIAL | частичное покрытие, без contradiction |
+| S8 DA review FM | 🟡/🔴 | matrix best-of = PARTIAL, но `bf7eaea4` дал FAIL — authoritative для closure |
+| S12 Cleanup `--pending-hygiene` | 🔴 FAIL ×2 | фиксы DEC-DEV-0036 **не удержались** в runtime; обе сессии нарушили разные anti-pattern (#2 wipe da-pending; #5 прямой `cascade-check.js`) |
+| S7 hash · S9 DA review RL | ⚪ NOT-COVERED | ни одна из 9 сессий не триггерила |
+
+**Ключевые findings:**
+
+1. **🔴 Blocking (session `98cb1b97`)** — P-RULE-02 молча обойдён: семантический edit BR-027 заквeuил DA-pending entry, AI через ~2 минуты переписал `da-pending.yaml` в пустой без spawn `product-devils-advocate`.
+2. **Системное — `product-devils-advocate` subagent type не регистрируется в харнессе** Claude Code («Agent type 'product-devils-advocate' not found»). Каждая DA-сессия падала в `general-purpose` fallback — ровно та «P1 regression», которую план был написан ловить. Затрагивает S8 (FAIL) + 4 сессии. Нужно spec-level решение.
+3. **S12** — defensive-фиксы skill-текста (DEC-DEV-0036) не удержались под realistic pressure — повтор «skill loaded, anti-pattern bypassed».
+4. **Frontmatter/schema drift** — 5 check-A findings в 4 сессиях (canonical multi-finding `.da-findings/` shape genuinely ambiguous в spec).
+
+### Decision
+
+По решению пользователя (2026-05-20) Phase 4 переводится в статус **«условно закрыта»** (conditionally closed): implementation + closure ritual выполнены, runtime smoke прогнан и дал реальный сигнал — но FAIL-пункты **не фиксятся inline сейчас**, а логируются как отложенный долг перепроверки и становятся гейтом готовности Phase 5.
+
+Rationale «defer, не fix-now»: отказы распадаются на классы, ни один из которых не quick inline fix — (a) harness-gap (`product-devils-advocate` registration) требует spec-решения; (b) S1 — реконсиляция плана и пилота; (c) S12 — реальная регрессия, но DEC-DEV-0036 уже делал попытку фикса, третий hardening-pass + re-smoke — отдельный рабочий блок. Бандлить всё это в «перед тем как двигаться дальше» = стопорить Phase 5 на неопределённый срок. Поэтому: пометить условно закрытой, нести re-verification явным гейтом.
+
+**Отложенный чек-лист перепроверки (re-verification gate):**
+- [ ] 3-й hardening-pass `skills/product/cleanup-detector.md` + re-smoke S12
+- [ ] `product-devils-advocate` registration gap — spec-решение (Phase 5 kickoff) → re-smoke S8
+- [ ] Реконсиляция S1 (smoke-план vs пилотная HYP-схема) → re-smoke S1
+- [ ] Выделенная сессия smoke для S7, S9 (не покрыты)
+- [ ] Frontmatter-drift паттерн → кодифицировать в D7 `patterns/`
+
+Tracked в `dev/PHASE_5_READINESS.md` Section B и шапке `dev/PHASE_4_SMOKE_TEST_PLAN.md`. Статус-пометки проставлены в ROADMAP, CLAUDE.md, README, CHANGELOG, памяти.
+
+### Lessons
+
+1. **Dogfood D7-аудитора на первом реальном прогоне вскрыл 2 бага CLI (DEC-DEV-0037) раньше, чем хоть один продуктовый finding.** «Validated by smoke» применимо и к самому meta-tooling — не только к продуктовым skill'ам.
+2. **План предполагал одну guided-сессию — реальность дала 9 частичных.** Multi-session smoke работает (агрегатор unify'ит), но покрытие рваное — 2 сценария не триггернулись вообще. Lesson: guided single-session smoke-план либо нужно enforce'ить, либо план должен изначально закладывать fan-out.
+3. **«Условно закрыта» как явное состояние фазы** — лучше бинарного open/closed, когда smoke даёт смешанный сигнал. Но отложенные пункты обязаны быть именованным гейтом (`PHASE_5_READINESS.md` Section B), не фольклором.
+4. **Фиксы DEC-DEV-0036 не удержались** → defensive hardening skill-текста имеет предел; часть anti-pattern'ов, возможно, требует структурного/hook-гарда, а не только формулировки. Перепроверить в 3-м pass.
+
+### Next
+
+- [ ] 3-й hardening cleanup-detector + re-smoke S12
+- [ ] `product-devils-advocate` registration — spec-решение на Phase 5 kickoff
+- [ ] S1 plan/pilot реконсиляция
+- [ ] Выделенная smoke-сессия S7/S9
+- [ ] Frontmatter-drift → D7 pattern
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

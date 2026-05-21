@@ -26,7 +26,7 @@
  *
  * Env:
  *   CLAUDE_CLI_PATH         Override path to `claude` binary (default: PATH)
- *   AUDIT_SMOKE_TIMEOUT_MS  Per-auditor spawn timeout (default: 600000 = 10 min)
+ *   AUDIT_SMOKE_TIMEOUT_MS  Per-auditor spawn timeout (default: 1200000 = 20 min)
  *
  * Exit codes:
  *   0  — success (all sessions audited, no FAIL status)
@@ -46,7 +46,7 @@ const { spawnSync } = require('child_process');
 const auditIndex = require('./audit-index.js');
 
 const DEFAULT_CLAUDE_BIN = process.env.CLAUDE_CLI_PATH || 'claude';
-const AUDITOR_TIMEOUT_MS = parseInt(process.env.AUDIT_SMOKE_TIMEOUT_MS || '600000', 10);
+const AUDITOR_TIMEOUT_MS = parseInt(process.env.AUDIT_SMOKE_TIMEOUT_MS || '1200000', 10);
 const MAX_TRANSCRIPT_CHARS = 2000;
 const RELEVANT_TOOLS = new Set([
   'Write', 'Edit', 'NotebookEdit', 'Bash', 'SlashCommand', 'Agent', 'Read', 'Task',
@@ -704,19 +704,19 @@ function main() {
       claudeBin: DEFAULT_CLAUDE_BIN,
     });
 
-    if (result.error) {
-      process.stderr.write(`  spawn error: ${result.error.message}\n`);
-      continue;
-    }
-    if (result.status !== 0) {
-      process.stderr.write(`  auditor exited ${result.status}\n`);
-      if (result.stderr) process.stderr.write(`  stderr: ${String(result.stderr).slice(0, 500)}\n`);
-      continue;
-    }
+    // A non-zero exit or spawn error (e.g. ETIMEDOUT) does not by itself mean
+    // the audit failed: `claude -p` can finish writing the report and then be
+    // killed for not terminating within the spawn timeout. Treat the report
+    // file as the source of truth — salvage it when it exists and parses, and
+    // only hard-fail when no usable report was produced.
+    const exitProblem = result.error
+      ? `spawn error: ${result.error.message}`
+      : (result.status !== 0 ? `auditor exited ${result.status}` : null);
+
     if (!fs.existsSync(reportPath)) {
-      process.stderr.write(`  auditor finished but report missing at ${reportPath}\n`);
-      if (result.stdout) process.stderr.write(`  stdout (head): ${String(result.stdout).slice(0, 1000)}\n`);
-      if (result.stderr) process.stderr.write(`  stderr (head): ${String(result.stderr).slice(0, 1000)}\n`);
+      process.stderr.write(`  ${exitProblem || 'auditor finished'} — report missing at ${reportPath}\n`);
+      if (result.stdout) process.stderr.write(`  stdout (head): ${String(result.stdout).slice(0, 1500)}\n`);
+      if (result.stderr) process.stderr.write(`  stderr (head): ${String(result.stderr).slice(0, 1500)}\n`);
       continue;
     }
 
@@ -730,7 +730,12 @@ function main() {
     }
     if (!frontmatter) {
       process.stderr.write(`  report frontmatter unparseable\n`);
+      if (exitProblem) process.stderr.write(`  (auditor also reported: ${exitProblem})\n`);
       continue;
+    }
+
+    if (exitProblem) {
+      process.stdout.write(`  ⚠ ${exitProblem} — but a parseable report was written; salvaging.\n`);
     }
 
     succeeded.push({ session, frontmatter, reportPath });
