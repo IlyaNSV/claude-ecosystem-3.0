@@ -1,5 +1,11 @@
 # Phase 4 Smoke Test — Гайд
 
+> **🟡 СТАТУС 2026-05-20 — smoke ВЫПОЛНЕН; Phase 4 «условно закрыта».**
+> Первый прогон состоялся (9 пилотных сессий `my-first-test`); аудит — [`meta-improvement/audit-reports/phase-4-summary.md`](meta-improvement/audit-reports/phase-4-summary.md), итог **status=fail**. Решение и чек-лист перепроверки — `DEC-DEV-0038`.
+> Гайд остаётся активным как **re-verification план**: re-smoke нужен для S1, S7, S8, S9, S12 после фиксов (см. `dev/PHASE_5_READINESS.md` Section B). **Не архивировать** до полной перепроверки.
+
+---
+
 > **Цель:** за **одну Claude Code сессию** прогнать 13 runtime сценариев Phase 4 в пилотном `my-first-test`, observable behavior зафиксировать через SessionEnd hook, потом аудитор соберёт structured отчёт.
 >
 > **Время:** ~60-90 минут (зависит от того, как быстро AI отрабатывает scenarios + сколько prompts требуется).
@@ -597,10 +603,10 @@ Phase 4 closure ready когда:
 
 - [x] Section A static — ✅ PASS (8/8)
 - [x] S14 + S15 — ✅ PASS (DEC-DEV-0032/0033)
-- [ ] S1-S13 runtime — **через этот гайд (single session)**
-- [ ] ≥10 из 13 PASS (per Phase 4 plan minimum bar)
-- [ ] 0 unresolved blocking findings
-- [ ] DEC-DEV-NNNN retroactive populated
-- [ ] Memory + ROADMAP synced (`/d7:memory-sync` или manual)
+- [~] S1-S13 runtime — прогнан 2026-05-20 (9 сессий) → **status=fail** (DEC-DEV-0038)
+- [ ] ≥10 из 13 PASS — **НЕ достигнуто** (3 COVERED / 6 PARTIAL / 2 FAIL / 2 NOT-COVERED)
+- [ ] 0 unresolved blocking findings — **НЕ достигнуто** (1 blocking: P-RULE-02, session 98cb1b97)
+- [x] DEC-DEV retroactive populated — DEC-DEV-0038
+- [x] Memory + ROADMAP synced — 2026-05-20
 
-Если ≥10 PASS и 0 blockers — Phase 4 closure ритуал (DEC-DEV-0033) подтверждается; Phase 5 unblocked. Иначе — findings → Phase 5 readiness checklist либо v1.1 backlog.
+**Итог:** строгий bar (≥10 PASS, 0 blockers) не достигнут → Phase 4 НЕ closed по полному критерию. По решению пользователя (DEC-DEV-0038) фаза переведена в **«условно закрыта»**: фиксы FAIL-сценариев + re-smoke (S1/S7/S8/S9/S12) отложены к re-verification gate в `dev/PHASE_5_READINESS.md` Section B. Phase 5 implementation не блокируется.

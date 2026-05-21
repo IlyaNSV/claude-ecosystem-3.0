@@ -34,9 +34,9 @@ Phase 4.1 patch release: **D7 Log Conformance Auditor** — расширение
 
 Hook script лежит в репо экосистемы; пилот регистрирует его через absolute path в `.claude/settings.local.json` (one-time setup via `/ecosystem:enable-d7-audit`). Отчёты пишутся в репо экосистемы. Пилот не загрязнён meta-артефактами. См. `dev/meta-improvement/checklists/audit-smoke-workflow.md` для full ритуала.
 
-### Runtime smoke pending
+### Runtime smoke — executed 2026-05-20
 
-Sam mechanism Phase 4.1 ещё не прогонялся на real Phase 4 transcript'е (его smoke test pending user execution per Phase 4 closure — DEC-DEV-0032/0033). Findings dogfood validation будут retroactive в `DEC-DEV-0034 — Outcome/Lessons` после первого реального run.
+Mechanism Phase 4.1 впервые прогнан на real Phase 4 transcript'ах 2026-05-20 (9 пилотных сессий `my-first-test`). Первый dogfood вскрыл 2 бага CLI — исправлены в `DEC-DEV-0037`; smoke results + условное закрытие Phase 4 — `DEC-DEV-0038`.
 
 ---
 
@@ -46,7 +46,7 @@ Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Lang
 
 **Backwards compatibility:** Phase 4 introduces schema extensions для DA findings frontmatter (canonical fields per DEC-DEV-0030 A.1) — existing `.product/.da-findings/*.md` from Phase 3 hook-driven adaptive DA остаются valid (Shape A — cosmetic check; subset of canonical fields). Mode/scope fields добавляются inferred (legacy: `source: hook-driven`, `scope: artifact`). Никакой migration script не требуется. Phase 3 hooks (`br-change-trigger.js`, `ic-change-trigger.js`) поведенчески неизменны.
 
-**Runtime smoke pending** — see `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B (S1-S13 + S15). Static verification Section A 8/8 PASS (включая `product-handoff-gate.js` functional layer от b8f16bc). User-driven Claude Code session с `.product/` data invokes runtime scenarios; findings → retroactive `DEC-DEV-NNNN — Phase 4 smoke test results` entry. Precedent: Phase 3 = DEC-DEV-0023.
+**Runtime smoke — executed 2026-05-20** — see `dev/PHASE_4_SMOKE_TEST_PLAN.md`. Static verification Section A 8/8 PASS (включая `product-handoff-gate.js` functional layer от b8f16bc). Runtime smoke прогнан (9 пилотных сессий) → **status=fail**; Phase 4 переведена в «условно закрыта», re-verification deferred — `DEC-DEV-0038`.
 
 ### Added — Validation runner (Phase 4.C / DEC-DEV-0025 C.4)
 
@@ -126,7 +126,7 @@ Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Lang
 
 - **DEC-DEV-0030 cuts:** `/product:clarify` channel deferred к v1.1 (no Phase 5 adapter receiver); D.7 aspirational layer (recursive auto drill-down + `FM.depends_on` graph) deferred (core shipped, evidence-gated bring-forward).
 - **Effort actual: 12-15h** vs ROADMAP base 3-4h (3-4x multiplier — pattern stable Phase 2/3/4; ROADMAP «How this roadmap evolves» refinement candidate).
-- **Closure ritual (Unit 2) pending** — D7 phase-closure.md 6 steps will run в next session (fresh-session preferred per anti-bias guard); will produce own `DEC-DEV-NNNN — Phase 4 closure run + checklist refinement` entry.
+- **Closure ritual (Unit 2)** — D7 phase-closure.md 6 steps executed 2026-05-13 fresh-session (`DEC-DEV-0033`). Runtime smoke прогнан 2026-05-20 → fail → Phase 4 «условно закрыта» (`DEC-DEV-0038`).
 
 ---
 

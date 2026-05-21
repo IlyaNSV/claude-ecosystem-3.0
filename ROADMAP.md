@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-14.
+> **Последнее обновление:** 2026-05-20.
 
 ## Где мы сейчас
 
@@ -29,10 +29,13 @@
    — `/meta:audit-smoke --phase=<N>` сверяет smoke-сессии с `PHASE_<N>_SMOKE_TEST_PLAN.md`; журнал идемпотентности
    — DEC-DEV-0034 entry; 1.2.1 patch release; runtime dogfood pending
 
+🟡 Phase 4 runtime smoke — audited 2026-05-20 → status=fail (9 pilot sessions; DEC-DEV-0038)
+   — Phase 4 = «условно закрыта»: 2 FAIL (S1, S12) + 1 blocking finding + product-devils-advocate registration gap
+   — FAIL-пункты deferred к re-verification gate (dev/PHASE_5_READINESS.md Section B)
+
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 4 runtime smoke test (S1-S13+S15 — user-driven Claude Code session с .product/ data; первый usecase для Phase 4.1 auditor)
-⏳ Phase 5 readiness gate — kickoff session per dev/PHASE_5_READINESS.md
+⏳ Phase 5 readiness gate — kickoff session per dev/PHASE_5_READINESS.md (вкл. Phase 4 re-verification gate)
 ⏳ Phase 5 — Integrator Phase 2 (Installation + first cc-sdd adapter)
 ⏳ 🎯 PILOT POINT — full end-to-end (handoff generation + external tool)
 ⏳ Phase 6 — Design Module (conditional, activate on first UI feature)
@@ -177,7 +180,7 @@ claude
 
 > **Scope refined 2026-04-20** per DEC-DEV-0012. Deep mode subagents и atomic mass-rename перенесены в v1.1 (см. [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md)). DA debt mechanism dropped — заменён adaptive-depth DA на каждое изменение (см. [`docs/pmo/processes.md §6.2`](docs/pmo/processes.md)). NFR Review F.5a deferred Phase 4.
 >
-> **Implementation completed 2026-04-27** — 23 files (originally estimated 21, +2 for: devils-advocate.md adaptive-depth refactor per A.1 spec drift fix, dev/PHASE_3_SMOKE_TEST_PLAN.md). 9 commits across 10 sub-phases (A→J + prerequisite). Final lessons: DEC-DEV-0014 в DEV_JOURNAL.md. Real run smoke test pending — see [dev/PHASE_3_SMOKE_TEST_PLAN.md](dev/PHASE_3_SMOKE_TEST_PLAN.md).
+> **Implementation completed 2026-04-27** — 23 files (originally estimated 21, +2 for: devils-advocate.md adaptive-depth refactor per A.1 spec drift fix, dev/PHASE_3_SMOKE_TEST_PLAN.md). 9 commits across 10 sub-phases (A→J + prerequisite). Final lessons: DEC-DEV-0014 в DEV_JOURNAL.md. Real run smoke test executed 2026-04-29 (DEC-DEV-0023) → 1.1.1 patch; plan archived to [dev/_archive/phase-3/PHASE_3_SMOKE_TEST_PLAN.md](dev/_archive/phase-3/PHASE_3_SMOKE_TEST_PLAN.md).
 
 ### Deliverables (~21 файл)
 
@@ -266,7 +269,9 @@ Cross-cutting:
 >
 > **Pre-implementation kickoff 2026-05-12** per DEC-DEV-0030 — 26 ambiguity resolutions + 2 scope cuts (`/product:clarify` channel deferred к v1.1; D.7 aspirational layer split — core shipped, recursive auto drill-down + FM.depends_on graph deferred).
 >
-> **Implementation completed 2026-05-13** — 8 sub-phase commits (A-H) + J static smoke + b8f16bc review fix-up (DEC-DEV-0031) + K1 closure docs. Closure entry: DEC-DEV-0032. Closure ritual (Unit 2) pending fresh-session run.
+> **Implementation completed 2026-05-13** — 8 sub-phase commits (A-H) + J static smoke + b8f16bc review fix-up (DEC-DEV-0031) + K1 closure docs. Closure entry: DEC-DEV-0032; closure ritual Unit 2 executed 2026-05-13 (DEC-DEV-0033).
+>
+> **🟡 Conditionally closed 2026-05-20** — runtime smoke audited (9 pilot sessions) → status=fail; 2 FAIL (S1, S12) + 1 blocking finding + `product-devils-advocate` registration gap. Фиксы отложены к re-verification gate — см. DEC-DEV-0038 + `dev/PHASE_5_READINESS.md` Section B.
 
 ### Deliverables shipped
 
@@ -323,8 +328,8 @@ Cross-cutting:
 - [x] `/product:cleanup [--pending-hygiene]` — V-15 orphan + 3-pending sweep (cascade revalidate + validation purge + da-pending stale flag)
 - [x] Language discipline — Russian default в user-facing skills + template section
 - [x] HYP frontmatter canonical (target_value, segment, value_proposition)
-- [ ] **Runtime smoke test S1-S13 + S15** — user-driven Claude Code session с `.product/` data (deferred per AI session capability boundary; findings → retroactive DEC-DEV-NNNN entry)
-- [ ] **Phase 4 closure ritual (Unit 2)** — D7 phase-closure.md 6 steps в next session (fresh-session preferred); produces own DEC-DEV-NNNN refinement entry
+- [~] **Runtime smoke test S1-S13** — audited 2026-05-20 → **status=fail** (DEC-DEV-0038); Phase 4 «условно закрыта», re-verification deferred (re-smoke S1/S7/S8/S9/S12)
+- [x] **Phase 4 closure ritual (Unit 2)** — D7 phase-closure.md 6 steps executed 2026-05-13 fresh-session (DEC-DEV-0033)
 
 ### Estimated effort actual
 

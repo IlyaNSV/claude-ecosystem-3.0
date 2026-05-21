@@ -12,16 +12,16 @@
 
 ✅ **Phase 4 implementation completed (DEC-DEV-0032, 2026-05-13).**
 ✅ **Phase 4 closure ritual (Unit 2) executed 2026-05-13 — DEC-DEV-0033** — 9 findings, 5 fixed inline (F1/F2/F3/F7/F8), 3 queued ниже (F5/F6/F9), 1 pending user (F4 — interactive `/ecosystem:update`).
-⏳ **Phase 4 runtime smoke (S1-S13+S15) pending user-driven Claude Code session.**
+🟡 **Phase 4 runtime smoke audited 2026-05-20 → status=fail — Phase 4 «условно закрыта» (DEC-DEV-0038).** 2 FAIL (S1, S12) + 1 blocking finding + `product-devils-advocate` registration gap. Re-verification отложена — см. Section B (становится gate'ом готовности Phase 5).
 
 **Перед стартом Phase 5 implementation:**
 - [x] **Phase 4 closure ritual (Unit 2 — D7 phase-closure.md 6 steps)** — executed 2026-05-13 fresh-session per anti-bias guard. Findings + refinements в DEC-DEV-0033. См. Section A ниже.
-- [ ] **Phase 4 runtime smoke** (S1-S13+S15 per `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B) — user-driven Claude Code session с existing `.product/` data (либо `my-first-test` либо dogfood `.product/` для Ecosystem 3.0). Findings → retroactive `DEC-DEV-NNNN — Phase 4 smoke test results` entry. Precedent: Phase 3 = DEC-DEV-0023.
+- [~] **Phase 4 runtime smoke** — выполнен 2026-05-20 → **status=fail** (DEC-DEV-0038). Re-verification отложена → см. Section B (Phase 4 re-verification gate).
 - [ ] **Closure queued findings (Section A.4)** — F5 SPEC.md §6.6 rewrite, F6 naming consistency sweep, F9 architecture memory refresh — fix перед Phase 5 implementation.
 - [ ] **Phase 4 bootstrap regression (F4)** — `/ecosystem:update` в `my-first-test/.claude/` чтобы pilot получил Phase 4 deliverables. Можно скомбинировать с runtime smoke run.
 - [ ] **Phase 5 readiness gate** — этот checklist completed; architectural questions resolved (Section C below); scope confirmed (Section D); pilot validation prepared (Section E).
 
-**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke + queued findings + Phase 5 readiness — non-blocking для user, recommended последовательность перед Phase 5 implementation start.
+**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke выполнен 2026-05-20 → fail → Phase 4 «условно закрыта» (DEC-DEV-0038). Re-verification gate (Section B) + queued findings (A.4) + Phase 5 readiness — recommended последовательность перед Phase 5 implementation start.
 
 ---
 
@@ -113,31 +113,36 @@ Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run execut
 
 ---
 
-## B. Phase 4 runtime smoke test results — pending
+## B. Phase 4 runtime smoke — выполнен 2026-05-20 → status=fail · re-verification gate
 
-### B.1 Real run на `my-first-test` или dogfood
+> **🟡 Phase 4 «условно закрыта» (DEC-DEV-0038).** Smoke прогнан (9 пилотных сессий `my-first-test`), аудит — `dev/meta-improvement/audit-reports/phase-4-summary.md`. FAIL-пункты НЕ пофикшены — этот раздел стал **гейтом перепроверки**: пункты B.2 выполняются до того, как Phase 4 можно считать полностью закрытой (Phase 5 implementation они не блокируют, но входят в Phase 5 readiness).
 
-Per `dev/PHASE_4_SMOKE_TEST_PLAN.md` Section B. 15 scenarios:
+### B.1 Smoke результат (per `phase-4-summary.md`, aggregate)
 
-- [ ] S1 — HYP frontmatter canonical (DEC-DEV-0024 verification)
-- [ ] S2 — Language discipline (Russian default + identifiers verbatim)
-- [ ] S3 — Full validation `/product:validate --deep`
-- [ ] S4 — NFR review F.5a Ask/Define
-- [ ] S5 — Handoff `--mode draft`
-- [ ] S6 — Handoff `--mode production`
-- [ ] S7 — Cross-platform hash invariant (Windows ↔ Unix transfer)
-- [ ] S8 — DA review FM-NNN (feature scope)
-- [ ] S9 — DA review RL-NNN (release scope)
-- [ ] S10 — Handoff `--with-da-review` (real SlashCommand invocation + critical gate)
-- [ ] S11 — Cleanup orphan detection (default mode)
-- [ ] S12 — Cleanup `--pending-hygiene` (full sweep)
-- [ ] S13 — NFR tier upgrade
-- [x] S14 — `verify-hooks.js` smoke runner (✅ 8/8 PASS executed в Phase 4.J + post-rebase verification)
-- [ ] S15 — Phase 4 closure ritual (overlaps with A.1 above)
+Aggregate **status=fail** · 3 COVERED / 6 PARTIAL / 2 FAIL / 2 NOT-COVERED · findings 1 blocking / 11 warning / 8 info / 2 uncertain.
 
-### B.2 Retroactive DEC-DEV entry
+| Сценарий | Verdict |
+|---|---|
+| S1 HYP frontmatter | 🔴 FAIL — рассинхрон smoke-плана и пилотной HYP-схемы (не AI-регрессия) |
+| S2 Language · S4 NFR review · S5 Handoff draft | ✅ COVERED |
+| S3 · S6 · S10 · S11 · S13 | 🟡 PARTIAL |
+| S8 DA review FM | 🔴 FAIL (authoritative; matrix best-of = PARTIAL) |
+| S12 Cleanup `--pending-hygiene` | 🔴 FAIL ×2 — фиксы DEC-DEV-0036 не удержались в runtime |
+| S7 hash · S9 DA review RL | ⚪ NOT-COVERED — ни одна из 9 сессий не триггерила |
+| S14 verify-hooks.js · S15 closure ritual | ✅ PASS (Phase 4.J + DEC-DEV-0033) |
 
-- [ ] **DEC-DEV-NNNN — Phase 4 smoke test results** populated после real run completion (precedent: DEC-DEV-0023 для Phase 3)
+### B.2 Re-verification gate — отложенные пункты (до полного закрытия Phase 4)
+
+- [ ] **S12** — 3-й hardening-pass `skills/product/cleanup-detector.md` (anti-pattern #2/#5) + re-smoke
+- [ ] **S8 / DA agent** — `product-devils-advocate` subagent type не регистрируется в харнессе → spec-решение (`general-purpose` + STEP-0 role-adoption как официальный контракт ЛИБО фикс регистрации) + re-smoke
+- [ ] **S1** — реконсиляция smoke-плана и пилотной HYP-схемы (правка S1 acceptance ЛИБО миграция пилотных HYP к canonical `docs/pmo/artifacts/HYP.md`) + re-smoke
+- [ ] **S7, S9** — выделенная smoke-сессия (cross-platform hash + DA review RL)
+- [ ] **🔴 Blocking** — session `98cb1b97`: восстановить BR-027 DA-pending entry ЛИБО записать обоснованный `resolution: dismissed`; добавить session-window guard в `cleanup-detector.md`
+- [ ] **Frontmatter-drift** — кодифицировать паттерн в D7 `patterns/`; disambiguate canonical multi-finding `.da-findings/` shape в `agents/product/devils-advocate.md`
+
+### B.3 Retroactive DEC-DEV entry
+
+- [x] **DEC-DEV-0038 — Phase 4 runtime smoke results + условное закрытие фазы** — записан 2026-05-20.
 
 ---
 

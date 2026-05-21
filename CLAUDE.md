@@ -19,11 +19,11 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 ## Где мы сейчас
 
-См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-13):
+См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-20):
 - ✅ Phase 0-2 (scaffolding, Integrator read-only, Bootstrap, Product Module Discovery + drift mechanisms)
 - ✅ Phase 3 (Planning + Feature Enrichment + adaptive-depth DA + cascade detection) — smoke-tested DEC-DEV-0023 + 1.1.1 patch shipped
-- ✅ Phase 4 (Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline) — 1.2.0 shipped DEC-DEV-0032; runtime smoke (S1-S13+S15) + closure ritual Unit 2 pending
-- ⏳ **Next: Phase 5** — Integrator Phase 2 + first cc-sdd adapter (см. `dev/PHASE_5_READINESS.md`)
+- 🟡 Phase 4 (Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline) — 1.2.0 shipped DEC-DEV-0032; closure ritual Unit 2 done DEC-DEV-0033; runtime smoke audited 2026-05-20 → **status=fail** → Phase 4 **«условно закрыта»**, re-verification deferred (DEC-DEV-0038)
+- ⏳ **Next: Phase 5** — Integrator Phase 2 + first cc-sdd adapter (см. `dev/PHASE_5_READINESS.md`; включает Phase 4 re-verification gate)
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий `dev/PHASE_<N>_READINESS.md`.
 
