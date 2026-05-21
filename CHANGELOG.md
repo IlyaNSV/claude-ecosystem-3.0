@@ -36,7 +36,7 @@ Hook script лежит в репо экосистемы; пилот регист
 
 ### Runtime smoke — executed 2026-05-20
 
-Mechanism Phase 4.1 впервые прогнан на real Phase 4 transcript'ах 2026-05-20 (9 пилотных сессий `my-first-test`). Первый dogfood вскрыл 2 бага CLI — исправлены в `DEC-DEV-0037`; smoke results + условное закрытие Phase 4 — `DEC-DEV-0038`.
+Mechanism Phase 4.1 впервые прогнан на real Phase 4 transcript'ах 2026-05-20 (9 пилотных сессий `my-first-test`). Первый dogfood вскрыл 2 бага CLI — исправлены в `DEC-DEV-0037`; smoke results + закрытие Phase 4 — `DEC-DEV-0038`.
 
 ---
 
@@ -46,7 +46,7 @@ Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Lang
 
 **Backwards compatibility:** Phase 4 introduces schema extensions для DA findings frontmatter (canonical fields per DEC-DEV-0030 A.1) — existing `.product/.da-findings/*.md` from Phase 3 hook-driven adaptive DA остаются valid (Shape A — cosmetic check; subset of canonical fields). Mode/scope fields добавляются inferred (legacy: `source: hook-driven`, `scope: artifact`). Никакой migration script не требуется. Phase 3 hooks (`br-change-trigger.js`, `ic-change-trigger.js`) поведенчески неизменны.
 
-**Runtime smoke — executed 2026-05-20** — see `dev/PHASE_4_SMOKE_TEST_PLAN.md`. Static verification Section A 8/8 PASS (включая `product-handoff-gate.js` functional layer от b8f16bc). Runtime smoke прогнан (9 пилотных сессий) → **status=fail**; Phase 4 переведена в «условно закрыта», re-verification deferred — `DEC-DEV-0038`.
+**Runtime smoke — executed 2026-05-20.** Static verification Section A 8/8 PASS (включая `product-handoff-gate.js` functional layer от b8f16bc). Runtime smoke прогнан (9 пилотных сессий) → **status=fail**; Phase 4 закрыта с принятыми known issues — `DEC-DEV-0038`.
 
 ### Added — Validation runner (Phase 4.C / DEC-DEV-0025 C.4)
 
@@ -126,7 +126,7 @@ Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Lang
 
 - **DEC-DEV-0030 cuts:** `/product:clarify` channel deferred к v1.1 (no Phase 5 adapter receiver); D.7 aspirational layer (recursive auto drill-down + `FM.depends_on` graph) deferred (core shipped, evidence-gated bring-forward).
 - **Effort actual: 12-15h** vs ROADMAP base 3-4h (3-4x multiplier — pattern stable Phase 2/3/4; ROADMAP «How this roadmap evolves» refinement candidate).
-- **Closure ritual (Unit 2)** — D7 phase-closure.md 6 steps executed 2026-05-13 fresh-session (`DEC-DEV-0033`). Runtime smoke прогнан 2026-05-20 → fail → Phase 4 «условно закрыта» (`DEC-DEV-0038`).
+- **Closure ritual (Unit 2)** — D7 phase-closure.md 6 steps executed 2026-05-13 fresh-session (`DEC-DEV-0033`). Runtime smoke прогнан 2026-05-20 → fail → Phase 4 закрыта с принятыми known issues (`DEC-DEV-0038`).
 
 ---
 

@@ -12,16 +12,16 @@
 
 ✅ **Phase 4 implementation completed (DEC-DEV-0032, 2026-05-13).**
 ✅ **Phase 4 closure ritual (Unit 2) executed 2026-05-13 — DEC-DEV-0033** — 9 findings, 5 fixed inline (F1/F2/F3/F7/F8), 3 queued ниже (F5/F6/F9), 1 pending user (F4 — interactive `/ecosystem:update`).
-🟡 **Phase 4 runtime smoke audited 2026-05-20 → status=fail — Phase 4 «условно закрыта» (DEC-DEV-0038).** 2 FAIL (S1, S12) + 1 blocking finding + `product-devils-advocate` registration gap. Re-verification отложена — см. Section B (становится gate'ом готовности Phase 5).
+✅ **Phase 4 runtime smoke audited 2026-05-20 → status=fail — Phase 4 закрыта (DEC-DEV-0038).** 2 FAIL (S1, S12) + 1 blocking finding + `product-devils-advocate` registration gap зафиксированы как known issues (`audit-reports/phase-4-summary.md`); re-verification gate снят, smoke-план + fixtures удалены. Phase 5 не блокируется.
 
 **Перед стартом Phase 5 implementation:**
 - [x] **Phase 4 closure ritual (Unit 2 — D7 phase-closure.md 6 steps)** — executed 2026-05-13 fresh-session per anti-bias guard. Findings + refinements в DEC-DEV-0033. См. Section A ниже.
-- [~] **Phase 4 runtime smoke** — выполнен 2026-05-20 → **status=fail** (DEC-DEV-0038). Re-verification отложена → см. Section B (Phase 4 re-verification gate).
+- [x] **Phase 4 runtime smoke** — выполнен 2026-05-20 → **status=fail** (DEC-DEV-0038); known issues приняты, re-verification gate снят. См. Section B.
 - [ ] **Closure queued findings (Section A.4)** — F5 SPEC.md §6.6 rewrite, F6 naming consistency sweep, F9 architecture memory refresh — fix перед Phase 5 implementation.
 - [ ] **Phase 4 bootstrap regression (F4)** — `/ecosystem:update` в `my-first-test/.claude/` чтобы pilot получил Phase 4 deliverables. Можно скомбинировать с runtime smoke run.
 - [ ] **Phase 5 readiness gate** — этот checklist completed; architectural questions resolved (Section C below); scope confirmed (Section D); pilot validation prepared (Section E).
 
-**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke выполнен 2026-05-20 → fail → Phase 4 «условно закрыта» (DEC-DEV-0038). Re-verification gate (Section B) + queued findings (A.4) + Phase 5 readiness — recommended последовательность перед Phase 5 implementation start.
+**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke выполнен 2026-05-20 → fail → Phase 4 закрыта с принятыми known issues (DEC-DEV-0038; re-verification gate снят). Перед Phase 5 implementation остаются: queued findings (A.4) + Phase 5 readiness gate.
 
 ---
 
@@ -113,36 +113,20 @@ Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run execut
 
 ---
 
-## B. Phase 4 runtime smoke — выполнен 2026-05-20 → status=fail · re-verification gate
+## B. Phase 4 runtime smoke — выполнен 2026-05-20 → Phase 4 закрыта
 
-> **🟡 Phase 4 «условно закрыта» (DEC-DEV-0038).** Smoke прогнан (9 пилотных сессий `my-first-test`), аудит — `dev/meta-improvement/audit-reports/phase-4-summary.md`. FAIL-пункты НЕ пофикшены — этот раздел стал **гейтом перепроверки**: пункты B.2 выполняются до того, как Phase 4 можно считать полностью закрытой (Phase 5 implementation они не блокируют, но входят в Phase 5 readiness).
+Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-first-test`), aggregate `dev/meta-improvement/audit-reports/phase-4-summary.md` → **status=fail** (3 COVERED / 6 PARTIAL / 2 FAIL / 2 NOT-COVERED; 1 blocking / 11 warning / 8 info / 2 uncertain).
 
-### B.1 Smoke результат (per `phase-4-summary.md`, aggregate)
+По решению пользователя (DEC-DEV-0038 + follow-up) **re-verification gate снят**, `PHASE_4_SMOKE_TEST_PLAN.md` + fixtures удалены — **Phase 4 закрыта** с принятыми known issues. Это НЕ гейт Phase 5; пункты ниже — informational-фон, адресуются в контексте, где всплывут.
 
-Aggregate **status=fail** · 3 COVERED / 6 PARTIAL / 2 FAIL / 2 NOT-COVERED · findings 1 blocking / 11 warning / 8 info / 2 uncertain.
+**Known issues (per `phase-4-summary.md` Recommendations):**
+- S12 — defensive-фиксы DEC-DEV-0036 (`cleanup-detector.md`) не удержались в runtime
+- `product-devils-advocate` subagent type не регистрируется в харнессе → `general-purpose` fallback (вероятный кандидат всплыть в Phase 5 Integrator-работе)
+- S1 — рассинхрон smoke-плана и пилотной HYP-схемы (не AI-регрессия)
+- 🔴 Blocking (session `98cb1b97`) — P-RULE-02 обойдён при cleanup
+- S7 / S9 — не покрыты smoke
 
-| Сценарий | Verdict |
-|---|---|
-| S1 HYP frontmatter | 🔴 FAIL — рассинхрон smoke-плана и пилотной HYP-схемы (не AI-регрессия) |
-| S2 Language · S4 NFR review · S5 Handoff draft | ✅ COVERED |
-| S3 · S6 · S10 · S11 · S13 | 🟡 PARTIAL |
-| S8 DA review FM | 🔴 FAIL (authoritative; matrix best-of = PARTIAL) |
-| S12 Cleanup `--pending-hygiene` | 🔴 FAIL ×2 — фиксы DEC-DEV-0036 не удержались в runtime |
-| S7 hash · S9 DA review RL | ⚪ NOT-COVERED — ни одна из 9 сессий не триггерила |
-| S14 verify-hooks.js · S15 closure ritual | ✅ PASS (Phase 4.J + DEC-DEV-0033) |
-
-### B.2 Re-verification gate — отложенные пункты (до полного закрытия Phase 4)
-
-- [ ] **S12** — 3-й hardening-pass `skills/product/cleanup-detector.md` (anti-pattern #2/#5) + re-smoke
-- [ ] **S8 / DA agent** — `product-devils-advocate` subagent type не регистрируется в харнессе → spec-решение (`general-purpose` + STEP-0 role-adoption как официальный контракт ЛИБО фикс регистрации) + re-smoke
-- [ ] **S1** — реконсиляция smoke-плана и пилотной HYP-схемы (правка S1 acceptance ЛИБО миграция пилотных HYP к canonical `docs/pmo/artifacts/HYP.md`) + re-smoke
-- [ ] **S7, S9** — выделенная smoke-сессия (cross-platform hash + DA review RL)
-- [ ] **🔴 Blocking** — session `98cb1b97`: восстановить BR-027 DA-pending entry ЛИБО записать обоснованный `resolution: dismissed`; добавить session-window guard в `cleanup-detector.md`
-- [ ] **Frontmatter-drift** — кодифицировать паттерн в D7 `patterns/`; disambiguate canonical multi-finding `.da-findings/` shape в `agents/product/devils-advocate.md`
-
-### B.3 Retroactive DEC-DEV entry
-
-- [x] **DEC-DEV-0038 — Phase 4 runtime smoke results + условное закрытие фазы** — записан 2026-05-20.
+Решение и полный разбор — DEC-DEV-0038 (+ follow-up) и `audit-reports/phase-4-summary.md`.
 
 ---
 

@@ -2949,6 +2949,20 @@ Tracked в `dev/PHASE_5_READINESS.md` Section B и шапке `dev/PHASE_4_SMOKE
 - [ ] Выделенная smoke-сессия S7/S9
 - [ ] Frontmatter-drift → D7 pattern
 
+### Follow-up (2026-05-20) — re-verification gate снят, Phase 4 закрыта
+
+Через ~час после записи выше пользователь пересмотрел решение: re-verification gate **снимается**, `dev/PHASE_4_SMOKE_TEST_PLAN.md` + `dev/phase-4-smoke-fixtures/` удаляются. Phase 4 переводится из «условно закрыта» в **закрыта** — с известными незакрытыми issue, зафиксированными в `audit-reports/phase-4-summary.md` (+ per-session reports) и в Outcome выше.
+
+Rationale: держать формальный gate + 600-строчный smoke-гайд + seed-fixtures ради перепроверки, не запланированной к конкретному сроку — незавершённый «хвост» над Phase 5 без выигрыша. Результаты smoke уже captured (summary + этот entry). Если какой-то issue станет блокером на практике — вероятный кандидат, `product-devils-advocate` registration gap, всплывёт в Phase 5 Integrator-работе — он будет адресован в контексте той работы, а не через reanimation Phase 4 ritual.
+
+Следствия:
+- Чек-листы «Decision → re-verification gate» и «Next» выше — **superseded** (не выполняются как обязательный gate). Lesson 3 («отложенные пункты обязаны быть именованным гейтом») остаётся валидной как принцип, но к Phase 4 более не применяется — gate снят сознательно.
+- `dev/PHASE_4_SMOKE_TEST_PLAN.md` + `dev/phase-4-smoke-fixtures/` (4 файла) удалены из репозитория.
+- `PHASE_5_READINESS.md` Section B свёрнут из gate в informational-сводку known issues.
+- Статус-пометки в ROADMAP / CLAUDE.md / README / CHANGELOG / SPEC §14.5 / памяти: «условно закрыта» → «закрыта (smoke=fail, known issues accepted)».
+
+Known issues не теряются — они в `phase-4-summary.md` (Overview + Recommendations) и в Outcome/Findings выше. «Закрыта» здесь = «фаза не держит Phase 5», а не «smoke прошёл».
+
 ---
 
 ## Шаблон новой записи

@@ -939,7 +939,7 @@ Deadlock protection (OQ-P4):
 - [x] Артефакты: SC, BR, LC, VC, IC, RPM updates, BG continuous
 - [x] Acceptance: одна FM обогащена end-to-end, cascade работает, BG extraction работает
 
-### 14.5 Handoff + NFR + Product DA — Phase 4 shipped (1.2.0, DEC-DEV-0032); runtime smoke audited 2026-05-20 → условно закрыта (DEC-DEV-0038); adapter consumption → Phase 5
+### 14.5 Handoff + NFR + Product DA — Phase 4 shipped (1.2.0, DEC-DEV-0032); runtime smoke audited 2026-05-20 → закрыта (smoke=fail, known issues — DEC-DEV-0038); adapter consumption → Phase 5
 
 - [x] Commands: `/product:handoff`, `/product:nfr-review`, `/product:nfr-upgrade-tier`, `/product:da-review`, `/product:validate`, `/product:cleanup`
 - [x] Skills: handoff-generator, nfr-review, product-da-review, validation-runner, cleanup-detector + hypothesis-formulation (drift fix)

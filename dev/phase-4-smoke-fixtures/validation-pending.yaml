@@ -1,6 +1,0 @@
-# Pending validation findings (B2 quiet draft mode + D2 overrides)
-# Surfaced at: approve gate, /product:status, /product:validate
-# Empty baseline — for Phase 4 smoke S12, validation-pending hygiene runs no-op.
-# Per DEC-DEV-0023 F5 auto-purge — entries cleared on subsequent passing writes.
-
-entries: []

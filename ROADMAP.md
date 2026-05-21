@@ -29,13 +29,13 @@
    — `/meta:audit-smoke --phase=<N>` сверяет smoke-сессии с `PHASE_<N>_SMOKE_TEST_PLAN.md`; журнал идемпотентности
    — DEC-DEV-0034 entry; 1.2.1 patch release; runtime dogfood pending
 
-🟡 Phase 4 runtime smoke — audited 2026-05-20 → status=fail (9 pilot sessions; DEC-DEV-0038)
-   — Phase 4 = «условно закрыта»: 2 FAIL (S1, S12) + 1 blocking finding + product-devils-advocate registration gap
-   — FAIL-пункты deferred к re-verification gate (dev/PHASE_5_READINESS.md Section B)
+✅ Phase 4 runtime smoke — audited 2026-05-20 → status=fail (9 pilot sessions; DEC-DEV-0038)
+   — Phase 4 ЗАКРЫТА: smoke дал fail, known issues приняты и задокументированы (audit-reports/phase-4-summary.md)
+   — re-verification gate снят (DEC-DEV-0038 follow-up); smoke-план + fixtures удалены
 
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 5 readiness gate — kickoff session per dev/PHASE_5_READINESS.md (вкл. Phase 4 re-verification gate)
+⏳ Phase 5 readiness gate — kickoff session per dev/PHASE_5_READINESS.md
 ⏳ Phase 5 — Integrator Phase 2 (Installation + first cc-sdd adapter)
 ⏳ 🎯 PILOT POINT — full end-to-end (handoff generation + external tool)
 ⏳ Phase 6 — Design Module (conditional, activate on first UI feature)
@@ -271,7 +271,7 @@ Cross-cutting:
 >
 > **Implementation completed 2026-05-13** — 8 sub-phase commits (A-H) + J static smoke + b8f16bc review fix-up (DEC-DEV-0031) + K1 closure docs. Closure entry: DEC-DEV-0032; closure ritual Unit 2 executed 2026-05-13 (DEC-DEV-0033).
 >
-> **🟡 Conditionally closed 2026-05-20** — runtime smoke audited (9 pilot sessions) → status=fail; 2 FAIL (S1, S12) + 1 blocking finding + `product-devils-advocate` registration gap. Фиксы отложены к re-verification gate — см. DEC-DEV-0038 + `dev/PHASE_5_READINESS.md` Section B.
+> **✅ Closed 2026-05-20** — runtime smoke audited (9 pilot sessions) → status=fail; 2 FAIL (S1, S12) + 1 blocking finding + `product-devils-advocate` registration gap. Re-verification gate снят (DEC-DEV-0038 + follow-up): known issues приняты и задокументированы в `audit-reports/phase-4-summary.md`, smoke-план + fixtures удалены.
 
 ### Deliverables shipped
 
@@ -328,7 +328,7 @@ Cross-cutting:
 - [x] `/product:cleanup [--pending-hygiene]` — V-15 orphan + 3-pending sweep (cascade revalidate + validation purge + da-pending stale flag)
 - [x] Language discipline — Russian default в user-facing skills + template section
 - [x] HYP frontmatter canonical (target_value, segment, value_proposition)
-- [~] **Runtime smoke test S1-S13** — audited 2026-05-20 → **status=fail** (DEC-DEV-0038); Phase 4 «условно закрыта», re-verification deferred (re-smoke S1/S7/S8/S9/S12)
+- [x] **Runtime smoke test S1-S13** — audited 2026-05-20 → **status=fail** (DEC-DEV-0038); known issues приняты, re-verification gate снят (follow-up) → Phase 4 закрыта
 - [x] **Phase 4 closure ritual (Unit 2)** — D7 phase-closure.md 6 steps executed 2026-05-13 fresh-session (DEC-DEV-0033)
 
 ### Estimated effort actual
