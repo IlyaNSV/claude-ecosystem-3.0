@@ -40,7 +40,7 @@ Per [processes.md §4.1](../../docs/pmo/processes.md):
 | IC changed | BR (support), LC (respect), DA review (P-RULE-01 — separate hook) |
 | MK changed | DS (tokens extraction — Phase 6), NM (screens), handoff (→ stale) |
 | DS changed | ALL MK using token (Phase 6) |
-| BG term renamed | ALL artifacts using term (mass-rename flow — separate /product:bg:rename) |
+| BG term renamed | ALL artifacts using term (mass-rename flow — separate /product:bg-rename) |
 
 ## V-11 auto-fix (the only auto-fix in v1)
 

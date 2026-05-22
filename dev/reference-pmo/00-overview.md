@@ -63,8 +63,8 @@ Diff между снапшотами по locus — **самостоятельн
 | Уровень | Значок | Определение | Пример |
 |---|---|---|---|
 | **0** | ✗ | **Not covered.** Функция не адресована экосистемой никаким образом — нет реализации, нет doc, нет плана. | (snapshot N+1: упоминание о visualization добавили, но ничего не реализовано — 1, не 0; чтобы быть 0, функция должна вообще не появляться) |
-| **1** | ◔ | **Acknowledged.** Функция упомянута в SPEC / ROADMAP / комментариях / DEV_JOURNAL, но **не операционализирована**. Существует как намерение, не как runnable mechanism. | NFR upgrade-tier batch review упомянут в processes.md §11.3 как future command, но `/product:nfr:upgrade-tier` ещё не реализован → **1** |
-| **2** | ◐ | **Partially operationalized.** Есть рабочая реализация, покрывающая основной кейс; ключевые подзадачи отложены (с явной roadmap-записью) или требуют ручного workaround'а. | Mass-rename — `/product:bg:rename` работает в режиме manual preview; atomic propagation отложен до v1.1 → **2** |
+| **1** | ◔ | **Acknowledged.** Функция упомянута в SPEC / ROADMAP / комментариях / DEV_JOURNAL, но **не операционализирована**. Существует как намерение, не как runnable mechanism. | NFR upgrade-tier batch review упомянут в processes.md §11.3 как future command, но `/product:nfr-upgrade-tier` ещё не реализован → **1** |
+| **2** | ◐ | **Partially operationalized.** Есть рабочая реализация, покрывающая основной кейс; ключевые подзадачи отложены (с явной roadmap-записью) или требуют ручного workaround'а. | Mass-rename — `/product:bg-rename` работает в режиме manual preview; atomic propagation отложен до v1.1 → **2** |
 | **3** | ● | **Fully operationalized.** End-to-end реализация с автоматизацией где применимо, явной обработкой ошибок, и видимостью самого поведения функции (logs, status, observability). | BG continuous extraction (Phase 1 candidate detection через `bg-extractor.js` хук + Phase 2-4 review pipeline + `used_in[]` tracking) → **3** |
 | **N/A** | — | **Out of scope.** Функция явно объявлена out-of-scope с rationale (cross-reference в Section 12). | Portfolio management, OKR cadence, group event storming — N/A для solo |
 

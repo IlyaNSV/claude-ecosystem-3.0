@@ -179,7 +179,7 @@
 - **Why deferred:** Quick mode не валидирован pilot'ом (DEC-DEV-0012). Deep mode — premature без pilot evidence.
 - **Reconsideration trigger:** 2-3 real Discoveries показывают конкретные limits Quick mode (per ROADMAP v1.1 trigger).
 
-### F-02. Atomic Mass-Rename `/product:bg:rename`
+### F-02. Atomic Mass-Rename `/product:bg-rename`
 
 - **Source:** IDE refactoring + DDD evolution principle
 - **Function it covers:** Atomic mass-rename of BG terms across all artifacts с single git commit, conflict handling, rollback
@@ -231,7 +231,7 @@
 ### F-09. NFR Tier Upgrade Automation
 
 - **Source:** SRE tier discipline
-- **Function it covers:** `/product:nfr:upgrade-tier` batch review; auto-detection of upgrade triggers
+- **Function it covers:** `/product:nfr-upgrade-tier` batch review; auto-detection of upgrade triggers
 - **Why deferred:** Phase 4 deliverable.
 - **Reconsideration trigger:** Phase 4 implementation.
 

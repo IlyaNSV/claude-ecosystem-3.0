@@ -10,7 +10,7 @@
  * Bold term patterns: double-asterisk wrapped or double-underscore wrapped.
  *
  * Phase 2 (classification) + Phase 3 (presentation) + Phase 4 (approval) handled
- * by skill (bg-extraction.md) + command (/product:bg:review). Hook is Phase 1 only.
+ * by skill (bg-extraction.md) + command (/product:bg-review). Hook is Phase 1 only.
  *
  * Exit 0 always — non-blocking.
  */
@@ -309,7 +309,7 @@ function parseCandidatesYaml(text) {
 function formatCandidatesYaml(candidates) {
   const lines = [
     '# Pending BG candidates (auto-extracted by bg-extractor.js)',
-    '# Reviewed via /product:bg:review or при следующем /product:status',
+    '# Reviewed via /product:bg-review or при следующем /product:status',
     '# Schema per skills/product/bg-extraction.md Phase 1',
     '',
     'candidates:',

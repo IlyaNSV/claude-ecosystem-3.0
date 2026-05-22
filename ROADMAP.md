@@ -188,8 +188,8 @@ claude
 - `plan.md` — P1.B Planning Session
 - `feature.md` — P2.A Feature Enrichment + P2.B Creation
 - `cascade.md` — manual cascade navigation (`<artifact-id>` или `--pending`)
-- `bg:review.md` — pending BG candidates batch review
-- `bg:rename.md` — **manual preview workflow** (sed/IDE find-replace; atomic implementation → v1.1)
+- `bg-review.md` — pending BG candidates batch review
+- `bg-rename.md` — **manual preview workflow** (sed/IDE find-replace; atomic implementation → v1.1)
 
 **skills/product/ (12):**
 
@@ -363,7 +363,7 @@ Cross-cutting:
 ### Deliverables (~8 файлов)
 
 **commands/integrator/:**
-- `add.md` — 6-stage flow: profile → propose → approve → install → configure → contract → verify
+- `add.md` — 6-stage flow: profile → propose → install → configure → contract → verify (approve — gate перед install, не этап)
 - `remove.md` — impact analysis + backup + cleanup
 - `replace.md` — combined remove + add с migration
 - `update.md` — backup + install + drift check + contract repair
@@ -381,7 +381,7 @@ Cross-cutting:
 ### Acceptance criteria
 
 - [ ] `/integrator:add cc-sdd` проходит 6 stages без manual intervention (кроме approve gates)
-- [ ] `pmo-mapping.yaml` обновляется с D2-Tech-02 coverage
+- [ ] `pmo-mapping.yaml` обновляется с cc-sdd coverage (конкретные PMO-зоны — на kickoff, см. `dev/PHASE_5_READINESS.md` §C.6; `D2-Tech-02` отсутствует в pmo-map.md)
 - [ ] Adapter берёт `.product/handoffs/FM-001-handoff.md` и успешно invokes `/kiro:spec-init`
 - [ ] `.kiro/specs/FM-001/spec.json` создаётся с корректным content
 - [ ] `/integrator:remove cc-sdd` безопасно откатывает с backup
@@ -390,7 +390,7 @@ Cross-cutting:
 
 ### Estimated effort
 
-**3-5 часов.**
+**Базовая оценка: 3-5 часов.** ⚠️ Эмпирический множитель Phase 2-4 — ×2-4 после kickoff-уточнения scope (см. «How this roadmap evolves»). Реалистично ~10-20 часов.
 
 ### Dependencies
 
@@ -537,7 +537,7 @@ adapter invokes cc-sdd  → /kiro:spec-init → spec.json
 
 **Deferred from Phase 3 (per DEC-DEV-0012, 2026-04-20):**
 - **Deep mode subagents** для D1.2/D1.3 Discovery — `market-researcher.md` + `competitor-analyst.md` (8-phase pipeline). Полный context для реализации в [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md). Bring-forward trigger: 2-3 real Discoveries показывают конкретные limits Quick mode.
-- **Atomic mass-rename** `/product:bg:rename` — git-stash workflow, conflict handling, rollback. v1 ships manual preview placeholder. Bring-forward trigger: 5+ mass-renames в течение месяца на active projects.
+- **Atomic mass-rename** `/product:bg-rename` — git-stash workflow, conflict handling, rollback. v1 ships manual preview placeholder. Bring-forward trigger: 5+ mass-renames в течение месяца на active projects.
 - **Full BFS cascade auto-fix beyond V-11** — graph traversal с priority ordering, V-08 auto-fix, dependency status updates. v1 ships detection-only + V-11. Bring-forward trigger: pattern emerges из `cascade-pending.yaml` resolutions.
 - **Bundle approve UX для cascade** — consolidated diff + approve all/per-item. Tied to full BFS expansion.
 
@@ -615,6 +615,13 @@ Phase 6   Phase 7
 - Acceptance criteria можно уточнять
 - Time estimates корректируются на основе fact
 - Новые phases добавляются, старые — пометкой «skipped» (не удаляются)
+
+**Эмпирический множитель оценок (Phase 2-4, DEC-DEV-0032 lesson 6):** базовые ROADMAP-оценки систематически ×2-4 после pre-implementation kickoff:
+- Phase 2: 4-6ч → ~10ч
+- Phase 3: 4-6ч → ~12ч
+- Phase 4: 3-4ч → ~12-15ч
+
+Применяй ×2-4 к базовым оценкам непройденных фаз при планировании.
 
 **Decision journal entries** фиксируют значимые изменения roadmap с rationale.
 

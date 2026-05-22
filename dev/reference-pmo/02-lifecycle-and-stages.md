@@ -61,7 +61,7 @@ URL detail → `99-bibliography.md`.
 | 1 | Defined product lifecycle stages | ● 3 | `[C]` | CC | 5 стадий явно: ИДЕЯ → MVP → MMP → GROWTH → MATURE (`pmo-map.md` §«Модель жизненного цикла»). Соответствует ProductPlan 5-stage; gestалт-эквивалент Cagan PMF stages. |
 | 2 | Stage-aware activation процессов | ● 3 | `[C]` | CC | Activation Matrix в `pmo-map.md` явно: per-process per-stage с ★/○ маркерами. D1-01..06 ★ только ИДЕЯ→MVP; D5/D6 разворачиваются на MMP+. Чистая operationalization Lean innovation accounting principle. |
 | 3 | Stage-aware validation severity (validation_tier) | ● 3 | `[F]` | CC | B1 modification: `validation_tier: pilot \| mvp \| full` в `.claude/product.yaml`; tier-aware activation V-* правил inline vs queued. Сильный fitness; индустрия не имеет canonical analog для living spec validation. |
-| 4 | Stage-aware NFR sanity ranges | ◐ 2 | `[C]` | CC | NFR.md §5 содержит sanity ranges per tier (MVP/MMP/Growth/Mature). Команда `/product:nfr:upgrade-tier` **acknowledged** (упомянута в Product Module SPEC §3.3), но **не реализована** (отложена в Phase 4). Когда tier upgrade происходит вручную — batch review **не automated**. |
+| 4 | Stage-aware NFR sanity ranges | ◐ 2 | `[C]` | CC | NFR.md §5 содержит sanity ranges per tier (MVP/MMP/Growth/Mature). Команда `/product:nfr-upgrade-tier` **acknowledged** (упомянута в Product Module SPEC §3.3), но **не реализована** (отложена в Phase 4). Когда tier upgrade происходит вручную — batch review **не automated**. |
 | 5 | Transition criteria между стадиями | ◔ 1 | `[C]` | CC | Косвенно: HYP `validated` → MVP `achieved`; `invalidated` → MVP `evolved`. Но **формальные критерии перехода MVP → MMP, MMP → Growth, Growth → Mature не определены**. Implicit, не codified. Acknowledged, не operationalized. |
 | 6 | Pivot decision protocol с formal cadence | ◔ 1 | `[C]` | CC | `/product:init --pivot` упомянута как future (Q-11 «out-of-scope v1»). Pivot taxonomy не codified. Acknowledged через placeholder, не operational. |
 | 7 | Stage-aware ceremony cost | ● 3 | `[F/C]` | CC | Composite: validation_tier (#3); magnitude classification для DA review (cosmetic skip vs significant full); auto-approve 🟢 на confidence:high; quiet-draft hooks. Stage transitions могут включать tier upgrade → re-review всех declined NFR. Сильное fitness-расширение. |
@@ -106,7 +106,7 @@ URL detail → `99-bibliography.md`.
 
 **У тебя:** sanity ranges есть; tier upgrade команда **acknowledged** (упомянута), не реализована.
 
-**Closing in Phase 4.** ROADMAP явно фиксирует `/product:nfr:upgrade-tier` в Phase 4 deliverables. После Phase 4 этот пункт перейдёт ◐ 2 → ● 3.
+**Closing in Phase 4.** ROADMAP явно фиксирует `/product:nfr-upgrade-tier` в Phase 4 deliverables. После Phase 4 этот пункт перейдёт ◐ 2 → ● 3.
 
 ---
 

@@ -278,21 +278,21 @@
 
 ### 3.3 BG / NFR Management (4)
 
-**`/product:bg:review`**
+**`/product:bg-review`**
 - Ручной просмотр pending BG candidates
 - Accept / edit / reject per term
 - Также показывает synonym warnings
 
-**`/product:bg:rename <old> <new>`**
+**`/product:bg-rename <old> <new>`**
 - Mass-rename workflow (processes.md §5.3)
 - Bundle approve across all affected artifacts
 - Single git commit
 
-**`/product:nfr:review <FM-id>`**
+**`/product:nfr-review <FM-id>`**
 - F.5a NFR Review запуск (если pending) или re-review (если active)
 - Presents MVP defaults + options [Y/D/L]
 
-**`/product:nfr:upgrade-tier`**
+**`/product:nfr-upgrade-tier`**
 - Batch re-review при tier change (MVP → MMP)
 - Все declined/pending FM попадают в review queue
 
@@ -495,12 +495,12 @@
 | `verification-criteria` | `feature` → features/ | `verification` (multi) | scalar |
 | `feature-map-entry` | (no cascade in v1.1 — embedded artifact saves cover) | | |
 
-### 6.6 `product-handoff-gate.js` (PreToolUse)
+### 6.6 `product-handoff-gate.js` (PostToolUse, non-blocking)
 
-- **Триггер:** пытается запустить external implementation tool (cc-sdd `/kiro:spec-init`, etc.)
-- **Действия:** проверяет наличие valid handoff для FM
-- **Effect:** блокирует если нет handoff или handoff=stale/blocked
-- **Опция:** Integrator при `/integrator:add <tool>` регистрирует известные команды (cc-sdd spec-init, Kiro spec-new, etc.) в этот hook
+- **Триггер:** save артефакта в `.product/` (Write/Edit)
+- **Действия:** recompute hash через `hooks/product/lib/hash.js`; сравнивает с сохранёнными `artifact_hashes` во frontmatter существующих handoff
+- **Effect:** stderr warning при mismatch с suggestion `/product:handoff <FM-id> --regenerate`; не блокирует Write/Edit
+- **Reference:** V-H-04 drift detection; DEC-DEV-0025 C.1 (hash-утилита) + DEC-DEV-0031 A1 (line-based parser fix). Актуальное поведение описано в `handoff-spec.md §16`
 
 ---
 
@@ -616,7 +616,7 @@ DEC-P-0012 — Replaced initial segment SEG-001
 | `/product:validate` | — (logic) | — |
 | `/product:cascade` | SeqThink | Memory |
 | `/product:da-review` | SeqThink, Memory | Exa (для edge case research) |
-| `/product:nfr:review` | SeqThink | Context7, GitHub |
+| `/product:nfr-review` | SeqThink | Context7, GitHub |
 | `/product:bg:*` | — (logic) | Memory |
 | `/product:cleanup` | — (logic) | — |
 | `/product:status` | Memory (read journal) | — |

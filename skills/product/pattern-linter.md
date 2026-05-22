@@ -75,7 +75,7 @@ Each pattern has: applicable scope, heuristic, false-positive rate, severity, fi
   - OR translation pairs (english «revision» + «правка» in same BG)
 - **False-positive rate:** ~25% (many root-sharing terms are legitimately distinct)
 - **Severity:** ℹ
-- **Fix suggestion:** Review pairs; either consolidate via `/product:bg:rename` или document в alt_terms
+- **Fix suggestion:** Review pairs; either consolidate via `/product:bg-rename` или document в alt_terms
 
 ### Pattern 7: `orphan-in-active-FM`
 

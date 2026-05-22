@@ -332,7 +332,7 @@ Each IC:
 
 **Receiver guidance:**
 - «NFR target'ы — acceptance baselines для tier=<tier>, не enterprise SLA.»
-- «При невозможности достичь target — verify через `/product:nfr:review` с автором, а не overpromise.»
+- «При невозможности достичь target — verify через `/product:nfr-review` с автором, а не overpromise.»
 
 #### Case B: `nfr_status=declined` (осознанно использовать defaults)
 
@@ -376,7 +376,7 @@ This is a known gap. Handoff proceeds with warning.
 **Receiver guidance:**
 - Apply most conservative MVP defaults from NFR.md §5
 - Escalate back via /product:clarify если увидите critical concerns
-- Author should run /product:nfr:review FM-xxx at next opportunity
+- Author should run /product:nfr-review FM-xxx at next opportunity
 ```
 
 При `nfr_status=pending`:

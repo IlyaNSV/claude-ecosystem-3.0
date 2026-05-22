@@ -21,8 +21,8 @@ BG = `.product/glossary.md` (singleton artifact, fixed id `BG`). Cross-cutting �
 | 5 — BG Commit | This skill | Post-approval | BG entry written к glossary.md, version++ if mass-rename |
 
 **Relevant commands** (Phase 3.G):
-- `/product:bg:review` — explicit batch review trigger
-- `/product:bg:rename <old> <new>` — mass-rename workflow (v1: manual preview + sed-suggest; atomic implementation deferred v1.1 per DEC-DEV-0012 D.2)
+- `/product:bg-review` — explicit batch review trigger
+- `/product:bg-rename <old> <new>` — mass-rename workflow (v1: manual preview + sed-suggest; atomic implementation deferred v1.1 per DEC-DEV-0012 D.2)
 
 ## Phase 1: Candidate Extraction (hook-side)
 
@@ -47,7 +47,7 @@ BG = `.product/glossary.md` (singleton artifact, fixed id `BG`). Cross-cutting �
 
 ```yaml
 # Pending BG candidates (auto-extracted by bg-extractor.js)
-# Reviewed via /product:bg:review or при следующем /product:status
+# Reviewed via /product:bg-review or при следующем /product:status
 
 candidates:
   - term: "Revision"
@@ -67,7 +67,7 @@ Hook does NOT classify (Phase 2 logic) или present (Phase 3) — это skill
 
 ## Phase 2: Classification
 
-**Owned by:** This skill (invoked by orchestrator или /product:bg:review command).
+**Owned by:** This skill (invoked by orchestrator или /product:bg-review command).
 
 For each candidate в queue:
 
@@ -86,13 +86,13 @@ For each candidate в queue:
 
 ## Phase 3: Assistant Presentation (batched, не interrupting workflow)
 
-**Owned by:** This skill, integrated в orchestrators (discovery-session, planning-session, feature-session) или called explicitly via `/product:bg:review`.
+**Owned by:** This skill, integrated в orchestrators (discovery-session, planning-session, feature-session) или called explicitly via `/product:bg-review`.
 
 **When presented (per [processes.md §5.1 Phase 3](../../docs/pmo/processes.md)):**
 - After approve gate completes (current artifact в active, user в context)
 - При `/product:status` (показывает «BG pending: <N>» summary, suggest review)
 - При начале новой session (`/product:feature ...` с warning о pending BG)
-- Explicit `/product:bg:review` command (Phase 3.G)
+- Explicit `/product:bg-review` command (Phase 3.G)
 
 **Presentation format:**
 
@@ -122,7 +122,7 @@ SYNONYM WARNINGS (<N>):
   - "правка" (used in old SC-001) vs "Revision" (used in SC-005, SC-006)
     These appear to describe the same concept.
     → Consolidate to "Revision" (preferred)? This will update SC-001.
-       [Y/N — if Y, see /product:bg:rename for mass-rename workflow]
+       [Y/N — if Y, see /product:bg-rename for mass-rename workflow]
 ```
 
 ## Phase 4: Human Approval
@@ -136,7 +136,7 @@ Per term, user actions:
 - **`[keep]`** — keep separate (ignore synonym suggestion); both terms remain в BG
 
 **For synonym warnings — additional option:**
-- **`[R] mass-rename`** — invoke `/product:bg:rename <old> <new>` (Phase 3.G command) для cascading update across artifacts
+- **`[R] mass-rename`** — invoke `/product:bg-rename <old> <new>` (Phase 3.G command) для cascading update across artifacts
 
 ### Suggested definition generation
 
@@ -187,7 +187,7 @@ Per accepted term:
    ```markdown
    ## DEC-PLAN-NNN — BG batch update (<N> terms added)
    Date: <ISO>
-   Triggered by: <orchestrator step / /product:bg:review>
+   Triggered by: <orchestrator step / /product:bg-review>
    Terms added: <list>
    Terms rejected: <count>
    Synonym merges: <count>
@@ -224,12 +224,12 @@ version: 1                               # increments on mass-rename only
 
 Per [processes.md §5.3](../../docs/pmo/processes.md) + DEC-DEV-0012 D.2 — атомарный workflow deferred к v1.1.
 
-**v1 Phase 3 implementation:** `/product:bg:rename <old> <new>` (Phase 3.G command) shows:
+**v1 Phase 3 implementation:** `/product:bg-rename <old> <new>` (Phase 3.G command) shows:
 1. List affected artifacts via `used_in` field в BG entry
 2. Generate diff preview per file (sed-style: `s/\*\*Revision\*\*/\*\*Edit\*\*/g`)
 3. Present к user с counts: «Will update: SC-005 (3 occurrences), SC-006 (2), BR-010 (5), LC-002 (7), FM-003 (4)»
 4. User applies manually via IDE find-replace или sed; OR uses suggested commands
-5. After manual apply — re-run `/product:bg:rename --commit` to:
+5. After manual apply — re-run `/product:bg-rename --commit` to:
    - Update BG entry (rename primary, добавить old name to alt-terms списке как ❌)
    - BG version++
    - Cascade-check.js auto-runs (V-08 terminology consistency, V-11 bi-dir)

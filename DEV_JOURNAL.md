@@ -2965,6 +2965,40 @@ Known issues не теряются — они в `phase-4-summary.md` (Overview 
 
 ---
 
+## DEC-DEV-0039 — Pre-Phase-5 doc-consistency cleanup + SPEC §9 phasing de-duplication
+
+**Date:** 2026-05-22
+**Trigger:** Запрошенная пользователем проверка согласованности документов, определяющих Phase 5 (ROADMAP §Phase 5, `dev/PHASE_5_READINESS.md`, `docs/integrator-module/SPEC.md`). Аудит выявил ~15 несостыковок — от чистого doc-rot до скрытых непринятых решений.
+**Tag:** #doc-consistency #phase-5 #spec-change #spec-drift-sweep
+
+### Context
+
+Перед Phase 5 kickoff три документа описывали фазу несогласованно. Корень — `integrator-module/SPEC.md §9 «Фазы реализации»` дублировал phase-планирование, которое также живёт в ROADMAP, и они разошлись: `/integrator:update` в §9 отнесён к Maintenance, в ROADMAP — к Phase 5; journal-hook в §9 «логирует каждое добавление», в ROADMAP — «every modifying action». Плюс структурный дефект — два раздела `## 12.` в SPEC. Часть «несостыковок» оказалась не rot, а скрытыми архитектурными решениями (расположение адаптера, scope хука, subagents, `replace.md` acceptance, фантомный PMO-ID `D2-Tech-02`, которого нет в pmo-map.md).
+
+### Options considered
+
+1. **Точечно пропатчить каждое расхождение в §9** — отвергнуто: §9 продолжит дублировать ROADMAP, разойдётся снова.
+2. **Удалить §9 целиком** — отвергнуто: §9 несёт полезную группировку возможностей модуля.
+3. **§9 → указатель на ROADMAP + steady-state описание групп** (выбрано) — SPEC описывает архитектуру модуля, ROADMAP владеет phasing. Класс «SPEC-фазы vs ROADMAP-фазы» устранён структурно.
+
+Разделение работ: чистый doc-rot чинится сразу (pre-kickoff); скрытые решения НЕ патчатся молча, а сводятся в `PHASE_5_READINESS §C.6` как explicit kickoff-агенда.
+
+### Decision
+
+§9 переписан в pointer (вариант 3). Pre-kickoff cleanup выполнен: устранён дублирующий `## 12.` (перенумерация Environment Scanner → §13, Tool-Docs → §14, MCP → §15), hook-нейминг под конвенцию `hooks/<module>/`, фантомный `D2-Tech-02` → `D2-03`, «6-stage flow» выровнен (approve = gate, не этап), эмпирический множитель оценок ×2-4 зафиксирован в ROADMAP, даты/версии актуализированы. Закрыты queued-findings Phase 4 closure: F5 (SPEC §6.6 product-handoff-gate — PreToolUse→PostToolUse drift), F6 (command naming colons→hyphens), F9 (memory D7 refresh). 6 непринятых решений вынесены в `PHASE_5_READINESS §C.6` для kickoff.
+
+### Outcome
+
+Pre-kickoff cleanup затронул 18 файлов репозитория + memory-файл `project_ecosystem_architecture.md` (вне репозитория). Архитектурных решений не принято — они остаются за kickoff-сессией. Sync-проход (ROADMAP Phase 5 acceptance ↔ §G DoD, acceptance для `replace.md`) — после kickoff.
+
+### Lessons
+
+1. **Phase-планирование должно жить в одном месте.** SPEC §9 дублировал ROADMAP → неизбежный расход. Steady-state SPEC + ROADMAP-owns-phasing — устойчивее.
+2. **F6 был недооценён.** `PHASE_5_READINESS §A.4.2` перечислял 3 файла с command-naming drift; реальный drift — в 15 live-файлах. Naming-drift класс нельзя закрывать hand-listed набором файлов — нужен filesystem-vs-docs sweep (подтверждает кандидат H.4 в `PHASE_5_READINESS`).
+3. **Различай doc-rot и скрытое решение.** Часть «несостыковок» — непринятые архитектурные решения в текстовой форме. Чинить их молча = принимать решение без kickoff. Правильно — вынести в explicit агенду (`§C.6`).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

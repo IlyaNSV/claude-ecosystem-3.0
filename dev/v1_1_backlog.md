@@ -126,7 +126,7 @@ model: claude-opus-4-7
 
 ---
 
-## Atomic mass-rename `/product:bg:rename`
+## Atomic mass-rename `/product:bg-rename`
 
 **Originally planned:** Phase 3 (per ROADMAP draft)
 **Deferred:** 2026-04-20 per DEC-DEV-0012 (D.2 decision)
@@ -135,7 +135,7 @@ model: claude-opus-4-7
 
 ### Architectural intent
 
-`/product:bg:rename <old> <new>`:
+`/product:bg-rename <old> <new>`:
 1. Validate `<old>` exists в BG, `<new>` doesn't conflict
 2. Scan `.product/**/*.md` для bold occurrences `**old**` (+ frontmatter alt_terms etc.)
 3. Show preview: per-file count, total changes, list affected artifacts
@@ -204,14 +204,14 @@ Beyond V-11 auto-fix, full BFS:
 ### Implementation notes
 
 **Auto-fix candidates beyond V-11:**
-- V-08 (terms in BG) — auto-add bold term as draft BG entry; user reviews batch (current Phase 3 manual через `/product:bg:review`)
+- V-08 (terms in BG) — auto-add bold term as draft BG entry; user reviews batch (current Phase 3 manual через `/product:bg-review`)
 - Dependency status updates (FM `requires_review` flag когда supporting BR changed)
 - Stale draft cleanup (V-12) — if scheduled review enabled
 
 **NOT auto-fix:**
 - Semantic content (BR statements, IC formulations) — never auto-edit
 - Cross-artifact validation conflicts — always require human judgment
-- Mass renames (handled separately через bg:rename command)
+- Mass renames (handled separately через bg-rename command)
 
 **Bundle approve UX:**
 - Single consolidated diff summary к user

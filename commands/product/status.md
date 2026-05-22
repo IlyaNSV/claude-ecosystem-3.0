@@ -79,7 +79,7 @@ Cross-cutting:
 PENDING (<total count>)
 ═══════════════════════════════════════════════════════════
 
-  ⏳ BG candidates awaiting review: <N>     → /product:bg:review
+  ⏳ BG candidates awaiting review: <N>     → /product:bg-review
   ⏳ DA reviews pending: <N>                → /product:da-review или wait for next approve gate
   ⏳ Cascade bundles pending approve: <N>   → /product:cascade <id>
   ⏳ Stale drafts (>14 days): <N>           → review or archive
@@ -121,7 +121,7 @@ Based on state, surface 2-3 most actionable next steps:
 ```
 Suggested next:
   → Resume current session: /product:feature --continue (P2.A F.3 on FM-003)
-  → Review 3 pending BG candidates: /product:bg:review
+  → Review 3 pending BG candidates: /product:bg-review
   → Regenerate 2 stale handoffs: /product:handoff <FM-id> --regenerate
 ```
 

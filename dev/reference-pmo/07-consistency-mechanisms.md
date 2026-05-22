@@ -102,7 +102,7 @@
 |---|---|---|---|---|---|
 | 1 | Single shared vocabulary across all artifacts | ● 3 | `[C]` | CC | BG singleton, cross-cutting, continuous extraction. DDD ubiquitous language **operationalized** через hook-driven candidate detection + V-08 check. |
 | 2 | Vocabulary applied identically in spec and downstream code | ◐ 2 | `[C]` | HYB | BG → handoff §3 Terminology с «use these exact names in code/UI/API» guidance. Spec-side coverage full; code-side compliance depends on receiver. Locus HYB because actual code-side enforcement требует EXT tool. |
-| 3 | Atomic mass-rename | ◐ 2 | `[F/C]` | CC | `/product:bg:rename` — manual preview workflow в v1; atomic перенесён v1.1 (DEC-DEV-0012). Manual preview covers ~80% function; missing 20% = atomicity при partial failure. Bring-forward trigger: 5+ renames/month. |
+| 3 | Atomic mass-rename | ◐ 2 | `[F/C]` | CC | `/product:bg-rename` — manual preview workflow в v1; atomic перенесён v1.1 (DEC-DEV-0012). Manual preview covers ~80% function; missing 20% = atomicity при partial failure. Bring-forward trigger: 5+ renames/month. |
 | 4 | Synonym detection / consolidation | ● 3 | `[F]` | CC | BG extraction Phase 2 — possible-synonym category (Levenshtein < 3 или shared root → suggest merge). Индустрия не имеет canonical analog для living spec — **fitness contribution**. |
 | 5 | Bi-directional cross-references with semantic types | ● 3 | `[C]` | CC | Frontmatter cross-refs (`scenarios[]`, `rules[]`, `lifecycles[]`); semantic types implied via field names. **Caveat:** Wiegers рекомендует explicit «verifies/derives/conflicts/depends» link types. У тебя — на уровне cascade priority. Если расширяется новыми типами связей — стоит вводить explicit `link_type:` поле. |
 | 6 | Auto-fix of one-sided references | ● 3 | `[F/C]` | CC | V-11 hook auto-fix: добавить reverse ref если target в active; quiet draft mode skips auto-fix. Industry RTM tools (Jama, Polarion) автоматизируют для commercial; для living markdown spec ты **самостоятельно operationalized**. |
@@ -138,7 +138,7 @@
 
 > *Что должно быть:* Один словарь, который **обязан** использоваться во всех артефактах identically. Изменение термина в словаре → каскадное обновление всех артефактов. Защита от **terminology drift** (одна и та же сущность называется по-разному в разных артефактах). DDD: ubiquitous language как первоклассный артефакт, актуализируемый постоянно.
 >
-> *У тебя:* BG (singleton, cross-cutting), continuous extraction через `bg-extractor.js` hook (Phase 1 Candidate Extraction), V-08 (Warning) проверяет, что bold-выделенные термины в SC/BR/LC/IC присутствуют в BG. Mass-rename через `/product:bg:rename` (manual preview). Synonym detection (Levenshtein, shared root) — Phase 2 BG extraction. Per-term `used_in[]` field позволяет mass-rename знать, какие файлы затрагиваются.
+> *У тебя:* BG (singleton, cross-cutting), continuous extraction через `bg-extractor.js` hook (Phase 1 Candidate Extraction), V-08 (Warning) проверяет, что bold-выделенные термины в SC/BR/LC/IC присутствуют в BG. Mass-rename через `/product:bg-rename` (manual preview). Synonym detection (Levenshtein, shared root) — Phase 2 BG extraction. Per-term `used_in[]` field позволяет mass-rename знать, какие файлы затрагиваются.
 >
 > *Match с дополнениями.* Это **operationalized** ubiquitous language с тремя fitness-расширениями, которых нет в DDD-каноне:
 >
@@ -148,7 +148,7 @@
 >
 > **Conscious gap (acknowledged):** atomic mass-rename — manual preview в v1, atomic в v1.1. До v1.1 риск: half-migrated state при partial failure. **Mitigation:** single git commit от human после approve preview. Это работает, пока scale небольшой.
 >
-> **Drift signal в снапшоте:** если в snapshot N+1 V-08 деградирует от Warning до Info («слишком много false positives»), и rate использования `/product:bg:review` снижается — это сигнал terminology drift. Индустрия не имеет precedent'а как с этим работать в living spec; рекомендую при появлении такого сигнала **не** просто downgrade, а понять root cause (extraction чрезмерно chatty? bold-emphasis convention неоднозначна?).
+> **Drift signal в снапшоте:** если в snapshot N+1 V-08 деградирует от Warning до Info («слишком много false positives»), и rate использования `/product:bg-review` снижается — это сигнал terminology drift. Индустрия не имеет precedent'а как с этим работать в living spec; рекомендую при появлении такого сигнала **не** просто downgrade, а понять root cause (extraction чрезмерно chatty? bold-emphasis convention неоднозначна?).
 
 ### 07.4.2 Cascade Protocol ↔ RTM + CIA
 
@@ -250,7 +250,7 @@
 1. **BG size growth rate.** Растёт ли BG примерно proportional количеству artifacts? Если BG flat при росте artifacts — extraction broken. Если BG растёт быстрее artifacts — synonym debt.
 2. **`used_in[]` populated?** Каждый BG term должен иметь non-empty `used_in[]`. Empty — кандидат на orphan deprecation.
 3. **V-08 terminology check status.** Severity всё ещё Warning? Не downgrade'нут? Не disabled per-project через `validation_overrides`?
-4. **Mass-rename frequency.** Использовался ли `/product:bg:rename` за период? Если 0 раз — либо нет drift (well), либо drift не детектится. Если 5+ раз — bring-forward trigger v1.1 atomic.
+4. **Mass-rename frequency.** Использовался ли `/product:bg-rename` за период? Если 0 раз — либо нет drift (well), либо drift не детектится. Если 5+ раз — bring-forward trigger v1.1 atomic.
 5. **BG version numbers.** Инкрементируются (значит mass-renames происходят)? Что в frontmatter `deprecated_terms[]` — растёт?
 
 ### Cross-references

@@ -96,7 +96,7 @@ ELIF nfr_status == 'pending':
     ELSE:                                           severity = info      # 🔵 (recommend F.5a)
 ```
 
-On tier upgrade (MVP → MMP) — все FM со `nfr_status: declined | pending` re-evaluated; см. `/product:nfr:upgrade-tier` (Phase 4.D).
+On tier upgrade (MVP → MMP) — все FM со `nfr_status: declined | pending` re-evaluated; см. `/product:nfr-upgrade-tier` (Phase 4.D).
 
 ### V-H-01..V-H-11 — Handoff validation
 
@@ -250,7 +250,7 @@ Tier: mvp (effective; --deep: false)
   ... (8 more)
 
 🔵 INFO (2):
-  V-16 : FM-001 nfr_status: pending — рассмотрите F.5a через /product:nfr:review
+  V-16 : FM-001 nfr_status: pending — рассмотрите F.5a через /product:nfr-review
   V-16 : FM-002 nfr_status: declined (no rationale) — добавьте nfr_decline_reason
 
 SUMMARY: 3 blocking, 12 warnings, 2 info

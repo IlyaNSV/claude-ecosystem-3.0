@@ -357,7 +357,7 @@ auto_approve_confirmation_artifacts:
    - Задаёт вопрос человеку:
      - **[Y] Обсудим** — переходим к F.5a.1 Define
      - **[D] Положиться на defaults** — status=declined, skip to F.6
-     - **[L] Отложить** — status=pending, skip to F.6 (вернёмся через /product:nfr:review или tier upgrade)
+     - **[L] Отложить** — status=pending, skip to F.6 (вернёмся через /product:nfr-review или tier upgrade)
    - Результат записывается в FM.frontmatter:
      ```yaml
      nfr_status: active | declined | pending
@@ -690,7 +690,7 @@ Per-term actions:
 
 Когда BG term нужно переименовать (например, решили, что «Revision» → «Edit»):
 
-**Команда:** `/product:bg:rename "Revision" "Edit"`
+**Команда:** `/product:bg-rename "Revision" "Edit"`
 
 **Алгоритм:**
 
@@ -911,8 +911,8 @@ Mapping команды → процессы → артефакты:
 | `/product:da-review FM-<NNN>` | F.9 Product DA (feature scope) | DA findings file (.product/.da-findings/FM-NNN-<timestamp>.md) |
 | `/product:da-review RL-<NNN>` | Release-level Product DA (DEC-DEV-0026) | Cross-FM findings + drill-down hints (.product/.da-findings/RL-NNN-<timestamp>.md) |
 | `/product:cascade <artifact-id>` | P4 manual cascade | Cascade report |
-| `/product:bg:review` | Manual BG extraction review | Pending BG terms batch |
-| `/product:bg:rename <old> <new>` | BG mass-rename | Bundle of artifact updates |
+| `/product:bg-review` | Manual BG extraction review | Pending BG terms batch |
+| `/product:bg-rename <old> <new>` | BG mass-rename | Bundle of artifact updates |
 | `/product:drift-check` | Structural self-audit (C1) | Direction alignment report (🟢/🟡/🔴) |
 | `/product:meta-feedback` | AI proposes ecosystem-level changes (C3) | Validation overrides / config tweaks с rationale в journal |
 | `/product:patterns` | Meta-linter on `.product/` (C4) | Recurring anti-patterns report |
@@ -1024,7 +1024,7 @@ Continue to F.5 IC identification? [Y/N]
 ### 9.3 Mass-rename BG
 
 ```
-> /product:bg:rename "Revision" "Edit"
+> /product:bg-rename "Revision" "Edit"
 
 [Assistant]
 BG mass-rename preview:
@@ -1105,7 +1105,7 @@ NFR на solo-уровне — **очертания достаточности, 
 - Human approves per NFR или bundle
 - version++ per NFR
 
-Команда: `/product:nfr:upgrade-tier mvp mmp` (в будущей реализации).
+Команда: `/product:nfr-upgrade-tier mvp mmp` (в будущей реализации).
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 5 (Integrator Phase 2 — Installation + first adapter).
 >
-> **Статус (2026-05-13):** ⏳ **Skeleton created в Phase 4.K1 closure**. Architectural questions queued; user-driven kickoff session нужна перед sub-phase A start.
+> **Статус (2026-05-22):** ⏳ Phase 4 закрыта (DEC-DEV-0038). Pre-kickoff doc-consistency cleanup выполнен 2026-05-22 (структурный фикс SPEC §9, doc-rot, F5/F6/F9 — см. §A.4). Architectural + doc-derived вопросы (§C, incl. §C.6) — на kickoff session перед sub-phase A start.
 >
 > **Принцип:** не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждому пункту присвоен приоритет: 🔴 блокер, 🟡 важный, 🔵 необязательный.
 
@@ -17,11 +17,11 @@
 **Перед стартом Phase 5 implementation:**
 - [x] **Phase 4 closure ritual (Unit 2 — D7 phase-closure.md 6 steps)** — executed 2026-05-13 fresh-session per anti-bias guard. Findings + refinements в DEC-DEV-0033. См. Section A ниже.
 - [x] **Phase 4 runtime smoke** — выполнен 2026-05-20 → **status=fail** (DEC-DEV-0038); known issues приняты, re-verification gate снят. См. Section B.
-- [ ] **Closure queued findings (Section A.4)** — F5 SPEC.md §6.6 rewrite, F6 naming consistency sweep, F9 architecture memory refresh — fix перед Phase 5 implementation.
+- [x] **Closure queued findings (Section A.4)** — F5 SPEC.md §6.6 rewrite, F6 naming consistency sweep, F9 architecture memory refresh — ✅ выполнено 2026-05-22 (pre-kickoff cleanup).
 - [ ] **Phase 4 bootstrap regression (F4)** — `/ecosystem:update` в `my-first-test/.claude/` чтобы pilot получил Phase 4 deliverables. Можно скомбинировать с runtime smoke run.
 - [ ] **Phase 5 readiness gate** — этот checklist completed; architectural questions resolved (Section C below); scope confirmed (Section D); pilot validation prepared (Section E).
 
-**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke выполнен 2026-05-20 → fail → Phase 4 закрыта с принятыми known issues (DEC-DEV-0038; re-verification gate снят). Перед Phase 5 implementation остаются: queued findings (A.4) + Phase 5 readiness gate.
+**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke выполнен 2026-05-20 → fail → Phase 4 закрыта с принятыми known issues (DEC-DEV-0038; re-verification gate снят). Перед Phase 5 implementation остаётся: Phase 5 readiness gate (kickoff session — §C).
 
 ---
 
@@ -54,9 +54,9 @@ Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run execut
 | F7 | `docs/product-module/SPEC.md` §14.2 (Phase 2), §14.3 (Phase 3 Planning часть), §14.4 (Phase 3 P2), §14.5 (Phase 4 без external-tool-adapter acceptance) | Чекбоксы переведены в [x] для shipped, оставлены [ ] для legitimately pending (Deep mode v1.1, adapter consumption Phase 5); section subtitles добавлены с DEC-DEV references; command names corrected `nfr:` → `nfr-`, `bg:` → `bg-` |
 | F8 | `~/.claude/projects/<slug>/memory/MEMORY.md` | Project status index entry обновлён к Phase 4 shipped (1.2.0, DEC-DEV-0032); Phase 5 unblocked |
 
-### A.4 Queued к Phase 5 readiness Section A (3 findings — fix перед Phase 5 implementation)
+### A.4 Queued к Phase 5 readiness Section A (3 findings) — ✅ resolved 2026-05-22
 
-#### A.4.1 — F5 SPEC.md §6.6 product-handoff-gate.js spec drift
+#### A.4.1 — F5 SPEC.md §6.6 product-handoff-gate.js spec drift — ✅ выполнено 2026-05-22
 
 **Класс:** critical spec drift (post-design-deviation). Body §6.6 описывает legacy v1.0 / pre-Phase-4.F намерение (PreToolUse hook блокирующий external tool invocation); реальная имплементация (после b8f16bc / DEC-DEV-0031 A3) — PostToolUse non-blocking drift detection между `.product/` source и handoff hashes (через `lib/hash.js`).
 
@@ -73,7 +73,7 @@ Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run execut
 
 **Effort:** ~15-20 мин (careful rewrite + cross-check against handoff-spec.md §6 wording).
 
-#### A.4.2 — F6 Command naming colons-vs-hyphens drift
+#### A.4.2 — F6 Command naming colons-vs-hyphens drift — ✅ выполнено 2026-05-22
 
 **Класс:** naming inconsistency, may surface как «command not found» для пользователя который копирует команды из docs.
 
@@ -93,7 +93,7 @@ Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run execut
 
 **Effort:** ~10 мин (sed/IDE find-replace, проверка что не сломано processes.md table formatting).
 
-#### A.4.3 — F9 project_ecosystem_architecture.md memory stale на D7 state
+#### A.4.3 — F9 project_ecosystem_architecture.md memory stale на D7 state — ✅ выполнено 2026-05-22
 
 **Класс:** memory drift; status memory знает текущее состояние, architecture memory — нет.
 
@@ -139,13 +139,13 @@ Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-fir
 **Контекст:** Phase 5 ships first adapter `handoff-to-ccsdd.js` как **reference implementation**. ROADMAP Phase 5 risk note: «Contract design алгоритм — один из pending gaps. Первый adapter пишется вручную (не generated). OK для v1 — с опыта формализуем generation позже».
 
 **Вопросы для kickoff:**
-- Adapter живёт в `adapters/handoff-to-ccsdd.js` или `commands/integrator/adapters/`? Schema location?
+- **Doc-конфликт (расположение адаптера):** ROADMAP Phase 5 deliverables → `adapters/handoff-to-ccsdd.js` (top-level каталог репозитория, отсутствует в CLAUDE.md «Repository structure»); SPEC §5.1 + §10 → `.claude/integrator/adapters/handoff-to-ccsdd.js` (project-local, генерируемый). Решить: reference adapter — shipped repo-артефакт или project-generated? Где schema?
 - Reference implementation в Phase 5; generation algorithm — Phase 7 или v1.1?
 - Contract schema versioning (cc-sdd может обновиться — backwards compat)?
 
 ### C.2 Environment Scanner scope при `/integrator:add`
 
-**Контекст:** SPEC Integrator §X mentions Environment Scanner для detecting existing tool installations. Phase 5 risk: «Environment Scanner может находить unknown user customizations — UX должен быть graceful при clarification requests».
+**Контекст:** SPEC Integrator §13 mentions Environment Scanner для detecting existing tool installations. Phase 5 risk: «Environment Scanner может находить unknown user customizations — UX должен быть graceful при clarification requests».
 
 **Вопросы для kickoff:**
 - Какие detectable artifacts в Stage 1 (profile) — bins / configs / running processes?
@@ -166,6 +166,7 @@ Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-fir
 **Контекст:** Phase 5 hook `journal-hook.js` autologs «every modifying action». Возможны bloat issues (precedent: DEC-DEV-0023 cascade-pending 396 entries).
 
 **Вопросы для kickoff:**
+- **Doc-конфликт:** SPEC §9 описывал хук как «логирует каждое добавление» (только add); ROADMAP Phase 5 + этот раздел — «every modifying action». SPEC §9 переписан в pointer (старая формулировка удалена) — зафиксировать итоговый scope.
 - Что считается «modifying action» — install / remove / update / config changes?
 - Dedup strategy (same action twice → single entry)?
 - Retention policy / pruning?
@@ -178,6 +179,21 @@ Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-fir
 - Backup location: `.claude-backup-<timestamp>/` (per /ecosystem:update precedent)?
 - Impact analysis — что в `.product/handoffs/` ссылается на cc-sdd? Dependent artifacts?
 - User confirmation gate (destructive) — `--confirm` flag или interactive prompt?
+
+---
+
+### C.6 Doc-consistency решения (выявлено pre-kickoff audit 2026-05-22)
+
+Аудит документов Phase 5 (ROADMAP / этот файл / SPEC Integrator) выявил несостыковки, существующие из-за непринятых решений. Pre-kickoff cleanup (2026-05-22) убрал чистый doc-rot и структурный дефект (SPEC §9 переписан в pointer на ROADMAP; устранён дублирующий `## 12.`; F5/F6/F9). Пункты ниже требуют **решения на kickoff** и фиксации через DEC-DEV-NNNN:
+
+1. **`/integrator:update` — Phase 5 или Phase 7?** ROADMAP Phase 5 deliverables включают `update.md` + acceptance «detects drift»; историческая группировка модуля относила его к Maintenance. SPEC §9 больше не утверждает размещение (переписан в pointer) — подтвердить ROADMAP-вариант (Phase 5) либо перенести в Phase 7.
+2. **Subagent-ы Integrator в Phase 5.** SPEC §10 перечисляет агентов `tool-profiler` + `contract-designer`; profiling (`add`) и contract design — работа Phase 5. ROADMAP Phase 5 deliverables (~8 файлов) агентов не упоминают. Решить: нужны в Phase 5 или cut по cuttable-scope discipline.
+3. **`replace.md` — scope + acceptance.** `replace.md` есть в ROADMAP Phase 5 deliverables и SPEC §3.2, но ни ROADMAP acceptance, ни §G DoD не содержат для него ни одной проверки. Решить: оставить в Phase 5 (тогда добавить acceptance) или defer в v1.1.
+4. **PMO-зоны cc-sdd coverage.** ROADMAP acceptance ссылался на `D2-Tech-02` — такого ID нет в `pmo-map.md` (D2-Technical зоны — `D2-03`, `D2-04`, `D2-07`). Решить точный список зон, которые мапит cc-sdd (есть граница Product Module / cc-sdd по `D2-02` Feature Specification). ROADMAP acceptance после решения поправить. SPEC §4.3 пример уже исправлен на `D2-03`.
+5. **Adapter location** — см. §C.1 (doc-конфликт ROADMAP vs SPEC §5.1/§10).
+6. **Journal hook scope** — см. §C.4 (doc-конфликт SPEC §9 vs ROADMAP).
+
+**После kickoff (sync-проход):** синхронизировать ROADMAP Phase 5 acceptance ↔ §G DoD, добавить/убрать acceptance для `replace`, поправить ROADMAP coverage-ID, записать DEC-DEV-NNNN.
 
 ---
 
@@ -234,7 +250,7 @@ Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-fir
 ### F.1 Memory sync after Phase 4
 
 - [x] `project_ecosystem_status.md` updated в K1 (already done as part of closure docs)
-- [ ] `project_ecosystem_architecture.md` — refresh D7 state per F9 (Stages 3-6 shipped, не Stage 2 only) + add Phase 4 architectural patterns (three-tier DA hierarchy, canonical DA findings schema, hash utility, V-H-* extension, language discipline section). См. Section A.4.3 above.
+- [ ] `project_ecosystem_architecture.md` — D7 state refreshed ✅ 2026-05-22 (Stages 3-6 + Phase 4.1 audit-smoke per F9/A.4.3); **ещё pending:** добавить Phase 4 architectural patterns (three-tier DA hierarchy, canonical DA findings schema, hash utility, V-H-* extension, language discipline section).
 - [x] `MEMORY.md` index updated (closure F8 inline fix)
 
 ### F.2 Дисциплина CHANGELOG vs DEV_JOURNAL (продолжение)
@@ -254,6 +270,23 @@ Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-fir
 - [ ] D.7 aspirational layer — bring-forward triggers met?
 - [ ] `/product:clarify` channel — Phase 5 adapter revealed receiver needs?
 - [ ] Subagents в Deep mode — упёрлись в лимиты Quick mode?
+
+---
+
+## G. Definition of Done для Phase 5
+
+Phase 5 считается «done», когда:
+- [ ] `/integrator:add cc-sdd` проходит 6 stages без manual intervention
+- [ ] `pmo-mapping.yaml` обновляется с cc-sdd coverage
+- [ ] Adapter берёт `.product/handoffs/FM-001-handoff.md` и invokes `/kiro:spec-init`
+- [ ] `.kiro/specs/FM-001/spec.json` создаётся с корректным content
+- [ ] `/integrator:remove cc-sdd` безопасно rollback с backup
+- [ ] `/integrator:update cc-sdd` detects drift при version upgrade
+- [ ] Decision journal logs каждое modifying action
+- [ ] **Pilot point** (Section E.1) — 1 FM end-to-end completed *(включение в Phase 5 DoD зависит от решения D.2 — см. §C.6)*
+- [ ] DEV_JOURNAL: findings + ключевые решения Phase 5
+- [ ] CHANGELOG: `[1.3.0]` или аналог
+- [ ] Phase 5 closure ritual (Unit 2 D7) — own DEC-DEV refinement entry
 
 ---
 
@@ -342,26 +375,9 @@ Catches `/product:nfr:review` references когда file = `/product:nfr-review`
 
 ---
 
-## G. Definition of Done для Phase 5
-
-Phase 5 считается «done», когда:
-- [ ] `/integrator:add cc-sdd` проходит 6 stages без manual intervention
-- [ ] `pmo-mapping.yaml` обновляется с cc-sdd coverage
-- [ ] Adapter берёт `.product/handoffs/FM-001-handoff.md` и invokes `/kiro:spec-init`
-- [ ] `.kiro/specs/FM-001/spec.json` создаётся с корректным content
-- [ ] `/integrator:remove cc-sdd` безопасно rollback с backup
-- [ ] `/integrator:update cc-sdd` detects drift при version upgrade
-- [ ] Decision journal logs каждое modifying action
-- [ ] **Pilot point** (Section E.1) — 1 FM end-to-end completed
-- [ ] DEV_JOURNAL: findings + ключевые решения Phase 5
-- [ ] CHANGELOG: `[1.3.0]` или аналог
-- [ ] Phase 5 closure ritual (Unit 2 D7) — own DEC-DEV refinement entry
-
----
-
 ## Совет: как пользоваться этим чек-листом
 
-**Состояние на 2026-05-13:** skeleton from Phase 4.K1 closure. Sections A (Phase 4 closure ritual) и B (Phase 4 runtime smoke) — outstanding actions BEFORE Phase 5 kickoff session. Sections C-G — substrate для kickoff session (per `dev/meta-improvement/checklists/phase-kickoff.md`).
+**Состояние на 2026-05-22:** Phase 4 закрыта; pre-kickoff doc-cleanup выполнен. Sections A/B — Phase 4 closure (done). Sections C-G — substrate для kickoff session (per `dev/meta-improvement/checklists/phase-kickoff.md`); §C.6 — doc-consistency решения, выявленные pre-kickoff аудитом.
 
 **Phase 5 implementation start sequence:**
 1. Complete Section A (Phase 4 closure ritual) — fresh-session run
