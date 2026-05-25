@@ -129,7 +129,7 @@ echo "exit: $?"
 
 Expect exit 0 + `contract_validation.passed: true` in JSON output. If pass:
 
-1. Generate **tool-docs** at `.claude/integrator/tool-docs/<tool>.md` per SPEC §14.2 structure (English, API reference style, Identity / Capabilities / Commands / Data Flow / Integration Points / Operating Protocols / Known Issues). This is the deliverable for future Orchestrator Module.
+1. Generate **tool-docs** at `.claude/integrator/tool-docs/<tool>.md` via `.claude/skills/integrator/tool-docs-generator.md` skill (per SPEC §14 style guide: universal English, API reference, project-agnostic). This is the deliverable for future Orchestrator Module.
 2. Update contract `last_verified` timestamp
 3. Mark contract status `active`
 

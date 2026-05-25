@@ -132,7 +132,7 @@ node .claude/integrator/adapters/<adapter>.js --verify-only --fixture tests/fixt
 If exit 0:
 - Update CNT.last_verified to now
 - Update CNT.status to `active`
-- Regenerate `tool-docs/<tool>.md` reflecting new version + capabilities
+- Regenerate `tool-docs/<tool>.md` via `.claude/skills/integrator/tool-docs-generator.md` skill (preserves manual blocks per SPEC §14.4)
 
 If exit ≠ 0:
 - Mark contract `broken`
