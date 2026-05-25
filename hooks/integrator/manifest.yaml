@@ -1,0 +1,14 @@
+# Hook registration manifest — Integrator Module
+#
+# Schema documented in hooks/product/manifest.yaml. Auto-read by
+# /ecosystem:bootstrap Step 6b to register hooks in <project>/.claude/settings.json.
+#
+# Hooks populated incrementally during Phase 5 implementation:
+#   - sub-phase F: journal-hook (PostToolUse, every modifying integrator action — per DEC-DEV-0040 Q6)
+#
+# Phase 7 candidates (Maintenance group): drift-check (SessionStart), contract-validate (PreToolUse).
+
+version: 1
+module: integrator
+
+hooks: []
