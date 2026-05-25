@@ -11,4 +11,10 @@
 version: 1
 module: integrator
 
-hooks: []
+hooks:
+  - id: journal-hook
+    file: journal-hook.js
+    events:
+      - type: PostToolUse
+        matcher: "Bash|Write|Edit|NotebookEdit"
+    description: "Autologs every modifying Integrator action (per DEC-DEV-0040 Q6) to .claude/integrator/project-journal.md. Internal filter: paths matching .claude/integrator/{active-tools.yaml, pmo-mapping.yaml, contracts/CNT-*.yaml|md, adapters/*.js, tool-docs/*.md, baseline.yaml} OR Bash commands matching npx|npm install|adapter execution. Dedup by (action+subject+minute) prevents cascade-save spam (DEC-DEV-0023 lesson). Retention: archives oldest half to _archive/journal-<YYYY-MM>.md when > 500 entries. Never blocks tool execution; stderr-only on internal errors."
