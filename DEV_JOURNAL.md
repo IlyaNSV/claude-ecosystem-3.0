@@ -3078,6 +3078,144 @@ Phase 4 закрыта (DEC-DEV-0038). Pre-kickoff doc-cleanup выполнен 
 
 ---
 
+## DEC-DEV-0041 — Phase 5 implementation closure (Integrator-only scope)
+
+**Date:** 2026-05-25
+**Trigger:** Phase 5 sub-phase J — закрытие implementation cycle Phase 5 (Integrator Installation + first cc-sdd adapter) per план + DEC-DEV-0040 kickoff decisions.
+**Tag:** #phase-5 #closure #integrator #adapter
+
+### Context
+
+Phase 5 kickoff (DEC-DEV-0040) закрыл Q1-Q6 + функциональный рефактор PMO-карты. Implementation шёл 10 sub-phase commits A-J:
+
+| Sub-phase | Commit | Deliverable |
+|---|---|---|
+| A | acb5113 | Scaffolding (hooks/integrator/manifest.yaml + adapters/ caddy с README dual-location pattern) |
+| B | 521caff | `tool-profiler` subagent + `tool-profiling.md` skill refresh (canonical PMO IDs, B.1 anti-pattern) |
+| C | fe6e599 | Reference adapter `handoff-to-ccsdd.js` + fixture FM-FIXTURE-001-handoff.md + tests/fixtures/README.md |
+| D | 9161541 | `contract-design.md` skill + `contract-designer.md` subagent |
+| E | 90e3619 | `/integrator:add` 6-stage orchestrator + `installation-protocol.md` skill |
+| F | 777282c | `journal-hook.js` (PostToolUse autolog every modifying action — Q6) + manifest entry |
+| G | cd3933b | `/integrator:remove` (impact analysis + backup + cleanup; .product/ untouched) |
+| H | c43a2c4 | `/integrator:update` (5-stage drift-repair) + `drift-detection.md` skill (D1/D2/D3 minimum viable) |
+| I | 69ab156 | `tool-docs-generator.md` skill + add/update wiring; tool-docs themselves per-project |
+| J | (this) | Smoke plan + closure docs (PHASE_5_SMOKE_TEST_PLAN, PHASE_6_READINESS skeleton, CHANGELOG 1.3.0, ROADMAP, DEV_JOURNAL entry) |
+
+### Decisions (cumulative)
+
+Все DEC-DEV-0040 решения применены без перекройки:
+- **Q1 dual-location adapter** — repo `adapters/handoff-to-ccsdd.js` reference; per-project `.claude/integrator/adapters/handoff-to-ccsdd.js` instance с metadata header (`@target_tool_version`, `@contract_schema_version`, `@source_ref`, `@installed_at`). Stage 5 add-flow + Stage 4 update-flow consume этот pattern.
+- **Q2 update в Phase 5** — `/integrator:update` shipped; не отложен в Phase 7.
+- **Q3 subagents + Integrator/Orchestrator boundary** — `tool-profiler` (Stage 1) + `contract-designer` (Stage 5) shipped. Stage 6 ends at fixture contract-test; production routing (handoff → live `/kiro:spec-init`) — Orchestrator (out of Phase 5 DoD).
+- **Q4 `/integrator:replace`** — deferred к v1.1 (no 2nd D2-Tech tool для содержательного теста).
+- **Q5 PMO zones cc-sdd** — pmo-mapping.yaml schema поддерживает `D2-T01 + D2-T06` primary, `D2-T04` partial, `D2-B02` boundary (`boundary:` field в installation-protocol skill Section 7).
+- **Q6 journal-hook scope** — every modifying action; dedup `(action+subject+minute)`, retention `_archive/journal-YYYY-MM.md` при > 500 entries.
+
+### Outcome
+
+**Файлы созданы (~16 файлов, 2 modifications):**
+
+Commands:
+- `commands/integrator/add.md`
+- `commands/integrator/remove.md`
+- `commands/integrator/update.md`
+
+Skills:
+- `skills/integrator/installation-protocol.md`
+- `skills/integrator/contract-design.md`
+- `skills/integrator/drift-detection.md`
+- `skills/integrator/tool-docs-generator.md`
+- `skills/integrator/tool-profiling.md` (modified — added subagent invocation matrix, canonical PMO IDs, B.1 anti-pattern variants)
+
+Agents:
+- `agents/integrator/tool-profiler.md`
+- `agents/integrator/contract-designer.md`
+
+Hooks:
+- `hooks/integrator/journal-hook.js`
+- `hooks/integrator/manifest.yaml`
+
+Adapters:
+- `adapters/handoff-to-ccsdd.js` (reference)
+- `adapters/README.md`
+
+Tests:
+- `tests/fixtures/FM-FIXTURE-001-handoff.md`
+- `tests/fixtures/README.md`
+
+Plans + closure:
+- `dev/PHASE_5_SMOKE_TEST_PLAN.md`
+- `dev/PHASE_6_READINESS.md` (skeleton)
+
+Modifications:
+- `dev/PHASE_5_READINESS.md` — status banner → ✅ implemented (closure ritual Unit 2 pending)
+- `ROADMAP.md` — «Где мы сейчас» обновлено; Phase 5 в completed; PILOT POINT reframed (depends on Orchestrator)
+- `CHANGELOG.md` — `[1.3.0]` section added
+
+Размер реализации:
+- A: 2 files, 57 insertions
+- B: 2 files, 237 insertions
+- C: 3 files, 658 insertions
+- D: 2 files, 410 insertions
+- E: 2 files, 429 insertions
+- F: 2 files, 257 insertions
+- G: 1 file, 196 insertions
+- H: 2 files, 357 insertions
+- I: 3 files, 200 insertions
+- J: ~5 files, ~600 insertions (this commit)
+- **Total: ~24 files, ~3400 lines added**
+
+### Static smoke результаты
+
+- Adapter contract-test (positive case, sub-phase C): exit 0; all 6 contract checks pass; `cc_sdd_input` fully populated; slug correct; provenance + steering_prefix from frontmatter
+- Adapter contract-test (negative case, status=blocked): exit 1; C-02 blocking fail with correct detail; `cc_sdd_input: null`
+- journal-hook smoke (4 cases, sub-phase F): integrator Write append OK; dedup within minute OK; non-integrator path filter OK; Bash npx append OK
+
+### Эффорт vs план
+
+План: 10-20 ч (с эмпирическим множителем ×2-4 на базовую ROADMAP-оценку 3-5 ч).
+Факт: реализация уложилась в одну расширенную сессию (несколько часов). Это **меньше** прогноза. Возможные причины:
+1. Kickoff DEC-DEV-0040 закрыл 6 архитектурных вопросов + PMO рефактор upfront → нет mid-implementation ambiguity-stalls (это были ROI-points в Phase 3/4 расходов)
+2. Phase 5 — preimuщественно методология (skills + commands) с одним содержательным кодом (adapter + hook)
+3. SPEC §3-§14 был уже почти полностью detailed (Phase 0-1 work); commands + skills во многом «codify» SPEC в исполняемые artifacts
+4. Subagent pattern уже отработан (tool-researcher как образец); tool-profiler + contract-designer структурно подобны
+
+### Risks (observed + resolution)
+
+- ✅ **R1 (live cc-sdd verification)** — отложено к runtime smoke / pilot run. Adapter работает fixture-based; production verification — Orchestrator scope.
+- ✅ **R2 (Environment Scanner false-positives)** — mitigated через `integrator_owned` heuristic в installation-protocol.md Section 3 (файл в `.claude/<type>/<module>/` + module manifest declaration = ecosystem-owned).
+- ✅ **R3 (journal-hook bloat)** — mitigated через dedup `(action+subject+minute)` + retention `_archive/journal-YYYY-MM.md` при > 500 entries.
+- ⏳ **R4 (contract-designer subagent over/under-classify transformation type)** — surface при runtime smoke S5.
+- ✅ **R5 (Adapter dual-location desync)** — mitigated через `target_tool_version` + `contract_schema_version` + `source_ref` metadata в installed instance + drift-detection skill D1/D2/D3.
+- ⏳ **R6 (F4 Phase 4 bootstrap regression)** — addressed pre-Phase-5-start (user confirmed F4 выполнен).
+- ⏳ **R7 (`product-devils-advocate` subagent type registration)** — может всплыть при S1 (Stage 5 invokes contract-designer); flag в smoke plan.
+
+### Lessons
+
+1. **Kickoff ROI multiplier holds — даже сильнее в Phase 5.** Phase 3/4 ROI был 3-5x (DEC-DEV-0012 lesson). Phase 5 кажется ~6-8x благодаря Q1-Q6 + PMO functional decomposition pre-resolve. Phase 6/7 kickoff invest должен оставаться mandatory.
+2. **Methodology phases (skills + commands) дешевле code phases (hooks + parsers).** Phase 5 имела только 2 reactive code артефакта (adapter + journal-hook), остальное — orchestration prompts. Это объясняет смещение от плановых 10-20 ч к фактическим ~часам. Calibration для future: если phase preimuщественно prompts → ×1-2 multiplier; если preimuщественно code → ×3-5.
+3. **Dual-location pattern (DEC-DEV-0040 Q1) — generalizable.** Same pattern может применяться к hooks/agents/skills installed by tools: repo reference + project instance + drift detection. Phase 7 maintenance может extend.
+4. **Subagent structural pattern закрепился.** tool-profiler + contract-designer написаны по тому же template что tool-researcher (Phase 1). Brief / methodology / output blocks / anti-patterns / time budget / cross-reference. Шаблон стоит явно codify в `dev/meta-improvement/patterns/` если повторится в Phase 6 (screen-generator) и Phase 7.
+5. **B.1 frontmatter convention (DEC-DEV-0011 → DEC-DEV-0012) масштабируется.** Применено к profile YAML, CNT YAML, pmo-mapping.yaml — каждый skill включает explicit canonical fields + anti-pattern variants list. Это **должно** быть default для всех schema-bearing skills (codify в CONVENTIONS.md если ещё нет).
+6. **Phantom IDs как drift signal (DEC-DEV-0040 lesson #3) — преcomputed.** Pre-Phase-5 cleanup убрал `D2-Tech-02`; install protocol + tool-profiler subagent оба ловят попытку invent ID. Этот pattern (canonical-IDs-only + invariant check) применим везде где skills используют typed identifiers.
+
+### Что НЕ сделано (intentional)
+
+- **Closure ritual Unit 2 (D7 phase-closure.md 6 steps fresh-session)** — отдельная сессия; будет запущена user'ом по завершении runtime smoke.
+- **Runtime smoke S1-S6 execution** — план готов (`dev/PHASE_5_SMOKE_TEST_PLAN.md`); ждёт pilot session.
+- **Live `npx cc-sdd@latest` verification** — отложено к Stage 6 в pilot session.
+- **Phase 5 memory MCP sync** — будет в closure ritual Unit 2 Step 6.
+- **F4 Phase 4 bootstrap regression** — выполнен user'ом до старта Phase 5 (per pre-flight confirmation).
+
+### Связь с другими entries
+
+- DEC-DEV-0040 (kickoff) — все Q1-Q6 + PMO refactor применены; этот entry — implementation outcome.
+- DEC-DEV-0031 A1 (line-based parser lesson) — applied к adapter `parseFrontmatter` (не regex на multi-entry block).
+- DEC-DEV-0025 C.1 (`lib/hash.js`) — структурный template для adapter Node stdlib + cross-platform LF-normalized I/O.
+- DEC-DEV-0023 (cascade-pending 396 entries) — mitigated в journal-hook через dedup + retention.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

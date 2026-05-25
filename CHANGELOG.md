@@ -6,6 +6,71 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.0] — 2026-05-25
+
+Phase 5 release: **Integrator Installation + first cc-sdd reference adapter** (Phase 2 of Integrator Module). 3 new commands + 4 new/refactored skills + 2 new subagents + 1 new hook + 1 reference adapter + dual-location pattern. Ships through 10 sub-phase commits A-J. Per [DEC-DEV-0040..0041](DEV_JOURNAL.md).
+
+**Backwards compatibility:** Phase 5 introduces `.claude/integrator/` lazy-init schema (per DEC-INT-O08) — created on first `/integrator:add` invocation only; no impact on existing pilot projects that don't add tools yet. PMO IDs in `pmo-mapping.yaml` follow post-DEC-DEV-0040 functional decomposition (D2-T01..T08, D2-B01..B05, D3-01..07, D4-01..07) — Phase 1 read-only commands were already updated in DEC-DEV-0040.
+
+**Runtime smoke pending.** Static smoke зелёный (adapter contract-test exit 0; journal-hook 4 cases pass). Runtime smoke S1-S6 — `dev/PHASE_5_SMOKE_TEST_PLAN.md`; execution в pilot project; closure ritual Unit 2 после.
+
+### Added — Integrator Phase 2 Installation flow (DEC-DEV-0040..0041)
+
+**Commands** (`commands/integrator/`):
+- **`add.md`** — 6-stage orchestrator (profile → propose → install → configure → contract → verify) with hard approve gate before Stage 3. Stage 1 spawns `tool-profiler` subagent; Stage 5 spawns `contract-designer` subagent. pmo-mapping per Q5: `D2-T01 + D2-T06` primary, `D2-T04` partial, `D2-B02` boundary. Stage 6 ends at fixture contract-test (Integrator-only scope per Q3 boundary). Idempotency rules + error handling matrix per stage.
+- **`remove.md`** — 5-stage destructive flow (locate → impact analysis → confirmation gate → backup+uninstall → state cleanup). Impact analysis surfaces affected contracts, PMO zones (uncovered vs secondary-promoted), `.claude/` primitives with user-customization flag, orphaned handoff references (informational only — NEVER mutates `.product/`). Global tool-catalog profile preserved (`deprecated_in_projects:` list), never deleted.
+- **`update.md`** — 5-stage drift-repair flow (backup → install new → drift detection → contract repair → verify) per SPEC §7.4. `--check-only` flag for preview without mutation. Per-contract repair (partial success allowed). Refuses downgrade in v1.
+
+**Skills** (`skills/integrator/`):
+- **`installation-protocol.md`** — shared methodology across add/remove/update: lazy-init (DEC-INT-O08), `integrator_owned` vs `user_customizations` heuristic, backup protocol with `--parents`, per-conflict approve gates, pmo-mapping schema with `boundary:` field for consumed-not-owned zones, rollback protocol, journal autolog contract, anti-pattern #6 (phantom PMO IDs).
+- **`contract-design.md`** — methodology for designing CNT-*.yaml/.md pairs and instantiating adapter scripts. Mandatory reference-adapter check (Step 4) per dual-location pattern. Canonical CNT YAML template with B.1 frontmatter convention + anti-pattern field-name variants.
+- **`drift-detection.md`** — minimum viable v1 with three checks: D1 semver range satisfaction (vanilla impl, no npm dep), D2 `CONTRACT_SCHEMA_VERSION` mismatch (installed vs repo HEAD), D3 adapter body diff against `source_ref` via `git diff` with function-name classifier. Limits explicit; full schema-aware drift → Phase 7.
+- **`tool-docs-generator.md`** — methodology for generating `.claude/integrator/tool-docs/<tool>.md` per SPEC §14 (universal English, API reference, project-agnostic). Manual edit preservation via `<!-- manual: do not regenerate -->` blocks. Boundary annotation для consumed-not-owned zones.
+
+**Subagents** (`agents/integrator/`):
+- **`tool-profiler.md`** — Stage-1 isolated subagent for `/integrator:add`. Single-tool deep profile (vs `tool-researcher`'s multi-tool comparison). Returns full YAML profile + UX report block with conflict detection against `.claude/integrator/baseline.yaml`.
+- **`contract-designer.md`** — Stage-5 isolated subagent for `/integrator:add`. Three-block output: CNT-NNN.yaml + CNT-NNN.md + status report. Mandatory `--verify-only` smoke pass before status=active.
+
+**Hooks** (`hooks/integrator/`):
+- **`journal-hook.js`** — PostToolUse on `Bash|Write|Edit|NotebookEdit`. Internal filter to integrator-relevant paths + Bash patterns. Dedup `SHA1(action+subject+minute)` cached in `.journal-dedup.json`. Retention: archives oldest half to `_archive/journal-<YYYY-MM>.md` when > 500 entries. Never blocks tool execution.
+- **`manifest.yaml`** — registers journal-hook for auto-pickup by `/ecosystem:bootstrap`.
+
+**Reference adapter** (`adapters/`):
+- **`handoff-to-ccsdd.js`** — first reference adapter (Product handoff → cc-sdd `/kiro:spec-init`). Node stdlib only; cross-platform LF-normalized I/O. Line-based frontmatter parser (per DEC-DEV-0031 A1 lesson). 6 contract checks (C-01..C-06). `--verify-only --fixture` mode mandatory (Phase 5 scope; production routing → Orchestrator). Metadata header pattern: `@target_tool / @target_tool_version / @contract_schema_version / @source_ref / @installed_at`.
+- **`README.md`** — documents dual-location pattern (DEC-DEV-0040 Q1).
+
+**Test fixtures** (`tests/fixtures/`):
+- **`FM-FIXTURE-001-handoff.md`** — minimal realistic handoff (12 sections, full frontmatter) for adapter contract-test in Stage 6.
+- **`README.md`** — fixture conventions.
+
+**Planning + closure**:
+- `dev/PHASE_5_SMOKE_TEST_PLAN.md` — S1-S6 runtime scenarios (pending execution).
+- `dev/PHASE_6_READINESS.md` — skeleton (conditional phase; activates on first FM with `has_ui=true`).
+
+### Modified — pre-existing files
+
+- `skills/integrator/tool-profiling.md` — refreshed: inline-vs-subagent invocation matrix, Step 4 PMO coverage references canonical post-DEC-DEV-0040 IDs (phantom `D2-Tech-02` explicitly forbidden), anti-pattern #6 (field name drift) + #7 (inventing PMO IDs).
+- `hooks/integrator/manifest.yaml` — populated with journal-hook registration.
+- `dev/PHASE_5_READINESS.md` — status banner updated to ✅ implemented (runtime smoke + closure ritual pending).
+- `ROADMAP.md` — «Где мы сейчас» reflects Phase 5 completion; PILOT POINT reframed (depends on Orchestrator Module per DEC-DEV-0040 Q3).
+- `DEV_JOURNAL.md` — DEC-DEV-0041 closure entry.
+
+### Architectural decisions (codified)
+
+- **Dual-location adapter (Q1):** repo `adapters/` ships canonical reference; `/integrator:add` copies to `.claude/integrator/adapters/` with metadata header; `/integrator:update` compares installed metadata + adapter body for drift.
+- **Integrator/Orchestrator boundary (Q3):** Phase 5 scope ends at Stage 6 fixture contract-test. Production handoff → live `/kiro:spec-init` is Orchestrator runtime orchestration.
+- **journal-hook scope (Q6):** every modifying integrator action; dedup + retention prevent bloat.
+- **`replace.md` deferred to v1.1** per Q4.
+
+### Lessons (DEC-DEV-0041)
+
+- Kickoff ROI multiplier holds — стronger in Phase 5 (~6-8x). Phase 6/7 kickoff invest mandatory.
+- Methodology phases cheaper than code phases. Calibration: methodology-heavy → ×1-2 multiplier; code-heavy → ×3-5.
+- Dual-location pattern generalizable to hooks/agents/skills installed by external tools — Phase 7 maintenance extension candidate.
+- Subagent structural template закрепился (tool-researcher → tool-profiler → contract-designer) — candidate to codify в `dev/meta-improvement/patterns/`.
+
+---
+
 ## [1.2.1] — 2026-05-14
 
 Phase 4.1 patch release: **D7 Log Conformance Auditor** — расширение прототипа `session-audit` (8a83562) к production mechanism для валидации smoke-сессий пилотных проектов против `PHASE_<N>_SMOKE_TEST_PLAN.md`. Hook-collects-state + command-consumes-batch composite pattern с журналом идемпотентности. Per [DEC-DEV-0034](DEV_JOURNAL.md).

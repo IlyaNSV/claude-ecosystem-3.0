@@ -2,7 +2,9 @@
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 5 (Integrator Phase 2 — Installation + first adapter).
 >
-> **Статус (2026-05-25):** ✅ Kickoff session проведена — все Q1-Q6 архитектурные вопросы + функциональный рефактор PMO-карты закрыты через **DEC-DEV-0040**. Pre-kickoff doc-consistency cleanup выполнен 2026-05-22 (структурный фикс SPEC §9, doc-rot, F5/F6/F9 — см. §A.4). Phase 5 implementation готова к старту.
+> **Статус (2026-05-25):** ✅ Phase 5 implementation completed (DEC-DEV-0041). 10 sub-phase commits A-J shipped; static smoke зелёный (Stage 6 fixture contract-test exit 0). Runtime smoke (S1-S6) pending — `dev/PHASE_5_SMOKE_TEST_PLAN.md`. Closure ritual Unit 2 (D7 fresh-session) — после runtime smoke.
+>
+> **Предыстория:** ✅ Kickoff session проведена 2026-05-25 — все Q1-Q6 архитектурные вопросы + функциональный рефактор PMO-карты закрыты через **DEC-DEV-0040**. Pre-kickoff doc-consistency cleanup выполнен 2026-05-22 (структурный фикс SPEC §9, doc-rot, F5/F6/F9 — см. §A.4).
 >
 > **Принцип:** не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждому пункту присвоен приоритет: 🔴 блокер, 🟡 важный, 🔵 необязательный.
 

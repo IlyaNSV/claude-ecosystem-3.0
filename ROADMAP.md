@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-20.
+> **Последнее обновление:** 2026-05-25.
 
 ## Где мы сейчас
 
@@ -33,13 +33,23 @@
    — Phase 4 ЗАКРЫТА: smoke дал fail, known issues приняты и задокументированы (audit-reports/phase-4-summary.md)
    — re-verification gate снят (DEC-DEV-0038 follow-up); smoke-план + fixtures удалены
 
+✅ Phase 5 readiness gate (2026-05-25) — DEC-DEV-0040 (Q1-Q6 + functional PMO refactor)
+✅ Phase 5 — Integrator Phase 2 (Installation + first cc-sdd adapter) — IMPLEMENTED 2026-05-25
+   — 3 commands (add/remove/update) + 4 skills (installation-protocol/contract-design/drift-detection/tool-docs-generator)
+     + 2 subagents (tool-profiler/contract-designer) + 1 hook (journal-hook) + 1 reference adapter (handoff-to-ccsdd.js)
+     + 1 fixture (FM-FIXTURE-001-handoff.md) + scaffolding (hooks/integrator/manifest.yaml, adapters/README.md)
+   — 10 sub-phase commits A-J; Stage 6 fixture contract-test verified (exit 0; 6 checks pass)
+   — Per DEC-DEV-0040 Q3 boundary: Integrator-only scope (Stage 6 ends at fixture verify);
+     production routing (handoff → live /kiro:spec-init) → Orchestrator (out of Phase 5)
+   — Phase 5 runtime smoke S1-S6 → dev/PHASE_5_SMOKE_TEST_PLAN.md (pending execution)
+   — DEC-DEV-0041 closure entry
+
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 5 readiness gate — kickoff session per dev/PHASE_5_READINESS.md
-⏳ Phase 5 — Integrator Phase 2 (Installation + first cc-sdd adapter)
-⏳ 🎯 PILOT POINT — full end-to-end (handoff generation + external tool)
-⏳ Phase 6 — Design Module (conditional, activate on first UI feature)
-⏳ Phase 7 — Integrator maintenance (verify/debug/docs/update)
+⏳ Phase 5 runtime smoke (S1-S6) — pending execution; closure ritual Unit 2 after smoke audited
+⏳ 🎯 PILOT POINT — requires Orchestrator Module (out of Phase 5; reframed per DEC-DEV-0040 Q3)
+⏳ Phase 6 — Design Module (conditional, activate on first UI feature) — skeleton dev/PHASE_6_READINESS.md
+⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm)
 
 📦 Post-MVP (v1.1+): Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, D.7 aspirational layer (recursive auto drill-down + FM.depends_on graph), /product:clarify receiver channel, Orchestrator Module concept, /ecosystem:upgrade. Context: dev/v1_1_backlog.md
 📦 v2: P3 Feedback, P5 Actuality Refresh, multi-tool zones, etc.
