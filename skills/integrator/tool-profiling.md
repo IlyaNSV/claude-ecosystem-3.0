@@ -8,10 +8,19 @@ Extract structured tool metadata into YAML profile per `docs/integrator-module/S
 
 ## When invoked
 
-- During `/integrator:research` — generate **draft profile** per candidate (lighter version)
-- During `/integrator:add` — generate **full profile** before installation
+- During `/integrator:research` — generate **draft profile** per candidate (lighter version); typically invoked from `tool-researcher` subagent
+- During `/integrator:add` — generate **full profile** before installation; invoked from `tool-profiler` subagent (Phase 5.B) for isolated context
 - During `/integrator:update` — refresh existing profile after version change
 - During `/integrator:debug` — re-verify profile when troubleshooting
+
+### Inline vs subagent invocation
+
+| Caller | Mode | Why |
+|---|---|---|
+| Main `/integrator:add` orchestration | Subagent (`tool-profiler`) | Profiling needs deep doc read + GitHub repo scan + Bash for source inspection — isolated context preserves main UX flow |
+| Main `/integrator:research` orchestration | Subagent (`tool-researcher` → internally applies this skill per candidate) | Multi-tool comparison |
+| Main `/integrator:update` after version bump | Inline | Lightweight diff against existing profile; full re-profile only if `confidence.profiling` was low or `last_audit` >30 days old |
+| Main `/integrator:debug` | Inline | Re-verify one specific field tied to error symptom |
 
 ## Profile schema (full)
 
@@ -123,7 +132,15 @@ This is critical: the tool's profile should accurately reflect what it adds to t
 
 ### Step 4: Determine PMO coverage
 
-For each PMO process ID (D1-01, D2-B02, D2-T01, D3-01 etc. per pmo-map.md) the tool might cover:
+For each PMO process ID the tool might cover, use **canonical IDs from `docs/pmo/pmo-map.md`** (post-DEC-DEV-0040 functional decomposition):
+
+- **D1-NN** — Product Discovery (rarely tool-coverable; mostly Product Module)
+- **D2-BNN** — Behavioral (Product/Design Module owned; tools usually `consume via handoff`, not `own`)
+- **D2-TNN** — Technical (most common zone for D2-Tech tools like cc-sdd, Kiro)
+- **D3-NN** — Development (implementation, build, deploy tools)
+- **D4-NN** — QA (testing, static analysis tools)
+
+DO NOT invent IDs like `D2-Tech-02` (phantom ID surfaced + removed in DEC-DEV-0040). If you see a capability and pmo-map.md doesn't have a matching ID → note it in `profile.notes` and let main session decide whether pmo-map needs expansion.
 
 **Confidence levels:**
 - **high** — explicitly documented + you've verified through smoke test or example
@@ -239,3 +256,10 @@ Don't waste effort doing full profile for tools you might not install.
 3. **Skipping conflict check.** Always run mental scan before profiling completes.
 4. **Outdated profile reuse.** If `last_audit` is stale, refresh — tools change.
 5. **Single source for major claims.** PMO coverage statements should be cross-referenced.
+6. **Field name drift (B.1 convention).** Use canonical schema field names exactly. Forbidden variants the AI may be tempted to introduce "for naturalness":
+   - `pmo_coverage` — NOT `pmo_zones`, `pmo_mapping`, `zones_covered`, `process_coverage`
+   - `evidence` — NOT `confidence_rationale`, `rationale`, `reasoning`
+   - `profiling_notes` — NOT `confidence_reasoning`, `confidence_notes`
+   - `claude_primitives` — NOT `primitives`, `claude_artifacts`, `installed_artifacts`
+   - `source_spec` — NOT `install_spec`, `package_spec`
+7. **Inventing PMO IDs.** Stick to pmo-map.md canonical IDs (`D2-T01`, `D2-B02`, `D3-06`, etc.). If unsure → note in `profile.notes`, do not fabricate.
