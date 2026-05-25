@@ -1,7 +1,7 @@
 # NFR-* — Non-Functional Requirement
 
 > **Тип:** non-functional-requirement
-> **Домен:** D2-Behavioral (cross-cutting с D2-Technical и D4 Quality)
+> **Домен:** D2-Behavioral (cross-cutting с D2-T05 NFR Technical Translation и D4-07 NFR/Perf/Security Testing)
 > **Review:** 🟠 Strategic (с realistic-defaults guardrails)
 > **Cardinality:** 0 или больше на фичу — **опционально** (обсуждается per FM)
 > **Активация:** opt-in — пользователь явно выбирает, формализовать ли NFR для конкретной фичи

@@ -2999,6 +2999,85 @@ Pre-kickoff cleanup затронул 18 файлов репозитория + me
 
 ---
 
+## DEC-DEV-0040 — Phase 5 kickoff: Q1-Q6 + функциональный рефактор PMO-карты
+
+**Date:** 2026-05-25
+**Trigger:** Phase 5 kickoff session per `dev/meta-improvement/checklists/phase-kickoff.md`. Резолюция 6 архитектурных вопросов из `PHASE_5_READINESS §C/§C.6` + запрос пользователя на функциональную декомпозицию PMO-карты в стиле «job descriptions ролей».
+**Tag:** #phase-5 #kickoff #architecture #pmo-refactor #integrator #orchestrator-boundary
+
+### Context
+
+Phase 4 закрыта (DEC-DEV-0038). Pre-kickoff doc-cleanup выполнен DEC-DEV-0039 — выявил 6 непринятых архитектурных решений, вынесенных в `PHASE_5_READINESS §C.6` как kickoff-агенда. Дополнительно по ходу kickoff пользователь запросил функциональную декомпозицию PMO-карты для D2-Tech / D3 / D4 как «обязанности при найме сотрудников» — это потребовало рефактора `pmo-map.md` и удаления `dev/reference-pmo/` (research-снэпшот, признан избыточным по сложности).
+
+### Options considered (по каждому вопросу)
+
+**Q1 — Adapter location:**
+1. Top-level `adapters/` only (ROADMAP) — нет lifecycle-coupling с инструментом.
+2. Project-local `.claude/integrator/adapters/` only (SPEC §5.1/§10) — нет canonical reference в репо.
+3. **Dual-location (выбрано):** repo `adapters/` = reference source + project `.claude/integrator/adapters/` = installed instance с metadata `target_tool_version` / `contract_schema_version` / `source_ref`. `/integrator:update` сравнивает installed metadata с новой версией инструмента + diff против обновлённого reference → drift detection → contract repair. Адаптер «путешествует» с инструментом, при этом ecosystem ships canonical source.
+
+**Q2 — `/integrator:update` phasing:**
+1. **Phase 5 (выбрано, per ROADMAP)** — update нужен для drift-detection contract'ов при апгрейде cc-sdd, это core Installation-семейство.
+2. Phase 7 Maintenance (историческая SPEC §9 группировка) — отвергнуто: разрыв install/update лайфцикла.
+
+**Q3 — Subagents + Integrator/Orchestrator boundary:**
+1. Без subagent'ов (cuttable) — отвергнуто: profiling и contract design — core Phase 5 работа, нужен isolated context.
+2. **С subagent'ами + reframe boundary (выбрано):** `tool-profiler` (stage 1) + `contract-designer` (stage 5) входят в Phase 5 deliverables. **Reframe:** Integrator — «технарь», заканчивает на «installed + contract-verified на fixture». Production-маршрутизация реального handoff'а через адаптер в `/kiro:spec-init` — это **Orchestrator** (runtime routing). PILOT POINT full end-to-end упирается в Orchestrator; Phase 5 DoD не включает spec.json производство.
+
+**Q4 — `replace.md`:**
+1. Включить в Phase 5 с acceptance — отвергнуто: только 1 D2-Tech инструмент (cc-sdd), заменять не на что, содержательный тест невозможен.
+2. **Defer к v1.1 (выбрано)** — cuttable-scope discipline; вернёмся при появлении 2-го адаптера.
+
+**Q5 — PMO-зоны cc-sdd:**
+1. «cc-sdd → D2-Technical» (домен-level) — отвергнуто: слишком грубо для tool-matching.
+2. **Гранулярный mapping (выбрано):** core `D2-T01 + D2-T06` (Architecture + Task Decomposition); `D2-T04` (API embedded в spec-design) — partial, верифицируется на profile-stage. Boundary: `D2-B02` Feature Specification — Product Module владеет, cc-sdd consumes via handoff (не owns); фантомный ID `D2-Tech-02` устранён (никогда не существовал в pmo-map).
+
+**Q6 — Journal-hook scope:**
+1. Только `add` — отвергнуто: `update`/`remove`/`replace` тоже несут lessons.
+2. **Every modifying action (выбрано)** — install / remove / update / config changes. Dedup и retention — operational details при implementation; bloat-риск парируется фильтром-по-тэгу.
+
+**PMO functional refactor (отдельная нить, всплыла по ходу kickoff):**
+1. Оставить pmo-map с текущей нумерацией D2-01..09 (интерливинг Behavioral/Technical) — отвергнуто: на Q5 acceptance вылез фантомный `D2-Tech-02`, маркер того что текущая карта не годится для tool-coverage.
+2. Адаптировать карту из `dev/reference-pmo/03-domain-coverage-map.md` (industry-anchored: ISTQB, ATAM, *Accelerate*, ISO 25010) — рассматривался, но пользователь удалил `dev/reference-pmo/` целиком как «избыточно сложный»; остаётся `pmo-map.md` canonical concise model.
+3. **Функциональная декомпозиция как job descriptions (выбрано):** D2-Behavioral = Бизнес-аналитик (5 обязанностей), D2-Technical = Технический архитектор (8), D3 = Разработчик/Delivery (7), D4 = QA (7). Tool-agnostic, attached к ролям. Integrator профилирует tools против этих обязанностей как CV против JD. D5/D6 не трогаются (D5 deferred v2; D6 — D7 meta).
+
+### Decision
+
+Все 7 пунктов выше выбраны. Сводка изменений в репозитории — в Outcome.
+
+### Outcome
+
+**Файлы изменены (одним коммитом):**
+- `docs/pmo/pmo-map.md` — полный rewrite: новая структура D1 + D2-B + D2-T + D3 + D4 + D5/D6 stub + Activation Matrix + Migration ID table.
+- `ROADMAP.md` Phase 5 — deliverables ~8 → ~10 (add subagents, drop `replace.md`); acceptance reframed (Integrator-only scope, fixture contract-test, not production `/kiro:spec-init`); D2-Tech-02 → D2-T01+T06.
+- `docs/integrator-module/SPEC.md` §4.3 — `D2-03` → `D2-T01` в pmo-mapping.yaml example; §7.2-7.5 narrative examples — IDs обновлены, добавлен boundary note для cc-sdd; §8.2 tool-docs Capabilities — D2-T01/T04/T06 + Boundary секция; §13 DB Migrations пример D3-09 → D3-06.
+- `docs/product-module/SPEC.md` — pmo_coverage example: `D2-01/02/05/06` → `D2-B01/02/03/04/05`; D2-05 в narrative → D2-B04.
+- `docs/design-module/SPEC.md` — D2-05 → D2-B04 (3 места).
+- `docs/pmo/artifacts/{FM,MK,DS,NM,NFR,README}.md` — D2-05 → D2-B04; NFR — domain reference уточнён до D2-T05 + D4-07.
+- `commands/integrator/{map,status,gaps}.md` — D2-Tech-02 → D2-T01+T06; D2-05 → D2-B04; D4-01 vitest example → D4-03; gap-list example IDs updated.
+- `commands/product/status.md`, `commands/ecosystem/bootstrap.md`, `templates/project/CLAUDE.md.template`, `README.md` — D2-05 → D2-B04.
+- `skills/integrator/{tool-profiling,research-protocol}.md` — illustrative IDs обновлены; pmo-mapping.yaml example в tool-profiling показывает D2-T01 + D2-T06 (cc-sdd primary).
+- `agents/integrator/tool-researcher.md` — coverage example IDs updated.
+- `CLAUDE.md` repo structure — добавлен `adapters/` каталог с пометкой Phase 5+ + reference-instance pattern.
+- `dev/PHASE_5_READINESS.md` — Section C/C.6 → ✅ resolved + summary Q1-Q6; §G DoD reframed (Integrator-only).
+- `dev/reference-pmo/` — удалён целиком (16 файлов) по решению пользователя: «избыточно сложный для текущего этапа; ориентируемся на pmo-map.md как concise model».
+
+**Файлы НЕ трогаем (intentional):**
+- `CHANGELOG.md` — обновляется при release 1.3.0 (per PHASE_5_READINESS §F.2).
+- `DEV_JOURNAL.md` исторические записи — содержат старые ID, оставляем для исторической точности.
+- `dev/_archive/phase-4/` — archive, immutable.
+- `dev/meta-improvement/audit-index.md` — auto-appended hook rows, не часть kickoff-коммита.
+
+### Lessons
+
+1. **Проверь существующие реф-материалы ПРЕЖДЕ чем изобретать.** Я предложил pmo-функциональную карту с нуля, не зная (точнее — забыв проверить) что в `dev/reference-pmo/03-domain-coverage-map.md` уже была industry-anchored декомпозиция. Surfaced это сам перед коммитом — пользователь удалил reference-pmo по соображениям сложности, но риск был реален: третья параллельная таксономия перетёрла бы 20-40 лет индустриальной декомпозиции моей ad-hoc выдумкой. Перед предложением «свежего» дизайна — `Glob`/`Grep` по `dev/` на похожие артефакты.
+2. **Integrator vs Orchestrator boundary — единичная вершина, многоразовое следствие.** Пока я писал acceptance «adapter invokes /kiro:spec-init», boundary казалась академической. Пользовательская поправка показала: smешение «технарь устанавливает» и «runtime маршрутизирует» влияет на DoD, на PILOT POINT scope, на формулировку Stage 6 «verify». Этот граничный класс — кандидат в `dev/meta-improvement/patterns/` если повторится в Phase 7+.
+3. **Фантомные ID как маркер несинхронности.** `D2-Tech-02` существовал в SPEC/commands/ROADMAP, но не в pmo-map.md. Это был сигнал «карта и её consumer-ы разошлись», но прошёл незамеченным до Q5. **Триггер для будущих kickoff'ов:** перед acceptance ссылающимся на конкретный PMO-ID — `grep` pmo-map.md, что ID существует.
+4. **Reference-материал ≠ SPEC.** `dev/reference-pmo/` был полезен как research-snapshot, но не имел «живого» механизма sync с pmo-map.md → дрейф между ними был неизбежен. Пользователь удалил его сознательно. Lesson: research-снэпшоты ценны только если есть протокол их consume/discard (что не нарисовалось) или если они интегрированы в живой spec. В solo + AI workflow — лучше один lean spec, чем два расходящихся документа.
+5. **Job-description framing для tool-coverage.** Превращение PMO-зон в «обязанности роли при найме» сделало `pmo-mapping.yaml` осмысленным: один tool редко покрывает всю роль; coverage = подмножество обязанностей; `gap` = ненанятая обязанность. Это резко улучшает `/integrator:gaps` UX и точность `tool-profiler` subagent.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

@@ -123,7 +123,7 @@ This is critical: the tool's profile should accurately reflect what it adds to t
 
 ### Step 4: Determine PMO coverage
 
-For each PMO process ID (D1-01, D2-02, etc.) the tool might cover:
+For each PMO process ID (D1-01, D2-B02, D2-T01, D3-01 etc. per pmo-map.md) the tool might cover:
 
 **Confidence levels:**
 - **high** — explicitly documented + you've verified through smoke test or example
@@ -178,7 +178,7 @@ Per C2 modification — explicitly state your confidence in the profile:
 ```yaml
 confidence:
   profiling: medium
-  profiling_notes: "Based on docs + 2 community reviews. Most data points verified via docs, but PMO coverage for D2-04 is inferred from issue discussion, not docs."
+  profiling_notes: "Based on docs + 2 community reviews. Most data points verified via docs, but PMO coverage for D2-T06 is inferred from issue discussion, not docs."
   last_audit: 2026-04-18
 ```
 
@@ -189,13 +189,20 @@ confidence:
 ```yaml
 # For each PMO process this tool covers
 coverage:
-  D2-Tech-02:
+  D2-T01:                                  # Architecture Design (cc-sdd primary)
     covered_by: [cc-sdd]                   # add this tool
     primary: cc-sdd                        # set if first tool for this process
     confidence: high                       # from this profile's pmo_coverage
     evidence: "<brief why this confidence>"
     since: 2026-04-18
     contracts: [CNT-001]                   # if contracts created together
+  D2-T06:                                  # Task Decomposition (cc-sdd primary)
+    covered_by: [cc-sdd]
+    primary: cc-sdd
+    confidence: high
+    evidence: "spec-tasks documented output"
+    since: 2026-04-18
+    contracts: [CNT-001]
 ```
 
 Если несколько tools претендуют на ту же зону (OQ-I9 multi-tool) — добавь в `covered_by[]`, set `secondary[]`.

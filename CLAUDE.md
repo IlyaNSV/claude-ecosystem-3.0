@@ -99,6 +99,8 @@ claude-ecosystem-3.0/
 ├── skills/                   # → .claude/skills/ (lazy-loaded methodology)
 ├── agents/                   # → .claude/agents/ (subagents с isolated context)
 ├── hooks/                    # → .claude/hooks/ (с manifest.yaml для auto-registration)
+├── adapters/                 # reference-адаптеры handoff → external tool (Phase 5+)
+│   └── handoff-to-ccsdd.js   # source-of-truth; instance копируется в .claude/integrator/adapters/ при /integrator:add
 └── templates/
     └── project/CLAUDE.md.template  # для END-USER projects, НЕ путать с этим файлом
 ```

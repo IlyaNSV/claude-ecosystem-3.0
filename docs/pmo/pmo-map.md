@@ -1,7 +1,7 @@
 # PMO Map — Ecosystem 3.0
 
 > **Роль:** Навигационная карта PMO-процессов. Говорит ЧТО должно быть сделано, не КАК.
-> **Принцип:** для D1-D2 детально (это мой слой); для D3-D6 — абстрактно (это зона Integrator Module + внешних инструментов).
+> **Принцип:** функциональная карта = job descriptions ролей. Для **owned**-зон (D1, D2-Behavioral, D6) — детальные обязанности и артефакты. Для **delegated**-зон (D2-Technical, D3, D4, D5) — те же функциональные обязанности (стабильны, tool-agnostic), но реализация делегирована внешним инструментам через Integrator. Mетодика конкретного инструмента (implementation methodology) — НЕ зашита в карту, она в tool-docs.
 
 ## Модель жизненного цикла продукта
 
@@ -16,7 +16,7 @@
 | Домен | Роль | Владелец в 3.0 | Статус |
 |---|---|---|---|
 | **D1. Product Discovery & Strategy** | ЧТО строить и ЗАЧЕМ | **Product Module** (детальный контроль) | Проектируется |
-| **D2. Requirements & Design** | КАК это должно работать | **D2-Behavioral:** Product Module (детально); **D2-Technical:** внешний инструмент через Integrator | Проектируется |
+| **D2. Requirements & Design** | КАК это должно работать | **D2-Behavioral:** Product/Design Module (детально); **D2-Technical:** внешний инструмент через Integrator | Проектируется |
 | **D3. Development & Delivery** | ПОСТРОИТЬ и ДОСТАВИТЬ | Внешние инструменты через Integrator | Tool-agnostic |
 | **D4. Quality Assurance** | ПРОВЕРИТЬ что работает | Внешние инструменты через Integrator | Tool-agnostic |
 | **D5. Operations & Feedback** | НАБЛЮДАТЬ и УЧИТЬСЯ | Внешние инструменты через Integrator | Отложено (v2+) |
@@ -24,9 +24,11 @@
 
 ## Процессы в доменах
 
-### D1 — Product Discovery & Strategy (детально)
+### D1 — Product Discovery & Strategy — Роль: **Продакт-менеджер**
 
-| ID | Процесс | Артефакт | Статус v1 |
+> Принимает: ничего (стартовая зона). Выдаёт: PS, MR, CA, SEG, VP, HYP, MVP, RM, RL.
+
+| ID | Обязанность | Артефакт | Статус v1 |
 |---|---|---|---|
 | D1-01 | Problem Discovery | PS | ✅ |
 | D1-02 | Market Research | MR | ✅ |
@@ -43,48 +45,75 @@
 
 ### D2 — Requirements & Design
 
-#### D2-Behavioral (детально, в Product Module)
+#### D2-Behavioral — Роль: **Бизнес-аналитик** (owned, не делегируется)
 
-| ID | Процесс | Артефакт | Статус v1 |
-|---|---|---|---|
-| D2-01 | Project Context Setup | (наследуется из D1) | ✅ |
-| D2-02 | Feature Specification | FM, SC, BR, LC, VC, IC, RPM | ✅ |
-| D2-05 | UX/UI Design | MK, DS, NM (Design Module) | ✅ если has_ui |
-| D2-06 | Data Model Design (поведенческая) | LC (derived) | ✅ |
-| D2-08 | Adversarial Review | Product DA findings | ✅ |
+> Исполняется Product Module (D2-B01-03, B05) и Design Module (D2-B04).
+> Принимает: D1-стратегию. Выдаёт: `handoff.md` для D2-Technical.
 
-**Связанные артефакты D2-Behavioral:** BG, SC, BR, LC, RPM, VC, IC, NFR, MK, DS, NM → 11 типов (BG — сквозной; NFR — opt-in per FM; DS — cross-cutting для дизайна; NM — per flow)
+| ID | Обязанность | Scope | Артефакт(ы) | Статус v1 |
+|---|---|---|---|---|
+| D2-B01 | Project Context Setup | Перенос D1-стратегии в рабочий контекст фичеделия | наследуется из D1 | ✅ |
+| D2-B02 | Feature Specification | Поведенческая спецификация фичи | FM, SC, BR, VC, IC, RPM | ✅ |
+| D2-B03 | Behavioral Data Modeling | Жизненный цикл сущностей / поведенческая модель данных | LC | ✅ |
+| D2-B04 | UX/UI Design *(если has_ui)* | Дизайн интерфейса (Design Module) | MK, DS, NM | ✅ |
+| D2-B05 | Adversarial Review | Состязательная проверка спецификации | Product DA findings | ✅ |
+
+**Связанные артефакты D2-Behavioral:** BG, SC, BR, LC, RPM, VC, IC, NFR, MK, DS, NM → 11 типов (BG — сквозной; NFR — opt-in per FM, идёт как F.5a; DS — cross-cutting для дизайна; NM — per flow)
 
 **Cross-cutting (не привязан к домену):** NOTE-* — unstructured catch-all для idea-capture, insights, deferred decisions. Не участвует в dependency graph, не валидируется V-*. Конвертируется в другой тип через `/product:promote-note`.
 
 **Итого: 22 типа артефактов** (9 D1 + 1 мост FM + 11 D2-Behavioral + 1 unstructured NOTE).
 
-#### D2-Technical (tool-agnostic, через Integrator)
+#### D2-Technical — Роль: **Технический архитектор** (delegated, через Integrator)
 
-| ID | Процесс | Покрывается через |
-|---|---|---|
-| D2-03 | Architecture Design | cc-sdd / Kiro / другой |
-| D2-04 | Task Decomposition | cc-sdd / Kiro / другой |
-| D2-07 | API Contract Design | cc-sdd / Kiro / другой |
-| D2-09 | Spike / PoC | подключаемый по необходимости |
+> Принимает: `handoff.md` (D2-Behavioral). Выдаёт: технический спек для D3.
 
-**Передача:** Product Module → handoff.md → Integrator → конкретный инструмент D2-Technical.
+| ID | Обязанность | Scope | Основной выход |
+|---|---|---|---|
+| D2-T01 | Architecture Design | Декомпозиция системы на компоненты/слои, границы и ответственность | Architecture doc |
+| D2-T02 | Technology Selection | Выбор стека, фреймворков, библиотек, инфра-компонентов | Tech stack decision |
+| D2-T03 | Data Model Design (technical) | Трансляция behavioral LC → физическая схема, индексы, миграции | Physical data model |
+| D2-T04 | API / Interface Contract Design | Контракты между компонентами и внешние API | Interface/API contracts |
+| D2-T05 | NFR Technical Translation | Перевод NFR-таргетов в технические решения (caching, scaling, etc.) | NFR technical plan |
+| D2-T06 | Task Decomposition | Разбивка дизайна на исполняемые задачи с зависимостями | Task breakdown / `tasks.md` |
+| D2-T07 | Feasibility & Technical Risk | Оценка реализуемости behavioral-спеки, технические риски | Feasibility/risk assessment |
+| D2-T08 | Spike / PoC *(по необходимости)* | Экспериментальная проверка нерешённых технических вопросов | Spike report |
 
-### D3 / D4 / D5 / D6 — абстрактные определения
+**Передача:** Product Module → handoff.md → Integrator (matches tools против D2-T01-08) → конкретный инструмент D2-Technical.
 
-Детальные процессы этих доменов НЕ описываются в Ecosystem 3.0. Мы описываем только:
-- **Границу ответственности** (что должен делать инструмент на этой позиции)
-- **Ожидаемые артефакты** (что должен производить)
-- **Контракты с соседями** (что потребляет, что выдаёт)
+### D3 — Development & Delivery — Роль: **Разработчик / Delivery-инженер** (delegated, через Integrator)
 
-Конкретные процессы определяются **профилем инструмента**, который составляет Integrator Module.
+> Принимает: технический спек + `tasks.md` (D2-Technical). Выдаёт: рабочее, развёрнутое ПО.
 
-| Домен | Ожидаемые общие артефакты | Конкретный инструмент |
-|---|---|---|
-| D3 | Код, коммиты, PRs, deploy logs | определяется Integrator |
-| D4 | Тесты, verification reports, QA findings | определяется Integrator |
-| D5 | Monitoring data, analytics, feedback | определяется Integrator |
-| D6 | Health dashboard, tool registry, evolution plan | **Integrator Module сам** |
+| ID | Обязанность | Scope | Основной выход |
+|---|---|---|---|
+| D3-01 | Implementation | Написание кода по задачам | Source code / commits |
+| D3-02 | Code Review | Рецензирование на корректность, стиль, поддерживаемость | Review-апрувы / комментарии |
+| D3-03 | Source Integration | VCS, ветвление, PR/MR, разрешение конфликтов слияния | Merged branches / PRs |
+| D3-04 | Build & Dependency Management | Сборка артефактов, управление зависимостями | Build artifacts |
+| D3-05 | Environment Provisioning | Подготовка сред (dev/staging/prod), инфраструктура | Provisioned environments |
+| D3-06 | Deployment & Release Execution | Выкладка, миграции, rollback-механика | Deployed release / deploy log |
+| D3-07 | Technical Documentation | Код-доки, README, runbooks | Tech docs / runbooks |
+
+### D4 — Quality Assurance — Роль: **QA-инженер / Тестировщик** (delegated, через Integrator)
+
+> Принимает: behavioral acceptance (SC/BR из handoff) + технический спек + собранное ПО. Выдаёт: verification-отчёты, QA findings.
+
+| ID | Обязанность | Scope | Основной выход |
+|---|---|---|---|
+| D4-01 | Test Strategy & Planning | Подход, уровни, scope тестирования; regression-стратегия | Test plan |
+| D4-02 | Test Case Design | Выведение тест-кейсов из SC / BR / acceptance | Test cases / матрица |
+| D4-03 | Test Implementation & Execution | Авто-тесты (unit/integration/e2e) + прогоны, incl. regression | Test suite + run results |
+| D4-04 | Defect Management | Обнаружение, регистрация, трекинг дефектов | Defect reports |
+| D4-05 | Acceptance Verification | Проверка соответствия handoff acceptance-критериям (замыкает петлю к D2-Behavioral) | Verification report |
+| D4-06 | Static Analysis & Quality Gates | Линтинг, статический анализ, code quality metrics | Quality gate status |
+| D4-07 | NFR / Performance / Security Testing | Проверка нефункциональных требований (нагрузка, безопасность) | Perf/security test report |
+
+### D5 / D6 — статус
+
+**D5 Operations & Feedback** — отложен v2 (DEC-P08). Функциональная декомпозиция per role (SRE/DevOps/Ops) будет добавлена при активации.
+
+**D6 Meta: Ecosystem Governance** — owned: Integrator Module + человек (D7 meta-improvement subsystem). Detailed decomposition — в `dev/meta-improvement/`.
 
 ## Activation Matrix (когда включать что)
 
@@ -96,10 +125,10 @@
 | D1-07 (Roadmap) | | ★ | ★ | ★ | ★ |
 | D1-08 (Release Plan) | | ★ | ★ | ★ | ★ |
 | D1-09 (Prioritization) | | ★ | ★ | ★ | ★ |
-| D2-Behavioral (SC/BR/LC/VC/IC/RPM/BG) | | ★ | ★ | ★ | ★ |
+| D2-B01..B03 (Context, Feature Spec, Behavioral Data) | | ★ | ★ | ★ | ★ |
+| D2-B04 (UX/UI, если has_ui) | | ★ | ★ | ★ | ★ |
+| D2-B05 (Adversarial Review, adaptive-depth — refactored DEC-DEV-0012) | | ★ | ★ | ★ | ★ |
 | D2 NFR Review (F.5a, opt-in) | | ○ | ★ | ★ | ★ |
-| D2-05 (Design, если has_ui) | | ★ | ★ | ★ | ★ |
-| D2-08 (Adversarial Review, adaptive-depth — refactored DEC-DEV-0012) | | ★ | ★ | ★ | ★ |
 | D2-Technical (через Integrator) | | ★ | ★ | ★ | ★ |
 | D3 (Development, через Integrator) | | ★ | ★ | ★ | ★ |
 | D4 (QA, через Integrator) | | ○ | ★ | ★ | ★ |
@@ -110,7 +139,7 @@
 
 ## Ритмы и церемонии
 
-### Для D1-D2 (детальный контроль)
+### Для D1 + D2-Behavioral (owned, детальный контроль)
 
 | Частота | Активность |
 |---|---|
@@ -119,28 +148,21 @@
 | По изменению BR | Cascade Consistency (автомат) |
 | По триггеру | Adversarial Review (F.9 при high-risk фичах) |
 
-### Для D3-D6 (абстрактный контроль)
+### Для D2-Technical / D3 / D4 / D5 (delegated, абстрактный контроль)
 
 | Частота | Активность |
 |---|---|
 | Per release | Готовый handoff → Integrator → конвейер инструментов |
 | По потребности | /integrator:map, /integrator:gaps, /integrator:verify |
-| По изменению tool landscape | /integrator:add/remove/replace |
+| По изменению tool landscape | /integrator:add/remove/update |
 
 ## Связь с артефактами
 
-Подробная спецификация 21 типа артефактов → см. `artifacts/` (каталог готов).
+Подробная спецификация 22 типов артефактов → см. `artifacts/` (каталог готов).
 
-Процессы создания и обновления артефактов → см. `processes.md` (в разработке).
+Процессы создания и обновления артефактов → см. `processes.md`.
 
-Валидационные правила → см. `validation.md` (в разработке).
-
-## Что отличает эту карту от PMO в v2 документации
-
-1. **Меньше детализации вне D1-D2.** Для D3-D6 мы НЕ описываем конкретные процессы (M-*.*.*), а делегируем через Integrator.
-2. **Нет «текущего покрытия в %».** В 3.0 покрытие = это то, что подключил Integrator. Нет «GAP-ов» в смысле v2.
-3. **Activation Matrix упрощена.** Фокус на стадиях продукта, не на конкретных инструментах.
-4. **Ритмы разделены.** Детальные для моего слоя, абстрактные для внешнего.
+Валидационные правила → см. `validation.md`.
 
 ## Validation tier и активация правил
 
@@ -153,3 +175,19 @@ Activation Matrix говорит, какие **процессы** включен
 | `full` | Все 33 V-* правила |
 
 Это разделение защищает ранние стадии от validation-шума, не отключая правила полностью.
+
+## Миграция ID (после функционального рефактора DEC-DEV-0040)
+
+Старая нумерация D2 имела интерливинг Behavioral/Technical. После рефактора — два чистых блока:
+
+| Старый | Новый | | Старый | Новый |
+|---|---|---|---|---|
+| D2-01 | D2-B01 | | D2-06 | D2-B03 |
+| D2-02 | D2-B02 | | D2-07 | D2-T04 |
+| D2-03 | D2-T01 | | D2-08 | D2-B05 |
+| D2-04 | D2-T06 | | D2-09 | D2-T08 |
+| D2-05 | D2-B04 | | *(new)* | D2-T02/T03/T05/T07 |
+
+`D2-Tech-02` — фантомный ID, никогда не существовал. cc-sdd primary coverage: **D2-T01 + D2-T06**; см. DEC-DEV-0040 §Q5.
+
+D3 / D4 — были абстрактны; теперь функциональная декомпозиция D3-01..07 + D4-01..07.

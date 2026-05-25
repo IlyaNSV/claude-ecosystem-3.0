@@ -1,7 +1,7 @@
 # NM-* — Navigation Map
 
 > **Тип:** navigation-map
-> **Домен:** D2-05 — Design Module
+> **Домен:** D2-B04 — Design Module
 > **Review:** 🟢 Confirmation
 > **Cardinality:** Per flow (обычно 1 NM на feature с UI, может быть 2–3 для сложных)
 > **Владелец:** Design Module — derived из MK-* + LC-*

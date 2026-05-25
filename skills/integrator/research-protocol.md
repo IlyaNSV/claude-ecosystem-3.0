@@ -15,8 +15,8 @@ This skill describes **how** to research tools systematically. Used by `/integra
 1. **Restate the need in your own words.** "User wants X — that means tool must do Y because Z." If the restatement diverges from user's words significantly — clarify before researching.
 
 2. **Identify PMO zone(s).** Reference `.claude/docs/pmo/pmo-map.md`. Be specific:
-   - Not "testing" — but "D4-01 unit testing" or "D4-02 integration testing" or "D4-03 E2E"
-   - Not "deployment" — but "D3-05 build" or "D3-08 deploy" or "D3-10 rollback"
+   - Not "testing" — but "D4-03 Test Implementation & Execution (unit/integration/e2e)" or "D4-07 NFR/Perf/Security Testing"
+   - Not "deployment" — but "D3-04 Build & Dependency Management" or "D3-06 Deployment & Release Execution (incl. rollback)"
 
 3. **Identify constraints from project context:**
    - Stack (read `package.json`, `pyproject.toml`, `Cargo.toml`, etc.)

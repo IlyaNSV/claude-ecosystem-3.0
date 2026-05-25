@@ -1,7 +1,7 @@
 # DS — Design System
 
 > **Тип:** design-system
-> **Домен:** D2-05 — Design Module (cross-cutting для всех MK)
+> **Домен:** D2-B04 — Design Module (cross-cutting для всех MK)
 > **Review:** 🟡 Standard
 > **Cardinality:** Singleton
 > **Владелец:** Design Module — автоматическое пополнение при создании/изменении MK-*

@@ -76,7 +76,7 @@ Integrator — гибрид, как и Product Module:
 │                    ЯДРО ECOSYSTEM 3.0                       │
 │                                                             │
 │  Product Module         Design Module     Integrator Module │
-│  (D1 + D2-Behavioral)   (D2-05)           (инфраструктура) │
+│  (D1 + D2-Behavioral)   (D2-B04)          (инфраструктура) │
 │         │                     │                     │       │
 │         ▼                     ▼                     ▼       │
 │     .product/            .product/              .claude/    │
@@ -204,15 +204,15 @@ metadata:
       path: .claude/hooks/beads-enforcer.js
 
 pmo_coverage:
-  D3-01:                           # ссылка на pmo-map.md процесс
+  D3-01:                           # Implementation — ссылка на pmo-map.md процесс
     confidence: high               # high | medium | low
     evidence: "Implements task execution via executor agent"
     how: "/beads:execute-phase"
-  D3-05:
+  D3-03:                           # Source Integration (git flow)
     confidence: high
     evidence: "Includes git flow hooks"
     how: "Automatic via hooks"
-  D3-06:
+  D3-04:                           # Build & Dependency Management
     confidence: none
     evidence: "Documentation says CI is out of scope"
 
@@ -293,7 +293,7 @@ integrator_version: 1.0
 coverage:
   # Ключ — PMO process ID из pmo-map.md (D1-01 .. D6-NN)
 
-  D2-03:                                 # Architecture Design (D2-Technical)
+  D2-T01:                                # Architecture Design (D2-Technical)
     covered_by: [cc-sdd]                 # список инструментов, покрывающих
     primary: cc-sdd                      # preferred для этой зоны
     secondary: []                        # fallback tools (OQ-I9 multi-tool)
@@ -496,7 +496,7 @@ Beads v1.2.0 приносит свои git-hooks для atomic commits, checkpoi
 [Integrator]
 Определяю PMO-зону твоей потребности...
   → Похоже, речь о D3 (Development) + D5 (Operations):
-    D3-09 Database Migrations
+    D3-06 Database Migrations (часть Deployment & Release Execution)
     D3 — прямой доступ к БД из кода
     D5 — monitoring БД в production (опционально)
 
@@ -511,14 +511,14 @@ Beads v1.2.0 приносит свои git-hooks для atomic commits, checkpoi
 │ Postgres MCP    │ D3 (query),     │ MCP-нативен,       │ Только    │
 │                 │ D5 (inspect)    │ low overhead       │ read      │
 ├────────────────────────────────────────────────────────────────────┤
-│ Prisma          │ D3-09           │ TypeScript-native, │ Требует   │
+│ Prisma          │ D3-06           │ TypeScript-native, │ Требует   │
 │                 │ (migrations)    │ type-safe queries  │ schema    │
 │                 │                 │                    │ файла     │
 ├────────────────────────────────────────────────────────────────────┤
-│ Drizzle         │ D3-09           │ Легковесный,       │ Меньше    │
+│ Drizzle         │ D3-06           │ Легковесный,       │ Меньше    │
 │                 │                 │ schema-first       │ community │
 ├────────────────────────────────────────────────────────────────────┤
-│ Knex            │ D3-09           │ Query-builder      │ Устарев.  │
+│ Knex            │ D3-06           │ Query-builder      │ Устарев.  │
 │                 │                 │ универсал          │ паттерны  │
 ├────────────────────────────────────────────────────────────────────┤
 │ pg-prom (prod)  │ D5              │ Metrics exporter,  │ Требует   │
@@ -564,8 +564,9 @@ Research не устанавливает ничего. Пользователь 
   → Commands: /kiro:steering, /kiro:spec-init, /kiro:spec-requirements, 
     /kiro:spec-design, /kiro:spec-tasks, /kiro:validate-*
   → Agents: kiro-spec-*, kiro-validate-*, kiro-steering
-  → Coverage: D2-01 Project Context, D2-02..04 Specification
-  → Doesn't cover: D2-05 UI Design (наш Design Module делает), 
+  → Coverage: D2-T01 Architecture Design, D2-T04 API Contract Design (embedded), D2-T06 Task Decomposition
+  → Boundary (consumed via handoff, not owned): D2-B02 Feature Specification (Product Module владеет)
+  → Doesn't cover: D2-B04 UI Design (наш Design Module делает), 
                    D3 Implementation (нужен отдельный tool)
 
 Проверяю текущий стек... 
@@ -736,12 +737,12 @@ Approve обновление до 2.3.0 с возможной переделко
 [Integrator]
 Планирую замену cc-sdd → kiro.
 
-Текущее покрытие cc-sdd: D2-01, D2-02, D2-03, D2-04
+Текущее покрытие cc-sdd: D2-T01, D2-T04, D2-T06
 Предварительный профиль kiro...
-  → Покрытие: D2-01..04 ✓ (все покрывает)
-  → Дополнительно: D2-07 API Contract Design ✓ (cc-sdd не делал)
-  → НО: не покрывает D2-08 Adversarial Review
-        (cc-sdd делал через devils-advocate)
+  → Покрытие: D2-T01, D2-T04, D2-T06 ✓ (всё, что cc-sdd покрывал)
+  → Дополнительно: D2-T03 Data Model Design ✓ (cc-sdd не делал)
+  → НО: не покрывает D2-B05 Adversarial Review
+        (это зона Product Module, не tool-side; cc-sdd её тоже не покрывал)
 
 Контракты после замены:
   - CNT-001 (handoff → spec-init) → нужно переделать под kiro формат
@@ -765,7 +766,7 @@ Approve замену? (y/n/details)
 [Integrator показывает подробности: список всех активных fich, 
 их текущее состояние, как будут обрабатываться после миграции...]
 
-> n, давай пока оставим cc-sdd, но посмотрим D2-08 покрытие отдельно
+> n, давай пока оставим cc-sdd, но посмотрим D2-B05 покрытие отдельно
 
 Отмена replace. Но предложение записано в журнал как DEC-INT-0094 (entered/cancelled)
 для будущей памяти. Хочешь /integrator:research "adversarial review tool"? (y/n)
@@ -811,10 +812,13 @@ Approve замену? (y/n/details)
 - Installed: 2026-05-01, last updated 2026-05-20
 
 ## Capabilities (PMO zones covered)
-- D2-01: Project Context via /kiro:steering
-- D2-02: Feature Specification via /kiro:spec-init + spec-requirements
-- D2-03: Architecture Design via /kiro:spec-design
-- D2-04: Task Decomposition via /kiro:spec-tasks
+- D2-T01: Architecture Design via /kiro:spec-design
+- D2-T04: API / Interface Contract Design (embedded in spec-design)
+- D2-T06: Task Decomposition via /kiro:spec-tasks
+
+## Boundary (consumed, not owned)
+- D2-B01: Project Context — `/kiro:steering` consumes; behavioral context owned by Product Module
+- D2-B02: Feature Specification — consumed via handoff.md → /kiro:spec-init; owned by Product Module
 
 ## Commands API
 ### /kiro:steering [--scope <product|tech|structure>]

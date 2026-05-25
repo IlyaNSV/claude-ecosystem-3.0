@@ -46,7 +46,7 @@ Health: 🟢 Healthy | 🟡 Degraded | 🔴 Issues
 
 ACTIVE TOOLS (<count>)
 
-  cc-sdd v2.3.0 — D2-Tech-02
+  cc-sdd v2.3.0 — D2-T01 + D2-T06
     Confidence: high
     Evidence: docs + example project verified
     Installed: 2026-04-18
@@ -61,7 +61,7 @@ ACTIVE TOOLS (<count>)
     Issues (journal): 2 debug entries last 14 days — consider audit
     Status: 🟡 needs attention
 
-  vitest v1.5.0 — D4-01
+  vitest v1.5.0 — D4-03
     Confidence: high
     Evidence: docs + example tests run
     Installed: 2026-04-18
@@ -74,8 +74,8 @@ CONTRACTS (<count> total, <broken> broken)
 
 PMO COVERAGE
   D1, D2-Behavioral: 100% (Product Module — core)
-  D2-05: <% if Design Module active>
-  D2-Tech: <% based on installed tools>
+  D2-B04: <% if Design Module active>
+  D2-Technical: <% based on installed tools>
   D3, D4, D5: <% based on installed tools>
   D6: 100% (Integrator — core)
 

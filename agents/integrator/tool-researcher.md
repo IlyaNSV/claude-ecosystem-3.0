@@ -85,8 +85,8 @@ Return a structured report:
 ### Tool A
 - **Source:** ...
 - **PMO coverage:**
-  - D2-04: high — explicit in docs §3, used in 12 production examples
-  - D2-07: medium — mentioned in roadmap, not yet implemented
+  - D2-T06: high — explicit in docs §3, used in 12 production examples
+  - D2-T04: medium — mentioned in roadmap, not yet implemented
 - **Pros:**
   - ...
 - **Cons:**

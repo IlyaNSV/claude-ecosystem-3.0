@@ -60,7 +60,7 @@
 | IC-* | Invariant Check | 🔴 Critical | Per invariant | [IC.md](IC.md) |
 | NFR-* | Non-Functional Requirement | 🟠 Strategic | Per NFR | [NFR.md](NFR.md) |
 
-### D2-05 — Design (3 типа)
+### D2-B04 — Design (3 типа)
 
 | ID | Имя | Review | Cardinality | Файл |
 |---|---|---|---|---|

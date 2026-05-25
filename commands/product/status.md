@@ -67,7 +67,7 @@ D2-Behavioral:
   BG    <N> terms (active: <N>, draft: <N>, deprecated: <N>)
   RPM   <N> roles
 
-D2-05 Design (if has_ui FMs exist):
+D2-B04 Design (if has_ui FMs exist):
   MK-*  <N> (<active>/<review>/<draft>)
   DS    <N> tokens, <N> components
   NM-*  <N>

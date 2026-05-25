@@ -360,33 +360,39 @@ Cross-cutting:
 
 **Цель:** `/integrator:add` устанавливает первый D2-Tech инструмент (cc-sdd). Первый adapter `handoff-to-ccsdd.js` написан как reference.
 
-### Deliverables (~8 файлов)
+### Deliverables (~10 файлов)
 
 **commands/integrator/:**
 - `add.md` — 6-stage flow: profile → propose → install → configure → contract → verify (approve — gate перед install, не этап)
 - `remove.md` — impact analysis + backup + cleanup
-- `replace.md` — combined remove + add с migration
-- `update.md` — backup + install + drift check + contract repair
+- `update.md` — backup + install + drift check + contract repair (per DEC-DEV-0040 Q2 — закреплено в Phase 5, не Maintenance)
 
 **skills/integrator/:**
 - `installation-protocol.md` — add flow methodology
 - `contract-design.md` — how adapters are designed (manual in v1)
 
-**hooks/integrator/:**
-- `journal-hook.js` — autolog every modifying action
+**agents/integrator/:** (per DEC-DEV-0040 Q3)
+- `tool-profiler.md` — subagent для add/update profiling (stage 1)
+- `contract-designer.md` — subagent для contract design (stage 5)
 
-**adapters/:**
-- `handoff-to-ccsdd.js` — **reference implementation** как контракт Product Module handoff → cc-sdd `/kiro:spec-init`
+**hooks/integrator/:**
+- `journal-hook.js` — autolog every modifying action (per DEC-DEV-0040 Q6)
+
+**adapters/:** (repo reference source, per DEC-DEV-0040 Q1)
+- `handoff-to-ccsdd.js` — **reference implementation**, копируется в `.claude/integrator/adapters/` при `/integrator:add`; несёт `target_tool_version` / `contract_schema_version` metadata для drift-detection при `/integrator:update`
+
+**Deferred к v1.1 (per DEC-DEV-0040 Q4):** `replace.md` — нет 2-го D2-Tech инструмента для содержательного теста; вернёмся при появлении alternate adapter.
 
 ### Acceptance criteria
 
+> Scope — **Integrator-only** (per DEC-DEV-0040 Q3): «installed + contract-verified на fixture». Production-маршрутизация реальных handoff'ов через адаптер в `/kiro:spec-init` — это runtime-оркестрация (Orchestrator Module, вне Phase 5).
+
 - [ ] `/integrator:add cc-sdd` проходит 6 stages без manual intervention (кроме approve gates)
-- [ ] `pmo-mapping.yaml` обновляется с cc-sdd coverage (конкретные PMO-зоны — на kickoff, см. `dev/PHASE_5_READINESS.md` §C.6; `D2-Tech-02` отсутствует в pmo-map.md)
-- [ ] Adapter берёт `.product/handoffs/FM-001-handoff.md` и успешно invokes `/kiro:spec-init`
-- [ ] `.kiro/specs/FM-001/spec.json` создаётся с корректным content
+- [ ] `pmo-mapping.yaml` получает coverage для **D2-T01 + D2-T06** (cc-sdd primary, per DEC-DEV-0040 Q5); D2-T04 — partial по результату profile-stage; D2-B02 — boundary (Product Module владеет, cc-sdd consumes via handoff)
+- [ ] Stage-6 «verify» прогоняет адаптер с fixture-handoff'ом и подтверждает корректность контракта (smoke/contract-test, не продакшен)
 - [ ] `/integrator:remove cc-sdd` безопасно откатывает с backup
-- [ ] `/integrator:update cc-sdd` detects drift при version upgrade, предлагает contract repair
-- [ ] Decision journal logs каждое modifying action с контекстом
+- [ ] `/integrator:update cc-sdd` detects drift при version upgrade (через `target_tool_version` metadata в инстанцированном адаптере), предлагает contract repair
+- [ ] Decision journal logs каждое modifying action с контекстом (per DEC-DEV-0040 Q6)
 
 ### Estimated effort
 

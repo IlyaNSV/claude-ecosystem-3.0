@@ -2,7 +2,7 @@
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 5 (Integrator Phase 2 — Installation + first adapter).
 >
-> **Статус (2026-05-22):** ⏳ Phase 4 закрыта (DEC-DEV-0038). Pre-kickoff doc-consistency cleanup выполнен 2026-05-22 (структурный фикс SPEC §9, doc-rot, F5/F6/F9 — см. §A.4). Architectural + doc-derived вопросы (§C, incl. §C.6) — на kickoff session перед sub-phase A start.
+> **Статус (2026-05-25):** ✅ Kickoff session проведена — все Q1-Q6 архитектурные вопросы + функциональный рефактор PMO-карты закрыты через **DEC-DEV-0040**. Pre-kickoff doc-consistency cleanup выполнен 2026-05-22 (структурный фикс SPEC §9, doc-rot, F5/F6/F9 — см. §A.4). Phase 5 implementation готова к старту.
 >
 > **Принцип:** не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждому пункту присвоен приоритет: 🔴 блокер, 🟡 важный, 🔵 необязательный.
 
@@ -19,9 +19,9 @@
 - [x] **Phase 4 runtime smoke** — выполнен 2026-05-20 → **status=fail** (DEC-DEV-0038); known issues приняты, re-verification gate снят. См. Section B.
 - [x] **Closure queued findings (Section A.4)** — F5 SPEC.md §6.6 rewrite, F6 naming consistency sweep, F9 architecture memory refresh — ✅ выполнено 2026-05-22 (pre-kickoff cleanup).
 - [ ] **Phase 4 bootstrap regression (F4)** — `/ecosystem:update` в `my-first-test/.claude/` чтобы pilot получил Phase 4 deliverables. Можно скомбинировать с runtime smoke run.
-- [ ] **Phase 5 readiness gate** — этот checklist completed; architectural questions resolved (Section C below); scope confirmed (Section D); pilot validation prepared (Section E).
+- [x] **Phase 5 readiness gate** — architectural questions resolved через **DEC-DEV-0040** (Q1-Q6 + PMO functional refactor); scope confirmed (Section D); pilot validation prepared (Section E). См. Section C/C.6 для summary решений.
 
-**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke выполнен 2026-05-20 → fail → Phase 4 закрыта с принятыми known issues (DEC-DEV-0038; re-verification gate снят). Перед Phase 5 implementation остаётся: Phase 5 readiness gate (kickoff session — §C).
+**Гейт Phase 4 implementation closed** (DEC-DEV-0032). Closure ritual closed (DEC-DEV-0033). Runtime smoke выполнен 2026-05-20 → fail → Phase 4 закрыта с принятыми known issues (DEC-DEV-0038; re-verification gate снят). **Phase 5 kickoff проведена** — DEC-DEV-0040 закрывает Q1-Q6 + PMO-рефактор. Implementation может стартовать.
 
 ---
 
@@ -130,9 +130,20 @@ Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-fir
 
 ---
 
-## C. Архитектурные вопросы Phase 5 (🟡 важно — kickoff session)
+## C. Архитектурные вопросы Phase 5 — ✅ ЗАКРЫТЫ (DEC-DEV-0040)
 
-> **NOTE:** эти вопросы — first-pass surface. Pre-implementation kickoff session (per `dev/meta-improvement/checklists/phase-kickoff.md`) должен expand + resolve через DEC-DEV-NNNN entry перед sub-phase A start.
+> **Status (2026-05-25):** все вопросы Section C/C.6 разрешены через kickoff-сессию и зафиксированы в **DEC-DEV-0040**. Сводка решений ниже; полный rationale + options-considered — в DEV_JOURNAL.
+
+**Сводка Q1-Q6:**
+- **Q1 (C.1) — Adapter location:** dual-location. Repo `adapters/handoff-to-ccsdd.js` — reference source; project `.claude/integrator/adapters/handoff-to-ccsdd.js` — instance, копируется из reference при `/integrator:add`. Адаптер несёт metadata `target_tool_version` + `contract_schema_version` + `source_ref` для drift-detection при `/integrator:update`.
+- **Q2 (C.6.1) — `/integrator:update`:** закреплён в **Phase 5** (не Maintenance). SPEC §9 уже pointer на ROADMAP.
+- **Q3 (C.6.2) — Subagents + Integrator/Orchestrator boundary:** `tool-profiler` + `contract-designer` входят в Phase 5 (deliverables ~10 файлов). **Граница:** Integrator завершает на «installed + contract-verified на fixture»; production-маршрутизация handoff→`/kiro:spec-init` отдана **Orchestrator** (вне Phase 5; PILOT POINT scope зависит от Orchestrator-обсуждения).
+- **Q4 (C.6.3) — `replace.md`:** **deferred к v1.1** — нет 2-го D2-Tech инструмента для содержательного теста.
+- **Q5 (C.6.4) — PMO-зоны cc-sdd:** core `D2-T01 + D2-T06`; `D2-T04` — partial по результату profile-stage; `D2-B02` — boundary (Product Module владеет, cc-sdd consumes via handoff); фантомный `D2-Tech-02` устранён.
+- **Q6 (C.4) — journal-hook scope:** **every modifying action**. SPEC §9 (pointer) + ROADMAP синхронны.
+
+**Дополнительно — функциональный рефактор PMO-карты** (входит в DEC-DEV-0040):
+`pmo-map.md` переписан как functional job descriptions: D2-B01..05 (Бизнес-аналитик, owned) + D2-T01..08 (Технический архитектор, delegated) + D3-01..07 (Разработчик/Delivery, delegated) + D4-01..07 (QA, delegated). Старая нумерация D2-01/02/05/06/08 + D2-03/04/07/09 — superseded; migration table в pmo-map.md «Миграция ID». LC переехал в D2-B03 (раньше дублировался в D2-02 bundle + D2-06).
 
 ### C.1 Contract design algorithm — manual или generated?
 
@@ -275,16 +286,17 @@ Runtime smoke прогнан 2026-05-20 (9 пилотных сессий `my-fir
 
 ## G. Definition of Done для Phase 5
 
+> Scope — **Integrator-only** (per DEC-DEV-0040 Q3 boundary). Production end-to-end через адаптер — это Orchestrator's job, не Phase 5.
+
 Phase 5 считается «done», когда:
-- [ ] `/integrator:add cc-sdd` проходит 6 stages без manual intervention
-- [ ] `pmo-mapping.yaml` обновляется с cc-sdd coverage
-- [ ] Adapter берёт `.product/handoffs/FM-001-handoff.md` и invokes `/kiro:spec-init`
-- [ ] `.kiro/specs/FM-001/spec.json` создаётся с корректным content
+- [ ] `/integrator:add cc-sdd` проходит 6 stages без manual intervention (approve gates допустимы)
+- [ ] `pmo-mapping.yaml` получает coverage для **D2-T01 + D2-T06** (cc-sdd primary); D2-T04 — partial если profiling подтвердит; D2-B02 — boundary noted
+- [ ] **Stage-6 «verify»**: адаптер прогоняется с fixture-handoff'ом, контракт-тест проходит (smoke-test, не продакшен handoff)
 - [ ] `/integrator:remove cc-sdd` безопасно rollback с backup
-- [ ] `/integrator:update cc-sdd` detects drift при version upgrade
-- [ ] Decision journal logs каждое modifying action
-- [ ] **Pilot point** (Section E.1) — 1 FM end-to-end completed *(включение в Phase 5 DoD зависит от решения D.2 — см. §C.6)*
-- [ ] DEV_JOURNAL: findings + ключевые решения Phase 5
+- [ ] `/integrator:update cc-sdd` detects drift через `target_tool_version` metadata, предлагает contract repair
+- [ ] Decision journal logs каждое modifying action (per Q6)
+- [ ] **PILOT POINT scope** — полный end-to-end (handoff → /kiro:spec-init → spec.json) требует Orchestrator; зависит от Orchestrator-обсуждения (см. Q3 boundary). В Phase 5 DoD НЕ включается.
+- [ ] DEV_JOURNAL: findings + ключевые решения Phase 5 implementation
 - [ ] CHANGELOG: `[1.3.0]` или аналог
 - [ ] Phase 5 closure ritual (Unit 2 D7) — own DEC-DEV refinement entry
 
@@ -377,14 +389,31 @@ Catches `/product:nfr:review` references когда file = `/product:nfr-review`
 
 ## Совет: как пользоваться этим чек-листом
 
-**Состояние на 2026-05-22:** Phase 4 закрыта; pre-kickoff doc-cleanup выполнен. Sections A/B — Phase 4 closure (done). Sections C-G — substrate для kickoff session (per `dev/meta-improvement/checklists/phase-kickoff.md`); §C.6 — doc-consistency решения, выявленные pre-kickoff аудитом.
+**Состояние на 2026-05-25:** Phase 4 закрыта; pre-kickoff doc-cleanup выполнен; kickoff session проведена (DEC-DEV-0040). Sections A/B — Phase 4 closure (done). Sections C/C.6 — ✅ resolved. Implementation готова.
 
-**Phase 5 implementation start sequence:**
-1. Complete Section A (Phase 4 closure ritual) — fresh-session run
-2. Complete Section B (Phase 4 runtime smoke) — user-driven Claude Code session
-3. Kickoff session per phase-kickoff.md — resolve Section C architectural questions через DEC-DEV-NNNN entry
-4. Implementation sub-phases A→J→K
-5. Section E pilot validation gate
+### 🔴 Обязательное чтение перед Phase 5 implementation
+
+Phase 5 пишет код в зоне Integrator Module. Это не «свежая» работа — SPEC уже описывает steady-state архитектуру, схемы, контракты, форматы и UX-сценарии. **`docs/integrator-module/SPEC.md` — primary reference на весь implementation цикл.** Не пропускать.
+
+**Что именно из SPEC обязательно прочитать перед каждой sub-phase:**
+- **§4 (Tool Profile + pmo-mapping.yaml)** — формат `~/.claude/integrator/tool-catalog/<tool>.yaml` + локальный `pmo-mapping.yaml` per §4.3 (с новыми D2-T*/D2-B*/D3-*/D4-* ID per DEC-DEV-0040 Q5).
+- **§5 (Контракты)** — формат `CNT-*.yaml/.md` + transformation pattern (адаптер с metadata target_tool_version / contract_schema_version — Q1).
+- **§6 (Decision journal)** — что и как логирует journal-hook (Q6 — every modifying action).
+- **§7 (UX-сценарии)** — narrative examples add/debug/update/replace flows; служат живыми acceptance testcases (учитывая что `replace` отложен в v1.1 — Q4).
+- **§8 (Interaction)** — граница Product Module / Integrator / Orchestrator (Q3 boundary — Integrator-only scope для Phase 5 DoD).
+- **§10 (Файловая структура)** — global `~/.claude/integrator/` + project `.claude/integrator/` + `adapters/` dual-location pattern (Q1).
+- **§13 (Environment Scanner)** — обязательный pre-install check; UX должен быть graceful (см. Risks Section D и Q3 примечание про unknown user customizations).
+- **§14 (Tool-Docs Style Guide)** — формат для будущего Orchestrator; Phase 5 генерирует первый набор `tool-docs/cc-sdd.md`.
+
+**SPEC уже синхронизирован с DEC-DEV-0040** (D2-T01/T06 в примере §4.3, boundary note в §7-8, обновлены illustrative IDs §4.1 beads profile, §13 DB migrations пример). Если по ходу implementation вскроется drift между SPEC и кодом — **сначала zhfix SPEC, потом код** (per CLAUDE.md «docs/ source of truth для architecture»).
+
+### Phase 5 implementation start sequence:
+1. ✅ Section A (Phase 4 closure ritual) — done
+2. ✅ Section B (Phase 4 runtime smoke) — done, status=fail accepted
+3. ✅ Kickoff session per phase-kickoff.md — done, DEC-DEV-0040
+4. **Read `docs/integrator-module/SPEC.md` целиком** (above checklist) + cross-check ROADMAP Phase 5 acceptance ↔ §G DoD
+5. Implementation sub-phases (define A/B/C... per kickoff outcome — TBD при старте)
+6. Section E pilot validation gate (с учётом Orchestrator-boundary — full end-to-end pilot откладывается до Orchestrator)
 6. Closure ritual Unit 2
 
 **Если в процессе Phase 5 вскроется что-то, что должно было быть здесь** — добавь сюда новой секцией (для готовности Phase 6) + запиши в DEV_JOURNAL.

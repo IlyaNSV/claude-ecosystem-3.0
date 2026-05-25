@@ -29,7 +29,7 @@ Integrator hasn't installed anything in this project. To start:
 For Ecosystem 3.0 modules (Product, Design, Integrator self) — they're
 core, not "installed". Their coverage:
   - Product Module: D1, D2-Behavioral
-  - Design Module: D2-05 (when has_ui=true)
+  - Design Module: D2-B04 (when has_ui=true)
   - Integrator: infrastructure (this is me)
 ```
 
@@ -49,10 +49,11 @@ Display columns:
 |---------------|-----------------------|------------|------------------|-----------|
 | D1            | Product Module (core) | high       | built-in         | —         |
 | D2-Behavioral | Product Module (core) | high       | built-in         | —         |
-| D2-05         | Design Module (core)  | high ⚡    | conditional has_ui | MK-sync |
-| D2-Tech-02    | cc-sdd v2.3           | high       | docs + example   | CNT-001   |
+| D2-B04        | Design Module (core)  | high ⚡    | conditional has_ui | MK-sync |
+| D2-T01        | cc-sdd v2.3           | high       | docs + example   | CNT-001   |
+| D2-T06        | cc-sdd v2.3           | high       | spec-tasks output | CNT-001  |
 | D3-01         | beads v1.2            | medium     | inferred from docs | CNT-003 |
-| D4-01         | — (uncovered)         | —          | —                | —         |
+| D4-03         | — (uncovered)         | —          | —                | —         |
 | D6            | Integrator (core)     | high       | built-in         | —         |
 ```
 

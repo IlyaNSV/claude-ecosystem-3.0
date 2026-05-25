@@ -619,7 +619,7 @@ Expected output:
 - Contracts: 0 (no D2-Tech tool yet — that comes in Phase 5 of roadmap)
 - PMO mapping:
   - D1, D2-Behavioral: covered by Product Module (core)
-  - D2-05: Design Module (conditional on has_ui)
+  - D2-B04: Design Module (conditional on has_ui)
   - D6: Integrator (core)
   - D2-Tech, D3, D4, D5: uncovered (expected for fresh project)
 

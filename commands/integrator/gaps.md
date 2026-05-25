@@ -12,7 +12,7 @@ Identify PMO zones not currently covered by any active tool.
 
 Read `.product/features/` and `.product/releases/` to understand what the user is actually building:
 
-- If features are has_ui=true → D2-05 needed
+- If features are has_ui=true → D2-B04 needed
 - If features have backend → D3 needed
 - If features have NFR with reliability targets → D4 + D5 needed
 - D2-Technical is needed for any feature that ships through external implementation tool
@@ -60,7 +60,7 @@ Active features: <count>
 Validation tier: <pilot | mvp | full>
 
 🔴 CRITICAL GAPS (<count>)
-  D2-Tech (Architecture): no spec-gen tool installed
+  D2-T01 (Architecture Design): no spec-gen tool installed
     → /integrator:research "spec generation tool for this stack"
   D3-01 (Implementation): no implementation tool
     → /integrator:research "implementation tool that consumes spec-* output"
@@ -84,7 +84,7 @@ Based on critical gaps:
 
 ```
 Recommended actions (in order):
-  1. Address critical gap D2-Tech first — without spec-gen, you can't ship FM-XXX
+  1. Address critical gap D2-T01 first — without spec-gen, you can't ship FM-XXX
   2. Then D3-01 implementation
   3. D4 QA can wait until at least one FM is shipped
 

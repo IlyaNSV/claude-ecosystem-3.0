@@ -1,7 +1,7 @@
 # Design Module — Спецификация
 
 > **Статус:** v1.0 (2026-04-18)
-> **Роль:** условный sub-module Product Module — отвечает за D2-05 (UX/UI Design) только когда FM.has_ui=true. Итеративный процесс создания UI-макетов через AI + внешний design tool.
+> **Роль:** условный sub-module Product Module — отвечает за D2-B04 (UX/UI Design) только когда FM.has_ui=true. Итеративный процесс создания UI-макетов через AI + внешний design tool.
 > **Закрывает:** DEC-A10, DEC-A12, DEC-I03 (Stitch primary), DEC-ART09 (MK как Design Package), DEC-ART10 (DS, NM), DEC-P11, DEC-P12, DEC-I06 (subagent screen-generator).
 > **v1 modifications:**
 > - C2 (`confidence:` field) — все MK, DS, NM имеют confidence + confidence_notes (см. pmo/artifacts/README.md cross-cutting).
@@ -16,7 +16,7 @@
 
 - **Превращает бизнес-поведение в визуальные артефакты** для UI-фич (FM с has_ui=true)
 - **Ведёт итеративный дизайн** через диалог AI ↔ Human с внешним design tool (Stitch default, Figma future, HTML fallback)
-- **Производит 3 типа артефактов D2-05:** MK (Mockup Package), DS (Design System — cross-cutting), NM (Navigation Map — per flow)
+- **Производит 3 типа артефактов D2-B04:** MK (Mockup Package), DS (Design System — cross-cutting), NM (Navigation Map — per flow)
 - **Интегрирует AI-ассистируемое проектирование** как нормальную часть Product Module workflow
 
 ### 1.2 Что Design Module НЕ делает
@@ -588,7 +588,7 @@ version: 1.0
 category: core-pmo-module
 depends_on: [product-module]
 pmo_coverage:
-  D2-05: {confidence: high, evidence: "full P2.5 process"}
+  D2-B04: {confidence: high, evidence: "full P2.5 process"}
 activation: conditional (FM.has_ui=true)
 inputs:
   - from: product-module

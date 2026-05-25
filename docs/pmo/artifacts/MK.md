@@ -1,7 +1,7 @@
 # MK-* — Mockup Package
 
 > **Тип:** mockup-package
-> **Домен:** D2-05 — Design Module
+> **Домен:** D2-B04 — Design Module
 > **Review:** 🟠 Strategic
 > **Cardinality:** Per screen/flow (обычно 1–4 MK на UI-фичу)
 > **Владелец:** Design Module внутри Product Module / процесс P2.5
@@ -242,7 +242,7 @@ figma_url: "https://figma.com/..."
 
 ## Related Skills
 
-- `design-brief.md` (в разработке, D2-05 step 1)
+- `design-brief.md` (в разработке, D2-B04 step 1)
 - `component-states.md` (checklist состояний компонентов)
 - `design-iteration.md` (итеративный workflow)
 - `design-export.md` (для handoff)

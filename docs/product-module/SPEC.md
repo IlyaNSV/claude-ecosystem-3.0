@@ -20,7 +20,7 @@
 - Не редактирует production-код (это внешние инструменты через handoff)
 - Не занимается инфраструктурой (это Integrator Module)
 - Не запускает внешние инструменты (будущий Orchestrator)
-- Не проектирует UI визуально сам (это Design Module D2-05, условный подмодуль)
+- Не проектирует UI визуально сам (это Design Module D2-B04, условный подмодуль)
 - Не принимает бизнес-решения (все approve — за человеком)
 - Не управляет D3-D6 (tool-agnostic зона)
 
@@ -688,7 +688,7 @@ version: 1.0
 category: core-pmo-module
 pmo_coverage:
   D1-01..D1-10: {confidence: high}
-  D2-01, D2-02, D2-05 (behavioral part), D2-06 (behavioral): {confidence: high}
+  D2-B01, D2-B02, D2-B03, D2-B04 (behavioral part), D2-B05: {confidence: high}
 inputs:
   - type: idea-description (text)
 outputs:

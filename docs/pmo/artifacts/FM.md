@@ -24,7 +24,7 @@ jtbd: [JTBD-N-from-SEG, ...]          # какие JTBD решает (из SEG b
 hypotheses: [HYP-<NNN>, ...]          # какие гипотезы проверяет
 value_proposition: VP-<NNN>
 release: RL-<NNN>                      # в каком релизе планируется/выпущена
-has_ui: true | false                   # активирует Design Module (D2-05)
+has_ui: true | false                   # активирует Design Module (D2-B04)
 scenarios: [SC-<NNN>, ...]             # поведенческая спецификация (D2)
 rules: [BR-<NNN>, ...]
 lifecycles: [LC-<NNN>, ...]

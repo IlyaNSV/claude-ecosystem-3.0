@@ -81,7 +81,7 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 - `/product:patterns` — meta-linter for recurring anti-patterns
 - `/product:meta-feedback` — propose ecosystem-level tuning
 
-### Design (D2-05, conditional on `has_ui: true`)
+### Design (D2-B04, conditional on `has_ui: true`)
 
 - `/design:start <FM-id>` — P2.5 orchestrator
 - `/design:iterate <MK-id>` — continuation
