@@ -3297,6 +3297,90 @@ Out-of-scope (NEVER touch): `.claude/.gitignore`, `.claude/.gitattributes`, `.cl
 
 ---
 
+## DEC-DEV-0043 — Phase 4 post-closure audit findings: recurring DA drift + S12 regression
+
+**Date:** 2026-05-26
+**Trigger:** Ретроспективный прогон `/meta:audit-smoke --phase=4` на 8 Pending сессий `my-first-test` (2026-05-21..26), накопившихся между Phase 4 closure (DEC-DEV-0038, 2026-05-20) и моментом аудита. Aggregate `audit-reports/phase-4-summary.md`: status=partial (1 FAIL, 1 PARTIAL, 3 findings, 3 clean). Сессии относятся не к guided Phase 4 smoke, а к interim продуктовой работе в пилоте + post-Phase-5 implementation.
+**Tag:** #pilot-finding #phase-4 #post-closure #d7-audit #tech-debt #recurring-regression
+
+### Context
+
+Phase 4 закрыта DEC-DEV-0038 follow-up (2026-05-21) с известными issue, accepted as known. Smoke plan + fixtures удалены commit `21cca85`. С того момента в пилоте `my-first-test` накопилось 8 SessionEnd-перехваченных сессий — D7-хук писал Pending markers, никто не запускал аудитор. Триггер запуска — `/meta:audit-smoke --phase=4` без активного plan'а.
+
+Для аудита временно восстановлен `dev/PHASE_4_SMOKE_TEST_PLAN.md` из `21cca85^` → прогон → удаление. Файловая структура неизменна (только новые audit-reports + audit-index Pending→Processed).
+
+### Outcome — findings
+
+Aggregate показал ожидаемое для post-closure прогона: 10 из 13 сценариев NOT-COVERED (сессии не выполняли smoke), 2 COVERED (S2 Language, S4 NFR), 1 PARTIAL (S12). Real signal — **не coverage matrix**, а findings catalog:
+
+| # | Finding | Severity | Сессии | Класс |
+|---|---|---|---|---|
+| E1 | DA `subagent_type=general-purpose` вместо `product-devils-advocate` | 🔴 Blocking | 0781ad12, 31394d98, e3bfd3a3 | **Recurring regression** |
+| E2 | P-RULE-01 violation: IC-022..028 активированы без DA | 🔴 Blocking | 0781ad12 | Process violation |
+| E3 | S12 FAIL — DEC-DEV-0036 cleanup hardening не удержался | 🔴 Critical | 0c10a7c0 | **Recurring regression** |
+| E4 | IC frontmatter drift (`type=invariant` vs `type=invariant-check`) | 🟡 Warning | 0781ad12, e3bfd3a3 | Schema drift |
+| E5 | Post-DA edits активных BR без re-DA (P-RULE-02) | 🟡 Warning | 0781ad12, e3bfd3a3 | Process violation |
+
+**Ключевое:** E1 и E3 — recurring relative to DEC-DEV-0038 findings. E1 был «системное #2» в DEC-DEV-0038 (харнесс не регистрирует `product-devils-advocate` — DA падает в `general-purpose` fallback) — мы знали, что баг живой, и Phase 5 kickoff декларировал spec-решение; но между closure и сейчас вышли ещё 3 сессии с тем же drift. E3 — повторение того, что DEC-DEV-0036 защитный hardening пытался закрыть и DEC-DEV-0038 уже отметил «фиксы не удержались»; теперь подтверждено третьей сессией.
+
+### Decision
+
+Не fix-now, а зафиксировать как **именованный долг** в новом файле `dev/tech-debt/PHASE_4.md`:
+- 5 OPEN errors с severity и suggested actions
+- 5 recommendations (R1-R5), каждая с пометкой «**перепроверить альтернативы при взятии в работу**» + явный список альтернатив для пересмотра (чтобы при отложенном execution не имплементировать первое предложение из summary без свежего взгляда)
+- Out-of-scope reminders
+
+Файл размещён в новой папке `dev/tech-debt/` (не в `_archive/phase-4/`, чтобы оставить долг visible при последующей работе).
+
+Rationale «defer, не fix-now»:
+- E1 имеет архитектурную природу (subagent registration в харнессе) — Phase 5 kickoff уже на это смотрел, не имеет смысла чинить inline вне контекста Phase 5 closure / Phase D
+- E3 — DEC-DEV-0036 + DEC-DEV-0038 уже подтвердили, что defensive skill-text hardening имеет предел; нужен structural/hook guard, а это > inline patch
+- E2/E5 — process violations, ловятся hook-side enforcement (R4) — стоит дизайнить вместе с E1 решением
+- E4 — обычный schema drift, применим convention DEC-DEV-0012; быстрый patch, но в контексте сессии аудита не приоритет
+
+Commit: `03841e3`.
+
+### Альтернативы (отвергнутые)
+
+**A. Fix-now каждой E1-E5 inline в рамках текущей сессии.** Отвергнуто. (1) E1/E3 требуют структурного решения, не правки в одну сессию. (2) Бандлить 5 разных fix'ов в одну работу = разрыв контекста и риск incomplete coverage. (3) Аудит был ретроспективным cleanup'ом Pending, не product engineering сессией.
+
+**B. Открыть GitHub issues / TODO в backlog.** Отвергнуто. Solo dev, нет issue tracker'а; `dev/v1_1_backlog.md` существует, но это «preserved deferred context», не actionable list. Tech debt файл — более прямая форма для recurring findings: severity видна, recommendation структурирован, журнал статусов встроен.
+
+**C. Сложить все 5 findings прямо в существующий `phase-4-summary.md` recommendation section.** Отвергнуто. Summary — auditor output (anti-action в команде запрещает editing), tech debt — human-curated follow-up. Separation важна.
+
+**D. Не фиксировать долг отдельно, считать findings уже «captured» в audit reports.** Отвергнуто. Audit reports содержат facts; что с ними делать — это решение, которое легко потеряется при поиске «что fix'ить дальше». Tech debt файл — единая точка входа.
+
+### Lessons
+
+1. **Recurring regression — самый сильный сигнал на структурный (не текстовый) фикс.** E1 третий раз подтверждается (DEC-DEV-0036 → DEC-DEV-0038 → этот entry); каждая попытка через skill-text hardening / docs / kickoff декларацию проваливалась. Lesson: после 2-го рецидива одного класса бага default → искать hook-side enforcement, а не лучшую формулировку. R1 (D7 pattern + validation hook) рожден из этого правила.
+
+2. **Phase «закрыта» не значит «sealed against new findings».** Phase 4 формально закрыта DEC-DEV-0038, но новые сессии в пилоте продолжают воспроизводить её известные баги. Lesson: closure = «не блокирует Phase N+1», не «больше не происходит». Длящийся pilot — длящийся источник findings про прошлые phases; нужна явная форма (tech debt файл per phase) для их учёта, иначе они либо повторно регистрируются как новые баги, либо тонут в audit reports.
+
+3. **«Перепроверить альтернативы при взятии в работу» — обязательная пометка для отложенных recommendation.** Audit summary даёт первое разумное решение, но к моменту execution контекст может сдвинуться (новое spec-решение, новый pattern, более дешёвый путь). Без явного reminder есть риск имплементировать первую формулировку как mandate. Codified в `dev/tech-debt/PHASE_4.md` через ⚠ маркер + перечень альтернатив для каждой R1-R5.
+
+4. **D7-аудитор работает на post-closure ретроспективе так же, как на active phase smoke.** Не было причин ожидать иное (preprocessor + scenarios agnostic к статусу phase), но это первый прогон в режиме «фаза закрыта, сессии накопились» — confirmed pattern: `claude -p` auditor усваивает рваные context'ы пилотных сессий, surface'ит классы паттернов adequate-ly. Lesson: можно безопасно копить Pending markers между active phases и периодически прогонять `--phase=N` retroactively на закрытые phases — это валидный workflow, не только pre-closure gate.
+
+### Next
+
+Tracked в `dev/tech-debt/PHASE_4.md` (Журнал статусов внизу файла обновляется по мере взятия R1-R5 в работу):
+
+- [ ] R1 — Codify D7 pattern «DA subagent_type contract» + hook-side validation (закрывает E1 + частично E2)
+- [ ] R2 — Targeted re-smoke S12 (закрывает E3, либо явный defer как known issue)
+- [ ] R3 — Patch IC-skill template per convention DEC-DEV-0012 (закрывает E4)
+- [ ] R4 — P-RULE-01/P-RULE-02 enforcement hook (закрывает E2 + E5)
+- [ ] R5 — Скип, no action для clean sessions
+
+Каждая R при взятии в работу требует **перепроверки альтернатив** (явный список в tech debt файле) — это не optional.
+
+### Связь с другими entries
+
+- DEC-DEV-0036 — первый attempt cleanup-detector hardening; E3 — третье подтверждение, что text-level fix не удерживается
+- DEC-DEV-0038 — Phase 4 closure с known issues; E1 + E3 — recurring relative к этому entry, подтверждают «нечинённые баги остались нечинёнными»
+- DEC-DEV-0040 — Phase 5 kickoff; ожидалось, что `product-devils-advocate` registration gap получит spec-решение, но E1 говорит, что drift сохраняется → возможно spec-решение ещё не landed либо не покрывает batch DA вызовы из BR/IC контекстов (не только `/product:da-review`)
+- DEC-DEV-0012 — convention «explicit frontmatter template + anti-pattern warnings»; E4 — её прямое application к IC-skill
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
