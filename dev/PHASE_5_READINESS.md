@@ -2,7 +2,7 @@
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 5 (Integrator Phase 2 — Installation + first adapter).
 >
-> **Статус (2026-05-26):** ✅ Phase 5 implementation completed (DEC-DEV-0041) + ✅ runtime smoke + closure completed (DEC-DEV-0044). 4 PASS clean (S1/S2/S4 + S3 post-fix), S6 PARTIAL→FIXED, S5 deferred. 3 bugs fixed end-to-end (bug 1 skill+agent heuristic, bug 2 bootstrap/update deploy gap, bug 3 journal-hook Windows path); bug 4 + C-03 cosmetic deferred к Phase 5.1 patch. Plan archived [`dev/_archive/phase-5/`](_archive/phase-5/). Phase D Wiki initiative unblocked.
+> **Статус (2026-05-26):** ✅ Phase 5 implementation completed (DEC-DEV-0041) + ✅ runtime smoke + closure completed (DEC-DEV-0044) + ✅ Phase 5.1 patch completed (DEC-DEV-0045 — bug 4 fix + C-03 cosmetic + 1.3.2 release). 4 PASS clean (S1/S2/S4 + S3 post-fix), S6 PARTIAL→FIXED, S5 deferred (code landed; runtime end-to-end pending pilot session at user's discretion). Plan archived [`dev/_archive/phase-5/`](_archive/phase-5/). Phase D Wiki initiative unblocked.
 >
 > **Предыстория:** ✅ Kickoff session проведена 2026-05-25 — все Q1-Q6 архитектурные вопросы + функциональный рефактор PMO-карты закрыты через **DEC-DEV-0040**. Pre-kickoff doc-consistency cleanup выполнен 2026-05-22 (структурный фикс SPEC §9, doc-rot, F5/F6/F9 — см. §A.4).
 >

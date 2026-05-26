@@ -2,7 +2,7 @@
 
 > **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D6 внешним инструментам через универсальный handoff.
 
-**Статус:** v1.3.0 — Phase 0-5 shipped (Discovery + Planning + Feature Enrichment + Handoff + Validation full + **Integrator Installation + first cc-sdd reference adapter**). Phase 5 implementation done (DEC-DEV-0041); runtime smoke S1-S6 + closure ritual Unit 2 pending. **Phase D — Wiki initiative design frozen 2026-05-26** (см. [dev/wiki-design.md](dev/wiki-design.md), [dev/PHASE_D_DOCS_WIKI_READINESS.md](dev/PHASE_D_DOCS_WIKI_READINESS.md)). См. [CHANGELOG.md](CHANGELOG.md) и [ROADMAP.md](ROADMAP.md).
+**Статус:** v1.3.2 — Phase 0-5 shipped (Discovery + Planning + Feature Enrichment + Handoff + Validation full + **Integrator Installation + first cc-sdd reference adapter**). Phase 5 runtime smoke + closure done (DEC-DEV-0044); Phase 5.1 patch done (DEC-DEV-0045 — local-only drift detection + tri-location adapter pattern). **Phase D — Wiki initiative design frozen 2026-05-26** — implementation unblocked (см. [dev/wiki-design.md](dev/wiki-design.md), [dev/PHASE_D_DOCS_WIKI_READINESS.md](dev/PHASE_D_DOCS_WIKI_READINESS.md)). См. [CHANGELOG.md](CHANGELOG.md) и [ROADMAP.md](ROADMAP.md).
 **Целевая аудитория:** solo-разработчики, ведущие продуктовые проекты с Claude Code как primary tool.
 
 ---

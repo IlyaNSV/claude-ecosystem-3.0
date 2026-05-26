@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-26 (Phase 5 runtime smoke + closure — DEC-DEV-0044).
+> **Последнее обновление:** 2026-05-26 (Phase 5.1 patch — DEC-DEV-0045; 1.3.2 release).
 
 ## Где мы сейчас
 
@@ -49,13 +49,16 @@
      bug 3 (journal-hook Windows path regex separator)
    — Architectural refinement: Q1 dual-location → tri-location pattern (repo canonical → pilot reference layer
      `.claude/adapters/` → pilot instance `.claude/integrator/adapters/`)
-   — Bug 4 (@source_ref + /integrator:update Stage 3 drift checks) + C-03 cosmetic deferred to Phase 5.1 patch
    — Plan archived dev/_archive/phase-5/PHASE_5_SMOKE_TEST_PLAN.md; forensics dev/_archive/phase-5/smoke-evidence/
+
+✅ Phase 5.1 patch (2026-05-26) — DEC-DEV-0045; 1.3.2 release
+   — Bug 4 fix (3 facets): D2/D3 drift checks refactored к local-only (pilot reference vs instance, no cross-repo);
+     @source_ref now audit-only (read from .claude/adapters/.sync-metadata.yaml stamped by /ecosystem:{bootstrap,update})
+   — C-03 cosmetic: SUPPORTED_HANDOFF_GENERATORS array → regex (accepts patch-suffix versions)
+   — S5 runtime smoke verification deferred (code landed; pilot session for /integrator:update --check-only at user's discretion)
 
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 5.1 patch (parallel track) — bug 4 fix (3 facets: @source_ref ecosystem-tracking + Stage 3 D2/D3 local-only refactor)
-   + C-03 generator semver-range + S5 drift detection re-run; small surface, non-blocker
 ⏳ 🎯 PILOT POINT — requires Orchestrator Module (out of Phase 5; reframed per DEC-DEV-0040 Q3)
 📐 Phase D — Wiki initiative (design frozen 2026-05-26) — interactive ecosystem docs (Charter + commands + GH Action draft-PR sync)
    — Design: dev/wiki-design.md (§1-17); Readiness gate: dev/PHASE_D_DOCS_WIKI_READINESS.md (Sections A-H)

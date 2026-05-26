@@ -6,6 +6,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.2] — 2026-05-26
+
+Patch release: Phase 5 runtime smoke closure + Phase 5.1 patch. 3 bugs fixed end-to-end (skill+agent narrow-glob; bootstrap/update deploy gap; journal-hook Windows path regex) + bug 4 fix (local-only drift detection refactor) + C-03 generator regex cosmetic. Architectural refinement: Q1 dual-location → tri-location adapter pattern. Per [DEC-DEV-0044, 0045](DEV_JOURNAL.md).
+
+### Fixed
+
+- **`hooks/integrator/journal-hook.js`** — normalize Windows backslash path separators before regex testing against `INTEGRATOR_PATH_PATTERNS`. Without this, Edit/Write tool events on Windows silently bypassed classification (Phase 5 S6 step 1 FAIL root cause).
+- **`skills/integrator/contract-design.md` + `agents/integrator/contract-designer.md`** — Step 4 reference adapter check: Glob-based exhaustive enumeration + slug-tolerant matching (`cc-sdd` / `ccsdd` / `cc_sdd` variants) + mandatory README.md consultation + fail-loud escalation if 0 matches. Replaces narrow single-pattern `ls` that missed `handoff-to-ccsdd.js` for (product-module, cc-sdd) pair → caused regen-from-scratch in Phase 5 initial install.
+- **`commands/ecosystem/bootstrap.md` + `commands/ecosystem/update.md`** — deploy/sync `adapters/` directory to `.claude/adapters/` (was missing from `/ecosystem:update` allowlist; absence prevented contract-designer from finding reference adapter in pilot context).
+- **`skills/integrator/drift-detection.md` + `commands/integrator/update.md`** Stage 3 — D2/D3 checks refactored to local-only comparison (pilot reference `.claude/adapters/` vs pilot instance `.claude/integrator/adapters/`); replaces cross-repo `git diff <source_ref> HEAD` which assumed pilot's git == ecosystem's git.
+- **`adapters/handoff-to-ccsdd.js`** — C-03 generator whitelist: `SUPPORTED_HANDOFF_GENERATORS` array → `SUPPORTED_HANDOFF_GENERATOR_RE` regex (`^product-module-v1\.(0|1|2)(\.\d+)?$`); accepts patch-suffix versions (e.g., `product-module-v1.2.0`).
+
+### Added
+
+- **`adapters/README.md`** — refactored from dual-location → tri-location pattern table (repo canonical → pilot reference layer → pilot instance).
+- **`.claude/adapters/.sync-metadata.yaml`** schema — stamped by `/ecosystem:bootstrap` + `/ecosystem:update` with `last_synced_commit` (ecosystem repo HEAD at sync time), `last_synced_at`, `last_synced_from`. Used by `contract-designer` subagent to populate adapter instance `@source_ref` audit field. Replaces broken `git rev-parse HEAD` in pilot context (which captured pilot's HEAD, not ecosystem's).
+- **`dev/_archive/phase-5/PHASE_5_SMOKE_TEST_PLAN.md`** + `dev/_archive/phase-5/smoke-evidence/integrator-pre-S4/` — runtime smoke artifacts archived (plan with PASS/PARTIAL marks; broken-install snapshot for forensics).
+- **DEC-DEV-0044** (Phase 5 runtime smoke + bugs 1-3 fixed + tri-location adoption) + **DEC-DEV-0045** (Phase 5.1 patch: bug 4 fix + C-03 cosmetic) DEV_JOURNAL entries.
+
+### Modified
+
+- **`skills/integrator/contract-design.md` + `agents/integrator/contract-designer.md` + `commands/integrator/add.md`** — paths from `adapters/<file>.js` → `.claude/adapters/<file>.js` per tri-location refinement.
+- **`commands/integrator/update.md` Stage 3** — drift checks rewrite per local-only model; `@source_ref` becomes audit-only.
+
+### Deferred
+
+- **S5 runtime smoke** (drift detection in pilot session via `/integrator:update cc-sdd --check-only`) — code fix landed; end-to-end runtime validation остаётся at user's discretion (next time pilot session runs).
+
+### Rationale
+
+Phase 5 implementation (DEC-DEV-0041, 1.3.0) shipped с sub-phase J static smoke green. Runtime smoke in pilot context (2026-05-26, 3 pilot sub-sessions per audit-index) surfaced cross-platform regressions + bootstrap-deploy gaps + cross-repo assumption errors that static smoke could not catch. Q1 dual-location pattern was unrealizable as originally specified — refined to tri-location в DEC-DEV-0044. Bug 4's 3 facets needed deeper refactor (local-only drift + audit-only source_ref via sync-metadata.yaml stamping) — landed в DEC-DEV-0045 same day per user «Закончи оставленные задачи».
+
+---
+
 ## [1.3.1] — 2026-05-26
 
 Patch release: `/ecosystem:update` closed-list cleanup of obsolete contamination from pre-DEC-DEV-0019 bootstraps. Per [DEC-DEV-0042](DEV_JOURNAL.md).
