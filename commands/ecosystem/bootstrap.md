@@ -268,6 +268,9 @@ If user declines → skip. They'll get individual Claude Code permission prompts
 # Clone ecosystem to a TEMP directory inside current project (not .claude/)
 git clone --depth 1 https://github.com/IlyaNSV/claude-ecosystem-3.0.git .claude-ecosystem-tmp
 
+# Capture HEAD BEFORE stripping .git (used by 2d to stamp .sync-metadata.yaml per DEC-DEV-0044)
+ECOSYSTEM_HEAD=$(git -C .claude-ecosystem-tmp rev-parse HEAD)
+
 # Remove .git from temp to avoid creating a nested git repo inside .claude/
 rm -rf .claude-ecosystem-tmp/.git
 
@@ -316,7 +319,7 @@ cp -rn .claude-ecosystem-tmp/. .claude/
 rm -rf .claude-ecosystem-tmp
 ```
 
-#### 2d. Verify integrity
+#### 2d. Verify integrity + stamp adapters sync-metadata
 
 Check presence of:
 - `.claude/README.md`
@@ -328,6 +331,25 @@ Check presence of:
 - `.claude/docs/product-module/SPEC.md`
 - `.claude/templates/project/CLAUDE.md.template`
 - `.claude/adapters/handoff-to-ccsdd.js` (reference for `/integrator:add cc-sdd` Stage 5 — REUSE per DEC-DEV-0040 Q1)
+
+**Stamp `.claude/adapters/.sync-metadata.yaml`** (per DEC-DEV-0044 — tri-location pattern audit trail) — needed by `contract-designer` subagent to populate `@source_ref` in installed adapter instances:
+
+```bash
+ECOSYSTEM_HEAD=$(git -C .claude-ecosystem-tmp rev-parse HEAD 2>/dev/null || echo "unknown")
+# NB: `.git` was stripped in Step 2b; capture HEAD BEFORE strip if possible (move this stamp earlier in 2b/2c if implementation requires git access)
+NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+cat > .claude/adapters/.sync-metadata.yaml <<EOF
+# Stamped by /ecosystem:bootstrap and /ecosystem:update.
+# Used by contract-designer subagent (Step 7) to populate @source_ref in adapter instances.
+# Drift detection itself uses local file comparison; this file is audit-only.
+
+last_synced_commit: ${ECOSYSTEM_HEAD}
+last_synced_at: ${NOW_ISO}
+last_synced_from: https://github.com/IlyaNSV/claude-ecosystem-3.0
+EOF
+```
+
+(Capture `ECOSYSTEM_HEAD` in Step 2b/2c BEFORE `rm -rf .claude-ecosystem-tmp/.git`. If you already stripped `.git` before reaching here, fall back to `unknown` — non-fatal, audit field only.)
 
 If any missing → abort with clear error listing missing items. Suggest re-running with `--force` or checking network.
 

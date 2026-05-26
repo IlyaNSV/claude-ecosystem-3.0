@@ -35,7 +35,8 @@ const fs = require('fs');
 const path = require('path');
 
 const CONTRACT_SCHEMA_VERSION = 1;
-const SUPPORTED_HANDOFF_GENERATORS = ['product-module-v1.0', 'product-module-v1.1', 'product-module-v1.2'];
+// Accept generator strings of form `product-module-v1.X` or `product-module-v1.X.Y` (patch suffix optional).
+const SUPPORTED_HANDOFF_GENERATOR_RE = /^product-module-v1\.(0|1|2)(\.\d+)?$/;
 
 // ---------- Normalization ----------
 
@@ -250,9 +251,9 @@ function validateContract(fm, sections) {
   }
 
   // C-03: generator string recognized (warn if unknown, but proceed)
-  if (fm.generator && !SUPPORTED_HANDOFF_GENERATORS.includes(fm.generator)) {
+  if (fm.generator && !SUPPORTED_HANDOFF_GENERATOR_RE.test(fm.generator)) {
     checks.push({ id: 'C-03', level: 'warning', status: 'fail',
-      detail: `unrecognized generator: ${fm.generator}; adapter tested against ${SUPPORTED_HANDOFF_GENERATORS.join(', ')}` });
+      detail: `unrecognized generator: ${fm.generator}; adapter tested against product-module-v1.{0,1,2}(.patch)?` });
   } else {
     checks.push({ id: 'C-03', level: 'warning', status: 'pass' });
   }

@@ -1,12 +1,12 @@
 ---
-description: Minimum-viable drift detection between installed adapter instance and repo reference adapter, used by /integrator:update Stage 3. Three heuristics (D1 semver / D2 schema / D3 body diff). Full schema-aware drift deferred to Phase 7.
+description: Minimum-viable drift detection between installed adapter instance and pilot-local reference adapter, used by /integrator:update Stage 3. Three heuristics (D1 semver / D2 schema / D3 body diff) — all local-only post DEC-DEV-0044 tri-location refinement. Full schema-aware drift deferred to Phase 7.
 ---
 
 # Drift Detection — Skill for Integrator
 
-Detect drift between an **installed adapter instance** (in `.claude/integrator/adapters/`) and **two reference points**: the upstream tool version and the repo reference adapter (`adapters/<adapter>.js`).
+Detect drift between an **installed adapter instance** (in `.claude/integrator/adapters/`) and **two reference points**: the upstream tool version and the **pilot-local reference adapter** (`.claude/adapters/<adapter>.js`, synced from ecosystem repo via `/ecosystem:update`).
 
-> **v1 scope (per DEC-DEV-0040 + Phase 5 plan):** three heuristics, no semantic analysis. Catches breaking changes >80% of time per Phase 4 hash-drift experience. Full type-aware diff (e.g., consumer input shape comparison) → Phase 7.
+> **v1 scope (per DEC-DEV-0040 + Phase 5 plan, refined DEC-DEV-0044):** three heuristics, no semantic analysis. **All comparisons are local-only** — no cross-repo git access needed. Drift comparison subject = pilot reference vs pilot instance (both in `.claude/`). `@source_ref` is audit-only (tracks ecosystem commit at install time via `.sync-metadata.yaml`), not used as drift primary key. Full type-aware diff (e.g., consumer input shape comparison) → Phase 7.
 
 ## When invoked
 
@@ -47,50 +47,64 @@ function satisfiesCaret(range, actual) {
 - `out-of-range` → 🔴 likely breaking; queue contract for repair
 - `unsupported syntax` (range not parseable) → 🟡 surface to user; manual review
 
-### D2 — contract_schema_version mismatch
+### D2 — contract_schema_version mismatch (local-only)
 
-Compare adapter's `CONTRACT_SCHEMA_VERSION` constant (declared in adapter body) between installed instance and repo reference.
+Compare adapter's `CONTRACT_SCHEMA_VERSION` constant (declared in adapter body) between **pilot-local reference** and **installed instance** — both in `.claude/`. No cross-repo access.
 
 **Inputs:**
 - `installed`: integer from `.claude/integrator/adapters/<adapter>.js`
-- `repo`: integer from `adapters/<adapter>.js`
+- `reference`: integer from `.claude/adapters/<adapter>.js`
 
-**Extraction (vanilla):**
+**Extraction (vanilla, cross-platform):**
 ```bash
 node -e "const m = require('fs').readFileSync(process.argv[1],'utf8').match(/CONTRACT_SCHEMA_VERSION\s*=\s*(\d+)/); console.log(m ? m[1] : 'unknown')" <path>
 ```
 
 **Outcomes:**
-- `installed == repo` → ✅ pass
-- `installed < repo` → 🔴 reference evolved; consumer input shape may differ; queue for repair
-- `installed > repo` → 🟡 installed is ahead (manual edit? local hack?); investigate before continuing
+- `installed == reference` → ✅ pass
+- `installed < reference` → 🔴 pilot reference evolved (e.g., last `/ecosystem:update` brought a new schema version); consumer input shape may differ; queue for repair
+- `installed > reference` → 🟡 installed is ahead (manual hack? out-of-band install?); investigate before continuing
 - `installed unknown` (no constant found) → 🔴 metadata corruption; surface
 
-### D3 — Adapter body diff against repo at `source_ref`
+### D3 — Adapter body diff (local-only, header-stripped)
 
-Compare current repo `adapters/<adapter>.js` against the commit captured in installed metadata `@source_ref`.
+Compare body of **pilot-local reference** against **installed instance** — both files in `.claude/`. Strip the JSDoc metadata header block (which differs by design: reference has placeholders, instance has populated values).
 
 **Inputs:**
-- `source_ref`: git commit hash from installed adapter metadata
-- repo HEAD = current canonical reference
+- `reference`: `.claude/adapters/<adapter>.js`
+- `installed`: `.claude/integrator/adapters/<adapter>.js`
 
-**Command:**
+**Header-stripped comparison (Node, cross-platform):**
 ```bash
-git --no-pager diff <source_ref> HEAD -- adapters/<adapter>.js
+node -e "
+const fs = require('fs');
+function stripHeader(s) {
+  s = s.replace(/\r\n/g, '\n');
+  const idx = s.indexOf('const CONTRACT_SCHEMA_VERSION');
+  return idx >= 0 ? s.slice(idx) : s;
+}
+const ref = stripHeader(fs.readFileSync(process.argv[1], 'utf8'));
+const ins = stripHeader(fs.readFileSync(process.argv[2], 'utf8'));
+if (ref === ins) { console.log('EMPTY'); process.exit(0); }
+const refLines = ref.split('\n'), insLines = ins.split('\n');
+let diff = 0, fnDriftHits = 0;
+const fnRe = /function\s+(transformTo\w+Input|validateContract|parseFrontmatter|extractSections|slugify)\b/;
+for (let i = 0; i < Math.max(refLines.length, insLines.length); i++) {
+  if (refLines[i] !== insLines[i]) {
+    diff++;
+    if ((refLines[i] && fnRe.test(refLines[i])) || (insLines[i] && fnRe.test(insLines[i]))) fnDriftHits++;
+  }
+}
+console.log('DIFF:' + diff + ' lines; fnDriftHits=' + fnDriftHits);
+" .claude/adapters/<adapter>.js .claude/integrator/adapters/<adapter>.js
 ```
 
-**Classification of diff hunks** (rough heuristic):
+**Classification of diff lines** (rough heuristic):
 
-- Empty diff → ✅ no body drift
-- Changes only in `/* ... */` blocks or `//` comments (no code) → 🟡 cosmetic; bump installed `@source_ref` to HEAD, skip repair
-- Changes in `transformTo*Input`, `validateContract`, `parseFrontmatter`, `extractSections`, or any function in the transformation pipeline → 🔴 functional drift; queue for repair
-- Changes only in CLI helper (`printHelp`, `parseArgs`) → 🟢 cosmetic; bump `@source_ref`, skip repair
-
-**Function-name classifier:**
-```bash
-git --no-pager diff <source_ref> HEAD -- adapters/<adapter>.js | grep -E '^\+|^-' | grep -E 'function (transform|validate|parse|extract)'
-```
-Non-empty → functional drift signal.
+- `EMPTY` → ✅ no body drift (bodies identical after header strip)
+- `DIFF:N lines; fnDriftHits=0` AND N small (<10) → 🟡 cosmetic; metadata refresh sufficient (just bump installed instance metadata via re-cp), no contract repair
+- `fnDriftHits>0` (any function-name line differs) → 🔴 functional drift in transform/validate/parse pipeline; queue for repair
+- `DIFF:N lines; fnDriftHits=0` AND N large (≥10) → 🟡→🔴 escalate to user (likely structural change in non-named-fn region — strings/constants/data)
 
 ### Aggregation
 
@@ -124,12 +138,13 @@ Next actions:
 
 ## Anti-patterns
 
-1. **Treating D3 cosmetic diff as repair-worthy.** Wastes contract-designer subagent invocation budget. Comment-only diffs are bump-only.
+1. **Treating D3 cosmetic diff as repair-worthy.** Wastes contract-designer subagent invocation budget. Bumps without functional drift are metadata-refresh-only.
 2. **Ignoring D1 when D2/D3 are clean.** Major-version bump (^2 → 3) can be silent in code while breaking at runtime due to consumer API change. D1 is independent signal.
-3. **Auto-bumping `@source_ref` after repair without verify smoke pass.** Only update source_ref to HEAD after Stage 5 verify is green.
+3. **Auto-bumping `@source_ref` after repair without verify smoke pass.** Only update source_ref after Stage 5 verify is green; read fresh value from `.claude/adapters/.sync-metadata.yaml`.
 4. **Running drift detection without baseline `--check-only`.** Use `--check-only` mode of /integrator:update to preview before mutating state.
 5. **Custom semver range syntax beyond `^X.Y.Z` / `~X.Y.Z` / explicit comparators in v1.** If installed range uses unusual syntax (e.g., `npm:<alias>@<spec>`) → surface as `unsupported`, ask user.
-6. **Comparing against wrong baseline.** `source_ref` is the repo commit at install time, NOT the tool version. Don't conflate.
+6. **Cross-repo git diff for D3 (legacy approach, removed DEC-DEV-0044).** Original spec used `git diff <source_ref> HEAD -- adapters/<adapter>.js` which assumed pilot's git == ecosystem's git. In tri-location pattern this is wrong: `@source_ref` is ecosystem commit (read from `.sync-metadata.yaml`), not pilot's HEAD. D3 now does header-stripped local file comparison instead. `@source_ref` is audit-only.
+7. **Comparing pilot-instance against ecosystem-repo directly.** Pilot has no path to ecosystem repo's `adapters/`. Reference layer is `.claude/adapters/`; that's the comparison target.
 
 ## Limits of v1 detection (deferred to Phase 7)
 
@@ -140,6 +155,7 @@ Next actions:
 ## Cross-reference
 
 - `commands/integrator/update.md` — orchestration consumer
-- `adapters/handoff-to-ccsdd.js` — reference adapter with metadata header pattern (`@target_tool_version`, `@contract_schema_version`, `@source_ref`)
-- `adapters/README.md` — dual-location pattern (DEC-DEV-0040 Q1)
+- `.claude/adapters/handoff-to-ccsdd.js` — pilot-local reference adapter with metadata header pattern (`@target_tool_version`, `@contract_schema_version`, `@source_ref` populated from `.sync-metadata.yaml`)
+- `.claude/adapters/.sync-metadata.yaml` — last ecosystem repo commit synced; stamped by `/ecosystem:bootstrap` and `/ecosystem:update`
+- `.claude/adapters/README.md` — tri-location pattern (DEC-DEV-0040 Q1 refined DEC-DEV-0044)
 - `docs/integrator-module/SPEC.md` §7.4 — update UX narrative

@@ -82,12 +82,19 @@ If `--no-backup` → skip с warning «User responsible для recovery if updat
 
 ```bash
 git clone --depth 1 https://github.com/IlyaNSV/claude-ecosystem-3.0.git .claude-ecosystem-tmp
+
+# Capture HEAD before stripping .git (used in Step 5 to stamp .claude/adapters/.sync-metadata.yaml per DEC-DEV-0044)
+ECOSYSTEM_HEAD=$(git -C .claude-ecosystem-tmp rev-parse HEAD)
+
 rm -rf .claude-ecosystem-tmp/.git
 ```
 
 #### 3b. Offline (`--offline`)
 
 ```bash
+# Capture HEAD from global cache before staging
+ECOSYSTEM_HEAD=$(git -C ~/.claude/ecosystem rev-parse HEAD 2>/dev/null || echo "unknown")
+
 cp -r ~/.claude/ecosystem .claude-ecosystem-tmp
 rm -rf .claude-ecosystem-tmp/.git
 ```
@@ -226,6 +233,23 @@ cp .claude-ecosystem-tmp/install.ps1 .claude/install.ps1
 cp .claude-ecosystem-tmp/.env.template .claude/.env.template
 cp .claude-ecosystem-tmp/gitignore.template .claude/gitignore.template
 ```
+
+**Stamp `.claude/adapters/.sync-metadata.yaml`** (per DEC-DEV-0044 — tri-location audit trail; needed by `contract-designer` subagent для populating `@source_ref` в adapter instances):
+
+```bash
+NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+cat > .claude/adapters/.sync-metadata.yaml <<EOF
+# Stamped by /ecosystem:bootstrap and /ecosystem:update.
+# Used by contract-designer subagent (Step 7) to populate @source_ref in adapter instances.
+# Drift detection itself uses local file comparison; this file is audit-only.
+
+last_synced_commit: ${ECOSYSTEM_HEAD}
+last_synced_at: ${NOW_ISO}
+last_synced_from: https://github.com/IlyaNSV/claude-ecosystem-3.0
+EOF
+```
+
+(`ECOSYSTEM_HEAD` captured in Step 3a/3b above.)
 
 **NEVER touch** anything в never-copy zone or user zone.
 

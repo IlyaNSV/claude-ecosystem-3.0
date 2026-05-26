@@ -3509,6 +3509,99 @@ Pilot ready for Phase D Wiki initiative kickoff per `dev/PHASE_D_DOCS_WIKI_READI
 
 ---
 
+## DEC-DEV-0045 — Phase 5.1 patch: bug 4 fix (local-only drift detection) + C-03 generator regex
+
+**Date:** 2026-05-26
+**Trigger:** DEC-DEV-0044 deferred bug 4 (`@source_ref` + `/integrator:update` Stage 3 drift checks broken под tri-location) к Phase 5.1 patch; user сразу запросил «Закончи оставленные задачи» — fix landed в той же сессии.
+**Tag:** #bug-fix #architecture #refactor
+
+### Context
+
+Bug 4 has 3 facets, all stemming from original Q1 dual-location pattern's broken assumption «pilot имеет path к ecosystem repo's `adapters/`». Tri-location refinement (DEC-DEV-0044) добавил pilot-local reference layer `.claude/adapters/`, но `/integrator:update` Stage 3 + skill drift-detection.md + agent Step 7 ещё ссылались на старую модель (`adapters/` relative, cross-repo `git diff <source_ref> HEAD`).
+
+C-03 (generator drift cosmetic) was bundled в same Phase 5.1 patch — trivial fix (5 lines), кооборачивается с bug 4 для consolidation.
+
+### Options considered
+
+**For bug 4 D2/D3 refactor:**
+
+1. **Cross-repo git access via global cache** — keep ecosystem `.git/` in `~/.claude/ecosystem/`, point drift checks there. *Rejected:* bootstrap explicitly strips `.git/` to avoid nested-repo confusion (Step 2b `rm -rf .claude-ecosystem-tmp/.git`); inverting this introduces new failure modes.
+
+2. **Stamp ecosystem HEAD persistent в pilot, drift compares it to current ecosystem** — would still need cross-repo git access. Same rejection reason.
+
+3. **Local-only drift comparison: pilot reference vs pilot instance** — both files в `.claude/`, no cross-repo. `@source_ref` becomes audit-only field (tracks "this instance was installed when reference layer was at ecosystem commit X"). *Chosen.*
+
+**For `@source_ref` population:**
+
+1. `git rev-parse HEAD` в pilot context — *broken* (captures pilot's HEAD, не ecosystem's). This was the actual bug 4a.
+2. Hardcode via product.yaml `ecosystem_version` — but that's version string, not commit hash.
+3. **Stamp `.claude/adapters/.sync-metadata.yaml`** by bootstrap/update with `last_synced_commit` field; contract-designer reads from there. *Chosen.* Symmetric with `.claude/adapters/README.md` (also пилот-local), persistent, machine-readable.
+
+### Decision
+
+**Local-only drift detection model:**
+
+| Check | Old (broken) | New (local-only) |
+|---|---|---|
+| D1 semver | `@target_tool_version` range vs new tool version | unchanged (already local) |
+| D2 schema | `adapters/<file>.js` repo path vs installed | `.claude/adapters/<file>.js` (pilot reference) vs `.claude/integrator/adapters/<file>.js` (installed) |
+| D3 body | `git diff <source_ref> HEAD -- adapters/<file>.js` (cross-repo, broken) | Header-stripped body comparison of same two pilot files via Node script |
+
+D3 uses heuristic: strip everything before `const CONTRACT_SCHEMA_VERSION` declaration (which acts as natural divider between header metadata and code body — both files have this constant at near-identical line, header before may differ legitimately due to metadata population). Then line-by-line compare; count `fnDriftHits` for transformations function names (transform/validate/parse/extract/slugify) — non-zero = functional drift = repair candidate.
+
+**`@source_ref` audit trail mechanism:**
+
+`/ecosystem:bootstrap` Step 2b/2c captures ecosystem repo HEAD **before** `rm -rf .claude-ecosystem-tmp/.git`. Step 2d writes `.claude/adapters/.sync-metadata.yaml`:
+
+```yaml
+last_synced_commit: <ecosystem-repo HEAD at sync time>
+last_synced_at: <ISO timestamp>
+last_synced_from: https://github.com/IlyaNSV/claude-ecosystem-3.0
+```
+
+Same in `/ecosystem:update` Step 3a/3b → Step 5. Subagent `contract-designer` Step 7 reads `last_synced_commit` for `@source_ref` injection. If file missing → write `unknown`; non-fatal.
+
+**C-03 generator regex:**
+
+`SUPPORTED_HANDOFF_GENERATORS` array → `SUPPORTED_HANDOFF_GENERATOR_RE` regex: `^product-module-v1\.(0|1|2)(\.\d+)?$` — accepts both `product-module-v1.2` and `product-module-v1.2.0` (patch suffix optional). Covers existing pilot handoff (`v1.2.0`) and future minor/patch increments without список maintenance.
+
+### Outcome
+
+Files changed:
+- `skills/integrator/drift-detection.md` — D2/D3 refactored to local-only; anti-patterns +2 (#6 cross-repo legacy, #7 wrong baseline); cross-ref updated to `.claude/adapters/`
+- `commands/integrator/update.md` Stage 3 — D2/D3 commands rewritten к local-only Node scripts; Stage 4 source_ref injection note updated
+- `commands/ecosystem/bootstrap.md` — Step 2b captures `ECOSYSTEM_HEAD` before strip; Step 2d stamps `.sync-metadata.yaml`
+- `commands/ecosystem/update.md` — Step 3a/3b capture `ECOSYSTEM_HEAD`; Step 5 stamps `.sync-metadata.yaml`
+- `agents/integrator/contract-designer.md` Step 7 — reads `last_synced_commit` from `.sync-metadata.yaml`; explicit «never `git rev-parse HEAD` в pilot context» warning
+- `adapters/handoff-to-ccsdd.js` — `SUPPORTED_HANDOFF_GENERATORS` array → regex (C-03 cosmetic)
+
+Pilot one-time backfill (next `/ecosystem:update` will refresh both files и stamp metadata in regular flow):
+- Updated reference adapter `.claude/adapters/handoff-to-ccsdd.js` propagated
+- `.claude/adapters/.sync-metadata.yaml` стамп'ed with current ecosystem HEAD
+- Pilot's installed instance (`.claude/integrator/adapters/handoff-to-ccsdd.js`) NOT modified — will detect drift on next `/integrator:update cc-sdd` (D3 fnDriftHits=1 from validateContract change); offers contract repair flow
+
+**S5 runtime smoke verification deferred** per user decision 2026-05-26 («Про s5 пометь только как отложенную и всё»). Code-level fix shipped; runtime end-to-end validation can run в pilot session whenever user invokes `/integrator:update cc-sdd --check-only`.
+
+### Lessons
+
+1. **`git rev-parse` runs in CWD context.** A subagent running в pilot inherits pilot's CWD; `git rev-parse HEAD` captures pilot's git, не ecosystem's. *Apply:* avoid CWD-implicit git commands в cross-repo contexts. Use explicit `-C <path>` flag if you need a specific repo's HEAD, OR persist the value at sync time in a metadata file.
+
+2. **Drift detection should compare local-to-local where possible.** Cross-repo drift (compare pilot's installed against ecosystem repo's reference) requires git access pilot doesn't have. Pilot-local reference layer (added DEC-DEV-0044) makes drift detection purely local — simpler, more robust, no cross-repo dependency.
+
+3. **Audit-only metadata fields deserve explicit «audit-only» annotation.** `@source_ref` was originally drift-primary-key; now it's audit-only. Without explicit annotation, future readers will assume it's load-bearing for drift и introduce bugs. *Apply:* metadata fields with semantic distinction (load-bearing vs audit) should be explicitly tagged in adapter header comments + spec docs.
+
+4. **Capture-before-strip pattern.** Bootstrap strips `.git/` from cloned ecosystem temp. Before stripping, capture HEAD into a shell variable. Apply к any «we'll need this value later but it'll be gone after this step» case.
+
+5. **Whitelist arrays generally need patch-version flexibility.** C-03 `SUPPORTED_HANDOFF_GENERATORS = ['v1.0', 'v1.1', 'v1.2']` failed на `v1.2.0` (patch suffix). Regex with optional patch component is the more robust default. *Apply:* для any «accepted version» whitelist on string fields, default к regex with semver-range tolerance unless explicit major-only matching is the actual semantic.
+
+### Связь с другими entries
+
+- DEC-DEV-0044 — Phase 5 closure deferred bug 4 + C-03 cosmetic к Phase 5.1; this entry IS Phase 5.1 patch landing.
+- DEC-DEV-0042 — `/ecosystem:update` allowlist mechanism; this entry extends it with `.claude/adapters/.sync-metadata.yaml` stamping integration в Steps 3/5.
+- DEC-DEV-0040 Q1 — original dual-location adapter pattern; superseded by DEC-DEV-0044 tri-location + this entry's local-only drift detection.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

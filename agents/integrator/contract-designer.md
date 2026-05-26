@@ -91,9 +91,20 @@ Place at `adapters/<producer>-to-<consumer>.js` (lowercase, hyphen-separated).
 
 ```bash
 cp .claude/adapters/<adapter>.js .claude/integrator/adapters/<adapter>.js
-# Inject:
+
+# Read source_ref from .sync-metadata.yaml (stamped by /ecosystem:bootstrap | /ecosystem:update per DEC-DEV-0044)
+SOURCE_REF=$(node -e "
+const fs = require('fs');
+try {
+  const txt = fs.readFileSync('.claude/adapters/.sync-metadata.yaml', 'utf8');
+  const m = txt.match(/last_synced_commit:\s*(\S+)/);
+  console.log(m ? m[1] : 'unknown');
+} catch (_) { console.log('unknown'); }
+")
+
+# Inject metadata header values (replace placeholders in copied file):
 #   @target_tool_version: <from tool profile>
-#   @source_ref: <git rev-parse HEAD of ecosystem reference>  # see note below
+#   @source_ref: ${SOURCE_REF}
 #   @installed_at: $(date -u +%Y-%m-%dT%H:%M:%SZ)
 node .claude/integrator/adapters/<adapter>.js --verify-only --fixture <project fixture>
 # expect exit 0
@@ -101,7 +112,7 @@ node .claude/integrator/adapters/<adapter>.js --verify-only --fixture <project f
 
 If exit ≠ 0 → flag to main session; do NOT auto-mark contract `active`.
 
-**Note on `@source_ref`:** the canonical source is in ecosystem repo's `adapters/<adapter>.js`, not pilot's `.claude/adapters/`. If pilot's `.claude/` has a stamped `ecosystem_version` in `product.yaml` from last bootstrap/update, use the commit hash from that version (or `~/.claude/ecosystem/.git/HEAD` if global cache present). If neither available, fall back to: capture the `last_synced_commit` field if `.claude/adapters/README.md` has it (TODO field), or write `unknown@<last_synced_date>`. **Never fabricate a hash** — `git cat-file -t <hash>` from the ecosystem repo MUST resolve to a valid object (drift-detection in `/integrator:update` relies on this).
+**Note on `@source_ref` (post DEC-DEV-0044):** `@source_ref` is **audit-only** under tri-location pattern. It tracks the ecosystem repo commit at which `.claude/adapters/<adapter>.js` was last synced (stamped in `.claude/adapters/.sync-metadata.yaml` by bootstrap/update). Drift detection in `/integrator:update` does NOT use this field — it does local file comparison between pilot reference and pilot instance. Never run `git rev-parse HEAD` in pilot context — that captures pilot's own git HEAD, не ecosystem's (the original bug 4 cause from DEC-DEV-0044). If `.sync-metadata.yaml` is missing → write `unknown` for source_ref (non-fatal; surface to user that they should run `/ecosystem:update` to refresh sync metadata).
 
 ## Output format
 

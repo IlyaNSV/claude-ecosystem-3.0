@@ -54,29 +54,54 @@ Compare adapter's `@target_tool_version` (e.g., `^2.1.0`) against new tool versi
 - In-range → ✅ no drift on version axis
 - Out-of-range (e.g., `^2.1.0` adapter vs `3.0.0` tool) → 🔴 likely breaking; queue for repair
 
-**Check D2 — contract_schema_version diff against repo HEAD**
+**Check D2 — contract_schema_version mismatch (local-only post DEC-DEV-0044)**
+
+Compare `CONTRACT_SCHEMA_VERSION` constant between **pilot-local reference** (`.claude/adapters/<adapter>.js`) and **installed instance** (`.claude/integrator/adapters/<adapter>.js`):
 
 ```bash
-node -e "const m = require('fs').readFileSync('adapters/handoff-to-ccsdd.js','utf8').match(/CONTRACT_SCHEMA_VERSION\s*=\s*(\d+)/); console.log(m[1])"
-node -e "const m = require('fs').readFileSync('.claude/integrator/adapters/handoff-to-ccsdd.js','utf8').match(/CONTRACT_SCHEMA_VERSION\s*=\s*(\d+)/); console.log(m[1])"
+node -e "const m = require('fs').readFileSync(process.argv[1],'utf8').match(/CONTRACT_SCHEMA_VERSION\s*=\s*(\d+)/); console.log(m ? m[1] : 'unknown')" .claude/adapters/<adapter>.js
+node -e "const m = require('fs').readFileSync(process.argv[1],'utf8').match(/CONTRACT_SCHEMA_VERSION\s*=\s*(\d+)/); console.log(m ? m[1] : 'unknown')" .claude/integrator/adapters/<adapter>.js
 ```
 
-If installed schema < repo schema → 🔴 reference adapter has evolved; contract output shape may differ. Queue for repair.
+If installed schema < reference schema → 🔴 pilot reference evolved (e.g., last `/ecosystem:update` brought new schema); queue for repair.
 
-If installed schema > repo schema → 🟡 installed is ahead (manual edit?); investigate before continuing.
+If installed schema > reference schema → 🟡 installed is ahead (manual hack?); investigate before continuing.
 
-**Check D3 — adapter body diff against repo reference at source_ref**
+**Check D3 — adapter body diff (header-stripped local comparison)**
+
+Compare body of pilot reference vs installed instance — strip JSDoc metadata header (which legitimately differs between layers per dual-location semantics):
 
 ```bash
-git --no-pager diff <source_ref> HEAD -- adapters/<adapter>.js
+node -e "
+const fs = require('fs');
+function stripHeader(s) {
+  s = s.replace(/\r\n/g, '\n');
+  const idx = s.indexOf('const CONTRACT_SCHEMA_VERSION');
+  return idx >= 0 ? s.slice(idx) : s;
+}
+const ref = stripHeader(fs.readFileSync(process.argv[1], 'utf8'));
+const ins = stripHeader(fs.readFileSync(process.argv[2], 'utf8'));
+if (ref === ins) { console.log('EMPTY'); process.exit(0); }
+const refLines = ref.split('\n'), insLines = ins.split('\n');
+let diff = 0, fnDriftHits = 0;
+const fnRe = /function\s+(transformTo\w+Input|validateContract|parseFrontmatter|extractSections|slugify)\b/;
+for (let i = 0; i < Math.max(refLines.length, insLines.length); i++) {
+  if (refLines[i] !== insLines[i]) {
+    diff++;
+    if ((refLines[i] && fnRe.test(refLines[i])) || (insLines[i] && fnRe.test(insLines[i]))) fnDriftHits++;
+  }
+}
+console.log('DIFF:' + diff + ' lines; fnDriftHits=' + fnDriftHits);
+" .claude/adapters/<adapter>.js .claude/integrator/adapters/<adapter>.js
 ```
 
-(`source_ref` from installed adapter metadata is the repo commit at install time.)
+Categorize:
+- `EMPTY` → ✅ no body drift
+- `DIFF:N` with `fnDriftHits>0` → 🔴 functional drift in transform/validate/parse pipeline; queue for repair
+- `DIFF:N` small (<10) with `fnDriftHits=0` → 🟡 cosmetic; metadata refresh sufficient
+- `DIFF:N` large (≥10) with `fnDriftHits=0` → 🟡→🔴 escalate (structural change in data/strings)
 
-Categorize diff:
-- Empty diff → ✅ no body drift
-- Diff in transformation logic (parseFrontmatter / extractSections / transformTo*Input) → 🔴 functional drift; queue for repair
-- Diff only in comments / metadata → 🟡 cosmetic; bump source_ref but skip repair
+**Note on `@source_ref`:** post DEC-DEV-0044 `@source_ref` is audit-only (tracks ecosystem repo commit at install time via `.claude/adapters/.sync-metadata.yaml`); no longer used as drift primary key. Cross-repo `git diff` removed.
 
 Aggregate drift report:
 
@@ -110,8 +135,8 @@ For each contract flagged as breaking in Stage 3:
    REPAIR MODE: yes; existing CNT-NNN at .claude/integrator/contracts/CNT-NNN.yaml; reference adapter has evolved at <new-source-ref>; user-confirmed contract repair.
    ```
 
-2. Subagent re-checks `adapters/` for matching reference adapter:
-   - Reference still matches → re-instantiate (copy new reference body + inject new metadata: `target_tool_version: <new>`, `source_ref: <repo HEAD>`, `installed_at: <now>`)
+2. Subagent re-checks `.claude/adapters/` for matching reference adapter (per tri-location DEC-DEV-0040 Q1 refined):
+   - Reference still matches → re-instantiate (copy new reference body + inject new metadata: `target_tool_version: <new>`, `source_ref: <last_synced_commit from .claude/adapters/.sync-metadata.yaml>`, `installed_at: <now>`)
    - Reference no longer matches new tool API → custom adapter (rare; subagent surfaces as open question)
 
 3. Update CNT-NNN.yaml + companion .md:
