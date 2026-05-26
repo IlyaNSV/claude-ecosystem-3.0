@@ -19,15 +19,18 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 ## Где мы сейчас
 
-См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-25):
+См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-26):
 - ✅ Phase 0-2 (scaffolding, Integrator read-only, Bootstrap, Product Module Discovery + drift mechanisms)
 - ✅ Phase 3 (Planning + Feature Enrichment + adaptive-depth DA + cascade detection) — smoke-tested DEC-DEV-0023 + 1.1.1 patch shipped
 - ✅ Phase 4 (Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline) — 1.2.0; closure ritual Unit 2 DEC-DEV-0033; runtime smoke 2026-05-20 → status=fail → Phase 4 closed (DEC-DEV-0038)
 - ✅ Phase 5 kickoff (DEC-DEV-0040, 2026-05-25) — Q1-Q6 + functional PMO refactor (D2-B01..05 / D2-T01..08 / D3-01..07 / D4-01..07)
 - ✅ **Phase 5 implementation done (DEC-DEV-0041, 2026-05-25)** — 1.3.0; 10 sub-phase commits A→J; 3 commands (add/remove/update) + 4 skills + 2 subagents + 1 hook + 1 reference adapter (dual-location pattern Q1) + fixture. Static smoke зелёный (adapter contract-test + journal-hook)
-- ⏳ **Next:** runtime smoke S1-S6 (`dev/PHASE_5_SMOKE_TEST_PLAN.md`) в pilot session → Phase 5 closure ritual Unit 2 (fresh session) → решение Phase 6 (conditional) vs Phase 7
+- 📐 **Phase D — Wiki initiative (design frozen 2026-05-26)** — интерактивная документация по самой экосистеме в стиле Confluence. MkDocs Material + защищённый Charter (immutable/append-only секции, PreToolUse hook + git pre-commit) + 3 команды (`/ecosystem:docs-init|update|verify`) + 3 skills + GH Action draft-PR auto-sync. Design: [`dev/wiki-design.md`](dev/wiki-design.md) (§1-17); Readiness gate: [`dev/PHASE_D_DOCS_WIKI_READINESS.md`](dev/PHASE_D_DOCS_WIKI_READINESS.md) (Sections A-H). Implementation BLOCKED Phase 5 closure ritual Unit 2; DEC-DEV-NNNN formal open при start
+- ⏳ **Next:** runtime smoke S1-S6 (`dev/PHASE_5_SMOKE_TEST_PLAN.md`) в pilot session → Phase 5 closure ritual Unit 2 (fresh session) → Phase D kickoff (per `dev/meta-improvement/checklists/phase-kickoff.md` fresh-session) → DW.A-DW.J → решение Phase 6 (conditional) vs Phase 7
 
-**Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий `dev/PHASE_<N>_READINESS.md` (Phase 6 skeleton уже создан в Phase 5.J).
+**Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
+- `dev/PHASE_D_DOCS_WIKI_READINESS.md` — wiki initiative (после Phase 5 closure)
+- `dev/PHASE_6_READINESS.md` skeleton — Design Module conditional (после Phase D + first UI feature)
 
 ## Принципы работы над экосистемой
 

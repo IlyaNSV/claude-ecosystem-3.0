@@ -14,14 +14,26 @@
 
 ---
 
-## A. Phase 5 closure prerequisites
+## A. Pre-Phase-6 prerequisites
+
+> **Sequence note (per design conversation 2026-05-26):** между Phase 5 closure и Phase 6 trigger evaluation вставлена **Phase D — Wiki initiative** (see [`PHASE_D_DOCS_WIKI_READINESS.md`](PHASE_D_DOCS_WIKI_READINESS.md) + [`wiki-design.md`](wiki-design.md)). Phase 6 trigger evaluation происходит после Phase D closure, не сразу после Phase 5.
 
 Перед стартом Phase 6 implementation:
+
+**Phase 5 chain:**
 - [ ] Phase 5 implementation closure (DEC-DEV-NNNN closure entry) — done in sub-phase J
 - [ ] Phase 5 closure ritual Unit 2 (D7 phase-closure.md 6 steps) — fresh session
 - [ ] Phase 5 runtime smoke (S1-S6 per `dev/PHASE_5_SMOKE_TEST_PLAN.md`) executed; results audited
 - [ ] Closure queued findings (if any) addressed or explicitly deferred
-- [ ] `dev/PHASE_6_READINESS.md` (this file) fleshed out from skeleton based on Phase 5 lessons
+
+**Phase D chain (per design conversation 2026-05-26):**
+- [ ] Phase D implementation closure (DW.J — DEC-DEV-NNNN closure entry)
+- [ ] Phase D closure ritual Unit 2
+- [ ] Phase D E2E pilot (DW.I) — sync action → draft PR → merge → deploy verify
+- [ ] Wiki landing page reflects current ecosystem state
+
+**This file:**
+- [ ] `dev/PHASE_6_READINESS.md` (this file) fleshed out from skeleton based on Phase 5 + Phase D lessons
 
 ---
 
