@@ -1,0 +1,88 @@
+scanned_at: 2026-05-26T00:00:00Z
+scan_trigger: pre-install-cc-sdd
+
+existing:
+  hooks:
+    - path: .claude/hooks/integrator/journal-hook.js
+      author: integrator
+      module: integrator
+      purpose: "Autolog every modifying Integrator action to project-journal.md (DEC-DEV-0040 Q6)"
+    - path: .claude/hooks/product/artifact-validate.js
+      author: integrator
+      module: product
+    - path: .claude/hooks/product/bg-extractor.js
+      author: integrator
+      module: product
+    - path: .claude/hooks/product/br-change-trigger.js
+      author: integrator
+      module: product
+    - path: .claude/hooks/product/cascade-check.js
+      author: integrator
+      module: product
+    - path: .claude/hooks/product/ic-change-trigger.js
+      author: integrator
+      module: product
+    - path: .claude/hooks/product/product-handoff-gate.js
+      author: integrator
+      module: product
+    - path: .claude/hooks/product/session-state.js
+      author: integrator
+      module: product
+  commands:
+    namespaces_in_use: [ecosystem, integrator, product]
+    files:
+      - .claude/commands/ecosystem/{bootstrap,enable-d7-audit,update,verify}.md
+      - .claude/commands/integrator/{add,gaps,journal,map,remove,research,scan,status,update}.md
+      - .claude/commands/product/{bg-rename,bg-review,cascade,cleanup,config,da-review,drift-check,feature,handoff,init,meta-feedback,nfr-review,nfr-upgrade-tier,patterns,plan,promote-note,status,validate}.md
+  agents:
+    - path: .claude/agents/integrator/contract-designer.md
+      author: integrator
+    - path: .claude/agents/integrator/tool-profiler.md
+      author: integrator
+    - path: .claude/agents/integrator/tool-researcher.md
+      author: integrator
+    - path: .claude/agents/product/devils-advocate.md
+      author: integrator
+  skills:
+    - .claude/skills/integrator/{contract-design,drift-detection,installation-protocol,research-protocol,tool-docs-generator,tool-profiling}.md
+    - .claude/skills/product/*.md
+  mcps_installed: []
+  settings:
+    file: .claude/settings.json
+    hooks_registered:
+      PostToolUse:
+        - matcher: "Write|Edit"
+          commands: 7  # all product hooks
+        - matcher: "Bash|Write|Edit|NotebookEdit"
+          commands: 1  # integrator/journal-hook
+    permissions_allow: [Read, Write, Edit, Glob, Grep, "Bash(git*)", "Bash(npm install:*)", "Bash(npx:*)", "Bash(mkdir:*)", "WebFetch(github.com)", "WebFetch(npmjs.com)"]
+  mcp_config:
+    file: NOT_PRESENT  # .mcp.json doesn't exist
+  package_json:
+    file: NOT_PRESENT  # no package.json yet — will need to create on cc-sdd install
+
+integrator_owned:
+  - .claude/hooks/integrator/**
+  - .claude/hooks/product/**
+  - .claude/commands/ecosystem/**
+  - .claude/commands/integrator/**
+  - .claude/commands/product/**
+  - .claude/agents/integrator/**
+  - .claude/agents/product/**
+  - .claude/skills/integrator/**
+  - .claude/skills/product/**
+  - .claude/docs/**
+  - .claude/settings.json
+  - .claude/product.yaml
+
+user_customizations_to_preserve: []
+
+conflicts_detected: []
+
+unknown_files: []
+
+notes:
+  - "Pilot tier, ru language."
+  - "No prior tool-catalog entry for cc-sdd globally — will be created by tool-profiler."
+  - "No package.json yet — npm-based install (npx cc-sdd@latest) may require initializing one."
+  - "Real fixture available at .product/handoffs/FM-001-handoff.md for Stage 6 verify."

@@ -110,7 +110,9 @@ Available MCPs: <enumerate>
 Project fixture path: tests/fixtures/FM-FIXTURE-001-handoff.md
 ```
 
-For cc-sdd specifically: one pair `product-module → cc-sdd /kiro:spec-init`. Subagent will check `adapters/handoff-to-ccsdd.js` (reference exists — REUSE per DEC-DEV-0040 Q1), inject metadata, run `--verify-only` smoke.
+For cc-sdd specifically: one pair `product-module → cc-sdd /kiro:spec-init`. Subagent will check `.claude/adapters/handoff-to-ccsdd.js` (project-local reference layer per DEC-DEV-0040 Q1 refined; deployed by `/ecosystem:bootstrap` and synced by `/ecosystem:update`), inject metadata, run `--verify-only` smoke.
+
+If `.claude/adapters/` directory is missing → bootstrap regression. Surface to user: «`.claude/adapters/` отсутствует — run `/ecosystem:update` before retrying». Do NOT proceed to Stage 5.
 
 Receive subagent output (3 blocks: CNT YAML + companion .md + status report). Write CNT files to `.claude/integrator/contracts/`. Adapter instance already at `.claude/integrator/adapters/<adapter>.js` (subagent did the cp + metadata inject).
 

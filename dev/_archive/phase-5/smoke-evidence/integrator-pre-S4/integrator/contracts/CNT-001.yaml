@@ -1,0 +1,133 @@
+# Contract CNT-001 — product-module → cc-sdd
+# Schema: .claude/docs/integrator-module/SPEC.md §5.1 (canonical)
+
+id: CNT-001
+name: "product-handoff → /kiro-spec-init"
+
+producer:
+  module: product-module
+  artifact: feature-handoff
+  artifact_location: ".product/handoffs/FM-{NNN}-handoff.md"
+  schema_version: "HANDOFF-FM-1"
+  format: "markdown+yaml-frontmatter"
+
+consumer:
+  tool: cc-sdd
+  version: ">=3.0.0"
+  entry_point: "/kiro-spec-init"
+  consumed_via: ".kiro/specs/{slug}/brief.md (pre-populated by adapter; kiro-spec-init reads brief.md if present and skips clarification)"
+  format: "markdown"
+
+adapter:
+  type: node-script
+  path: ".claude/integrator/adapters/handoff-to-ccsdd.js"
+  runtime: "node >=14"
+  dependencies: "stdlib only"
+  contract_schema_version: 1
+  smoke_command: "node .claude/integrator/adapters/handoff-to-ccsdd.js --verify-only --allow-draft --fixture .product/handoffs/FM-001-handoff.md"
+  invoke_command: "node .claude/integrator/adapters/handoff-to-ccsdd.js --fixture .product/handoffs/FM-{NNN}-handoff.md"
+
+field_mapping:
+  - producer_field: "frontmatter.id"
+    consumer_field: "(contract guard C-01)"
+    transform: "validate pattern HANDOFF-FM-NNN"
+  - producer_field: "frontmatter.type"
+    consumer_field: "(contract guard C-02)"
+    transform: "must equal feature-handoff"
+  - producer_field: "frontmatter.feature"
+    consumer_field: ".kiro/specs/{slug}/ directory name + brief.md header"
+    transform: "FM-NNN → slug via featureSlug() (lowercase, first 4 words of title)"
+  - producer_field: "frontmatter.title"
+    consumer_field: "brief.md ## header + slug source"
+    transform: "strip ' — handoff' suffix; slugify"
+  - producer_field: "frontmatter.status"
+    consumer_field: "(contract guard C-06)"
+    transform: "must != draft|partial OR --allow-draft passed"
+  - producer_field: "frontmatter.dor_validation_passed"
+    consumer_field: "(contract warning C-07)"
+    transform: "must be true (warning if false)"
+  - producer_field: "frontmatter.blocking_issues"
+    consumer_field: "(contract guard C-08)"
+    transform: "must be empty array"
+  - producer_field: "body §Executive Summary"
+    consumer_field: "brief.md ## Problem section"
+    transform: "extract markdown section by H2 heading regex"
+  - producer_field: "embedded_artifacts.scenarios/business_rules/nfr"
+    consumer_field: "brief.md ## Boundary Candidates + Constraints"
+    transform: "list as bullet points; cc-sdd reads handoff body directly for details"
+
+invariants:
+  - "Producer handoff status must != 'draft' OR adapter invoked with --allow-draft"
+  - "All checks C-01..C-09 (level=error) must pass; C-10 (warn) advisory"
+  - "Adapter is idempotent: rerunning --verify-only with same input produces same output"
+  - "Adapter does NOT modify .product/ — read-only against producer artifact"
+  - "Output written only to .kiro/specs/{slug}/brief.md — no other side effects"
+
+contract_checks:
+  - id: C-01
+    level: error
+    purpose: "frontmatter.id matches HANDOFF-FM-NNN pattern"
+  - id: C-02
+    level: error
+    purpose: "frontmatter.type equals 'feature-handoff'"
+  - id: C-03
+    level: error
+    purpose: "frontmatter.feature matches FM-NNN pattern"
+  - id: C-04
+    level: error
+    purpose: "frontmatter.title non-empty"
+  - id: C-05
+    level: error
+    purpose: "frontmatter.status present"
+  - id: C-06
+    level: error
+    purpose: "Draft guard — status != draft|partial OR --allow-draft"
+  - id: C-07
+    level: warn
+    purpose: "dor_validation_passed == true"
+  - id: C-08
+    level: error
+    purpose: "blocking_issues is empty array"
+  - id: C-09
+    level: error
+    purpose: "Body section present (>0 chars after frontmatter)"
+  - id: C-10
+    level: warn
+    purpose: "embedded_artifacts object-valued fields not deep-parsed (advisory)"
+
+failure_modes:
+  - symptom: "Exit 1 with C-06 fail"
+    cause: "Handoff is draft/partial mode"
+    fix: "Generate production handoff via /product:handoff FM-NNN (without --mode draft), then retry"
+  - symptom: "Exit 1 with C-08 fail"
+    cause: "blocking_issues non-empty in handoff frontmatter"
+    fix: "Resolve listed blockers; regenerate handoff"
+  - symptom: "Exit 2 with parse error"
+    cause: "Frontmatter malformed (missing --- delimiters) or fixture path invalid"
+    fix: "Check handoff structure; verify path is correct relative to project root"
+  - symptom: ".kiro/specs/ ENOENT in non-verify mode"
+    cause: "Adapter run from wrong working directory"
+    fix: "Run from project root"
+
+drift_triggers:
+  - "Product Module changes HANDOFF-FM frontmatter schema (new required fields or rename)"
+  - "cc-sdd updates kiro-spec-init brief.md intake format"
+  - "FM naming convention change (FM-NNN pattern modified)"
+  - "HANDOFF-FM-1 schema version bump → HANDOFF-FM-2"
+
+status: draft
+status_reason: "First verify smoke passes only with --allow-draft (fixture FM-001 is status=partial draft). Will promote to 'active' when production handoff exists and adapter passes without --allow-draft."
+
+created_at: "2026-05-26"
+last_verified: "2026-05-26T10:30:00Z"
+last_verified_command: "node .claude/integrator/adapters/handoff-to-ccsdd.js --verify-only --allow-draft --fixture .product/handoffs/FM-001-handoff.md"
+last_verified_result: "exit 0, passed: true (C-06 warn-level with --allow-draft)"
+
+related_pmo_zones:
+  producer_owns: [D2-B02]
+  consumer_owns: [D2-T01, D2-T04, D2-T06]
+
+notes: |
+  - No repo-level reference adapter existed at time of authoring — adapter created from scratch.
+  - Recommend creating repo-level adapters/handoff-to-ccsdd.js reference copy for reuse across projects (per DEC-DEV-0040 Q1 dual-location pattern).
+  - Companion human-readable doc: CNT-001.md in same directory.

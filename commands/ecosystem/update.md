@@ -98,7 +98,7 @@ rm -rf .claude-ecosystem-tmp/.git
 
 | Type | Items |
 |---|---|
-| **Subdirs** (sync с delete) | `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `output-styles/` (если exists) |
+| **Subdirs** (sync с delete) | `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `adapters/`, `output-styles/` (если exists) |
 | **Root files** (overwrite) | `README.md`, `BOOTSTRAP.md`, `CHANGELOG.md`, `ROADMAP.md`, `install.sh`, `install.ps1`, `.env.template`, `gitignore.template` |
 
 **Never-copy zone (explicitly skip — never enter `.claude/`):**
@@ -127,7 +127,7 @@ rm -rf .claude-ecosystem-tmp/.git
 
 **Diff computation per allowlisted subdir:**
 
-For `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `output-styles/`:
+For `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `adapters/`, `output-styles/`:
 - **To remove:** files в `.claude/<subdir>/` but NOT в `.claude-ecosystem-tmp/<subdir>/`
 - **To add:** files в `.claude-ecosystem-tmp/<subdir>/` but NOT в `.claude/<subdir>/`
 - **To update:** files в both, content differs
@@ -166,6 +166,7 @@ Changeset preview:
     skills/    — N added, M removed, K updated
     hooks/     — N added, M removed, K updated (incl. manifest.yaml)
     docs/      — N added, M removed, K updated
+    adapters/  — N added, M removed, K updated (reference adapters for /integrator:add Stage 5)
     agents/, templates/, output-styles/ — counts
 
   Root files (overwrite):
@@ -210,7 +211,7 @@ cp -r .claude-ecosystem-tmp/commands .claude/commands
 rm -rf .claude/skills
 cp -r .claude-ecosystem-tmp/skills .claude/skills
 
-# ... same for agents/, hooks/, docs/, templates/, output-styles/
+# ... same for agents/, hooks/, docs/, templates/, adapters/, output-styles/
 ```
 
 For each ecosystem-zone root file:

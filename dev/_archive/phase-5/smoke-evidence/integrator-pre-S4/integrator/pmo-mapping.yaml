@@ -1,0 +1,59 @@
+# PMO coverage map — per SPEC §4.3
+# Canonical zone IDs from .claude/docs/pmo/pmo-map.md only (DEC-DEV-0040 §Q5)
+# Updated by /integrator:add, /integrator:update, /integrator:remove
+
+version: 1
+last_updated: "2026-05-26T10:10:00Z"
+
+coverage:
+  # D1 — Discovery & Strategy (Product Module zones; not affected by cc-sdd install)
+  # D2 — Specification (mixed: B-zones by Product Module; T-zones by cc-sdd now)
+
+  D2-B02:
+    # Feature Specification — owned by Product Module, consumed by cc-sdd
+    covered_by: [product-module]
+    consumed_by: [cc-sdd]
+    primary: product-module
+    secondary: []
+    confidence: high
+    evidence: "Product Module produces FM/SC/BR/VC/IC/LC/NFR artifacts under .product/; handoff.md aggregates these per FM for downstream consumption."
+    since: "2026-04-19"  # Ecosystem bootstrap
+    contracts: [CNT-001]
+    boundary: "Product Module owns Feature Specification; cc-sdd consumes via product-handoff → kiro-spec-init/kiro-spec-requirements"
+    notes: ""
+
+  D2-T01:
+    # Architecture Design
+    covered_by: [cc-sdd]
+    primary: cc-sdd
+    secondary: []
+    confidence: medium
+    evidence: "cc-sdd README: kiro-spec-design generates 'architecture with Mermaid diagrams and File Structure Plan → design.md'. pmo-map.md line 191 confirms D2-T01 as primary for cc-sdd."
+    since: "2026-05-26"
+    contracts: [CNT-001]
+    notes: "Confidence medium — architecture depth varies per feature complexity. Output: .kiro/specs/<feature>/design.md"
+
+  D2-T04:
+    # API/Interface Contract Design
+    covered_by: [cc-sdd]
+    primary: cc-sdd
+    secondary: []
+    confidence: medium
+    evidence: "Interface contracts are implicit in cc-sdd design.md (per kiro-spec-design output structure); no standalone API contract artifact."
+    since: "2026-05-26"
+    contracts: [CNT-001]
+    notes: "Partial coverage. If dedicated API contract artifacts (OpenAPI YAML, typed schemas) are needed, supplement with another tool."
+
+  D2-T06:
+    # Task Decomposition
+    covered_by: [cc-sdd]
+    primary: cc-sdd
+    secondary: []
+    confidence: high
+    evidence: "cc-sdd README: kiro-spec-tasks produces tasks.md with _Boundary:_ and _Depends:_ annotations. pmo-map.md line 191 independently confirms D2-T06 as primary for cc-sdd."
+    since: "2026-05-26"
+    contracts: [CNT-001]
+    notes: "Output: .kiro/specs/<feature>/tasks.md with granular tasks, dependency graph, boundary markers"
+
+  # D3-D6 zones remain uncovered (no tool installed for them yet)
+  # Use /integrator:gaps to see uncovered zones

@@ -63,21 +63,49 @@ Per SPEC §5.1 `transformation.type`:
 
 **Default for D2-Tech pipelines:** `adapter_script`.
 
-### Step 4 — Check for existing reference adapter
+### Step 4 — Check for existing reference adapter (MANDATORY, fail-loud)
 
-Before writing custom code: check `adapters/` (repo top-level) for a reference adapter that matches the (producer, consumer) pair.
+Before writing custom code: **enumerate** `.claude/adapters/` (project-local reference layer, refreshed via `/ecosystem:update` per DEC-DEV-0040 Q1 refined) — do NOT guess a single filename. The cost of false-negative (regen-from-scratch when reference exists) is significantly higher than the cost of an extra Glob.
 
+**Two-source check** — both must run:
+
+1. **Read** `.claude/adapters/README.md` "Текущие адаптеры" table for the canonical list of reference adapters and their target consumers.
+2. **Glob** `.claude/adapters/*.js` to enumerate actual files.
+
+Match candidates against the consumer with **slug-tolerant comparison** — try ALL of these forms before declaring no-match:
+
+| Form | Example for `cc-sdd` |
+|---|---|
+| as-is | `cc-sdd` |
+| hyphens removed | `ccsdd` |
+| underscores | `cc_sdd` |
+| lowercase | `cc-sdd` (already) |
+
+Filename patterns to accept as match (any one is sufficient):
+- `.claude/adapters/<producer>-to-<consumer-form>.js`
+- `.claude/adapters/<artifact-type>-to-<consumer-form>.js` (e.g., `handoff-to-ccsdd.js` where artifact-type=`handoff`, producer=`product-module`)
+- `.claude/adapters/*-to-<consumer-form>.js` (broadest)
+
+**Cross-platform invocation** — use Glob tool (preferred) or Bash with portable glob:
 ```bash
-ls adapters/<producer>-to-<consumer>.js 2>/dev/null
+# via Glob tool: pattern ".claude/adapters/*-to-*.js"
+# via Bash (cross-platform):
+ls .claude/adapters/*-to-*.js 2>/dev/null || dir /b .claude\adapters\*-to-*.js 2>nul
 ```
 
-If exists → **use the reference** (per DEC-DEV-0040 Q1 dual-location pattern). Skip to Step 7 (adapter instantiation).
+**Note for repo-ecosystem context:** if this skill runs in the ecosystem repository itself (rare — usually skill runs in pilot via bootstrapped `.claude/`), look at `adapters/` at repo root instead. Pilot context = `.claude/adapters/`. The skill is loaded in pilot context 99% of the time.
 
-If not → proceed to Step 5 (custom adapter design).
+**Decision tree:**
+
+- Found exactly one match → **REUSE per DEC-DEV-0040 Q1**. Skip to Step 7 (cp + metadata inject). Do NOT proceed to Step 5.
+- Found multiple matches → escalate to main session with the list; ask which to reuse.
+- Found zero matches **after exhaustive Glob + README consultation** → escalate to main session: "No reference adapter found for <producer> → <consumer> in adapters/ after checking forms [<list>]. Authoring custom — confirm?" Only then proceed to Step 5.
+
+**Hard rule:** a single failed `ls <guessed-name>.js` is NOT an exhaustive check and MUST NOT trigger Step 5.
 
 ### Step 5 — Design custom adapter (if no reference exists)
 
-Follow `adapters/handoff-to-ccsdd.js` as the canonical structural template:
+Follow `.claude/adapters/handoff-to-ccsdd.js` as the canonical structural template (or repo-root `adapters/handoff-to-ccsdd.js` if running in ecosystem repo):
 
 1. **Header metadata block** (JSDoc comments): `@target_tool`, `@target_tool_version`, `@contract_schema_version`, `@source_ref`, `@installed_at`. Repo reference leaves last 3 blank; install populates them.
 2. **`--verify-only --fixture <path>`** mode mandatory — for Stage 6 contract-test without invoking the actual consumer.
@@ -87,7 +115,7 @@ Follow `adapters/handoff-to-ccsdd.js` as the canonical structural template:
 6. **Transformation function** — produces the consumer's input shape; embeds `contract_schema_version`.
 7. **Exit codes:** 0 contract OK, 1 contract validation failed, 2 parse error.
 
-Place new reference adapter at `adapters/<producer>-to-<consumer>.js` (it will be copied to `.claude/integrator/adapters/` on install).
+Place new reference adapter at `.claude/adapters/<producer>-to-<consumer>.js` (pilot-local; from there it will be copied to `.claude/integrator/adapters/` on install). Manually back-sync to ecosystem repo's `adapters/` for next `/ecosystem:update` cycle — add a TODO note in CNT companion .md.
 
 ### Step 6 — Write the CNT-NNN.yaml + CNT-NNN.md pair
 
@@ -102,7 +130,7 @@ Use the canonical CNT YAML template (Step 8 below). Companion .md narrates:
 
 For both reference-reused and newly-written adapters, the install step is identical:
 
-1. `cp adapters/<adapter>.js .claude/integrator/adapters/<adapter>.js`
+1. `cp .claude/adapters/<adapter>.js .claude/integrator/adapters/<adapter>.js`
 2. Inject metadata header values:
    - `@target_tool_version: <from tool profile>`
    - `@source_ref: <git rev-parse HEAD>` (commit hash of reference at install time)
@@ -173,7 +201,7 @@ Contract creation triggers `journal-hook` (Phase 5.F) — entry tagged `#contrac
    - `transformation.type` — NOT `adapter_type`, `kind`
    - `transformation.script` — NOT `adapter`, `adapter_path`
    - `failure_modes[].symptom / likely_cause / action` — NOT `error / cause / fix`
-2. **Skipping reference-adapter check (Step 4).** Custom adapter when reference exists = duplicate maintenance burden + drift risk.
+2. **Skipping reference-adapter check (Step 4) or doing it narrowly.** Custom adapter when reference exists = duplicate maintenance burden + drift risk + DEC-DEV-0040 Q1 dual-location violation. Step 4 requires Glob `adapters/*.js` + `adapters/README.md` consultation + slug-tolerant consumer matching (cc-sdd / ccsdd / cc_sdd) — a single guessed `ls` is not exhaustive. Phase 5 runtime smoke (DEV_JOURNAL 2026-05-26) demonstrated false-negative on narrow pattern: subagent missed `handoff-to-ccsdd.js` because producer=`product-module`, then authored a substantively different adapter with broken output contract (no `cc_sdd_input` block).
 3. **Inventing CNT IDs out of sequence.** Assign next free integer; check existing `.claude/integrator/contracts/` first.
 4. **Embedding consumer-specific business logic in adapter.** Adapter does shape transformation only; business decisions stay in Product Module.
 5. **Forgetting `--verify-only` mode in custom adapter.** Stage 6 verify cannot run without it; contract is unfinished.
@@ -183,7 +211,7 @@ Contract creation triggers `journal-hook` (Phase 5.F) — entry tagged `#contrac
 ## Cross-reference
 
 - `docs/integrator-module/SPEC.md` §5 — authoritative contract schema
-- `adapters/handoff-to-ccsdd.js` — reference adapter, structural template for all new adapters
-- `adapters/README.md` — dual-location pattern (DEC-DEV-0040 Q1)
+- `.claude/adapters/handoff-to-ccsdd.js` — reference adapter (project-local), structural template for all new adapters
+- `.claude/adapters/README.md` — tri-location pattern (DEC-DEV-0040 Q1 refined)
 - `tests/fixtures/` — fixtures для contract-test
 - `.claude/integrator/contracts/` (project-local) — installed CNT-NNN pairs

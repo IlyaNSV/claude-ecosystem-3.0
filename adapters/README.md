@@ -1,15 +1,16 @@
 # Reference adapters
 
-Канонические source-of-truth адаптеры `handoff.md` → external D2-Technical инструмент. Шипятся внутри репозитория ecosystem; **не** копируются автоматически в пользовательский проект.
+Канонические source-of-truth адаптеры `handoff.md` → external D2-Technical инструмент. Шипятся внутри репозитория ecosystem **и** деплоятся в pilot's `.claude/adapters/` через `/ecosystem:bootstrap` (greenfield) и `/ecosystem:update` (sync) — это reference layer для contract-designer subagent при `/integrator:add`.
 
-## Dual-location pattern (DEC-DEV-0040 Q1)
+## Tri-location pattern (DEC-DEV-0040 Q1, refined post-Phase 5 smoke)
 
 | Слой | Путь | Назначение | Жизненный цикл |
 |---|---|---|---|
-| **Reference (repo)** | `adapters/<adapter>.js` | Canonical source; обновляется maintainer'ом ecosystem | Перерабатывается между релизами 1.x |
-| **Instance (project)** | `<project>/.claude/integrator/adapters/<adapter>.js` | Установленная копия, привязана к версии инструмента в этом проекте | Создаётся при `/integrator:add <tool>`; обновляется через `/integrator:update <tool>` |
+| **Repo (canonical)** | `<ecosystem-repo>/adapters/<adapter>.js` | Source of truth; обновляется maintainer'ом ecosystem | Перерабатывается между релизами 1.x |
+| **Reference (project)** | `<project>/.claude/adapters/<adapter>.js` | Pilot-local copy of repo canonical; subagent finds reference здесь, не в global cache | Деплоится при `/ecosystem:bootstrap`; синхронизируется при `/ecosystem:update` |
+| **Instance (project)** | `<project>/.claude/integrator/adapters/<adapter>.js` | Установленная копия для конкретного инструмента, с metadata header | Создаётся при `/integrator:add <tool>`; обновляется через `/integrator:update <tool>` (drift repair) |
 
-`/integrator:add` копирует reference → instance + инжектирует metadata header:
+`/integrator:add` Stage 5 (`contract-designer` subagent) копирует **Reference → Instance** + инжектирует metadata header:
 
 ```js
 // @target_tool: cc-sdd

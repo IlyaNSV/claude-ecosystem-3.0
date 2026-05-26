@@ -3381,6 +3381,134 @@ Tracked в `dev/tech-debt/PHASE_4.md` (Журнал статусов внизу 
 
 ---
 
+## DEC-DEV-0044 — Phase 5 runtime smoke: 3 bugs fixed end-to-end, 1 bug deferred, tri-location pattern adopted
+
+**Date:** 2026-05-26
+**Trigger:** Phase 5 closure ritual Unit 2 — runtime smoke per `dev/PHASE_5_SMOKE_TEST_PLAN.md`. Three pilot sub-sessions (S6 `306c196c`, S4 `74d1d4b8`, re-install `a3dd65f9`) executed sequentially, with mid-stream root-cause fixes between scenarios.
+**Tag:** #pilot-finding #bug-fix #architecture #refactor
+
+### Context
+
+Phase 5 implementation (DEC-DEV-0041) shipped с sub-phase J static smoke green. But static smoke validates adapter `--verify-only` against repo's reference file from ecosystem repo CWD — это always works on test machine. Runtime smoke в pilot context surfaced four bug classes the static check couldn't see.
+
+Initial S3 run (before this closure session) had `contract_validation.passed: true` но check schema (10 чеков с levels `error/warn`) и output shape (no `cc_sdd_input` block) divergent от reference (6 чеков с `blocking/warning`). Reading the initial install's project-journal.md showed Bash entries `node -e "var fs=..." part1 part2 part3` 10:18-10:24 — subagent был writing adapter from scratch вместо `cp` from reference. Investigation cascaded.
+
+### Smoke scenarios outcomes
+
+| Scenario | Status | Notes |
+|---|---|---|
+| S6 — journal-hook autolog | PARTIAL→FIXED | Step 1 (Edit on integrator yaml) FAIL; bug 3 found + fixed; verified bonus PASS in S4 |
+| S4 — `/integrator:remove cc-sdd` | PASS clean | All 9 acceptance criteria met; thorough impact report; rollback procedure detailed; `.product/` invariant + global catalog deprecation invariant both upheld |
+| S3 — Stage 6 fixture verify (initial) | PARTIAL FAIL | Контракт `passed: true`, но broken check schema + missing `cc_sdd_input` block surfaced bug 1+2 |
+| S3 re-run | PASS clean | All 8 acceptance criteria met after bug 1+2 fix + re-install. Typed JSON correct, slugify works, full provenance |
+| S5 — `/integrator:update` drift | DEFERRED | Blocked by bug 4 — needs `/integrator:update` Stage 3 refactor under tri-location |
+| S1/S2 — install + zone assignments | validated indirectly | Via re-install observations + pmo-mapping inspection during S4 |
+
+### Bugs found and fixed
+
+**Bug 1 — narrow heuristic in skill+agent for reference adapter lookup**
+
+- *Symptom:* `/integrator:add cc-sdd` Stage 5 regen'ил adapter from scratch via 6 piecemeal Bash `node -e "var fs=..." part1 part2 ...` writes (visible in project-journal 10:18-10:24 from initial install).
+- *Root cause:* `skills/integrator/contract-design.md` Step 4 искал только `adapters/<producer>-to-<consumer>.js` (для (product-module, cc-sdd) → `adapters/product-module-to-cc-sdd.js`, не существует). Не пробовал alternative naming patterns. `agents/integrator/contract-designer.md` имел heuristic `handoff-to-<consumer>.js` но с consumer=`cc-sdd` → `handoff-to-cc-sdd.js`, не матчил реальный `handoff-to-ccsdd.js` (slug normalization мисс).
+- *Fix:* Step 4 в обоих файлах — Glob-based exhaustive enumeration (`*-to-*.js`) + slug-tolerant matching (try cc-sdd / ccsdd / cc_sdd) + mandatory `adapters/README.md` consultation + fail-loud escalation if 0 matches. Anti-pattern #1 в обоих усилен с конкретной отсылкой на эту lesson.
+- *Verification:* re-install session a3dd65f9 → Stage 5 used `cp .claude/adapters/handoff-to-ccsdd.js .claude/integrator/adapters/...` (one Bash entry, not 6 piecemeal writes). Diff между installed и reference показывает только metadata header (3 lines) differs.
+
+**Bug 2 — bootstrap/update не деплоят `adapters/` в pilot**
+
+- *Symptom:* subagent's Glob возвращает empty regardless of how exhaustive — потому что `.claude/adapters/` directory вообще не существует в pilot.
+- *Root cause:* `commands/ecosystem/bootstrap.md` Step 2b/2c полагается на `cp -rn .claude-ecosystem-tmp/. .claude/` для копирования всего, что не в never-copy filter. Но pilot был bootstrap'нут до Phase 5.A scaffolding (commit acb5113) — поэтому adapters/ directory не существовала на момент install. Subsequent `/ecosystem:update` имеет explicit allowlist (`commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `output-styles/`) — `adapters/` НЕ в allowlist. → Never synced. Pilot's installed adapter copy was self-generated → had no source-of-truth at all.
+- *Fix:* update.md Step 4 allowlist расширен до `adapters/`; bootstrap.md Step 2d verify checklist включает `.claude/adapters/handoff-to-ccsdd.js`; adapters/README.md refactored from dual-location → tri-location pattern (repo canonical → pilot reference → pilot instance). Skill+agent+command paths updated from `adapters/<file>.js` → `.claude/adapters/<file>.js` (pilot-context normative).
+- *Verification:* pilot's `.claude/adapters/handoff-to-ccsdd.js` (manually propagated as one-time backfill) → subagent successfully Read + cp'd → S3 re-run PASS clean.
+
+**Bug 3 — journal-hook Windows path regex separator mismatch**
+
+- *Symptom:* S6 step 1 FAIL — Edit на `.claude/integrator/active-tools.yaml` (через Edit tool) не появилось в `project-journal.md`. Mtime не обновился. Bash events работали (step 4 PASS).
+- *Root cause:* `hooks/integrator/journal-hook.js:37-43` INTEGRATOR_PATH_PATTERNS use forward-slash separators (`\.claude\/integrator\/...`). Edit tool на Windows emits `file_path` с backslash-quoted JSON (`"C:\\...\\.claude\\integrator\\..."` → runtime string `C:\...\.claude\integrator\...`). Regex test не матчит → `classifyAction` returns null → hook silent exit без append. Bash command strings содержат forward slashes (`npx cc-sdd@latest --help`), поэтому BASH_PATTERNS работали.
+- *Fix:* `classifyAction` нормализует `p.replace(/\\/g, '/')` перед regex test (line 95). Original path preserved в subject for diagnostics (показывает native separators).
+- *Verification:* S4 produced 4 auto entries on Write events of `.claude/integrator/*.yaml` files (timestamps 12:47:54Z через 12:49:22Z). Same class of bug as DEC-DEV-0031 A1 (regex on multi-entry blocks).
+
+### Bug deferred to Phase 5.1 patch
+
+**Bug 4 — `@source_ref` + `/integrator:update` drift checks broken под tri-location (3 facets)**
+
+- *Facet 4a:* `@source_ref` populated via `git rev-parse HEAD` в pilot context → captures pilot's commit hash, не ecosystem's. Verified in re-install: subagent ran `git -C "C:/Users/pw201/WebstormProjects/my-first-test" rev-parse HEAD` → `e248abd292ce907e7f612e8838125087159ee43a`. Это pilot's HEAD; `git cat-file -t e248abd` from ecosystem repo → `bad object`. (Same hash as initial broken install, suggesting that install also ran `git rev-parse HEAD` в pilot context.)
+- *Facet 4b:* `commands/integrator/update.md` Stage 3 D2 schema check uses `adapters/<adapter>.js` relative path. В pilot нет `adapters/` directory at project root — путь broken. Should be `.claude/adapters/<adapter>.js` per tri-location.
+- *Facet 4c:* D3 body diff `git --no-pager diff <source_ref> HEAD -- adapters/<adapter>.js` runs in pilot's git (или wherever CWD); cross-repo git access не работает (commit hash from another repo's history).
+- *Fix direction (для Phase 5.1):* refactor `/integrator:update` Stage 3 на **local-only comparison** — D2 reads CONTRACT_SCHEMA_VERSION из обоих `.claude/adapters/<file>.js` и `.claude/integrator/adapters/<file>.js`; D3: `diff` тех же двух файлов minus metadata header block. `@source_ref` становится audit-only (forensics); drift detection не зависит от ecosystem git access. Adds metadata file `.claude/adapters/.sync-metadata.yaml` stamped by bootstrap/update (last_synced_commit + last_synced_at + last_synced_from).
+- *Why deferred:* requires ~50-80 lines изменений в update.md + drift-detection.md skill rewrite. User decision 2026-05-26 — stop at clean win point, не блокирует Phase D Wiki initiative.
+
+### Cosmetic finding (parallel track)
+
+**C-03 generator drift — patch suffix not whitelisted**
+
+- *Symptom:* pilot's `.product/handoffs/FM-001-handoff.md` has `generator: product-module-v1.2.0` (patch suffix `.0`). Reference adapter `SUPPORTED_HANDOFF_GENERATORS` whitelist: `['product-module-v1.0', 'product-module-v1.1', 'product-module-v1.2']`. Patch level не учитывается → C-03 warning fail.
+- *Impact:* Not blocking — warning-level check, contract still validates. But surfaces inconsistency between handoff-spec versioning conventions and adapter's whitelist.
+- *Fix direction:* expand whitelist matching to semver-range (e.g., `product-module-v1.2.x` matches `product-module-v1.2.0`). Cosmetic, не блокер.
+
+### Decision
+
+**Phase 5 closure ritual Unit 2: COMPLETE** with bugs 1-3 fixed and verified; bug 4 + C-03 deferred to Phase 5.1 patch.
+
+**Architectural refinement: dual-location → tri-location pattern**
+
+Previous design (`adapters/README.md` pre-fix): «адаптеры **не** копируются автоматически в пользовательский проект». Implicit assumption: contract-designer subagent в pilot context имеет path к ecosystem repo's `adapters/`. This assumption was never wired up:
+- `~/.claude/ecosystem/` global cache — stripped of `.git` during install per bootstrap Step 2b
+- Pilot's filesystem — `adapters/` directory не существует
+- Subagent's tool budget (Read/Grep/Glob/WebFetch/Bash) — no cross-process or cross-repo access
+
+Result: Q1 dual-location pattern was unrealizable, что и привело к bug 1's regen-from-scratch.
+
+Refined model (post-fix):
+
+| Layer | Path | Lifecycle | Read/Written by |
+|---|---|---|---|
+| **Repo canonical** | `<ecosystem-repo>/adapters/<file>.js` | maintainer-edited; semver-bumped between releases | Ecosystem developer |
+| **Pilot reference** | `<pilot>/.claude/adapters/<file>.js` | deployed by `/ecosystem:bootstrap`; synced by `/ecosystem:update` | contract-designer (read), pilot AI for custom-author (write) |
+| **Pilot instance** | `<pilot>/.claude/integrator/adapters/<file>.js` | created by `/integrator:add`; updated by `/integrator:update` (drift repair) | adapter runtime via `node ... --verify-only` |
+
+Drift detection under tri-location works на pure local file comparison — no cross-repo git access needed.
+
+### Outcome
+
+7 файлов changed в ecosystem repo:
+- `hooks/integrator/journal-hook.js` (bug 3)
+- `commands/ecosystem/bootstrap.md`, `commands/ecosystem/update.md` (bug 2 — deploy + sync)
+- `adapters/README.md` (bug 2 — tri-location refactor)
+- `skills/integrator/contract-design.md`, `agents/integrator/contract-designer.md` (bug 1 + bug 2 paths + bug 4a note)
+- `commands/integrator/add.md` (bug 2 — Stage 5 path + bootstrap-regression check)
+
+Pilot one-time backfill (next `/ecosystem:update` will keep these synced automatically):
+- All 7 files above propagated to `<pilot>/.claude/`
+- `.claude/adapters/{handoff-to-ccsdd.js, README.md}` deployed manually
+
+Forensics preserved: `dev/_archive/phase-5/smoke-evidence/integrator-pre-S4/` — broken install snapshot для future debugging reference.
+
+Pilot ready for Phase D Wiki initiative kickoff per `dev/PHASE_D_DOCS_WIKI_READINESS.md`.
+
+### Lessons
+
+1. **Static smoke не ловит cross-platform regressions OR bootstrap-deploy gaps.** Sub-phase J static smoke runs adapter `--verify-only` on ecosystem repo's reference file from ecosystem repo CWD — this always works on test machine. Runtime smoke в pilot context surfaced bugs 1+2+3. *Apply:* каждый Phase ritual должен include pilot runtime smoke as Unit 2 invariant, не just static. Phase scaffolding checklist должен включать «add to bootstrap deploy + update allowlist» item — не assume default `cp -rn` подхватит, т.к. `/ecosystem:update` имеет explicit allowlist.
+
+2. **Tri-location vs dual-location: the third layer wasn't optional.** Project-local reference layer (between repo canonical и pilot instance) — это не nice-to-have, а необходимый mechanism для contract-designer subagent operations. Without it, Q1 was unrealizable. *Apply:* architectural patterns с multi-tier locations должны проходить «can this actually exec в каждом context» verification before документирования. Same lesson likely applies to other (future) cross-repo subagent operations.
+
+3. **Cross-platform path bugs hide в regex separators.** Bug 3 (journal-hook) — variation of DEC-DEV-0031 A1 lesson (regex on multi-entry blocks). *Apply:* always normalize path separators before regex tests. Apply к любым path-matching infrastructures (hook filters, glob patterns, contract validators). Add lint rule? — TODO Phase 5.1.
+
+4. **Hook-driven journals are smoking gun-quality forensics.** Initial broken install's regen-vs-cp was caught by reading journal entries 10:18-10:24 showing piecemeal `node -e` writes. Без hook-driven journal, root cause would've been opaque. *Apply:* journal-hook captures only main-session Bash events (not subagent internals) — limitation. Consider Phase 5.1+ extension to log subagent Bash events (or surface them в a sub-journal).
+
+5. **Metadata field semantics need explicit declaration with operational verification.** Bug 4a surfaced что concept of `@source_ref = ecosystem commit hash` wasn't clear к contract-designer subagent — naive `git rev-parse HEAD` runs in CWD context (pilot's git). *Apply:* every metadata field's source (which repo, which command) должно be документировано в the spec with operational verification clause (`git cat-file -t <hash>` must succeed) as part of contract — это блокирует fabrication. My fail-loud guidance в agent Step 7 was post-hoc — should be normative from spec inception.
+
+6. **Anti-pattern «AI склонен идти narrow when broad needed».** Bug 1's slug-mismatch (`cc-sdd` vs `ccsdd`) — AI следовал literal pattern instruction, не пытался broader matching. Same class as DEC-DEV-0011 (AI «переименовать field для естественности»). *Apply:* в любой skill/agent step «check if X exists», instruct exhaustive enumeration (Glob `*` + slug-tolerant matching) instead of narrow pattern guess. Default to «list all → filter → match» вместо «guess one name».
+
+### Связь с другими entries
+
+- DEC-DEV-0040 — Phase 5 kickoff Q1 dual-location pattern → here refined to tri-location.
+- DEC-DEV-0041 — Phase 5 implementation closure; this entry is Unit 2 (runtime smoke) confirming + correcting Unit 1 sub-phases.
+- DEC-DEV-0031 A1 — regex-on-multi-entry-blocks lesson; bug 3 is the same class (regex separator assumption).
+- DEC-DEV-0011 — AI canonicalization drift; bug 1's narrow-glob is the same class (AI follows literal pattern, не пробует variations).
+- DEC-DEV-0042 — `/ecosystem:update` closed-list cleanup pattern; bug 2's allowlist extension follows same convention (explicit subdir list, no runtime inference).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

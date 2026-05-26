@@ -2,7 +2,7 @@
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 5 (Integrator Phase 2 — Installation + first adapter).
 >
-> **Статус (2026-05-25):** ✅ Phase 5 implementation completed (DEC-DEV-0041). 10 sub-phase commits A-J shipped; static smoke зелёный (Stage 6 fixture contract-test exit 0). Runtime smoke (S1-S6) pending — `dev/PHASE_5_SMOKE_TEST_PLAN.md`. Closure ritual Unit 2 (D7 fresh-session) — после runtime smoke.
+> **Статус (2026-05-26):** ✅ Phase 5 implementation completed (DEC-DEV-0041) + ✅ runtime smoke + closure completed (DEC-DEV-0044). 4 PASS clean (S1/S2/S4 + S3 post-fix), S6 PARTIAL→FIXED, S5 deferred. 3 bugs fixed end-to-end (bug 1 skill+agent heuristic, bug 2 bootstrap/update deploy gap, bug 3 journal-hook Windows path); bug 4 + C-03 cosmetic deferred к Phase 5.1 patch. Plan archived [`dev/_archive/phase-5/`](_archive/phase-5/). Phase D Wiki initiative unblocked.
 >
 > **Предыстория:** ✅ Kickoff session проведена 2026-05-25 — все Q1-Q6 архитектурные вопросы + функциональный рефактор PMO-карты закрыты через **DEC-DEV-0040**. Pre-kickoff doc-consistency cleanup выполнен 2026-05-22 (структурный фикс SPEC §9, doc-rot, F5/F6/F9 — см. §A.4).
 >

@@ -327,6 +327,7 @@ Check presence of:
 - `.claude/docs/integrator-module/SPEC.md`
 - `.claude/docs/product-module/SPEC.md`
 - `.claude/templates/project/CLAUDE.md.template`
+- `.claude/adapters/handoff-to-ccsdd.js` (reference for `/integrator:add cc-sdd` Stage 5 — REUSE per DEC-DEV-0040 Q1)
 
 If any missing → abort with clear error listing missing items. Suggest re-running with `--force` or checking network.
 

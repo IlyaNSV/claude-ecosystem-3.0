@@ -1,0 +1,76 @@
+# Active tools under Integrator management
+# Schema: .claude/docs/integrator-module/SPEC.md §4.2
+# Updated by /integrator:add, /integrator:update, /integrator:remove
+
+version: 1
+
+tools:
+  - name: cc-sdd
+    version_installed: "3.0.2"
+    source: npm
+    source_spec: "cc-sdd@latest"
+    installed_at: "2026-05-26T10:10:00Z"
+    last_verified: null  # set after Stage 6 fixture test passes
+    install_command: "npx cc-sdd@latest --claude-skills --lang ru --overwrite force"
+    install_notes:
+      - "Installed with --overwrite force; CLAUDE.md was overwritten then restored from backup .claude/integrator/backups/20260526T100844Z/CLAUDE.md.pre-add-cc-sdd"
+      - "cc-sdd's intended CLAUDE.md content saved at .claude/integrator/backups/20260526T100844Z/CLAUDE.md.cc-sdd-version (available for optional manual merge)"
+      - "Conflict resolution per Stage 2 approve gate: user chose 'skip' for CLAUDE.md"
+    catalog_ref: "~/.claude/integrator/tool-catalog/cc-sdd.yaml"
+    category: spec-gen
+    license: MIT
+    home_url: https://github.com/gotalab/cc-sdd
+    docs_url: https://github.com/gotalab/cc-sdd/blob/main/tools/cc-sdd/README.md
+
+    claude_primitives:
+      # Skills (17) — installed to .claude/skills/kiro-*/SKILL.md
+      - .claude/skills/kiro-discovery/
+      - .claude/skills/kiro-spec-init/
+      - .claude/skills/kiro-spec-requirements/
+      - .claude/skills/kiro-spec-design/
+      - .claude/skills/kiro-spec-tasks/
+      - .claude/skills/kiro-impl/
+      - .claude/skills/kiro-spec-batch/
+      - .claude/skills/kiro-steering/
+      - .claude/skills/kiro-steering-custom/
+      - .claude/skills/kiro-validate-gap/
+      - .claude/skills/kiro-validate-design/
+      - .claude/skills/kiro-validate-impl/
+      - .claude/skills/kiro-verify-completion/
+      - .claude/skills/kiro-review/
+      - .claude/skills/kiro-debug/
+      - .claude/skills/kiro-spec-quick/
+      - .claude/skills/kiro-spec-status/
+      # Settings + templates (16 files) — under .kiro/settings/templates/
+      - .kiro/settings/templates/specs/
+      - .kiro/settings/templates/steering/
+      - .kiro/settings/templates/steering-custom/
+      # Workspace dirs (empty at install) — populated per /kiro-spec-* invocation
+      - .kiro/specs/
+      - .kiro/steering/
+      - .kiro/steering-custom/
+
+    pmo_zones_covered: [D2-T01, D2-T04, D2-T06]
+    pmo_zones_boundary: [D2-B02]  # consumed-from, not owned-by
+
+    contracts: [CNT-001]  # product-module → cc-sdd /kiro-spec-init (status: draft)
+
+    conflicts_resolved:
+      - path: CLAUDE.md
+        severity: blocking
+        decision: skip
+        decided_at: "2026-05-26T10:08:00Z"
+        method: "force-install + restore from backup"
+        backup: .claude/integrator/backups/20260526T100844Z/CLAUDE.md.pre-add-cc-sdd
+        cc_sdd_intended_content: .claude/integrator/backups/20260526T100844Z/CLAUDE.md.cc-sdd-version
+      - path: .claude/skills/
+        severity: warning
+        decision: accept
+        decided_at: "2026-05-26T10:08:00Z"
+        note: "kiro-* sub-namespace additive; no file collision"
+
+    smoke_check_last_run:
+      timestamp: "2026-05-26T10:10:00Z"
+      result: pass
+      command: "ls .claude/skills/kiro-discovery/"
+      output: "SKILL.md present"

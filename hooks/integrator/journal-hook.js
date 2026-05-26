@@ -90,8 +90,11 @@ function classifyAction(toolName, toolInput) {
   if (toolName === 'Write' || toolName === 'Edit' || toolName === 'NotebookEdit') {
     const p = toolInput.file_path || toolInput.notebook_path || '';
     if (!p) return null;
+    // Normalize backslash to forward slash; INTEGRATOR_PATH_PATTERNS use `/` but
+    // Edit/Write tool emit native separators (`\` on Windows).
+    const pNorm = p.replace(/\\/g, '/');
     for (const pat of INTEGRATOR_PATH_PATTERNS) {
-      if (pat.test(p)) {
+      if (pat.test(pNorm)) {
         return { action: 'edit', subject: path.relative(PROJECT_ROOT, p) || p, tool: toolName };
       }
     }

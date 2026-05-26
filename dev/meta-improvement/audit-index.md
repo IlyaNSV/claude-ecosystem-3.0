@@ -11,6 +11,8 @@ Markers waiting to be processed. Hook appends rows between the sentinel comments
 | session_id | ended_at | target_project | transcript_path |
 |---|---|---|---|
 <!-- PENDING_ROWS_START -->
+| `26c2c8a4-19d1-4ec1-99a2-c8298e7c9b38` | 2026-05-26T12:09:34.589Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\26c2c8a4-19d1-4ec1-99a2-c8298e7c9b38.jsonl` (reason: prompt_input_exit) |
+| `e6ae0749-c97d-4d76-aaf9-c18c1124804e` | 2026-05-26T11:14:10.907Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\e6ae0749-c97d-4d76-aaf9-c18c1124804e.jsonl` (reason: prompt_input_exit) |
 | `be9d5934-9ec7-4c17-b4c1-69fd31f83564` | 2026-05-26T09:49:15.674Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\be9d5934-9ec7-4c17-b4c1-69fd31f83564.jsonl` (reason: prompt_input_exit) |
 <!-- PENDING_ROWS_END -->
 
@@ -38,6 +40,9 @@ Sessions already audited. Re-audit requires `--force` (will overwrite per-sessio
 | `fbb32599-4066-435b-a92d-54374b683596` | 2026-05-15T08:00:00Z | my-first-test | 4 | full | partial | 2/2/0/11/0 | 0/3/2 | [`fbb32599-4066-435b-a92d-54374b683596.md`](audit-reports/fbb32599-4066-435b-a92d-54374b683596.md) |
 | `9da2652a-7d70-452a-9e74-fe6cbfcc4b3d` | 2026-05-15T09:30:00Z | my-first-test | 4 | full | partial | 0/2/0/12/1 | 0/2/0 | [`9da2652a-7d70-452a-9e74-fe6cbfcc4b3d.md`](audit-reports/9da2652a-7d70-452a-9e74-fe6cbfcc4b3d.md) |
 | `8f10e02f-816c-4b56-a364-cdc925d00f6f` | 2026-05-15T11:30:00Z | my-first-test | 4 | full | partial | 0/1/0/14/0 | 0/0/1 | [`8f10e02f-816c-4b56-a364-cdc925d00f6f.md`](audit-reports/8f10e02f-816c-4b56-a364-cdc925d00f6f.md) |
+| `306c196c-89e7-442f-810e-d25c8cb903b6` | 2026-05-26T12:34:50Z | my-first-test | 5 | manual | partial | 0/1/0/5/0 | 1/0/0 | manual: DEC-DEV-0044 (S6 — journal-hook bug 3 found+fixed) |
+| `74d1d4b8-df7e-468b-a0f3-52aebc81a089` | 2026-05-26T12:52:23Z | my-first-test | 5 | manual | clean | 1/0/0/5/0 | 0/0/0 | manual: DEC-DEV-0044 (S4 — /integrator:remove PASS clean) |
+| `a3dd65f9-a130-4319-a168-2e867121bf0c` | 2026-05-26T13:28:31Z | my-first-test | 5 | manual | clean | 3/0/0/3/0 | 0/2/0 | manual: DEC-DEV-0044 (re-install — bug 1+2 fix verified; covers S1/S2/S3; bug 4 + C-03 warning-level deferred) |
 <!-- PROCESSED_ROWS_END -->
 
 ---

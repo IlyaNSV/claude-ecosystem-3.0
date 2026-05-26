@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-26 (Phase D — Wiki design frozen).
+> **Последнее обновление:** 2026-05-26 (Phase 5 runtime smoke + closure — DEC-DEV-0044).
 
 ## Где мы сейчас
 
@@ -41,19 +41,28 @@
    — 10 sub-phase commits A-J; Stage 6 fixture contract-test verified (exit 0; 6 checks pass)
    — Per DEC-DEV-0040 Q3 boundary: Integrator-only scope (Stage 6 ends at fixture verify);
      production routing (handoff → live /kiro:spec-init) → Orchestrator (out of Phase 5)
-   — Phase 5 runtime smoke S1-S6 → dev/PHASE_5_SMOKE_TEST_PLAN.md (pending execution)
    — DEC-DEV-0041 closure entry
+
+✅ Phase 5 runtime smoke + closure (2026-05-26) — DEC-DEV-0044
+   — 4 PASS clean (S1/S2/S4 + S3 post-fix); S6 PARTIAL→FIXED; S5 deferred
+   — 3 bugs fixed end-to-end: bug 1 (skill+agent narrow heuristic), bug 2 (bootstrap/update не deploy adapters/),
+     bug 3 (journal-hook Windows path regex separator)
+   — Architectural refinement: Q1 dual-location → tri-location pattern (repo canonical → pilot reference layer
+     `.claude/adapters/` → pilot instance `.claude/integrator/adapters/`)
+   — Bug 4 (@source_ref + /integrator:update Stage 3 drift checks) + C-03 cosmetic deferred to Phase 5.1 patch
+   — Plan archived dev/_archive/phase-5/PHASE_5_SMOKE_TEST_PLAN.md; forensics dev/_archive/phase-5/smoke-evidence/
 
 [We are here ─────────────────────────────────────]
 
-⏳ Phase 5 runtime smoke (S1-S6) — pending execution; closure ritual Unit 2 after smoke audited
+⏳ Phase 5.1 patch (parallel track) — bug 4 fix (3 facets: @source_ref ecosystem-tracking + Stage 3 D2/D3 local-only refactor)
+   + C-03 generator semver-range + S5 drift detection re-run; small surface, non-blocker
 ⏳ 🎯 PILOT POINT — requires Orchestrator Module (out of Phase 5; reframed per DEC-DEV-0040 Q3)
 📐 Phase D — Wiki initiative (design frozen 2026-05-26) — interactive ecosystem docs (Charter + commands + GH Action draft-PR sync)
    — Design: dev/wiki-design.md (§1-17); Readiness gate: dev/PHASE_D_DOCS_WIKI_READINESS.md (Sections A-H)
    — Architecture: MkDocs Material narrative wiki + immutable Charter (PreToolUse hook + git pre-commit) + 3 commands
      (/ecosystem:docs-init, /ecosystem:docs-update, /ecosystem:docs-verify) + 3 skills + 2 GH workflows
    — Sub-phases DW.A-DW.J (~16-25h base, ×2-4 multiplier → 32-50h realistic)
-   — Implementation BLOCKED by Phase 5 closure ritual Unit 2; DEC-DEV-NNNN formal open при start
+   — **UNBLOCKED — Phase 5 closure done (DEC-DEV-0044)**; DEC-DEV-NNNN formal open при start
 ⏳ Phase 6 — Design Module (conditional, activate on first UI feature) — skeleton dev/PHASE_6_READINESS.md
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm)
 

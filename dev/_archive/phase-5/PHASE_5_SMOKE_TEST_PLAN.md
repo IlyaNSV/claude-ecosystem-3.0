@@ -1,8 +1,29 @@
 # Phase 5 — Smoke Test Plan
 
-> **Status:** active until runtime smoke executed, then archived to `dev/_archive/phase-5/`.
+> **Status:** ARCHIVED 2026-05-26 — runtime smoke executed; full closure rationale в DEV_JOURNAL DEC-DEV-0044.
 > **Owner:** developer.
-> **When to run:** after sub-phase J static smoke passes; before Phase 5 closure ritual (Unit 2).
+> **When was run:** 2026-05-26 (3 pilot sub-sessions: S6 `306c196c`, S4 `74d1d4b8`, re-install `a3dd65f9`).
+
+## Execution results (2026-05-26)
+
+| Scenario | Status | Notes |
+|---|---|---|
+| S1 — `/integrator:add cc-sdd` greenfield | ✅ PASS (indirect) | Validated через re-install session a3dd65f9; subagent flow + approve gate + zone assignments verified |
+| S2 — pmo-mapping.yaml zone assignments | ✅ PASS | Inspected post-install: D2-T01/T06 primary cc-sdd, D2-T04 partial, D2-B02 boundary with consumed_by, no phantom IDs |
+| S3 — Stage-6 fixture contract-test | ✅ PASS (clean, post-fix) | Initial run PARTIAL FAIL — surfaced bug 1+2 (regen-vs-reuse + bootstrap-deploy-gap); re-run after fix met all 8 acceptance criteria |
+| S4 — `/integrator:remove cc-sdd` with backup | ✅ PASS clean | Session 74d1d4b8 — all 9 acceptance criteria met; rollback procedure detailed; `.product/` + global catalog invariants upheld |
+| S5 — `/integrator:update cc-sdd` drift detection | ⏳ DEFERRED | Blocked by bug 4 (3 facets — `@source_ref` + Stage 3 D2/D3 path assumptions broken under tri-location); deferred to Phase 5.1 patch |
+| S6 — journal-hook autolog + dedup + retention | ✅ PARTIAL → FIXED | Session 306c196c — step 1 (Edit/Write on integrator yaml) FAIL surfaced bug 3 (Windows path regex); fix applied mid-stream; bonus PASS confirmed in S4 (4 auto entries on Write events) |
+
+## Bugs surfaced + addressed
+
+- **Bug 1** (skill+agent narrow heuristic) — fixed (commit forthcoming)
+- **Bug 2** (bootstrap/update не deploy `adapters/`) — fixed; tri-location pattern adopted
+- **Bug 3** (journal-hook Windows path regex) — fixed
+- **Bug 4** (`@source_ref` + update.md drift checks) — deferred to Phase 5.1 patch
+- **C-03 generator drift cosmetic** — deferred (parallel track)
+
+Full root-cause + lessons + outcome per DEV_JOURNAL.md DEC-DEV-0044.
 
 ---
 
