@@ -84,6 +84,34 @@ Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run requir
 - **OQ-DW-05** — Reference pages auto-generation подход — Claude inline generates каждый раз, или предварительный script extract'ит metadata из frontmatter артефактов, Claude использует extracted manifest?
 - **OQ-DW-06** — Cross-link maintenance — relative paths (`../concepts/modules.md`) vs MkDocs `[[wiki-link]]` plugin? Robustness против файловых перемещений?
 
+### B.2 — Guidance по OQ-DW-06 (анализ Karpathy-style wiki concept, 2026-05-26)
+
+> **Source:** design conversation 2026-05-26 (применимость Karpathy-style wiki к Ecosystem 3.0). Анализ покрыл 3 фронта: продуктовый wiki (deferred — Obsidian покрывает 80%), Orchestrator integration (parked — нет SPEC), Phase D enhancement (включено сюда).
+
+**Рекомендуемая резолюция:** склоняться к `[[wiki-link]]` syntax через MkDocs plugin (`mkdocs-roamlinks` / `mkdocs-ezlinks` / similar — конкретный plugin выбирается на kickoff после quick comparison).
+
+**Pro:**
+- Rename-safe (refactor-friendly при moves в Charter §2 taxonomy — критично для evolving wiki)
+- Поддержка backlinks pane (atomic networked notes pattern — отвечает на «кто ссылается на эту страницу»)
+- Machine-parseable для возможного future LLM-snapshot layer (если pilot покажет need)
+- Single source of truth для cross-link (vs дублирующиеся relative paths между несколькими файлами)
+
+**Con:**
+- +1 plugin dependency (не часть MkDocs Material core; учесть при build env)
+- Convention учить (`[[file]]` vs `[[file|alias]]` syntax)
+- `mkdocs build --strict` должен plugin-validation поддерживать (проверить на DW.G при настройке)
+
+**Scope ограничение:** только cross-link **внутри** `docs/wiki/**`. Links на source-of-truth **вне** wiki (`../../docs/product-module/SPEC.md`, `../../../DEV_JOURNAL.md`, etc.) остаются relative paths — plugin-coverage обычно ограничен wiki tree, и cross-tree links должны выживать без plugin.
+
+**Karpathy concept — где этот выбор стоит:** реализует один из 4 элементов (atomic + networked + LLM-friendly + living-sync). Остальные три:
+- **Living-sync** — уже в Phase D design (Charter §3 source-to-target map + `/ecosystem:docs-update` + GH Action)
+- **Atomic decomposition** — deferred к pilot iteration после DW.D (per design §14 «Pause for manual review»; решение на DW.D pilot pause основано на конкретной боли, не upfront)
+- **LLM-snapshot layer** (aggregate `wiki-llm-snapshot.md` для AI consumption) — deferred к v1.1 candidate; bring-forward trigger: external AI consumer объявится с конкретным need
+
+**Phantom-audience guard:** не расширять scope для несуществующих consumers. `[[wiki-link]]` решает конкретную refactor-safety боль; atomic decomposition + LLM-snapshot — нет конкретной боли сейчас.
+
+Формальное закрепление при kickoff per `dev/meta-improvement/checklists/phase-kickoff.md` Section 1 (Ambiguity resolutions) через DEC-DEV-NNNN open-Phase-D entry. Если на kickoff появится контр-аргумент — guidance можно опрокинуть (это не frozen решение, это recommended starting position).
+
 ---
 
 ## C. Дисциплина scope для Phase D (🟡 важно — против over-engineering)
