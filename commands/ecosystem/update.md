@@ -136,6 +136,27 @@ For root files в allowlist:
 - **To add:** file в upstream но NOT в `.claude/`
 - **To update:** file в both, content differs
 
+**Obsolete contamination detection (post-DEC-DEV-0019 cleanup, per DEC-DEV-0042):**
+
+Older bootstrap implementations (before Path Y was codified) used `cp -rn` from a full clone and accidentally placed never-copy-zone items inside `.claude/`. The rsync-with-delete loop above operates **only inside allowlisted subdirs**, so such items survive forever otherwise. This pass surfaces and removes them.
+
+**Closed list — these are removed from `.claude/` if present** (never invented; never extended at runtime):
+
+| Path | Reason it shouldn't be in `.claude/` |
+|---|---|
+| `.claude/CLAUDE.md` | Ecosystem developer's root CLAUDE.md; project's own CLAUDE.md lives at project root, not inside `.claude/` |
+| `.claude/DEV_JOURNAL.md` | Ecosystem dev's decision log; never relevant to consumer projects |
+| `.claude/dev/` | Internal phase docs / meta-improvement / archives — ecosystem-dev-only |
+| `.claude/INSTALL-HUMAN.md` | Pre-install guide for humans; not for running ecosystem |
+| `.claude/package.json`, `.claude/package-lock.json`, `.claude/eslint.config.js`, `.claude/node_modules/` | Hook lint pipeline — ecosystem-dev-only (DEC-DEV-0023) |
+
+**Out of scope** (NEVER auto-removed — may be the project's own):
+- `.claude/.gitignore`, `.claude/.gitattributes` — project may have customised these
+- `.claude/LICENSE` and any other non-listed root file — not ecosystem-managed
+- Anything outside the closed list above
+
+If a path is present и matches the closed list → mark for removal in the changeset.
+
 **Print preview:**
 
 ```
@@ -152,9 +173,14 @@ Changeset preview:
     ROADMAP.md   — updated
     README.md, BOOTSTRAP.md, install.sh, install.ps1, .env.template, gitignore.template — counts
 
+  Obsolete contamination to remove (if any present; closed list per DEC-DEV-0042):
+    .claude/CLAUDE.md, .claude/DEV_JOURNAL.md, .claude/INSTALL-HUMAN.md
+    .claude/dev/ (entire dir)
+    .claude/package.json, .claude/package-lock.json, .claude/eslint.config.js, .claude/node_modules/
+
   Settings.json hooks: K entries to be re-derived from new manifest
 
-Total: X added + Y updated + Z removed.
+Total: X added + Y updated + Z removed (incl. C contamination items).
 
 Preserved (user zone, untouched):
   .claude/settings.local.json
@@ -201,6 +227,50 @@ cp .claude-ecosystem-tmp/gitignore.template .claude/gitignore.template
 ```
 
 **NEVER touch** anything в never-copy zone or user zone.
+
+### Step 5a: Remove obsolete contamination (per DEC-DEV-0042)
+
+Apply the closed-list removals identified in Step 4. **Only paths in the closed list** — never extend at runtime.
+
+```bash
+# Files (use -f so absent paths don't error; idempotent)
+rm -f .claude/CLAUDE.md
+rm -f .claude/DEV_JOURNAL.md
+rm -f .claude/INSTALL-HUMAN.md
+rm -f .claude/package.json
+rm -f .claude/package-lock.json
+rm -f .claude/eslint.config.js
+
+# Directories (only if exists; do NOT confuse with .claude/docs/ which is allowlisted)
+rm -rf .claude/dev
+rm -rf .claude/node_modules
+```
+
+PowerShell equivalent (Windows):
+
+```powershell
+foreach ($p in @(".claude\CLAUDE.md", ".claude\DEV_JOURNAL.md", ".claude\INSTALL-HUMAN.md",
+                 ".claude\package.json", ".claude\package-lock.json", ".claude\eslint.config.js")) {
+  if (Test-Path $p) { Remove-Item $p -Force }
+}
+foreach ($d in @(".claude\dev", ".claude\node_modules")) {
+  if (Test-Path $d) { Remove-Item $d -Recurse -Force }
+}
+```
+
+**Print:**
+```
+Obsolete contamination removed:
+  .claude/CLAUDE.md (file)
+  .claude/dev/ (directory, N files)
+  ...
+Total: K items removed (or "none — clean install" if all absent).
+```
+
+**Invariants:**
+- Backup (Step 2) already captured these — rollback restores them if user objects.
+- `.claude/.gitignore`, `.claude/.gitattributes`, and any non-listed file are **NEVER** touched here — even if they look ecosystem-related.
+- `.claude/docs/` is an allowlisted subdir, NOT contamination — never confuse with `.claude/dev/`.
 
 ### Step 6: Re-derive `.claude/settings.json` hooks section
 
@@ -262,15 +332,20 @@ Synced from upstream:
 
 Settings.json hooks: re-derived (M hooks active, registered под manifest)
 
+Obsolete contamination cleaned (DEC-DEV-0042):
+  K items removed from .claude/ (CLAUDE.md, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md, package.json, ...)
+  — or "none — clean install" if pilot was bootstrapped post-DEC-DEV-0019.
+
 Preserved (untouched):
   .claude/settings.local.json (your permissions)
   .claude/product.yaml (your config)
   .claude/integrator/ (Integrator state)
   .claude/projects/ (Claude Code session history)
   .product/ (your artifacts — entire)
+  .claude/.gitignore, .claude/.gitattributes (if present — project's own)
 
-Never copied (correctly skipped):
-  CLAUDE.md (root, ecosystem dev's), DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md
+Never copied (correctly skipped from upstream):
+  CLAUDE.md (root, ecosystem dev's), DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md, package.json/node_modules
 
 What's next?
   [1] /ecosystem:verify — confirm health post-update
@@ -300,6 +375,7 @@ What's next?
 - DO NOT auto-commit anything to git (user reviews + commits manually)
 - DO NOT skip backup unless `--no-backup` explicitly passed
 - DO NOT install MCPs (separate concern; user manages MCPs post-bootstrap independently)
+- DO NOT extend the obsolete-contamination closed list at runtime (Step 4 / 5a) — if a new contamination class emerges, patch this spec + bump CHANGELOG instead
 
 ## Rollback
 
@@ -333,6 +409,7 @@ If multiple backups present (subsequent updates) → keep latest backup, delete 
 | Backup | N/A (greenfield) | `.claude-backup-<timestamp>/` (default) |
 | Settings.json | Created from template | Permissions preserved, hooks re-derived |
 | Dev contamination risk | High (cp -rn от full clone) | None (allowlist explicit) |
+| Existing contamination (from old bootstraps) | N/A | Step 5a removes closed-list items (DEC-DEV-0042) |
 
 **TL;DR:** bootstrap = «set everything up first time»; update = «sync ecosystem zone к latest, preserve user state».
 

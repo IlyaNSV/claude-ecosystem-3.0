@@ -6,6 +6,24 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [1.3.1] — 2026-05-26
+
+Patch release: `/ecosystem:update` closed-list cleanup of obsolete contamination from pre-DEC-DEV-0019 bootstraps. Per [DEC-DEV-0042](DEV_JOURNAL.md).
+
+### Modified
+
+- **`commands/ecosystem/update.md`** — added Step 4 «Obsolete contamination detection» (closed list: `.claude/CLAUDE.md`, `.claude/DEV_JOURNAL.md`, `.claude/dev/`, `.claude/INSTALL-HUMAN.md`, `.claude/package.json`, `.claude/package-lock.json`, `.claude/eslint.config.js`, `.claude/node_modules/`) + Step 5a apply block (bash + powershell variants) + summary report row + comparison table row + anti-extension rule in «What NOT to do».
+
+### Rationale
+
+Phase 5 runtime smoke prep вскрыл gap: pilot `my-first-test/.claude/` содержал `INSTALL-HUMAN.md` + `dev/` от старого pre-Path-Y bootstrap-а. Rsync-with-delete в Step 5 работает только внутри 7 allowlisted subdirs — never-copy zone items в `.claude/` root оставались навсегда. Step 5a закрывает gap через закрытый список (8 paths). Backup (Step 2) сохраняет всё ДО cleanup для тривиального rollback.
+
+### Out of scope (invariant)
+
+`.claude/.gitignore`, `.claude/.gitattributes`, `.claude/LICENSE`, и любые non-listed files **никогда** не удаляются — могут быть проектскими. Расширение closed list требует SPEC patch + CHANGELOG entry (not runtime).
+
+---
+
 ## [1.3.0] — 2026-05-25
 
 Phase 5 release: **Integrator Installation + first cc-sdd reference adapter** (Phase 2 of Integrator Module). 3 new commands + 4 new/refactored skills + 2 new subagents + 1 new hook + 1 reference adapter + dual-location pattern. Ships through 10 sub-phase commits A-J. Per [DEC-DEV-0040..0041](DEV_JOURNAL.md).

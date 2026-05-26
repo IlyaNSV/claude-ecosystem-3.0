@@ -3216,6 +3216,87 @@ Modifications:
 
 ---
 
+## DEC-DEV-0042 — `/ecosystem:update` closed-list cleanup of obsolete contamination
+
+**Date:** 2026-05-26
+**Trigger:** pre-Phase-5 runtime smoke prep — обнаружено, что pilot project `my-first-test/` содержит `.claude/INSTALL-HUMAN.md` + `.claude/dev/` от старого bootstrap-а (pre-DEC-DEV-0019 Path Y). `/ecosystem:update` спека их **не удаляла**, потому что rsync-with-delete loop работает только внутри allowlisted subdirs (`commands/, skills/, agents/, hooks/, docs/, templates/, output-styles/`).
+**Tag:** #integrator #ecosystem-update #contamination #phase-5-prep
+
+### Context
+
+Phase 4 родил `/ecosystem:update` как Path Y решение для DEC-DEV-0019 Findings A-D. Finding A (dev contamination) был адресован через **never-copy zone** — закрытый список того, что **не копировать из upstream** (CLAUDE.md, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md, package.json, eslint.config.js, node_modules).
+
+Однако спека описывала только **направление "upstream → .claude/"**. Если эти файлы **уже сидели** в `.claude/` от ошибочного pre-Path-Y bootstrap-а — они просто **оставались навсегда**: rsync-with-delete действует только внутри 7 allowlisted subdirs, а contamination живёт **рядом** с ними (в `.claude/` root) или **в неаллоулистед dir** (`.claude/dev/`).
+
+Phase 5 readiness check вскрыл это в pilot:
+```
+.claude/dev/              ← pre-Path-Y contamination
+.claude/INSTALL-HUMAN.md  ← pre-Path-Y contamination
+```
+
+Запуск `/ecosystem:update` принёс бы Phase 5 deliverables корректно, но contamination остался бы. Будущий `/ecosystem:bootstrap` или Claude-сессия, читающая `.claude/dev/CLAUDE.md`, могла бы быть введена в заблуждение ecosystem-dev контекстом.
+
+### Решение
+
+Дополнить `/ecosystem:update` подшагом **Step 5a — Remove obsolete contamination**:
+1. **Step 4** теперь детектирует contamination через **закрытый список** (closed list) — никогда не runtime-расширяется
+2. **Step 5a** применяет `rm -f` / `rm -rf` к закрытому списку (idempotent — `-f` чтобы absent paths не падали)
+3. Backup (Step 2) сохраняет всё ДО cleanup — rollback тривиален
+4. Closed list синхронизирован с **never-copy zone** того же файла (single source of truth)
+
+### Альтернативы (отвергнутые)
+
+**A. Расширить rsync-with-delete на корень `.claude/`** — отвергнуто. Прямой rsync с delete на `.claude/` root удалил бы пользовательские файлы (`product.yaml`, `settings.local.json`, `.env`, `integrator/`) — это нарушение invariant'а user-zone preservation. Allowlist + closed-list cleanup — корректная инверсия.
+
+**B. Generic «remove everything not in allowlist»** — отвергнуто. False-positive risk слишком высок: пользователь мог добавить кастомные файлы в `.claude/` (например, локальные scripts). Закрытый список идентифицирует ровно те 8 paths, которые **точно** являются ecosystem-dev контаминацией.
+
+**C. Migration script (one-shot)** — отвергнуто. Меньше maintenance (только обновление при появлении нового класса contamination), но даёт worse UX: пользователь должен помнить выполнить migration перед/после update. Inline в update.md — auto-applied + transparent в preview.
+
+**D. Warn-only (без удаления)** — отвергнуто. Половинчатая мера: pilot smoke бы всё равно споткнулся, warning легко игнорировать. Cleanup explicit + backup — full restore доступен.
+
+### Outcome
+
+Файлы изменены (1 file):
+- `commands/ecosystem/update.md` — Step 4 contamination detection table + closed-list spec; Step 5a apply block (bash + powershell); Step 8 summary report row; Comparison table row; "What NOT to do" anti-extension rule.
+
+Закрытый список (8 paths):
+| Path | Тип |
+|---|---|
+| `.claude/CLAUDE.md` | file |
+| `.claude/DEV_JOURNAL.md` | file |
+| `.claude/INSTALL-HUMAN.md` | file |
+| `.claude/package.json` | file |
+| `.claude/package-lock.json` | file |
+| `.claude/eslint.config.js` | file |
+| `.claude/dev/` | directory |
+| `.claude/node_modules/` | directory |
+
+Out-of-scope (NEVER touch): `.claude/.gitignore`, `.claude/.gitattributes`, `.claude/LICENSE`, и любые non-listed files.
+
+### Risks
+
+- **R1 — False positive (пользователь намеренно положил один из этих файлов):** mitigated через backup. Если пользователь объявит, что `.claude/CLAUDE.md` или `.claude/package.json` — это его кастомный artifact, он восстанавливает из `.claude-backup-<timestamp>/` после run.
+- **R2 — Closed list растёт со временем (нет single source of truth synchronization):** mitigated через "What NOT to do" — anti-extension rule запрещает runtime-расширение; новые contamination classes требуют SPEC patch + CHANGELOG entry (procedural enforcement).
+- **R3 — Spec divergence между never-copy zone (Step 4 directional) и closed list (Step 5a destructive):** требует ручной синхронизации. Если в Phase 7+ появится новый dev-only file в repo — обновить **оба** места одновременно. Codified в "What NOT to do".
+
+### Lessons
+
+1. **Invariant directionality — common spec gap.** Спека Path Y закрыла направление "upstream → .claude/" (не копировать never-copy), но не закрыла "пре-существующее contamination в .claude/". Каждое invariant-описание спеки нужно проверять в **обе стороны**: "что НЕ должно попасть" + "что НЕ должно остаться". Это general lesson для будущих SPEC reviews.
+
+2. **Pilot-smoke prep вскрывает spec gaps, которые static review не ловит.** Phase 4 closure ritual (D7) запустил `/ecosystem:update` в pilot, но Phase 4 deliverables не пересекались с contamination paths — gap не сработал. Phase 5 prep потребовал «увидеть текущее состояние pilot» → contamination всплыл. Lesson: ритуал phase-kickoff (D7) должен включать **«inspect pilot .claude/ root structure»** перед запуском update.
+
+3. **Closed-list patterns > generic heuristics для destructive ops.** Generic «remove anything not in allowlist» элегантно, но false-positive risk слишком велик. Закрытый список — verbose, но safe + auditable. Этот pattern применим и к Integrator: `/integrator:remove` уже использует similar approach (explicit primitives list, не sweep).
+
+4. **DEC-DEV-0019 Path Y был корректным архитектурным выбором, но incomplete coverage.** Не критика original decision — incremental discovery. Каждый Path Y-style allowlist спека нуждается в audit-pass "what about pre-existing state matching the negation?". Codify в D7 patterns/ если паттерн повторится.
+
+### Связь с другими entries
+
+- DEC-DEV-0019 — Path Y / never-copy zone introduction; этот entry — completion (covers pre-existing case).
+- DEC-DEV-0023 — установил, что `package.json`/`eslint.config.js` ecosystem-dev-only (lint pipeline); этот entry удаляет их из user-projects.
+- DEC-DEV-0041 — Phase 5 implementation closure; runtime smoke prep вскрыл gap.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
