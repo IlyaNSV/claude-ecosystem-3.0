@@ -11,6 +11,7 @@ Markers waiting to be processed. Hook appends rows between the sentinel comments
 | session_id | ended_at | target_project | transcript_path |
 |---|---|---|---|
 <!-- PENDING_ROWS_START -->
+| `be9d5934-9ec7-4c17-b4c1-69fd31f83564` | 2026-05-26T09:49:15.674Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\be9d5934-9ec7-4c17-b4c1-69fd31f83564.jsonl` (reason: prompt_input_exit) |
 <!-- PENDING_ROWS_END -->
 
 ## Processed
@@ -20,6 +21,14 @@ Sessions already audited. Re-audit requires `--force` (will overwrite per-sessio
 | session_id | audited_at | target | phase | mode | status | coverage (cov/part/fail/nc/unc) | findings (b/w/i) | report |
 |---|---|---|---|---|---|---|---|---|
 <!-- PROCESSED_ROWS_START -->
+| `945809f4-bb16-4fe0-97e5-8cdd91155392` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | clean | 0/0/0/13/0 | 0/0/0 | [`945809f4-bb16-4fe0-97e5-8cdd91155392.md`](audit-reports/945809f4-bb16-4fe0-97e5-8cdd91155392.md) |
+| `e3bfd3a3-7fda-4ed8-be87-d6a713ef4a32` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | findings | 0/0/0/13/0 | 1/2/2 | [`e3bfd3a3-7fda-4ed8-be87-d6a713ef4a32.md`](audit-reports/e3bfd3a3-7fda-4ed8-be87-d6a713ef4a32.md) |
+| `fd5cc61e-66c9-4d78-893c-eae967efd1c2` | 2026-05-26T09:55:04Z | my-first-test | 4 | full | clean | 0/0/0/13/0 | 0/0/0 | [`fd5cc61e-66c9-4d78-893c-eae967efd1c2.md`](audit-reports/fd5cc61e-66c9-4d78-893c-eae967efd1c2.md) |
+| `31394d98-ea1a-4b77-bdc3-c243cc819bed` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | findings | 2/0/0/11/0 | 0/1/1 | [`31394d98-ea1a-4b77-bdc3-c243cc819bed.md`](audit-reports/31394d98-ea1a-4b77-bdc3-c243cc819bed.md) |
+| `0c10a7c0-da21-4676-ada9-08d1ef0468c0` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | fail | 0/1/1/11/0 | 1/0/1 | [`0c10a7c0-da21-4676-ada9-08d1ef0468c0.md`](audit-reports/0c10a7c0-da21-4676-ada9-08d1ef0468c0.md) |
+| `cc1cb16a-fbe2-4735-a1c2-c68ee8b9f689` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | clean | 0/0/0/13/0 | 0/0/0 | [`cc1cb16a-fbe2-4735-a1c2-c68ee8b9f689.md`](audit-reports/cc1cb16a-fbe2-4735-a1c2-c68ee8b9f689.md) |
+| `0781ad12-b57e-4cad-808f-429c4fee2b81` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | findings | 0/0/0/13/0 | 2/4/0 | [`0781ad12-b57e-4cad-808f-429c4fee2b81.md`](audit-reports/0781ad12-b57e-4cad-808f-429c4fee2b81.md) |
+| `a2aa99d4-7d0d-46d1-8295-b7ae768249e1` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | partial | 0/1/0/11/1 | 0/1/1 | [`a2aa99d4-7d0d-46d1-8295-b7ae768249e1.md`](audit-reports/a2aa99d4-7d0d-46d1-8295-b7ae768249e1.md) |
 | `bbb68ac9-0d05-43c4-9566-87891e44a6cf` | 2026-05-20T11:31:17Z | my-first-test | 4 | full | clean | 0/0/0/13/0 | 0/0/0 | [`bbb68ac9-0d05-43c4-9566-87891e44a6cf.md`](audit-reports/bbb68ac9-0d05-43c4-9566-87891e44a6cf.md) |
 | `e1615a0c-149d-446f-9111-7ca8d49d46ab` | 2026-05-20T13:00:00Z | my-first-test | 4 | full | fail | 2/1/1/9/0 | 0/4/1 | [`e1615a0c-149d-446f-9111-7ca8d49d46ab.md`](audit-reports/e1615a0c-149d-446f-9111-7ca8d49d46ab.md) |
 | `bf7eaea4-d53f-4b0d-b736-fd78a6193f8b` | 2026-05-20T11:00:23Z | my-first-test | 4 | full | fail | 1/0/1/11/0 | 0/0/2 | [`bf7eaea4-d53f-4b0d-b736-fd78a6193f8b.md`](audit-reports/bf7eaea4-d53f-4b0d-b736-fd78a6193f8b.md) |
