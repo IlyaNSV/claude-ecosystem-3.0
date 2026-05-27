@@ -4,6 +4,7 @@
 > **Объём:** 33 активных правила (V-*: 15, V-H-*: 10, V-MK-*: 8) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
 > **Назначение:** единый каталог валидационных правил для артефактов D1-D2, handoff и Design Module.
 > **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:meta-feedback` workflow), D2 (`approve_overrides` per artifact).
+> **Читать вместе с:** [pmo-map.md](pmo-map.md) (functional zones), [processes.md](processes.md) (P1-P5 methodology), [artifacts/](artifacts/) (22 типа артефактов), [../product-module/handoff-spec.md](../product-module/handoff-spec.md) (V-H-* handoff rules).
 
 ## 0. Critical Review Summary
 

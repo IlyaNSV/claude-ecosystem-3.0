@@ -2,8 +2,21 @@
 
 > **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D6 внешним инструментам через универсальный handoff.
 
-**Статус:** v1.3.2 — Phase 0-5 shipped (Discovery + Planning + Feature Enrichment + Handoff + Validation full + **Integrator Installation + first cc-sdd reference adapter**). Phase 5 runtime smoke + closure done (DEC-DEV-0044); Phase 5.1 patch done (DEC-DEV-0045 — local-only drift detection + tri-location adapter pattern). **Phase D — Wiki initiative design frozen 2026-05-26** — implementation unblocked (см. [dev/wiki-design.md](dev/wiki-design.md), [dev/PHASE_D_DOCS_WIKI_READINESS.md](dev/PHASE_D_DOCS_WIKI_READINESS.md)). См. [CHANGELOG.md](CHANGELOG.md) и [ROADMAP.md](ROADMAP.md).
+**Статус:** v1.3.2 — Phase 0-5 shipped (Discovery + Planning + Feature Enrichment + Handoff + Validation + Integrator Installation + first cc-sdd reference adapter). Phase 5 closure (DEC-DEV-0044) + Phase 5.1 patch (DEC-DEV-0045 — local-only drift detection + tri-location adapter pattern) done. **Phase D Wiki initiative DEFERRED** (DEC-DEV-0046, 2026-05-27 — phantom-audience guard); active track — local docs polish ([`dev/LOCAL_DOCS_POLISH_PLAN.md`](dev/LOCAL_DOCS_POLISH_PLAN.md)). См. [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md).
 **Целевая аудитория:** solo-разработчики, ведущие продуктовые проекты с Claude Code как primary tool.
+
+---
+
+## Где начать
+
+| Зачем пришёл | Куда смотреть |
+|---|---|
+| 🤔 **Первый раз — что это и зачем** | [Концепция в одной строке](#концепция-в-одной-строке) + [Четыре модуля](#четыре-модуля) ниже → потом [ROADMAP.md «Где мы сейчас»](ROADMAP.md) |
+| 🔧 **Установить и запустить** | [BOOTSTRAP.md](BOOTSTRAP.md) → [INSTALL-HUMAN.md](INSTALL-HUMAN.md) → [Quick Start](#quick-start--двухфазная-установка) ниже |
+| 📖 **Развиваю саму экосистему** | [CLAUDE.md](CLAUDE.md) (repo conventions) → [DEV_JOURNAL.md](DEV_JOURNAL.md) последние 5 entries → [ROADMAP.md](ROADMAP.md) |
+| 🧠 **Понять прошлые decisions** | [DEV_JOURNAL.md](DEV_JOURNAL.md) (DEC-DEV-XXXX entries — 46 на 2026-05-27) |
+| 📚 **API / module reference** | [docs/README.md](docs/README.md) → конкретный module SPEC |
+| 🗺️ **PMO карта (D1-D6)** | [docs/pmo/pmo-map.md](docs/pmo/pmo-map.md) |
 
 ---
 

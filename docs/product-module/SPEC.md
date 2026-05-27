@@ -4,6 +4,7 @@
 > **Роль:** ядро Ecosystem 3.0 — управление D1 (Discovery + Planning) и D2-Behavioral артефактами через унифицированный паттерн «Продуктовый ассистент draft → iterate → approve».
 > **Закрывает:** DEC-A08 (Product Assistant как отдельный agent), DEC-P13 (универсальный паттерн), DEC-ART01..11 (каталог), все итерации 1-9.
 > **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, meta-feedback, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
+> **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones) · [pmo/processes.md](../pmo/processes.md) (P1-P5 methodology) · [pmo/validation.md](../pmo/validation.md) (V-* rules) · [pmo/artifacts/](../pmo/artifacts/) (22 типа) · [handoff-spec.md](handoff-spec.md) (handoff format) · [integrator-module/SPEC.md](../integrator-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules)
 
 ## 1. Philosophy & Role
 

@@ -7,6 +7,8 @@
 > - C3 (`/product:meta-feedback`) — Integrator владеет `validation-config.yaml`. Когда Product Module accept-ит meta-feedback proposal, Integrator updates config + journal entry.
 > - D2 (`approve_overrides`) — Integrator validates contracts с учётом overrides (если handoff содержит `dor_overrides[]`, Integrator адаптер отображает их receiver-у).
 > - B1 (validation_tier) — Integrator при `/integrator:add <tool>` генерирует V-I-* per current tier (pilot tier = меньше cross-boundary правил).
+>
+> **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones — D2-Tech/D3-D6 delegated) · [product-module/SPEC.md](../product-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules) · [../../adapters/README.md](../../adapters/README.md) (reference adapters — Phase 5)
 
 ## 1. Философия модуля
 

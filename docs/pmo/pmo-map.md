@@ -2,6 +2,7 @@
 
 > **Роль:** Навигационная карта PMO-процессов. Говорит ЧТО должно быть сделано, не КАК.
 > **Принцип:** функциональная карта = job descriptions ролей. Для **owned**-зон (D1, D2-Behavioral, D6) — детальные обязанности и артефакты. Для **delegated**-зон (D2-Technical, D3, D4, D5) — те же функциональные обязанности (стабильны, tool-agnostic), но реализация делегирована внешним инструментам через Integrator. Mетодика конкретного инструмента (implementation methodology) — НЕ зашита в карту, она в tool-docs.
+> **Читать вместе с:** [processes.md](processes.md) (методология P1-P5), [validation.md](validation.md) (33 правила), [artifacts/](artifacts/) (22 типа), [../product-module/SPEC.md](../product-module/SPEC.md), [../integrator-module/SPEC.md](../integrator-module/SPEC.md), [../design-module/SPEC.md](../design-module/SPEC.md), [../README.md](../README.md) (docs index).
 
 ## Модель жизненного цикла продукта
 

@@ -9,6 +9,8 @@
 > - B1 (validation_tier) — V-MK-* активируются per tier; в `pilot` режиме только V-MK-08 (token coverage) inline.
 > - B2 (quiet draft hooks) — `design-artifact-validate.js` queues findings при `status: draft`.
 > - D2 (`approve_overrides`) — MK может временно overrideить V-MK блокеры (например, для PoC экранов).
+>
+> **Related:** [docs/README.md](../README.md) (docs index) · [product-module/SPEC.md](../product-module/SPEC.md) (parent module — Design conditional sub-module) · [pmo/artifacts/MK.md](../pmo/artifacts/MK.md), [pmo/artifacts/DS.md](../pmo/artifacts/DS.md), [pmo/artifacts/NM.md](../pmo/artifacts/NM.md) (Design artifacts catalog) · [integrator-module/SPEC.md](../integrator-module/SPEC.md) (peer — tool install delegation)
 
 ## 1. Philosophy & Role
 
