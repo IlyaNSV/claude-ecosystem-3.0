@@ -4298,6 +4298,22 @@ Sub-phase decomposition A→I готов (см. PHASE_6_READINESS Section F refr
 - DEC-DEV-0050 — patch 1.3.3 closure ritual (R2 DEC-DEV numbering verification); applied here (0051 collision check → 0052 confirmed)
 - DEC-DEV-0011 / DEC-DEV-0012 — Phase 3 ambiguity sweep + readiness gate; methodology template
 
+### Follow-up (2026-05-27, inline-session closeout)
+
+После fresh-session kickoff inline review surfaced 3 minor inconsistencies + 1 substantive premise correction:
+
+**(1) Estimate alignment в `PHASE_6_READINESS` Section F.1.** Outcome выше говорит «8-12h focused work post-cuts»; Section F.1 sum from per-sub-phase rows = 11-13h. Расхождение: sub-phase I (closure overhead) был не учтён в outcome figure. *Resolved:* Section F.1 footer добавлен — «Total 9-13h end-to-end = 8-12h focused A→H + ~1h closure I». ROADMAP + CLAUDE.md «Где мы сейчас» phrasing aligned.
+
+**(2) Section F.2 Design DA bullet — phrasing inconsistency.** Section F.2 содержал leftover speculation «Phase 6 имплементирует Design DA — likely новый subagent `agents/design/devils-advocate.md`». Но SPEC `docs/design-module/SPEC.md` не упоминает Design DA вовсе; Q2/Q11 closure выше (defer screen-generator subagent + subagent registration gap irrelevant в v1.0) implicitly cuts `agents/design/` infrastructure из v1.0 entirely. *Resolved:* Section F.2 bullet переписан — «Design DA не в Phase 6 v1.0 scope; D.3 iteration review через Q1 hard approve gate + Q7 menu sufficient; full subagent — v1.1+ candidate если evidence dictates». «product-devils-advocate registration gap» bullet помечен «moot в v1.0».
+
+**(3) Q8 carry-forward — `design-artifact-validate.js` exit code policy.** Q8 specified validation logic (parse, fields, refs, V-MK-08 regex, path norm) но не severity policy. **SPEC §B2 уже отвечает** (line 11 SPEC): quiet-draft mode — `status: draft` → queue findings (silent log, exit 0); `status: final` → block (exit 1). Sub-phase G implementation просто следует SPEC § B2 без architectural decision. *Resolved:* Section H carry-forward subsection добавляет Q8 рядом с Q10 (ссылка на SPEC §B2).
+
+**(4) Trigger phrasing imprecision — substantive correction.** Outcome выше + banner phrased trigger как «implementation trigger pending real UI FM в pilot project». **Empirical verification 2026-05-27 inline:** `my-first-test/.product/features/` содержит 6 FMs (FM-001..FM-006), **все** с `has_ui=true`; FM-003 explicit text «has_ui=true (CRUD-интерфейс; mockups deferred к Phase 6)» — pilot already awaits Phase 6 deliverables. Trigger ACTUALLY fired давно (likely FM-001 epoch). User signal «next FM = UI» в substrate prompt был accepted as fact fresh-session — fresh AI не challenged против empirical state (`grep has_ui .product/features/`). *Resolved:* banner + A.1 + Section B + ROADMAP + CLAUDE.md «Где мы сейчас» phrasing corrected — «implementation pending start» вместо «trigger pending». Sandbox rejection сохранён, но reason simplified: «real FMs available, sandbox излишен» (вместо «phantom-validation guard» — что было правильно но overspecified).
+
+### Lesson 6 (added inline-session follow-up)
+
+**Fresh-session ROI имеет blind spot: substrate premises inherited as facts.** Anti-bias guard работает на decision space (architecture decisions, ambiguity sweep, scope cuts) но не на factual claims в substrate prompt. Если user statement приходит в substrate как «trigger pending» или «next FM = UI» — fresh AI inherits without empirical verification. Result: kickoff phrasing imprecise хотя architectural decisions valid; trigger correction надо делать inline post-kickoff. *Apply:* substrate prompts для future kickoffs должны включать explicit step «empirical state check» — для conditional phases: `grep <trigger-condition> <pilot-path>` BEFORE architectural deliberation. Может быть добавлен к D7 `phase-kickoff.md` Section 1 как pre-Section step.
+
 ---
 
 ## Шаблон новой записи

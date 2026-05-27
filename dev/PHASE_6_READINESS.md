@@ -10,7 +10,7 @@
 
 ## Status banner
 
-🟡 **Architectural kickoff complete — implementation trigger pending** (DEC-DEV-0052, 2026-05-27).
+🟡 **Architectural kickoff complete — implementation pending start** (DEC-DEV-0052, 2026-05-27; trigger fired empirically — pilot `my-first-test` has 6 FMs с has_ui=true awaiting design).
 
 Prerequisite chain complete:
 - ✅ Phase 5 implementation + runtime smoke + closure (DEC-DEV-0041/0044/0045)
@@ -18,7 +18,7 @@ Prerequisite chain complete:
 - ✅ Pre-Phase-6 architectural addendum (DEC-DEV-0048) — Claude Design co-primary + IR groundwork; SPEC v1.1
 - ✅ **Phase 6 kickoff (DEC-DEV-0052)** — 12 Qs resolved + 13 ambiguities + 5 scope cuts approved; sub-phase A→I готов
 
-Implementation trigger остаётся conditional: первая FM с has_ui=true в pilot project. **Sandbox path отвергнут** (phantom-validation guard per DEC-DEV-0052 Option A rejection — synthetic FM не reveals real-pilot bugs, Phase 5 bug 4 precedent). Estimated effort post-cuts: **8-12h focused work** когда trigger fires. **Phase D Wiki initiative DEFERRED** (DEC-DEV-0046) — больше не блокирует Phase 6.
+Trigger conditions met (verified empirically 2026-05-27 inline-session — DEC-DEV-0052 Follow-up): pilot `my-first-test/.product/features/` содержит 6 FMs (FM-001..FM-006), **все** с has_ui=true; FM-003 frontmatter context explicit: «has_ui=true (CRUD-интерфейс; **mockups deferred к Phase 6**)» — pilot уже формально awaits Phase 6 deliverables. **Sandbox path остался отвергнут** — теперь по simpler reason: real FMs available, sandbox излишен. Estimated effort post-cuts: **8-12h focused work** (A→H core) + ~1h closure overhead (I). **Phase D Wiki initiative DEFERRED** (DEC-DEV-0046) — не блокирует.
 
 ---
 
@@ -54,23 +54,23 @@ Implementation trigger остаётся conditional: первая FM с has_ui=t
 | Pre-Phase-6 architectural decisions resolved | ✅ DEC-DEV-0048 | no |
 | **Phase 6 kickoff (12 Qs + 13 ambiguities + 5 cuts)** | ✅ DEC-DEV-0052 | no |
 | Phase D (Wiki) gate | ⏸ DEFERRED — не блокирует | no |
-| **First FM with `has_ui=true` в pilot** | ❌ trigger pending | **yes — single blocker** |
-| Sandbox FM-DESIGN-001 path | ❌ rejected (phantom-validation guard) | no |
+| **First FM with `has_ui=true` в pilot** | ✅ FM-001..FM-006 all have has_ui=true; FM-003 explicit «mockups deferred к Phase 6» (verified 2026-05-27) | no |
+| Sandbox FM-DESIGN-001 path | ❌ rejected — real FMs available, sandbox излишен | no |
 | Runtime smoke S1-S5 1.3.3 в pilot | ⏳ deferred — не блокирует Phase 6 kickoff (orthogonal scope) | no |
 | Phase 5 S5 runtime smoke (drift detection) | ⏳ deferred — не блокирует | no |
 
-**Conclusion:** все architectural и spec prerequisites закрыты (DEC-DEV-0052 closes pre-implementation kickoff). Единственный gate — появление первой UI-feature в pilot project. Sandbox path отвергнут per DEC-DEV-0052.
+**Conclusion:** все architectural, spec, и trigger prerequisites закрыты (DEC-DEV-0052 + Follow-up). Phase 6 implementation **ready to start** — sub-phase A per Section F.1; fresh-session implementation prompt в Section I.
 
 ---
 
 ## B. Phase 6 trigger evaluation
 
-Phase 6 activates when:
-- [ ] At least one FM in pilot project has `has_ui=true`
-- [ ] User intends to design UI mockups (vs delegating to external designer / using existing system)
-- [ ] If no UI features in next 2-3 FMs → defer Phase 6; consider Phase 7 (Integrator maintenance) earlier
+Phase 6 activation conditions — all met as of 2026-05-27 (DEC-DEV-0052 Follow-up, empirical verification):
+- [x] At least one FM in pilot project has `has_ui=true` — **confirmed**: `my-first-test/.product/features/` has 6 FMs (FM-001..FM-006), all has_ui=true
+- [x] User intends to design UI mockups — **confirmed**: FM-003 frontmatter context explicit «has_ui=true (CRUD-интерфейс; mockups deferred к Phase 6)»
+- [x] No deferral conditions apply (≥2-3 UI FMs в immediate scope — все 6 в RL-001 release)
 
-Decision: ⏳ TBD when pilot reaches first FM with UI.
+Decision: ✅ **ready to start Phase 6 implementation**. Sub-phase A per Section F.1; fresh-session prompt в Section I (replace `<FM-ID-here>` actual FM target — FM-001/002/003 первоочередные candidates по dependency order).
 
 ---
 
@@ -168,7 +168,7 @@ ROADMAP оценка 3-4 ч (+ OQ-DM-01 experimentation) **устарела** po
 
 ## F. Зависимости от Phase 5 outcomes + sub-phase implementation plan
 
-### F.1 Sub-phase decomposition A→I (DEC-DEV-0052, total 11-13h)
+### F.1 Sub-phase decomposition A→I (DEC-DEV-0052)
 
 | Sub-phase | Deliverable | Est |
 |---|---|---|
@@ -182,6 +182,8 @@ ROADMAP оценка 3-4 ч (+ OQ-DM-01 experimentation) **устарела** po
 | **H** | Smoke fixture (5 static cases per `smoke-hooks.js` template) + run | 1h |
 | **I** | DEV_JOURNAL closure entry + CHANGELOG `[1.4.0]` + ROADMAP «Где мы сейчас» + tag `v1.4.0` + `dev/_archive/phase-6/` для plan + `dev/PHASE_7_READINESS.md` skeleton | 1h |
 
+**Total estimate:** 9-13h end-to-end (= 8-12h focused implementation A→H per DEC-DEV-0052 outcome + ~1h closure overhead I). Lower bound assumes Q10/Q8 carry-forwards resolve quickly + no новых ambiguities surfaced at sub-phase G.
+
 ### F.2 Phase 5 + patches runway
 
 Phase 5 closure (DEC-DEV-0044/0045) + patches 1.3.3/1.3.4/1.3.5 (DEC-DEV-0047/0049/0051) дали следующий runway для Phase 6:
@@ -191,8 +193,8 @@ Phase 5 closure (DEC-DEV-0044/0045) + patches 1.3.3/1.3.4/1.3.5 (DEC-DEV-0047/00
 - **Local-only drift detection model** (DEC-DEV-0045) — D2/D3 checks сравнивают pilot reference vs pilot instance, no cross-repo `git diff`. Применимо к Stitch adapter если будет drift.
 - **Subagent structural template закрепился** — `tool-profiler` → `contract-designer` pattern (single-tool deep profile + verify-only smoke). Если Phase 6 нужен `screen-generator` subagent (D.2 множественная генерация) — следовать той же structure.
 - **Hook smoke pre-commit gate активен** (DEC-DEV-0023) — `node dev/meta-improvement/scripts/smoke-hooks.js` blocks commits если новый design hook бракован. Phase 6 наследует gate автоматически.
-- **Three-tier DA hierarchy** (DEC-DEV-0030 A.1) — artifact / feature / release scope; Design DA в SPEC stub. Phase 6 имплементирует Design DA — likely новый subagent `agents/design/devils-advocate.md` или extension existing `agents/product/devils-advocate.md` с design-scope mode.
-- **`product-devils-advocate` registration gap** (Phase 4 DEC-DEV-0038 follow-up R7) — может всплыть при Design DA implementation; flag at kickoff чтобы проверить subagent registration cycle.
+- **Three-tier DA hierarchy** (DEC-DEV-0030 A.1) — artifact / feature / release scope. **Design DA не в Phase 6 v1.0 scope** per Q2/Q11 closure (DEC-DEV-0052): screen-generator subagent deferred к v1.1 (C2) → `agents/design/` directory остаётся пустой в v1.0. D.3 iteration review handled через Q1 hard approve gate + Q7 deadlock 4-choice menu — sufficient для v1.0. SPEC `docs/design-module/SPEC.md` не упоминает Design DA explicitly; full Design DA subagent — v1.1+ candidate если evidence dictates (D.3 iterations показывают consistent quality gaps that approve-gate не catches).
+- **`product-devils-advocate` registration gap** (Phase 4 DEC-DEV-0038 follow-up R7) — moot в Phase 6 v1.0 (no design DA subagent создаётся); concern reverts к unrelated Phase 7 maintenance scope.
 - **Methodology-heavy vs code-heavy calibration** (DEC-DEV-0041 lesson): Phase 6 — methodology-heavy если manual workflow для Claude Design (no MCP yet); code-heavy для Stitch MCP integration + screen-generator subagent. **Mixed:** ожидать ×2-3 multiplier против base estimate 3-4ч → realistic **10-20ч**.
 
 ---
@@ -239,6 +241,7 @@ Phase 6 done when:
 
 **Carry-forward decisions (открыты до implementation):**
 - **Q10 (DEC-DEV-0052) — `/design:export` ↔ `/product:handoff` ordering:** при sub-phase G implementation grep `commands/product/handoff.md` для FM has_ui=true branch — добавить explicit `/design:export <FM>` invocation шаг ИЛИ задокументировать «handoff §10 ассистент заполняет из MK/DS/NM без separate command call». Decision point in implementation.
+- **Q8 carry-forward — `design-artifact-validate.js` exit code policy:** Q8 DEC-DEV-0052 specified validation logic (YAML parse, 5 required fields, ref existence, V-MK-08 regex, cross-platform path norm) но не severity policy explicit. **SPEC §B2 уже отвечает:** quiet-draft mode — `status: draft` → queue findings (silent log, exit 0); `status: final` (или non-draft) → block (exit 1). Sub-phase G implementation просто следует SPEC §B2 — no architectural decision required.
 
 **Deferred cosmetic fixes (от DEC-DEV-0050)** — не блокируют Phase 6, но можно подобрать вместе с kickoff:
 - DEC-DEV-0047 duplicate «Связь с другими entries» heading (lines 3806 + 3816 в DEV_JOURNAL).

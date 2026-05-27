@@ -98,7 +98,10 @@
    — Bring-forward triggers: real end-user/stakeholder ask, OR Obsidian insufficient, OR public release prep (см. dev/v1_1_backlog.md)
 ✅ Pre-Phase-6 architectural addendum (DEC-DEV-0048, 2026-05-27) — SPEC v1.1 (Claude Design co-primary + IR groundwork)
 ✅ Phase 6 kickoff (DEC-DEV-0052, 2026-05-27) — 12 Qs / 13 ambiguities resolved + 5 cuts approved; sub-phase A→I готов
-⏳ Phase 6 — Design Module (conditional, activate on first UI feature) — 🟡 architectural ready, implementation trigger pending real UI FM в pilot (sandbox path отвергнут — phantom-validation guard)
+⏳ Phase 6 — Design Module — 🟡 architectural ready, implementation pending start
+   — Trigger fired empirically (DEC-DEV-0052 Follow-up, 2026-05-27): pilot `my-first-test` has 6 FMs (FM-001..FM-006) all has_ui=true; FM-003 explicit «mockups deferred к Phase 6»
+   — Sandbox path remains rejected (real FMs available, sandbox излишен)
+   — Estimated: 9-13h end-to-end (8-12h focused A→H + 1h closure I)
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm)
 
 📦 Post-MVP (v1.1+): Phase D Wiki initiative (deferred), Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, D.7 aspirational layer (recursive auto drill-down + FM.depends_on graph), /product:clarify receiver channel, Orchestrator Module concept, /ecosystem:upgrade. Context: dev/v1_1_backlog.md
