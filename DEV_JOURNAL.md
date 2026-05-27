@@ -4003,6 +4003,74 @@ Backward compatibility: для projects без third-party hooks behavior иде
 
 ---
 
+## DEC-DEV-0050 — Patch 1.3.3 closure findings + patch-level checklist refinement
+
+**Date:** 2026-05-27
+**Trigger:** D7 phase-closure ritual applied at patch level в fresh independent observer mode (per user request after patch 1.3.3 + 1.3.4 + DEC-DEV-0048 same-day landed). First patch-level closure execution; tests applicability of phase-closure.md к patch scope.
+**Tag:** #d7 #process-improvement #closure-findings
+
+### Context
+
+Patch 1.3.3 (DEC-DEV-0047) — первый «patch» (vs «phase») с full readiness + sub-phase decomposition + closure ritual. Fresh-session closure run выполнен independent observer'ом per user prompt. Substrate read order: `phase-closure.md` → `CONVENTIONS.md` → `CHANGELOG[1.3.3]` → ROADMAP «Где мы сейчас» → CLAUDE.md → DEV_JOURNAL DEC-DEV-0047 → readiness + smoke plan.
+
+Mid-execution discovered parallel session shipped `aac5bcb` — patch 1.3.4 (DEC-DEV-0049, `/ecosystem:update` Step 6 merge refactor). Closure plan adjusted inline: numbering shift (0049 → 0050), one finding resolved by parallel work, broader memory snapshot update.
+
+### Findings (severity-ordered)
+
+1. **Memory snapshot STALE (Step 6 — major).** `project_ecosystem_status.md` description + body still references «Phase 5.1 + local docs polish done (DEC-DEV-0044+0045+0046)», does NOT mention DEC-DEV-0047 / 0048 / 0049 / patch 1.3.3 / 1.3.4. «Next steps» item #2 («22 artifact files stale-refs sweep») already shipped (`1b5860f`). MEMORY.md index — same staleness. **Fixed inline** в этой closure run (memory updated к 1.3.4 baseline).
+
+2. **DEC-DEV numbering collision risk (Critical surface — finding C.1).** Same-day fresh-session implementation creates sequential entries без cross-awareness. Sequence что произошло сегодня:
+   - DEC-DEV-0047 (kickoff stub) → uplifted to full Outcome
+   - DEC-DEV-0048 used параллельной сессией для pre-Phase-6 architectural addendum (Claude Design + IR)
+   - DEC-DEV-0049 used параллельной сессией для patch 1.3.4 (update Step 6 merge)
+   - DEC-DEV-0050 (this entry) — closure ritual
+
+   First closure attempt предлагал DEC-DEV-0048; collision detected after substrate read. Resync to 0049; second collision detected post-conflict-check. Final = 0050. **Pattern: same-day parallel sessions нуждаются в numbering verification step.**
+
+3. **Readiness phantom count (Step 4).** `dev/PATCH_1.3.3_READINESS.md` Section 5 sub-phase C говорит «all 12 integrator commands»; actual = 9 (research/add/remove/update/scan/gaps/status/map/journal). Speculative count включал deferred (`replace.md` per DEC-DEV-0040 Q4) + Phase 7 commands (`debug.md`, `docs.md`). Implementation покрыла 9 actual commands корректно. Drafting artifact, harmless.
+
+4. **DEC-DEV-0047 duplicate section heading (Step 1).** Outcome+Lessons имеет 2 раза «Связь с другими entries» heading (DEV_JOURNAL lines 3806 + 3816). Cosmetic doc rot from stub→full uplift. **Deferred fix** — не блокирует Phase 6 kickoff.
+
+5. **bootstrap.md Step 6c platform asymmetry (Step 2).** Bash heredoc only, vs update.md Step 5b с bash + PowerShell parity. DEC-DEV-0047 Lesson 2 фиксирует «cross-platform variants needed»; bootstrap Step 6c упустил то же rationale. **Deferred fix**.
+
+6. **Smoke plan footer convention conflict (Step 5).** `PATCH_1.3.3_SMOKE_TEST_PLAN.md` «After closure» инструктирует archive обоих файлов; CONVENTIONS §5.1 говорит «archive smoke plan only after smoke run done». Wording должен быть conditional. **Deferred fix**.
+
+7. **Resolved by patch 1.3.4 inline:** initial finding 2.1 (update.md Step 6 «Print confirmation» example missing PreToolUse scope-guard) — patch 1.3.4 fully rewrote Step 6 + extended print example to include PreToolUse, PostToolUse Bash matcher, и multiple matcher groups. **No action needed** — addressed by parallel work.
+
+### Refinement candidates for `dev/meta-improvement/checklists/phase-closure.md`
+
+R1. **Explicit note: «applies to patches too»** with substitutions table (Phase N → patch `<ver>`; `PHASE_<N>_READINESS` → `PATCH_<ver>_READINESS`). Patch-level closure ritual successfully validated; no need для separate `patch-closure.md`.
+
+R2. **Step 6 (Memory sync) — add «verify next DEC-DEV-NNNN against DEV_JOURNAL tail»** перед constructing closure entry. Evidence: 2 collisions detected в этом single closure run (0048 collision discovered during substrate read; 0049 collision discovered during conflict check).
+
+R3. **Step 4 (consistency) — add 3-way diff: «readiness Section 5 sub-phase list ↔ DEV_JOURNAL Outcome commit list ↔ actual filesystem»**. Phantom counts в readiness сейчас не surfaced systematically.
+
+R4. **Smoke plan template footer should distinguish:** «archive readiness on closure (always)» vs «archive smoke plan only after runtime scenarios PASS». Currently merged в both шаблонах.
+
+R5. **Same-day parallel session protocol.** When two AI sessions работают concurrently на одной репо, secondary session должна `git pull` или `git log` immediately after substrate read и перед any commit-prep — иначе numbering collisions + missed context. Add к D7 protocol для multi-session days.
+
+### Lessons
+
+1. **Patch-level closure ritual works** с тем же 6-step checklist при substitutions (Phase N → patch ver). Naming convention `PATCH_<ver>_READINESS.md` vs `PHASE_<N>_READINESS.md` — clean differentiator; phase-closure.md покрывает оба без bifurcation.
+
+2. **Fresh-session closure обнаруживает больше findings чем inline.** 7 findings (1 major, 4 deferred, 2 surfaced-only); inline current-session AI biased smooth over («memory тоже current», «count 12 in readiness was just plan-time», etc.). Кост — 5-10 min overhead для context load.
+
+3. **Anti-bias guard работает.** User prompt explicitly enumerated «не smooth over»; fresh-session honored — surfaced DEC-DEV-0048 collision + readiness phantom count + memory staleness even though all sounded «small enough to ignore».
+
+4. **Mid-closure conflict resolution validates resilience.** Parallel session shipped `aac5bcb` после substrate read, before closure execution. Conflict assessment + plan adjustment (numbering shift, finding deduplication) занял ~5 min; не блокировал closure. **Pattern:** D7 closure rituals можно проводить параллельно с development if numbering + scope clearly separable.
+
+5. **Phantom-count drafting bias.** Readiness Section 5 sub-phase C wrote «all 12 integrator commands» (speculative aggregate including deferred + future). Implementation correctly addressed only 9 existing. Future patch-level readinesses should ground counts в `ls commands/<module>/*.md` rather than aspirational catalog.
+
+### Связь с другими entries
+
+- DEC-DEV-0047 (patch 1.3.3 implementation) — closure target
+- DEC-DEV-0048 (pre-Phase-6 architectural addendum) — same-day concurrent; first numbering collision
+- DEC-DEV-0049 (patch 1.3.4 update merge refactor) — same-day concurrent; second numbering collision + resolved finding 2.1
+- DEC-DEV-0033 (Phase 4 closure) — sibling phase-level closure pattern
+- DEC-DEV-0046 (local docs polish) — bundled в 1.3.3; closure verifies bundle complete
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
