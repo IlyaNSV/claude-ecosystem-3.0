@@ -8,34 +8,68 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-Docs polish + Obsidian vault baseline; pivot from Phase D wiki (DEFERRED). Per [DEC-DEV-0046](DEV_JOURNAL.md).
+(Empty — patch 1.3.3 shipped; next stop after pilot smoke.)
 
-### Added
+---
+
+## [1.3.3] — 2026-05-27
+
+Combined release: (1) Integrator scope discipline + environment tiers + pending-actions journal + research hard approve gate (DEC-DEV-0047); (2) local docs polish + Obsidian vault baseline (DEC-DEV-0046, previously [Unreleased]). Driven by pilot session 2026-05-27 evidence (4 Integrator patterns) + phantom-audience guard from Phase D wiki deferral.
+
+### Added — patch 1.3.3 (DEC-DEV-0047)
+
+- **`hooks/integrator/scope-guard.js`** (new) — PreToolUse hook, marker-gated (only fires when `.claude/integrator/.session-context.json` present; 1h stale TTL); detects writes / Bash commands targeting forbidden paths (`.product/`, `.kiro/`, `docs/pmo/`, `.claude/docs/pmo/`) with whitelist exceptions (`.product/{.sessions,.pending}/`, marker itself, hook's own caches, `.claude/pending-actions.md`); warn-only stderr (⚠️ INTEGRATOR SCOPE GUARD) + PA append to `.claude/pending-actions.md`; dedup by `(action, subject, minute)`. Bash matcher is regex sniffer (not AST) — Edit/Write coverage is the reliable layer.
+- **`commands/ecosystem/pending-actions.md`** (new) — read-only listing of `.claude/pending-actions.md` with `--status` / `--source` / `--limit` filters. Default: `--status pending`. PA-000 sentinel excluded from output. `--help` block on unrecognized flags.
+- **`skills/ecosystem/user-action-tracker.md`** (new — new directory `skills/ecosystem/`) — schema + append/mutate protocol для `.claude/pending-actions.md`. PA-NNN counter via tail-scan + sentinel. Source values canon (`integrator` / `product` / `design` / `ecosystem`). Anti-patterns enumerated.
+- **`docs/integrator-module/SPEC.md` §4.2.1 Environment tiers** — semantics (`full` / `partial` / `none`); `environment_agnostic` shortcut; research + install integration; backward-compat (lazy regen, no migration).
+- **`docs/integrator-module/SPEC.md` §7.6 Consilium-pattern** — declared-scope requirement (subject + priors + expected axes); STOP+ask block on subagent fan-out without declared scope; approve gate identical to single-stream.
+- **`dev/PATCH_1.3.3_READINESS.md`** + **`dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md`** — D7 phase-kickoff ritual outputs (patch-level readiness pattern).
+- **DEC-DEV-0047 DEV_JOURNAL entry** — kickoff stub uplifted to full Outcome+Lessons.
+
+### Added — local docs polish (DEC-DEV-0046)
 
 - **`dev/LOCAL_DOCS_POLISH_PLAN.md`** — active track plan (5 stages, 4-9h estimate; actual ~30-45 min)
 - **`docs/README.md`** — entry-point index for docs/ subdirectories (modules + PMO catalogs + common-tasks table)
 - **`.obsidian/{app,appearance,core-plugins}.json`** — vault baseline config (committed); per-machine UI state gitignored
 
-### Modified
+### Modified — patch 1.3.3 (DEC-DEV-0047)
+
+- **`docs/integrator-module/SPEC.md`** §3.1 — read-only approve discipline note; §4.1 profile schema gains `environment_tiers` block.
+- **`skills/integrator/research-protocol.md`** — Phase 1 env-tier identification + consilium-pattern check; Phase 4 environment_tiers extraction guidance; Phase 5 pre-presentation guards (env_tiers completeness + consilium scope) + hard approve gate; new Phase 8 PA append for «🚧 Требует USER» actions; +4 anti-patterns (PROD-only, silent consilium fan-out, auto-chain, lost USER actions).
+- **`skills/integrator/installation-protocol.md`** — Anti-pattern #5 backed by runtime scope-guard hook; Anti-pattern #8 lost USER actions; new Section 10 session-context marker boilerplate spec.
+- **`skills/integrator/tool-profiling.md`** — profile schema `environment_tiers` REQUIRED (or `environment_agnostic: true`); new Step 4.5 per-tier extraction guidance; +2 anti-patterns (field-name drift for env_tiers/suitability/agnostic; skipping env_tiers).
+- **`commands/integrator/research.md`** Step 7 — hard approve gate (STOP — analog `add.md` Stage 2); silence ≠ consent; defer / details / numbered options; no auto-chain to `/integrator:add`.
+- **`commands/integrator/{research,add,remove,update,scan,gaps,status,map,journal}.md`** — session-marker write/cleanup boilerplate в pre-flight + final step (activates `scope-guard.js`).
+- **`hooks/integrator/manifest.yaml`** — register `scope-guard` PreToolUse (matcher Bash|Write|Edit|NotebookEdit).
+- **`dev/meta-improvement/scripts/smoke-hooks.js`** — extended harness (toolName/toolInput overrides, env merge, expectStderrAbsent); helper `writeIntegratorMarker` / `cleanupIntegratorMarker`; 5 new scope-guard test cases (no-marker-no-op, marker+forbidden-write, marker+whitelisted-exception, stale-marker-no-op, marker+Bash-forbidden). All 13 hook cases PASS.
+- **`commands/ecosystem/bootstrap.md`** Step 6c — initialize `.claude/pending-actions.md` with PA-000 sentinel (idempotent).
+- **`commands/ecosystem/update.md`** — preserve `.claude/pending-actions.md` in user zone; Step 5b backfill для pre-1.3.3 installs (bash + PowerShell variants).
+
+### Modified — local docs polish (DEC-DEV-0046)
 
 - **`README.md`** — «Где начать» tri-tier navigation table (first-time / install / develop / decisions / API ref / PMO map); status line fix (Phase D DEFERRED)
 - **`CLAUDE.md`** — «Где мы сейчас» snapshot reflects pivot
 - **`ROADMAP.md`** — Phase D moved to deferred block; local docs polish track added
-- **`dev/v1_1_backlog.md`** — Phase D entry с full architectural intent + bring-forward triggers (~17-26h при возврате)
+- **`dev/v1_1_backlog.md`** — Phase D entry с full architectural intent + bring-forward triggers (~17-26h при возврате); + DEC-DEV-0047 deferred items (hard-block, VM-DevOps)
 - **3 module SPECs** (`product/`, `integrator/`, `design/`) — «Related» cross-link block in intro
 - **`docs/pmo/{pmo-map,validation}.md`** — «Читать вместе с» cross-link block
-- **`docs/pmo/artifacts/README.md`** — stale «(в разработке)» refs fixed for validation.md, processes.md, handoff-spec.md, bg-extraction skill, skills/product/ (all shipped Phase 3-4)
+- **`docs/pmo/artifacts/README.md`** — stale «(в разработке)» refs fixed for validation.md, processes.md, handoff-spec.md, bg-extraction skill, skills/product/
 - **`.gitignore`** — Obsidian per-machine state patterns
 
 ### Deferred
 
+- **Hard-block scope-guard mode** (vs warn-only) — `dev/v1_1_backlog.md` entry. Bring-forward trigger: repeated violation после warn-only ships. Requires DEC-DEV-level review for ecosystem hook convention exception.
+- **S1-S5 runtime smoke** (`dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md`) — execution at user's discretion в next pilot session. Static smoke зелёный (13/13 PASS).
+- **VM-based DevOps Integrator** — surfaced in v1.1+ backlog; orthogonal to scope-guard hardening.
 - **Phase D Wiki initiative full implementation** (DEC-DEV-0046, phantom-audience guard). Plan + readiness + design preserved в `dev/PHASE_D_*.md` + `dev/wiki-design.md` (DEFERRED banners). Bring-forward triggers documented в `dev/v1_1_backlog.md` (~17-26h optimistic при возврате).
 - **MCP for Obsidian bridge** — confirmed unnecessary; Claude already has direct file access. Bring-forward only if Obsidian-specific dynamic data needed.
 - **22 artifact files** в `docs/pmo/artifacts/*.md` — stale «(в разработке)» skill refs. Separate doc-maintenance sweep (~1h estimated).
 
 ### Rationale
 
-Phase D Wiki design frozen 2026-05-26 (DEC-DEV-0044+0045 closure) под предположение 3 audiences: solo dev + end-users + stakeholders. Pre-implementation honest analysis (5 alternatives compared) revealed phantom-audience guard: pre-pilot Ecosystem 3.0 имеет только solo-dev consumer. 80% value через 4-9h Obsidian+README polish vs 32-50h full wiki. Phase D plan preserved для bring-forward when audiences materialize.
+**Patch 1.3.3 (DEC-DEV-0047):** Pilot session `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` (2026-05-27 on `my-first-test/`) surfaced 4 Integrator patterns: PROD-only recommendations без local-dev breakdown; ad-hoc consilium fan-out bypassing approve gate; direct writes to `.product/` violating SPEC §1.2 / §8.1; «🚧 Требует USER» actions lost в narrative. Patch addresses 2 SPEC gaps (B-1 env_tiers, B-3 PA journal) + 2 enforcement gaps (B-2 scope-guard, B-4 hard approve gate). Hard-block deferred to v1.4.0+ (ecosystem hook convention is warn-only; override needs separate DEC-DEV).
+
+**Local docs polish (DEC-DEV-0046):** Phase D Wiki design frozen 2026-05-26 (DEC-DEV-0044+0045 closure) под предположение 3 audiences: solo dev + end-users + stakeholders. Pre-implementation honest analysis (5 alternatives compared) revealed phantom-audience guard: pre-pilot Ecosystem 3.0 имеет только solo-dev consumer. 80% value через 4-9h Obsidian+README polish vs 32-50h full wiki. Phase D plan preserved для bring-forward when audiences materialize.
 
 ---
 

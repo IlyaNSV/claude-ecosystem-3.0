@@ -3693,12 +3693,12 @@ Local docs polish track completed in single execution session 2026-05-27 (planni
 
 ---
 
-## DEC-DEV-0047 — Patch 1.3.3 kickoff: Integrator scope discipline + env tiers + pending-actions журнал
+## DEC-DEV-0047 — Patch 1.3.3: Integrator scope discipline + env tiers + pending-actions журнал
 
-**Date:** 2026-05-27
+**Date:** 2026-05-27 (kickoff) → 2026-05-27 (implementation closure same day)
 **Trigger:** Pilot session `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` (заполнение PMO GAPS на `my-first-test/`) выявила 4 паттерна нарушений / gaps Integrator-модуля.
 **Tag:** #architecture #spec-revision #ux #bug-fix #pilot-finding
-**Status:** STUB — заполнить Outcome+Lessons после fresh-session implementation (sub-phases A-I per `dev/PATCH_1.3.3_READINESS.md`).
+**Status:** ✅ Implementation closed. Runtime smoke (`dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md`) — 5 scenarios drafted, execution at user's discretion in next pilot session.
 
 ### Context
 
@@ -3732,11 +3732,85 @@ Implementation: **fresh-session** per D7 phase-kickoff RECOMMENDED (anti-bias gu
 
 ### Outcome
 
-⏳ TBD после fresh-session implementation. Метрики acceptance gate — readiness MD Section «Verification».
+Fresh-session implementation 2026-05-27 — sub-phases A→I executed sequentially с commit per sub-phase:
+
+**Commits (9 total):**
+1. `4d23dbc` — kickoff (DEC-DEV-0047 stub + readiness gate + v1.1+ backlog)
+2. `6c640c2` — sub-phase A — SPEC env_tiers + consilium + approve discipline
+3. `40d29e1` — sub-phase B — skills (research-protocol, installation-protocol, tool-profiling)
+4. `c3bca76` — sub-phase C — research hard gate + 9 session-marker boilerplates
+5. `aec87e8` — sub-phase D — scope-guard hook + manifest + smoke fixture (5 cases)
+6. `05df3b0` — sub-phase E — pending-actions infra (skill + command)
+7. `162b730` — sub-phase F — bootstrap/update integration (init + backfill)
+8. `c71d3e6` — sub-phase G — smoke test plan (5 runtime scenarios)
+9. (this commit) — sub-phase H — DEV_JOURNAL Outcome + CHANGELOG + ROADMAP + CLAUDE.md
+10. (next) — sub-phase I — release tag v1.3.3
+
+**Artifacts delivered:**
+
+**New files:**
+- `hooks/integrator/scope-guard.js` — PreToolUse warn-only, marker-gated, 1h stale TTL, forbidden paths (`.product/`, `.kiro/`, `docs/pmo/`, `.claude/docs/pmo/`), whitelist exceptions, Bash regex sniffer, PA append on violation (dedup by `(action, subject, minute)`)
+- `commands/ecosystem/pending-actions.md` — read-only listing with --status / --source / --limit filters
+- `skills/ecosystem/user-action-tracker.md` — schema + append/mutate protocol (new directory `skills/ecosystem/`)
+- `dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — 5 scenarios (S1-S5) для runtime execution
+
+**Modified — SPEC:**
+- `docs/integrator-module/SPEC.md` §3.1 (approve discipline note), §4.1 (`environment_tiers` block in profile schema), §4.2.1 (new — semantics + research/install integration), §7.6 (new — consilium-pattern declared-scope requirement)
+
+**Modified — skills:**
+- `skills/integrator/research-protocol.md` — Phase 1 env-tier ID + consilium check, Phase 4 extraction guidance, Phase 5 guards + hard approve gate, Phase 8 PA append, +4 anti-patterns
+- `skills/integrator/installation-protocol.md` — Anti-pattern #5 scope-guard ref, Anti-pattern #8 PA append, Section 10 session-context marker boilerplate
+- `skills/integrator/tool-profiling.md` — profile schema env_tiers REQUIRED, Step 4.5 extraction guidance, +2 anti-patterns
+
+**Modified — commands:**
+- `commands/integrator/research.md` Step 7 — hard gate analog add.md Stage 2; +Step 0/9 session marker write/cleanup
+- `commands/integrator/{add,remove,update,scan,gaps,status,map,journal}.md` — session marker boilerplate (Step 0 / Pre-flight write + Final cleanup)
+- `commands/ecosystem/bootstrap.md` Step 6c — initialize `.claude/pending-actions.md` with PA-000 sentinel
+- `commands/ecosystem/update.md` — preserve PA in user zone + Step 5b backfill (bash + PowerShell variants)
+
+**Modified — infrastructure:**
+- `hooks/integrator/manifest.yaml` — register scope-guard PreToolUse
+- `dev/meta-improvement/scripts/smoke-hooks.js` — extended harness (toolName/toolInput overrides, env merge, expectStderrAbsent) + helper writeIntegratorMarker / cleanupIntegratorMarker + 5 new scope-guard cases. All 13 hook cases PASS.
+
+**Static smoke (Sub-phase D):** ✅ green — 13/13 hooks PASS.
+
+**Runtime smoke:** ⏳ deferred to next pilot session (S1-S5 plan ready); same model as DEC-DEV-0045 S5 deferral.
 
 ### Lessons
 
-⏳ TBD после implementation + pilot re-run (gap-анализ session должна показать все 4 fixes работают).
+1. **Patch-level readiness pattern proven.** `dev/PATCH_1.3.3_READINESS.md` (not `PHASE_<N>_READINESS.md`) — naming convention works for sub-phase-level work without phase ceremony. Apply: future patches that touch ≥3 sub-systems get a `PATCH_<version>_READINESS.md` mini-readiness; pure cosmetic patches don't need it.
+
+2. **Anti-bias guard surfaced 3 refinements during fresh-session execution** (vs prev session's readiness draft):
+   - Forbidden paths in B-2 needed `.claude/docs/pmo/` (pilot variant) in addition to bare `docs/pmo/` (ecosystem repo variant) — readiness didn't cover the pilot path layout explicitly.
+   - Cross-platform Step 5b in `/ecosystem:update` needed PowerShell variant (parity with Step 5a contamination cleanup) — readiness omitted Windows path.
+   - Whitelisted exceptions for hook needed `.claude/pending-actions.md` and `.scope-guard-dedup.json` itself (else hook would warn on its own writes) — readiness mentioned exceptions but not the self-write case.
+
+   *Apply:* fresh-session ≠ rubber-stamp; readiness sets direction, execution surfaces details. Plan-quality dependency: fresh-session AI should always feel licensed to refine and surface, not just execute.
+
+3. **Marker-gated PreToolUse worked first try on Windows.** Initial concern (filed in this session's prompt as anti-bias guard) was that PreToolUse hook on Bash matcher may fail on Windows — turned out non-issue: Claude Code hook stdin JSON contract is platform-agnostic. *Apply:* don't prematurely worry about cross-platform hook regressions if reading stdin JSON + writing stderr; concerns surface only on filesystem path normalization (which we already handle via `replace(/\\/g, '/')`).
+
+4. **Session marker as PRG-loadable convention.** Pattern: hook checks for `.claude/integrator/.session-context.json` to know «is module X active?» — solves the «who's calling» problem without env vars (which don't pass through markdown slash commands), without transcript scanning (fragile), without explicit cross-tool calls. Likely reusable for future modules (e.g., `.claude/design/.session-context.json` when Design Module gets its own scope-guard). *Apply:* if future modules need scope-gating, mirror this marker convention.
+
+5. **Hard approve gate UX requires explicit «silence ≠ consent».** Research.md Step 7 added a `STOP. Approve research outcome?` block plus prose explanation that:
+   - silence → wait (not chain forward),
+   - defer → cache + journal `deferred`, no install,
+   - numbered choice → record decision, **don't auto-invoke `/integrator:add`** (user invokes separately).
+   This separation («research = what», «add = when») is intentional. Pilot evidence showed soft prompts get bypassed. *Apply:* whenever an AI tendency to chain forward shows up in pilot evidence, the fix is more wording, not less.
+
+6. **PA-NNN counter via tail scan + sentinel.** Counter scheme is robust because PA-000 sentinel guarantees regex match never returns empty; mid-file insertion is forbidden (tail-append only); user manual edits OK because they don't break the counter. Schema versioning is in-place via «forward compat plan» note. *Apply:* counter-based ID schemes in markdown journals — sentinel + tail-append + no-renumber = simple working pattern.
+
+7. **Sub-phase commit cadence pays off for review traceability.** 8 commits A→H + kickoff + tag = 10-commit linear history. Each commit message describes deliverable + per DEC-DEV-0047 ref. *Apply:* continue sub-phase-per-commit pattern for substantial patches; reviewers can pinpoint regressions quickly.
+
+8. **Scope-guard whitelist drove implementation:** initially the hook's own writes to `.claude/pending-actions.md` and `.scope-guard-dedup.json` would have triggered itself (infinite recursion within minute window). Whitelist exceptions are not cosmetic — they're load-bearing. *Apply:* when a hook reads + writes anything, audit «would the hook fire on its own writes?» before shipping.
+
+### Связь с другими entries
+
+- DEC-DEV-0041 (Phase 5 implementation) — base, на которой растёт scope-guard infrastructure (Integrator module)
+- DEC-DEV-0045 (Phase 5.1 patch / 1.3.2) — analog patch pattern + S5 runtime deferral precedent
+- DEC-DEV-0046 (Defer Phase D Wiki) — analog «cuttable scope discipline» pattern (warn-only over hard-block, see v1_1_backlog entry)
+- DEC-DEV-0040 Q6 — journal-hook PostToolUse precedent; scope-guard is PreToolUse mirror
+- DEC-DEV-0023 — dedup-by-(action,subject,minute) precedent (cascade-pending lesson)
+- DEC-DEV-0019 / 0042 — `/ecosystem:update` allowlist + contamination cleanup pattern; sub-phase F extends it
 
 ### Связь с другими entries
 

@@ -10,17 +10,20 @@
 
 ## Status banner
 
-🟡 **Ready for fresh-session implementation** (2026-05-27).
+🟢 **Implementation closed** (2026-05-27, same-day execution).
 
-- ✅ Gap-анализ выполнен (current session)
-- ✅ D7 Sections 1-5 выполнены (см. ниже)
+- ✅ Gap-анализ выполнен (kickoff session)
+- ✅ D7 Sections 1-5 выполнены
 - ✅ Architectural decisions resolved (Section 1)
 - ✅ Ambiguities resolved (Section 2)
 - ✅ Spec drift candidates identified (Section 3)
 - ✅ Scope discipline applied — hard block deferred к v1.4.0 (Section 4)
 - ✅ Sub-phases A-I decomposed (Section 5)
-- ✅ DEC-DEV-0047 stub в DEV_JOURNAL
-- ⏳ **Next:** fresh-session execute sub-phases A→I (см. prompt template в конце)
+- ✅ DEC-DEV-0047 stub в DEV_JOURNAL → uplifted to full Outcome+Lessons
+- ✅ Fresh-session execute sub-phases A→I (commits 4d23dbc → see DEC-DEV-0047 Outcome for full list)
+- ✅ Static smoke 13/13 PASS (`node dev/meta-improvement/scripts/smoke-hooks.js`)
+- ✅ CHANGELOG `[1.3.3]` finalized; release tag candidate (sub-phase I)
+- ⏳ **Runtime smoke deferred** — S1-S5 in `dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md`, execute at user's discretion next pilot session
 
 ---
 

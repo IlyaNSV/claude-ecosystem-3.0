@@ -19,19 +19,20 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 ## Где мы сейчас
 
-См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-27 — Phase D deferred, local docs polish active):
+См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-27 — patch 1.3.3 shipped, DEC-DEV-0047):
 - ✅ Phase 0-2 (scaffolding, Integrator read-only, Bootstrap, Product Module Discovery + drift mechanisms)
 - ✅ Phase 3 (Planning + Feature Enrichment + adaptive-depth DA + cascade detection) — smoke-tested DEC-DEV-0023 + 1.1.1 patch shipped
 - ✅ Phase 4 (Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline) — 1.2.0; closure ritual Unit 2 DEC-DEV-0033; runtime smoke 2026-05-20 → status=fail → Phase 4 closed (DEC-DEV-0038)
 - ✅ Phase 5 kickoff (DEC-DEV-0040, 2026-05-25) — Q1-Q6 + functional PMO refactor (D2-B01..05 / D2-T01..08 / D3-01..07 / D4-01..07)
 - ✅ Phase 5 implementation done (DEC-DEV-0041, 2026-05-25) — 1.3.0; 10 sub-phase commits A→J; 3 commands + 4 skills + 2 subagents + 1 hook + 1 reference adapter (Q1 dual→tri-location pattern) + fixture
-- ✅ Phase 5 runtime smoke + closure (DEC-DEV-0044, 2026-05-26) — 4 PASS clean (S1/S2/S4 + S3 post-fix), S6 PARTIAL→FIXED, S5 deferred. 3 bugs fixed end-to-end: bug 1 (skill+agent narrow heuristic), bug 2 (bootstrap/update не deploy adapters/), bug 3 (journal-hook Windows path regex). Plan archived `dev/_archive/phase-5/`
-- ✅ **Phase 5.1 patch (DEC-DEV-0045, 2026-05-26)** — bug 4 fix (3 facets) + C-03 generator regex. **Local-only drift detection model** заменил cross-repo `git diff`: pilot reference `.claude/adapters/` vs pilot instance `.claude/integrator/adapters/`. `@source_ref` теперь audit-only, populated via `.claude/adapters/.sync-metadata.yaml` (stamped by `/ecosystem:bootstrap` + `/ecosystem:update`). C-03 whitelist array → regex (patch-suffix accepted). 1.3.2 released. **S5 runtime verification остаётся deferred** (code fix landed; runtime end-to-end at user's discretion next pilot session)
-- ⏸ **Phase D — Wiki initiative DEFERRED to v1.1+ (DEC-DEV-0046, 2026-05-27)** — phantom-audience guard fired (pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; единственная audience — solo dev). Pivot к local docs polish (4-9h) вместо 32-50h full wiki. Phase D design+plan+readiness preserved: [`dev/wiki-design.md`](dev/wiki-design.md), [`dev/PHASE_D_IMPLEMENTATION_PLAN.md`](dev/PHASE_D_IMPLEMENTATION_PLAN.md), [`dev/PHASE_D_DOCS_WIKI_READINESS.md`](dev/PHASE_D_DOCS_WIKI_READINESS.md) (DEFERRED banners). Bring-forward triggers в [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md)
-- ⏳ **Active:** Local docs polish track (DEC-DEV-0046) — Obsidian vault baseline + README cross-link polish. Plan: [`dev/LOCAL_DOCS_POLISH_PLAN.md`](dev/LOCAL_DOCS_POLISH_PLAN.md) (5 stages, 4-9h). Stage 1 (Pivot recording) в процессе
+- ✅ Phase 5 runtime smoke + closure (DEC-DEV-0044, 2026-05-26) — 4 PASS clean (S1/S2/S4 + S3 post-fix), S6 PARTIAL→FIXED, S5 deferred. 3 bugs fixed end-to-end. Plan archived `dev/_archive/phase-5/`
+- ✅ Phase 5.1 patch (DEC-DEV-0045, 2026-05-26) — bug 4 fix (3 facets) + C-03 generator regex. Local-only drift detection model. 1.3.2 released. S5 runtime verification deferred
+- ⏸ Phase D — Wiki initiative DEFERRED to v1.1+ (DEC-DEV-0046, 2026-05-27) — phantom-audience guard. Design+plan+readiness preserved with DEFERRED banners. Bring-forward triggers в `dev/v1_1_backlog.md`
+- ✅ **Patch 1.3.3 (DEC-DEV-0047, 2026-05-27)** — Integrator scope discipline + env tiers + PA journal + research hard approve gate. Pilot session 2026-05-27 evidence (4 patterns). 4 deliverables shipped: B-1 `environment_tiers` (SPEC §4.2.1); B-2 `hooks/integrator/scope-guard.js` PreToolUse warn-only (marker-gated, 1h stale TTL, forbidden paths .product/ .kiro/ docs/pmo/ + exceptions, Bash regex sniffer); B-3 `.claude/pending-actions.md` ecosystem-wide journal + `/ecosystem:pending-actions` + `skills/ecosystem/user-action-tracker.md`; B-4 `/integrator:research` Step 7 hard gate + SPEC §7.6 consilium-pattern. Static smoke 13/13 PASS. Runtime smoke S1-S5 deferred к next pilot session. Hard-block mode deferred v1.4.0+. 1.3.3 released, local docs polish bundled
+- ✅ Local docs polish (DEC-DEV-0046) — Obsidian vault baseline + README cross-link polish shipped (bundled в 1.3.3)
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
-- `dev/LOCAL_DOCS_POLISH_PLAN.md` — active track (4-9h, light-touch, не требует kickoff ritual)
+- `dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
 - `dev/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
 - `dev/PHASE_6_READINESS.md` skeleton — Design Module conditional (после first UI feature)
 

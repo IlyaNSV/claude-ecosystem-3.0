@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-27 (Phase D deferred — DEC-DEV-0046; local docs polish track active).
+> **Последнее обновление:** 2026-05-27 (patch 1.3.3 shipped — DEC-DEV-0047 Integrator scope discipline + env tiers + PA journal; local docs polish bundled).
 
 ## Где мы сейчас
 
@@ -57,16 +57,28 @@
    — C-03 cosmetic: SUPPORTED_HANDOFF_GENERATORS array → regex (accepts patch-suffix versions)
    — S5 runtime smoke verification deferred (code landed; pilot session for /integrator:update --check-only at user's discretion)
 
+✅ Patch 1.3.3 (2026-05-27) — DEC-DEV-0047; 1.3.3 release
+   — Integrator scope discipline + environment tiers + pending-actions journal + research hard approve gate
+   — 4 deliverables: B-1 env_tiers (SPEC §4.2.1 + tool-profiling + research-protocol);
+     B-2 hooks/integrator/scope-guard.js PreToolUse warn-only (marker-gated, 1h stale TTL, forbidden paths
+     .product/ .kiro/ docs/pmo/ .claude/docs/pmo/ + whitelist exceptions, regex sniffer for Bash);
+     B-3 .claude/pending-actions.md ecosystem-wide journal + /ecosystem:pending-actions + skills/ecosystem/user-action-tracker.md;
+     B-4 /integrator:research Step 7 hard gate + research-protocol Phase 5 guards + SPEC §7.6 consilium-pattern
+   — 9 sub-phase commits (kickoff + A-H + I=tag) + static smoke 13/13 PASS
+   — Hard-block scope-guard mode deferred к v1.4.0+ (см. dev/v1_1_backlog.md)
+   — Runtime smoke S1-S5 (dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md) deferred к next pilot session
+
+✅ Local docs polish track (closed 2026-05-27, DEC-DEV-0046) — bundled in 1.3.3 release
+   — Obsidian vault baseline + README cross-link polish shipped
+   — Plan archive candidate (after next phase opens)
+
 [We are here ─────────────────────────────────────]
 
 ⏳ 🎯 PILOT POINT — requires Orchestrator Module (out of Phase 5; reframed per DEC-DEV-0040 Q3)
 ⏸ Phase D — Wiki initiative — DEFERRED to v1.1+ (DEC-DEV-0046, 2026-05-27, phantom-audience guard)
-   — Pivot to local docs polish (4-9h) вместо full wiki (32-50h)
+   — Pivot to local docs polish (4-9h) вместо full wiki (32-50h) — shipped в 1.3.3
    — Design+plan+readiness preserved: dev/wiki-design.md, dev/PHASE_D_IMPLEMENTATION_PLAN.md, dev/PHASE_D_DOCS_WIKI_READINESS.md (DEFERRED banners)
    — Bring-forward triggers: real end-user/stakeholder ask, OR Obsidian insufficient, OR public release prep (см. dev/v1_1_backlog.md)
-⏳ Local docs polish track (active 2026-05-27, DEC-DEV-0046)
-   — Obsidian vault baseline + README cross-link polish
-   — Plan: dev/LOCAL_DOCS_POLISH_PLAN.md (5 stages, 4-9h)
 ⏳ Phase 6 — Design Module (conditional, activate on first UI feature) — skeleton dev/PHASE_6_READINESS.md
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm)
 
