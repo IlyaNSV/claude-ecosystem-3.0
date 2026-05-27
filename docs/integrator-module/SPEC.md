@@ -108,10 +108,12 @@ Integrator — гибрид, как и Product Module:
 
 ### 3.1. Группа «Read-only» (безопасные, без side effects)
 
+> **Approve discipline (DEC-DEV-0047 / patch 1.3.3):** read-only команды могут содержать *narrative* recommendations, но любая такая рекомендация заканчивается **explicit approve gate** (см. §7.6). Без выраженного «выбираю опцию N» / «defer» / «details» — никакой automatic follow-up actions (caching не считается follow-up; запись в `~/.claude/integrator/research-cache/` идёт всегда). Это правило особенно важно для consilium-pattern research (multiple parallel research priors): без declared scope результаты НЕ принимаются за решение.
+
 **`/integrator:research <need>`** — исследование инструментов под потребность
 - Вход: текстовое описание потребности («нужны инструменты для работы с PostgreSQL», «хочу E2E-тестирование для React», «нужен monitoring для prod»)
-- Процесс: определяет PMO-зону → изучает рынок → сравнивает варианты → проверяет совместимость с текущим стеком → предлагает 2-5 оптимальных решений
-- Выход: отчёт с рекомендациями (не устанавливает)
+- Процесс: определяет PMO-зону → изучает рынок → сравнивает варианты → проверяет совместимость с текущим стеком → предлагает 2-5 оптимальных решений с **per-environment-tier разбивкой** (см. §4.1 `environment_tiers`)
+- Выход: отчёт с рекомендациями + **hard approve gate** (не устанавливает; без user response — никаких follow-up actions)
 
 **`/integrator:map`** — показать текущее покрытие PMO
 - Таблица: домен → покрытие → инструмент → статус контрактов
@@ -205,6 +207,21 @@ metadata:
     - type: hook
       path: .claude/hooks/beads-enforcer.js
 
+# Multi-tier environment applicability (per patch 1.3.3 / DEC-DEV-0047).
+# Required: tool profile должен явно деклaрировать suitability для каждой из 3 tiers
+# ИЛИ выставить блок `environment_agnostic: true` (если tool работает одинаково везде).
+# Без этого блока — research output невалиден (см. §7.1 hard approve gate).
+environment_tiers:
+  local_dev:
+    suitability: full              # full | partial | none
+    notes: "Runs locally via docker compose; no external API needed for basic flow."
+  staging:
+    suitability: full
+    notes: "Staging cluster supports same config; requires test API key."
+  production:
+    suitability: partial
+    notes: "Production-ready, but cold-start latency requires warmup; consider managed alternative for high-traffic prod."
+
 pmo_coverage:
   D3-01:                           # Implementation — ссылка на pmo-map.md процесс
     confidence: high               # high | medium | low
@@ -272,6 +289,28 @@ Single-layer declared confidence. Integrator не делает continuous tracki
 - **none** — явно не покрывает или не заявляет
 
 **Confidence refinement после опыта:** если при использовании tool обнаруживаются регулярные failures, human через `/integrator:debug` fix-ит причину, и в journal фиксируются уроки. Systematic issues → через `/product:meta-feedback` пользователь может propose downgrade declared confidence. Нет автоматической downgrade без явного human action.
+
+### 4.2.1. Environment tiers (DEC-DEV-0047 / patch 1.3.3)
+
+`environment_tiers` блок в профиле tool'а — **обязательное** поле, заявляющее применимость инструмента в 3 environments: `local_dev`, `staging`, `production`. Каждый tier имеет `suitability` (`full` / `partial` / `none`) + free-form `notes`.
+
+**Зачем:** до patch 1.3.3 research output выдавал PROD-only рекомендации (e.g., «Vercel Pro $20/мес» без local-dev альтернативы). Pilot session 2026-05-27 показала: юзер строит prod-стэк раньше, чем local-dev/staging — risk vendor lock-in + cost commitment до validation.
+
+**Semantics:**
+
+| `suitability` | Значит |
+|---|---|
+| `full` | Tool работает в этом tier без compromise (docs/community confirm; для new-install — без runtime caveat) |
+| `partial` | Работает, но с caveats (cost, latency, manual setup, single-machine limits — в `notes`) |
+| `none` | Не предназначен / не работает в этом tier (e.g., Vercel Pro в local_dev — `none`, требует cloud) |
+
+**Special-case `environment_agnostic`:** если tool работает одинаково independent of environment (e.g., code linter, type checker, npm package без runtime networking) — вместо `environment_tiers` блока выставляется `environment_agnostic: true` с одной строкой rationale. Это explicit, не fallback default.
+
+**Research integration:** `/integrator:research` Phase 5 output **обязан** содержать per-tier разбивку для каждого рекомендованного tool'а (или explicit `environment_agnostic` disclaimer). Skip = output невалиден; перед approve gate research-protocol Phase 5 должен возразить.
+
+**Install integration:** `/integrator:add` Stage 2 propose, если tool заявляет `local_dev.suitability: none` → MUST включать warning «Этот tool не подходит для local dev — обсудить parallel/separate dev решение (mock service, lighter tool, staging-shared)?».
+
+**Backward compatibility:** профили из tool-catalog без `environment_tiers` блока — lazy-regenerable при следующем профайлинге. Нет migration script (DEC-DEV-0047 Section 1 B-1 alternatives rejected).
 
 ### 4.3. Aggregated PMO mapping (`pmo-mapping.yaml`)
 
@@ -773,6 +812,38 @@ Approve замену? (y/n/details)
 Отмена replace. Но предложение записано в журнал как DEC-INT-0094 (entered/cancelled)
 для будущей памяти. Хочешь /integrator:research "adversarial review tool"? (y/n)
 ```
+
+### 7.6. Consilium-pattern research (DEC-DEV-0047 / patch 1.3.3)
+
+**Что это:** «Consilium» — паттерн, когда research разветвляется на N parallel research priors с разными bias anchors (например: «DIY стэк / PaaS / RU-friendly стэк»). Каждая prior — отдельный sub-research, потом результаты сравниваются.
+
+**Когда легитимен:** consilium-pattern полезен, когда decision involves trade-offs across mutually-exclusive directions (cost vs control vs jurisdiction vs vendor lock-in), и user заранее объявил scope priors. Каждый prior дает structured framing того же question.
+
+**Жёсткое требование — declared scope:**
+
+Consilium разрешён **только** при scope, явно объявленном до start. «Scope» включает:
+- **Предмет** — что именно сравнивается (e.g., «deploy stacks для small-traffic SaaS»)
+- **Priors** — список direction labels (e.g., `[DIY-VPS, PaaS-managed, RU-jurisdiction-friendly]`)
+- **Expected output structure** — common comparison axes (cost, control, complexity, vendor risk, etc.)
+
+**Без declared scope:** если research-protocol Phase 5 detects subagent fan-out > 1 без declared scope — обязан **STOP + возразить + спросить user**:
+
+```
+⚠ Consilium-pattern detected (N=3 parallel research priors), но scope не объявлен.
+Это violation /integrator:research дисциплины (SPEC §7.6 / DEC-DEV-0047).
+
+Перед продолжением:
+  - Объяви scope явно: subject, priors (направления сравнения), expected axes
+  - Или сведи к single research stream
+
+Что делаем? [1] объявить scope / [2] single research / [3] отмена]
+```
+
+**Anti-pattern (pilot session 2026-05-27 evidence):** «Сравнить deploy стэки» → AI самостоятельно генерирует 3 priors (DIY/PaaS/RU-friendly) + автономно выбирает «Пакет 1 (DIY)» без approve gate. Это нарушение: ни scope, ни approve gate явных не было; AI architectural decision принят silent.
+
+**Reference enforcement:** `skills/integrator/research-protocol.md` Phase 5 (post-comparison, pre-cache) — must check «is this single-stream OR consilium-with-declared-scope?»; если ни то, ни то — block с outline above.
+
+**Approve gate identical:** обычный или consilium — после presentation MUST be explicit user choice (numbered option / defer / details) перед записью в journal (см. §3.1 amendment). Consilium НЕ освобождает от approve gate; наоборот, **усиливает**, потому что выбор между priors — это явное architectural decision.
 
 ---
 
