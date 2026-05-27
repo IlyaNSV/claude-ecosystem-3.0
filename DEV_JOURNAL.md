@@ -3645,7 +3645,31 @@ Variant 3 — pivot to **Obsidian local + README polish**. Phase D plan + readin
 
 ### Outcome
 
-(Будет заполнено после Stage 5 closure нового track.)
+Local docs polish track completed in single execution session 2026-05-27 (planning + Stages 1-5):
+
+**Timing.** Plan estimate 4-9h optimistic; actual ~30-45 min focused work + ~30 min planning conversation. Significantly under budget — see Lessons #5 ниже.
+
+**Commits (4 total):**
+1. `2123ab1` — Stage 1 pivot recording (DEV_JOURNAL DEC-DEV-0046 open + DEFERRED banners + v1_1_backlog + ROADMAP + CLAUDE.md snapshot)
+2. `2f83b30` — Stage 2 Obsidian vault baseline (.gitignore patterns + .obsidian/app|appearance|core-plugins.json)
+3. `b2c5d4a` — Stage 3 cross-link polish (README «Где начать», new `docs/README.md` index, 3 SPEC «Related» blocks, PMO «Читать вместе с», artifacts/README stale-refs cleanup)
+4. (this commit) — Stage 5 closure (CHANGELOG, memory sync, DEC-DEV-0046 Outcome, ROADMAP/CLAUDE.md refresh)
+
+**Artifacts shipped:**
+- New: `dev/LOCAL_DOCS_POLISH_PLAN.md`, `docs/README.md`, `.obsidian/{app,appearance,core-plugins}.json`
+- Modified: README.md, CLAUDE.md, ROADMAP.md, .gitignore, v1_1_backlog.md, 3 module SPECs, pmo-map.md, validation.md, artifacts/README.md, PHASE_D_DOCS_WIKI_READINESS.md (DEFERRED banner), PHASE_D_IMPLEMENTATION_PLAN.md (DEFERRED banner)
+
+**Stage 4 (MCP bridge) — confirmed deferred** (AskUserQuestion 2026-05-27): user chose «Skip per original plan». Rationale stands — Claude already has direct file access; MCP не даёт incremental value для нашего setup.
+
+**Phase D preservation intact:**
+- `dev/wiki-design.md` (§1-17) — unchanged
+- `dev/PHASE_D_DOCS_WIKI_READINESS.md` (A-H) — unchanged body, DEFERRED banner added
+- `dev/PHASE_D_IMPLEMENTATION_PLAN.md` (10 stages) — unchanged body, DEFERRED banner added
+- `dev/v1_1_backlog.md` — full architectural intent for bring-forward
+- Resumption cost при triggers: ~30 min context refresh + fresh-session kickoff per Stage 0 plan
+
+**Tech debt discovered (Stage 3, не absorbed):**
+- 22 individual artifact files в `docs/pmo/artifacts/*.md` still contain «(в разработке)» markers for skills that shipped Phase 3-4. Flagged в Stage 3 commit body; deferred к separate doc-maintenance sweep (~1h estimated). Not blocker для discoverability цели Stage 3.
 
 ### Lessons
 
@@ -3656,6 +3680,10 @@ Variant 3 — pivot to **Obsidian local + README polish**. Phase D plan + readin
 3. **Reversibility budget keeps deferrals cheap.** Phase D plan + readiness + design preserved (DEFERRED banners, не deletes). Если bring-forward trigger fires через 3 месяца — resumption cost ~30 min context refresh, не 16h re-design. *Apply:* defer ≠ delete; preserve full architectural intent в v1.1+ backlog с pointers к canonical artifacts.
 
 4. **Honest alternative analysis окупается даже когда план не меняется.** Если бы анализ показал «текущий план оптимален» — confirmation тоже polish. Pivot случился потому, что было где pivot'нуть. *Apply:* alternatives analysis pre-implementation — must-have для substantive phases (>10h estimate), даже если кажется решённым.
+
+5. **Methodology-only tracks (без новых mechanisms / architectural decisions / code) deserve lower estimate multiplier.** Plan estimate 4-9h; actual ~30-45 min focused work. Previously calibrated: methodology-heavy phase → ×1-2 (per DEC-DEV-0041 lesson), code-heavy → ×3-5. New refinement: **polish-only** (docs cross-links, baseline config, no new artifacts/mechanisms) → **×0.3-0.5** vs initial estimate. Reasoning: no architectural unknowns, no implementation ambiguity, no test/smoke overhead. *Apply:* before estimating polish/maintenance tracks, ask «есть ли новые mechanisms or just rearranging existing artifacts?» — если последнее, halve estimate.
+
+6. **Cuttable scope discipline pays when tech debt discovered mid-stage.** Stage 3 surfaced 22 artifact files с stale «в разработке» refs — temptation to absorb into Stage 3 (+1-2h) was real, since «уже здесь, давай разом». Stayed disciplined: flagged in commit body, deferred к separate sweep. Result: Stage 3 closed cleanly с focused commit; tech debt visible for future scheduling. *Apply:* discovered tech debt mid-stage → ALWAYS flag-and-defer (in commit message + DEV_JOURNAL if substantive) unless directly blocks current stage's goal; never silently absorb.
 
 ### Связь с другими entries
 

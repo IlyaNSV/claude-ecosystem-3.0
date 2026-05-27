@@ -6,6 +6,39 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [Unreleased]
+
+Docs polish + Obsidian vault baseline; pivot from Phase D wiki (DEFERRED). Per [DEC-DEV-0046](DEV_JOURNAL.md).
+
+### Added
+
+- **`dev/LOCAL_DOCS_POLISH_PLAN.md`** — active track plan (5 stages, 4-9h estimate; actual ~30-45 min)
+- **`docs/README.md`** — entry-point index for docs/ subdirectories (modules + PMO catalogs + common-tasks table)
+- **`.obsidian/{app,appearance,core-plugins}.json`** — vault baseline config (committed); per-machine UI state gitignored
+
+### Modified
+
+- **`README.md`** — «Где начать» tri-tier navigation table (first-time / install / develop / decisions / API ref / PMO map); status line fix (Phase D DEFERRED)
+- **`CLAUDE.md`** — «Где мы сейчас» snapshot reflects pivot
+- **`ROADMAP.md`** — Phase D moved to deferred block; local docs polish track added
+- **`dev/v1_1_backlog.md`** — Phase D entry с full architectural intent + bring-forward triggers (~17-26h при возврате)
+- **3 module SPECs** (`product/`, `integrator/`, `design/`) — «Related» cross-link block in intro
+- **`docs/pmo/{pmo-map,validation}.md`** — «Читать вместе с» cross-link block
+- **`docs/pmo/artifacts/README.md`** — stale «(в разработке)» refs fixed for validation.md, processes.md, handoff-spec.md, bg-extraction skill, skills/product/ (all shipped Phase 3-4)
+- **`.gitignore`** — Obsidian per-machine state patterns
+
+### Deferred
+
+- **Phase D Wiki initiative full implementation** (DEC-DEV-0046, phantom-audience guard). Plan + readiness + design preserved в `dev/PHASE_D_*.md` + `dev/wiki-design.md` (DEFERRED banners). Bring-forward triggers documented в `dev/v1_1_backlog.md` (~17-26h optimistic при возврате).
+- **MCP for Obsidian bridge** — confirmed unnecessary; Claude already has direct file access. Bring-forward only if Obsidian-specific dynamic data needed.
+- **22 artifact files** в `docs/pmo/artifacts/*.md` — stale «(в разработке)» skill refs. Separate doc-maintenance sweep (~1h estimated).
+
+### Rationale
+
+Phase D Wiki design frozen 2026-05-26 (DEC-DEV-0044+0045 closure) под предположение 3 audiences: solo dev + end-users + stakeholders. Pre-implementation honest analysis (5 alternatives compared) revealed phantom-audience guard: pre-pilot Ecosystem 3.0 имеет только solo-dev consumer. 80% value через 4-9h Obsidian+README polish vs 32-50h full wiki. Phase D plan preserved для bring-forward when audiences materialize.
+
+---
+
 ## [1.3.2] — 2026-05-26
 
 Patch release: Phase 5 runtime smoke closure + Phase 5.1 patch. 3 bugs fixed end-to-end (skill+agent narrow-glob; bootstrap/update deploy gap; journal-hook Windows path regex) + bug 4 fix (local-only drift detection refactor) + C-03 generator regex cosmetic. Architectural refinement: Q1 dual-location → tri-location adapter pattern. Per [DEC-DEV-0044, 0045](DEV_JOURNAL.md).
