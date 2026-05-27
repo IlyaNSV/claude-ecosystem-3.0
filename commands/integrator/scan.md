@@ -16,6 +16,15 @@ This protects user-created hooks, commands, agents from being silently overwritt
 
 ## Process
 
+### Step 0: Session-context marker (DEC-DEV-0047 / patch 1.3.3)
+
+Activate `hooks/integrator/scope-guard.js`. Cleanup in Step 8 (Final).
+
+```bash
+mkdir -p .claude/integrator
+printf '{"command":"/integrator:scan","started_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/integrator/.session-context.json
+```
+
 ### Step 1: Initialize integrator state if needed
 
 If `.claude/integrator/` doesn't exist (lazy-init per DEC-INT-O08):
@@ -147,6 +156,12 @@ Next:
 This scan establishes baseline. Future `/integrator:add/update/replace` will:
 1. Create timestamped backup in `.claude/integrator/backups/<timestamp>/` of any file it's about to modify
 2. Reference baseline.yaml to ensure user customizations aren't touched
+
+### Step 8: Final — cleanup session marker
+
+```bash
+rm -f .claude/integrator/.session-context.json
+```
 
 ## Important constraints
 

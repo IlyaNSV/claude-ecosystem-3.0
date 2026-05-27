@@ -11,6 +11,15 @@ User invoked: `/integrator:journal $ARGUMENTS`
 
 ## Process
 
+### Step 0: Session-context marker (DEC-DEV-0047 / patch 1.3.3)
+
+Activate `hooks/integrator/scope-guard.js`. Cleanup at Final step.
+
+```bash
+mkdir -p .claude/integrator
+printf '{"command":"/integrator:journal","started_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/integrator/.session-context.json
+```
+
 ### Step 1: Parse arguments
 
 Defaults if not specified:
@@ -99,6 +108,12 @@ INSIGHTS (last 30 days):
 ```
 
 Skip insights if `--filter` was used (focused query, not exploration).
+
+### Final: Cleanup session marker
+
+```bash
+rm -f .claude/integrator/.session-context.json
+```
 
 ## Important constraints
 

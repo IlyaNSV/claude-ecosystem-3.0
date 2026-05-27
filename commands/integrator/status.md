@@ -8,6 +8,15 @@ Display comprehensive overview of Integrator's current state.
 
 ## Process
 
+### Step 0: Session-context marker (DEC-DEV-0047 / patch 1.3.3)
+
+Activate `hooks/integrator/scope-guard.js`. Cleanup at Final step.
+
+```bash
+mkdir -p .claude/integrator
+printf '{"command":"/integrator:status","started_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/integrator/.session-context.json
+```
+
 ### Step 1: Check Integrator initialization
 
 If `.claude/integrator/` doesn't exist:
@@ -108,6 +117,12 @@ Based on state:
 - If updates pending → suggest `/integrator:update <tool>`
 - If verify stale → suggest `/integrator:verify`
 - If everything healthy → "All systems healthy. Nothing to do."
+
+### Final: Cleanup session marker
+
+```bash
+rm -f .claude/integrator/.session-context.json
+```
 
 ## Important constraints
 

@@ -17,6 +17,13 @@ Methodology: `.claude/skills/integrator/installation-protocol.md` (backup, rollb
 
 ### Pre-flight
 
+**Session-context marker (DEC-DEV-0047 / patch 1.3.3):** activate `hooks/integrator/scope-guard.js` for this session. Cleanup in Final stage. Boilerplate spec: `skills/integrator/installation-protocol.md §10`.
+
+```bash
+mkdir -p .claude/integrator
+printf '{"command":"/integrator:update","started_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/integrator/.session-context.json
+```
+
 If tool not in `.claude/integrator/active-tools.yaml` → not installed, suggest `/integrator:add`. Exit.
 
 Determine **target version**:
@@ -216,6 +223,14 @@ Summary to user:
 📁 Backup: .claude/integrator/backups/<ISO-timestamp>/
 🔄 Re-verify other features (manual): /integrator:verify (Phase 7, when available)
 ```
+
+### Final: Cleanup session-context marker
+
+```bash
+rm -f .claude/integrator/.session-context.json
+```
+
+Also cleanup on rollback / failure paths. Stale marker = false-positive `scope-guard` warns until 1h TTL.
 
 ## Important constraints
 

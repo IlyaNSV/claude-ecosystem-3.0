@@ -15,7 +15,7 @@ You are running the **6-stage installation flow** per `docs/integrator-module/SP
 
 Methodology: `.claude/skills/integrator/installation-protocol.md` (load this skill).
 
-### Pre-flight: Lazy-init integrator state
+### Pre-flight: Lazy-init integrator state + session marker
 
 If `.claude/integrator/` doesn't exist (lazy-init per DEC-INT-O08):
 ```bash
@@ -26,6 +26,12 @@ touch .claude/integrator/secrets/.gitkeep
 Ensure `.gitignore` excludes `.claude/integrator/secrets/` (per DEC-INT-O10). If missing — append the line and inform user.
 
 Ensure global `~/.claude/integrator/{tool-catalog,research-cache,contract-templates}/` exist; create if missing.
+
+**Session-context marker (DEC-DEV-0047 / patch 1.3.3):** activate `hooks/integrator/scope-guard.js`. Cleanup in Final stage. Boilerplate spec: `skills/integrator/installation-protocol.md §10`.
+
+```bash
+printf '{"command":"/integrator:add","started_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/integrator/.session-context.json
+```
 
 ### Stage 1/6 — Profile (subagent)
 
@@ -199,6 +205,14 @@ Then summarize to user:
 🔗 Active contracts: CNT-NNN
 ⏳ Remaining gaps in PMO coverage: <list from /integrator:gaps>
 ```
+
+### Final: Cleanup session-context marker
+
+```bash
+rm -f .claude/integrator/.session-context.json
+```
+
+Also cleanup on rollback / cancellation paths. Stale marker triggers `scope-guard` false-positives until 1h TTL.
 
 ## Idempotency + re-run after failure
 

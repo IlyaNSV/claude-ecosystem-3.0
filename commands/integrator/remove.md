@@ -13,7 +13,16 @@ You are running the **reverse of installation** per `docs/integrator-module/SPEC
 
 ## Process
 
-Methodology shared with add-flow: `.claude/skills/integrator/installation-protocol.md` (load this skill — Section 4 Backup, Section 8 Rollback).
+Methodology shared with add-flow: `.claude/skills/integrator/installation-protocol.md` (load this skill — Section 4 Backup, Section 8 Rollback, **Section 10 session-context marker**).
+
+### Pre-flight: Session-context marker (DEC-DEV-0047 / patch 1.3.3)
+
+Activate `hooks/integrator/scope-guard.js` for this session. Cleanup in Final stage.
+
+```bash
+mkdir -p .claude/integrator
+printf '{"command":"/integrator:remove","started_at":"%s"}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/integrator/.session-context.json
+```
 
 ### Stage 1/5 — Locate tool
 
@@ -175,6 +184,14 @@ Summary to user:
 ⚠ Now uncovered PMO zones: <list> — consider /integrator:research for replacement
 ⚠ Orphaned handoff references (informational): <list> — re-run /product:handoff <FM-NNN> --regenerate if needed
 ```
+
+### Final: Cleanup session-context marker
+
+```bash
+rm -f .claude/integrator/.session-context.json
+```
+
+Cleanup on rollback / cancellation paths too — stale marker = false-positive `scope-guard` warns until 1h TTL.
 
 ## Important constraints
 
