@@ -22,17 +22,49 @@ scenarios: [SC-<NNN>, ...]                      # какие SC визуализ
 scenario_steps: {SC-<NNN>: [1, 2, 3]}            # какие шаги конкретно
 roles: [R-<role>, ...]                           # какие роли видят UI
 platform: web | mobile | responsive | desktop
-design_tool: stitch | figma | penpot | html
-tool_project_url: "https://..."                  # ссылка на внешний макет
+design_tool: stitch | claude-design | figma | penpot | html   # v1.1: claude-design added
+tool_project_url: "https://..."                  # ссылка на внешний макет (current tool)
 status: draft | review | active | deprecated
 iteration: 3                                      # счётчик итераций
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
+
+# v1.1 — Migration trail (DEC-DEV-0048, 2026-05-27; Design Module SPEC §16)
+previous_tools: []                                # OR list of {tool, url, switched_at, reason}; см. ниже
+tool_switched_at: null                            # ISO timestamp последнего switch; null если ни разу не мигрировал
+ir_snapshot_path: null                            # optional, populated только если design.yaml ir_export.enabled=true (v2 hook)
+
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 version: 1
 ---
 ```
+
+### Migration trail поля (v1.1)
+
+**`previous_tools[]`** — audit trail смены `design_tool` для этого MK. Каждая запись:
+
+```yaml
+previous_tools:
+  - tool: stitch
+    url: "https://stitch.withgoogle.com/projects/revisions-inbox-v2"
+    switched_at: 2026-06-20T14:30:00Z
+    reason: "Stitch quota exhausted, switched to Claude Design for completion"
+    iterations_at_switch: 3                       # сколько итераций было сделано в этом tool
+```
+
+Заполняется автоматически `/design:migrate <MK-id> --to <target-tool>` (см. SPEC §3.6). Никогда не редактируется вручную (нарушает audit).
+
+**`tool_switched_at`** — timestamp последнего switch для quick lookup без парсинга `previous_tools[]`. Если `previous_tools` пуст → `null`.
+
+**`ir_snapshot_path`** — путь к IR snapshot YAML (см. SPEC §16). v1.1 default `null`; v2 — populated при IR export.
+
+### Anti-patterns в frontmatter
+
+1. **Editing `previous_tools[]` manually.** Audit trail — read-only после записи `/design:migrate`. Корректировка через NEW migrate-entry с `reason: "correction of <previous-entry-date>"`.
+2. **Удаление `previous_tools[]` при tool switch.** Старые записи всегда сохраняются. История нужна для understanding decisions (см. Design Decisions Log аналогично).
+3. **`design_tool` ≠ current entry в `previous_tools[]`.** Хук `design-artifact-validate.js` проверяет: `design_tool` должен быть AKTUЛЬНЫЙ tool; predecessor — в `previous_tools[]`.
+4. **Использование любых не-canonical полей в frontmatter** (`design_history`, `migration_notes`, `prev_tool`) — все эти variants forbidden, используй ровно `previous_tools[]` + `tool_switched_at`.
 
 ## Body Structure
 
@@ -239,6 +271,8 @@ figma_url: "https://figma.com/..."
 3. **Accessibility как опция.** Base accessibility всегда обязательна.
 4. **Design Decisions переписываются.** История решений должна сохраняться — это контекст для будущих изменений.
 5. **Нет привязки к SC-шагам.** Без этого не проверишь V-MK-01 (screen coverage).
+6. **Tool switch без migration trail.** Меняешь `design_tool` вручную, забываешь записать `previous_tools[]` entry — теряется audit history. Используй `/design:migrate` (Design Module SPEC §3.6), не редактируй frontmatter напрямую.
+7. **Custom migration поля.** `migration_notes`, `prev_tool`, `design_history` и подобные — forbidden. Канонические — только `previous_tools[]` + `tool_switched_at` + `ir_snapshot_path`.
 
 ## Related Skills
 

@@ -3821,6 +3821,111 @@ Fresh-session implementation 2026-05-27 — sub-phases A→I executed sequential
 
 ---
 
+## DEC-DEV-0048 — Pre-Phase-6 architectural addendum: Claude Design co-primary + IR groundwork
+
+**Date:** 2026-05-27
+**Trigger:** User-initiated session question — «надо доделать design модуль ... ориентируемся на Google Stitch и Claude Design, надо продумать выбор инструмента и его смену, а также указание инструмента в артефактах ... на будущие версии заложить механизм миграции фактического отображения интерфейса из одной системы в формат другой».
+**Tag:** #architecture #spec-revision #scope-change
+
+### Context
+
+Phase 6 (Design Module) — conditional, trigger по first FM с has_ui=true. SPEC v1.0 (2026-04-18) описывал tool stack как «Stitch primary, Figma future, HTML fallback» — без Claude Design (продукт ещё не существовал на момент написания v1.0). Frontmatter поле `design_tool: stitch | figma | penpot | html` уже было готово к расширению. Tool switching формально проходил как OQ-DM-02 deferred к v2; `/design:migrate` упоминалась только как Stitch ↔ HTML.
+
+User поднял три отдельных требования:
+1. **Claude Design integration** — добавить как поддерживаемый tool наряду со Stitch.
+2. **Tool switching mechanism** — формализовать выбор и смену.
+3. **Migration mechanism для visual representation** — на будущие версии заложить fundament.
+
+Research (WebFetch на claude.ai support article + WebSearch) дал baseline профиль Claude Design на 2026-05-27:
+- Conversational design (`claude.ai/design`), powered by Claude Opus 4.7
+- Research preview на Pro/Max/Team/Enterprise (default off Enterprise)
+- Export: ZIP / PDF / PPTX / Canva / standalone HTML / **native «Handoff to Claude Code»**
+- DS auto-inheritance из org's design system
+- **MCP/API публично не выпущены**; Anthropic анонсировала «integrations over coming weeks»
+- Known limitations: comment persistence, compact view save errors, large codebase lag
+
+Критическое наблюдение: «Handoff to Claude Code» в Claude Design пересекается с Ecosystem `/product:handoff` semantically. Нужно явно развести.
+
+### Options considered
+
+**A. Минимальный план + IR groundwork (выбран)**
+- Claude Design добавлен как co-primary в SPEC §9.1 наряду со Stitch
+- `design_tool` enum расширен: `stitch | claude-design | figma | penpot | html`
+- `/design:migrate` расширен до Stitch ↔ Claude Design ↔ HTML matrix (lossy regeneration через brief + MK metadata)
+- MK frontmatter migration trail: `previous_tools[]`, `tool_switched_at`, `ir_snapshot_path?` (последнее — noop hook для v2)
+- `design.yaml` ir_export flag — placeholder для v2
+- Новая SPEC §16 «Migration-readiness & IR» — концепт neutral declarative IR + adapter contract table + bring-forward triggers + risk register
+
+Pros: даёт Claude Design support быстро + закрывает 80% user request; IR концептуально документирован без implementation overhead; OQ-DM-02 partially closed (variant A path), OQ-DM-07 опубликован.
+Cons: cross-tool migration в v1 остаётся lossy regeneration — точные визуальные tweaks теряются; tool-specific features (Stitch animations, Claude Design interactive prototypes) не переносятся.
+
+**B. Полноценный IR-слой сейчас**
+- Спроектировать neutral mockup representation (YAML schema)
+- Реализовать export/import adapters для Stitch / Claude Design / HTML
+- `/design:migrate` через IR — lossless для covered features
+
+Pros: фундаментальное решение проблемы tool-switching, future-proof.
+Cons: оценка 8-15ч design + 4-8ч per adapter (~25-40ч total минимум); blocked на Claude Design MCP/API (TBD per Anthropic roadmap); v2 без реального pilot pain — premature optimization (CLAUDE.md «cuttable scope default» принцип); большая часть IR schema может не сойтись с реальностью первых tools (нет 2-х stabilized API).
+
+**C. Stub Claude Design + отложить всё**
+- Просто упомянуть Claude Design в OQ-DM-02 как future option
+- Не менять frontmatter, не менять `/design:migrate`
+
+Pros: минимум изменений сейчас.
+Cons: user explicit request не закрыт — «надо продумать выбор инструмента и его смену, а также указание инструмента в артефактах»; решение «давай вариант А с заделом на IR» специфически отвергает этот путь.
+
+### Decision
+
+**Вариант A — Claude Design co-primary + IR groundwork.**
+
+Конкретные изменения (Narrow scope per user direction):
+1. **`docs/design-module/SPEC.md` → v1.1:** §1.4 (двухканальный вывод + migration limitation note), §2.1 (commands count → 6, skills → 6, MCP — Stitch + Claude Design), §3.6 (`/design:migrate` Stitch ↔ Claude Design ↔ HTML), §4.4a (`claude-design-workflow.md` skill spec), §8.1 (`design.yaml` ir_export flag + claude-design в fallback chain), §9.1 (Claude Design co-primary tool block), §9.6 (graceful degradation chain), §13 (OQ-DM-02 partially resolved + new OQ-DM-07 IR), **новая §16** (Migration-readiness & IR — 6 sub-sections: principle, v1.1 lossy, v2 lossless concept, v1.1 hooks, bring-forward triggers, risk register).
+2. **`docs/pmo/artifacts/MK.md`:** frontmatter enum + migration trail fields (`previous_tools[]`, `tool_switched_at`, `ir_snapshot_path`) + anti-patterns + Common Mistakes #6-#7.
+3. **`dev/PHASE_6_READINESS.md`:** Status banner update, Section A pre-Phase-6 addendum check, Section C — split на «Решено в pre-Phase-6 addendum» (6 пунктов ✅) + «Всё ещё открытые» (OQ-DM-01, новый OQ-DM-08 для Claude Design prompt patterns, Component State Matrix automation, HTML fallback completeness, `/design:migrate` UX), Section D — estimate update (10-20ч с addendum), Section E pilot gates updated.
+4. **`DEV_JOURNAL.md`:** этот entry (DEC-DEV-0048).
+
+**Принципиальные разграничения, codified в addendum:**
+- Ecosystem `/product:handoff` = **product-level behavioral spec** (universal handoff.md)
+- Claude Design «Handoff to Claude Code» = **design-level visual bundle** (HTML + assets)
+- **Комплементарны, не конкурирующи** — Ecosystem handoff §10 может ссылаться на Claude Design bundle URL
+
+**Принципиальное ограничение v1.1, codified:** cross-tool migration — **lossy regeneration**, не lossless transfer. Сохраняется: Screen Inventory, Component State Matrix, Interaction Spec, DS tokens, Accessibility Notes, Design Decisions Log. Теряется: точные визуальные tweaks, tool-specific features, iteration history в source tool.
+
+### Outcome
+
+Pre-Phase-6 architectural addendum зафиксирован до Phase 6 kickoff. Phase 6 kickoff унаследует эти решения; не нужно повторять ту же дискуссию через 5-15+ часов (когда первая UI-фича появится в pilot). Это **front-loaded design discipline** аналогично Phase 4 pre-implementation kickoff (DEC-DEV-0030) и Phase 5 readiness gate (DEC-DEV-0040) — паттерн себя оправдал.
+
+Bring-forward triggers для v2 IR-слоя (см. SPEC §16.5):
+- Реальный pain point: ≥1 проект совершил >1 tool switch и пожаловался на regeneration cost
+- API maturity: ≥2 tools имеют stable read/write API
+- Adapter ecosystem: появилась 3rd-party конвенция universal component vocabulary
+- User explicit request: «нам нужна lossless migration»
+
+До тех пор v1.1 lossy regeneration sufficient.
+
+### Lessons
+
+1. **Pre-phase architectural addendum паттерн оправдан для conditional phases.** Phase 6 — conditional (может не активироваться месяцами/годами); фиксировать архитектурные решения сейчас, пока контекст свежий, дешевле, чем восстанавливать его при kickoff. *Apply:* для других conditional phases (Phase 7 Integrator maintenance) — те же front-loaded решения, когда триггер случается.
+
+2. **Tool ecosystem evolution > project lifetime в design zone.** Stitch и Claude Design — оба research-preview-уровня в 2026, Figma меняет API, новые AI-design tools появляются. SPEC должен изначально быть migration-aware, не bolt-on. Frontmatter `previous_tools[]` + IR hook — даже если IR никогда не имплементирован, audit trail tool switches уже ценен.
+
+3. **«Native handoff» от другого vendor требует семантического разграничения.** Claude Design native «Handoff to Claude Code» легко спутать с Ecosystem `/product:handoff`. Чёткое определение «product-level behavioral vs design-level visual» сразу в SPEC §4.4a + §16 предотвращает confusion при Phase 6 implementation. *Apply:* при добавлении новых tools с overlapping naming проверять semantic conflicts с Ecosystem terminology.
+
+4. **Lossy regeneration — приемлемый v1 для tool switching, если sufficient metadata сохраняется в Ecosystem.** Key insight: визуал — output из metadata + DS + brief, не первичный артефакт. Регенерация в новом tool по тем же inputs даёт «equivalent» (not identical) результат. Identity между визуалами через tools невозможна в принципе из-за tool-specific UI vocabulary; equivalence — реалистичный target.
+
+5. **IR-слой требует ≥2 stabilized API для содержательного дизайна.** Сегодня Stitch MCP — partially stabilized; Claude Design — TBD; Figma — ок. Один stable API недостаточно для universal schema. Решение «IR groundwork without IR implementation» — правильная middle ground: hooks active, поведение noop, schema design отложен до bring-forward trigger.
+
+6. **WebFetch + WebSearch для unknown vendor: tilt towards «record baseline + flag unknowns»** rather than «extrapolate from partial info». В addendum явно записано «known limitations baseline 2026-05-27, могут устареть» — это правильный hedge против информации, которая будет устаревать каждые несколько недель в research-preview product.
+
+### Связь с другими entries
+
+- DEC-DEV-0030 (Phase 4 pre-implementation kickoff) — аналог front-loaded design discipline; ambiguity resolution до implementation
+- DEC-DEV-0040 (Phase 5 readiness gate) — аналог: kickoff-уточнение scope до implementation
+- DEC-DEV-0046 (Defer Phase D wiki) — аналог cuttable-scope discipline; Phase 6 IR-полная-имплементация имеет ту же phantom-audience потенциальную проблему (нет 2-го реального проекта на 2-х tools)
+- DEC-DEV-0040 Q1 (tri-location pattern) — аналог dual hooks в frontmatter: «active поле + хранение для будущего use case»
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

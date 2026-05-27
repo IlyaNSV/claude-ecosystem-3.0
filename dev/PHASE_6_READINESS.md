@@ -10,7 +10,7 @@
 
 ## Status banner
 
-⏳ **Skeleton placeholder.** Заполняется после Phase 5 closure ritual + первой UI-фичи в pilot.
+⏳ **Skeleton + pre-Phase-6 architectural addendum (2026-05-27).** Phase 6 trigger всё ещё conditional (первая FM с has_ui=true в pilot). Архитектурные решения по tooling зафиксированы заранее через DEC-DEV-0048 (Variant A — Claude Design co-primary + IR groundwork) — см. Section C.
 
 ---
 
@@ -21,19 +21,20 @@
 Перед стартом Phase 6 implementation:
 
 **Phase 5 chain:**
-- [ ] Phase 5 implementation closure (DEC-DEV-NNNN closure entry) — done in sub-phase J
+- [ ] Phase 5 implementation closure (DEC-DEV-0048 closure entry) — done in sub-phase J
 - [ ] Phase 5 closure ritual Unit 2 (D7 phase-closure.md 6 steps) — fresh session
 - [ ] Phase 5 runtime smoke (S1-S6 per `dev/PHASE_5_SMOKE_TEST_PLAN.md`) executed; results audited
 - [ ] Closure queued findings (if any) addressed or explicitly deferred
 
 **Phase D chain (per design conversation 2026-05-26):**
-- [ ] Phase D implementation closure (DW.J — DEC-DEV-NNNN closure entry)
+- [ ] Phase D implementation closure (DW.J — DEC-DEV-0048 closure entry)
 - [ ] Phase D closure ritual Unit 2
 - [ ] Phase D E2E pilot (DW.I) — sync action → draft PR → merge → deploy verify
 - [ ] Wiki landing page reflects current ecosystem state
 
 **This file:**
 - [ ] `dev/PHASE_6_READINESS.md` (this file) fleshed out from skeleton based on Phase 5 + Phase D lessons
+- [x] **Pre-Phase-6 architectural addendum** (DEC-DEV-0048, 2026-05-27) — Claude Design co-primary + IR groundwork decided ahead of Phase 6 kickoff; SPEC v1.1 + MK frontmatter migration trail shipped. Phase 6 kickoff унаследует эти решения.
 
 ---
 
@@ -51,13 +52,24 @@ Decision: ⏳ TBD when pilot reaches first FM with UI.
 ## C. Архитектурные вопросы Phase 6 (заполняются на kickoff)
 
 > Заполняется на dedicated kickoff per `dev/meta-improvement/checklists/phase-kickoff.md` Section 1.
+> **Pre-Phase-6 addendum 2026-05-27** (DEC-DEV-0048) уже зафиксировал ряд решений — отмечено ✅.
 
-Известные открытые вопросы из ROADMAP Phase 6 + SPEC Design Module:
+### Решено в pre-Phase-6 addendum (DEC-DEV-0048, 2026-05-27)
+
+- ✅ **Tooling stack:** Stitch + Claude Design — co-primary (не one-of); HTML fallback — гарантированный путь. Figma / Penpot — future. См. SPEC §9.
+- ✅ **Tool selection mechanism:** per-project через `.claude/design.yaml` `default_design_tool` + per-MK override через frontmatter `design_tool`. Fallback chain в `mcp_preferences.fallback_chain`.
+- ✅ **Tool switching v1:** `/design:migrate <MK-id> --to <target-tool>` поддерживает Stitch ↔ Claude Design ↔ HTML; lossy regeneration через brief + MK metadata; migration trail в MK frontmatter (`previous_tools[]`, `tool_switched_at`). См. SPEC §3.6 + §16.2.
+- ✅ **IR layer (lossless migration):** deferred к v2 через OQ-DM-07; v1.1 ships только frontmatter hooks (`ir_snapshot_path`, `ir_export.enabled` flag — noop в v1.1). См. SPEC §16.
+- ✅ **Claude Design integration model в v1.1:** web UI + manual export workflow (claude.ai/design); MCP/API integration — когда Anthropic выпустит (bring-forward trigger в SPEC §9.2).
+- ✅ **Claude Design native «Handoff to Claude Code» vs Ecosystem `/product:handoff`:** комплементарны — Ecosystem handoff = product-level behavioral, Claude Design handoff = design-level visual bundle. Возможна ссылка из Ecosystem handoff §10 на Claude Design bundle.
+
+### Всё ещё открытые вопросы Phase 6
 
 - **OQ-DM-01** — Stitch MCP prompt patterns (open). Первый use case даст данные; может потребовать переработки `stitch-workflow.md` после первого pilot.
-- **OQ-DM-02** — Tool switching mid-project (Stitch → Figma migration). Deferred v2.
-- **Component State Matrix V-MK-02..V-MK-03 automation scope** — некоторые проверки требуют human judgement; решить partial vs full.
-- **HTML fallback completeness** — заглушка vs полноценный путь без Stitch.
+- **OQ-DM-04 / DM-08** — Claude Design prompt patterns (NEW open after addendum). Параллельно OQ-DM-01 для второго co-primary tool. Первая UI-фича на Claude Design даст данные.
+- **Component State Matrix V-MK-02..V-MK-03 automation scope** — некоторые проверки требуют human judgement; решить partial vs full на kickoff.
+- **HTML fallback completeness** — заглушка vs полноценный путь без Stitch/Claude Design.
+- **`/design:migrate` UX в pilot:** approve gate granularity (per MK или batch), regeneration time budget, idempotency при partial failure.
 
 (Дополняется на kickoff.)
 
@@ -65,14 +77,15 @@ Decision: ⏳ TBD when pilot reaches first FM with UI.
 
 ## D. Дисциплина scope для Phase 6
 
-ROADMAP оценка 3-4 ч (+ OQ-DM-01 experimentation). Применяя эмпирический множитель ×2-4 (DEC-DEV-0032 lesson 6) — реалистично 8-16 ч.
+ROADMAP оценка 3-4 ч (+ OQ-DM-01 experimentation). Pre-Phase-6 addendum (DEC-DEV-0048) добавляет ~1-2ч на claude-design-workflow skill + миграционные frontmatter поля + `/design:migrate` Stitch ↔ Claude Design path. Применяя эмпирический множитель ×2-4 (DEC-DEV-0032 lesson 6) — реалистично **10-20 ч**.
 
 Cuttable candidates:
 - **subagents/design/screen-generator.md** — нужен ли для D.2 множественной генерации, или inline в первой итерации?
 - **HTML fallback** — full путь или заглушка (с маркером bring-forward)?
-- **`/design:migrate`** (Stitch ↔ HTML fallback conversion) — нужен ли в первом релизе или v1.1?
+- **`/design:migrate` matrix coverage v1.0:** Stitch ↔ HTML fallback только (минимум) vs Stitch ↔ Claude Design ↔ HTML (полная матрица из addendum)? Decision-point на kickoff.
+- **`claude-design-workflow.md` depth v1.0:** stub (один параграф «manual workflow, MCP TBD») vs full prompt patterns library (требует pilot data из Claude Design)?
 
-Decision: ⏳ TBD на kickoff.
+Decision: ⏳ TBD на kickoff. Pre-Phase-6 addendum указывает **floor** (Stitch + Claude Design + HTML co-equal в SPEC), но реализация может cut к stage 1 = Stitch only + claude-design stub если время dictates.
 
 ---
 
@@ -84,6 +97,8 @@ Decision: ⏳ TBD на kickoff.
 - [ ] HTML fallback работает без Stitch
 - [ ] `/design:export FM-NNN` заполняет §10 UI Specification в handoff
 - [ ] Handoff §10 consumable внешним implementation tool через adapter
+- [ ] **(v1.1 addendum)** `/design:migrate MK-NNN --to <target>` работает для как минимум одной пары (Stitch ↔ HTML), migration trail записан в frontmatter, regeneration в target tool через brief sufficient
+- [ ] **(v1.1 addendum)** Claude Design workflow tested as fallback (manual export → `.product/.design-sessions/`) — если pilot user имеет Pro/Max/Team subscription
 
 ---
 
