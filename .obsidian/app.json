@@ -1,0 +1,10 @@
+{
+  "userIgnoreFilters": [
+    ".git",
+    "dev/_archive",
+    "_archive",
+    "node_modules",
+    "dev/meta-improvement/"
+  ],
+  "readableLineLength": false
+}

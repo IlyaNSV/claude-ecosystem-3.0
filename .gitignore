@@ -3,6 +3,17 @@
 .vscode/
 *.iml
 
+# === Obsidian vault state (per-machine UI; baseline config committed) ===
+# Repo is opened as Obsidian vault for local navigation (DEC-DEV-0046, Stage 2).
+# Commit: app.json, appearance.json, core-plugins.json, community-plugins.json,
+# hotkeys.json — shared baseline across machines/versions.
+# Ignore: per-session UI state + graph view position/zoom + cache.
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/graph.json
+.obsidian/cache/
+.obsidian/*.json.bak
+
 # === OS ===
 .DS_Store
 Thumbs.db
