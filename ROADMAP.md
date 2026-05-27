@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-27 (patch 1.3.4 shipped — DEC-DEV-0049 `/ecosystem:update` Step 6 merge-preserve fix; preserves third-party hook injections).
+> **Последнее обновление:** 2026-05-27 (patch 1.3.5 shipped — DEC-DEV-0051 `/ecosystem:update` Step 5 namespace-aware sync + Step 2 extended backup; closes same class of bug as 1.3.4 for subdirs + backup scope).
 
 ## Где мы сейчас
 
@@ -77,6 +77,16 @@
    — Third-party hook injections (bd prime, etc.) больше не wipe'ятся при ecosystem upgrade
    — Driven by downstream `my-first-test` pilot evidence (DEC-INT-0005, 2026-05-27)
    — Spec-only change (commands/ecosystem/update.md); bootstrap Step 6b already correct
+   — Smoke verification deferred к next pilot `/ecosystem:update` run
+
+✅ Patch 1.3.5 (2026-05-27) — DEC-DEV-0051; 1.3.5 release
+   — `/ecosystem:update` Step 5 nuclear sync → namespace-aware sync
+     + Step 2 backup extended до integrator-managed external paths
+   — Closes same class of bug as 1.3.4 (ecosystem zone shared with third-party tools):
+     cc-sdd `kiro-*` skills больше не уничтожаются при update; `.kiro/`, `.beads/` etc.
+     попадают в `_external/` backup для rollback safety
+   — Surfaced during static dry-run of 1.3.4 spec on real downstream state
+   — Spec-only change (Step 2/4/5/8 + Rollback section); bootstrap unchanged (already correct)
    — Smoke verification deferred к next pilot `/ecosystem:update` run
 
 [We are here ─────────────────────────────────────]

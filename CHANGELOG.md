@@ -8,7 +8,33 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-(Empty — patch 1.3.4 shipped; next stop after pilot smoke.)
+(Empty — patch 1.3.5 shipped; next stop after pilot smoke.)
+
+---
+
+## [1.3.5] — 2026-05-27
+
+Single-patch fix following same architectural family as 1.3.4 (DEC-DEV-0049). Surfaced during static dry-run of 1.3.4 Step 6 spec on real downstream state — `/ecosystem:update` Step 5 (subdir sync) и Step 2 (backup scope) had identical class of bug: ecosystem zone treated as 100% ecosystem-managed when reality is namespace-shared с Integrator-installed tools. Patch 1.3.5 closes both gaps in one shot. См. DEC-DEV-0051.
+
+### Fixed
+
+- **`commands/ecosystem/update.md` Step 5** — `rm -rf .claude/<subdir> && cp -r ...` → namespace-aware sync. Subdirs `commands/`, `skills/`, `agents/`, `hooks/` classified namespace-aware: managed namespaces (`{product, integrator, ecosystem, design}` discovered dynamically from upstream) re-derived; non-managed namespaces (third-party — e.g. `.claude/skills/kiro-*/` от cc-sdd) preserved untouched. Subdirs `docs/`, `templates/`, `adapters/`, `output-styles/` остаются flat full-sync (no third-party expected). Previously, `/ecosystem:update` уничтожал cc-sdd `kiro-*` skills (and any third-party namespace) каждый раз.
+- **`commands/ecosystem/update.md` Step 2** — Backup extended: Phase 2a `.claude/` snapshot (as before) + Phase 2b integrator-managed external paths from `active-tools.yaml#tools[*].claude_primitives[].path` (outside `.claude/`). `${BACKUP_DIR}/_external/` + `MANIFEST.yaml` provide rollback orientation. Captures `.kiro/`, `.beads/`, etc. Previously, backup ограничивался `.claude/` — rollback не восстанавливал external workspace dirs.
+- **`commands/ecosystem/update.md` Rollback section** — two-phase restoration matching new backup structure. Bash + PowerShell variants.
+
+### Modified
+
+- **`commands/ecosystem/update.md` Step 4** — Changeset preview добавляет namespace classification: per-subdir managed vs preserved namespaces + integrator-managed audit annotation (ownership labels via `active-tools.yaml`).
+- **`commands/ecosystem/update.md` Step 8 summary report** — Show T-counts of third-party namespaces preserved per subdir + Phase 2b backup composition + integrator-managed third-party preservation explicit.
+- **`DEV_JOURNAL.md`** — DEC-DEV-0051 entry (rationale, options A-D, decision, lessons, related entries).
+- **`ROADMAP.md`** — «Где мы сейчас» snapshot bumped к 1.3.5.
+
+### Не затронуто
+
+- `commands/ecosystem/bootstrap.md` — уже использовал `cp -rn` no-clobber (line 254-258); не уничтожал existing third-party namespaces. Update теперь aligned semantically.
+- Hook runtime (`hooks/*/manifest.yaml`, JS files) — без изменений.
+- `.product/` artifacts — никогда не trotch'ало update'ом, никаких изменений.
+- Backward compatibility: для projects без third-party namespaces поведение identical (preserved-counts = 0, `_external/` empty). Migration not required.
 
 ---
 

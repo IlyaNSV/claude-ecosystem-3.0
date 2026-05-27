@@ -63,18 +63,87 @@ Check **all three** present:
 
 **If all present** → proceed.
 
-### Step 2: Backup `.claude/` (unless `--no-backup`)
+### Step 2: Backup `.claude/` + integrator-managed external paths (unless `--no-backup`)
+
+**Phase 2a — `.claude/` snapshot:**
 
 ```bash
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP_DIR=".claude-backup-${TIMESTAMP}"
 cp -r .claude "${BACKUP_DIR}"
-echo "Backup: ${BACKUP_DIR}"
 ```
 
-If `--no-backup` → skip с warning «User responsible для recovery if update fails». Default = backup (cautious).
+**Phase 2b — Integrator-managed external paths** (DEC-DEV-0051 / patch 1.3.5):
 
-**`.product/` is never touched** regardless of backup choice — артефакты outside `.claude/`.
+If `.claude/integrator/active-tools.yaml` exists и parseable — read `tools[*].claude_primitives[].path` entries. For each path that **falls outside `.claude/`** (e.g. `.kiro/`, `.beads/`, etc.) — backup separately under `${BACKUP_DIR}/_external/<path>` preserving relative structure:
+
+```bash
+if [ -f .claude/integrator/active-tools.yaml ]; then
+  EXTERNAL_PATHS=$(parse_yaml_external_primitives .claude/integrator/active-tools.yaml)
+  # EXTERNAL_PATHS = unique sorted list of claude_primitives[].path entries
+  # NOT starting with '.claude/'. Implementation: yq/grep + dedup + filter.
+
+  if [ -n "$EXTERNAL_PATHS" ]; then
+    mkdir -p "${BACKUP_DIR}/_external"
+    for P in $EXTERNAL_PATHS; do
+      if [ -e "$P" ]; then
+        PARENT=$(dirname "${BACKUP_DIR}/_external/$P")
+        mkdir -p "$PARENT"
+        cp -r "$P" "${BACKUP_DIR}/_external/$P"
+      fi
+    done
+
+    # Manifest listing what was backed up (для rollback orientation)
+    cat > "${BACKUP_DIR}/_external/MANIFEST.yaml" <<EOF
+# Backed up by /ecosystem:update Step 2b (DEC-DEV-0051).
+# These paths are integrator-managed primitives outside .claude/.
+# Restored via: cp -r "${BACKUP_DIR}/_external/<path>" "<path>"
+backup_timestamp: ${TIMESTAMP}
+source_file: .claude/integrator/active-tools.yaml
+external_paths:
+$(echo "$EXTERNAL_PATHS" | sed 's/^/  - /')
+EOF
+  fi
+fi
+
+echo "Backup: ${BACKUP_DIR}"
+echo "  - .claude/ snapshot"
+echo "  - _external/ (N integrator-managed paths outside .claude/, per active-tools.yaml)"
+```
+
+**PowerShell equivalent (Windows):**
+
+```powershell
+$timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
+$backupDir = ".claude-backup-$timestamp"
+Copy-Item -Path .claude -Destination $backupDir -Recurse
+
+if (Test-Path ".claude\integrator\active-tools.yaml") {
+  # Parse active-tools.yaml, extract claude_primitives[].path values not starting with '.claude/'
+  # Implementation depends on available YAML tooling; ConvertFrom-Yaml (if module loaded) or regex fallback
+  $externalPaths = Get-IntegratorExternalPrimitives ".claude\integrator\active-tools.yaml"
+  if ($externalPaths.Count -gt 0) {
+    $extDir = Join-Path $backupDir "_external"
+    New-Item -ItemType Directory -Path $extDir -Force | Out-Null
+    foreach ($p in $externalPaths) {
+      if (Test-Path $p) {
+        $dest = Join-Path $extDir $p
+        $parent = Split-Path $dest -Parent
+        New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        Copy-Item -Path $p -Destination $dest -Recurse
+      }
+    }
+    # Write MANIFEST.yaml (same content as bash variant)
+  }
+}
+Write-Host "Backup: $backupDir"
+```
+
+**Why Phase 2b** (DEC-DEV-0051): pre-1.3.5 backup захватывал только `.claude/`. Integrator-installed tools часто размещают artifacts outside `.claude/` (cc-sdd → `.kiro/specs/`, `.kiro/steering/`, `.kiro/templates/`; beads → `.beads/`). При rollback после неудачного update эти paths не восстанавливались. Pattern aligns с Step 5 namespace-selective sync (DEC-DEV-0051 same patch): full Integrator-managed footprint должна выживать update'ы.
+
+If `--no-backup` → skip both phases с warning «User responsible для recovery if update fails». Default = backup (cautious).
+
+**`.product/` is never touched** regardless of backup choice — артефакты outside `.claude/`. Backup'ить `.product/` НЕ нужно (update в принципе не пишет туда; integrator install paths не пересекаются).
 
 ### Step 3: Clone upstream к temp
 
@@ -133,9 +202,21 @@ rm -rf .claude-ecosystem-tmp/.git
 - `.product/` — entire (outside `.claude/`)
 - Any other user-added files в `.claude/` outside ecosystem-zone subdirs
 
-**Diff computation per allowlisted subdir:**
+**Diff computation per allowlisted subdir** (namespace-aware — DEC-DEV-0051 / patch 1.3.5):
 
-For `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `adapters/`, `output-styles/`:
+Subdirs split into two classes:
+
+| Subdir class | Subdirs | Semantics |
+|---|---|---|
+| **Namespace-aware** (third-party namespaces possible) | `commands/`, `skills/`, `agents/`, `hooks/` | Manage только ecosystem-owned namespaces (`{product, integrator, ecosystem, design}` — discovered dynamically from `.claude-ecosystem-tmp/<subdir>/` immediate children). Non-managed namespaces (e.g. `.claude/skills/kiro-*/` от cc-sdd) preserved untouched. |
+| **Flat** (no third-party expected) | `docs/`, `templates/`, `adapters/`, `output-styles/` | Full subdir sync (delete obsolete + copy fresh). Если third-party tool пишет сюда — он breaks ecosystem convention; not supported. |
+
+**Per namespace-aware subdir:**
+- **Managed namespaces:** immediate children of `.claude-ecosystem-tmp/<subdir>/` (e.g. для `skills/`: `ecosystem/`, `integrator/`, `product/` + `design/` post-Phase-6).
+- **To re-sync:** for each managed namespace N, compute diff `.claude/<subdir>/N` vs `.claude-ecosystem-tmp/<subdir>/N` (add/remove/update files inside N).
+- **Preserved (untouched):** any other children of `.claude/<subdir>/` (third-party namespaces или flat files). Не trim'ятся, не overwrite'ятся.
+
+**Per flat subdir:**
 - **To remove:** files в `.claude/<subdir>/` but NOT в `.claude-ecosystem-tmp/<subdir>/`
 - **To add:** files в `.claude-ecosystem-tmp/<subdir>/` but NOT в `.claude/<subdir>/`
 - **To update:** files в both, content differs
@@ -143,6 +224,8 @@ For `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `adapter
 For root files в allowlist:
 - **To add:** file в upstream но NOT в `.claude/`
 - **To update:** file в both, content differs
+
+**Integrator-managed audit (optional)** — если `.claude/integrator/active-tools.yaml` available и parseable, label preserved non-managed namespaces in print preview by owning tool. Read-only consultation, не блокирует diff computation.
 
 **Obsolete contamination detection (post-DEC-DEV-0019 cleanup, per DEC-DEV-0042):**
 
@@ -169,13 +252,21 @@ If a path is present и matches the closed list → mark for removal in the chan
 
 ```
 Changeset preview:
-  Subdirs (rsync-style sync):
-    commands/  — N added, M removed, K updated
-    skills/    — N added, M removed, K updated
-    hooks/     — N added, M removed, K updated (incl. manifest.yaml)
+  Namespace-aware subdirs (managed ecosystem namespaces only):
+    commands/  — managed: {ecosystem, integrator, product} → N added, M removed, K updated
+               — preserved namespaces (third-party): none
+    skills/    — managed: {ecosystem, integrator, product} → N added, M removed, K updated
+               — preserved namespaces (third-party): kiro-discovery, kiro-spec-init, ... (17 dirs)
+                  [owned by: cc-sdd (per active-tools.yaml)]
+    agents/    — managed: {integrator, product} → N added, M removed, K updated
+               — preserved: none
+    hooks/     — managed: {integrator, product} → N added, M removed, K updated (incl. manifest.yaml)
+               — preserved: none
+
+  Flat subdirs (full sync):
     docs/      — N added, M removed, K updated
     adapters/  — N added, M removed, K updated (reference adapters for /integrator:add Stage 5)
-    agents/, templates/, output-styles/ — counts
+    templates/, output-styles/ — counts
 
   Root files (overwrite):
     CHANGELOG.md — updated (or unchanged)
@@ -187,9 +278,11 @@ Changeset preview:
     .claude/dev/ (entire dir)
     .claude/package.json, .claude/package-lock.json, .claude/eslint.config.js, .claude/node_modules/
 
-  Settings.json hooks: K entries to be re-derived from new manifest
+  Settings.json hooks: K entries to be re-derived from new manifest;
+                       L third-party entries preserved (per Step 6 DEC-DEV-0049)
 
-Total: X added + Y updated + Z removed (incl. C contamination items).
+Total: X added + Y updated + Z removed (incl. C contamination items);
+       T third-party namespaces preserved (DEC-DEV-0051).
 
 Preserved (user zone, untouched):
   .claude/settings.local.json
@@ -197,6 +290,10 @@ Preserved (user zone, untouched):
   .claude/integrator/ (Y files)
   .claude/projects/ (Z files, Claude Code auto)
   .product/ (entire — outside .claude/)
+
+Preserved (integrator-managed external paths — DEC-DEV-0051):
+  .kiro/ (cc-sdd workspace dirs + templates)
+  .beads/ (committed via git anyway, but backed up by Step 2b for safety)
 
 Skipped (never-copy zone, NOT entering .claude/):
   CLAUDE.md (root, dev's), DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md
@@ -209,18 +306,105 @@ Skipped (never-copy zone, NOT entering .claude/):
 
 ### Step 5: Apply changes (if confirmed)
 
-For each ecosystem-zone subdir в allowlist:
+**Two sync modes per subdir class** (per Step 4 classification — DEC-DEV-0051):
+
+#### 5.1 Namespace-aware subdirs (`commands/`, `skills/`, `agents/`, `hooks/`)
+
+Managed namespaces — re-derived from upstream. Non-managed namespaces (third-party integrator-installed tools) — preserved untouched. Managed namespace set discovered dynamically: immediate children of `.claude-ecosystem-tmp/<subdir>/`.
 
 ```bash
-# rsync-style: delete obsolete + copy fresh
-rm -rf .claude/commands
-cp -r .claude-ecosystem-tmp/commands .claude/commands
+for SUBDIR in commands skills agents hooks; do
+  if [ ! -d ".claude-ecosystem-tmp/$SUBDIR" ]; then
+    continue
+  fi
 
-rm -rf .claude/skills
-cp -r .claude-ecosystem-tmp/skills .claude/skills
+  # Discover ecosystem-managed namespaces from upstream
+  MANAGED_NS=$(ls -1 ".claude-ecosystem-tmp/$SUBDIR" 2>/dev/null | grep -v '^manifest\.yaml$')
 
-# ... same for agents/, hooks/, docs/, templates/, adapters/, output-styles/
+  # Ensure target subdir exists
+  mkdir -p ".claude/$SUBDIR"
+
+  # Re-sync each managed namespace
+  for NS in $MANAGED_NS; do
+    if [ -d ".claude-ecosystem-tmp/$SUBDIR/$NS" ]; then
+      rm -rf ".claude/$SUBDIR/$NS"
+      cp -r ".claude-ecosystem-tmp/$SUBDIR/$NS" ".claude/$SUBDIR/$NS"
+    elif [ -f ".claude-ecosystem-tmp/$SUBDIR/$NS" ]; then
+      # Flat file inside subdir (e.g. hooks/<subdir>/manifest.yaml at module level — нет в текущей структуре, оставлено для безопасности)
+      cp ".claude-ecosystem-tmp/$SUBDIR/$NS" ".claude/$SUBDIR/$NS"
+    fi
+  done
+
+  # Non-managed namespaces (.claude/$SUBDIR/<X>/ where X not in $MANAGED_NS) — untouched.
+done
 ```
+
+**PowerShell equivalent (Windows):**
+
+```powershell
+$namespaceAwareSubdirs = @('commands', 'skills', 'agents', 'hooks')
+foreach ($subdir in $namespaceAwareSubdirs) {
+  $upstreamPath = ".claude-ecosystem-tmp\$subdir"
+  if (-not (Test-Path $upstreamPath)) { continue }
+
+  # Discover managed namespaces (immediate children of upstream subdir, excluding root manifest.yaml)
+  $managedNs = Get-ChildItem -Path $upstreamPath -Name | Where-Object { $_ -ne 'manifest.yaml' }
+
+  $targetPath = ".claude\$subdir"
+  if (-not (Test-Path $targetPath)) {
+    New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
+  }
+
+  foreach ($ns in $managedNs) {
+    $src = Join-Path $upstreamPath $ns
+    $dst = Join-Path $targetPath $ns
+    if (Test-Path $src -PathType Container) {
+      if (Test-Path $dst) { Remove-Item -Path $dst -Recurse -Force }
+      Copy-Item -Path $src -Destination $dst -Recurse
+    } elseif (Test-Path $src -PathType Leaf) {
+      Copy-Item -Path $src -Destination $dst -Force
+    }
+  }
+  # Non-managed entries inside $targetPath untouched.
+}
+```
+
+**Examples in current downstream:**
+- `.claude/skills/{ecosystem,integrator,product}/` — re-derived from upstream
+- `.claude/skills/kiro-*/` (17 cc-sdd dirs, если переустановлены) — **preserved untouched** ✓ (regression of pre-1.3.5 behavior где `rm -rf .claude/skills` уничтожал их)
+
+#### 5.2 Flat subdirs (`docs/`, `templates/`, `adapters/`, `output-styles/`)
+
+Full sync — delete + copy. Third-party tools писать сюда не должны (out of ecosystem convention).
+
+```bash
+for SUBDIR in docs templates adapters output-styles; do
+  if [ -d ".claude-ecosystem-tmp/$SUBDIR" ]; then
+    rm -rf ".claude/$SUBDIR"
+    cp -r ".claude-ecosystem-tmp/$SUBDIR" ".claude/$SUBDIR"
+  fi
+done
+```
+
+PowerShell:
+
+```powershell
+$flatSubdirs = @('docs', 'templates', 'adapters', 'output-styles')
+foreach ($subdir in $flatSubdirs) {
+  $src = ".claude-ecosystem-tmp\$subdir"
+  $dst = ".claude\$subdir"
+  if (Test-Path $src) {
+    if (Test-Path $dst) { Remove-Item -Path $dst -Recurse -Force }
+    Copy-Item -Path $src -Destination $dst -Recurse
+  }
+}
+```
+
+**Why namespace-aware split** (DEC-DEV-0051, patch 1.3.5):
+
+Pre-1.3.5 spec делал `rm -rf .claude/<subdir>` для всех subdirs. Integrator-installed tools (cc-sdd) placing primitives внутри ecosystem zone subdirs (`.claude/skills/kiro-*/`) уничтожались каждым `/ecosystem:update`. Same architectural family as Step 6 hooks REPLACE (fixed 1.3.4 / DEC-DEV-0049). Pattern: ecosystem zone is shared resource — needs namespace-level granularity, не subdir-level nuclear sync. Flat subdirs unchanged (нет real third-party use case для `.claude/docs/<tool>/` etc.).
+
+#### 5.3 Ecosystem-zone root files
 
 For each ecosystem-zone root file:
 
@@ -470,16 +654,19 @@ If any missing → flag, suggest restore from backup.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Backup: .claude-backup-<timestamp>/
+  - .claude/ snapshot
+  - _external/ (J integrator-managed paths outside .claude/, per active-tools.yaml; .kiro/, .beads/, ...)
 
-Synced from upstream:
-  commands/ — N items
-  skills/   — N items
-  hooks/    — N items (incl. manifest.yaml)
-  docs/     — N items
-  agents/, templates/, output-styles/ — N items
+Synced from upstream (namespace-aware sync — DEC-DEV-0051):
+  commands/ — managed namespaces re-derived; T1 third-party namespaces preserved
+  skills/   — managed namespaces re-derived; T2 third-party namespaces preserved
+  agents/   — managed namespaces re-derived; T3 third-party namespaces preserved
+  hooks/    — managed namespaces re-derived (incl. manifest.yaml); T4 third-party namespaces preserved
+  docs/     — full sync (no third-party expected)
+  templates/, adapters/, output-styles/ — full sync
   Root files: README, CHANGELOG, ROADMAP, BOOTSTRAP, install.sh/ps1, .env.template, gitignore.template
 
-Settings.json hooks: re-derived (M hooks active, registered под manifest)
+Settings.json hooks: ecosystem hooks re-derived (M active); L third-party entries preserved (per DEC-DEV-0049)
 
 Obsolete contamination cleaned (DEC-DEV-0042):
   K items removed from .claude/ (CLAUDE.md, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md, package.json, ...)
@@ -493,6 +680,12 @@ Preserved (untouched):
   .claude/projects/ (Claude Code session history)
   .product/ (your artifacts — entire)
   .claude/.gitignore, .claude/.gitattributes (if present — project's own)
+
+Preserved (integrator-managed third-party — DEC-DEV-0051):
+  Inside ecosystem zone: .claude/skills/kiro-*/ (cc-sdd), .claude/hooks/<tool>/ (if any), ...
+  Outside ecosystem zone (backed up by Step 2b for rollback safety):
+    .kiro/ (cc-sdd workspace + templates)
+    .beads/ (beads dolt store + git hooks)
 
 Never copied (correctly skipped from upstream):
   CLAUDE.md (root, ecosystem dev's), DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md, package.json/node_modules
@@ -529,20 +722,58 @@ What's next?
 
 ## Rollback
 
-If update broke something:
+If update broke something, rollback now restores **both** `.claude/` AND integrator-managed external paths (DEC-DEV-0051):
 
 ```bash
 # Identify backup
 ls -d .claude-backup-*
 
-# Full rollback (assumes только one recent backup)
+# Pick latest, e.g. .claude-backup-20260527-220000
+BACKUP=.claude-backup-<timestamp>
+
+# Phase 1: restore .claude/
 rm -rf .claude
-mv .claude-backup-<timestamp> .claude
+cp -r "$BACKUP" .claude
+# (or `mv` if no other backups depend on this dir)
+
+# Phase 2: restore integrator-managed external paths (if any)
+if [ -d "$BACKUP/_external" ]; then
+  # MANIFEST.yaml lists paths; iterate and restore each.
+  # Simple variant — cp each top-level entry under _external/ back to its original location.
+  for P in "$BACKUP/_external"/*; do
+    NAME=$(basename "$P")
+    if [ "$NAME" = "MANIFEST.yaml" ]; then continue; fi
+    rm -rf "./$NAME"
+    cp -r "$P" "./$NAME"
+  done
+fi
+
+# Note: .claude/ is restored from snapshot, not original — if rollback copied vs moved,
+# you can keep the backup dir for additional rollbacks. Use `mv` for one-shot restore.
+```
+
+**PowerShell equivalent:**
+
+```powershell
+$backup = ".claude-backup-<timestamp>"
+
+# Phase 1
+if (Test-Path .claude) { Remove-Item -Path .claude -Recurse -Force }
+Copy-Item -Path $backup -Destination .claude -Recurse
+
+# Phase 2
+$extDir = Join-Path $backup "_external"
+if (Test-Path $extDir) {
+  Get-ChildItem -Path $extDir | Where-Object { $_.Name -ne 'MANIFEST.yaml' } | ForEach-Object {
+    if (Test-Path "./$($_.Name)") { Remove-Item -Path "./$($_.Name)" -Recurse -Force }
+    Copy-Item -Path $_.FullName -Destination "./$($_.Name)" -Recurse
+  }
+}
 ```
 
 `.product/` was never touched, so artifacts intact regardless of rollback.
 
-If multiple backups present (subsequent updates) → keep latest backup, delete older periodically.
+If multiple backups present (subsequent updates) → keep latest backup, delete older periodically. Check `$BACKUP/_external/MANIFEST.yaml` to see what external paths the backup contains.
 
 ## Comparison: bootstrap vs update
 
