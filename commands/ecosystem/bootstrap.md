@@ -489,6 +489,57 @@ Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module direc
 
 **If manifest is missing for a module but hook files exist** → warn user, skip registration for that module. Suggest: create manifest.yaml per the convention in existing `hooks/product/manifest.yaml`.
 
+#### 6c. Initialize `.claude/pending-actions.md` (DEC-DEV-0047 / patch 1.3.3 B-3)
+
+Ecosystem-wide journal of pending user actions (signup, API key obtain, legal-entity registration, manual UI config in third-party admin). Any module can append; `/ecosystem:pending-actions` is the read-only UX.
+
+Schema spec: `skills/ecosystem/user-action-tracker.md` (deployed via Step 2).
+
+**Idempotent:** if file already exists at `.claude/pending-actions.md` → preserve user content; do NOT overwrite. Only init on greenfield.
+
+```bash
+if [ ! -f .claude/pending-actions.md ]; then
+  NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  cat > .claude/pending-actions.md <<EOF
+# Pending User Actions
+
+> Ecosystem-wide journal of actions that only the user can do — signups,
+> API keys, legal entity registration, manual UI configuration in third-party
+> admins. Auto-managed by ecosystem skills + scope-guard hook.
+>
+> Schema + protocol: \`skills/ecosystem/user-action-tracker.md\`
+> List + filter: \`/ecosystem:pending-actions [--status <pending|done|dismissed|all>]\`
+> Status workflow: pending → done | dismissed. Manual edits are fine; keep schema intact.
+
+<!-- PA-000 sentinel ensures counter starts at 1 — do not delete -->
+
+## PA-000 — Sentinel (do not delete)
+
+**Status:** dismissed
+**Created:** ${NOW_ISO}
+**Source:** ecosystem
+**Trigger:** /ecosystem:bootstrap
+**Action required:** none (placeholder so PA-NNN counter starts at 1)
+
+**Details:**
+
+Initial sentinel entry. Future entries appended by:
+- \`skills/integrator/research-protocol.md\` Phase 8 (USER signup / API key / legal-entity actions)
+- \`skills/integrator/installation-protocol.md\` install-time surface
+- \`hooks/integrator/scope-guard.js\` PreToolUse warn-only on forbidden-path writes during Integrator sessions
+- Any other module/skill that surfaces a user-only action
+
+**Blocking:** none.
+
+EOF
+  echo "Initialized .claude/pending-actions.md (PA-000 sentinel)"
+else
+  echo "Preserved existing .claude/pending-actions.md"
+fi
+```
+
+Confirm `.claude/pending-actions.md` is **not** gitignored — it's committed (user actions are part of project history, not local-only state).
+
 ### Step 7: Create `.claude/product.yaml`
 
 Prompt user for:
@@ -656,13 +707,14 @@ Tell user:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Installed:
-  ✓ .claude/         ecosystem (commands, skills, docs)
-  ✓ .product/        empty skeleton (artifacts will come from /product:init)
-  ✓ CLAUDE.md        project context for Claude Code
-  ✓ .env             API keys (gitignored)
-  ✓ .gitignore       ecosystem-compatible
-  ✓ product.yaml     project config (tier: pilot)
-  ✓ MCP stack        N of 7 installed
+  ✓ .claude/                    ecosystem (commands, skills, docs)
+  ✓ .claude/pending-actions.md  user-action journal (committed; sentinel PA-000)
+  ✓ .product/                   empty skeleton (artifacts will come from /product:init)
+  ✓ CLAUDE.md                   project context for Claude Code
+  ✓ .env                        API keys (gitignored)
+  ✓ .gitignore                  ecosystem-compatible
+  ✓ product.yaml                project config (tier: pilot)
+  ✓ MCP stack                   N of 7 installed
 
 What's next?
 

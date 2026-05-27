@@ -126,6 +126,7 @@ rm -rf .claude-ecosystem-tmp/.git
 - `.claude/settings.local.json` — user's permission approvals
 - `.claude/settings.json` (hooks section re-derived; permissions + other fields preserved — see Step 6)
 - `.claude/product.yaml` — project config
+- `.claude/pending-actions.md` (if exists) — ecosystem-wide PA journal (DEC-DEV-0047 / patch 1.3.3); user entries preserved verbatim; init backfilled in Step 5b if missing
 - `.claude/integrator/` (если exists) — Integrator project state
 - `.claude/.env` (если exists; usually .env at project root) — secrets
 - `.claude/projects/`, `todos/`, `statsig/`, `shell-snapshots/`, `ide/`, `plugins/` — Claude Code auto-files
@@ -297,6 +298,93 @@ Total: K items removed (or "none — clean install" if all absent).
 - `.claude/.gitignore`, `.claude/.gitattributes`, and any non-listed file are **NEVER** touched here — even if they look ecosystem-related.
 - `.claude/docs/` is an allowlisted subdir, NOT contamination — never confuse with `.claude/dev/`.
 
+### Step 5b: Backfill `.claude/pending-actions.md` if missing (DEC-DEV-0047 / patch 1.3.3 B-3)
+
+Pre-1.3.3 installs don't have this file. Update detects absence and backfills idempotently. **Existing user entries preserved verbatim** — never overwrite.
+
+```bash
+if [ ! -f .claude/pending-actions.md ]; then
+  NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+  cat > .claude/pending-actions.md <<EOF
+# Pending User Actions
+
+> Ecosystem-wide journal of actions that only the user can do — signups,
+> API keys, legal entity registration, manual UI configuration in third-party
+> admins. Auto-managed by ecosystem skills + scope-guard hook.
+>
+> Schema + protocol: \`skills/ecosystem/user-action-tracker.md\`
+> List + filter: \`/ecosystem:pending-actions [--status <pending|done|dismissed|all>]\`
+> Status workflow: pending → done | dismissed. Manual edits are fine; keep schema intact.
+
+<!-- PA-000 sentinel ensures counter starts at 1 — do not delete -->
+
+## PA-000 — Sentinel (do not delete)
+
+**Status:** dismissed
+**Created:** ${NOW_ISO}
+**Source:** ecosystem
+**Trigger:** /ecosystem:update (backfill from patch 1.3.3)
+**Action required:** none (placeholder so PA-NNN counter starts at 1)
+
+**Details:**
+
+Initial sentinel entry backfilled during /ecosystem:update. Future entries
+appended by integrator research-protocol Phase 8, installation-protocol surface,
+scope-guard hook, and any other ecosystem skill that surfaces a user-only action.
+
+**Blocking:** none.
+
+EOF
+  echo "Backfilled .claude/pending-actions.md (PA-000 sentinel; pre-1.3.3 install)"
+else
+  echo "Preserved existing .claude/pending-actions.md (user entries intact)"
+fi
+```
+
+PowerShell equivalent (Windows):
+
+```powershell
+if (-not (Test-Path ".claude\pending-actions.md")) {
+  $nowIso = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+  $content = @"
+# Pending User Actions
+
+> Ecosystem-wide journal of actions that only the user can do — signups,
+> API keys, legal entity registration, manual UI configuration in third-party
+> admins. Auto-managed by ecosystem skills + scope-guard hook.
+>
+> Schema + protocol: ``skills/ecosystem/user-action-tracker.md``
+> List + filter: ``/ecosystem:pending-actions [--status <pending|done|dismissed|all>]``
+> Status workflow: pending → done | dismissed. Manual edits are fine; keep schema intact.
+
+<!-- PA-000 sentinel ensures counter starts at 1 — do not delete -->
+
+## PA-000 — Sentinel (do not delete)
+
+**Status:** dismissed
+**Created:** $nowIso
+**Source:** ecosystem
+**Trigger:** /ecosystem:update (backfill from patch 1.3.3)
+**Action required:** none (placeholder so PA-NNN counter starts at 1)
+
+**Details:**
+
+Initial sentinel entry backfilled during /ecosystem:update. Future entries
+appended by integrator research-protocol Phase 8, installation-protocol surface,
+scope-guard hook, and any other ecosystem skill that surfaces a user-only action.
+
+**Blocking:** none.
+
+"@
+  Set-Content -Path ".claude\pending-actions.md" -Value $content -Encoding utf8
+  Write-Host "Backfilled .claude/pending-actions.md (PA-000 sentinel; pre-1.3.3 install)"
+} else {
+  Write-Host "Preserved existing .claude/pending-actions.md (user entries intact)"
+}
+```
+
+Confirm `.claude/pending-actions.md` is **not** added к `.gitignore` (it's committed).
+
 ### Step 6: Re-derive `.claude/settings.json` hooks section
 
 Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in Step 5):
@@ -364,6 +452,7 @@ Obsolete contamination cleaned (DEC-DEV-0042):
 Preserved (untouched):
   .claude/settings.local.json (your permissions)
   .claude/product.yaml (your config)
+  .claude/pending-actions.md (your pending-actions journal — backfilled if pre-1.3.3 install; existing entries intact)
   .claude/integrator/ (Integrator state)
   .claude/projects/ (Claude Code session history)
   .product/ (your artifacts — entire)
