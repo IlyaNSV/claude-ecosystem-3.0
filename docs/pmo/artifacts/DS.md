@@ -265,6 +265,6 @@ Button                                          ❌ без variants, без toke
 
 ## Related Skills
 
-- `ds-extraction.md` (в разработке, автоизвлечение из MK)
-- `ds-mass-rename.md` (в разработке)
-- `ds-token-review.md` (в разработке)
+- `ds-extraction.md` (planned, автоизвлечение из MK — Design Module Phase 6 conditional)
+- `ds-mass-rename.md` (deferred to v1.1+ — atomic mass-rename, см. [`dev/v1_1_backlog.md`](../../../dev/v1_1_backlog.md))
+- `ds-token-review.md` (planned)

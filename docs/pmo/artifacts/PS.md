@@ -131,5 +131,5 @@ title: "Для фрилансеров нет хорошего инструмен
 
 ## Related Skills
 
-- `problem-discovery-session.md` (в `product-module/skills/` — в разработке)
+- [`problem-discovery.md`](../../../skills/product/problem-discovery.md)
 - `pivot-protocol.md` (future)

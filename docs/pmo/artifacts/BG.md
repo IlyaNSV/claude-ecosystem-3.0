@@ -205,5 +205,5 @@ version: 3
 
 ## Related Skills
 
-- `bg-extraction-protocol.md` (в разработке, core алгоритм)
-- `bg-mass-rename.md` (в разработке)
+- [`bg-extraction.md`](../../../skills/product/bg-extraction.md) — core алгоритм
+- `bg-mass-rename.md` (deferred to v1.1+ — atomic mass-rename, см. [`dev/v1_1_backlog.md`](../../../dev/v1_1_backlog.md))

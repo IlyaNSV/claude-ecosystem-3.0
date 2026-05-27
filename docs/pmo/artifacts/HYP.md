@@ -178,5 +178,5 @@ priority: critical
 
 ## Related Skills
 
-- `hypothesis-formulation.md` (в разработке)
-- `hypothesis-validation-protocol.md` (в разработке)
+- [`hypothesis-formulation.md`](../../../skills/product/hypothesis-formulation.md)
+- `hypothesis-validation-protocol.md` (planned — execution + invalidation handling)

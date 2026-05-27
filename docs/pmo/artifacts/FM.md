@@ -95,7 +95,7 @@ FM готова для передачи в handoff (через `/product:handoff
 - BG содержит все термины из SC/BR
 - Если `has_ui=true` — хотя бы один MK в `active`
 
-Детальные блокирующие и предупредительные условия — в `product-module/handoff-spec.md` (в разработке).
+Детальные блокирующие и предупредительные условия — в [`product-module/handoff-spec.md`](../../product-module/handoff-spec.md).
 
 ## Relationships
 
@@ -234,6 +234,6 @@ priority: must
 
 ## Related Skills
 
-- `feature-skeleton-creation.md` (в разработке, D1.6)
-- `feature-enrichment-session.md` (в разработке, D2)
-- `feature-handoff-validation.md` (в разработке)
+- [`planning-session.md`](../../../skills/product/planning-session.md) — D1.6 feature skeleton creation
+- [`feature-session.md`](../../../skills/product/feature-session.md) — D2 enrichment
+- [`handoff-generator.md`](../../../skills/product/handoff-generator.md) — handoff validation + generation

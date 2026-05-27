@@ -197,5 +197,5 @@ severity: medium                                       ❌ если medium — �
 
 ## Related Skills
 
-- `invariant-discovery.md` (в разработке)
-- `ic-violation-handling.md` (в разработке)
+- [`invariant-discovery.md`](../../../skills/product/invariant-discovery.md)
+- `ic-violation-handling.md` (planned)

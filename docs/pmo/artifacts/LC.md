@@ -212,5 +212,5 @@ Revision R2 (rejection path):
 
 ## Related Skills
 
-- `lifecycle-derivation.md` (в разработке, core алгоритм)
-- `lifecycle-validation.md` (в разработке, V-05/V-06)
+- [`lifecycle-derivation.md`](../../../skills/product/lifecycle-derivation.md) — core алгоритм
+- `lifecycle-validation.md` (planned, V-05/V-06; partial coverage via [`validation-runner.md`](../../../skills/product/validation-runner.md))

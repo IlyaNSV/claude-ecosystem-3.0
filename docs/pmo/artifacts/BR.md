@@ -191,6 +191,6 @@ Output: revision → manual review pool, notification to freelancer
 
 ## Related Skills
 
-- `business-rule-extraction.md` (в разработке)
-- `br-impact-analysis.md` (в разработке, для каскадных изменений)
-- `br-parameterization.md` (в разработке)
+- [`business-rule-extraction.md`](../../../skills/product/business-rule-extraction.md)
+- [`cascade-protocol.md`](../../../skills/product/cascade-protocol.md) — каскадные изменения (covers br-impact-analysis)
+- `br-parameterization.md` (planned)

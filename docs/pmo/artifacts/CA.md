@@ -124,5 +124,5 @@ version: 1
 
 ## Related Skills
 
-- `competitive-analysis-protocol.md` (в разработке)
-- `positioning-map-builder.md` (в разработке)
+- [`competitive-analysis-protocol-quick.md`](../../../skills/product/competitive-analysis-protocol-quick.md) — Quick mode (Deep mode deferred to v1.1+, см. [`dev/v1_1_backlog.md`](../../../dev/v1_1_backlog.md))
+- `positioning-map-builder.md` (planned)

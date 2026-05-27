@@ -171,5 +171,5 @@ JTBD: "Хочет работать эффективнее"         ❌ без с
 
 ## Related Skills
 
-- `segment-discovery-session.md` (в разработке)
-- `jtbd-mapping.md` (в разработке)
+- [`segment-discovery.md`](../../../skills/product/segment-discovery.md)
+- `jtbd-mapping.md` (planned)

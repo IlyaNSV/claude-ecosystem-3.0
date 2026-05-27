@@ -152,5 +152,5 @@ status: active
 
 ## Related Skills
 
-- `value-proposition-design.md` (в разработке)
-- `vp-differentiation-workshop.md` (в разработке)
+- [`vp-design.md`](../../../skills/product/vp-design.md)
+- `vp-differentiation-workshop.md` (planned)

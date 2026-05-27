@@ -164,5 +164,5 @@ HYP-001: Фрилансеры-переводчики (SEG-001) готовы пл
 
 ## Related Skills
 
-- `mvp-scoping-session.md` (в разработке)
-- `moscow-prioritization.md` (в разработке)
+- [`mvp-scoping.md`](../../../skills/product/mvp-scoping.md)
+- `moscow-prioritization.md` (planned)

@@ -169,5 +169,5 @@ hypotheses: []                                 ❌ зачем релиз?
 
 ## Related Skills
 
-- `release-planning.md` (в разработке)
-- `release-scope-negotiation.md` (в разработке)
+- [`release-planning.md`](../../../skills/product/release-planning.md)
+- `release-scope-negotiation.md` (planned)

@@ -394,6 +394,5 @@ measurement_method: "TBD"      # warning: vague
 
 ## Related Skills
 
-- `nfr-proposal.md` (в разработке, F.5a step)
-- `nfr-sanity-check.md` (в разработке, guardrails logic)
-- `nfr-tier-upgrade.md` (в разработке, при stage change)
+- [`nfr-review.md`](../../../skills/product/nfr-review.md) — covers proposal (F.5a step) + sanity-check guardrails
+- `nfr-tier-upgrade.md` (planned, при stage change)

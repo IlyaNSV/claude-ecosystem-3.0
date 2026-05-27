@@ -203,5 +203,5 @@ uihewfjknbsdfk dsfn jksd nfksdj    ❌ NOTE — не sandbox, минимум с�
 
 ## Related Skills
 
-- `note-capture.md` (в разработке) — quick capture flow
-- `note-promote.md` (в разработке) — конверсия в structured artifact
+- [`note-capture.md`](../../../skills/product/note-capture.md) — quick capture flow
+- [`note-promote.md`](../../../skills/product/note-promote.md) — конверсия в structured artifact

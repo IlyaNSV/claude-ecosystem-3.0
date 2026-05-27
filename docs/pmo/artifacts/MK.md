@@ -242,7 +242,7 @@ figma_url: "https://figma.com/..."
 
 ## Related Skills
 
-- `design-brief.md` (в разработке, D2-B04 step 1)
+- `design-brief.md` (planned, D2-B04 step 1 — Design Module Phase 6 conditional)
 - `component-states.md` (checklist состояний компонентов)
 - `design-iteration.md` (итеративный workflow)
 - `design-export.md` (для handoff)

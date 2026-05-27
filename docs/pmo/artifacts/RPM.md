@@ -203,5 +203,5 @@ Admin can do everything                             ❌ опасно и не п�
 
 ## Related Skills
 
-- `rpm-derivation.md` (в разработке, core алгоритм из SC + SEG)
-- `permission-matrix-review.md` (в разработке)
+- [`rpm-derivation.md`](../../../skills/product/rpm-derivation.md) — core алгоритм из SC + SEG
+- `permission-matrix-review.md` (planned)

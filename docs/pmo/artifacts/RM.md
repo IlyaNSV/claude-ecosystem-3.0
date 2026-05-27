@@ -162,5 +162,5 @@ Q4: Feature G, H, I, J, K                         ❌ без связи с HYP
 
 ## Related Skills
 
-- `roadmap-planning-session.md` (в разработке)
-- `roadmap-monthly-review.md` (в разработке)
+- [`roadmap-planning.md`](../../../skills/product/roadmap-planning.md)
+- `roadmap-monthly-review.md` (planned)

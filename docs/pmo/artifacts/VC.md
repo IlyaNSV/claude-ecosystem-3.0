@@ -232,5 +232,5 @@ Revision создаётся                                      ❌ без ус
 
 ## Related Skills
 
-- `vc-derivation.md` (в разработке)
-- `vc-coverage-check.md` (в разработке, V-07 implementation)
+- [`vc-derivation.md`](../../../skills/product/vc-derivation.md)
+- `vc-coverage-check.md` (planned, V-07 implementation; partial coverage via [`validation-runner.md`](../../../skills/product/validation-runner.md))

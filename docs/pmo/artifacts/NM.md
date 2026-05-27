@@ -205,5 +205,5 @@ flowchart TD
 
 ## Related Skills
 
-- `nm-derivation.md` (в разработке, автогенерация из MK + LC)
-- `nm-coverage-check.md` (в разработке)
+- `nm-derivation.md` (planned, автогенерация из MK + LC — Design Module Phase 6 conditional)
+- `nm-coverage-check.md` (planned)
