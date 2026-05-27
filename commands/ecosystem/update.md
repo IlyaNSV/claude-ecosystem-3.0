@@ -385,23 +385,32 @@ scope-guard hook, and any other ecosystem skill that surfaces a user-only action
 
 Confirm `.claude/pending-actions.md` is **not** added к `.gitignore` (it's committed).
 
-### Step 6: Re-derive `.claude/settings.json` hooks section
+### Step 6: Re-derive `.claude/settings.json` hooks section (pattern-preserving merge)
 
-Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in Step 5):
+Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in Step 5). **Semantics: merge-preserve, не REPLACE** (revised в patch 1.3.4 / DEC-DEV-0049 — см. «Why merge, not replace» ниже).
 
-1. Read existing `.claude/settings.json`
-2. **Preserve:** `permissions` section (user's allowlist) + ALL other top-level fields verbatim (model, env, etc.)
-3. **Re-derive:** `hooks` section from `.claude/hooks/*/manifest.yaml` (new manifests after Step 5):
+1. **Read existing** `.claude/settings.json`
+2. **Preserve verbatim:** `permissions` section (user's allowlist) + ALL other top-level fields (model, env, etc.)
+3. **Re-derive ecosystem-owned hook entries** from `.claude/hooks/*/manifest.yaml` (new manifests after Step 5):
    - Group by `(event, matcher)` pair
    - Build command entries: `node .claude/hooks/<module>/<file>`
-   - **REPLACE** existing `hooks` section entirely (NOT merge)
-4. Write back `.claude/settings.json`
+4. **Identify and preserve non-ecosystem hook entries** (third-party tool injections):
+   - **Pattern (primary):** entry `command` matching regex `^node \.claude/hooks/(product|integrator|ecosystem|design)/` → ecosystem-owned → re-derived from manifests. Everything else → preserved verbatim.
+   - **Audit-only (optional):** if `.claude/integrator/active-tools.yaml` exists и parseable, cross-reference preserved entries against `tools[*].claude_primitives[]` где `type: hook` — label preserved entries owning-tool в print confirmation. Does NOT gate merge — pattern (primary) — единственный решающий критерий.
+5. **Merge logic** (per `(event, matcher)` pair):
+   - Union: ecosystem-derived entries + preserved non-ecosystem entries
+   - Dedupe by `command` string (идемпотентные re-runs)
+   - Ordering: ecosystem entries first, preserved entries after
+6. **Write merged settings.json** back
 
-**Why replace, not merge:** previous bootstrap merge logic preserved user-added hooks. `/ecosystem:update` assumes hooks section is ecosystem-managed (manifest = single source of truth post-update). If user wants custom hooks alongside ecosystem hooks, they add manually post-update. Document if needed.
+**Why merge, not replace** (revised — DEC-DEV-0049, patch 1.3.4):
 
-**Print confirmation:**
+Previous version specified «REPLACE not merge» с rationale «manifest = single source of truth; user adds custom hooks manually post-update». Pilot evidence (downstream `my-first-test` DEC-INT-0005, 2026-05-27): Integrator-registered tools (e.g. `bd` via `bd setup claude` injecting `SessionStart` / `PreCompact` hooks for `bd prime`) wiped on every `/ecosystem:update`. Pattern-preserving merge restores ecosystem hooks from manifests while keeping third-party injections intact, **matching Bootstrap Step 6b semantics** (`commands/ecosystem/bootstrap.md:441-446` — symmetry restored).
+
+**Print confirmation** (extended):
+
 ```
-Hooks re-derived от new manifest:
+Hooks re-derived from new manifest:
   PostToolUse (matcher: Write|Edit):
     - node .claude/hooks/product/artifact-validate.js
     - node .claude/hooks/product/session-state.js
@@ -409,8 +418,35 @@ Hooks re-derived от new manifest:
     - node .claude/hooks/product/cascade-check.js
     - node .claude/hooks/product/br-change-trigger.js
     - node .claude/hooks/product/ic-change-trigger.js
-  Total: 6 hooks across 1 event type
+    - node .claude/hooks/product/product-handoff-gate.js
+  PostToolUse (matcher: Bash|Write|Edit|NotebookEdit):
+    - node .claude/hooks/integrator/journal-hook.js
+  PreToolUse (matcher: Bash|Write|Edit|NotebookEdit):
+    - node .claude/hooks/integrator/scope-guard.js
+  Total ecosystem: 9 hooks across 3 event types
+
+Preserved (non-ecosystem):
+  SessionStart (matcher: ""):
+    - bd prime  [owned by: beads (per active-tools.yaml)]
+  PreCompact (matcher: ""):
+    - bd prime  [owned by: beads (per active-tools.yaml)]
+  Total preserved: 2 hooks across 2 event types
 ```
+
+Если `active-tools.yaml` отсутствует или unparseable — preserved entries показываются без `[owned by: ...]` annotation:
+
+```
+Preserved (non-ecosystem, unattributed):
+  SessionStart (matcher: ""):
+    - bd prime
+```
+
+**Edge cases:**
+- Empty hooks section в existing settings.json: no preserved entries; ecosystem hooks added cleanly (behavior identical to old REPLACE).
+- All entries match ecosystem pattern: behavior identical to old REPLACE — clean re-derivation, preserved=empty.
+- Malformed existing settings.json: skip hook re-derivation per existing error-handling table; warn user; preserve old settings.
+
+**Idempotency:** dedupe by command string гарантирует, что повторный `/ecosystem:update` не создаёт дубликатов.
 
 ### Step 7: Cleanup + verify
 

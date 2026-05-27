@@ -19,7 +19,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 ## Где мы сейчас
 
-См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-27 — patch 1.3.3 shipped, DEC-DEV-0047):
+См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-27 — patch 1.3.4 shipped, DEC-DEV-0049):
 - ✅ Phase 0-2 (scaffolding, Integrator read-only, Bootstrap, Product Module Discovery + drift mechanisms)
 - ✅ Phase 3 (Planning + Feature Enrichment + adaptive-depth DA + cascade detection) — smoke-tested DEC-DEV-0023 + 1.1.1 patch shipped
 - ✅ Phase 4 (Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline) — 1.2.0; closure ritual Unit 2 DEC-DEV-0033; runtime smoke 2026-05-20 → status=fail → Phase 4 closed (DEC-DEV-0038)
@@ -30,6 +30,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 - ⏸ Phase D — Wiki initiative DEFERRED to v1.1+ (DEC-DEV-0046, 2026-05-27) — phantom-audience guard. Design+plan+readiness preserved with DEFERRED banners. Bring-forward triggers в `dev/v1_1_backlog.md`
 - ✅ **Patch 1.3.3 (DEC-DEV-0047, 2026-05-27)** — Integrator scope discipline + env tiers + PA journal + research hard approve gate. Pilot session 2026-05-27 evidence (4 patterns). 4 deliverables shipped: B-1 `environment_tiers` (SPEC §4.2.1); B-2 `hooks/integrator/scope-guard.js` PreToolUse warn-only (marker-gated, 1h stale TTL, forbidden paths .product/ .kiro/ docs/pmo/ + exceptions, Bash regex sniffer); B-3 `.claude/pending-actions.md` ecosystem-wide journal + `/ecosystem:pending-actions` + `skills/ecosystem/user-action-tracker.md`; B-4 `/integrator:research` Step 7 hard gate + SPEC §7.6 consilium-pattern. Static smoke 13/13 PASS. Runtime smoke S1-S5 deferred к next pilot session. Hard-block mode deferred v1.4.0+. 1.3.3 released, local docs polish bundled
 - ✅ Local docs polish (DEC-DEV-0046) — Obsidian vault baseline + README cross-link polish shipped (bundled в 1.3.3)
+- ✅ **Patch 1.3.4 (DEC-DEV-0049, 2026-05-27)** — `/ecosystem:update` Step 6 REPLACE → pattern-preserving merge. Third-party hook injections (e.g. `bd setup claude` SessionStart/PreCompact) больше не wipe'ятся при ecosystem upgrade. Driven by downstream `my-first-test` DEC-INT-0005 pilot evidence. Spec-only change (commands/ecosystem/update.md); bootstrap Step 6b уже корректен — symmetry restored. Smoke verification deferred к next pilot `/ecosystem:update`
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
 - `dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)

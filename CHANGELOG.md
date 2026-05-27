@@ -8,7 +8,28 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-(Empty — patch 1.3.3 shipped; next stop after pilot smoke.)
+(Empty — patch 1.3.4 shipped; next stop after pilot smoke.)
+
+---
+
+## [1.3.4] — 2026-05-27
+
+Single-fix patch: `/ecosystem:update` Step 6 hooks REPLACE → pattern-preserving merge. Driven by downstream pilot evidence (DEC-INT-0005 в `my-first-test`, 2026-05-27) — third-party hooks injected by tools like `bd setup claude` (SessionStart/PreCompact для `bd prime`) больше не стираются при ecosystem upgrade. Restores symmetry с Bootstrap Step 6b, который merge-preserve делал с самого начала.
+
+### Fixed
+
+- **`commands/ecosystem/update.md` Step 6** — Re-derive ecosystem-owned hooks from manifests; preserve everything else verbatim. Pattern primary: `^node \.claude/hooks/(product|integrator|ecosystem|design)/` идентифицирует ecosystem-owned entries → re-derived; non-matching entries (third-party tool injections) → preserved verbatim. Optional audit-label via `.claude/integrator/active-tools.yaml` для diagnostics в print confirmation (не блокирует merge). Print confirmation extended «Preserved (non-ecosystem)» block. См. DEC-DEV-0049.
+
+### Modified
+
+- **`DEV_JOURNAL.md`** — DEC-DEV-0049 entry (rationale, options, lessons, related entries).
+- **`ROADMAP.md`** — «Где мы сейчас» snapshot bumped к 1.3.4.
+
+### Не затронуто
+
+- `commands/ecosystem/bootstrap.md` Step 6b — уже корректно делал merge-preserve (line 441-446). Symmetry restored, not introduced.
+- Hook runtime (`hooks/*/manifest.yaml`, JS files) — без изменений.
+- Backward compatibility: для projects без third-party hooks поведение идентично старому REPLACE (preserved-block empty). Migration not required.
 
 ---
 

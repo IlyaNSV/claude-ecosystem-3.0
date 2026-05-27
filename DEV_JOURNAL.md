@@ -3926,6 +3926,83 @@ Bring-forward triggers для v2 IR-слоя (см. SPEC §16.5):
 
 ---
 
+## DEC-DEV-0049 — Patch 1.3.4: `/ecosystem:update` Step 6 — REPLACE → pattern-preserving merge
+
+**Date:** 2026-05-27
+**Trigger:** Downstream forensic analysis (`my-first-test` session 2026-05-27, ~22:00 MSK) — после `/ecosystem:update 1.3.1→1.3.3` обнаружено, что `bd-prime` hooks (SessionStart + PreCompact) injected by `bd setup claude` стёрты из `.claude/settings.json`. Pattern recurring: downstream's `active-tools.yaml#beads.side_effects` уже зафиксировал gap явно — «Beads bd-prime hooks may be wiped again by next /ecosystem:update unless protected». DEC-INT-0005 в downstream закрепил known issue.
+**Tag:** #bug-fix #spec-revision #architecture #pilot-finding
+
+### Context
+
+`/ecosystem:update` Step 6 (per DEC-DEV-0019 original design, 2026-04-26) делал hard REPLACE hooks section: re-derive из manifest'ов, выкидывая всё что туда инжектировали третьи стороны. Rationale тогда: «manifest = single source of truth; если user хочет custom hooks, добавит вручную post-update». На момент дизайна Integrator Module ещё не существовал; third-party tools не входили в ecosystem ментальную модель.
+
+Phase 5 (DEC-DEV-0041, 2026-05-25) представил Integrator Module — формальный механизм регистрации third-party tools (cc-sdd, beads). Tools могут injection-style добавлять hooks в `.claude/settings.json` (`bd setup claude` делает exactly это: appends `SessionStart`/`PreCompact` для `bd prime`). REPLACE-семантика Step 6 стирает их при каждом update'е → пользователь должен запускать `bd setup claude` после каждого upgrade'а ecosystem'а.
+
+Forensic timeline 2026-05-27 в `my-first-test` показал: cycle (update wipe → bd setup restore) уже произошёл дважды в одной сессии. Если ecosystem updates чаще раз-в-месяц — это persistent papercut.
+
+**Асимметрия с bootstrap.** Bootstrap Step 6b (`commands/ecosystem/bootstrap.md:441-446`) уже делал merge-preserve correctly («preserve user-added hooks; merge, don't overwrite»). Inconsistency между bootstrap и update — случайность DEC-DEV-0019 timing (bootstrap evolved earlier, update written с другим mental model), не намеренный дизайн.
+
+### Options considered
+
+**A — Pattern-based preservation + optional active-tools.yaml audit (выбран)**
+- Identify ecosystem-owned entries by canonical command pattern `^node \.claude/hooks/(product|integrator|ecosystem|design)/`
+- Re-derive только ecosystem entries из manifest'ов
+- Preserve everything else verbatim
+- Optional: IF `.claude/integrator/active-tools.yaml` available → label preserved entries by owning tool (audit-only, не блокирует merge)
+
+Pros: self-contained, нет hard cross-module dependency, симметрия с bootstrap Step 6b, handles bd case и любой future `*-setup claude`-style инструмент. Audit-label даёт diagnostics без увеличения coupling. Минимум изменений в spec'е.
+Cons: если ecosystem hooks когда-нибудь сменят runtime (shell вместо node, npx exec, etc.) — pattern regex придётся обновить. Solvable: regex явный, обновление trivial; в будущем module-namespace будет explicit инвариант.
+
+**B — Full Integrator-registry-driven preserve**
+- Read `.claude/integrator/active-tools.yaml`, extract `claude_primitives` где `type: hook`
+- Preserve строго те entries, что зарегистрированы
+
+Pros: architecturally rigorous, per-tool ownership explicit, audit trail per-tool.
+Cons: hard cross-module dependency ecosystem→integrator. Tools registered post-fact (e.g. bd registered via adopt-existing 2026-05-27T17:00Z) — pre-registration gap создаёт unhandled state. Если active-tools.yaml corrupted или absent (greenfield bootstrap чуть-позже install third-party) → degraded mode. Solvability requires fallback к pattern-match anyway — т.е. B = A + extra coupling.
+
+**C — Preserve unknowns (diff-and-preserve everything not in manifest)**
+- Anything в existing settings.json не matching newly-derived → preserve unconditionally, warn
+
+Pros: cannot accidentally wipe.
+Cons: accumulates cruft over time (obsolete hooks live forever); loses «manifest as source of truth» property; entropy risk; warning fatigue.
+
+### Decision
+
+**Вариант A — pattern-based preserve + soft B (audit-only consult active-tools.yaml).**
+
+Конкретные изменения:
+1. **`commands/ecosystem/update.md` Step 6** — переписан с REPLACE на merge-preserve: pattern (primary) decides preservation; audit-label (optional) добавляет ownership annotation в print confirmation если active-tools.yaml available. Print confirmation extended (separate «Preserved (non-ecosystem)» block + ownership labels).
+2. **`commands/ecosystem/bootstrap.md` Step 6b** — **без изменений**: уже делал merge-preserve. Confirmed symmetry с update.
+3. **`CHANGELOG.md`** — 1.3.4 entry под `### Fixed`.
+4. **`ROADMAP.md`** — «Где мы сейчас» snapshot обновлён.
+
+### Outcome
+
+Spec change shipped в patch 1.3.4. Implementation = новый текст `commands/ecosystem/update.md` Step 6 (Claude interprets `.md` directives; no JS code). Smoke verification = next pilot session `/ecosystem:update` в `my-first-test`: после update'а bd-prime hooks должны остаться в `.claude/settings.json` без необходимости запускать `bd setup claude`.
+
+Backward compatibility: для projects без third-party hooks behavior идентичен старому REPLACE (preserved=empty). Для projects с third-party hooks — non-destructive update. No migration required.
+
+### Lessons
+
+1. **Symmetry between bootstrap и update — must-have инвариант.** Bootstrap Step 6b делал merge-preserve, update Step 6 — REPLACE. Inconsistency была случайностью DEC-DEV-0019 timing. Future spec invariants: при designing twin-commands (bootstrap + update / install + upgrade) — explicit table «как они должны быть аналогичны и где специфика». *Apply:* при добавлении новых ecosystem commands с lifecycle вариантами (install / upgrade / remove) — проверять symmetry первым delom.
+
+2. **Pilot-driven discovery validates DEC-DEV-0040 functional decomposition.** Integrator Module как formal layer уже знал про этот gap (active-tools.yaml `side_effects` field явно его документировал). Сначала Integrator зафиксировал в downstream DEC-INT-0005, потом ecosystem-level fix через DEC-DEV-0049. Это правильное направление flow: downstream pain → upstream spec. *Apply:* при review downstream Integrator state — `side_effects` поле читать как signal список upstream issues, не как passive metadata.
+
+3. **Cross-module read-only deps OK; write deps not.** Update reading active-tools.yaml для audit — fine. Update writing в active-tools.yaml — было бы плохо (loop). Pattern-preserve A primary + B audit-only respects this. *Apply:* при добавлении cross-module reads в spec — фиксировать «read-only» property явно в rationale, чтобы будущая эволюция не сваливалась в write-coupling.
+
+4. **A1 verification antipattern: «read disk, dispute scan claims» без timeline reconstruction.** Initial A1 analysis в этой сессии заключил «scan лжёт» — фактически scan был truthful на момент 18:30, между scan и моим read'ом запустили `bd setup claude` + manually edited integrator yamls. Правильная procedure: timeline first (reflog + journal-hook + active-tools timestamps), потом dispute. Сохранено как feedback memory (`feedback_drift_verify_timeline_first.md`).
+
+### Связь с другими entries
+
+- DEC-DEV-0019 — original `/ecosystem:update` design (REPLACE rationale, теперь revised)
+- DEC-DEV-0040 — Phase 5 Integrator functional decomposition (Integrator as formal third-party layer)
+- DEC-DEV-0041 — Phase 5 implementation (introduced third-party tool injection paths)
+- DEC-DEV-0042 — closed-list contamination removal в update Step 5a (sibling pattern: specific, narrow, non-destructive)
+- Downstream DEC-INT-0005 (`my-first-test`, 2026-05-27) — pilot evidence + adopt-existing registration + side_effects documentation
+- Bootstrap Step 6b (`commands/ecosystem/bootstrap.md:441-446`) — analog merge-preserve, symmetry baseline
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

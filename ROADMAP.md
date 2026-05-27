@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-27 (patch 1.3.3 shipped — DEC-DEV-0047 Integrator scope discipline + env tiers + PA journal; local docs polish bundled).
+> **Последнее обновление:** 2026-05-27 (patch 1.3.4 shipped — DEC-DEV-0049 `/ecosystem:update` Step 6 merge-preserve fix; preserves third-party hook injections).
 
 ## Где мы сейчас
 
@@ -71,6 +71,13 @@
 ✅ Local docs polish track (closed 2026-05-27, DEC-DEV-0046) — bundled in 1.3.3 release
    — Obsidian vault baseline + README cross-link polish shipped
    — Plan archive candidate (after next phase opens)
+
+✅ Patch 1.3.4 (2026-05-27) — DEC-DEV-0049; 1.3.4 release
+   — `/ecosystem:update` Step 6 REPLACE → pattern-preserving merge
+   — Third-party hook injections (bd prime, etc.) больше не wipe'ятся при ecosystem upgrade
+   — Driven by downstream `my-first-test` pilot evidence (DEC-INT-0005, 2026-05-27)
+   — Spec-only change (commands/ecosystem/update.md); bootstrap Step 6b already correct
+   — Smoke verification deferred к next pilot `/ecosystem:update` run
 
 [We are here ─────────────────────────────────────]
 
