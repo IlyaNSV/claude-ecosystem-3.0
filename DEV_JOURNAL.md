@@ -3602,6 +3602,69 @@ Pilot one-time backfill (next `/ecosystem:update` will refresh both files и sta
 
 ---
 
+## DEC-DEV-0046 — Defer Phase D wiki → pivot to local docs polish (phantom-audience guard)
+
+**Date:** 2026-05-27
+**Trigger:** Planning session post Phase 5.1 closure разработал full implementation plan для Phase D Wiki initiative (`dev/PHASE_D_IMPLEMENTATION_PLAN.md`, 10 stages, 32-50h realistic). Перед стартом запросили честный анализ alternatives. Сравнение revealed phantom-audience guard: pre-pilot Ecosystem 3.0 не имеет реальных end-user/stakeholder consumers; единственная active audience сейчас — solo dev.
+**Tag:** #scope-change #architecture
+
+### Context
+
+Phase D design frozen 2026-05-26 под предположение 3 audiences: solo dev + end-users + stakeholders. Implementation UNBLOCKED после Phase 5.1 (DEC-DEV-0044 + 0045 closure).
+
+Реальность audience landscape (audited 2026-05-27):
+- **End-users** — отсутствуют (Ecosystem 3.0 не shipped публично; нет внешних installations кроме pilot `my-first-test`)
+- **Stakeholders** — vapor (никто не просит shareable URL; нет stakeholder relationships)
+- **Solo dev** — единственный реальный consumer
+
+ROADMAP estimate 16-25h optimistic; ×2-4 multiplier (DEC-DEV-0032 lesson 6) → 32-50h realistic. Pre-implementation honest analysis показал: 80% value (solo dev navigation + graph view + cross-link) достижимо через 4-9h Obsidian + README polish без Wiki / Action / Charter infrastructure.
+
+### Options considered
+
+1. **Continue Phase D as designed.** 32-50h на полную инфраструктуру. Pros: serves all 3 audiences when they arrive. Cons: builds for vapor consumers; ongoing API credits ($1-3/мес) + maintenance burden; charter discipline без real content saturation.
+
+2. **Phase D minus DW.H (auto-sync action).** ~25-40h. Pros: всё human-facing infra без action complexity; manual `/docs-update` weekly. Cons: still over-engineering для absent audiences.
+
+3. **Obsidian + README polish (alternative track).** 4-9h. Pros: proportional to current audience reality; reversible; preserves Phase D design fully для bring-forward. Cons: solo-only; no public URL; no audience-tagging.
+
+4. **README polish only.** 5-10h. Pros: cheapest. Cons: doesn't add graph view / backlinks; solo dev memory marginally improved.
+
+5. **RAG over repo via MCP.** ~10-15h setup + $5-15/мес. Pros: AI-native search. Cons: solves different problem (AI search vs human reading); не serves any of 3 audiences для documentation purposes.
+
+### Decision
+
+Variant 3 — pivot to **Obsidian local + README polish**. Phase D plan + readiness + design preserved as DEFERRED для bring-forward triggers.
+
+**Plan:** `dev/LOCAL_DOCS_POLISH_PLAN.md` (created 2026-05-27, 5 stages, 4-9h estimate).
+
+**Bring-forward triggers** (любого достаточно для возврата к Phase D):
+- First real end-user feedback / ask «where do I start»
+- Stakeholder asks for shareable URL
+- Solo dev обнаруживает Obsidian недостаточным (audience-tagging, cross-tool sharing)
+- Ecosystem 3.0 готовится к public release (>2 weeks horizon)
+
+### Outcome
+
+(Будет заполнено после Stage 5 closure нового track.)
+
+### Lessons
+
+1. **Phantom-audience guard requires explicit check pre-implementation.** Phase D design conversation 2026-05-26 предполагал 3 audiences без проверки existence. Если бы alternative analysis запросили до design freeze — Phase D, возможно, не понадобилось бы спроектировать с такой полнотой. *Apply:* для любой phase, обслуживающей multiple audiences — explicit check existence each audience **перед** design depth investment.
+
+2. **Plan completeness ≠ plan applicability.** Phase D design (wiki-design §1-17 + readiness A-H) проработан тщательно; это не делает его правильным выбором сейчас. *Apply:* full plan + готовность стартовать — не достаточное основание; всегда проверять «нужно ли это нам сейчас?»
+
+3. **Reversibility budget keeps deferrals cheap.** Phase D plan + readiness + design preserved (DEFERRED banners, не deletes). Если bring-forward trigger fires через 3 месяца — resumption cost ~30 min context refresh, не 16h re-design. *Apply:* defer ≠ delete; preserve full architectural intent в v1.1+ backlog с pointers к canonical artifacts.
+
+4. **Honest alternative analysis окупается даже когда план не меняется.** Если бы анализ показал «текущий план оптимален» — confirmation тоже polish. Pivot случился потому, что было где pivot'нуть. *Apply:* alternatives analysis pre-implementation — must-have для substantive phases (>10h estimate), даже если кажется решённым.
+
+### Связь с другими entries
+
+- DEC-DEV-0044 + DEC-DEV-0045 — Phase D unblocking; this entry откладывает реализацию обратно.
+- DEC-DEV-0032 lesson 6 — ×2-4 estimate multiplier; tilted cost-benefit calculation against full Phase D.
+- DEC-DEV-0040 Q3 boundary discipline — same family of «phantom audience / phantom scope» reasoning, now formalized as pre-implementation check.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

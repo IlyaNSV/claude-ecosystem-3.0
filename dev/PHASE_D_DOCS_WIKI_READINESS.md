@@ -1,8 +1,24 @@
 # Чек-лист готовности к Phase D (Docs Wiki)
 
-> **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase D implementation (интерактивная документация по самой Ecosystem 3.0 в стиле Confluence через MkDocs Material + Charter + auto-sync action).
+> ⏸ **STATUS: DEFERRED to v1.1+ (2026-05-27)** per DEC-DEV-0046.
 >
-> **Статус (на момент создания, 2026-05-26):** ⏳ дизайн заморожен (см. [`dev/wiki-design.md`](wiki-design.md)); implementation **заблокирован Phase 5 closure ritual Unit 2**. Phase D — самостоятельный track, **не** заменяет conditional Phase 6 Design Module; вставляется в ROADMAP между Phase 5 closure и Phase 6 trigger evaluation.
+> **Active alternative:** [`dev/LOCAL_DOCS_POLISH_PLAN.md`](LOCAL_DOCS_POLISH_PLAN.md) (Obsidian + README polish, 4-9h).
+>
+> **Rationale:** phantom-audience guard fired. Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; single active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h light-touch альтернативу.
+>
+> **Bring-forward triggers** (любого достаточно):
+> - First real end-user feedback / ask «where do I start»
+> - Stakeholder asks for shareable URL
+> - Solo dev обнаруживает Obsidian недостаточным (audience-tagging, cross-tool sharing)
+> - Ecosystem 3.0 готовится к public release (>2 weeks horizon)
+>
+> **Preservation:** все Phase D artifacts сохранены без изменения тела — этот readiness gate, [`dev/wiki-design.md`](wiki-design.md), [`dev/PHASE_D_IMPLEMENTATION_PLAN.md`](PHASE_D_IMPLEMENTATION_PLAN.md). Resumption — fresh-session kickoff per Section H instructions.
+>
+> ---
+>
+> **Назначение (original):** проверки и решения, которые нужно сделать **до** старта Phase D implementation (интерактивная документация по самой Ecosystem 3.0 в стиле Confluence через MkDocs Material + Charter + auto-sync action).
+>
+> **Статус (на момент создания, 2026-05-26):** ⏳ дизайн заморожен (см. [`dev/wiki-design.md`](wiki-design.md)); implementation **заблокирован Phase 5 closure ritual Unit 2**. *(Phase 5 closure completed via DEC-DEV-0044 + 0045; Phase D briefly UNBLOCKED 2026-05-26 → 2026-05-27 before deferral.)*
 >
 > **Принцип:** Phase D — meta-инфраструктура, не product feature. Аудитория тройная (solo dev memory + end-users + stakeholders). Не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждому пункту присвоен приоритет: 🔴 блокер, 🟡 важный, 🔵 необязательный.
 

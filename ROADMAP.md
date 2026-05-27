@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-26 (Phase 5.1 patch — DEC-DEV-0045; 1.3.2 release).
+> **Последнее обновление:** 2026-05-27 (Phase D deferred — DEC-DEV-0046; local docs polish track active).
 
 ## Где мы сейчас
 
@@ -60,16 +60,17 @@
 [We are here ─────────────────────────────────────]
 
 ⏳ 🎯 PILOT POINT — requires Orchestrator Module (out of Phase 5; reframed per DEC-DEV-0040 Q3)
-📐 Phase D — Wiki initiative (design frozen 2026-05-26) — interactive ecosystem docs (Charter + commands + GH Action draft-PR sync)
-   — Design: dev/wiki-design.md (§1-17); Readiness gate: dev/PHASE_D_DOCS_WIKI_READINESS.md (Sections A-H)
-   — Architecture: MkDocs Material narrative wiki + immutable Charter (PreToolUse hook + git pre-commit) + 3 commands
-     (/ecosystem:docs-init, /ecosystem:docs-update, /ecosystem:docs-verify) + 3 skills + 2 GH workflows
-   — Sub-phases DW.A-DW.J (~16-25h base, ×2-4 multiplier → 32-50h realistic)
-   — **UNBLOCKED — Phase 5 closure done (DEC-DEV-0044)**; DEC-DEV-NNNN formal open при start
+⏸ Phase D — Wiki initiative — DEFERRED to v1.1+ (DEC-DEV-0046, 2026-05-27, phantom-audience guard)
+   — Pivot to local docs polish (4-9h) вместо full wiki (32-50h)
+   — Design+plan+readiness preserved: dev/wiki-design.md, dev/PHASE_D_IMPLEMENTATION_PLAN.md, dev/PHASE_D_DOCS_WIKI_READINESS.md (DEFERRED banners)
+   — Bring-forward triggers: real end-user/stakeholder ask, OR Obsidian insufficient, OR public release prep (см. dev/v1_1_backlog.md)
+⏳ Local docs polish track (active 2026-05-27, DEC-DEV-0046)
+   — Obsidian vault baseline + README cross-link polish
+   — Plan: dev/LOCAL_DOCS_POLISH_PLAN.md (5 stages, 4-9h)
 ⏳ Phase 6 — Design Module (conditional, activate on first UI feature) — skeleton dev/PHASE_6_READINESS.md
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm)
 
-📦 Post-MVP (v1.1+): Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, D.7 aspirational layer (recursive auto drill-down + FM.depends_on graph), /product:clarify receiver channel, Orchestrator Module concept, /ecosystem:upgrade. Context: dev/v1_1_backlog.md
+📦 Post-MVP (v1.1+): Phase D Wiki initiative (deferred), Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, D.7 aspirational layer (recursive auto drill-down + FM.depends_on graph), /product:clarify receiver channel, Orchestrator Module concept, /ecosystem:upgrade. Context: dev/v1_1_backlog.md
 📦 v2: P3 Feedback, P5 Actuality Refresh, multi-tool zones, etc.
 ```
 

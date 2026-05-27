@@ -376,6 +376,64 @@ When picking option (v1.1):
 
 ---
 
+## Phase D — Wiki initiative (full implementation)
+
+**Originally planned:** Phase D (design frozen 2026-05-26)
+**Deferred:** 2026-05-27 per DEC-DEV-0046 (phantom-audience guard)
+**Defer rationale:** Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; единственная active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h Obsidian + README polish (active alternative: `dev/LOCAL_DOCS_POLISH_PLAN.md`). Audience reality check should have happened before design freeze; done now via alternatives analysis pre-implementation.
+**Bring-forward trigger:** any of:
+- First real end-user feedback / ask «where do I start»
+- Stakeholder asks for shareable URL
+- Solo dev обнаруживает Obsidian недостаточным (audience-tagging, cross-tool sharing, narrative depth, etc.)
+- Ecosystem 3.0 готовится к public release (>2 weeks horizon)
+
+### Architectural intent
+
+Full Phase D wiki implementation per design freeze 2026-05-26:
+- **MkDocs Material SSG** — narrative wiki (~25 pages) под `docs/wiki/**`; theme=material; plugins=[search, mermaid2, wiki-link]; strict-mode build
+- **Protected Charter** `dev/wiki-charter.md` — 8 sections с mutability markers (Mission/Anti-patterns/Templates/Audience-tags/Versioning **immutable**; Taxonomy/Source-map/Exclusions **append-only**)
+- **PreToolUse hook** `protect-wiki-charter.js` — blocks AI Edit/Write of immutable/middle-edit append-only sections; allows pure-addition
+- **Git pre-commit hook** `pre-commit-charter.sh` — defence against Bash-bypass; requires `[charter-change]` commit tag
+- **3 commands:** `/ecosystem:docs-init` (one-shot bootstrap), `/ecosystem:docs-update` (incremental sync с --dry-run + exclusion filter), `/ecosystem:docs-verify` (non-mutating drift report)
+- **3 skills:** `wiki-author` (page templates per type), `wiki-source-mapper` (source-to-target action executor), `wiki-drift-detector` (orphan/missing/broken-link/status-drift)
+- **2 GH Actions:** `docs-sync.yml` (push → headless Claude → draft PR), `docs-deploy.yml` (push → GH Pages)
+- **Optional:** `docs-verify.yml` nightly safety net (cron 0 6 * * *)
+- **3 audiences served:** solo dev + end-users + stakeholders via MkDocs admonitions (`!!! note "for-stakeholders"`, `!!! tip "for-internal"`)
+- **Anti-cycle triple gate:** paths-ignore + commit-msg-filter + draft-PR (не auto-merge)
+- **Cost control:** exclusion list (Charter §4) + typo-only heuristic + concurrency 1
+- **Last-sync state:** `docs/wiki/.last-sync` JSON v1
+
+### Implementation notes
+
+**Full implementation plan preserved at** `dev/PHASE_D_IMPLEMENTATION_PLAN.md` (DEFERRED banner): 10 stages DW.A-DW.J, resumption-ready в любой future session via fresh-session kickoff.
+
+**Decision options + 8 OQ-DW resolutions** documented в plan Stage 0.2. Design rationale + alternatives — `dev/wiki-design.md` §1-17. Risk register — `dev/wiki-design.md` §12 (10 risks с mitigations).
+
+**При resumption** — start от Stage 0 (kickoff), не от Stage 1; OQ resolutions могут drift'нуть с момента deferral. Особенно re-verify:
+- OQ-DW-02 (headless Claude auth + rate limits) — может измениться pricing/limits API
+- OQ-DW-05 (reference auto-gen approach — inline vs precomputed) — может появиться лучший pattern
+- OQ-DW-06 (cross-links — `[[wiki-link]]` vs relative paths) — Obsidian polish track выявит, что работает в practice
+
+**Mandatory pause** после DW.D (manual review wiki output перед auto-sync action DW.H) — не пропускать.
+
+### References to existing spec
+
+- `dev/wiki-design.md` — full design doc (§1-17)
+- `dev/PHASE_D_DOCS_WIKI_READINESS.md` — readiness gate (Sections A-H, DEFERRED banner)
+- `dev/PHASE_D_IMPLEMENTATION_PLAN.md` — implementation plan (DEFERRED banner)
+- `dev/LOCAL_DOCS_POLISH_PLAN.md` — active alternative track
+- DEC-DEV-0046 — defer decision (rationale + 5 options considered + lessons)
+
+### Estimated effort при возврате
+
+- Substrate paste + Stage 0.1 kickoff (fresh-session): 30-60 min
+- Full implementation: 16-25h optimistic / 32-50h realistic (per ×2-4 multiplier)
+- **Total: ~17-26h optimistic / 33-51h realistic**
+
+Phase D estimate включает mandatory manual review pause после DW.D; не может быть дальше compressed без quality risk.
+
+---
+
 ## /product:clarify — Receiver questions channel
 
 **Originally planned:** Phase 4 (per ROADMAP draft 2026-04-18 → reaffirmed в Phase 4 deliverables list)
