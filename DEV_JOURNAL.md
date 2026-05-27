@@ -3693,6 +3693,60 @@ Local docs polish track completed in single execution session 2026-05-27 (planni
 
 ---
 
+## DEC-DEV-0047 — Patch 1.3.3 kickoff: Integrator scope discipline + env tiers + pending-actions журнал
+
+**Date:** 2026-05-27
+**Trigger:** Pilot session `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` (заполнение PMO GAPS на `my-first-test/`) выявила 4 паттерна нарушений / gaps Integrator-модуля.
+**Tag:** #architecture #spec-revision #ux #bug-fix #pilot-finding
+**Status:** STUB — заполнить Outcome+Lessons после fresh-session implementation (sub-phases A-I per `dev/PATCH_1.3.3_READINESS.md`).
+
+### Context
+
+Pilot session показала 4 паттерна Integrator-поведения:
+1. **PROD-only рекомендации** без разбивки local-dev / staging / production (env tiers gap в SPEC).
+2. **Самостоятельное scope-creep в архитектурные решения** через ad-hoc consilium-research без approve gate (формальные commands ОК, ad-hoc обходит).
+3. **Запись в `.product/`** — direct violation SPEC §1.2, §8.1, installation-protocol Anti-pattern #5. Нет runtime guard.
+4. **«🚧 Требует USER»** action items в narrative отчёте — нет structured pending-actions журнала, юзер пропускает.
+
+Подробный gap-анализ + evidence — `dev/PATCH_1.3.3_READINESS.md` Section «Trigger & evidence».
+
+### Options considered
+
+1. **Patch 1.3.3 — focused 4 deliverables (выбрано).** Scope: env tiers schema + scope-guard hook + pending-actions журнал + research approve gate. Hard block отложен к v1.4.0 (нарушает ecosystem warn-only hook convention).
+2. **Minor 1.4.0 — extended scope.** Добавляет hard-block hook + cross-hook centralized FORBIDDEN_PATHS + PA expiry. Отвергнуто: пере-инжиниринг до validation в pilot.
+3. **Skip — оставить prompt-discipline only.** Отвергнуто: pilot evidence показал prompt-уровень недостаточен; нужен runtime mechanism хоть warn-only.
+
+### Decision
+
+Вариант 1 — patch 1.3.3 с D7 phase-kickoff ritual (Sections 1-5 в `dev/PATCH_1.3.3_READINESS.md`). 4 deliverables B-1/B-2/B-3/B-4.
+
+Architectural decisions (детально в readiness MD Section 1):
+- **B-1:** `environment_tiers` multi-valued поле в tool profile (SPEC §4.1) — local_dev/staging/production × full/partial/none. Research output обязан содержать per-tier разбивку.
+- **B-2:** `hooks/integrator/scope-guard.js` PreToolUse warn-only, matcher `Edit|Write|Bash`. Bash — простой regex sniffer. Session marker `.claude/integrator/.session-context.json` для context detection. 1-час stale TTL.
+- **B-3:** `.claude/pending-actions.md` ecosystem-wide markdown журнал. Команда `/ecosystem:pending-actions` + skill `skills/ecosystem/user-action-tracker.md`. Любой модуль может писать; integration через research-protocol + installation-protocol.
+- **B-4:** Mandatory approve gate в research-protocol Phase 5 + `/integrator:research` Step 7 hard gate. Новая SPEC §7.X для consilium-pattern: разрешён только с declared scope.
+
+Cuttable scope: hard block (v1.4.0), cross-module broker, PA expiry, retroactive YAML migration, centralized FORBIDDEN_PATHS — все отрезаны.
+
+Implementation: **fresh-session** per D7 phase-kickoff RECOMMENDED (anti-bias guard). Prompt template — конец readiness MD.
+
+### Outcome
+
+⏳ TBD после fresh-session implementation. Метрики acceptance gate — readiness MD Section «Verification».
+
+### Lessons
+
+⏳ TBD после implementation + pilot re-run (gap-анализ session должна показать все 4 fixes работают).
+
+### Связь с другими entries
+
+- DEC-DEV-0041 (Phase 5 implementation closure) — base, на которой растёт scope-guard infrastructure
+- DEC-DEV-0045 (Phase 5.1 patch / 1.3.2) — analog patch pattern (focused fix + light scope)
+- DEC-DEV-0046 (Defer Phase D Wiki) — analog «cuttable scope discipline» pattern
+- Future: DEC-DEV-0048 (planned) — closure entry после fresh-session implementation + pilot re-run
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

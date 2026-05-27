@@ -11,6 +11,11 @@ Markers waiting to be processed. Hook appends rows between the sentinel comments
 | session_id | ended_at | target_project | transcript_path |
 |---|---|---|---|
 <!-- PENDING_ROWS_START -->
+| `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` | 2026-05-27T11:58:39.386Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\636f2cd3-80e7-4c3c-8626-8a2f1e02d11a.jsonl` (reason: prompt_input_exit) |
+| `7ce383ce-f55a-4840-b1ee-156d48db9a4d` | 2026-05-26T20:12:48.704Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\7ce383ce-f55a-4840-b1ee-156d48db9a4d.jsonl` (reason: other) |
+| `792142dd-63bb-4a0f-946d-c3f14ce3b043` | 2026-05-26T20:07:35.599Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\792142dd-63bb-4a0f-946d-c3f14ce3b043.jsonl` (reason: other) |
+| `5ad451e1-de4e-48f1-9720-34f24ef41492` | 2026-05-26T20:07:24.879Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\5ad451e1-de4e-48f1-9720-34f24ef41492.jsonl` (reason: prompt_input_exit) |
+| `7c375647-6f64-4e9e-8d10-d5c60ff55bd0` | 2026-05-26T14:59:37.885Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\7c375647-6f64-4e9e-8d10-d5c60ff55bd0.jsonl` (reason: other) |
 | `26c2c8a4-19d1-4ec1-99a2-c8298e7c9b38` | 2026-05-26T12:09:34.589Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\26c2c8a4-19d1-4ec1-99a2-c8298e7c9b38.jsonl` (reason: prompt_input_exit) |
 | `e6ae0749-c97d-4d76-aaf9-c18c1124804e` | 2026-05-26T11:14:10.907Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\e6ae0749-c97d-4d76-aaf9-c18c1124804e.jsonl` (reason: prompt_input_exit) |
 | `be9d5934-9ec7-4c17-b4c1-69fd31f83564` | 2026-05-26T09:49:15.674Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\be9d5934-9ec7-4c17-b4c1-69fd31f83564.jsonl` (reason: prompt_input_exit) |

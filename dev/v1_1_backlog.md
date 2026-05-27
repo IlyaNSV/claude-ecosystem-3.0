@@ -477,3 +477,112 @@ Phase D estimate включает mandatory manual review pause после DW.D;
 - Integration с decision journal: ~15 мин
 - Smoke test: ~30 мин
 - **Total: ~2 ч**
+
+---
+
+## Integrator hard-block scope-guard (escalation от warn-only)
+
+**Originally planned:** Patch 1.3.3 (B-2 deliverable)
+**Deferred:** 2026-05-27 per DEC-DEV-0047 Section 4 (scope discipline)
+**Defer rationale:** Hard block (`{"continue": false}` PreToolUse JSON response) нарушает ecosystem-wide hook convention «warn don't block» (см. `hooks/product/product-handoff-gate.js:12` и аналогичные). Чтобы override этот principle для одного hook — нужен отдельный архитектурный DEC-DEV с обоснованием класса исключения, проверкой downstream impact (что если hook crash блокирует всю работу?), discoverable opt-out. Это substantial work, не patch.
+
+Patch 1.3.3 ships warn-only вариант. Если warn недостаточно — bring-forward triggers ниже.
+
+**Bring-forward trigger:** Любое из:
+- Повторное violation `.product/` write от Integrator-context session ПОСЛЕ 1.3.3 (т.е. AI игнорирует stderr warning + PA entry).
+- Пользователь явно запрашивает «hard block, я хочу invariant».
+- Кросс-проект migration на ecosystem 2+ pilots, где solo-dev convention not applicable.
+
+### Architectural intent
+
+Hook `hooks/integrator/scope-guard.js` в **strict mode**:
+- Response к PreToolUse hook callback: `{"continue": false, "stopReason": "<explanation>"}` JSON to stdout (per Claude Code hook spec — нужна validation actual API).
+- Tool call **отменяется**; assistant видит stopReason и должен явно reroute (ask user, switch to Product Module, или принудительно подтвердить через дополнительный mechanism).
+- Возможность mode-switch: `INTEGRATOR_SCOPE_GUARD_MODE=warn|strict` env var (default `warn`); или config в `.claude/integrator/scope-guard.yaml`.
+
+### Implementation notes
+
+**Dependencies:**
+- DEC-DEV-level decision: «exception к ecosystem warn-only hook convention для критичных boundary violations». Включает review всех остальных hooks: должны ли они тоже иметь strict mode?
+- Validation Claude Code PreToolUse hook spec: точная JSON schema для blocking response.
+- Cross-platform smoke: Windows vs Linux/macOS edge cases (stdin/stdout encoding).
+
+**Integration points:**
+- `commands/integrator/*.md` boilerplate (session marker write) — без изменений; hook читает marker как раньше.
+- `commands/ecosystem/verify.md` — добавить проверку strict mode setting (config valid? sane?).
+- New: `commands/integrator/scope-guard-override.md` (или флаг к существующему `/integrator:debug`) для emergency unblock сценариев. UX: explicit user confirmation чтобы избежать automation bypass.
+
+### References to existing spec
+
+- `dev/PATCH_1.3.3_READINESS.md` Section 1 B-2 Decision 1 («warn-only» rationale).
+- DEC-DEV-0047 Options considered, вариант 1 (отвержение strict mode для patch).
+- `hooks/integrator/scope-guard.js` (after 1.3.3 implementation) — base для extension.
+
+### Estimated effort при возврате
+
+- Architectural DEC-DEV (review всех hooks + exception rationale): ~1 ч.
+- Hook strict mode + config support: ~1.5 ч.
+- Override command + UX: ~1 ч.
+- Cross-platform smoke + docs: ~1 ч.
+- **Total: ~4-5 ч**
+
+---
+
+## Integrator-as-DevOps на изолированной VM (full-OS access)
+
+**Originally planned:** Not planned — surfaced 2026-05-27 user idea
+**Deferred:** 2026-05-27 per DEC-DEV-0047 Section «Backlog»
+**Defer rationale:** Out of scope patch 1.3.3 (а также любой near-term phase). Требует:
+- Sandbox/VM provisioning strategy (Hyper-V? WSL2? Docker desktop? Lima?)
+- Screen-capture / keyboard injection protocol для AI as user (Anthropic computer-use API? Custom MCP server?)
+- Security review: что Integrator может сделать на host через VM boundary breach?
+- Cross-platform support — Windows host (текущий dev env) vs Linux/macOS.
+- Cost model: long-running VM = compute + storage; кто платит, как scale.
+
+Pre-pilot Ecosystem 3.0 не имеет use case justification: solo-dev workflow прекрасно работает на host без VM. Bring-forward после post-pilot validation с real demand.
+
+**Bring-forward trigger:** Любое из:
+- Post-pilot evidence что local-host execution создаёт class проблем (dependency conflicts host vs project, OS-specific tools mismatch, security concerns про что AI имеет доступ к user filesystem).
+- Multi-developer pilot где cross-machine consistency критична (VM as «pinned dev environment»).
+- Computer-use API matures и becomes ergonomic для long-running sessions.
+- User explicit demand для «true DevOps» Integrator с visual feedback loop (browser interaction, IDE driving).
+
+### Architectural intent
+
+**Vision:** Integrator runs в VM с полным OS access:
+- Видит экран (screen capture stream доступен модели).
+- Печатает в любом приложении (keyboard injection через computer-use API).
+- Работает как «настоящий разработчик»: открывает IDE, navigates GitHub UI, configures tools through their actual UIs (не CLI-only).
+- Изолирован: host filesystem недоступен; only VM shared volume для project files.
+
+**Концептуальные роли VM-Integrator vs current Integrator:**
+- Current (host-based): tool-installer + contract-designer + journal-keeper. Limited к Claude Code's tool API (Bash, Edit, Write, etc.).
+- VM-based (proposed): full DevOps engineer. Может install, configure, troubleshoot tools через их native UIs; видит actual error messages в IDE/browser; реагирует на visual state.
+
+### Implementation notes
+
+**Major unknowns (design needed before estimate):**
+- VM platform: Hyper-V vs WSL2 vs Docker Desktop vs Lima — каждый imposes different constraints на screen access.
+- AI-to-VM bridge: existing computer-use (Anthropic API beta) vs custom MCP server vs RDP/VNC client integration.
+- Session model: persistent VM (state survives sessions) vs ephemeral (clean per task) vs hybrid.
+- Trust boundary: что VM-Integrator может сделать что обычный Integrator не может? И какие новые risks (e.g., AI запускает malicious script внутри VM — impact?)
+- Cost: continuous VM ~$X/мес если cloud-based; local — disk + RAM overhead.
+
+**Initial PoC scope (если bring-forward):**
+- Single-platform (Windows host + Hyper-V Linux VM).
+- Shared folder для project files (read+write).
+- Computer-use API integration для screen + keyboard.
+- 1 smoke scenario: VM-Integrator установить инструмент через его UI (например, Docker Desktop через GUI вместо CLI) + verify.
+
+### References to existing spec
+
+- None — это greenfield extension. Текущий `docs/integrator-module/SPEC.md` §1.1 «Что Integrator делает» — все capabilities остаются valid; VM extension добавляет «как делает» layer.
+- Anthropic computer-use API docs (external) — reference architecture.
+- Возможная связь с Orchestrator Module (out-of-scope для v1; см. ROADMAP) — Orchestrator может использовать VM-Integrator capabilities когда запускает инструменты.
+
+### Estimated effort при возврате
+
+- Design phase (PoC arch, platform choice, trust boundary): ~8-12 ч.
+- PoC implementation (1 platform, 1 scenario): ~16-24 ч.
+- Production hardening (multi-platform, security, session model): TBD — significant, ≥40 ч.
+- **Total для valuable v1 capability: ≥60-80 ч.** Multi-session work.
