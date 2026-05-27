@@ -2,7 +2,7 @@
 
 > **Назначение:** проверки и решения, которые нужно сделать **до** старта Phase 6 (Design Module — **conditional**, активируется на первой FM с `has_ui=true`).
 >
-> **Статус (на момент refresh):** 🟡 ready-for-kickoff — refreshed 2026-05-27 post patch 1.3.3 closure ritual (DEC-DEV-0050) + DEC-DEV-0048 pre-Phase-6 addendum. Skeleton изначально создан в Phase 5 sub-phase J; refresh учёл Phase 5 closure (DEC-DEV-0044/0045), patches 1.3.3/1.3.4 (DEC-DEV-0047/0049), Phase D deferral (DEC-DEV-0046).
+> **Статус (на момент refresh):** 🟡 architectural kickoff complete (DEC-DEV-0052, 2026-05-27); implementation trigger pending real UI FM в pilot. Skeleton изначально создан в Phase 5 sub-phase J; refresh'ы: Phase 5 closure (DEC-DEV-0044/0045), patches 1.3.3/1.3.4/1.3.5 (DEC-DEV-0047/0049/0051), DEC-DEV-0050 closure ritual, DEC-DEV-0048 architectural addendum, **DEC-DEV-0052 kickoff (12 Qs + 13 ambiguities + 5 cuts)**.
 >
 > **Принцип:** Phase 6 — **conditional**. Не запускается «потому что следующая по номеру», а только когда pilot project дойдёт до feature с UI. Может быть отложена бессрочно если first 2-3 FMs — backend-only.
 
@@ -10,16 +10,15 @@
 
 ## Status banner
 
-🟡 **Ready for kickoff — trigger pending** (refreshed 2026-05-27 post patch 1.3.3 closure ritual DEC-DEV-0050).
+🟡 **Architectural kickoff complete — implementation trigger pending** (DEC-DEV-0052, 2026-05-27).
 
 Prerequisite chain complete:
-- ✅ Phase 5 implementation + runtime smoke + closure (DEC-DEV-0041/0044/0045 — through 1.3.2)
-- ✅ Patch 1.3.3 (DEC-DEV-0047) — Integrator scope discipline + env tiers + PA journal; bundled local docs polish (DEC-DEV-0046)
-- ✅ Patch 1.3.4 (DEC-DEV-0049) — `/ecosystem:update` Step 6 pattern-preserving merge
+- ✅ Phase 5 implementation + runtime smoke + closure (DEC-DEV-0041/0044/0045)
+- ✅ Patches 1.3.3/1.3.4/1.3.5 (DEC-DEV-0047/0049/0051) + closure ritual (DEC-DEV-0050)
 - ✅ Pre-Phase-6 architectural addendum (DEC-DEV-0048) — Claude Design co-primary + IR groundwork; SPEC v1.1
-- ✅ Patch 1.3.3 closure ritual (DEC-DEV-0050) — readiness archived, smoke plan stays active
+- ✅ **Phase 6 kickoff (DEC-DEV-0052)** — 12 Qs resolved + 13 ambiguities + 5 scope cuts approved; sub-phase A→I готов
 
-Phase 6 trigger всё ещё conditional (первая FM с has_ui=true в pilot). Архитектурные решения по tooling зафиксированы заранее через DEC-DEV-0048 (Variant A) — см. Section C. **Phase D Wiki initiative DEFERRED** (DEC-DEV-0046, phantom-audience guard) — больше не блокирует Phase 6.
+Implementation trigger остаётся conditional: первая FM с has_ui=true в pilot project. **Sandbox path отвергнут** (phantom-validation guard per DEC-DEV-0052 Option A rejection — synthetic FM не reveals real-pilot bugs, Phase 5 bug 4 precedent). Estimated effort post-cuts: **8-12h focused work** когда trigger fires. **Phase D Wiki initiative DEFERRED** (DEC-DEV-0046) — больше не блокирует Phase 6.
 
 ---
 
@@ -43,22 +42,24 @@ Phase 6 trigger всё ещё conditional (первая FM с has_ui=true в pil
 
 **This file:**
 - [x] `dev/PHASE_6_READINESS.md` refreshed против DEC-DEV-0048 + post-closure baseline (2026-05-27)
-- [x] **Pre-Phase-6 architectural addendum** (DEC-DEV-0048, 2026-05-27) — Claude Design co-primary + IR groundwork decided ahead of Phase 6 kickoff; SPEC v1.1 + MK frontmatter migration trail shipped. Phase 6 kickoff унаследует эти решения.
+- [x] **Pre-Phase-6 architectural addendum** (DEC-DEV-0048, 2026-05-27) — Claude Design co-primary + IR groundwork decided ahead of Phase 6 kickoff; SPEC v1.1 + MK frontmatter migration trail shipped
+- [x] **Phase 6 kickoff** (DEC-DEV-0052, 2026-05-27) — 12 architectural Qs resolved + 13 ambiguities + 5 scope cuts approved; sandbox path rejected
 
 ### A.1 Ready-to-kickoff assessment
 
 | Item | State | Blocking? |
 |---|---|---|
 | Phase 5 closure done | ✅ DEC-DEV-0044/0045 | no |
-| Patch 1.3.3 + 1.3.4 spec landed | ✅ | no |
+| Patches 1.3.3 + 1.3.4 + 1.3.5 spec landed | ✅ DEC-DEV-0047/0049/0051 | no |
 | Pre-Phase-6 architectural decisions resolved | ✅ DEC-DEV-0048 | no |
+| **Phase 6 kickoff (12 Qs + 13 ambiguities + 5 cuts)** | ✅ DEC-DEV-0052 | no |
 | Phase D (Wiki) gate | ⏸ DEFERRED — не блокирует | no |
 | **First FM with `has_ui=true` в pilot** | ❌ trigger pending | **yes — single blocker** |
-| `PHASE_6_READINESS` fleshed out | ✅ this refresh | no |
+| Sandbox FM-DESIGN-001 path | ❌ rejected (phantom-validation guard) | no |
 | Runtime smoke S1-S5 1.3.3 в pilot | ⏳ deferred — не блокирует Phase 6 kickoff (orthogonal scope) | no |
 | Phase 5 S5 runtime smoke (drift detection) | ⏳ deferred — не блокирует | no |
 
-**Conclusion:** все non-trigger prerequisites закрыты. Единственный gate — появление первой UI-feature в pilot project (или explicit user decision сделать Design Module sandbox с synthetic FM).
+**Conclusion:** все architectural и spec prerequisites закрыты (DEC-DEV-0052 closes pre-implementation kickoff). Единственный gate — появление первой UI-feature в pilot project. Sandbox path отвергнут per DEC-DEV-0052.
 
 ---
 
@@ -87,13 +88,25 @@ Decision: ⏳ TBD when pilot reaches first FM with UI.
 - ✅ **Claude Design integration model в v1.1:** web UI + manual export workflow (claude.ai/design); MCP/API integration — когда Anthropic выпустит (bring-forward trigger в SPEC §9.2).
 - ✅ **Claude Design native «Handoff to Claude Code» vs Ecosystem `/product:handoff`:** комплементарны — Ecosystem handoff = product-level behavioral, Claude Design handoff = design-level visual bundle. Возможна ссылка из Ecosystem handoff §10 на Claude Design bundle.
 
-### Всё ещё открытые вопросы Phase 6
+### Решено в Phase 6 kickoff (DEC-DEV-0052, 2026-05-27) — 12 Qs
 
-- **OQ-DM-01** — Stitch MCP prompt patterns (open). Первый use case даст данные; может потребовать переработки `stitch-workflow.md` после первого pilot.
-- **OQ-DM-08** — Claude Design prompt patterns (NEW open after addendum per DEC-DEV-0048 §13). Параллельно OQ-DM-01 для второго co-primary tool. Первая UI-фича на Claude Design даст данные. MCP/API ещё не выпущены Anthropic — v1.1 workflow = manual export.
-- **Component State Matrix V-MK-02..V-MK-03 automation scope** — некоторые проверки требуют human judgement; решить partial vs full на kickoff.
-- **HTML fallback completeness** — заглушка vs полноценный путь без Stitch/Claude Design.
-- **`/design:migrate` UX в pilot:** approve gate granularity (per MK или batch), regeneration time budget, idempotency при partial failure. **Hard approve gate** pattern per DEC-DEV-0047 §7.6 (silence ≠ consent) — применимо к lossy regeneration (irreversible если source MK не cached).
+- ✅ **Q1 — Hard approve gate UX в `/design:migrate`:** per-MK granularity, mirrors DEC-DEV-0047 §7.6 pattern. `--all` flag iterates с individual approve, no batch-bypass. Hard gate text: «STOP. Lossy regeneration via brief — visual tweaks потеряются. Approve migration для MK-NNN? [Y/N/defer]». Silence ≠ consent.
+- ✅ **Q2 — `screen-generator` subagent: defer к v1.1** (cut C2). v1.0 D.2 inline в `design-session.md`. Bring-forward trigger: real D.2 >5 экранов hits >50% main context.
+- ✅ **Q3 — V-MK-02..03 automation scope:** V-MK-02 partial (mechanical states `default`+`error` для interactive components); V-MK-03 manual via skill checklist. Cut C5.
+- ✅ **Q4 — HTML fallback v1.0: minimal** (single HTML page, DS tokens via CSS vars, no React). React + multi-screen → v1.1. Cut C4.
+- ✅ **Q5 — `claude-design-workflow.md` v1.0: stub (~30 lines).** Cut C1. OQ-DM-08 open; manual export workflow high-level; refactor after first Claude Design pilot OR Anthropic MCP/API release.
+- ✅ **Q6 — `/design:migrate` matrix v1.0: Stitch ↔ HTML only.** Cut C3. Schema полная (Claude Design enum keeps); command logic narrower. Claude Design path → v1.1.
+- ✅ **Q7 — `design-session.md` deadlock protection (7 iterations):** structured 4-choice menu — `[pause+save / radical-rethink D.1 / accept-current-as-final / drop-and-archive]`.
+- ✅ **Q8 — `design-artifact-validate.js` v1.0:** YAML parse + 5 required-field checks (id, type, feature, design_tool, scenarios) + ref existence (SC/BR/LC via fs.exists) + V-MK-08 token coverage (regex `DS\.\w+\.\w+` scan vs DS body). Cross-platform path norm per Phase 5 bug 3 (`replace(/\\/g, '/')`).
+- ✅ **Q9 — PA integration: 3 trigger events** — first `/design:start` без Stitch MCP configured; first Claude Design без Pro/Max/Team subscription; `tool_project_url` 404 при resume.
+- ⏳ **Q10 — `/design:export` ↔ `/product:handoff` ordering:** carry-forward к sub-phase G (decision point in implementation, not kickoff).
+- ✅ **Q11 — Subagent registration gap (R7 from DEC-DEV-0038):** Q2 defer subagent → irrelevant в v1.0.
+- ✅ **Q12 — Stitch MCP `environment_tiers`:** `environment_agnostic: true` (SaaS, не зависит от tier).
+
+### Открытые вопросы pилот-validation (нe блокируют kickoff)
+
+- **OQ-DM-01** — Stitch MCP prompt patterns. `stitch-workflow.md` ships v0 best-effort в Phase 6 v1.0; первый use case даст данные; может потребовать переработки после первого pilot (Phase 3 PS drift precedent).
+- **OQ-DM-08** — Claude Design prompt patterns. Skill stub'ом в v1.0 (Q5/C1); full skill только после first Claude Design pilot OR Anthropic MCP/API release. MCP/API ещё не выпущены — v1.1 workflow = manual export.
 
 ### Cross-cutting integrations (новое после patches 1.3.3 + 1.3.4)
 
@@ -113,17 +126,30 @@ Decision: ⏳ TBD when pilot reaches first FM with UI.
 
 ---
 
-## D. Дисциплина scope для Phase 6
+## D. Дисциплина scope для Phase 6 — решено DEC-DEV-0052
 
-ROADMAP оценка 3-4 ч (+ OQ-DM-01 experimentation). Pre-Phase-6 addendum (DEC-DEV-0048) добавляет ~1-2ч на claude-design-workflow skill + миграционные frontmatter поля + `/design:migrate` Stitch ↔ Claude Design path. Применяя эмпирический множитель ×2-4 (DEC-DEV-0032 lesson 6) — реалистично **10-20 ч**.
+ROADMAP оценка 3-4 ч (+ OQ-DM-01 experimentation) **устарела** post-DEC-DEV-0048. С addendum +1-2ч на claude-design-workflow + migration frontmatter + `/design:migrate` matrix; ×2-4 множитель → **10-20 ч pre-cuts**. После 5 cuts (DEC-DEV-0052) — **8-12 ч focused work**.
 
-Cuttable candidates:
-- **subagents/design/screen-generator.md** — нужен ли для D.2 множественной генерации, или inline в первой итерации?
-- **HTML fallback** — full путь или заглушка (с маркером bring-forward)?
-- **`/design:migrate` matrix coverage v1.0:** Stitch ↔ HTML fallback только (минимум) vs Stitch ↔ Claude Design ↔ HTML (полная матрица из addendum)? Decision-point на kickoff.
-- **`claude-design-workflow.md` depth v1.0:** stub (один параграф «manual workflow, MCP TBD») vs full prompt patterns library (требует pilot data из Claude Design)?
+### 5 cuts approved (DEC-DEV-0052) → entries в `dev/v1_1_backlog.md`
 
-Decision: ⏳ TBD на kickoff. Pre-Phase-6 addendum указывает **floor** (Stitch + Claude Design + HTML co-equal в SPEC), но реализация может cut к stage 1 = Stitch only + claude-design stub если время dictates.
+| # | Cut | Bring-forward trigger | Saves |
+|---|---|---|---|
+| **C1** | `claude-design-workflow.md` full → stub (~30 lines) | First Claude Design pilot OR Anthropic MCP/API release | 1-2h |
+| **C2** | `screen-generator` subagent → v1.1 | Real D.2 >5 экранов hits >50% main context | 1-2h |
+| **C3** | `/design:migrate` Stitch↔Claude Design path → v1.1 | Real Claude Design adoption в pilot | 1-2h |
+| **C4** | `html-fallback.md` React + multi-screen → v1.1 | User explicit React-quality fallback demand | 1-2h |
+| **C5** | V-MK-02..03 automation full → V-MK-02 partial only | 10+ MK created → safe auto-check patterns emerge | 1-2h |
+
+### Don't cut (critical path для P2.5 minimum viable)
+
+- 6 commands (`start/iterate/system/export/status/migrate`) — все на critical path
+- `design-session.md` orchestrator — irreplaceable
+- `component-states.md` — mechanical D.4 checklist
+- `design-system-rules.md` — DS extraction для cross-MK consistency
+- `stitch-workflow.md` — primary tool; keep v0 best-effort + refactor после first pilot (Phase 3 PS drift lesson)
+- `design-validation.md` partial — skill critical
+- `design-artifact-validate.js` hook — gating mechanism
+- MK/DS/NM frontmatter schemas + migration trail — fixed в DEC-DEV-0048
 
 ---
 
@@ -140,9 +166,25 @@ Decision: ⏳ TBD на kickoff. Pre-Phase-6 addendum указывает **floor*
 
 ---
 
-## F. Зависимости от Phase 5 outcomes (closed)
+## F. Зависимости от Phase 5 outcomes + sub-phase implementation plan
 
-Phase 5 closure (DEC-DEV-0044/0045) + patches 1.3.3/1.3.4 (DEC-DEV-0047/0049) дали следующий runway для Phase 6:
+### F.1 Sub-phase decomposition A→I (DEC-DEV-0052, total 11-13h)
+
+| Sub-phase | Deliverable | Est |
+|---|---|---|
+| **A** | DEC-DEV-NNNN implementation entry + дальнейший drift fix (если найдётся) | 30-45min |
+| **B** | `commands/design/{start, status}.md` + `.claude/design.yaml` template | 1h |
+| **C** | `skills/design/design-session.md` (orchestrator с Q7 deadlock UX + A7 menu) | 1.5-2h |
+| **D** | `skills/design/{component-states, design-system-rules}.md` | 1.5h |
+| **E** | `skills/design/{stitch-workflow (v0 best-effort), claude-design-workflow (stub C1), html-fallback (minimal C4), design-validation}.md` | 1.5-2h |
+| **F** | `commands/design/{iterate, system, export, migrate (Stitch↔HTML only C3)}.md` | 1.5h |
+| **G** | `hooks/design/design-artifact-validate.js` + manifest.yaml + Q10 carry-forward resolution (handoff §10 invocation contract) | 1.5h |
+| **H** | Smoke fixture (5 static cases per `smoke-hooks.js` template) + run | 1h |
+| **I** | DEV_JOURNAL closure entry + CHANGELOG `[1.4.0]` + ROADMAP «Где мы сейчас» + tag `v1.4.0` + `dev/_archive/phase-6/` для plan + `dev/PHASE_7_READINESS.md` skeleton | 1h |
+
+### F.2 Phase 5 + patches runway
+
+Phase 5 closure (DEC-DEV-0044/0045) + patches 1.3.3/1.3.4/1.3.5 (DEC-DEV-0047/0049/0051) дали следующий runway для Phase 6:
 
 - **Integrator generic add-flow готов** — `/integrator:add` + `tool-profiler` subagent + `contract-designer` subagent работают (validated 4 PASS S1/S2/S3/S4 в Phase 5 smoke). Phase 6 может использовать `/integrator:add stitch-mcp` напрямую. Stitch-specific adapter (для Stitch MCP screen-gen output → MK markdown format) пишется как reference adapter аналогично `handoff-to-ccsdd.js` (tri-location pattern per DEC-DEV-0044).
 - **Tri-location adapter pattern** (DEC-DEV-0044 Q1 refinement) — `adapters/<file>.js` в repo → `.claude/adapters/<file>.js` в pilot reference layer (синкается через bootstrap/update) → `.claude/integrator/adapters/<file>.js` в pilot instance (создаётся при `/integrator:add`). Для Stitch-adapter применима та же pattern.
@@ -191,9 +233,12 @@ Phase 6 done when:
 - **Lossy regeneration — приемлемый v1 для tool switching** (DEC-DEV-0048 Lesson 4) — Phase 6 не должна over-engineer IR в первой итерации; v1.1 hooks (`previous_tools[]`, `ir_snapshot_path`) + noop поведение sufficient до bring-forward trigger.
 
 **Known issues которые могут проявиться в Phase 6:**
-- `product-devils-advocate` registration gap (Phase 4 DEC-DEV-0038 follow-up R7) — applicable к Design DA implementation. Verify subagent registration cycle на kickoff.
-- Cross-platform path normalization (Phase 5 bug 3, journal-hook Windows backslash) — design-artifact-validate.js должен использовать `replace(/\\/g, '/')` для Windows compat.
-- Pilot's stitch-mcp profile (если будет) должен carry `environment_tiers` block — иначе Stage 1 `/integrator:add stitch-mcp` будет refuse per DEC-DEV-0047 B-1 mandate.
+- ~~`product-devils-advocate` registration gap~~ — Q11 DEC-DEV-0052: irrelevant в v1.0 (Q2 defer subagent → no design DA subagent в Phase 6 v1.0).
+- Cross-platform path normalization (Phase 5 bug 3, journal-hook Windows backslash) — `design-artifact-validate.js` должен использовать `replace(/\\/g, '/')` для Windows compat (Q8 DEC-DEV-0052).
+- Pilot's stitch-mcp profile (если будет) должен carry `environment_tiers` block — `environment_agnostic: true` per Q12 DEC-DEV-0052 (Stitch SaaS).
+
+**Carry-forward decisions (открыты до implementation):**
+- **Q10 (DEC-DEV-0052) — `/design:export` ↔ `/product:handoff` ordering:** при sub-phase G implementation grep `commands/product/handoff.md` для FM has_ui=true branch — добавить explicit `/design:export <FM>` invocation шаг ИЛИ задокументировать «handoff §10 ассистент заполняет из MK/DS/NM без separate command call». Decision point in implementation.
 
 **Deferred cosmetic fixes (от DEC-DEV-0050)** — не блокируют Phase 6, но можно подобрать вместе с kickoff:
 - DEC-DEV-0047 duplicate «Связь с другими entries» heading (lines 3806 + 3816 в DEV_JOURNAL).
@@ -203,31 +248,34 @@ Phase 6 done when:
 
 ---
 
-## I. Kickoff invocation prompt template
+## I. Kickoff invocation prompt template — **EXECUTED 2026-05-27 (DEC-DEV-0052)**
 
-> **При starting Phase 6 — открыть fresh session с этим prompt в качестве первого сообщения** (per `dev/meta-improvement/checklists/phase-kickoff.md`):
+> Architectural kickoff выполнен fresh-session 2026-05-27, результат — DEC-DEV-0052 (12 Qs / 13 ambiguities / 5 cuts). Этот шаблон сохранён для **implementation kickoff** когда real UI FM появится в pilot — open fresh session с prompt ниже.
 
 ```
-Я фрэш-сессия для Phase 6 kickoff на Ecosystem 3.0. Не загружай context из current ongoing work — нужна clean discovery view.
+Я фрэш-сессия для Phase 6 implementation kickoff на Ecosystem 3.0. Architectural kickoff уже выполнен (DEC-DEV-0052, 2026-05-27); этот run = implementation execution.
 
 Substrate (минимум):
-1. dev/PHASE_6_READINESS.md (this file — refreshed 2026-05-27)
-2. docs/design-module/SPEC.md v1.1 (post-DEC-DEV-0048; §9 tooling, §16 IR groundwork)
-3. docs/pmo/artifacts/{MK,DS,NM}.md (artifact schemas + migration trail per DEC-DEV-0048)
-4. DEV_JOURNAL.md DEC-DEV-0048 (architectural addendum) + DEC-DEV-0047 (Integrator patch precedent для hard approve gate / PA journal patterns)
-5. docs/pmo/pmo-map.md D2-B04 (UX/UI Design row; status may need refresh per Section C PMO map note)
-6. CLAUDE.md «Где мы сейчас»
-7. dev/meta-improvement/checklists/phase-kickoff.md (D7 kickoff ritual)
+1. dev/PHASE_6_READINESS.md (banner 🟡 architectural ready)
+2. docs/design-module/SPEC.md v1.1 (DEC-DEV-0048 — Claude Design co-primary + IR groundwork; §9, §16)
+3. docs/pmo/artifacts/{MK,DS,NM}.md (artifact schemas + migration trail)
+4. DEV_JOURNAL.md DEC-DEV-0052 (kickoff decisions — 12 Qs / 13 ambiguities / 5 cuts) + DEC-DEV-0048 (SPEC v1.1 addendum) + DEC-DEV-0047 (PA journal + hard approve gate templates)
+5. dev/PHASE_6_SMOKE_TEST_PLAN.md (S1-S6 scenarios)
+6. dev/v1_1_backlog.md (5 cut entries C1-C5 — НЕ implementing в v1.0)
+7. CLAUDE.md «Где мы сейчас»
 
-Trigger conditions (Section B):
-- First FM with has_ui=true в pilot project, OR
-- Explicit user decision создать sandbox FM-DESIGN-001 для Phase 6 implementation walk-through
+Real UI FM trigger: <FM-ID-here from pilot project>.
 
-Execute phase-kickoff.md Sections 1-5 + fill dev/PHASE_6_READINESS.md Section C still-open questions + Section D scope cuts. Surface refinement candidates для skeleton.
+Execute sub-phase plan A→I из PHASE_6_READINESS.md Section F (refreshed 2026-05-27 post-DEC-DEV-0052):
+- A: DEC-DEV-NNNN implementation entry + any further drift fixes
+- B: commands/design/{start, status}.md + .claude/design.yaml template
+- C-E: skills/design/ (orchestrator + checklists + tool workflows incl. stub claude-design-workflow per C1)
+- F: остальные commands/design/ (iterate/system/export/migrate Stitch↔HTML only per C3)
+- G: hooks/design/design-artifact-validate.js + manifest + Q10 carry-forward resolution
+- H: smoke fixture (static)
+- I: closure + CHANGELOG [1.4.0] + ROADMAP update + tag
 
-Anti-bias guard: я (fresh AI) free to surface architectural concerns DEC-DEV-0048 might have missed. Если scope не реалистичен или OQ-DM-08 (Claude Design prompt patterns) требует actual experimentation before commitments — surface честно.
+Anti-bias guard: implementation возможно surfaceит missed details (Phase 5 lesson — fresh-session ≠ rubber-stamp); free to refine sub-phase scope если evidence dictates.
 
-После kickoff — propose DEC-DEV-0051 (Phase 6 readiness gate + Q1-QN architectural decisions, аналог DEC-DEV-0040 для Phase 5).
+Verify DEC-DEV номер против DEV_JOURNAL tail (per DEC-DEV-0050 R2) перед constructing implementation closure entry.
 ```
-
-(DEC-DEV номер `0051` predicted as next sequential — verify against DEV_JOURNAL tail at actual kickoff time per DEC-DEV-0050 R2.)

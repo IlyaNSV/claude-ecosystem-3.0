@@ -586,3 +586,252 @@ Pre-pilot Ecosystem 3.0 не имеет use case justification: solo-dev workflo
 - PoC implementation (1 platform, 1 scenario): ~16-24 ч.
 - Production hardening (multi-platform, security, session model): TBD — significant, ≥40 ч.
 - **Total для valuable v1 capability: ≥60-80 ч.** Multi-session work.
+
+---
+
+## Design Module — `claude-design-workflow.md` full skill (C1 cut)
+
+**Originally planned:** Phase 6 v1.0 (per DEC-DEV-0048 SPEC §4.4a, post-2026-05-27 addendum)
+**Deferred:** 2026-05-27 per DEC-DEV-0052 cut C1
+**Defer rationale:** OQ-DM-08 open — Claude Design (`claude.ai/design`) — research preview на 2026-05-27 без MCP/API. Ship'нуть full skill spec без actual claude.ai/design experimentation = speculation (phantom-audience risk, аналогично DEC-DEV-0046). Skill spec выглядит content-rich, но без real pilot data prompt patterns = vapor. Predicted regret: first real Claude Design pilot обнаружит skill mismatch с actual UX → rewrite all the same.
+**Bring-forward trigger:** Любое из:
+- First FM в pilot где user выбирает Claude Design over Stitch (real evidence)
+- Anthropic releases public Claude Design MCP/API (announced «coming weeks» на 2026-05-27)
+- ≥2 Claude Design sessions completed manually (export workflow к `.product/.design-sessions/`)
+
+### Architectural intent
+
+Полноценный `claude-design-workflow.md` skill (per SPEC §4.4a):
+
+- **Prompt patterns library:** chat-driven generation, inline comments на UI elements, iterative refinement
+- **Project context attachment workflow:** screenshots, codebases (via UI upload), design files
+- **DS-inheritance:** Claude Design auto-inherits org's design system — Ecosystem 3.0 DS экспортируется как brand-package для импорта (manual export текстом в v1.1; MCP/API automation в v1.2+)
+- **Export workflow:** ZIP/HTML/PDF/PPTX → `.product/.design-sessions/<MK-id>-export/` для capture; structured archive convention
+- **Native «Handoff to Claude Code» integration:** Claude Design generates visual bundle → Ecosystem `/product:handoff` §10 ссылается на bundle URL; разграничение product-level behavioral vs design-level visual закреплено
+- **Subscription tier handling:** graceful detection Pro/Max/Team/Enterprise availability; degradation path к Stitch / HTML fallback per `mcp_preferences.fallback_chain`
+- **Known limitations workarounds:** comment persistence issues, compact view save errors, large codebase lag — документированные workarounds per real pilot evidence
+
+### Implementation notes
+
+**v1.0 stub (~30 lines, что shipped per Q5):**
+- Параграф «manual workflow: open claude.ai/design, paste brief, export ZIP/HTML to `.product/.design-sessions/<MK-id>-export/`»
+- Link to SPEC §4.4a + §9.1 для baseline info
+- TODO marker «full skill — v1.1 after Claude Design pilot OR Anthropic MCP/API»
+
+**Full v1.1+ deliverable depth:** ~120-180 lines (mirrors `stitch-workflow.md` структуру after Phase 6 v1.0 ships).
+
+**Dependencies:**
+- Real Claude Design pilot session(s) — substrate для prompt patterns
+- OR Anthropic public MCP/API release — enables automation paths
+
+### References to existing spec
+
+- `docs/design-module/SPEC.md` §4.4a — skill spec sketch (DEC-DEV-0048 addendum)
+- `docs/design-module/SPEC.md` §9.1 — Claude Design tool block
+- DEC-DEV-0048 research baseline 2026-05-27 (Claude Design known limitations)
+- DEC-DEV-0052 Q5/C1 — defer decision
+
+### Estimated effort при возврате
+
+- Pilot session(s) capture: 2-4ч (depends on Claude Design subscription + UI complexity)
+- Skill full draft: 2-3ч (prompt patterns + workflow + DS export + degradation)
+- Smoke verification (Q9 PA integration triggers + fallback chain): 1ч
+- **Total: 5-8ч focused work**
+
+---
+
+## Design Module — `screen-generator` subagent (C2 cut)
+
+**Originally planned:** Phase 6 v1.0 (per SPEC §5.1 + ROADMAP `subagents/design/screen-generator.md`)
+**Deferred:** 2026-05-27 per DEC-DEV-0052 cut C2
+**Defer rationale:** Pre-optimization — D.2 «множественная генерация экранов» теоретически потребляет много контекста, но это не доказано в real D.2 pilot. SPEC §5.1 предполагает subagent для context isolation, но v1.0 D.2 inline в `design-session.md` workable если main session capacity sufficient. Phase 5 lesson «не build subagents до evidence о context pollution» применим.
+**Bring-forward trigger:** Любое из:
+- Real D.2 запуск >5 экранов hits >50% main context (measured)
+- Multiple D.3 «крупные правки» sessions показывают context pollution patterns
+- User explicit feedback «subagent isolation хотелось бы»
+
+### Architectural intent
+
+Per SPEC §5.1:
+
+- **Контекст:** Design Brief + SC steps + BR constraints + LC states + DS snapshot + RPM
+- **Инструменты:** Stitch MCP (primary), Figma MCP (future), WebFetch (HTML fallback), Sequential Thinking
+- **Триггер:** D.2 (first iteration for multiple screens), D.3 крупные правки (2+ экрана одновременно), D.5 при missing states
+- **Вход:** структурированный prompt с feature context + screen inventory draft + DS tokens + a11y requirements
+- **Выход JSON schema (per DEC-DEV-0052 A10):**
+  ```yaml
+  screens: [{si_id, tool_url, generation_status, issues[]}]
+  new_components_proposed: [{name, variants, tokens_used}]
+  new_tokens_proposed: [{name, value, usage, source_si}]
+  issues: [{severity, message, related_si?}]
+  ```
+- **Fallback behavior:** Stitch unavailable → HTML/React artifact generation through Claude Code primitives
+
+### Implementation notes
+
+**Structural template:** Phase 5 `tool-profiler` → `contract-designer` pattern (DEC-DEV-0040 + 0044) — single-tool deep work + verify-only smoke. Adapt к multi-screen-generation purpose.
+
+**Subagent registration cycle:** проверить per DEC-DEV-0038 R7 follow-up (product-devils-advocate registration gap precedent). Этот gap stays unverified в v1.0 без subagent — если bring-forward пробуждается, на kickoff проверить.
+
+**Dependencies:**
+- Stitch MCP active (через `/integrator:add stitch-mcp`)
+- DS snapshot accessible (via skill `design-system-rules.md`)
+- Real D.2 pilot evidence
+
+### References to existing spec
+
+- `docs/design-module/SPEC.md` §5.1 — subagent definition
+- `agents/integrator/{tool-profiler,contract-designer}.md` — structural template (Phase 5)
+- DEC-DEV-0052 Q2/C2 — defer decision + A10 JSON schema
+
+### Estimated effort при возврате
+
+- Subagent file (prompt + tools + brief contract): 1-2ч
+- Smoke fixture (≥3 cases — single screen, multi-screen, Stitch unavailable): 1ч
+- Integration в `design-session.md` D.2 + D.3 dispatch logic: 30-45 min
+- **Total: 2-4ч focused work**
+
+---
+
+## Design Module — `/design:migrate` Stitch ↔ Claude Design path (C3 cut)
+
+**Originally planned:** Phase 6 v1.0 (per SPEC §3.6 + DEC-DEV-0048 §16.2 — full matrix Stitch ↔ Claude Design ↔ HTML)
+**Deferred:** 2026-05-27 per DEC-DEV-0052 cut C3
+**Defer rationale:** Schema полная (MK frontmatter enum includes claude-design; `previous_tools[]` поддерживает); только command logic narrower в v1.0. Claude Design migration path требует prerequisite: working `claude-design-workflow.md` skill (см. C1) — без него regen в Claude Design = pure manual paste без skill guidance, низкое UX качество. Защищает от phantom-validation: v1.0 ships Stitch ↔ HTML (mechanical paths) — both fully validated; Claude Design path waits for C1 unlock.
+**Bring-forward trigger:** Tied to C1 unlock — когда `claude-design-workflow.md` full skill ships, `/design:migrate` matrix expansion = trivial follow-up.
+
+### Architectural intent
+
+Per SPEC §3.6 расширенный матрикс:
+- `--to stitch` from claude-design OR html — regenerate в Stitch через brief
+- `--to claude-design` from stitch OR html — manual workflow в `claude.ai/design` (v1.1) ИЛИ MCP/API automated (v1.2+)
+- `--to html` from stitch OR claude-design — direct Claude Code HTML/React generation
+
+Все paths используют common:
+- Hard approve gate per DEC-DEV-0052 Q1 (silence ≠ consent; per-MK granularity)
+- `previous_tools[]` audit trail
+- Brief + MK metadata + DS snapshot → regen input
+- Rollback on regen failure (delete last `previous_tools[]` entry per A8)
+
+### Implementation notes
+
+**Что в v1.0 ships (per Q6):**
+- `/design:migrate <MK-id> --to {stitch, html}` only
+- Schema полная (enum `stitch | claude-design | figma | penpot | html` keeps в MK frontmatter)
+- Command rejects `--to claude-design` с message «Claude Design migration: v1.1+ (см. v1_1_backlog.md)»
+
+**Что добавляется в v1.1:**
+- `--to claude-design` branch
+- Manual workflow walkthrough (paste brief, export ZIP back) — if MCP/API unavailable
+- MCP/API automation path — if Anthropic shipped
+
+### References to existing spec
+
+- `docs/design-module/SPEC.md` §3.6 — full matrix spec
+- `docs/design-module/SPEC.md` §16.2 — lossy migration принципы
+- `docs/pmo/artifacts/MK.md` — `previous_tools[]` schema (already v1.1 ready)
+- DEC-DEV-0052 Q6/C3 — defer decision
+- C1 entry — dependency
+
+### Estimated effort при возврате
+
+- Tied to C1 timeline; standalone expansion of `migrate.md` command: ~1-2ч
+- Smoke fixture (≥2 cases — claude-design from stitch, claude-design from html): 30-45 min
+- **Total: 1.5-3ч focused work** (after C1 lands)
+
+---
+
+## Design Module — `html-fallback.md` React + multi-screen (C4 cut)
+
+**Originally planned:** Phase 6 v1.0 (per ROADMAP — «HTML fallback работает без Stitch (полноценный путь, не заглушка)»)
+**Deferred:** 2026-05-27 per DEC-DEV-0052 cut C4
+**Defer rationale:** «Полноценный путь» в v1.0 trips на scope creep — React generation + multi-screen + state-aware components = full second UI tooling stack. Primary use case HTML fallback = «Stitch down» emergency unblock (rate limit hit, network down) — single HTML page достаточен для unblocking session. React/multi-screen — orthogonal capability (когда user в HTML mode постоянно, не emergency).
+**Bring-forward trigger:** Любое из:
+- User explicitly demands React-quality fallback («HTML mode primary, not emergency»)
+- ≥3 sessions completed end-to-end в HTML mode (evidence что HTML — не emergency, а real workflow)
+- Multi-screen requirement surfaced в real D.2 (Stitch failed mid-session, нужно continue в HTML для 2+ screens)
+
+### Architectural intent
+
+**Full HTML fallback skill (~80-120 lines):**
+- HTML page generation per screen с DS tokens via CSS vars
+- React component generation (functional components, hooks, props typed)
+- Multi-screen support: navigation between screens via state (no router complexity)
+- Component state matrix codification (default/hover/error в CSS pseudo-selectors)
+- Accessibility: aria-*, tab order, contrast checks inline
+- Export к `.product/.design-sessions/<MK-id>-html/` с index.html + per-screen.html + assets/
+
+### Implementation notes
+
+**v1.0 ships (per Q4):**
+- Minimal `html-fallback.md` (~80 lines):
+  - Single HTML page generation
+  - DS tokens via CSS vars
+  - No React (vanilla HTML/CSS)
+  - No multi-screen — output = одна страница per `/design:start` request
+
+**Full v1.1+:**
+- React expansion (functional components, prop types via TS or JSDoc)
+- Multi-screen support
+- Navigation logic между screens (sessionStorage-based mini-router)
+
+### References to existing spec
+
+- `docs/design-module/SPEC.md` §9.3 — HTML/React artifact fallback
+- ROADMAP Phase 6 acceptance criteria — refreshed per DEC-DEV-0052 к «minimal single-page»
+- DEC-DEV-0052 Q4/C4 — defer decision
+
+### Estimated effort при возврате
+
+- React expansion: 1.5-2ч (functional components + state hooks)
+- Multi-screen + mini-router: 1.5-2ч
+- Smoke verification (3+ screens, navigation, a11y): 1ч
+- **Total: 4-5ч focused work**
+
+---
+
+## Design Module — V-MK-02..03 full automation (C5 cut)
+
+**Originally planned:** Phase 6 v1.0 (per ROADMAP — «V-MK-01..V-MK-08 валидация active»)
+**Deferred:** 2026-05-27 per DEC-DEV-0052 cut C5
+**Defer rationale:** V-MK-02 (Component State Matrix completeness) и V-MK-03 (BR constraints reflected in states) — full automation требует semantic recognition «is this an interactive component or static label?» — high false-positive risk на real MK с creative naming. v1.0 ships V-MK-02 partial (mechanical states `default`+`error` для components с pattern-match interactive verbs); V-MK-03 manual via `component-states.md` skill checklist. Bring-forward после accumulated evidence о safe auto-check patterns.
+**Bring-forward trigger:** Любое из:
+- 10+ MK created в pilot → pattern emerges для safe component classification
+- 5+ false-positive cases logged против V-MK-02 mechanical mode (signals need для semantic upgrade OR signals current mode adequate)
+- User requests «automate full V-MK-02/03» с willingness to tolerate false positives
+
+### Architectural intent
+
+**Full V-MK-02:**
+- Automatic detection всех interactive components (buttons, inputs, links, cards с onclick, modals, menus)
+- Per-component state coverage check: default / hover / focus / error / disabled / loading / empty / overflow / skeleton
+- Cross-reference с BR constraints (если BR-NNN.statement references component → corresponding error state в matrix)
+- Cross-reference с LC states (если LC entity has disabled state → corresponding component disabled state)
+
+**Full V-MK-03:**
+- Detect все BR rules применимые к UI (по keyword scan «validation», «format», «required», «max», «min» в BR statement)
+- Verify каждое BR rule reflected в Component State Matrix error state
+- Auto-flag missing coverage с suggest text «BR-NNN не reflected в MK-NNN/Component-X error state»
+
+### Implementation notes
+
+**v1.0 ships (per Q3):**
+- V-MK-02 partial: warn если в Component State Matrix отсутствует `default` или `error` state для row с `interactive_verb` pattern match (`click`, `submit`, `select`, `toggle`)
+- V-MK-03 manual: `component-states.md` skill checklist runs human через все BR с UI-applicable patterns; ассистент proposes, human confirms
+
+**Full v1.1+:**
+- Semantic component classifier (likely keyword + position heuristic; advanced — call screen-generator subagent для semantic decision)
+- BR ↔ MK cross-ref automation с safe-mode threshold (≥X confidence to auto-flag, else queue)
+
+### References to existing spec
+
+- `docs/pmo/validation.md` V-MK-01..V-MK-08 — full validation suite
+- `docs/design-module/SPEC.md` §4.5 — `design-validation.md` skill
+- DEC-DEV-0052 Q3/C5 — defer decision
+
+### Estimated effort при возврате
+
+- Semantic component classifier (regex + position + keyword heuristic): 1.5-2ч
+- BR ↔ MK cross-ref automation: 1.5-2ч
+- Confidence threshold tuning + fixture (≥5 cases с mixed FP/TP): 1ч
+- **Total: 4-5ч focused work**

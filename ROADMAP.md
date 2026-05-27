@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-27 (patch 1.3.5 shipped — DEC-DEV-0051 `/ecosystem:update` Step 5 namespace-aware sync + Step 2 extended backup; closes same class of bug as 1.3.4 for subdirs + backup scope).
+> **Последнее обновление:** 2026-05-27 (Phase 6 kickoff — DEC-DEV-0052; 12 architectural Qs + 13 ambiguities resolved + 5 scope cuts; status 🟡 architectural ready, implementation trigger pending real UI FM).
 
 ## Где мы сейчас
 
@@ -96,7 +96,9 @@
    — Pivot to local docs polish (4-9h) вместо full wiki (32-50h) — shipped в 1.3.3
    — Design+plan+readiness preserved: dev/wiki-design.md, dev/PHASE_D_IMPLEMENTATION_PLAN.md, dev/PHASE_D_DOCS_WIKI_READINESS.md (DEFERRED banners)
    — Bring-forward triggers: real end-user/stakeholder ask, OR Obsidian insufficient, OR public release prep (см. dev/v1_1_backlog.md)
-⏳ Phase 6 — Design Module (conditional, activate on first UI feature) — skeleton dev/PHASE_6_READINESS.md
+✅ Pre-Phase-6 architectural addendum (DEC-DEV-0048, 2026-05-27) — SPEC v1.1 (Claude Design co-primary + IR groundwork)
+✅ Phase 6 kickoff (DEC-DEV-0052, 2026-05-27) — 12 Qs / 13 ambiguities resolved + 5 cuts approved; sub-phase A→I готов
+⏳ Phase 6 — Design Module (conditional, activate on first UI feature) — 🟡 architectural ready, implementation trigger pending real UI FM в pilot (sandbox path отвергнут — phantom-validation guard)
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm)
 
 📦 Post-MVP (v1.1+): Phase D Wiki initiative (deferred), Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, D.7 aspirational layer (recursive auto drill-down + FM.depends_on graph), /product:clarify receiver channel, Orchestrator Module concept, /ecosystem:upgrade. Context: dev/v1_1_backlog.md
@@ -509,9 +511,9 @@ adapter invokes cc-sdd  → /kiro:spec-init → spec.json
 
 ## Phase 6 — Design Module (conditional)
 
-**Trigger:** первая FM с `has_ui=true` в pilot проекте.
+**Trigger:** первая FM с `has_ui=true` в pilot проекте. Архитектурные решения зафиксированы pre-kickoff (DEC-DEV-0048 SPEC v1.1 — Claude Design co-primary + IR groundwork; DEC-DEV-0052 — 12 Qs / 13 ambiguities / 5 cuts).
 
-### Deliverables (~10 файлов)
+### Deliverables (~10 файлов; пост-DEC-DEV-0052 narrower)
 
 **commands/design/:**
 - `start.md` — P2.5 entry (D.1-D.6)
@@ -519,47 +521,54 @@ adapter invokes cc-sdd  → /kiro:spec-init → spec.json
 - `system.md` — DS management
 - `export.md` — D.6 для handoff §10
 - `status.md` — design session dashboard
-- `migrate.md` — Stitch ↔ HTML fallback conversion
+- `migrate.md` — **v1.0: Stitch ↔ HTML only** (Claude Design path → v1.1 per DEC-DEV-0052 C3)
 
 **skills/design/:**
 - `design-session.md` — P2.5 orchestrator
 - `component-states.md` — D.4 checklist
 - `design-system-rules.md` — DS extraction + merge
-- `stitch-workflow.md` — Stitch MCP prompt patterns (OQ-DM-01)
-- `design-validation.md` — V-MK-01..V-MK-08
-- `html-fallback.md` — HTML/React generation path
+- `stitch-workflow.md` — Stitch MCP prompt patterns (OQ-DM-01 open; v0 best-effort, refactor after pilot)
+- `claude-design-workflow.md` — **v1.0: stub (~30 lines)** per DEC-DEV-0052 C1 (full implementation → v1.1 after Claude Design pilot OR MCP/API release)
+- `design-validation.md` — V-MK-01..V-MK-08 (**V-MK-02 partial automation** per DEC-DEV-0052 C5)
+- `html-fallback.md` — **v1.0: minimal HTML page generation** (single screen, DS via CSS vars, no React) per DEC-DEV-0052 C4
 
-**subagents/design/:**
-- `screen-generator.md` — D.2 isolated context для множественной генерации
+**subagents/design/:** *(DEFERRED к v1.1 per DEC-DEV-0052 C2 — D.2 inline в design-session.md в v1.0)*
+- ~~`screen-generator.md`~~ — bring-forward trigger: real D.2 >5 экранов hits >50% main context
 
 **hooks/design/:**
 - `design-artifact-validate.js` — PostToolUse на `.product/mockups/`
 
 **Integrator setup:**
-- `/integrator:add stitch-mcp` (если Stitch выбран)
+- `/integrator:add stitch-mcp` (если Stitch выбран; profile carries `environment_agnostic: true`)
 
 ### Acceptance criteria
 
 - [ ] `/design:start FM-001` → P2.5 D.1-D.6 end-to-end
 - [ ] MK/DS/NM создаются в active, passed V-MK-* validation
-- [ ] HTML fallback работает без Stitch (полноценный путь, не заглушка)
+- [ ] HTML fallback работает без Stitch (minimal single-page путь в v1.0)
 - [ ] `/design:export FM-001` заполняет §10 UI Specification в handoff
 - [ ] Handoff §10 consumable внешним implementation tool через adapter
 - [ ] Stitch rate limit (350 gen/month) graceful handled
+- [ ] `/design:migrate MK-NNN --to html` writes `previous_tools[]` entry, regen succeeds OR rollback on failure
+- [ ] Hard approve gate в `/design:migrate` (per-MK granularity; silence ≠ consent per DEC-DEV-0047 §7.6 pattern)
 
 ### Estimated effort
 
-**3-4 часа + OQ-DM-01 experimentation (prompt patterns для Stitch).**
+**10-20ч realistic pre-cuts; 8-12ч focused work post-DEC-DEV-0052 cuts.** ROADMAP старая оценка 3-4ч устарела post-DEC-DEV-0048 (Claude Design + IR groundwork) и post-Phase-5 calibration (×2-3 multiplier для mixed methodology + code phase per DEC-DEV-0041 lesson).
 
 ### Dependencies
 
 - Phase 4 (handoff §10 integration)
 - Phase 5 (Integrator add для Stitch MCP)
+- Patches 1.3.3-1.3.5 (env_tiers, PA journal, scope-guard pattern, hard approve gate template, pattern-preserving merge для design hooks)
 
 ### Risks
 
 - OQ-DM-01 (prompt patterns для Stitch) пока open — первый реальный use case даст данные, но может потребовать переработки `stitch-workflow.md` после pilot.
-- Component State Matrix автоматизация (V-MK-02..V-MK-03) может быть partial — некоторые проверки требуют human judgment.
+- **OQ-DM-08** (Claude Design prompt patterns) — Claude Design = research preview без MCP/API в 2026; v1.0 ships stub, full skill только после first pilot OR Anthropic releases.
+- Component State Matrix автоматизация (V-MK-02..V-MK-03) — v1.0 ships V-MK-02 partial (mechanical states only); V-MK-03 manual via skill checklist.
+- `/design:migrate` matrix narrow в v1.0 (Stitch ↔ HTML); Claude Design migration → v1.1.
+- `screen-generator` subagent deferred — D.2 inline может hit context pollution на >5 экранов (bring-forward trigger).
 
 ---
 

@@ -4171,6 +4171,135 @@ Backward compatibility:
 
 ---
 
+## DEC-DEV-0052 — Phase 6 kickoff: architectural decisions + scope cuts (12 Qs / 13 ambiguities / 5 cuts)
+
+**Date:** 2026-05-27
+**Trigger:** Pre-Phase-6 kickoff ritual в fresh-session mode per `dev/meta-improvement/checklists/phase-kickoff.md`. User signal: следующая FM в pilot `my-first-test` планируется UI → kickoff горизонт близкий, front-loaded ROI релевантен. Sandbox FM-DESIGN-001 как rehearsal path рассмотрен и отвергнут (см. Decisions).
+**Tag:** #architecture #spec-revision #scope-discipline #phase-readiness
+
+### Context
+
+Phase 6 (Design Module) — conditional, активируется на first FM с has_ui=true. SPEC v1.1 готов (DEC-DEV-0048 — Claude Design co-primary + IR groundwork); MK/DS/NM artifact schemas v1.1 готовы. Имплементация ещё не стартовала (`commands/design/`, `skills/design/`, `agents/design/`, `hooks/design/` — пустые директории).
+
+`PHASE_6_READINESS.md` (refreshed 2026-05-27 post DEC-DEV-0050 closure ritual) status «🟡 ready-for-kickoff — trigger pending». Section C перечисляет 6 решений, зафиксированных в DEC-DEV-0048 + 5 ещё-открытых вопросов + cross-cutting integrations (env_tiers, PA journal, scope-guard, pattern-preserving merge, hard approve gate). Section D — TBD scope cuts.
+
+Этот kickoff закрывает architectural Qs + ambiguities + scope cuts; implementation trigger остаётся conditional (real UI FM).
+
+### Options considered
+
+**A. Sandbox FM-DESIGN-001 + pre-implement Phase 6 sans real pilot trigger.**
+Pros: implementation готов когда real FM появится; tooling validated через synthetic exercise.
+Cons: synthetic FM не reveals real-pilot bugs (Phase 5 precedent DEC-DEV-0044 — bug 4 surfaced только в real pilot). Violates CLAUDE.md §2 incremental pilot + dogfooding direction. Phantom-audience risk аналогично DEC-DEV-0046.
+
+**B. Kickoff закрывает architectural decisions + ROADMAP/readiness sync; implementation триггерится real UI FM (выбран).**
+Pros: front-loaded design discipline pays ROI (DEC-DEV-0048 precedent); avoid synthetic validation trap; real UI FM (горизонт близкий per user signal) даст authentic substrate. Phase 5 closure pattern: kickoff ROI multiplier ~6-8x применим.
+Cons: trigger всё ещё conditional; если pilot pivots в backend-heavy direction → Phase 6 implementation отложится. Risk acceptable per CLAUDE.md §5 «ROADMAP — hypothesis, not contract».
+
+**C. Skip kickoff, defer всё к moment real FM hits.**
+Pros: minimum sunk cost если Phase 6 никогда не активируется.
+Cons: real UI FM moment — wrong time для architectural deliberation (focus on FM content, не tooling design); inherits DEC-DEV-0048 ROI lesson «front-loaded design discipline для conditional phases оправдан».
+
+### Decision
+
+**Вариант B — kickoff закрывает architectural decisions + scope cuts; implementation conditional на real UI FM.**
+
+#### Architectural decisions (12 Qs resolved)
+
+**Q1 — Hard approve gate UX в `/design:migrate`:** per-MK granularity, mirrors DEC-DEV-0047 §7.6 pattern; `--all` flag iterates с individual approve, no batch-bypass. Hard gate text: «STOP. Lossy regeneration via brief — visual tweaks потеряются. Approve migration для MK-NNN? [Y/N/defer]». Silence ≠ consent.
+
+**Q2 — `screen-generator` subagent: defer к v1.1.** v1.0 D.2 inline в `design-session.md`. Bring-forward trigger: real D.2 >5 экранов hits >50% main context.
+
+**Q3 — V-MK-02..03 automation: V-MK-02 partial (mechanical states `default`+`error` для interactive components); V-MK-03 manual.** Auto-check semantic «is interactive» = FP risk.
+
+**Q4 — HTML fallback v1.0: minimal (single HTML page, DS tokens via CSS vars, no React).** «Stitch down» emergency unblock достаточен. React + multi-screen — v1.1.
+
+**Q5 — `claude-design-workflow.md` v1.0: stub (~30 lines).** OQ-DM-08 open; manual export workflow described high-level; refactor after first Claude Design pilot OR Anthropic MCP/API release.
+
+**Q6 — `/design:migrate` matrix v1.0: Stitch ↔ HTML only.** Schema полная (Claude Design enum keeps); command logic narrower. Claude Design migration → v1.1.
+
+**Q7 — `design-session.md` deadlock protection (7 iterations):** structured 4-choice menu — `[pause+save / radical-rethink D.1 / accept-current-as-final / drop-and-archive]`.
+
+**Q8 — `design-artifact-validate.js` v1.0:** YAML parse + 5 required-field checks (id, type, feature, design_tool, scenarios) + ref existence (SC/BR/LC via fs.exists) + V-MK-08 token coverage (regex `DS\.\w+\.\w+` scan vs DS body). Cross-platform path norm per Phase 5 bug 3 (`replace(/\\/g, '/')`).
+
+**Q9 — PA integration: 3 trigger events** — first `/design:start` без Stitch MCP configured; first Claude Design без subscription; `tool_project_url` 404 при resume.
+
+**Q10 — `/design:export` ↔ `/product:handoff` ordering:** carry-forward к sub-phase G (decision point in implementation, not kickoff). При sub-phase G grep `commands/product/handoff.md` для FM has_ui=true branch — добавить explicit invocation шаг ИЛИ задокументировать «handoff §10 ассистент заполняет из MK/DS/NM без separate command call».
+
+**Q11 — Subagent registration gap (R7 from DEC-DEV-0038):** Q2 defer subagent → irrelevant в v1.0.
+
+**Q12 — Stitch MCP `environment_tiers`:** `environment_agnostic: true` (SaaS, не зависит от tier).
+
+#### Ambiguity resolutions (13 sweep findings)
+
+- **A1** — MK filename slug: `MK-<NNN>-<ascii-slug>.md` per Phase 2 PS drift precedent (DEC-DEV-0011 lesson).
+- **A2** — Screen Inventory IDs per-MK scope (restarts each MK); cross-MK refs via `MK-NNN/SI-X` qualifier.
+- **A3** — NM cross-feature flows: v1.0 single FM scope (split на 2 NM если spans); v1.1 backlog NM.features[] array если evidence accumulates.
+- **A4** — `.design-sessions/` cleanup: `archived/` directory on D.6 complete or `/design:start --abandon`; opportunistic >30d purge at session start.
+- **A5** — Stitch counter monthly rollover: `month_count_at_date` comparison vs current `YYYY-MM`; reset to 0 if month changed.
+- **A6** — D.5 MK+DS atomic write: MK first (draft status), DS update second; retry idempotent. No transaction layer.
+- **A7** — has_ui=true без UI SC steps: 3-choice menu `[abort design — set has_ui=false / edit SC inline / proceed minimal UI with rationale logged]`.
+- **A8** — Migration interrupted mid-write: `previous_tools[]` entry written first (before regen), regen second; rollback entry (delete last element) если regen fails — `tool_project_url` stays old.
+- **A9** — Concurrent design sessions same FM: session start checks для existing `current.yaml` с matching FM; warn + `[resume / force-new-overwrite / abort]`.
+- **A10** — screen-generator JSON schema: deferred с Q2 (subagent → v1.1).
+- **A11** — `design-artifact-validate.js` stderr format: `[design-artifact-validate] <FILE>: <severity>: <message>` (mirrors Phase 5 `cascade-check.js`).
+- **A12** — PA schema fields: existing DEC-DEV-0047 B-3 schema reusable (action, subject, source=design, status).
+- **A13** — `/design:export` ↔ `/product:handoff`: carry-forward к sub-phase G (см. Q10).
+
+#### Scope cuts (5 deferrals к v1.1+ backlog)
+
+- **C1** `claude-design-workflow.md` full → stub в v1.0 (~30 lines)
+- **C2** `screen-generator` subagent → v1.1
+- **C3** `/design:migrate` Stitch ↔ Claude Design path → v1.1 (schema keeps enum; command logic narrower)
+- **C4** `html-fallback.md` React + multi-screen → v1.1 (v1.0: single HTML page, no React)
+- **C5** V-MK-02..03 automation full → V-MK-02 partial only в v1.0 (mechanical states; V-MK-03 manual)
+
+Realistic estimate post-cuts: **8-12h focused work** (was 10-20h pre-cuts).
+
+#### Sandbox FM-DESIGN-001 — отвергнут
+
+Per CLAUDE.md §2 (incremental pilot, не waterfall) + §1 (dogfooding direction). Phase 5 lesson (DEC-DEV-0044): bug 4 surfaced только в real pilot, не в fixture. Sandbox для Design Module имеет ту же ловушку — D.1 brief generation на synthetic SC «выглядит работающим», но real FM revealed gaps будут существенно больше. **Решение:** wait для real UI FM в pilot `my-first-test`; trigger горизонт близкий per user signal.
+
+### Outcome
+
+Phase 6 readiness state:
+- 🟡 **architectural decisions complete** — все 12 Qs resolved + 13 ambiguities + 5 cuts approved
+- ⏳ **implementation trigger pending** — real UI FM в pilot project
+
+Sub-phase decomposition A→I готов (см. PHASE_6_READINESS Section F refresh) — total ~11-13h focused work когда trigger fires (8-12h core + 1h I overhead + drift sweep already bundled в A).
+
+**Spec drift prerequisite (bundled с этим kickoff):**
+1. `docs/design-module/SPEC.md` §10.4 line 660 — enum `stitch | figma | penpot | html-fallback` → `stitch | claude-design | figma | penpot | html-fallback` (post-DEC-DEV-0048 enum drift)
+2. `docs/pmo/pmo-map.md` line 59 — D2-B04 status `✅` → `🟡 SPEC v1.1, impl Phase 6 pending`
+3. `ROADMAP.md` Phase 6 section — deliverables list + estimate + risks refresh; «Где мы сейчас» bullets
+4. `dev/PHASE_6_READINESS.md` — banner refresh + Sections A.1/C/D/F/H/I sync
+5. `CLAUDE.md` «Где мы сейчас» — DEC-DEV-0052 line
+6. `dev/v1_1_backlog.md` — 5 новых entries (C1-C5)
+7. `dev/PHASE_6_SMOKE_TEST_PLAN.md` — placeholder с S1-S6 scenarios
+
+### Lessons
+
+1. **Front-loaded design discipline для conditional phases — повторно подтверждено.** DEC-DEV-0048 (SPEC v1.1 addendum) + этот kickoff (decisions + cuts) — оба ship'ятся pre-implementation; total ~3-4h front-loaded vs ~5-15h restored-from-cold при mid-FM kickoff. Multiplier ~5x consistent с Phase 5 kickoff ROI (~6-8x). *Apply:* для других conditional phases (Phase 7 maintenance, Orchestrator concept) — те же front-loaded readinesses.
+
+2. **Sandbox path для conditional phase ловит phantom-validation trap.** Synthetic FM «выглядит работающим», но не reveals real-pilot bugs (Phase 5 bug 4 precedent DEC-DEV-0044). Решение «wait для real FM» = больше ROI чем «pre-implement sans evidence». *Apply:* для любого conditional / trigger-pending feature: real trigger даёт лучше substrate чем synthetic; не торопиться.
+
+3. **Cuts ratio: 5/12+ deliverable surfaces → v1.1.** Post-DEC-DEV-0048 ramp Phase 6 scope наполовину состоял из speculation (OQ-DM-08 Claude Design prompts, OQ-DM-01 Stitch prompts, subagent pre-optimization). Aggressive cut discipline = пол-scope в v1.1; v1.0 ships critical path только. *Apply:* «cuttable scope default» per CLAUDE.md §4 — aggressive defer к v1.1 экономит >50% Phase work без блокирования primary value.
+
+4. **OQ-DM-08 (Claude Design prompts) — exemplar phantom-audience risk** для tooling без pilot evidence. Skill spec выглядит content-rich, но без real claude.ai/design experimentation = vapor. Stub в v1.0 + refactor после first pilot — правильная middle ground. *Apply:* для любого skill, depending от external tool без MCP/stable API: stub-and-refactor pattern.
+
+5. **Fresh-session kickoff повторно подтверждает ROI vs inline.** Inline AI carries forward Phase 5 + DEC-DEV-0048 mental model; fresh-session surfaced 3 critical concerns (OQ-DM-08 phantom-audience, sandbox phantom-validation, ROADMAP/readiness estimate discrepancy) которые inline AI мог smooth over. Cost: ~30 min substrate load. ROI: 5 cuts + 4 lessons + drift prerequisite caught. *Apply:* per phase-kickoff.md checklist — fresh-session для substantial phases.
+
+### Связь с другими entries
+
+- DEC-DEV-0048 — pre-Phase-6 architectural addendum (Claude Design co-primary + IR groundwork); этот kickoff наследует
+- DEC-DEV-0047 — patch 1.3.3 (PA journal + hard approve gate + scope-guard); Q1/Q9 patterns inherited
+- DEC-DEV-0040 — Phase 5 readiness gate (analog kickoff per phase ritual); same fresh-session pattern
+- DEC-DEV-0044/0045 — Phase 5 closure (bug 4 «real pilot reveals bugs that fixture missed»); applied к sandbox rejection
+- DEC-DEV-0046 — defer Phase D Wiki (phantom-audience guard); analog «conditional phase + sandbox rejection»
+- DEC-DEV-0050 — patch 1.3.3 closure ritual (R2 DEC-DEV numbering verification); applied here (0051 collision check → 0052 confirmed)
+- DEC-DEV-0011 / DEC-DEV-0012 — Phase 3 ambiguity sweep + readiness gate; methodology template
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

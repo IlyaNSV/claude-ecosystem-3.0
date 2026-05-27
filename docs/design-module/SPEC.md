@@ -657,7 +657,7 @@ outputs:
   - type: design-package (MK, DS, NM)
     location: .product/mockups/, .product/design-system.md
 external_mcp_required:
-  - stitch | figma | penpot | html-fallback
+  - stitch | claude-design | figma | penpot | html-fallback
 ```
 
 Integrator при add — настраивает Stitch MCP config, генерирует adapter если target implementation tool (cc-sdd) ожидает design.md в специфическом формате.
