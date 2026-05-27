@@ -164,6 +164,49 @@ Skill-level concerns:
 - Dedup: same `(action, tool, minute)` collapses to single entry in hook (prevents spam from cascade saves).
 - Retention: > 500 entries → archive `_archive/journal-YYYY-MM.md` automatic.
 
+### 10. Session-context marker (DEC-DEV-0047 / patch 1.3.3 / B-2)
+
+Each `/integrator:*` command writes `.claude/integrator/.session-context.json` on entry (pre-flight Stage 0) and removes it on successful final exit. `hooks/integrator/scope-guard.js` reads the marker to know «is an Integrator command currently running?»; absent marker → hook is no-op, present marker + write to forbidden path → warn-only.
+
+**Marker schema:**
+
+```json
+{
+  "command": "/integrator:add",
+  "started_at": "2026-05-27T15:30:00Z",
+  "session_id": "<optional uuid>"
+}
+```
+
+**Boilerplate per command — Stage 0 (pre-flight, before any side effect):**
+
+```bash
+mkdir -p .claude/integrator
+cat > .claude/integrator/.session-context.json <<'JSON'
+{
+  "command": "/integrator:<name>",
+  "started_at": "<ISO timestamp now>"
+}
+JSON
+```
+
+**Boilerplate per command — Final stage (post-success):**
+
+```bash
+rm -f .claude/integrator/.session-context.json
+```
+
+**Stale TTL (1 hour):** marker `started_at` older than 1h → hook treats as stale, removes marker, exits no-op (per `hooks/integrator/scope-guard.js`). `/ecosystem:verify` also surfaces stale markers as health-check finding.
+
+**Why not env var:** slash commands are markdown — can't export environment variables per command invocation in Claude Code. Filesystem marker is the only persistent mechanism that survives between tool calls within a session.
+
+**Why not transcript scanning:** brittle (path conventions vary), slow (large transcripts), fragile on Windows (path normalization).
+
+**Failure modes:**
+- Crash before Final-stage cleanup → marker stays → next session in <1h sees a stale marker → hook treats as stale per TTL, no false-positive warn on user-context writes.
+- Two concurrent Integrator sessions (rare; solo dev typically) → marker is single-writer; later command overwrites; both will be cleaned on first successful exit. Acceptable for v1.
+- Write to forbidden path immediately on marker creation (race) → unlikely (marker write itself doesn't trigger PreToolUse against forbidden paths because marker path = `.claude/integrator/.session-context.json` is whitelisted).
+
 ## Approve gates summary
 
 | Stage | Gate? | Default if no answer |
@@ -183,9 +226,11 @@ Per-conflict gates (Section 5) nested inside Stage 2 — each conflict needs an 
 2. **Skipping baseline refresh on update.** Tool primitives may have moved between versions; baseline >7 days old → re-scan.
 3. **Backup-less mutation.** Even "small" config edits get backed up. Cost is negligible vs lost user state.
 4. **Implicit approve.** Each conflict needs explicit user choice. "Continue with defaults" is NOT a default in v1.
-5. **Cross-tool side effects.** `/integrator:add cc-sdd` must NOT touch `.product/` or `hooks/product/`. If tool wants those — surface as 🔴 conflict requiring scope clarification.
+5. **Cross-tool side effects.** `/integrator:add cc-sdd` must NOT touch `.product/` or `hooks/product/` or `.kiro/` or `.claude/docs/pmo/`. If tool wants those — surface as 🔴 conflict requiring scope clarification.
+   - **Backed by runtime hook** (DEC-DEV-0047 / patch 1.3.3): `hooks/integrator/scope-guard.js` fires PreToolUse on Edit|Write|Bash if active Integrator session-context.json marker is present and tool targets a forbidden path. Hook is **warn-only** (stderr + PA entry) per ecosystem hook convention; hard-block deferred to v1.4.0+ (см. `dev/v1_1_backlog.md`). Hook complements skill discipline — both layers required, neither alone sufficient.
 6. **Phantom PMO IDs in coverage.** Use canonical pmo-map.md IDs (DEC-DEV-0040). If a capability matches no existing ID — add a note in `pmo-mapping.yaml.coverage.<id>.notes` and surface to user; do NOT invent an ID.
 7. **Bypassing journal hook.** If you write to `active-tools.yaml` via fs and the hook doesn't fire (e.g., direct `node fs.writeFile` bypassing Bash/Write/Edit tools) — manually append journal entry. Hook is augmentation, not single source of truth.
+8. **Lost USER actions** (DEC-DEV-0047 / patch 1.3.3). Any «🚧 Требует USER» action surfaced during Stage 2 propose or Stage 3-5 install (signup, API key obtain, legal entity registration, manual UI config in 3rd-party admin) MUST be appended to `.claude/pending-actions.md` via `.claude/skills/ecosystem/user-action-tracker.md` skill. Source: `integrator`. Trigger: `/integrator:add "<args>"` or DEC-INT-NNN. Burying in narrative install report = silent gap for user.
 
 ## Cross-reference
 

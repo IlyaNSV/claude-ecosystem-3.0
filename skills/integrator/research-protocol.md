@@ -18,16 +18,25 @@ This skill describes **how** to research tools systematically. Used by `/integra
    - Not "testing" — but "D4-03 Test Implementation & Execution (unit/integration/e2e)" or "D4-07 NFR/Perf/Security Testing"
    - Not "deployment" — but "D3-04 Build & Dependency Management" or "D3-06 Deployment & Release Execution (incl. rollback)"
 
-3. **Identify constraints from project context:**
+3. **Identify environment tier(s) the need applies to** (DEC-DEV-0047 / patch 1.3.3):
+   - Default: research must cover **all 3 tiers** (`local_dev`, `staging`, `production`) per recommended tool.
+   - If user explicitly scopes to a subset (e.g., "production-only monitoring" or "local dev sandbox"), still note remaining tiers как «not in scope для этого research».
+   - Anti-pattern: silent PROD-only research. Pilot session 2026-05-27 evidence — Vercel Pro / Trigger.dev / Hetzner CX32 recommended without local-dev alternatives → vendor lock-in risk before validation.
+
+4. **Identify constraints from project context:**
    - Stack (read `package.json`, `pyproject.toml`, `Cargo.toml`, etc.)
    - Existing tools (`active-tools.yaml`)
    - Project tier (`product.yaml.validation_tier` — bias toward simpler if `pilot`)
    - Project language (avoid English-only tools if project is non-English UX)
    - Budget hints (if user mentioned "free tools only" anywhere recent)
 
-4. **Sanity check scope.** If the need is too broad ("tools for development"), narrow it before searching:
+5. **Sanity check scope.** If the need is too broad ("tools for development"), narrow it before searching:
    - Ask user to specify, OR
    - Pick the most likely interpretation and state it explicitly
+
+6. **Consilium-pattern check** (DEC-DEV-0047 / patch 1.3.3 / SPEC §7.6):
+   - If you intend to fan out into N ≥ 2 parallel research priors (different bias anchors — e.g., DIY/PaaS/managed-cloud) — **scope MUST be declared before fan-out**: subject, prior labels, expected comparison axes.
+   - If you find yourself contemplating fan-out without explicit user-declared scope — STOP and surface the consilium block (см. Phase 5). Default to single-stream research.
 
 ### Phase 2: Discovery (10-20 min)
 
@@ -77,6 +86,7 @@ For each candidate, follow `.claude/skills/integrator/tool-profiling.md`. Result
 
 **Key things to extract:**
 - PMO coverage with **honest confidence levels** (high/medium/low/none) and evidence
+- **`environment_tiers` per SPEC §4.1 + §4.2.1** (DEC-DEV-0047 / patch 1.3.3): local_dev / staging / production × `full | partial | none` + free-form notes. OR `environment_agnostic: true` if tool is genuinely environment-independent (linter, formatter, schema validator). **Both forms are explicit; default-omit is forbidden.**
 - Inputs / outputs / contracts the tool implies
 - Configuration requirements
 - Known issues
@@ -84,17 +94,67 @@ For each candidate, follow `.claude/skills/integrator/tool-profiling.md`. Result
 
 **Don't fabricate.** If you can't verify a claim, mark confidence as low. Better to say "unknown if X" than invent.
 
+**Environment tier extraction guidance:**
+- Read docs sections on «local development», «getting started», «self-host», «runtime requirements» for `local_dev` evidence.
+- Read «deployment», «production», «scaling», «pricing» sections for `production` evidence.
+- For `staging` — usually inferred from production setup minus monitoring/scaling; mark `partial` if tool has no explicit staging story but supports lower-tier deployment.
+- If tool is cloud-only PaaS without local emulator (e.g., Vercel Production, AWS Lambda runtime) → `local_dev.suitability: none`, `notes` explains «requires cloud account», suggest local alternatives in comparison Phase 5.
+- If tool is CLI / library without runtime networking (e.g., eslint, prettier, ajv) → `environment_agnostic: true` with one-line rationale.
+
 ### Phase 5: Comparison & recommendation (10 min)
 
 **Goal:** Synthesize findings into actionable recommendation.
 
-1. **Comparison table** — common axes across candidates (PMO coverage, pros, cons, fit, maturity)
-2. **Narrative recommendation** — your top pick(s) with reasoning
+#### 5.0. Pre-presentation guards (DEC-DEV-0047 / patch 1.3.3)
+
+Before rendering comparison + recommendation, run two guards. If either fails — DO NOT proceed to Phase 6 caching or write to journal:
+
+**Guard A — environment_tiers completeness.** For each shortlisted candidate, verify profile contains `environment_tiers` block (3 tiers × suitability) OR `environment_agnostic: true`. Missing both = profile is incomplete. STOP, return to Phase 4 to extract; if extraction impossible (docs ambiguous), flag tier as `partial` with `notes: "unverified — needs verification"` rather than skip.
+
+**Guard B — consilium-scope check** (SPEC §7.6). If research used N ≥ 2 parallel research priors (subagent fan-out > 1) — was scope explicitly declared by user before fan-out?
+- **Yes** (subject + priors + axes were stated) → proceed to comparison.
+- **No** → STOP. Render this block instead of comparison:
+
+```
+⚠ Consilium-pattern detected (N=<count> parallel research priors), но scope не объявлен.
+SPEC §7.6 violation: fan-out требует declared scope.
+
+Перед продолжением:
+  - Объяви scope явно: subject (что именно сравниваем), priors (направления —
+    list of labels), expected axes (cost / control / vendor lock-in / etc.)
+  - Или сведи к single research stream (выбрать наиболее релевантный prior)
+  - Или отмена
+
+Что делаем? [1] объявить scope / [2] single-stream / [3] отмена]
+```
+
+Wait for explicit user response — НЕ default to a single prior silently.
+
+#### 5.1. Output (after guards pass)
+
+1. **Comparison table** — common axes across candidates (PMO coverage, pros, cons, fit, maturity). **Must include per-tier suitability column** OR `environment_agnostic` annotation per tool.
+2. **Narrative recommendation** — your top pick(s) with reasoning, scoped per environment tier where applicable (e.g., «for local_dev — tool A; for production — tool B; staging — A or B depending on cost»).
 3. **Alternative scenarios** — "if you also need X, consider Y instead"
 4. **Open questions** — things you couldn't resolve, list explicitly
 5. **Confidence statement** (C2 modification) — your overall confidence in this recommendation
+6. **«🚧 Требует USER» actions** — if any recommendation entails user signing up for a service / registering an account / obtaining API keys / registering legal entity / similar — these MUST be enumerated as a structured list (see Phase 7).
 
 Format per `/integrator:research` Step 5-6 output template.
+
+#### 5.2. Hard approve gate (DEC-DEV-0047 / patch 1.3.3)
+
+After rendering Phase 5.1, append the hard approve gate from `commands/integrator/research.md` Step 7:
+
+```
+STOP. Approve research outcome?
+  [<number>] install <tool> recommendation
+  [defer]    save research, no install now
+  [details]  expand any candidate / tradeoff
+```
+
+**NO action beyond Phase 6 caching is taken without explicit user response.** «No response» ≠ «proceed». If user is silent → wait. If user says «defer» → write to journal with status=deferred, do NOT cache as «active recommendation», do NOT chain into `/integrator:add`.
+
+This is symmetrical с `commands/integrator/add.md` Stage 2 gate (DEC-DEV-0047 / patch 1.3.3 B-4).
 
 ### Phase 6: Caching (2 min)
 
@@ -109,6 +169,16 @@ This cache is **global** — reusable across projects. Next time someone researc
 
 Append to journal per `/integrator:research` Step 8.
 
+### Phase 8: Pending-actions append (DEC-DEV-0047 / patch 1.3.3)
+
+If Phase 5 recommendation entails any «🚧 Требует USER» action (account signup, API key obtain, legal entity registration, manual config in 3rd-party UI) — these MUST be appended to `.claude/pending-actions.md` as structured entries (PA-NNN), even if user defers the install.
+
+Use `.claude/skills/ecosystem/user-action-tracker.md` skill для proper PA-NNN counter + schema. Source field: `integrator`. Trigger field: `/integrator:research "<args>"` или DEC-INT-RESEARCH-NNN.
+
+**Why:** pre-1.3.3 pilot session 2026-05-27 evidence: «🚧 Требует USER» blocks растворялись в narrative research output, юзер пропускал обязательные external actions. Structured `.claude/pending-actions.md` обеспечивает visibility через `/ecosystem:pending-actions`.
+
+**Anti-pattern:** burying USER actions in narrative «before installing, you'll need to sign up for X». Surface them as separate PA entries.
+
 ## Anti-patterns to avoid
 
 1. **Recency bias** — newest tool isn't always best. Mature tools with stable APIs often win for production.
@@ -117,6 +187,10 @@ Append to journal per `/integrator:research` Step 8.
 4. **Unstated assumptions** — if you assume project will scale to 1M users when current tier is `pilot`, state the assumption explicitly.
 5. **Premature recommendation** — if you only researched for 5 minutes, say so. Don't fake confidence.
 6. **Single source** — every significant claim should be cross-referenced from 2+ sources OR explicitly marked as single-source.
+7. **PROD-only recommendations** (DEC-DEV-0047). Recommending a tool without saying how it applies to local_dev / staging is a research bug. Pilot 2026-05-27 evidence: «Vercel Pro / Trigger.dev / Hetzner CX32» recommended without local-dev alternatives → vendor lock-in commitment before validation. Mandate: every recommendation either has `environment_tiers` block or `environment_agnostic: true`.
+8. **Silent consilium fan-out** (SPEC §7.6 / DEC-DEV-0047). Subagent fan-out > 1 priors без declared scope (subject + priors + axes) — выглядит как «exhaustive research», на деле AI самостоятельно выбирает architectural direction без user input. Apply: Guard B in Phase 5.0 blocks this — STOP + ask user перед fan-out.
+9. **Silent automatic chaining research → install.** After comparison, NO automatic call к `/integrator:add` без explicit user approve (Phase 5.2 gate). Caching и journal entry — OK; install — нет.
+10. **Lost USER actions** (DEC-DEV-0047). Если recommendation entails signup / API keys / account registration / legal-entity work — это MUST be appended as PA entry per Phase 8. Burying в narrative — silent gap для пользователя.
 
 ## When to escalate to subagent
 

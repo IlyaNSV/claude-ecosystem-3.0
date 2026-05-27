@@ -48,6 +48,22 @@ metadata:
   language: js | ts | py | rust | go | other
   license: MIT | Apache-2.0 | GPL | proprietary | other
 
+# DEC-DEV-0047 / patch 1.3.3: REQUIRED block — environment_tiers OR environment_agnostic.
+# Profile is incomplete without one of them. See SPEC §4.1 + §4.2.1.
+environment_tiers:
+  local_dev:
+    suitability: full | partial | none
+    notes: "<evidence — docs section / community signal / inferred limitation>"
+  staging:
+    suitability: full | partial | none
+    notes: "<as above>"
+  production:
+    suitability: full | partial | none
+    notes: "<as above>"
+# OR (mutually exclusive — use this OR environment_tiers, not both):
+# environment_agnostic: true
+# environment_agnostic_rationale: "<one-line — e.g., 'CLI linter, no runtime networking; identical behavior in all environments'>"
+
 pmo_coverage:
   D<N>-<NN>:                              # process ID from pmo-map.md
     confidence: high | medium | low | none
@@ -150,6 +166,31 @@ DO NOT invent IDs like `D2-Tech-02` (phantom ID surfaced + removed in DEC-DEV-00
 
 **Evidence is required.** Don't claim "high" without pointing to docs section or test result. Empty evidence → degrade to "medium" or "low".
 
+### Step 4.5: Determine environment_tiers (DEC-DEV-0047 / patch 1.3.3)
+
+Mandatory profile field. Read docs to classify tool's applicability per environment tier:
+
+**`local_dev`** — does tool run on developer's machine without cloud/network dependency?
+- Docs sections to read: «Quick Start», «Local Development», «Self-Hosting», «CLI Installation», «Docker compose».
+- Evidence for `full`: explicit local setup instructions; no required external service to start.
+- Evidence for `partial`: requires external API key but has free tier / sandbox account / mock mode (e.g., Stripe with test keys, AWS LocalStack pattern).
+- Evidence for `none`: no local emulator, no free tier, cloud account required (e.g., Vercel Production Deploy, managed AWS Lambda).
+
+**`staging`** — does tool support a staging environment distinct from prod (separate config / lower cost / non-customer-facing)?
+- Docs sections: «Deployment», «Environments», «Multi-tenant».
+- For tools without explicit staging story but supporting general deployment → infer `partial` with notes «no explicit staging guidance; inferred from generic deployment story».
+- For tools that intrinsically have only one production endpoint (e.g., DNS provider, payment processor live mode) → `none` or `partial` depending on test/sandbox availability.
+
+**`production`** — production-grade reliability, scalability, monitoring.
+- Docs sections: «Production», «Scaling», «SLA», «Pricing».
+- Evidence for `full`: documented production deployments, SLA published, monitoring integrations, support tier.
+- Evidence for `partial`: works in production but with caveats (cold-start latency, single-region, beta status).
+- Evidence for `none`: explicitly labeled experimental / dev-only / not-for-production.
+
+**`environment_agnostic` shortcut.** Use when tool genuinely behaves identically regardless of environment. Examples: code linters (eslint, ruff), formatters (prettier, black), schema validators (ajv, zod), CLI utilities without network state. NOT for tools with runtime services even if locally-installable (a local Redis IS environment-tier-relevant — operational concerns differ between dev RAM constraints and prod replication).
+
+**Heuristic if ambiguous:** prefer explicit `environment_tiers` block with honest `partial` + `notes: "unverified per <reason>"` over `environment_agnostic` default. Better explicit-uncertain than silent-wrong.
+
 ### Step 5: Determine inputs and outputs
 
 For each input the tool consumes:
@@ -238,6 +279,7 @@ When using a cached profile in a new project:
 **Light profile** (during /integrator:research, multiple candidates):
 - tool: name, source, source_spec, home_url, docs_url
 - metadata: category, language, license
+- **environment_tiers** OR `environment_agnostic: true` — REQUIRED even в light mode (DEC-DEV-0047)
 - pmo_coverage: top-level mapping with confidence
 - Notes: 2-3 key observations
 
@@ -262,4 +304,8 @@ Don't waste effort doing full profile for tools you might not install.
    - `profiling_notes` — NOT `confidence_reasoning`, `confidence_notes`
    - `claude_primitives` — NOT `primitives`, `claude_artifacts`, `installed_artifacts`
    - `source_spec` — NOT `install_spec`, `package_spec`
+   - `environment_tiers` — NOT `env_tiers`, `environments`, `tier_recommended`, `deployment_tiers`
+   - `suitability` — NOT `fit`, `compatibility`, `rating`
+   - `environment_agnostic` — NOT `tier_agnostic`, `any_env`, `universal`
 7. **Inventing PMO IDs.** Stick to pmo-map.md canonical IDs (`D2-T01`, `D2-B02`, `D3-06`, etc.). If unsure → note in `profile.notes`, do not fabricate.
+8. **Skipping `environment_tiers`** (DEC-DEV-0047). Profile missing both `environment_tiers` block AND `environment_agnostic: true` is invalid. Research / add command MUST surface and remediate (re-profile, or mark tiers `partial` with `notes: unverified`) before approve gate. Pilot 2026-05-27 evidence: monolithic prod-pack recommendations stem from skipped tier classification.
