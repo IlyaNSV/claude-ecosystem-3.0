@@ -199,13 +199,17 @@ tool:
 
 metadata:
   category: implementation         # implementation | spec-gen | testing | monitoring | deploy | other
-  claude_primitives:               # что инструмент приносит в .claude/
+  claude_primitives:               # ВСЁ что инструмент создаёт или модифицирует — внутри .claude/ И снаружи
     - type: command
       path: .claude/commands/beads/
     - type: agent
       path: .claude/agents/beads-executor.md
     - type: hook
       path: .claude/hooks/beads-enforcer.js
+    - type: other
+      path: .kiro/                   # external workspace (outside .claude/) — REQUIRED for backup coverage
+    - type: other
+      path: CLAUDE.md                # external project-root append — REQUIRED for backup coverage
 
 # Multi-tier environment applicability (per patch 1.3.3 / DEC-DEV-0047).
 # Required: tool profile должен явно деклaрировать suitability для каждой из 3 tiers
@@ -311,6 +315,38 @@ Single-layer declared confidence. Integrator не делает continuous tracki
 **Install integration:** `/integrator:add` Stage 2 propose, если tool заявляет `local_dev.suitability: none` → MUST включать warning «Этот tool не подходит для local dev — обсудить parallel/separate dev решение (mock service, lighter tool, staging-shared)?».
 
 **Backward compatibility:** профили из tool-catalog без `environment_tiers` блока — lazy-regenerable при следующем профайлинге. Нет migration script (DEC-DEV-0047 Section 1 B-1 alternatives rejected).
+
+### 4.2.2. `claude_primitives` completeness invariant (DEC-DEV-0051 / patch 1.3.5)
+
+`metadata.claude_primitives[]` блок в профиле tool'а — **обязан перечислять ВСЕ paths**, которые tool создаёт или модифицирует во время install, **независимо от location**:
+
+- **Inside `.claude/`** — `.claude/commands/<tool>/`, `.claude/skills/<namespace>/`, `.claude/agents/<file>`, `.claude/hooks/<file>`, `.claude/settings.json#hooks.<event>`, etc.
+- **Outside `.claude/`** — workspace dirs (`.kiro/`, `.beads/`, ...), project-root file appends (`CLAUDE.md`, `.gitignore`), config locations (`~/.config/<tool>/` for system-level tools), etc.
+
+**Зачем:** `/ecosystem:update` использует этот список как source of truth для:
+- **Step 2b backup scope** — external paths copy'ятся в `${BACKUP_DIR}/_external/` для rollback safety
+- **Step 5.1 namespace-aware sync** — inside-paths (третьей-party namespaces в ecosystem zone subdirs) preserve'ятся untouched
+
+Если `claude_primitives` не полный — те paths, которые отсутствуют, **не будут backed up** (rollback risk) и **могут быть уничтожены** при ecosystem updates (если попадают в ecosystem zone subdirs).
+
+**Schema поля для каждой entry:**
+
+| Field | Required | Meaning |
+|---|---|---|
+| `type` | yes | `command` / `skill` / `agent` / `hook` / `other` |
+| `path` | yes | Relative path (POSIX-style forward slashes) — absolute paths forbidden |
+| `purpose` | optional | Short description; помогает audit/forensics |
+
+`type: other` зарезервирован для **non-canonical** locations: workspace dirs (`.kiro/specs/`), project-root file appends (`CLAUDE.md`), git config overrides (`.beads/` containing git hooks override). Для inside-`.claude/` paths используй specific type.
+
+**Path conventions:**
+- Forward slashes (`/`), даже на Windows downstream (Claude normalizes для cross-platform).
+- Trailing slash для directories OK, не required — backup/preserve tolerate variants.
+- Paths NOT starting with `.claude/` → treated as external by Step 2b.
+
+**Backward compatibility:** существующие профили с incomplete `claude_primitives` — lazy-regenerable при следующем `/integrator:update <tool> --regenerate-primitives` (planned, deferred к v1.1). Pilot tools (cc-sdd, beads): manual audit в active-tools.yaml уже отражает полный footprint.
+
+**Tool-profiler responsibility:** subagent `tool-profiler` (`agents/integrator/tool-profiler.md`) при research-protocol Phase 4-6 ОБЯЗАН enumerate complete install footprint, не только canonical `.claude/` entries. Source of truth — tool documentation + install script inspection + dry-run filesystem diff.
 
 ### 4.3. Aggregated PMO mapping (`pmo-mapping.yaml`)
 

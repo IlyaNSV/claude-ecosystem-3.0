@@ -26,6 +26,7 @@ Single-patch fix following same architectural family as 1.3.4 (DEC-DEV-0049). Su
 
 - **`commands/ecosystem/update.md` Step 4** — Changeset preview добавляет namespace classification: per-subdir managed vs preserved namespaces + integrator-managed audit annotation (ownership labels via `active-tools.yaml`).
 - **`commands/ecosystem/update.md` Step 8 summary report** — Show T-counts of third-party namespaces preserved per subdir + Phase 2b backup composition + integrator-managed third-party preservation explicit.
+- **`docs/integrator-module/SPEC.md` §4.2.2** — Formal invariant: `metadata.claude_primitives[]` MUST enumerate ALL paths the tool creates/modifies during install (inside .claude/ AND outside). Schema fields documented (`type` / `path` / `purpose`). `type: other` reserved для non-canonical locations (workspace dirs, project-root file appends). Tool-profiler subagent responsibility extended. Schema example расширен с external paths (`.kiro/`, `CLAUDE.md`).
 - **`DEV_JOURNAL.md`** — DEC-DEV-0051 entry (rationale, options A-D, decision, lessons, related entries).
 - **`ROADMAP.md`** — «Где мы сейчас» snapshot bumped к 1.3.5.
 

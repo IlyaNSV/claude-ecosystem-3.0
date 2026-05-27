@@ -4135,9 +4135,10 @@ Cons: backup решает rollback edge case, не main bug (cc-sdd skills wiped
    - 5.3 Root files copy (как раньше) + .sync-metadata.yaml stamp
 4. **`commands/ecosystem/update.md` Step 8** — summary report показывает T-counts per namespace-aware subdir + Phase 2b backup composition + integrator-managed third-party preservation.
 5. **`commands/ecosystem/update.md` Rollback** — two-phase: restore `.claude/` from snapshot + restore `_external/` paths из backup.
-6. **CHANGELOG.md** — [1.3.5] entry under `### Fixed`.
-7. **ROADMAP.md** — «Где мы сейчас» snapshot bumped к 1.3.5.
-8. **DEV_JOURNAL.md** — this entry.
+6. **`docs/integrator-module/SPEC.md` §4.2.2** — Formal invariant: `metadata.claude_primitives[]` MUST enumerate ALL paths tool creates/modifies (inside `.claude/` AND outside). Tool-profiler responsibility extended. Schema example расширен. Downstream `my-first-test` active-tools.yaml уже compliant (8 external paths declared).
+7. **CHANGELOG.md** — [1.3.5] entry under `### Fixed`.
+8. **ROADMAP.md** — «Где мы сейчас» snapshot bumped к 1.3.5.
+9. **DEV_JOURNAL.md** — this entry.
 
 ### Outcome
 
