@@ -3,8 +3,9 @@
 # Schema documented in hooks/product/manifest.yaml. Auto-read by
 # /ecosystem:bootstrap Step 6b to register hooks in <project>/.claude/settings.json.
 #
-# Hooks populated incrementally during Phase 5 implementation:
-#   - sub-phase F: journal-hook (PostToolUse, every modifying integrator action — per DEC-DEV-0040 Q6)
+# Hooks populated incrementally:
+#   - Phase 5.F: journal-hook (PostToolUse, every modifying integrator action — per DEC-DEV-0040 Q6)
+#   - Patch 1.3.3 / DEC-DEV-0047 B-2: scope-guard (PreToolUse, warn-only)
 #
 # Phase 7 candidates (Maintenance group): drift-check (SessionStart), contract-validate (PreToolUse).
 
@@ -18,3 +19,9 @@ hooks:
       - type: PostToolUse
         matcher: "Bash|Write|Edit|NotebookEdit"
     description: "Autologs every modifying Integrator action (per DEC-DEV-0040 Q6) to .claude/integrator/project-journal.md. Internal filter: paths matching .claude/integrator/{active-tools.yaml, pmo-mapping.yaml, contracts/CNT-*.yaml|md, adapters/*.js, tool-docs/*.md, baseline.yaml} OR Bash commands matching npx|npm install|adapter execution. Dedup by (action+subject+minute) prevents cascade-save spam (DEC-DEV-0023 lesson). Retention: archives oldest half to _archive/journal-<YYYY-MM>.md when > 500 entries. Never blocks tool execution; stderr-only on internal errors."
+  - id: scope-guard
+    file: scope-guard.js
+    events:
+      - type: PreToolUse
+        matcher: "Bash|Write|Edit|NotebookEdit"
+    description: "Integrator scope-boundary guard (DEC-DEV-0047 / patch 1.3.3 B-2). Fires only when .claude/integrator/.session-context.json marker present (active Integrator command); else no-op. Stale marker TTL = 1h. Detects writes/shell commands targeting forbidden paths (.product/, .kiro/, docs/pmo/, .claude/docs/pmo/) with whitelist exceptions (.product/.sessions/, .product/.pending/, marker itself, dedup cache, pending-actions.md). On violation: stderr warning + PA entry appended to .claude/pending-actions.md (dedup by action+subject+minute). WARN-ONLY — never blocks tool execution (ecosystem hook convention; hard-block deferred to v1.4.0+ per dev/v1_1_backlog.md). Bash matcher is regex sniffer, not AST — complex constructs may slip; Edit/Write coverage is reliable layer."

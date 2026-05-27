@@ -59,19 +59,54 @@ fs.mkdirSync(path.join(TMP_DIR, '.claude'), { recursive: true });
 //
 // Schema:
 //   hook: <relative path к hook .js>
-//   filePath: <absolute path used as tool_input.file_path в hookInput>
+//   filePath?: <absolute path used as tool_input.file_path в hookInput>
+//              (used by default Edit/Write/NotebookEdit path)
+//   toolName?: <override tool_name in hookInput; default 'Write'>
+//   toolInput?: <full override of tool_input в hookInput; bypasses filePath>
 //   label?: <human-readable suffix для отчёта; полезен когда один хук имеет несколько case-ов>
 //   setup?: (ctx) => void  — optional fixture preparation BEFORE runtime invocation.
 //                            ctx = { tmpDir, tmpProduct, ecoRoot, fs, path, hash, crypto }.
 //                            Use это чтобы создать handoffs, multi-artifact files,
 //                            симулировать drift, и т. д.
+//   env?: <object merged into spawnSync env>  — useful для CLAUDE_PROJECT_DIR override.
 //   expectStderrIncludes?: <string | RegExp>  — после runtime, assert stderr содержит
 //                            substring/regex. Failure → отчёт + non-zero exit.
 //                            Default: только check на FATAL_PATTERNS.
+//   expectStderrAbsent?: <string | RegExp>   — assert stderr does NOT contain pattern.
+//                            Useful для no-op verification.
 //
 // Базовое назначение каждой записи — runtime smoke (hook не падает crash'ем); setup +
-// expectStderrIncludes позволяют добавить functional validation для критичных hook-ов.
+// expectStderrIncludes/Absent позволяют добавить functional validation для критичных hook-ов.
 const hashLib = require(path.join(ECO_ROOT, 'hooks', 'product', 'lib', 'hash.js'));
+
+// Helper to write a fresh session-context marker for scope-guard tests.
+function writeIntegratorMarker(ctx, command, ageMs) {
+  const dir = path.join(ctx.tmpDir, '.claude/integrator');
+  fs.mkdirSync(dir, { recursive: true });
+  const startedAt = new Date(Date.now() - (ageMs || 0)).toISOString();
+  fs.writeFileSync(
+    path.join(dir, '.session-context.json'),
+    JSON.stringify({ command, started_at: startedAt }),
+    'utf8'
+  );
+  // Also seed pending-actions.md so scope-guard can append entries.
+  const paPath = path.join(ctx.tmpDir, '.claude/pending-actions.md');
+  if (!fs.existsSync(paPath)) {
+    fs.writeFileSync(
+      paPath,
+      '# Pending User Actions\n\n' +
+      '> Auto-managed; entries appended by scope-guard hook and Integrator skills.\n\n',
+      'utf8'
+    );
+  }
+}
+
+function cleanupIntegratorMarker(ctx) {
+  const markerPath = path.join(ctx.tmpDir, '.claude/integrator/.session-context.json');
+  const dedupPath = path.join(ctx.tmpDir, '.claude/integrator/.scope-guard-dedup.json');
+  try { fs.unlinkSync(markerPath); } catch (_) { /* ignore */ }
+  try { fs.unlinkSync(dedupPath); } catch (_) { /* ignore */ }
+}
 
 const TEST_CASES = [
   { hook: 'hooks/product/artifact-validate.js',     filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
@@ -116,6 +151,72 @@ const TEST_CASES = [
       );
     },
     expectStderrIncludes: /Handoff drift detected/,
+  },
+
+  // ---------- scope-guard (DEC-DEV-0047 / patch 1.3.3 B-2) ----------
+  // 5 functional cases:
+  //   1. no marker → no-op (write to forbidden path; absent marker should suppress)
+  //   2. marker + write to forbidden path → warn + PA append
+  //   3. marker + write to whitelisted exception → no-op
+  //   4. stale marker → marker removed, no-op
+  //   5. marker + Bash forbidden command → warn
+
+  {
+    hook: 'hooks/integrator/scope-guard.js',
+    label: 'no-marker-no-op',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    setup: (ctx) => {
+      cleanupIntegratorMarker(ctx);
+    },
+    env: { CLAUDE_PROJECT_DIR: TMP_DIR },
+    expectStderrAbsent: /INTEGRATOR SCOPE GUARD/,
+  },
+  {
+    hook: 'hooks/integrator/scope-guard.js',
+    label: 'marker-plus-forbidden-write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    setup: (ctx) => {
+      cleanupIntegratorMarker(ctx);
+      writeIntegratorMarker(ctx, '/integrator:add');
+    },
+    env: { CLAUDE_PROJECT_DIR: TMP_DIR },
+    expectStderrIncludes: /INTEGRATOR SCOPE GUARD/,
+  },
+  {
+    hook: 'hooks/integrator/scope-guard.js',
+    label: 'marker-plus-whitelisted-exception',
+    filePath: path.join(TMP_PRODUCT, '.sessions', 'session-state.json'),
+    setup: (ctx) => {
+      cleanupIntegratorMarker(ctx);
+      writeIntegratorMarker(ctx, '/integrator:add');
+      fs.mkdirSync(path.join(ctx.tmpProduct, '.sessions'), { recursive: true });
+    },
+    env: { CLAUDE_PROJECT_DIR: TMP_DIR },
+    expectStderrAbsent: /INTEGRATOR SCOPE GUARD/,
+  },
+  {
+    hook: 'hooks/integrator/scope-guard.js',
+    label: 'stale-marker-no-op',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    setup: (ctx) => {
+      cleanupIntegratorMarker(ctx);
+      // 2 hours ago — past STALE_MARKER_MS (1h).
+      writeIntegratorMarker(ctx, '/integrator:add', 2 * 60 * 60 * 1000);
+    },
+    env: { CLAUDE_PROJECT_DIR: TMP_DIR },
+    expectStderrAbsent: /INTEGRATOR SCOPE GUARD/,
+  },
+  {
+    hook: 'hooks/integrator/scope-guard.js',
+    label: 'marker-plus-bash-forbidden',
+    toolName: 'Bash',
+    toolInput: { command: 'echo "test" > .product/features/FM-test.md' },
+    setup: (ctx) => {
+      cleanupIntegratorMarker(ctx);
+      writeIntegratorMarker(ctx, '/integrator:research');
+    },
+    env: { CLAUDE_PROJECT_DIR: TMP_DIR },
+    expectStderrIncludes: /INTEGRATOR SCOPE GUARD/,
   },
 ];
 
@@ -179,16 +280,20 @@ for (const tc of TEST_CASES) {
   }
 
   // Step 2: runtime smoke — pipe hook input JSON
+  const toolName = tc.toolName || 'Write';
+  const toolInput = tc.toolInput || (tc.filePath ? { file_path: tc.filePath } : {});
   const hookInput = JSON.stringify({
     session_id: 'smoke',
-    tool_name: 'Write',
-    tool_input: { file_path: tc.filePath },
+    tool_name: toolName,
+    tool_input: toolInput,
     cwd: TMP_DIR,
   });
+  const childEnv = Object.assign({}, process.env, tc.env || {});
   const runRes = spawnSync('node', [hookPath], {
     input: hookInput,
     encoding: 'utf-8',
     timeout: 10000,
+    env: childEnv,
   });
   const stderr = runRes.stderr || '';
   const fatalHit = FATAL_PATTERNS.find((rx) => rx.test(stderr));
@@ -210,7 +315,7 @@ for (const tc of TEST_CASES) {
     continue;
   }
 
-  // Step 3: optional expectStderrIncludes assertion (functional validation)
+  // Step 3a: optional expectStderrIncludes assertion (functional validation)
   if (tc.expectStderrIncludes) {
     const matcher = tc.expectStderrIncludes;
     const ok = matcher instanceof RegExp ? matcher.test(stderr) : stderr.includes(matcher);
@@ -223,6 +328,23 @@ for (const tc of TEST_CASES) {
         stdout: (runRes.stdout || '').slice(0, 500),
       });
       console.error(`FAIL  ${tcLabel} (expectStderrIncludes ${matcher} not matched)`);
+      continue;
+    }
+  }
+
+  // Step 3b: optional expectStderrAbsent assertion (negative validation — hook MUST NOT warn)
+  if (tc.expectStderrAbsent) {
+    const matcher = tc.expectStderrAbsent;
+    const present = matcher instanceof RegExp ? matcher.test(stderr) : stderr.includes(matcher);
+    if (present) {
+      failures.push({
+        hook: tcLabel,
+        phase: 'expectStderrAbsent',
+        expected: `absence of ${matcher.toString()}`,
+        stderr: stderr.slice(0, 2000),
+        stdout: (runRes.stdout || '').slice(0, 500),
+      });
+      console.error(`FAIL  ${tcLabel} (expectStderrAbsent ${matcher} but pattern found)`);
       continue;
     }
   }
