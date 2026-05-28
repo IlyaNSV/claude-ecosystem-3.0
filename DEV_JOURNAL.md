@@ -4314,6 +4314,34 @@ Sub-phase decomposition A→I готов (см. PHASE_6_READINESS Section F refr
 
 **Fresh-session ROI имеет blind spot: substrate premises inherited as facts.** Anti-bias guard работает на decision space (architecture decisions, ambiguity sweep, scope cuts) но не на factual claims в substrate prompt. Если user statement приходит в substrate как «trigger pending» или «next FM = UI» — fresh AI inherits without empirical verification. Result: kickoff phrasing imprecise хотя architectural decisions valid; trigger correction надо делать inline post-kickoff. *Apply:* substrate prompts для future kickoffs должны включать explicit step «empirical state check» — для conditional phases: `grep <trigger-condition> <pilot-path>` BEFORE architectural deliberation. Может быть добавлен к D7 `phase-kickoff.md` Section 1 как pre-Section step.
 
+### Follow-up 2 (2026-05-27, inline-session update-compat review)
+
+User asked: «где-то при реализации будет учтена проверка корректности и совместимости update команды с текущим тестовым проектом? Чтобы ничего не затереть случайно, но и почистить старое/лишнее.» Surface'нул gap который kickoff Section C cross-cutting integrations не охватил.
+
+**Gap audit — what's covered, what's not:**
+
+Existing protections inherited (from patches 1.3.3/1.3.4/1.3.5):
+- ✅ `.product/` invariant — scope-guard B-2 forbidden paths + backup Step 2 external paths if listed — `.product/mockups/`, `.product/design-system.md`, `.product/.design-sessions/` safe из коробки
+- ✅ Namespace-aware sync 1.3.5 Step 5 — `commands/design/`, `skills/design/`, `hooks/design/`, `agents/design/` (empty в v1.0) classified как managed ecosystem namespaces dynamically; третьестoрronnij `kiro-*` style namespaces в same parent dirs preserved
+- ✅ Pattern-preserving merge 1.3.4 Step 6 — `^node \.claude/hooks/(product|integrator|ecosystem|design)/` pattern уже includes `design/` префикс; `design-artifact-validate.js` re-derives from manifest, third-party hook entries preserved verbatim
+
+**New edge case — explicit handling required в sub-phase B:**
+- `.claude/design.yaml` (per-project config: default_design_tool, mcp_preferences.fallback_chain) — singleton root-level file like `settings.local.json`. Если Step 5 nuclear sync'aет singleton files в `.claude/` root → user's per-project preferences wiped при upgrade. Sub-phase B MUST verify Step 5 algorithm preserves singleton root files OR explicitly add `design.yaml` to preserved list.
+
+**Cleanup story:**
+- ✅ `.product/.design-sessions/archived/` per A4 (D.6 complete OR `--abandon`) + opportunistic >30d purge — handled inline by `design-session.md` skill (sub-phase C)
+- ⏳ Orphan MK/NM cleanup (FM deleted via `/product:promote-note --delete`) — **NOT covered v1.0**; deferred к v1.1 backlog as `/design:cleanup` candidate OR integration с `/product:purge`
+
+**Resolved (this commit):**
+- (1) Section H — added «Update-compat carry-forward (Follow-up 2)» bullet with full gap audit + reference на S7
+- (2) Section F.1 — sub-phase B annotated «.design.yaml NOT synced by /ecosystem:update Step 5; per-project config like settings.local.json»; estimate bumped к 1-1.25h (~15min for verification)
+- (3) `dev/PHASE_6_SMOKE_TEST_PLAN.md` — S7 «`/ecosystem:update` compatibility post 1.4.0» scenario added with capture-before-state protocol, pass criteria including third-party preservation + `.product/` invariant + design.yaml preservation, 3 edge cases (E1 non-default tool, E2 migration history, E3 bootstrap idempotency)
+- (4) Section I implementation kickoff prompt — переписан как authoritative source-of-truth (FM-001 target, empirical state check rule from Lesson 6, sub-phase B update-compat verification explicit, sub-phase G handoff §10 Q10 resolution, cross-cutting integrations list to read upstream commands в substrate)
+
+### Lesson 7 (added Follow-up 2)
+
+**Cross-cutting integration scope is invisible to phase kickoff substrate.** Kickoff Section 1 architectural readiness focuses на artifacts inside phase boundary (Phase 6 commands/skills/hooks). Cross-cutting commands that interact с new artifacts (`/ecosystem:update`, `/ecosystem:bootstrap`, `/product:handoff`) — visible только если substrate prompt explicitly enumerates them. DEC-DEV-0052 Section C did mention some cross-cutting points (env_tiers, PA journal, scope-guard, pattern-preserving merge для hooks) но missed `.claude/design.yaml` interaction с `/ecosystem:update` Step 5 (sync algorithm for singleton config files). Same class of gap as patches 1.3.4 (third-party hook injections) и 1.3.5 (third-party namespace dirs) which surfaced **только при downstream pilot evidence**, not during ecosystem-internal review. *Apply:* phase-kickoff.md Section 2 (ambiguity sweep) — add explicit step «enumerate cross-cutting commands that touch new artifacts; verify their behavior against new file types/paths (config singletons, namespace dirs, hook registrations, backup scope)». For Phase 6: read `commands/ecosystem/update.md` + `commands/ecosystem/bootstrap.md` + `commands/product/handoff.md` + `commands/integrator/research.md` (hard approve gate template) during substrate load.
+
 ---
 
 ## Шаблон новой записи

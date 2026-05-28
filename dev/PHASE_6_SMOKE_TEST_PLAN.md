@@ -2,7 +2,7 @@
 
 > **Назначение:** runtime smoke test scenarios для Phase 6 (Design Module v1.0), которые исполняются после implementation на real UI FM в pilot project.
 >
-> **Статус:** 🟡 **placeholder** — scenarios scoped на kickoff (DEC-DEV-0052, 2026-05-27); runtime execution при Phase 6 implementation trigger (real UI FM в pilot).
+> **Статус:** 🟡 **placeholder** — scenarios scoped на kickoff (DEC-DEV-0052, 2026-05-27) + S7 added Follow-up 2 (update-compat gap surfaced 2026-05-27 inline review); runtime execution при post-1.4.0 release pilot session.
 >
 > **Принцип:** smoke test plan создаётся сейчас (kickoff phase) для substrate continuity — когда trigger fires, fresh-session implementation kickoff inherits эти scenarios и refines per actual FM context.
 
@@ -111,6 +111,43 @@
 - DS subset = только tokens/components used в exported MK (not full DS)
 - NM full content embeddable
 - **Q10 carry-forward decided:** либо `/product:handoff` invokes `/design:export` automatically, либо documented «handoff §10 ассистент заполняет из MK/DS/NM без separate command call» (см. PHASE_6_READINESS Section H)
+
+---
+
+### S7 — `/ecosystem:update` compatibility post 1.4.0
+
+**Trigger:** added Follow-up 2 (DEC-DEV-0052, 2026-05-27). Verifies что Phase 6 deliverables не collide с `/ecosystem:update` Step 5 namespace-aware sync (1.3.5) + Step 6 hooks pattern-preserving merge (1.3.4).
+
+**Setup:** S1+S2 completed (pilot has shipped MK/DS/NM + `.claude/design.yaml` configured + design hooks registered + at least one third-party hook entry like `bd setup claude` для preservation test). Simulate small ecosystem upgrade (e.g. 1.4.0.1 patch с design skill text refresh) by pointing pilot's `ECOSYSTEM_ROOT` к updated repo OR manually checkout newer ref.
+
+**Capture before-state:**
+1. `.claude/design.yaml` content (or sha256)
+2. `.product/mockups/*` file list + checksums
+3. `.product/design-system.md` checksum
+4. `.product/.design-sessions/*` file list
+5. `.claude/settings.local.json` content (especially hooks array)
+6. `.claude/skills/kiro-*/` and любые third-party namespaces в managed parent dirs (for preservation test)
+
+**Steps:**
+1. Run `/ecosystem:update` end-to-end (accept approve gates)
+2. Verify after-state против capture
+
+**Pass criteria:**
+- ✅ `.claude/design.yaml` content **identical** (user preferences preserved; treated as per-project config like `settings.local.json`)
+- ✅ `.product/mockups/*`, `.product/design-system.md`, `.product/.design-sessions/*` **untouched** (scope-guard `.product/` invariant)
+- ✅ `.claude/{commands,skills,hooks,agents}/design/` updated from new ecosystem state (namespace-aware sync managed namespaces)
+- ✅ `.claude/skills/kiro-*` and любые third-party namespaces in design's parent dirs **preserved** (namespace-aware sync 1.3.5)
+- ✅ `.claude/settings.local.json` design hook entries (matching `^node \.claude/hooks/design/`) re-derived from new manifest; third-party hook entries (e.g. `bd setup claude` SessionStart/PreCompact) **preserved** (pattern-preserving merge Step 6 1.3.4)
+- ✅ `_external/` backup directory создаётся с design-relevant external paths если они listed в `active-tools.yaml` (Phase 6 v1.0 likely none unless Stitch session-state external)
+- ✅ Pre-update backup (Step 2) catches current state; rollback two-phase works если запустить
+- ❌ ANY of: `.claude/design.yaml` overwritten к template defaults; `.product/mockups/*` deleted; `kiro-*` skills wiped; design hook registration lost OR third-party hook entries lost — FAIL → blocking issue для 1.4.0 release
+
+**Edge cases to verify:**
+- E1: User had `.claude/design.yaml` с non-default `default_design_tool: html` (preserved через update; не reverted к `stitch` default)
+- E2: pre-existing MK with `previous_tools[]` migration history (post-`/design:migrate`) — frontmatter не corrupted
+- E3: bootstrap re-run (`/ecosystem:bootstrap` again) on already-installed pilot — `.claude/design.yaml` not overwritten if user edited it; idempotent
+
+**v1.0 status:** required для post-1.4.0 release validation. Если FAIL surface'ится — gating issue, hot-patch 1.4.0.1 needed перед широким usage.
 
 ---
 

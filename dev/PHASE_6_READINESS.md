@@ -173,7 +173,7 @@ ROADMAP оценка 3-4 ч (+ OQ-DM-01 experimentation) **устарела** po
 | Sub-phase | Deliverable | Est |
 |---|---|---|
 | **A** | DEC-DEV-NNNN implementation entry + дальнейший drift fix (если найдётся) | 30-45min |
-| **B** | `commands/design/{start, status}.md` + `.claude/design.yaml` template | 1h |
+| **B** | `commands/design/{start, status}.md` + `.claude/design.yaml` template (initial deploy при первом `/design:start`; NOT synced by `/ecosystem:update` Step 5 — per-project config like `settings.local.json`; см. Section H update-compat carry-forward) | 1-1.25h |
 | **C** | `skills/design/design-session.md` (orchestrator с Q7 deadlock UX + A7 menu) | 1.5-2h |
 | **D** | `skills/design/{component-states, design-system-rules}.md` | 1.5h |
 | **E** | `skills/design/{stitch-workflow (v0 best-effort), claude-design-workflow (stub C1), html-fallback (minimal C4), design-validation}.md` | 1.5-2h |
@@ -242,6 +242,13 @@ Phase 6 done when:
 **Carry-forward decisions (открыты до implementation):**
 - **Q10 (DEC-DEV-0052) — `/design:export` ↔ `/product:handoff` ordering:** при sub-phase G implementation grep `commands/product/handoff.md` для FM has_ui=true branch — добавить explicit `/design:export <FM>` invocation шаг ИЛИ задокументировать «handoff §10 ассистент заполняет из MK/DS/NM без separate command call». Decision point in implementation.
 - **Q8 carry-forward — `design-artifact-validate.js` exit code policy:** Q8 DEC-DEV-0052 specified validation logic (YAML parse, 5 required fields, ref existence, V-MK-08 regex, cross-platform path norm) но не severity policy explicit. **SPEC §B2 уже отвечает:** quiet-draft mode — `status: draft` → queue findings (silent log, exit 0); `status: final` (или non-draft) → block (exit 1). Sub-phase G implementation просто следует SPEC §B2 — no architectural decision required.
+- **Update-compat carry-forward (DEC-DEV-0052 Follow-up 2, 2026-05-27) — `/ecosystem:update` interaction.** Phase 6 ships новые artifacts that touch multiple paths user может uvedомить через `/ecosystem:update`. Existing protections inherited:
+  - `commands/design/`, `skills/design/`, `agents/design/` (empty в v1.0), `hooks/design/` → namespace-aware sync per 1.3.5 Step 5 — covered automatically (managed namespaces discovered dynamically; third-party `kiro-*` style preserved)
+  - design hook registration в `.claude/settings.local.json` → covered by pattern в Step 6 (DEC-DEV-0049) — `design/` префикс уже в pattern `^node \.claude/hooks/(product|integrator|ecosystem|design)/`
+  - `.product/mockups/`, `.product/design-system.md`, `.product/.design-sessions/` → covered by `.product/` invariant (scope-guard B-2 forbidden paths + backup Step 2 external paths if listed)
+  - **GAP: `.claude/design.yaml` per-project config** — singleton file в `.claude/` root, как `settings.local.json`. Sub-phase B MUST verify Step 5 sync algorithm не nuclear sync'aет singleton files в root `.claude/`. Если есть risk — explicitly exclude `design.yaml` from sync (same treatment как `settings.local.json`).
+  - **Verification:** scenario S7 в `dev/PHASE_6_SMOKE_TEST_PLAN.md` (added Follow-up 2) — runtime compat smoke after 1.4.0 release.
+  - **Cleanup story:** `.product/.design-sessions/archived/` per A4 (D.6 complete OR `--abandon`) + opportunistic >30d purge — handled inline by `design-session.md` skill (sub-phase C). Orphan MK/NM cleanup (FM deleted via `/product:promote-note --delete`) — **NOT covered v1.0**; deferred к v1.1 backlog as candidate `/design:cleanup` или integration с `/product:purge`.
 
 **Deferred cosmetic fixes (от DEC-DEV-0050)** — не блокируют Phase 6, но можно подобрать вместе с kickoff:
 - DEC-DEV-0047 duplicate «Связь с другими entries» heading (lines 3806 + 3816 в DEV_JOURNAL).
@@ -251,34 +258,83 @@ Phase 6 done when:
 
 ---
 
-## I. Kickoff invocation prompt template — **EXECUTED 2026-05-27 (DEC-DEV-0052)**
+## I. Implementation kickoff invocation prompt — **authoritative version (post Follow-up 2)**
 
-> Architectural kickoff выполнен fresh-session 2026-05-27, результат — DEC-DEV-0052 (12 Qs / 13 ambiguities / 5 cuts). Этот шаблон сохранён для **implementation kickoff** когда real UI FM появится в pilot — open fresh session с prompt ниже.
+> Architectural kickoff выполнен fresh-session 2026-05-27 (DEC-DEV-0052, commit `bceacbd`) + Follow-up 1 (closeout + trigger correction, `5299c7e`) + Follow-up 2 (update-compat gap + S7 + Lesson 7, this commit). Этот prompt — authoritative source-of-truth для fresh-session implementation kickoff. Target FM-001 предзаписан.
 
 ```
-Я фрэш-сессия для Phase 6 implementation kickoff на Ecosystem 3.0. Architectural kickoff уже выполнен (DEC-DEV-0052, 2026-05-27); этот run = implementation execution.
+Я фрэш-сессия для Phase 6 implementation на Ecosystem 3.0. Architectural kickoff уже выполнен (DEC-DEV-0052, 2026-05-27, commit bceacbd) + 2 inline-session Follow-ups (5299c7e closeout + trigger correction; current commit update-compat gap + S7). Этот run = implementation execution sub-phase A→I.
 
-Substrate (минимум):
-1. dev/PHASE_6_READINESS.md (banner 🟡 architectural ready)
-2. docs/design-module/SPEC.md v1.1 (DEC-DEV-0048 — Claude Design co-primary + IR groundwork; §9, §16)
-3. docs/pmo/artifacts/{MK,DS,NM}.md (artifact schemas + migration trail)
-4. DEV_JOURNAL.md DEC-DEV-0052 (kickoff decisions — 12 Qs / 13 ambiguities / 5 cuts) + DEC-DEV-0048 (SPEC v1.1 addendum) + DEC-DEV-0047 (PA journal + hard approve gate templates)
-5. dev/PHASE_6_SMOKE_TEST_PLAN.md (S1-S6 scenarios)
-6. dev/v1_1_backlog.md (5 cut entries C1-C5 — НЕ implementing в v1.0)
-7. CLAUDE.md «Где мы сейчас»
+## Empirical state check (mandatory per Lesson 6, DEC-DEV-0052 Follow-up 1)
 
-Real UI FM trigger: <FM-ID-here from pilot project>.
+Lesson 6: fresh-session inherits user signals из substrate as facts without empirical verification. Перед architectural deliberation verify pilot state эмпирически:
+- `Grep has_ui=true C:/Users/pw201/WebstormProjects/my-first-test/.product/features/` должен показать ≥1 FM
+- Verified inline-session 2026-05-27: 6 FMs all has_ui=true (FM-001..FM-006); FM-003 explicit «mockups deferred к Phase 6»
 
-Execute sub-phase plan A→I из PHASE_6_READINESS.md Section F (refreshed 2026-05-27 post-DEC-DEV-0052):
-- A: DEC-DEV-NNNN implementation entry + any further drift fixes
-- B: commands/design/{start, status}.md + .claude/design.yaml template
-- C-E: skills/design/ (orchestrator + checklists + tool workflows incl. stub claude-design-workflow per C1)
-- F: остальные commands/design/ (iterate/system/export/migrate Stitch↔HTML only per C3)
-- G: hooks/design/design-artifact-validate.js + manifest + Q10 carry-forward resolution
-- H: smoke fixture (static)
-- I: closure + CHANGELOG [1.4.0] + ROADMAP update + tag
+## Real UI FM target: FM-001 (authentication-accounts)
 
-Anti-bias guard: implementation возможно surfaceит missed details (Phase 5 lesson — fresh-session ≠ rubber-stamp); free to refine sub-phase scope если evidence dictates.
+Reason: base feature, simplest UI scope (login/signup forms, ~3-4 экрана), handoff уже существует (FM-001-handoff.md), lowest risk для validating end-to-end P2.5 D.1-D.6 без edge cases. FM-003 (CRUD), FM-002 (multi-flow) — кандидаты на iteration 2-3.
 
-Verify DEC-DEV номер против DEV_JOURNAL tail (per DEC-DEV-0050 R2) перед constructing implementation closure entry.
+## Substrate
+
+1. `dev/PHASE_6_READINESS.md` (banner 🟡 architectural ready — implementation pending start; sub-phase A→I в Section F.1; Section H carry-forwards Q10/Q8/update-compat)
+2. `docs/design-module/SPEC.md` v1.1 (Claude Design co-primary + IR groundwork; §9 tooling, §16 IR, §6.1 hook, §B2 quiet-draft mode для Q8)
+3. `docs/pmo/artifacts/{MK,DS,NM}.md` (artifact schemas + migration trail)
+4. `DEV_JOURNAL.md` DEC-DEV-0052 + Follow-up 1 + Follow-up 2 (12 Qs / 13 ambiguities / 5 cuts / Lessons 6-7) + DEC-DEV-0048 (SPEC v1.1 addendum) + DEC-DEV-0047 (PA journal + hard approve gate templates) + DEC-DEV-0023 (hook smoke runner pre-commit gate) + DEC-DEV-0049/0051 (`/ecosystem:update` patch-1.3.4/1.3.5 patterns — IMPORTANT для sub-phase B update-compat handling)
+5. `dev/PHASE_6_SMOKE_TEST_PLAN.md` (S1-S5 design workflow scenarios + S7 update-compat — for post-implementation runtime smoke)
+6. `dev/v1_1_backlog.md` (C1-C5 cuts — **НЕ** implementing в v1.0)
+7. Pilot project state: `C:/Users/pw201/WebstormProjects/my-first-test/.product/features/FM-001-authentication-accounts.md` + handoff `FM-001-handoff.md` + связанные SC/BR/LC через grep
+8. `CLAUDE.md` «Где мы сейчас»
+9. `commands/ecosystem/update.md` (1.3.5 spec — для sub-phase B verify Step 5 не nuclear sync'aет `.claude/design.yaml`; для sub-phase G verify Step 6 pattern includes `design/`)
+10. `commands/ecosystem/bootstrap.md` (для sub-phase B verify auto-deploy `.claude/design.yaml` initial template only on first run)
+
+## Sub-phase plan A→I (per PHASE_6_READINESS Section F.1, ~9-13h total)
+
+- **A** (30-45min): DEC-DEV-0053 implementation entry skeleton + drift fixes (если найдутся при substrate load)
+- **B** (1-1.25h): `commands/design/{start, status}.md` + `.claude/design.yaml` template + bootstrap auto-deploy integration. **Update-compat verification:** sub-phase B MUST verify что `/ecosystem:update` Step 5 namespace-aware sync (1.3.5 spec) НЕ затирает user's `.claude/design.yaml` per-project content при upgrade. If sync algorithm treats singleton root-level files like `settings.local.json` (preserved) — leverage existing behavior. If NOT — explicitly add `design.yaml` to preserved list.
+- **C** (1.5-2h): `skills/design/design-session.md` (orchestrator с Q7 deadlock 4-choice menu + A7 has_ui=true без SC 3-choice menu; A4 `archived/` cleanup logic for `.product/.design-sessions/`)
+- **D** (1.5h): `skills/design/{component-states, design-system-rules}.md`
+- **E** (1.5-2h): `skills/design/{stitch-workflow (v0 best-effort), claude-design-workflow (stub C1 ~30 lines), html-fallback (minimal C4, single page no React), design-validation (partial)}.md`
+- **F** (1.5h): `commands/design/{iterate, system, export, migrate (Stitch↔HTML only per C3)}.md` — hard approve gate per-MK (Q1)
+- **G** (1.5h): `hooks/design/design-artifact-validate.js` + `manifest.yaml` + Q10 carry-forward resolution (grep `commands/product/handoff.md` для FM has_ui=true branch; decide explicit `/design:export <FM>` invocation OR documented inline fill) + Q8 SPEC §B2 quiet-draft mode (status: draft → queue exit 0; status: final → block exit 1)
+- **H** (1h): smoke fixture (static cases per `dev/meta-improvement/scripts/smoke-hooks.js` template) + run; verify exit 0
+- **I** (1h): closure entry DEC-DEV-0053 + CHANGELOG `[1.4.0]` + ROADMAP/CLAUDE.md «Где мы сейчас» refresh + tag `v1.4.0` + `dev/_archive/phase-6/` для plan + `dev/PHASE_7_READINESS.md` skeleton
+
+## Architectural decisions reference
+
+Все 12 Qs from DEC-DEV-0052 — implementation follows. Особенно note:
+- **Q1** (hard approve gate `/design:migrate`): per-MK granularity, text «STOP. Lossy regeneration via brief — visual tweaks потеряются. Approve migration для MK-NNN? [Y/N/defer]»
+- **Q7** (deadlock 7 iterations): `[pause+save / radical-rethink D.1 / accept-current-as-final / drop-and-archive]`
+- **Q8** (validate hook): YAML parse + 5 required fields (id, type, feature, design_tool, scenarios) + ref existence (SC/BR/LC via fs.exists) + V-MK-08 regex `DS\.\w+\.\w+` token coverage; cross-platform path norm `replace(/\\/g, '/')` per Phase 5 bug 3; SPEC §B2 quiet-draft mode
+- **Q9** (PA integration): 3 trigger events — first `/design:start` без Stitch MCP; first Claude Design без subscription; `tool_project_url` 404 на resume
+- **A8** (migration interruption): `previous_tools[]` entry written FIRST (before regen), regen second; rollback (delete last element) if regen fails
+
+5 cuts (C1-C5) — НЕ implement: `claude-design-workflow` stub only, no screen-generator subagent, no `/design:migrate` Stitch↔Claude Design path, no React/multi-screen HTML fallback, V-MK-02 partial only (mechanical states) + V-MK-03 manual.
+
+## Anti-bias guard
+
+Implementation возможно surface'ит missed details (Phase 5 lesson — fresh-session ≠ rubber-stamp). Free to refine sub-phase scope если evidence dictates. Particularly:
+- FM-001 real SC content может surface Q1/Q7/Q9 UX edge case
+- Design Brief D.1 generation на FM-001 SCs может revealed что existing SCs не enough для UI (per A7) — surface честно через 3-choice menu
+- Sub-phase B `/ecosystem:update` Step 5 reading может surface что namespace-aware sync уже корректно treats singleton root files как preserved — если так, no explicit exclusion code, just document это в DEC-DEV-0053
+- Phase plan = hypothesis, not contract — Phase 5 sub-phase J added late per emergence
+
+## Cross-cutting integrations to verify (per Lesson 7, DEC-DEV-0052 Follow-up 2)
+
+Sub-phase B + G read upstream/downstream commands перед implementation:
+- `commands/ecosystem/update.md` Step 5 namespace-aware sync + Step 6 hooks pattern
+- `commands/ecosystem/bootstrap.md` Step 6c (auto-deploy templates)
+- `commands/product/handoff.md` FM has_ui=true branch (for Q10 carry-forward resolution)
+- `commands/integrator/research.md` Step 7 hard approve gate template (mirror для `/design:migrate`)
+
+## Verification rules
+
+- DEC-DEV номер: verify `grep "^## DEC-DEV" DEV_JOURNAL.md | tail` перед constructing entry. Last = 0052, next predicted = 0053 (verify before write).
+- Sub-phase commit cadence: commits A→I individual per DEC-DEV-0047 Lesson 7
+- Pre-commit hook smoke runner active (DEC-DEV-0023) — blocks commits если новый design hook бракован; run `node dev/meta-improvement/scripts/smoke-hooks.js` manually для verify до stage
+- Cross-platform path norm для все hooks per Phase 5 bug 3 (Windows)
+
+## После implementation
+
+DEV_JOURNAL closure entry в DEC-DEV-0053 (sub-phase I). Runtime smoke `dev/PHASE_6_SMOKE_TEST_PLAN.md` S1-S7 на pilot — отдельная session с user supervision (не bundle в implementation kickoff, per Phase 5 precedent DEC-DEV-0044). S7 особенно важно для validating что `/ecosystem:update` после 1.4.0 не ломает design state.
 ```
