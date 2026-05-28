@@ -195,6 +195,7 @@ rm -rf .claude-ecosystem-tmp/.git
 - `.claude/settings.local.json` — user's permission approvals
 - `.claude/settings.json` (hooks section re-derived; permissions + other fields preserved — see Step 6)
 - `.claude/product.yaml` — project config
+- `.claude/design.yaml` (if exists) — per-project Design Module config (DEC-DEV-0052 / Phase 6 1.4.0); preserved verbatim per «not в Step 5 root-file allowlist» semantics — same treatment как `settings.local.json` (auto-init via `/design:start` на первой UI FM; user edits never wiped by upgrade)
 - `.claude/pending-actions.md` (if exists) — ecosystem-wide PA journal (DEC-DEV-0047 / patch 1.3.3); user entries preserved verbatim; init backfilled in Step 5b if missing
 - `.claude/integrator/` (если exists) — Integrator project state
 - `.claude/.env` (если exists; usually .env at project root) — secrets
@@ -675,6 +676,7 @@ Obsolete contamination cleaned (DEC-DEV-0042):
 Preserved (untouched):
   .claude/settings.local.json (your permissions)
   .claude/product.yaml (your config)
+  .claude/design.yaml (per-project Design Module config — preserved if exists; auto-init by /design:start)
   .claude/pending-actions.md (your pending-actions journal — backfilled if pre-1.3.3 install; existing entries intact)
   .claude/integrator/ (Integrator state)
   .claude/projects/ (Claude Code session history)
