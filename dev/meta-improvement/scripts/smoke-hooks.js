@@ -53,6 +53,7 @@ fs.mkdirSync(path.join(TMP_PRODUCT, 'business-rules'), { recursive: true });
 fs.mkdirSync(path.join(TMP_PRODUCT, 'invariants'), { recursive: true });
 fs.mkdirSync(path.join(TMP_PRODUCT, 'scenarios'), { recursive: true });
 fs.mkdirSync(path.join(TMP_PRODUCT, 'features'), { recursive: true });
+fs.mkdirSync(path.join(TMP_PRODUCT, 'mockups'), { recursive: true });
 fs.mkdirSync(path.join(TMP_DIR, '.claude'), { recursive: true });
 
 // Per-hook test cases.
@@ -217,6 +218,158 @@ const TEST_CASES = [
     },
     env: { CLAUDE_PROJECT_DIR: TMP_DIR },
     expectStderrIncludes: /INTEGRATOR SCOPE GUARD/,
+  },
+
+  // ---------- design-artifact-validate (DEC-DEV-0053 / Phase 6 sub-phase G) ----------
+  // 6 cases:
+  //   1. file outside mockups path → exit 0 silent
+  //   2. valid MK active → no findings, no stderr surface
+  //   3. MK active missing required field (design_tool) → blocking stderr surface
+  //   4. MK draft missing required field → silent (quiet-draft mode per SPEC §B2)
+  //   5. MK active with bad design_tool enum → warning stderr
+  //   6. DS singleton с wrong id (not 'DS') → blocking stderr
+
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'irrelevant-path',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    expectStderrAbsent: /\[design-artifact-validate\]/,
+  },
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'mk-valid-active',
+    filePath: path.join(TMP_PRODUCT, 'mockups', 'MK-001-login.md'),
+    setup: (ctx) => {
+      // Create linked FM + SC fixtures
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'features', 'FM-001-test.md'),
+        '---\nid: FM-001\ntype: feature-map-entry\nstatus: in-progress\nhas_ui: true\n---\n\n# FM-001\n',
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'scenarios', 'SC-001-test.md'),
+        '---\nid: SC-001\ntype: scenario\nstatus: active\n---\n\n# SC-001\n',
+        'utf-8'
+      );
+      // Valid MK
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'mockups', 'MK-001-login.md'),
+        '---\n' +
+          'id: MK-001\n' +
+          'type: mockup-package\n' +
+          'feature: FM-001\n' +
+          'scenarios: [SC-001]\n' +
+          'design_tool: stitch\n' +
+          'status: active\n' +
+          '---\n\n# MK-001 — Login\n',
+        'utf-8'
+      );
+    },
+    expectStderrAbsent: /\[design-artifact-validate\]/,
+  },
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'mk-missing-design-tool-active',
+    filePath: path.join(TMP_PRODUCT, 'mockups', 'MK-002-broken.md'),
+    setup: (ctx) => {
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'features', 'FM-001-test.md'),
+        '---\nid: FM-001\ntype: feature-map-entry\nstatus: in-progress\nhas_ui: true\n---\n\n# FM-001\n',
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'scenarios', 'SC-001-test.md'),
+        '---\nid: SC-001\ntype: scenario\nstatus: active\n---\n\n# SC-001\n',
+        'utf-8'
+      );
+      // MK missing design_tool (required field per Q8)
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'mockups', 'MK-002-broken.md'),
+        '---\n' +
+          'id: MK-002\n' +
+          'type: mockup-package\n' +
+          'feature: FM-001\n' +
+          'scenarios: [SC-001]\n' +
+          'status: active\n' +  // active triggers surface (not quiet-draft)
+          '---\n\n# MK-002\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /V-MK-frontmatter.*design_tool/,
+  },
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'mk-missing-field-draft-quiet',
+    filePath: path.join(TMP_PRODUCT, 'mockups', 'MK-003-draft.md'),
+    setup: (ctx) => {
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'features', 'FM-001-test.md'),
+        '---\nid: FM-001\ntype: feature-map-entry\nstatus: in-progress\nhas_ui: true\n---\n\n# FM-001\n',
+        'utf-8'
+      );
+      // MK draft with missing field — should queue, not surface
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'mockups', 'MK-003-draft.md'),
+        '---\n' +
+          'id: MK-003\n' +
+          'type: mockup-package\n' +
+          'feature: FM-001\n' +
+          'scenarios: [SC-999-missing]\n' +  // bad ref triggers blocking
+          'design_tool: stitch\n' +
+          'status: draft\n' +  // draft → quiet
+          '---\n\n# MK-003\n',
+        'utf-8'
+      );
+    },
+    expectStderrAbsent: /\[design-artifact-validate\]/,
+  },
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'mk-bad-design-tool-enum',
+    filePath: path.join(TMP_PRODUCT, 'mockups', 'MK-004-bad-tool.md'),
+    setup: (ctx) => {
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'features', 'FM-001-test.md'),
+        '---\nid: FM-001\ntype: feature-map-entry\nstatus: in-progress\nhas_ui: true\n---\n\n# FM-001\n',
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'scenarios', 'SC-001-test.md'),
+        '---\nid: SC-001\ntype: scenario\nstatus: active\n---\n\n# SC-001\n',
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'mockups', 'MK-004-bad-tool.md'),
+        '---\n' +
+          'id: MK-004\n' +
+          'type: mockup-package\n' +
+          'feature: FM-001\n' +
+          'scenarios: [SC-001]\n' +
+          'design_tool: sketch\n' +  // не в enum (stitch | claude-design | figma | penpot | html)
+          'status: active\n' +
+          '---\n\n# MK-004\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /design_tool 'sketch' not в enum/,
+  },
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'ds-singleton-wrong-id',
+    filePath: path.join(TMP_PRODUCT, 'design-system.md'),
+    setup: (ctx) => {
+      // DS file but wrong id (should be 'DS' literally)
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'design-system.md'),
+        '---\n' +
+          'id: DSO\n' +  // wrong — should be 'DS'
+          'type: design-system\n' +
+          'status: active\n' +
+          '---\n\n# DS\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /V-DS-id.*id should be 'DS' literally/,
   },
 ];
 
