@@ -1,0 +1,19 @@
+# Hook registration manifest — Design Module
+#
+# Auto-read by /ecosystem:bootstrap Step 6b и /ecosystem:update Step 6 to register
+# hooks в <project>/.claude/settings.json.
+#
+# Schema reference: hooks/product/manifest.yaml header.
+#
+# Phase 6 / DEC-DEV-0053 — initial design hooks.
+
+version: 1
+module: design
+
+hooks:
+  - id: design-artifact-validate
+    file: design-artifact-validate.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Inline validation для .product/mockups/MK-*.md + .product/mockups/NM-*.md + .product/design-system.md per DEC-DEV-0052 Q8. Checks: YAML frontmatter parseable; 5 required fields для MK (id, type, feature, design_tool, scenarios); ref existence (FM / SC / MK via fs.exists); V-MK-08 token coverage (regex /DS\\.\\w+\\.\\w+/g vs DS body). Cross-platform path norm per Phase 5 bug 3 (replace /\\\\/g, '/'). SPEC §B2 quiet-draft mode (status: draft → queue findings к .product/.pending/validation-pending.yaml; status: non-draft → stderr surface). Exit 0 always (non-blocking; strict mode deferred к v1.1+ per v1_1_backlog hard-block class pattern)."

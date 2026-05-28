@@ -357,6 +357,92 @@ This is a known gap. Handoff proceeds с warning.
 → Handoff frontmatter `warnings[]` adds NFR-pending entry; `status` = `partial` (не `ready`).
 → V-H-11 DoR check raises warning (per NFR opt-in philosophy); pending → 🟡 Warning, не блокирует даже в production mode. V-H-11 = handoff section 11 conformity к `FM.nfr_status` (см. `validation-runner.md` V-H-11 matrix).
 
+### Step 8c: UI Specification section (Phase 6 / DEC-DEV-0052 Q10 resolution)
+
+**Section 10 — CONDITIONAL on FM.has_ui=true.** Если `has_ui: false` или absent → section omitted entirely, no further reads. Если `has_ui: true` — proceed below.
+
+**Q10 carry-forward decision (resolved Phase 6 sub-phase G — DEC-DEV-0053):** handoff §10 assembled inline by этот skill читая MK/DS/NM artifacts directly. **`/design:export` NOT invoked from `/product:handoff`.** Separation rationale: `/design:export` = standalone verify / debug aid; this skill has full filesystem access к `.product/mockups/` + `.product/design-system.md` без command-call overhead.
+
+**Assembly algorithm:**
+
+1. **Load active MK для FM:** glob `.product/mockups/MK-*.md`; filter where `MK.feature == <FM-id>` AND `MK.status == active`. Если 0 active → DoR check B7 already caught earlier (Step 5); this assembly point assumes ≥1 active MK.
+
+2. **Load NM для FM:** glob `.product/mockups/NM-*.md`; filter where `NM.feature == <FM-id>` AND `NM.status == active`. Если 0 — surface inline note: «No active NM — single-screen flow assumed»; не block.
+
+3. **Load DS:** read `.product/design-system.md`; parse все Token tables + Component Library Index + Pattern Library + Deprecated tokens section.
+
+4. **Compute DS subset (only tokens / components referenced by active MK):**
+   - Scan all MK bodies для tokens via regex `/DS\.(\w+)\.(\w+(?:-\w+)*)/g`
+   - Build referenced-tokens set
+   - Filter DS body — keep entries для referenced tokens + components referenced via Component State Matrix component names + patterns used
+   - Bare-token-not-found in DS → log как drift warning (informational)
+
+5. **Assemble section markdown:**
+
+```markdown
+## 10. UI Specification
+
+> Generated from MK/DS/NM artifacts active for <FM-id> at <ISO timestamp>.
+
+### 10.1 Mockup Packages
+
+<For each MK active>:
+  #### <MK.id> — <MK.title>
+
+  - **design_tool:** <MK.design_tool>
+  - **tool_project_url:** <MK.tool_project_url>
+  - **platform:** <MK.platform>
+  - **iteration:** <MK.iteration>
+  - **scenarios covered:** <MK.scenarios joined ", ">
+  - **previous_tools history:** <count из previous_tools[]> migrations (см. MK frontmatter для full trail)
+
+  <MK body verbatim — все 7 sections (Screen Inventory, Component State Matrix,
+   Interaction Spec, Responsive Notes, Accessibility Notes, Edge Cases, Design Decisions Log)>
+
+### 10.2 Design System Snapshot (subset)
+
+> Subset of `.product/design-system.md` containing only tokens / components / patterns
+> referenced by MKs in §10.1. Full DS in repo file.
+
+**DS version:** <DS.version>
+**Last extraction:** <DS.last_extraction_at>
+
+#### Tokens (used)
+
+<Tables — colors / typography / spacing / border / radius / shadows — filtered к referenced subset>
+
+#### Components (referenced via Component State Matrix)
+
+<Component Library Index entries — filtered к components mentioned в any MK matrix>
+
+#### Patterns (used)
+
+<Pattern Library entries — filtered к patterns referenced>
+
+#### Deprecated tokens (active references)
+
+<Deprecated entries — only if any referenced by current MK (audit warning)>
+
+### 10.3 Navigation Maps
+
+<For each NM active>:
+  #### <NM.id> — <NM.title>
+
+  - **mockups linked:** <NM.mockups joined ", ">
+  - **roles:** <NM.roles joined ", ">
+
+  <NM body verbatim — все 4 sections (Flow Diagram, Entry Points, Screen Transitions, Dead Ends & Error Flows)>
+```
+
+6. **Hash MK / DS / NM bodies** для `artifact_hashes` block (Step 7 already computes — этот step ensures MK/DS/NM included в hash set so drift detection covers them).
+
+7. **Warnings cases:**
+   - DS subset empty (MK references tokens но none resolve в DS) → 🟡 warning в frontmatter.warnings[]: «UI Specification: DS token references unresolved»; не block
+   - NM absent — inline note (см. Step 2)
+   - V-MK-08 token coverage failures from hook queue (`.product/.pending/validation-pending.yaml`) → 🟡 warning «UI Specification: deferred validation findings pending»
+
+**Format compliance:** `.claude/docs/product-module/handoff-spec.md §10` is authoritative. This step's algorithm aligns с handoff-spec semantics. Schema fields в frontmatter (line ~398 `mockup_packages[]`, `navigation_maps[]`, `design_system_tokens_snapshot`) — populated to list active MK / NM IDs + DS version reference per assembly above.
+
 ### Step 9: Frontmatter assembly
 
 Per handoff-spec.md §5 schema (полный):
