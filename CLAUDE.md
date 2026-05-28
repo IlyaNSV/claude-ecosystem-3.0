@@ -19,7 +19,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 ## Где мы сейчас
 
-См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-27 — Phase 6 kickoff shipped, DEC-DEV-0052; latest patch 1.3.5 = DEC-DEV-0051):
+См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-28 — Phase 6 Design Module v1.0 shipped, DEC-DEV-0053; 1.4.0 release):
 - ✅ Phase 0-2 (scaffolding, Integrator read-only, Bootstrap, Product Module Discovery + drift mechanisms)
 - ✅ Phase 3 (Planning + Feature Enrichment + adaptive-depth DA + cascade detection) — smoke-tested DEC-DEV-0023 + 1.1.1 patch shipped
 - ✅ Phase 4 (Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline) — 1.2.0; closure ritual Unit 2 DEC-DEV-0033; runtime smoke 2026-05-20 → status=fail → Phase 4 closed (DEC-DEV-0038)
@@ -32,12 +32,14 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 - ✅ Local docs polish (DEC-DEV-0046) — Obsidian vault baseline + README cross-link polish shipped (bundled в 1.3.3)
 - ✅ **Patch 1.3.4 (DEC-DEV-0049, 2026-05-27)** — `/ecosystem:update` Step 6 REPLACE → pattern-preserving merge. Third-party hook injections (e.g. `bd setup claude` SessionStart/PreCompact) больше не wipe'ятся при ecosystem upgrade. Driven by downstream `my-first-test` DEC-INT-0005 pilot evidence. Spec-only change (commands/ecosystem/update.md); bootstrap Step 6b уже корректен — symmetry restored. Smoke verification deferred к next pilot `/ecosystem:update`
 - ✅ **Patch 1.3.5 (DEC-DEV-0051, 2026-05-27)** — `/ecosystem:update` Step 5 nuclear sync → namespace-aware sync + Step 2 backup extended до integrator-managed external paths. Same class of bug as 1.3.4 (ecosystem zone shared с third-party tools): cc-sdd kiro-* skills больше не уничтожаются при update; `.kiro/`, `.beads/` etc. backed up под `_external/` для rollback. Surfaced during static dry-run 1.3.4 spec на real downstream state. Spec-only change (Step 2/4/5/8 + Rollback)
-- ✅ **Phase 6 kickoff (DEC-DEV-0052, 2026-05-27)** — fresh-session architectural kickoff per D7 ritual: 12 Qs resolved + 13 ambiguities + 5 scope cuts (C1 claude-design-workflow stub, C2 screen-generator subagent → v1.1, C3 /design:migrate Stitch↔Claude Design path → v1.1, C4 html-fallback React+multi-screen → v1.1, C5 V-MK-02..03 full automation → V-MK-02 partial). Sandbox FM-DESIGN-001 path отвергнут. Status 🟡 architectural ready; **implementation pending start** — trigger verified empirically inline-session (Follow-up): pilot has 6 FMs has_ui=true awaiting design (FM-003 explicit «mockups deferred к Phase 6»). Spec drift cleared (SPEC §10.4 enum, pmo-map D2-B04 status, ROADMAP Phase 6 estimates/risks); sub-phase A→I plan в `dev/PHASE_6_READINESS.md` Section F.1; smoke scenarios в `dev/PHASE_6_SMOKE_TEST_PLAN.md`. Realistic effort post-cuts: **9-13h end-to-end** (8-12h focused A→H + 1h closure I)
+- ✅ **Phase 6 kickoff (DEC-DEV-0052, 2026-05-27)** — fresh-session architectural kickoff per D7 ritual: 12 Qs resolved + 13 ambiguities + 5 scope cuts (C1 claude-design-workflow stub, C2 screen-generator subagent → v1.1, C3 /design:migrate Stitch↔Claude Design path → v1.1, C4 html-fallback React+multi-screen → v1.1, C5 V-MK-02..03 full automation → V-MK-02 partial). Sub-phase A→I plan в `dev/PHASE_6_READINESS.md` Section F.1; realistic effort post-cuts 9-13h end-to-end.
+- ✅ **Phase 6 — Design Module v1.0 implementation (DEC-DEV-0053, 2026-05-28) — 1.4.0 release** — fresh-session execution sub-phase A→I per kickoff Section I authoritative prompt. 8 commits A→H + I closure. Deliverables: 6 commands (`/design:{start,status,iterate,system,export,migrate}`) + 6 skills (`design-session` orchestrator + `component-states` + `design-system-rules` + `stitch-workflow` v0 + `claude-design-workflow` stub C1 + `html-fallback` minimal C4 + `design-validation`) + 1 hook (`design-artifact-validate.js`) + manifest + `handoff-generator.md` Step 8c (Q10 inline §10 assembly). All 12 Qs implemented; 5 cuts respected; 13 ambiguities at locations. Static smoke 19/19 PASS (13 existing + 6 new design cases). Runtime smoke S1-S7 (`dev/PHASE_6_SMOKE_TEST_PLAN.md`) deferred к next pilot session per Phase 5 precedent.
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
 - `dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
 - `dev/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
-- `dev/PHASE_6_READINESS.md` — 🟡 architectural kickoff complete (DEC-DEV-0052); implementation kickoff prompt в Section I; smoke plan `dev/PHASE_6_SMOKE_TEST_PLAN.md`
+- `dev/PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 (next pilot session); `dev/_archive/phase-6/PHASE_6_READINESS.md` archived
+- `dev/PHASE_7_READINESS.md` — skeleton; Integrator maintenance + verify/debug/docs scope
 
 ## Принципы работы над экосистемой
 

@@ -4394,21 +4394,97 @@ Pros: anti-bias guard per kickoff prompt — «free to refine sub-phase scope е
 
 ### Outcome
 
-(Filled in sub-phase I — closure entry.)
+Phase 6 (Design Module v1.0) implementation **shipped end-to-end через 8 sub-phase commits** (A→I individual per DEC-DEV-0047 Lesson 7), 1.4.0 release ready.
+
+**Deliverables shipped:**
+
+| Sub-phase | Commit | Deliverable | Lines |
+|---|---|---|---|
+| A | `1545263` | DEC-DEV-0053 skeleton + drift sweep (clean — all from kickoff resolved) | 68 |
+| B | `18b2df2` | `commands/design/{start,status}.md` + `commands/ecosystem/update.md` preservation listing для `.claude/design.yaml` | 438 |
+| C | `6b666fa` | `skills/design/design-session.md` orchestrator (Q7 deadlock 4-choice menu + Q9 PA triggers #2/#3 + A4 cleanup + A5 quota + A6 atomic write order + A9 concurrent session + Q10 carry-forward strategy) | 540 |
+| D | `7d3e776` | `skills/design/{component-states,design-system-rules}.md` (D.4 mechanical + V-MK-02/03 partial Q3/C5; D.5 DS extraction + synonym detection + manual mass-rename) | 470 |
+| E | `1d1b468` | `skills/design/{stitch-workflow,claude-design-workflow,html-fallback,design-validation}.md` (Stitch v0 best-effort OQ-DM-01; Claude Design stub C1; HTML minimal C4; V-MK-* runner partial) | 679 |
+| F | `5c15057` | `commands/design/{iterate,system,export,migrate}.md` (Q1 hard approve gate per-MK; matrix Stitch↔HTML only C3; Q10 export resolution documented) | 682 |
+| G | `8762c1c` | `hooks/design/design-artifact-validate.js` + `manifest.yaml` (Q8 — 5 required fields, ref existence, V-MK-08 regex, quiet-draft) + `skills/product/handoff-generator.md` Step 8c (Q10 inline §10 assembly) | 506 |
+| H | `e395c75` | `dev/meta-improvement/scripts/smoke-hooks.js` extension — 6 design-artifact-validate cases; full suite 19/19 PASS | 153 |
+| I | (this commit) | Closure: DEC-DEV-0053 Outcome/Lessons + CHANGELOG `[1.4.0]` + ROADMAP/CLAUDE.md «Где мы сейчас» + `dev/PHASE_7_READINESS.md` skeleton + archive `dev/_archive/phase-6/` + tag v1.4.0 | (this commit) |
+
+**Total:** ~3536 lines across 8 commits (excl. closure). 6 commands + 6 skills + 1 hook + 1 manifest + handoff-generator.md Step 8c + smoke fixture extension.
+
+**Architectural decisions implemented (all 12 Qs from DEC-DEV-0052):**
+- ✅ **Q1** hard approve gate per-MK granularity в `/design:migrate` (commands/design/migrate.md Step 4)
+- ✅ **Q2** `screen-generator` subagent deferred к v1.1 (no `agents/design/` directory created; D.2 inline)
+- ✅ **Q3** V-MK-02 partial mechanical (default + error для interactive components) — `component-states.md` Step 5 + `design-artifact-validate.js`
+- ✅ **Q4** HTML fallback v1.0 minimal — `html-fallback.md` single-page no React
+- ✅ **Q5** `claude-design-workflow.md` stub (~30 effective lines) per C1
+- ✅ **Q6** `/design:migrate` matrix Stitch↔HTML only; `--to claude-design` explicitly rejected
+- ✅ **Q7** 4-choice deadlock menu в `design-session.md` D.3 at iter ≥7
+- ✅ **Q8** validate hook YAML parse + 5 required fields + ref existence + V-MK-08 regex + cross-platform path norm + SPEC §B2 quiet-draft mode — `hooks/design/design-artifact-validate.js`
+- ✅ **Q9** 3 PA trigger events: `/design:start` Step 3a (#1 Stitch MCP missing), `design-session.md` startup checks (#3 tool_project_url 404), `claude-design-workflow.md` (#2 no subscription)
+- ✅ **Q10** resolution: handoff §10 assembled inline by `handoff-generator.md` skill Step 8c (NEW); `/design:export` standalone verify aid (does NOT participate в handoff flow). Rationale documented в commit message + skill prose.
+- ✅ **Q11** subagent registration gap moot в v1.0 (no design DA subagent)
+- ✅ **Q12** Stitch MCP `environment_agnostic: true` — applied при future `/integrator:add stitch-mcp` profile creation; no v1.0 code change required (Stitch SaaS — no environment_tiers entries needed)
+
+**5 scope cuts respected (NOT implemented в v1.0):**
+- ✅ **C1** `claude-design-workflow.md` ships as stub
+- ✅ **C2** no `agents/design/screen-generator.md` file
+- ✅ **C3** `/design:migrate --to claude-design` rejected
+- ✅ **C4** `html-fallback.md` single-page no React, no multi-screen
+- ✅ **C5** V-MK-02 partial only (mechanical patterns); V-MK-03 manual via `design-validation.md` Step «V-MK-03 manual»
+
+**13 ambiguity resolutions (A1-A13) applied per locations:**
+- A1 ASCII slug filename — documented в `design-session.md` D.5 step + `/design:start` Step 3b
+- A2 Screen Inventory IDs per-MK scope — implicit в MK.md schema (no cross-MK normalization)
+- A3 NM cross-feature flows v1.0 single-FM — applied в `design-session.md` D.5 NM step
+- A4 `.design-sessions/archived/` + >30d purge — `design-session.md` startup checks
+- A5 Stitch counter monthly rollover — `design-session.md` + `stitch-workflow.md`
+- A6 MK→DS atomic write order — `design-session.md` D.5
+- A7 has_ui=true без SC 3-choice menu — `/design:start` Step 2
+- A8 migration interrupted rollback — `/design:migrate` Step 5
+- A9 concurrent session detection — `design-session.md` startup check 2
+- A10 screen-generator JSON schema — deferred с Q2 (subagent — v1.1)
+- A11 stderr format `[design-artifact-validate] <id> ...` — `hooks/design/design-artifact-validate.js`
+- A12 PA schema reuses DEC-DEV-0047 B-3 — все Q9 triggers use existing format
+- A13 (= Q10) export ↔ handoff ordering — resolved sub-phase G
+
+**Smoke test results:**
+- Pre-commit hook smoke runner (DEC-DEV-0023) ran at every sub-phase commit; no regressions detected
+- Final smoke suite 2026-05-28: **19/19 PASS** (13 existing + 6 new design hook cases)
+- Runtime smoke (S1-S7 в `dev/PHASE_6_SMOKE_TEST_PLAN.md`) — **deferred к next pilot session** per Phase 5 precedent (DEC-DEV-0044 separate runtime smoke after implementation closure)
+
+**Cross-cutting integrations confirmed compatible (Lesson 7 application):**
+- `/ecosystem:update` Step 5 namespace-aware sync handles `commands/design/`, `skills/design/`, `hooks/design/` dynamically — managed automatically once present in upstream
+- `/ecosystem:update` Step 6 pattern `^node \.claude/hooks/(product|integrator|ecosystem|design)/` already includes `design/` префикс — design hook auto re-derives
+- `/ecosystem:update` Step 4/8 explicit `.claude/design.yaml` preservation listing added (sub-phase B docs sync; no behavior change)
+- `/ecosystem:bootstrap` Step 6b auto-registers hooks from manifests — design manifest will be picked up automatically
+- `/product:handoff` §10 — handoff-generator.md Step 8c added (Q10 resolution); no command-call indirection
 
 ### Lessons
 
-(Filled in sub-phase I — closure entry.)
+1. **JSDoc comment regex literal trap caught by manual smoke (новая lesson).** `*/g` (regex pattern with `/g` flag) inside JSDoc `/** ... */` block closes comment prematurely → SyntaxError. Caught by manual `node --check hooks/design/design-artifact-validate.js` before sub-phase G commit (pre-commit hook smoke runner gate). Fix: either escape (`*` separated by space from `/`) OR remove regex slash delimiters from prose. *Apply:* any time JSDoc comment includes regex with `*` and `/` characters, manual syntax check before commit. Adds к Phase 5 bug 3 family of cross-platform / runtime catches.
+
+2. **Front-loaded design discipline ROI verified (повторное подтверждение Phase 5 lesson).** DEC-DEV-0052 kickoff + 2 Follow-ups closed 12 Qs / 13 ambiguities / 5 cuts pre-implementation. Sub-phase A→I execution was largely mechanical с **1 emergent decision** (Step 8c handoff-generator.md insertion для Q10 — kickoff identified carry-forward but не drilled into handoff-generator.md inspection until sub-phase G) and **1 caught runtime bug** (JSDoc regex trap, Lesson 1 above). Multiplier consistent с Phase 5 (~6-8x) — front-load 3-4h pre vs 5-15h restored mid-FM. *Apply:* для Phase 7+ — те же front-loaded kickoffs, even если phase scope looks small.
+
+3. **Sub-phase commit cadence enables granular debugging (повторное подтверждение DEC-DEV-0047 Lesson 7).** 8 commits A→H + I closure = each commit small, focused, reviewable. Pre-commit hook smoke runner (DEC-DEV-0023) caught design hook syntax bug at sub-phase G; bundled all-in-one commit would have failed at end с large diff to debug. *Apply:* default for phase implementation work — per-substantial-deliverable commits, not bundled.
+
+4. **Lesson 7 (cross-cutting integrations) preventive value confirmed.** Sub-phase G discovered handoff-generator.md Phase 4 left §10 как table-only placeholder («CONDITIONAL has_ui=true | MK + DS snapshot + NM») без concrete assembly algorithm. Step 8c added inline (Q10 resolution: «handoff fills §10 directly from MK/DS/NM без separate command call»). Without Lesson 7 explicit cross-cutting reads (`commands/product/handoff.md` + handoff-generator.md grepped в sub-phase A/G), would have shipped Phase 6 без actual handoff §10 assembly algorithm — gap surfaces только at runtime when first FM с has_ui=true tries `/product:handoff` after Phase 6 active. *Apply:* phase-kickoff.md Section 2 (ambiguity sweep) — add explicit «enumerate cross-cutting commands that touch new artifacts; verify their assembly logic documented» step. Already partially captured в Lesson 7 prose; this commit reaffirms.
+
+5. **Aggressive cut discipline preserved velocity AND surface area integrity.** 5 cuts (C1-C5) eliminated speculative scope: full Claude Design skill (no pilot evidence), screen-generator subagent (no context-pollution evidence), Stitch↔Claude Design migration path (depends on C1), React+multi-screen HTML (over-engineered fallback), V-MK-02 full automation (FP risk без heuristic data). Without cuts, scope would have included ~5-8h speculative work that v1.1 evidence would likely have invalidated (phantom-audience risk per DEC-DEV-0046 / 0052). Cuts ratio 5/12+ deliverable surfaces — consistent с DEC-DEV-0052 Lesson 3 «pol-scope в v1.1». *Apply:* «cuttable scope default» per CLAUDE.md §4 — aggressively defer к v1.1 when pilot evidence не yet exists.
+
+6. **Q-class decisions resolved inline as evidence dictates (anti-bias guard activated).** Q10 was «carry-forward к sub-phase G» в kickoff — actual resolution decided in this implementation: «no command-call from handoff; handoff-generator.md reads MK/DS/NM directly». Decision made during sub-phase G `grep commands/product/handoff.md` review — alternative «add explicit `/design:export <FM>` invocation к handoff» would have introduced unnecessary indirection (handoff has full filesystem access; command-call overhead doesn't add value). Documented в three places: design-session.md D.6, commands/design/export.md «Important constraints», handoff-generator.md Step 8c. *Apply:* «carry-forward» в kickoff = explicit license to refine; implementation evidence trumps a-priori speculation.
+
+7. **Phase 6 estimate proved accurate (9-13h target, actual в range).** Kickoff DEC-DEV-0052 estimated 8-12h focused work + 1h closure = 9-13h end-to-end. Fresh-session execution на этом range — substrate load (~30-45min) + 8 sub-phase implementations + 1 closure. Cut discipline (C1-C5) was load-bearing для staying в budget; without cuts, 15-20h likely. *Apply:* кickoff estimates с aggressive cuts are accurate; pre-cut estimates ×1.5-2 multiplier holds.
 
 ### Связь с другими entries
 
-- DEC-DEV-0052 + Follow-ups — Phase 6 architectural kickoff (12 Qs / 13 ambiguities / 5 cuts); this entry implements those decisions
+- DEC-DEV-0052 + Follow-ups — Phase 6 architectural kickoff (12 Qs / 13 ambiguities / 5 cuts); этот entry implements
 - DEC-DEV-0048 — pre-Phase-6 architectural addendum (SPEC v1.1 + IR groundwork); inherited
 - DEC-DEV-0047 — patch 1.3.3 (PA journal + hard approve gate template + scope-guard); Q1/Q9 patterns mirrored
 - DEC-DEV-0049/0051 — `/ecosystem:update` patches 1.3.4/1.3.5 (pattern-preserving merge + namespace-aware sync); design artifacts inherit protection
-- DEC-DEV-0023 — pre-commit hook smoke runner; gate активен для new design hook
-- DEC-DEV-0041 — Phase 5 implementation closure (per-sub-phase commit cadence precedent)
-- DEC-DEV-0044/0045 — Phase 5 closure + 1.3.1/1.3.2 patches (tri-location pattern, local-only drift, cross-platform path norm); applied here для design hook
+- DEC-DEV-0023 — pre-commit hook smoke runner; gate активен; caught JSDoc syntax bug в sub-phase G
+- DEC-DEV-0041 — Phase 5 implementation closure (per-sub-phase commit cadence precedent); same pattern applied here
+- DEC-DEV-0044/0045 — Phase 5 closure + 1.3.1/1.3.2 patches (tri-location pattern, local-only drift, cross-platform path norm); applied here для design hook (path norm `replace(/\\/g, '/')`)
 
 ---
 

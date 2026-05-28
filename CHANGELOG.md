@@ -8,7 +8,60 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-(Empty — patch 1.3.5 shipped; next stop after pilot smoke.)
+(Empty — Phase 6 / 1.4.0 shipped; next stop = runtime smoke S1-S7 на pilot session OR Phase 7 kickoff.)
+
+---
+
+## [1.4.0] — 2026-05-28
+
+**Phase 6 — Design Module v1.0** shipped end-to-end per DEC-DEV-0053 (8 sub-phase commits A→I per DEC-DEV-0047 Lesson 7 cadence). All 12 architectural Qs from DEC-DEV-0052 kickoff implemented; 5 scope cuts (C1-C5) respected; 13 ambiguity resolutions applied. Static smoke runner 19/19 PASS. Runtime smoke (`dev/PHASE_6_SMOKE_TEST_PLAN.md` S1-S7) deferred к next pilot session per Phase 5 precedent.
+
+### Added
+
+- **`commands/design/`** (new namespace) — 6 slash commands:
+  - **`/design:start <FM-id>`** — P2.5 D.1-D.6 orchestration entry. Auto-init `.claude/design.yaml` on first invocation; Q9 PA trigger #1 (Stitch MCP unavailable); A7 3-choice menu when has_ui=true без active SC; `--continue` / `--abandon` modes.
+  - **`/design:status [--fm <FM-id>] [--verbose]`** — read-only design dashboard. MK/NM/DS counts + active sessions + Stitch quota + MCP connectivity + design-source PA entries.
+  - **`/design:iterate <MK-id>`** — D.3 continuation on existing active MK. Skip D.1/D.2; iteration counter persistent across invocations; Q7 deadlock guard inherited.
+  - **`/design:system [--review | --update-from <MK-id>]`** — DS management. Batch DS pending proposals review; per-MK force re-extraction; manual mass-rename workflow в v1.0 (atomic — v1.1+).
+  - **`/design:export <FM-id>`** — D.6 standalone verify preview. Read-only sanity check; `/product:handoff` does NOT invoke этот command (Q10 resolution).
+  - **`/design:migrate <MK-id|--all> --to <stitch|html>`** — tool switching v1.0 Stitch↔HTML only (C3 cut: `--to claude-design` rejected). Q1 hard approve gate per-MK (no batch-bypass); A8 atomic sequence (previous_tools[] first, regen second, rollback on failure).
+
+- **`skills/design/`** (new namespace) — 6 methodology skills:
+  - **`design-session.md`** — orchestrator skill (Q7 deadlock 4-choice menu at iter ≥7; Q9 PA triggers #2 + #3; A4 archived/ purge; A5 Stitch quota rollover; A6 atomic MK→DS write order; A9 concurrent session detection; fallback chain dispatch).
+  - **`component-states.md`** — D.4 mechanical state matrix checklist. Interactive component detection; per-state coverage walk; V-MK-02 partial mechanical (per Q3/C5); V-MK-03 manual checklist.
+  - **`design-system-rules.md`** — D.5 DS extraction algorithm. Token detection; synonym checking (hex distance для colors); batch proposal UX; manual mass-rename workflow v1.0.
+  - **`stitch-workflow.md`** — Stitch MCP dispatch (v0 best-effort per OQ-DM-01). Prompt patterns A-D; quota guard (A5); DESIGN.md sync; issues[] surfacing.
+  - **`claude-design-workflow.md`** — Claude Design manual export workflow stub (~30 lines per Q5/C1). Q9 PA trigger #2 для no-subscription.
+  - **`html-fallback.md`** — single HTML page generation per Q4/C4 (no React, no multi-screen). DS tokens via CSS custom properties; accessibility inline checks; cross-platform LF/UTF-8.
+  - **`design-validation.md`** — V-MK-* runner partial. V-MK-01..08 implemented (V-MK-02 mechanical partial per Q3/C5; V-MK-03 manual; V-MK-08 token coverage regex). D.5 approve gate + `/design:export` pre-handoff verify modes. D2 overrides mirrored from `hooks/product/artifact-validate.js`.
+
+- **`hooks/design/design-artifact-validate.js`** + **`manifest.yaml`** — PostToolUse hook per Q8. YAML parse + 5 required fields (MK: id, type, feature, design_tool, scenarios) + ref existence (FM/SC/MK via filesystem) + V-MK-08 token regex coverage + cross-platform path norm `replace(/\\/g, '/')` per Phase 5 bug 3. SPEC §B2 quiet-draft mode (status=draft → queue к `.product/.pending/validation-pending.yaml`; status non-draft → stderr surface). Exit 0 always.
+
+- **`.claude/design.yaml`** auto-init on first `/design:start` (per-project Design Module config — `default_design_tool`, `mcp_preferences.fallback_chain`, `brand_hints`, IR groundwork hooks per SPEC §16.4). Preserved verbatim by `/ecosystem:update` (not в Step 5 root-file allowlist — same treatment as `settings.local.json`).
+
+### Modified
+
+- **`skills/product/handoff-generator.md` Step 8c** (new section) — full §10 UI Specification assembly algorithm. Resolves DEC-DEV-0052 Q10 carry-forward: handoff §10 assembled inline reading active MK/DS/NM artifacts directly (no `/design:export` invocation). Load active MK filtered by FM; load NM; compute DS subset (referenced tokens/components only); assemble 10.1 Mockup Packages / 10.2 DS Snapshot / 10.3 Navigation Maps. Phase 4 left §10 as table-only placeholder; этот release closes that gap.
+
+- **`commands/ecosystem/update.md`** Step 4 + Step 8 summary — explicit `.claude/design.yaml` preservation listing в User zone. Documentation-only (no behavior change — design.yaml already preserved by inheritance since not в Step 5 root-file allowlist), но discoverability для future readers.
+
+- **`dev/meta-improvement/scripts/smoke-hooks.js`** — 6 new design-artifact-validate test cases (irrelevant-path / mk-valid-active / mk-missing-design-tool-active / mk-missing-field-draft-quiet / mk-bad-design-tool-enum / ds-singleton-wrong-id). Full suite 19/19 PASS.
+
+- **`DEV_JOURNAL.md`** — DEC-DEV-0053 full entry (Context / Options / Decision / Outcome (all 12 Qs + 5 cuts + 13 ambiguities mapped к code locations) / Lessons / Связь с другими entries).
+
+- **`ROADMAP.md`** — «Где мы сейчас» snapshot bumped к 1.4.0; Phase 6 status `✅ shipped`.
+
+- **`CLAUDE.md`** — «Где мы сейчас» snapshot reflects Phase 6 ship.
+
+### Не затронуто
+
+- `agents/design/` — directory NOT created (Q2/C2: `screen-generator` subagent deferred к v1.1; D.2 inline в `design-session.md`)
+- `docs/design-module/SPEC.md` — unchanged (v1.1 шипnut в DEC-DEV-0048 pre-implementation; implementation follows spec)
+- `docs/pmo/artifacts/{MK,DS,NM}.md` — unchanged (schemas v1.1 shipped DEC-DEV-0048)
+- `docs/pmo/pmo-map.md` — unchanged (D2-B04 status «🟡 SPEC v1.1, impl Phase 6 pending» updated к «✅» — see ROADMAP «Где мы сейчас»)
+- Hook runtime для других modules (product / integrator / ecosystem hooks) — без изменений; design hook adds к manifest list но не interacts
+- Backward compatibility: Design Module is conditional (activates only when FM.has_ui=true); existing pilots без UI FMs не affected. `/ecosystem:update` сохраняет `.claude/design.yaml` если уже exists.
+- Runtime smoke S1-S7 (`dev/PHASE_6_SMOKE_TEST_PLAN.md`) — **deferred к next pilot session** per Phase 5 precedent (DEC-DEV-0044 separate runtime closure after implementation ship)
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-27 (Phase 6 kickoff — DEC-DEV-0052; 12 architectural Qs + 13 ambiguities resolved + 5 scope cuts; status 🟡 architectural ready, implementation trigger pending real UI FM).
+> **Последнее обновление:** 2026-05-28 (Phase 6 — Design Module v1.0 shipped — DEC-DEV-0053; 1.4.0 release; 8 sub-phase commits A→I; 6 commands + 6 skills + 1 hook + manifest + handoff-generator.md Step 8c; static smoke 19/19 PASS; runtime smoke deferred).
 
 ## Где мы сейчас
 
@@ -98,10 +98,7 @@
    — Bring-forward triggers: real end-user/stakeholder ask, OR Obsidian insufficient, OR public release prep (см. dev/v1_1_backlog.md)
 ✅ Pre-Phase-6 architectural addendum (DEC-DEV-0048, 2026-05-27) — SPEC v1.1 (Claude Design co-primary + IR groundwork)
 ✅ Phase 6 kickoff (DEC-DEV-0052, 2026-05-27) — 12 Qs / 13 ambiguities resolved + 5 cuts approved; sub-phase A→I готов
-⏳ Phase 6 — Design Module — 🟡 architectural ready, implementation pending start
-   — Trigger fired empirically (DEC-DEV-0052 Follow-up, 2026-05-27): pilot `my-first-test` has 6 FMs (FM-001..FM-006) all has_ui=true; FM-003 explicit «mockups deferred к Phase 6»
-   — Sandbox path remains rejected (real FMs available, sandbox излишен)
-   — Estimated: 9-13h end-to-end (8-12h focused A→H + 1h closure I)
+✅ **Phase 6 — Design Module v1.0 (DEC-DEV-0053, 2026-05-28) — 1.4.0 release** — 8 sub-phase commits A→I; 6 commands + 6 skills + 1 hook + manifest + handoff-generator.md Step 8c. All 12 Qs implemented; 5 cuts respected; 13 ambiguities resolved at locations. Static smoke 19/19 PASS. Runtime smoke S1-S7 (`dev/PHASE_6_SMOKE_TEST_PLAN.md`) deferred к next pilot session per Phase 5 precedent.
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm)
 
 📦 Post-MVP (v1.1+): Phase D Wiki initiative (deferred), Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, D.7 aspirational layer (recursive auto drill-down + FM.depends_on graph), /product:clarify receiver channel, Orchestrator Module concept, /ecosystem:upgrade. Context: dev/v1_1_backlog.md

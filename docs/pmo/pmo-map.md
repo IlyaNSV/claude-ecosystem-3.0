@@ -56,7 +56,7 @@
 | D2-B01 | Project Context Setup | Перенос D1-стратегии в рабочий контекст фичеделия | наследуется из D1 | ✅ |
 | D2-B02 | Feature Specification | Поведенческая спецификация фичи | FM, SC, BR, VC, IC, RPM | ✅ |
 | D2-B03 | Behavioral Data Modeling | Жизненный цикл сущностей / поведенческая модель данных | LC | ✅ |
-| D2-B04 | UX/UI Design *(если has_ui)* | Дизайн интерфейса (Design Module) | MK, DS, NM | 🟡 SPEC v1.1, impl Phase 6 pending |
+| D2-B04 | UX/UI Design *(если has_ui)* | Дизайн интерфейса (Design Module) | MK, DS, NM | ✅ SPEC v1.1 + Phase 6 v1.0 (1.4.0) |
 | D2-B05 | Adversarial Review | Состязательная проверка спецификации | Product DA findings | ✅ |
 
 **Связанные артефакты D2-Behavioral:** BG, SC, BR, LC, RPM, VC, IC, NFR, MK, DS, NM → 11 типов (BG — сквозной; NFR — opt-in per FM, идёт как F.5a; DS — cross-cutting для дизайна; NM — per flow)
