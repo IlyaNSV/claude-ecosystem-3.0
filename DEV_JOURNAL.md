@@ -4344,6 +4344,74 @@ Existing protections inherited (from patches 1.3.3/1.3.4/1.3.5):
 
 ---
 
+## DEC-DEV-0053 — Phase 6 implementation: Design Module v1.0 (sub-phase A→I)
+
+**Date:** 2026-05-28
+**Trigger:** Fresh-session implementation kickoff per `dev/PHASE_6_READINESS.md` Section I authoritative prompt (DEC-DEV-0052 + 2 Follow-ups; commits `bceacbd`/`5299c7e`/`3b992fc`/D7 hook). Target FM-001 (authentication-accounts), real UI FM в pilot. Run executes sub-phases A→I closing Phase 6 implementation.
+**Tag:** #implementation #phase-6 #design-module
+
+### Context
+
+DEC-DEV-0052 (kickoff, 2026-05-27) закрыл 12 Qs / 13 ambiguities / 5 scope cuts (C1-C5 → v1_1_backlog). Architectural readiness `🟡 ready` с `implementation pending start`. Follow-up 1 verified pilot trigger empirically (6 FMs has_ui=true); Follow-up 2 surfaced update-compat gap + Lesson 7 (cross-cutting integrations) + S7 smoke scenario. Substrate prompt в Section I authoritative; empirical state re-verified 2026-05-28 fresh-session start (6 FMs has_ui=true ✓; last DEC-DEV=0052 → next 0053 ✓; spec drift items от kickoff все cleared — pmo-map D2-B04 = 🟡 SPEC v1.1 ✓; SPEC §10.4 enum включает claude-design ✓; v1_1_backlog содержит C1-C5 entries полностью).
+
+Plan A→I из `PHASE_6_READINESS.md` Section F.1:
+- **A** (30-45min): DEC-DEV-0053 skeleton + drift sweep
+- **B** (1-1.25h): `commands/design/{start,status}.md` + `.claude/design.yaml` template + bootstrap auto-deploy + update-compat verification
+- **C** (1.5-2h): `skills/design/design-session.md` orchestrator (Q7 deadlock menu + A7 menu + A4 cleanup)
+- **D** (1.5h): `skills/design/{component-states,design-system-rules}.md`
+- **E** (1.5-2h): `skills/design/{stitch-workflow,claude-design-workflow stub C1,html-fallback minimal C4,design-validation}.md`
+- **F** (1.5h): `commands/design/{iterate,system,export,migrate Stitch↔HTML only C3}.md` + Q1 hard approve gate
+- **G** (1.5h): `hooks/design/design-artifact-validate.js` + manifest.yaml + Q10 carry-forward + Q8 quiet-draft per SPEC §B2
+- **H** (1h): static smoke fixture (per `smoke-hooks.js` template) + run
+- **I** (1h): closure (fill this entry Outcome + Lessons) + CHANGELOG `[1.4.0]` + ROADMAP/CLAUDE.md «Где мы сейчас» + tag `v1.4.0` + archive `dev/_archive/phase-6/` + `dev/PHASE_7_READINESS.md` skeleton
+
+Total estimate: **9-13h end-to-end** (8-12h focused A→H + 1h closure I).
+
+### Options considered
+
+Implementation execution path (not architectural — those settled DEC-DEV-0052):
+
+**A. Sub-phase A→I incremental execution с commit per sub-phase** (выбран per DEC-DEV-0047 Lesson 7).
+Pros: per-step rollback granularity; pre-commit hook smoke runner (DEC-DEV-0023) catches design hook bugs до stage; alignment с Phase 5 / Patch 1.3.3 precedent. Cons: больше commits, slightly more session overhead per commit message construction. Outweighed by safety.
+
+**B. Bundle all A→I в single commit на конце.**
+Pros: один clean commit. Cons: violates DEC-DEV-0047 Lesson 7; no granular rollback; pre-commit hook smoke runs once на end (если fails — large diff to debug). Rejected.
+
+**C. Refine sub-phase boundaries per emergence (Phase 5 sub-phase J precedent).**
+Pros: anti-bias guard per kickoff prompt — «free to refine sub-phase scope если evidence dictates». Cons: only if real emergence; default to plan as-is. Adopted as standing license, not default behavior.
+
+### Decision
+
+**Path A** (sub-phase A→I с per-step commits) — execute per `PHASE_6_READINESS.md` Section F.1 plan; refine only при surfaced evidence (Q10 carry-forward в G; Q1 mirror на /design:migrate в F; Q7 menu UX в C; Q9 PA trigger events в C/E).
+
+#### Sub-phase A outcomes (this commit)
+
+- **DEC-DEV-0053 skeleton entry** written (this file) — placeholder для Outcome/Lessons; будут filled sub-phase I.
+- **Drift sweep result:** clean — все spec drift items от kickoff (pmo-map D2-B04 status, SPEC §10.4 enum, ROADMAP Phase 6 deliverables/estimates, `v1_1_backlog.md` C1-C5 entries, CLAUDE.md «Где мы сейчас» DEC-DEV-0052 line) already addressed в DEC-DEV-0052 + Follow-ups. No additional drift discovered during substrate load.
+- **Empirical state check** (Lesson 6 mandatory): 6 FMs has_ui=true в `my-first-test/.product/features/` ✓; FM-001 target verified (`title: "Authentication & accounts"`, status `in-progress`, scenarios SC-001..SC-003, mockups []).
+- **Cross-cutting integrations reads complete** (Lesson 7 application): `commands/ecosystem/update.md` Step 5 namespace-aware sync confirmed treats `commands|skills|agents|hooks/<namespace>/` dynamically — `design/` namespace будет managed automatically once present; Step 6 pattern `^node \.claude/hooks/(product|integrator|ecosystem|design)/` уже includes `design/` префикс. `commands/ecosystem/bootstrap.md` Step 6b auto-registers hooks from manifests; Step 6c initializes PA journal — both apply к design hook + design PA entries without modification.
+- **Singleton root file analysis для `.claude/design.yaml`** (sub-phase B precondition): Step 5 algorithm operates на **subdirs** (`commands/`, `skills/`, etc.) и **explicit root-file allowlist** (README, BOOTSTRAP, CHANGELOG, ROADMAP, install.sh/ps1, .env.template, gitignore.template). `.claude/design.yaml` НЕ входит в Step 5 root-file allowlist; следовательно НЕ overwritten при update. **No explicit exclusion code required** — leveraged by existing allowlist semantics (mirroring `settings.local.json` treatment which similarly не listed). Resolution: document this в sub-phase B как inheritable invariant; smoke S7 verifies runtime.
+
+### Outcome
+
+(Filled in sub-phase I — closure entry.)
+
+### Lessons
+
+(Filled in sub-phase I — closure entry.)
+
+### Связь с другими entries
+
+- DEC-DEV-0052 + Follow-ups — Phase 6 architectural kickoff (12 Qs / 13 ambiguities / 5 cuts); this entry implements those decisions
+- DEC-DEV-0048 — pre-Phase-6 architectural addendum (SPEC v1.1 + IR groundwork); inherited
+- DEC-DEV-0047 — patch 1.3.3 (PA journal + hard approve gate template + scope-guard); Q1/Q9 patterns mirrored
+- DEC-DEV-0049/0051 — `/ecosystem:update` patches 1.3.4/1.3.5 (pattern-preserving merge + namespace-aware sync); design artifacts inherit protection
+- DEC-DEV-0023 — pre-commit hook smoke runner; gate активен для new design hook
+- DEC-DEV-0041 — Phase 5 implementation closure (per-sub-phase commit cadence precedent)
+- DEC-DEV-0044/0045 — Phase 5 closure + 1.3.1/1.3.2 patches (tri-location pattern, local-only drift, cross-platform path norm); applied here для design hook
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
