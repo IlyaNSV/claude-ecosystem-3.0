@@ -19,21 +19,9 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 ## Где мы сейчас
 
-См. [ROADMAP.md](ROADMAP.md) секцию «Где мы сейчас» — single source of truth. Snapshot на момент последнего update этого файла (2026-05-28 — Phase 6 Design Module v1.0 shipped, DEC-DEV-0053; 1.4.0 release):
-- ✅ Phase 0-2 (scaffolding, Integrator read-only, Bootstrap, Product Module Discovery + drift mechanisms)
-- ✅ Phase 3 (Planning + Feature Enrichment + adaptive-depth DA + cascade detection) — smoke-tested DEC-DEV-0023 + 1.1.1 patch shipped
-- ✅ Phase 4 (Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline) — 1.2.0; closure ritual Unit 2 DEC-DEV-0033; runtime smoke 2026-05-20 → status=fail → Phase 4 closed (DEC-DEV-0038)
-- ✅ Phase 5 kickoff (DEC-DEV-0040, 2026-05-25) — Q1-Q6 + functional PMO refactor (D2-B01..05 / D2-T01..08 / D3-01..07 / D4-01..07)
-- ✅ Phase 5 implementation done (DEC-DEV-0041, 2026-05-25) — 1.3.0; 10 sub-phase commits A→J; 3 commands + 4 skills + 2 subagents + 1 hook + 1 reference adapter (Q1 dual→tri-location pattern) + fixture
-- ✅ Phase 5 runtime smoke + closure (DEC-DEV-0044, 2026-05-26) — 4 PASS clean (S1/S2/S4 + S3 post-fix), S6 PARTIAL→FIXED, S5 deferred. 3 bugs fixed end-to-end. Plan archived `dev/_archive/phase-5/`
-- ✅ Phase 5.1 patch (DEC-DEV-0045, 2026-05-26) — bug 4 fix (3 facets) + C-03 generator regex. Local-only drift detection model. 1.3.2 released. S5 runtime verification deferred
-- ⏸ Phase D — Wiki initiative DEFERRED to v1.1+ (DEC-DEV-0046, 2026-05-27) — phantom-audience guard. Design+plan+readiness preserved with DEFERRED banners. Bring-forward triggers в `dev/v1_1_backlog.md`
-- ✅ **Patch 1.3.3 (DEC-DEV-0047, 2026-05-27)** — Integrator scope discipline + env tiers + PA journal + research hard approve gate. Pilot session 2026-05-27 evidence (4 patterns). 4 deliverables shipped: B-1 `environment_tiers` (SPEC §4.2.1); B-2 `hooks/integrator/scope-guard.js` PreToolUse warn-only (marker-gated, 1h stale TTL, forbidden paths .product/ .kiro/ docs/pmo/ + exceptions, Bash regex sniffer); B-3 `.claude/pending-actions.md` ecosystem-wide journal + `/ecosystem:pending-actions` + `skills/ecosystem/user-action-tracker.md`; B-4 `/integrator:research` Step 7 hard gate + SPEC §7.6 consilium-pattern. Static smoke 13/13 PASS. Runtime smoke S1-S5 deferred к next pilot session. Hard-block mode deferred v1.4.0+. 1.3.3 released, local docs polish bundled
-- ✅ Local docs polish (DEC-DEV-0046) — Obsidian vault baseline + README cross-link polish shipped (bundled в 1.3.3)
-- ✅ **Patch 1.3.4 (DEC-DEV-0049, 2026-05-27)** — `/ecosystem:update` Step 6 REPLACE → pattern-preserving merge. Third-party hook injections (e.g. `bd setup claude` SessionStart/PreCompact) больше не wipe'ятся при ecosystem upgrade. Driven by downstream `my-first-test` DEC-INT-0005 pilot evidence. Spec-only change (commands/ecosystem/update.md); bootstrap Step 6b уже корректен — symmetry restored. Smoke verification deferred к next pilot `/ecosystem:update`
-- ✅ **Patch 1.3.5 (DEC-DEV-0051, 2026-05-27)** — `/ecosystem:update` Step 5 nuclear sync → namespace-aware sync + Step 2 backup extended до integrator-managed external paths. Same class of bug as 1.3.4 (ecosystem zone shared с third-party tools): cc-sdd kiro-* skills больше не уничтожаются при update; `.kiro/`, `.beads/` etc. backed up под `_external/` для rollback. Surfaced during static dry-run 1.3.4 spec на real downstream state. Spec-only change (Step 2/4/5/8 + Rollback)
-- ✅ **Phase 6 kickoff (DEC-DEV-0052, 2026-05-27)** — fresh-session architectural kickoff per D7 ritual: 12 Qs resolved + 13 ambiguities + 5 scope cuts (C1 claude-design-workflow stub, C2 screen-generator subagent → v1.1, C3 /design:migrate Stitch↔Claude Design path → v1.1, C4 html-fallback React+multi-screen → v1.1, C5 V-MK-02..03 full automation → V-MK-02 partial). Sub-phase A→I plan в `dev/PHASE_6_READINESS.md` Section F.1; realistic effort post-cuts 9-13h end-to-end.
-- ✅ **Phase 6 — Design Module v1.0 implementation (DEC-DEV-0053, 2026-05-28) — 1.4.0 release** — fresh-session execution sub-phase A→I per kickoff Section I authoritative prompt. 8 commits A→H + I closure. Deliverables: 6 commands (`/design:{start,status,iterate,system,export,migrate}`) + 6 skills (`design-session` orchestrator + `component-states` + `design-system-rules` + `stitch-workflow` v0 + `claude-design-workflow` stub C1 + `html-fallback` minimal C4 + `design-validation`) + 1 hook (`design-artifact-validate.js`) + manifest + `handoff-generator.md` Step 8c (Q10 inline §10 assembly). All 12 Qs implemented; 5 cuts respected; 13 ambiguities at locations. Static smoke 19/19 PASS (13 existing + 6 new design cases). Runtime smoke S1-S7 (`dev/PHASE_6_SMOKE_TEST_PLAN.md`) deferred к next pilot session per Phase 5 precedent.
+**Единственный источник статуса** — [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) (verify против `git log`). Снапшот здесь намеренно **не дублируется**: pointer-collapse против triple-declaration drift (Tier-1 doc reform; ранее README/CLAUDE/ROADMAP держали три расходящиеся копии).
+
+`last memory-sync: 2026-05-28` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
 - `dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
@@ -189,6 +177,7 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 ## Что делать в этой сессии (Claude)
 
 При запуске сессии в этом репо:
+0. **Сориентируйся по карте** — [docs/MAP.md](docs/MAP.md) (визуальный entry-point: pipeline D1-D6 + C4 container)
 1. **Прочитай этот файл** (CLAUDE.md — auto-loaded)
 2. **Загляни в [DEV_JOURNAL.md](DEV_JOURNAL.md)** — последние 3-5 entries, чтобы знать недавний контекст decisions
 3. **Проверь [ROADMAP.md](ROADMAP.md) секцию "Где мы сейчас"** — может быть устарела относительно git log

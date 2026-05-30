@@ -2,7 +2,7 @@
 
 > **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D6 внешним инструментам через универсальный handoff.
 
-**Статус:** v1.3.2 — Phase 0-5 shipped (Discovery + Planning + Feature Enrichment + Handoff + Validation + Integrator Installation + first cc-sdd reference adapter). Phase 5 closure (DEC-DEV-0044) + Phase 5.1 patch (DEC-DEV-0045 — local-only drift detection + tri-location adapter pattern) done. **Phase D Wiki initiative DEFERRED** (DEC-DEV-0046, 2026-05-27 — phantom-audience guard); active track — local docs polish ([`dev/LOCAL_DOCS_POLISH_PLAN.md`](dev/LOCAL_DOCS_POLISH_PLAN.md)). См. [CHANGELOG.md](CHANGELOG.md), [ROADMAP.md](ROADMAP.md).
+**Статус:** единственный источник — [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) (verify против `git log`). Краткая история релизов — [CHANGELOG.md](CHANGELOG.md). _Здесь статус намеренно не дублируется — pointer-collapse против triple-declaration drift (Tier-1 doc reform)._
 **Целевая аудитория:** solo-разработчики, ведущие продуктовые проекты с Claude Code как primary tool.
 
 ---
@@ -11,6 +11,7 @@
 
 | Зачем пришёл | Куда смотреть |
 |---|---|
+| 🗺️ **Карта системы одним взглядом** | **[docs/MAP.md](docs/MAP.md)** — pipeline D1-D6 + C4 container (визуальный entry-point) |
 | 🤔 **Первый раз — что это и зачем** | [Концепция в одной строке](#концепция-в-одной-строке) + [Четыре модуля](#четыре-модуля) ниже → потом [ROADMAP.md «Где мы сейчас»](ROADMAP.md) |
 | 🔧 **Установить и запустить** | [BOOTSTRAP.md](BOOTSTRAP.md) → [INSTALL-HUMAN.md](INSTALL-HUMAN.md) → [Quick Start](#quick-start--двухфазная-установка) ниже |
 | 📖 **Развиваю саму экосистему** | [CLAUDE.md](CLAUDE.md) (repo conventions) → [DEV_JOURNAL.md](DEV_JOURNAL.md) последние 5 entries → [ROADMAP.md](ROADMAP.md) |
