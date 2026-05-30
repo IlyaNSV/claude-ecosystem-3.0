@@ -4488,6 +4488,61 @@ Phase 6 (Design Module v1.0) implementation **shipped end-to-end через 8 su
 
 ---
 
+## DEC-DEV-0054 — Documentation reform Tier 1 (status pointer-collapse + entry-point map + state-in-location)
+
+**Date:** 2026-05-30
+**Trigger:** User-requested комплексный multi-agent аудит документации экосистемы (ведение / хранение / использование) + предложение реформы. Dynamic workflow: 7 параллельных surface-аудиторов → synthesis → 3 adversarial-линзы (solo-dev overhead / self-referential collapse / migration cost). Started от вопроса «какой набор схем (2-3) использовать для описания экосистемы».
+**Tag:** #refactor #tooling #architecture
+
+### Context
+
+Аудит выявил 5 ранжированных корневых проблем: (1) **status triple-declaration уже разошёлся** — README:5 говорил «v1.3.2 / Phase 0-5», ROADMAP/CHANGELOG — 1.4.0 / Phase 6; маркер `[We are here]` в ROADMAP сидел ВЫШЕ shipped Phase 6 → top-down мис-рид; (2) DEV_JOURNAL 4520 строк без оглавления; (3) `dev/` без state-in-location (PHASE_5_READINESS не заархивирован вопреки CONVENTIONS §5.1, хотя smoke-sibling — да); (4) «фрагментация» фактов в SPEC-слое; (5) нет визуальной entry-point карты + недокументированный Obsidian-vault.
+
+Реформа разбита на **Tier 1** (one-time, near-zero recurring overhead) и **Tier 2** (gated на доказанной adherence).
+
+### Options considered
+
+**A. Полная реформа за один проход** (status + journal-index + dev-restructure + canonical-sweep + MAP + governor-checklist). Rejected — overhead-линза доказала **blocker**: governor (7-й блок в phase-closure.md) строится на уже эродирующем фундаменте — существующие Steps 1/4/5 демонстративно пропускались (stale README; un-archived PHASE_5_READINESS; пустые строки Phase 5/6 в refinement-tracker). Добавить чеклист к скипаемому чеклисту не поднимает adherence.
+
+**B. Tier 1 сейчас, Tier 2 gated на evidence.** Chosen. Принцип: «реформа должна пережить пропущенное закрытие» → сначала только one-time-правки без standing-обязательств.
+
+**C. Defer полностью / wiki.** Rejected — wiki уже отложен (DEC-DEV-0046, phantom-audience); MAP + существующий Obsidian дают 80% навигационной ценности за ~M effort.
+
+### Decision
+
+Ship **Tier 1** = чистые one-time moves. 4 пункта реализованы, 2 сознательно отложены **с evidence**.
+
+**Реализовано** (ветка `docs/tier1-doc-reform`, 3 commit):
+- `f74795b` — `docs/MAP.md` entry-point map (swimlane D1-D6 + C4 container, Mermaid, **обе провалидированы** через Mermaid MCP) + `HOME.md` Obsidian-vault entry (tracked). MAP = визуальный индекс, цитирует `pmo-map.md` как авторитет; artifact→skill→command cross-ref table **вырезан** (fine-grained, high sync-cost; неверная карта хуже отсутствующей).
+- `12988b7` — status pointer-collapse: README:5 + CLAUDE.md снапшот → one-line pointer на `ROADMAP.md#где-мы-сейчас`; CLAUDE.md держит только slaved `last memory-sync` дату. ROADMAP: удалён плавающий маркер (drift-bait), tail reordered (shipped history → секция «Не отгружено»). Nav-links на MAP в README/CLAUDE.
+- `be672c6` — archive `PHASE_5_READINESS.md` → `dev/_archive/phase-5/` (CONVENTIONS §5.1, просрочено) + 2 link-патча (`tech-debt/PHASE_4.md` ×2, `wiki-design.md` ×1).
+
+**Отложено с evidence:**
+- **Item 3 (canonical sweep)** — discovery (Explore-агент) **опроверг премиссу**: 4 «фрагментированных факта» (severity vocab / NFR-when-required / adaptive-depth DA / environment_tiers) — это principled separation (rule-def в `validation.md` / process в `processes.md` / per-artifact instance), **наблюдаемого дрейфа нет**. Speculative-конвертация деградировала бы локальные ссылки + создала half-swept mixed-state (предупреждение migration-линзы). Карта канонических домов записана для применения, если дрейф появится.
+- **`dev/deferred/` bucket для Phase D trio** — grep подтвердил fragile relative-link web (`v1_1_backlog.md`, `LOCAL_DOCS_POLISH_PLAN.md`, взаимные ссылки трио). Тот самый atomic multi-file sweep, который migration-линза назвала blocker'ом. → Tier 2.
+
+**Interim-status note (discharge self-referential-collapse amendment — важно):** status-block, будущий `dev/deferred/INDEX`, будущий journal-index — это **временные hand-maintained стенд-ины**, которые мапятся на собственные будущие артефакты продукта при запуске dogfooding (RM roadmap; `.product/.decisions/journal.md` — обещан в шапке этого файла; NOTE-*). Зафиксировано, чтобы будущая миграция `.product/`-для-Ecosystem была **консолидацией, а не вторым переписыванием**. Bring-forward trigger: standup `.product/` для самой Ecosystem (CLAUDE.md §3 dogfooding direction; сейчас deferred per DEC-DEV-0008 / CONVENTIONS §9).
+
+### Outcome
+
+3 commit на ветке; дерево link-clean per commit; rename распознан git'ом; pre-existing `audit-index.md` исключён. README больше не вводит в заблуждение (был на 2 фазы устаревшим). DEV_JOURNAL entry — этот commit (4-й). Tier 2 план составлен (см. PR description). Push + PR — этот же шаг.
+
+### Lessons
+
+1. **Multi-agent adversarial critique ловит дефекты, которые synthesis пропускает.** Overhead-линза дала BLOCKER (governor на уже-скипаемом фундаменте) → переосмыслила всю реформу с «добавить enforcement-чеклист» на «отгрузить one-time moves, переживающие пропущенное закрытие». Migration-линза поймала: bash-only journal-index скрипт на Windows-primary репо (конвенция dual `.sh`+`.ps1`); синтаксис `{#anchor}`, который GitHub игнорирует (404 для downstream); 10 stale worktrees, воскрешающих triple-declaration при merge. *Apply:* для любой reform/audit — прогонять независимые adversarial-линзы ДО фиксации плана.
+2. **Discovery может опровергнуть премиссу synthesis — верифицируй до churn.** «4 фрагментированных факта» выглядели дрейфом в аудите, но оказались principled separation без дивергенции. «Фикс» сделал бы доки хуже. *Apply:* для canonical-home / dedup-работы — подтверждай НАБЛЮДАЕМЫЙ дрейф до конвертации; uniform paraphrase без дрейфа лучше half-swept pointer-state.
+3. **Status SSOT работает только при одной writable-копии + указателях; плавающий «you are here» маркер сам по себе drift-bait.** Маркер был неверен на момент аудита. *Apply:* предпочитать ordering «новейшая запись = текущее» вместо поддерживаемого маркера.
+4. **Реформа должна пережить пропущенный ритуал.** Tiering по recurring-overhead (Tier 1 = ноль standing-обязательств; Tier 2 gated на adherence) — дизайн-ответ на эмпирический факт, что существующий closure-чеклист скипается ~50%.
+
+### Связь с другими entries
+
+- DEC-DEV-0046 — wiki deferred (phantom-audience); эта реформа доставляет навигационную ценность wiki (MAP + Obsidian) за ~M effort
+- DEC-DEV-0050 — numbering-collision lesson (parallel sessions); next NNNN верифицирован против tail здесь (0053→0054)
+- DEC-DEV-0008 / CONVENTIONS §9 — dogfooding deferred; interim стенд-ины записаны для будущей консолидации
+- CONVENTIONS §5.1 — archive-правило соблюдено (просроченный PHASE_5_READINESS)
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
