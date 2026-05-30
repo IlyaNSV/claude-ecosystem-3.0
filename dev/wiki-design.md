@@ -810,6 +810,6 @@ jobs:
 - [`CLAUDE.md`](../CLAUDE.md) — repo conventions (hooks, skills, commits, DEV_JOURNAL)
 - [`dev/meta-improvement/checklists/phase-kickoff.md`](meta-improvement/checklists/phase-kickoff.md) — kickoff procedure
 - [`dev/meta-improvement/checklists/phase-closure.md`](meta-improvement/checklists/phase-closure.md) — closure procedure
-- [`dev/PHASE_5_READINESS.md`](PHASE_5_READINESS.md) — structural reference для readiness style
+- [`dev/PHASE_5_READINESS.md`](_archive/phase-5/PHASE_5_READINESS.md) — structural reference для readiness style
 - MkDocs Material docs — https://squidfunk.github.io/mkdocs-material/
 - peter-evans/create-pull-request — https://github.com/peter-evans/create-pull-request
