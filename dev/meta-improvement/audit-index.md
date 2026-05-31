@@ -11,14 +11,7 @@ Markers waiting to be processed. Hook appends rows between the sentinel comments
 | session_id | ended_at | target_project | transcript_path |
 |---|---|---|---|
 <!-- PENDING_ROWS_START -->
-| `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` | 2026-05-27T11:58:39.386Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\636f2cd3-80e7-4c3c-8626-8a2f1e02d11a.jsonl` (reason: prompt_input_exit) |
-| `7ce383ce-f55a-4840-b1ee-156d48db9a4d` | 2026-05-26T20:12:48.704Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\7ce383ce-f55a-4840-b1ee-156d48db9a4d.jsonl` (reason: other) |
-| `792142dd-63bb-4a0f-946d-c3f14ce3b043` | 2026-05-26T20:07:35.599Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\792142dd-63bb-4a0f-946d-c3f14ce3b043.jsonl` (reason: other) |
-| `5ad451e1-de4e-48f1-9720-34f24ef41492` | 2026-05-26T20:07:24.879Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\5ad451e1-de4e-48f1-9720-34f24ef41492.jsonl` (reason: prompt_input_exit) |
-| `7c375647-6f64-4e9e-8d10-d5c60ff55bd0` | 2026-05-26T14:59:37.885Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\7c375647-6f64-4e9e-8d10-d5c60ff55bd0.jsonl` (reason: other) |
-| `26c2c8a4-19d1-4ec1-99a2-c8298e7c9b38` | 2026-05-26T12:09:34.589Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\26c2c8a4-19d1-4ec1-99a2-c8298e7c9b38.jsonl` (reason: prompt_input_exit) |
-| `e6ae0749-c97d-4d76-aaf9-c18c1124804e` | 2026-05-26T11:14:10.907Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\e6ae0749-c97d-4d76-aaf9-c18c1124804e.jsonl` (reason: prompt_input_exit) |
-| `be9d5934-9ec7-4c17-b4c1-69fd31f83564` | 2026-05-26T09:49:15.674Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\be9d5934-9ec7-4c17-b4c1-69fd31f83564.jsonl` (reason: prompt_input_exit) |
+| `918c01be-acc8-4308-bc1d-f0664b922af8` | 2026-05-31T09:49:10.342Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\918c01be-acc8-4308-bc1d-f0664b922af8.jsonl` (reason: other) |
 <!-- PENDING_ROWS_END -->
 
 ## Processed
@@ -48,6 +41,29 @@ Sessions already audited. Re-audit requires `--force` (will overwrite per-sessio
 | `306c196c-89e7-442f-810e-d25c8cb903b6` | 2026-05-26T12:34:50Z | my-first-test | 5 | manual | partial | 0/1/0/5/0 | 1/0/0 | manual: DEC-DEV-0044 (S6 — journal-hook bug 3 found+fixed) |
 | `74d1d4b8-df7e-468b-a0f3-52aebc81a089` | 2026-05-26T12:52:23Z | my-first-test | 5 | manual | clean | 1/0/0/5/0 | 0/0/0 | manual: DEC-DEV-0044 (S4 — /integrator:remove PASS clean) |
 | `a3dd65f9-a130-4319-a168-2e867121bf0c` | 2026-05-26T13:28:31Z | my-first-test | 5 | manual | clean | 3/0/0/3/0 | 0/2/0 | manual: DEC-DEV-0044 (re-install — bug 1+2 fix verified; covers S1/S2/S3; bug 4 + C-03 warning-level deferred) |
+| `72befb64-e3f6-4834-ba8b-83cd08ff1e0e` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-30; pre-today backlog, not audited per user request) |
+| `606a5f47-38dc-469a-a7db-01c4a43fc14f` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-30; pre-today backlog, not audited per user request) |
+| `d86a1c53-efaa-4e8d-b21c-d9a4a8432de6` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-30; pre-today backlog, not audited per user request) |
+| `5d71f25f-bb2f-471d-91b5-cdaba906d5ab` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-30; pre-today backlog, not audited per user request) |
+| `e371591b-ad46-4e08-8812-4e47f4006f9b` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-30; pre-today backlog, not audited per user request) |
+| `2ee4d743-4c2e-458e-98f7-dfc98ce9464d` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-28; pre-today backlog, not audited per user request) |
+| `9deee8d1-6765-461c-a0d3-38912c58f12e` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-28; pre-today backlog, not audited per user request) |
+| `1434f290-0b82-4b38-b621-8673696dfba4` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-28; pre-today backlog, not audited per user request) |
+| `25104561-e0ba-4fb4-9cf3-e9d273b92d21` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `62576c6b-895b-4e8e-837c-6a980a75f4c4` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `4832efeb-d722-4b44-afb0-6db487c29c46` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `c83ae5a1-151f-4f35-82a7-16ec3161efb0` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `da8f4a70-78c5-4b1c-b13c-869a8727a9d6` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `c3e39529-649b-4831-8f8d-5797bfd82db1` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `dbb5c035-4393-4afc-b335-7315bcc65dac` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-27; pre-today backlog, not audited per user request) |
+| `7ce383ce-f55a-4840-b1ee-156d48db9a4d` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-26; pre-today backlog, not audited per user request) |
+| `792142dd-63bb-4a0f-946d-c3f14ce3b043` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-26; pre-today backlog, not audited per user request) |
+| `5ad451e1-de4e-48f1-9720-34f24ef41492` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-26; pre-today backlog, not audited per user request) |
+| `7c375647-6f64-4e9e-8d10-d5c60ff55bd0` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-26; pre-today backlog, not audited per user request) |
+| `26c2c8a4-19d1-4ec1-99a2-c8298e7c9b38` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-26; pre-today backlog, not audited per user request) |
+| `e6ae0749-c97d-4d76-aaf9-c18c1124804e` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-26; pre-today backlog, not audited per user request) |
+| `be9d5934-9ec7-4c17-b4c1-69fd31f83564` | 2026-05-31T00:00:00Z | my-first-test | — | skip | dismissed | — | — | manually dismissed (orig ended 2026-05-26; pre-today backlog, not audited per user request) |
 <!-- PROCESSED_ROWS_END -->
 
 ---
@@ -55,6 +71,7 @@ Sessions already audited. Re-audit requires `--force` (will overwrite per-sessio
 ## Notes
 
 - **Idempotency:** the hook skips a `session_id` if it already appears anywhere in this file (either section). The command skips entries in **Processed** unless `--force` is passed.
+- **`dismissed` status (manual):** rows with `status: dismissed` (`mode: skip`, coverage/findings `—`, no report) were **never audited** — they were marked handled by hand so `/meta:audit-smoke` skips them via the idempotency rule above. No per-session report exists for these; the report column carries a free-text dismissal note instead. Introduced 2026-05-31 to clear the pre-2026-05-31 Pending backlog (23 sessions) per user request. `parseProcessed` only reads `session_id`, so the `—` placeholders are inert for tooling.
 - **Multi-session smoke:** one phase may produce N Processed rows; the phase-summary aggregator unifies them into `audit-reports/phase-<N>-summary.md`.
 - **Editing sentinels:** do NOT remove `<!-- PENDING_ROWS_START -->`, `<!-- PENDING_ROWS_END -->`, `<!-- PROCESSED_ROWS_START -->`, `<!-- PROCESSED_ROWS_END -->`. The hook and CLI rely on them as insertion anchors.
 - **Cleanup:** entries older than 6 months OR with `status: clean` may be archived to `_archive/audit-index-<YYYY>.md` manually (see CONVENTIONS §5).

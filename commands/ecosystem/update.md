@@ -8,7 +8,7 @@ argument-hint: "[--offline] [--dry-run] [--force] [--no-backup]"
 **Precondition:** ecosystem already installed в current project (i.e. `.claude/` has ecosystem signature). Для greenfield → use `/ecosystem:bootstrap`.
 
 **What it does:** syncs existing `.claude/` к latest upstream Ecosystem 3.0:
-- **Overwrites** ecosystem zone (commands/, skills/, agents/, hooks/, docs/, templates/, output-styles/, root references)
+- **Overwrites** ecosystem zone (commands/, skills/, agents/, hooks/, docs/, templates/, root references)
 - **Removes** obsolete files в ecosystem subdirs (commands/skills/etc. that no longer exist upstream)
 - **Re-derives** hooks section в settings.json from new manifest
 - **Preserves** user zone (settings.local.json, product.yaml, .env, integrator/ state, all Claude Code auto-files)
@@ -174,7 +174,7 @@ rm -rf .claude-ecosystem-tmp/.git
 
 | Type | Items |
 |---|---|
-| **Subdirs** (sync с delete) | `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `adapters/`, `output-styles/` (если exists) |
+| **Subdirs** (sync с delete) | `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `adapters/` |
 | **Root files** (overwrite) | `README.md`, `BOOTSTRAP.md`, `CHANGELOG.md`, `ROADMAP.md`, `install.sh`, `install.ps1`, `.env.template`, `gitignore.template` |
 
 **Never-copy zone (explicitly skip — never enter `.claude/`):**
@@ -210,7 +210,7 @@ Subdirs split into two classes:
 | Subdir class | Subdirs | Semantics |
 |---|---|---|
 | **Namespace-aware** (third-party namespaces possible) | `commands/`, `skills/`, `agents/`, `hooks/` | Manage только ecosystem-owned namespaces (`{product, integrator, ecosystem, design}` — discovered dynamically from `.claude-ecosystem-tmp/<subdir>/` immediate children). Non-managed namespaces (e.g. `.claude/skills/kiro-*/` от cc-sdd) preserved untouched. |
-| **Flat** (no third-party expected) | `docs/`, `templates/`, `adapters/`, `output-styles/` | Full subdir sync (delete obsolete + copy fresh). Если third-party tool пишет сюда — он breaks ecosystem convention; not supported. |
+| **Flat** (no third-party expected) | `docs/`, `templates/`, `adapters/` | Full subdir sync (delete obsolete + copy fresh). Если third-party tool пишет сюда — он breaks ecosystem convention; not supported. |
 
 **Per namespace-aware subdir:**
 - **Managed namespaces:** immediate children of `.claude-ecosystem-tmp/<subdir>/` (e.g. для `skills/`: `ecosystem/`, `integrator/`, `product/` + `design/` post-Phase-6).
@@ -267,7 +267,7 @@ Changeset preview:
   Flat subdirs (full sync):
     docs/      — N added, M removed, K updated
     adapters/  — N added, M removed, K updated (reference adapters for /integrator:add Stage 5)
-    templates/, output-styles/ — counts
+    templates/ — counts
 
   Root files (overwrite):
     CHANGELOG.md — updated (or unchanged)
@@ -374,12 +374,12 @@ foreach ($subdir in $namespaceAwareSubdirs) {
 - `.claude/skills/{ecosystem,integrator,product}/` — re-derived from upstream
 - `.claude/skills/kiro-*/` (17 cc-sdd dirs, если переустановлены) — **preserved untouched** ✓ (regression of pre-1.3.5 behavior где `rm -rf .claude/skills` уничтожал их)
 
-#### 5.2 Flat subdirs (`docs/`, `templates/`, `adapters/`, `output-styles/`)
+#### 5.2 Flat subdirs (`docs/`, `templates/`, `adapters/`)
 
 Full sync — delete + copy. Third-party tools писать сюда не должны (out of ecosystem convention).
 
 ```bash
-for SUBDIR in docs templates adapters output-styles; do
+for SUBDIR in docs templates adapters; do
   if [ -d ".claude-ecosystem-tmp/$SUBDIR" ]; then
     rm -rf ".claude/$SUBDIR"
     cp -r ".claude-ecosystem-tmp/$SUBDIR" ".claude/$SUBDIR"
@@ -390,7 +390,7 @@ done
 PowerShell:
 
 ```powershell
-$flatSubdirs = @('docs', 'templates', 'adapters', 'output-styles')
+$flatSubdirs = @('docs', 'templates', 'adapters')
 foreach ($subdir in $flatSubdirs) {
   $src = ".claude-ecosystem-tmp\$subdir"
   $dst = ".claude\$subdir"
@@ -664,7 +664,7 @@ Synced from upstream (namespace-aware sync — DEC-DEV-0051):
   agents/   — managed namespaces re-derived; T3 third-party namespaces preserved
   hooks/    — managed namespaces re-derived (incl. manifest.yaml); T4 third-party namespaces preserved
   docs/     — full sync (no third-party expected)
-  templates/, adapters/, output-styles/ — full sync
+  templates/, adapters/ — full sync
   Root files: README, CHANGELOG, ROADMAP, BOOTSTRAP, install.sh/ps1, .env.template, gitignore.template
 
 Settings.json hooks: ecosystem hooks re-derived (M active); L third-party entries preserved (per DEC-DEV-0049)

@@ -419,7 +419,7 @@ cp .claude/settings.json.template .claude/settings.json
 ```
 
 The template sets:
-- Default model: `claude-opus-4-7`
+- Default model: `claude-opus-4-8`
 - Minimum safe permissions allowlist
 - Empty hooks array (populated in 6b below)
 
@@ -483,7 +483,7 @@ Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module direc
 }
 ```
 
-**Convention for future phases:** when adding new hook files, drop them alongside existing in `hooks/<module>/` AND add entry to `hooks/<module>/manifest.yaml`. Re-running `/ecosystem:bootstrap` (or future `/ecosystem:upgrade`) will re-scan manifests and update `settings.json`. Manifest is the single source of truth for hook registration.
+**Convention for future phases:** when adding new hook files, drop them alongside existing in `hooks/<module>/` AND add entry to `hooks/<module>/manifest.yaml`. Re-running `/ecosystem:bootstrap` (or `/ecosystem:update`) will re-scan manifests and update `settings.json`. Manifest is the single source of truth for hook registration.
 
 **Idempotency:** running Step 6b on already-registered settings.json is safe — merge dedupes by command string. No double-registration.
 
@@ -612,7 +612,7 @@ Present the user with the Core MCP stack and proposed installs:
 | 4 | Brave Search | `@modelcontextprotocol/server-brave-search` | `BRAVE_API_KEY` | Quick mode keyword lookups |
 | 5 | Exa AI | `exa-mcp-server` | `EXA_API_KEY` | Semantic search ("tools that solve X for Y") |
 | 6 | Context7 | `@upstash/context7-mcp` | — | Realtime package docs |
-| 7 | GitHub | `@modelcontextprotocol/server-github` | `GITHUB_TOKEN` (optional) | CA Deep dev-tools research, NFR benchmarks |
+| 7 | GitHub | Official remote server `https://api.githubcopilot.com/mcp/` (npm `@modelcontextprotocol/server-github` retired Apr 2025) | `GITHUB_TOKEN` (optional) | CA Deep dev-tools research, NFR benchmarks |
 
 #### Scope selection (important for security)
 
@@ -646,8 +646,10 @@ claude mcp add --scope local firecrawl -e FIRECRAWL_API_KEY=<value-from-env> -- 
 claude mcp add --scope local brave -e BRAVE_API_KEY=<value-from-env> -- npx -y @modelcontextprotocol/server-brave-search
 claude mcp add --scope local exa -e EXA_API_KEY=<value-from-env> -- npx -y exa-mcp-server
 
-# Optional (only if user provided GITHUB_TOKEN)
-claude mcp add --scope local github -e GITHUB_TOKEN=<value-from-env> -- npx -y @modelcontextprotocol/server-github
+# Optional (only if user provided GITHUB_TOKEN) — official GitHub MCP is an HTTP server (github/github-mcp-server),
+# NOT an npm package; the legacy @modelcontextprotocol/server-github stdio package was retired Apr 2025.
+claude mcp add --scope local --transport http github https://api.githubcopilot.com/mcp/ -H "Authorization: Bearer <GITHUB_TOKEN-from-env>"
+# Self-hosted alternative (requires Docker): claude mcp add --scope local github -e GITHUB_PERSONAL_ACCESS_TOKEN=<value-from-env> -- docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server
 ```
 
 Approve per-MCP. Skip any where user declined to provide key in Step 4.
@@ -768,10 +770,10 @@ To update the ecosystem **in this project** later:
 
 ```
 /ecosystem:verify       — check state
-/ecosystem:upgrade      — [future v1.1] pull latest + migrate breaking changes
+/ecosystem:update       — sync ecosystem zone to latest (preserves user zone; backup by default; `--dry-run` to preview)
 ```
 
-For now (v1.0), updates are manual: `git clone` latest repo over `.claude/` with care.
+`/ecosystem:update` is the supported update path — allowlist sync with timestamped backup, never touching `.product/` or your config. A future `/ecosystem:upgrade` (v1.1) will layer automatic breaking-change migration on top.
 
 ## Related
 

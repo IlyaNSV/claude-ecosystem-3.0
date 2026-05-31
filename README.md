@@ -54,7 +54,6 @@ claude-ecosystem-3.0/
 ├── skills/                                 # methodology → .claude/skills/
 ├── agents/                                 # subagents → .claude/agents/
 ├── hooks/                                  # automation → .claude/hooks/
-├── output-styles/                          # → .claude/output-styles/
 └── templates/                              # шаблоны (в т.ч. CLAUDE.md.template)
 ```
 

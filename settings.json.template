@@ -1,8 +1,8 @@
 {
   "_comment": "Ecosystem 3.0 — Claude Code settings template. Bootstrap copies this to .claude/settings.json and customizes per project.",
-  "model": "claude-opus-4-7",
+  "model": "claude-opus-4-8",
   "_model_strategy": {
-    "main_session": "claude-opus-4-7",
+    "main_session": "claude-opus-4-8",
     "comment": "Subagents specify their own model in frontmatter: Opus for product/adversarial, Sonnet for mechanical, Haiku for hooks/scanners"
   },
   "permissions": {

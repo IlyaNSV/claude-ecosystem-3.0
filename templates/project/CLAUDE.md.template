@@ -99,7 +99,7 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 ### Ecosystem (meta)
 
 - `/ecosystem:verify` — installation health check
-- `/ecosystem:upgrade` — [future v1.1] update to latest version
+- `/ecosystem:update` — sync ecosystem to latest version (preserves `.product/` + config; timestamped backup by default; `--dry-run` to preview)
 
 ---
 
@@ -135,7 +135,7 @@ When Claude communicates with the user in this project, **default to Russian** f
 
 ## Model preferences
 
-- **Default:** `claude-opus-4-7` (for product/strategic work — main session)
+- **Default:** `claude-opus-4-8` (for product/strategic work — main session)
 - **Subagents** specify own model in frontmatter:
   - Opus: adversarial (devils-advocate), deep research
   - Sonnet: mechanical research, profiling
@@ -216,8 +216,10 @@ For detailed info, browse `.claude/docs/`:
 
 ## Notes for humans (feel free to edit below this line)
 
-<!-- This file is regenerated on /ecosystem:upgrade only for the sections ABOVE.
-     Anything below is preserved as-is. Add your project-specific context freely. -->
+<!-- The sections ABOVE are generated once by /ecosystem:bootstrap and are NOT auto-regenerated
+     by /ecosystem:update (which syncs .claude/ but never touches this project-root CLAUDE.md).
+     Refresh them by hand after a major update if needed. Anything below this line is preserved
+     as-is — add your project-specific context freely. -->
 
 ### About this project
 

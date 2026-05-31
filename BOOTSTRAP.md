@@ -142,16 +142,9 @@ Non-destructive health check. Reports state of `.claude/`, `.product/`, critical
 
 ## Update later
 
-For v1.0, updates are manual:
+To update an installed project to the latest ecosystem version, run `/ecosystem:update` inside that project. It syncs the ecosystem zone (commands/skills/agents/hooks/docs/templates), re-derives hooks from the latest manifests, and preserves your user zone (`.product/`, config, secrets) with a timestamped backup by default. Run it with `--dry-run` first to preview the changeset.
 
-```bash
-# In your project folder
-cd .claude && git pull && cd ..
-```
-
-Or re-run Phase 1 installer to refresh global cache; then re-copy files into project's `.claude/` as needed.
-
-For v1.1, a `/ecosystem:upgrade` command will automate this with breaking-change migration support.
+A future `/ecosystem:upgrade` (v1.1) will layer automatic breaking-change migration on top of `/ecosystem:update`.
 
 ## Troubleshooting
 

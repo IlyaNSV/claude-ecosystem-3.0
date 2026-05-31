@@ -4543,6 +4543,52 @@ Ship **Tier 1** = чистые one-time moves. 4 пункта реализова
 
 ---
 
+## DEC-DEV-0055 — Harness-audit follow-up fixes (model-pin drift / upgrade→update / GitHub MCP / output-styles)
+
+**Date:** 2026-05-31
+**Trigger:** User-requested deep-research-style multi-agent аудит зрелости harness'а экосистемы (что она использует из примитивов Claude Code + что устанавливает downstream через `/ecosystem:update`). Codebase-grounded workflow (6 inventory-агентов → 38 adversarial-вердиктов, 44 субагента). Аудит вскрыл набор hygiene-дефектов; этот entry фиксирует их исправление по запросу «давай исправим их».
+**Tag:** #bug-fix #spec-revision #tooling
+
+### Context
+
+Аудит подтвердил 4 исправимых дефекта harness-поверхности (остальные находки — сознательные deferrals или дизайн-решения, не баги):
+
+1. **Model-pin drift** — главная сессия + `devils-advocate` прибиты к `claude-opus-4-7`, отставшему на поколение от текущей `claude-opus-4-8`; строка продублирована на ≥5 живых поверхностях (settings template ×2, bootstrap doc, CLAUDE.md.template, agent frontmatter) без единого источника правды. Sonnet-пины integrator-агентов (`claude-sonnet-4-6`) — актуальны, НЕ трогались (исходный аудит ошибочно назвал их «stale»; adversarial-коррекция в синтезе).
+2. **Dangling `/ecosystem:upgrade`** — downstream-генерируемый CLAUDE.md + `verify.md` + stale-секции `bootstrap.md`/`BOOTSTRAP.md` отправляли пользователя к несуществующей команде за обновлением, которое уже делает `/ecosystem:update` (DEC-DEV-0019/0020). `BOOTSTRAP.md` ещё и описывал ручной `cd .claude && git pull` как механизм апдейта.
+3. **Deprecated GitHub MCP** — bootstrap Step 9 ставил `npx -y @modelcontextprotocol/server-github` (reference-пакет снят с поддержки Apr 2025), вопреки собственному `docs/integrator-module/SPEC.md:1370`, который уже называет официальный `github/github-mcp-server`.
+4. **output-styles wired-but-empty** — пустая директория синкалась `/ecosystem:update` как flat-subdir, но не содержала ни одного стиля.
+
+### Options considered
+
+- **Model drift:** (a) единый источник через env-переменную vs (b) синхронный bump всех поверхностей. Выбран (b) — минимальный риск; введение нового механизма источника правды само по себе spec-change. Single-source — кандидат на будущее (см. Lessons).
+- **`/ecosystem:upgrade`:** (a) слепой find-replace на `update` vs (b) разведение consumer-facing ссылок и легитимных roadmap/history-ссылок. Выбран (b): `ROADMAP.md` + `DEV_JOURNAL.md` сохранены — там `upgrade` реальный future-superset (update + breaking-change migration); правлены только места, вводящие пользователя в заблуждение.
+- **GitHub MCP:** веб-сверка вместо догадки (per CLAUDE.md «не выдумывать») — официальный сервер для Claude Code = HTTP-транспорт `https://api.githubcopilot.com/mcp/`, не npm-пакет; добавлена Docker-альтернатива.
+- **output-styles:** (a) отгрузить реальный RU-tone стиль vs (b) убрать из sync vs (c) placeholder. User выбрал (b) — минимальный корректный фикс без выдумывания поведения.
+- **Hook «зубы» (warn-only → block):** сознательно НЕ брались — явный v1.4.0-deferral (требует DEC-DEV-решения; `scope-guard.js:17-19`). Все 10 хуков остаются warn-only / exit 0.
+
+### Decision
+
+Исправлены пункты 1-4. Opus-bump на 5 поверхностях; `upgrade→update` в 7 consumer-facing местах (roadmap/history сохранены); GitHub MCP → официальный HTTP-сервер + Docker-fallback; `output-styles` удалена из sync-логики `update.md` (8 мест) + структуры `README.md` + физическая директория.
+
+### Outcome
+
+Ветка `fix/harness-audit-followups`, один commit (без push). CHANGELOG `### Fixed` обновлён. **Latent-несоответствие зафиксировано:** SPEC'ы (`product-module/SPEC.md:668`, `integrator-module/SPEC.md:1438`) всё ещё планируют output-style файлы `product-report.md` / `integrator-report.md` в `.claude/output-styles/` — forward-looking дизайн НЕ трогался; при отгрузке фичи директорию + sync-allowlist нужно вернуть. `dev/v1_1_backlog.md:92` (opus-4-7 в spec отложенного `market-researcher`) оставлен как dev-only / не-живая поверхность.
+
+### Lessons
+
+1. **Дублированный version-pin без единого источника = гарантированный drift.** Модель-ID жил на ≥7 поверхностях; bump требует тронуть каждую независимо. *Apply:* при следующем касании model-конфига — рассмотреть single-source (env / один pin, читаемый остальными), чтобы bump был one-touch.
+2. **«Stale pointer к будущей команде» хуже отсутствия.** `/ecosystem:upgrade` маячил как «[future v1.1]» во всех update-подсказках задолго после того, как `/ecosystem:update` реально закрыл задачу — пользователя отправляли к воздуху. *Apply:* когда отложенная фича получает работающего предшественника — переписать consumer-facing указатели на предшественника, оставив future-ссылку только в roadmap.
+3. **Не выдумывать внешние install-команды.** GitHub MCP-инвокация сверена по вебу, а не угадана — реальная форма (HTTP-транспорт) отличалась от ожидаемого `npx`. *Apply:* для install-команд внешних инструментов — верифицировать, особенно если пакет мог быть deprecated после knowledge cutoff.
+4. **Adversarial-проход отделяет баги от дизайна.** Из ~38 находок только 4 — баги; остальное (warn-only хуки, path-loaded skills, prose-схемы, 2/9 событий) — сознательные deferrals/решения. *Apply:* перед «исправлением» находки аудита — проверить, не deferral ли это с rationale (`v1_1_backlog` / DEC-DEV).
+
+### Связь с другими entries
+
+- DEC-DEV-0019 / 0020 — создание `/ecosystem:update`; этот entry чистит stale `/ecosystem:upgrade`-указатели, пережившие его
+- DEC-DEV-0042 / 0049 / 0051 — серия `/ecosystem:update` правок; output-styles-removal — той же sync-allowlist природы
+- DEC-DEV-0054 — numbering verified против tail (0054→0055); pre-existing `audit-index.md` снова исключён из commit
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
