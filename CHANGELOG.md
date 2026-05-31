@@ -8,7 +8,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-(Empty — Phase 6 / 1.4.0 shipped; next stop = runtime smoke S1-S7 на pilot session OR Phase 7 kickoff.)
+### Fixed
+
+- **Model pin bumped `claude-opus-4-7` → `claude-opus-4-8`** across all live harness surfaces (`settings.json.template` main-session + `_model_strategy`, `agents/product/devils-advocate.md`, `commands/ecosystem/bootstrap.md`, `templates/project/CLAUDE.md.template`). Integrator subagent pins (`claude-sonnet-4-6`) left as-is — already current. (harness-audit follow-up; DEC-DEV-0055)
+- **Stale `/ecosystem:upgrade` pointers → `/ecosystem:update`** in consumer-facing update guidance: generated `templates/project/CLAUDE.md.template` (command list + regeneration note), `commands/ecosystem/verify.md` (version-drift suggestion + "not an update trigger"), `commands/ecosystem/bootstrap.md` (manifest re-scan note + "update mechanism" section), and root `BOOTSTRAP.md` (no longer recommends a manual `git pull`). Roadmap/history references to the future `/ecosystem:upgrade` superset preserved. (DEC-DEV-0055)
+- **GitHub MCP install** (`commands/ecosystem/bootstrap.md` Step 9) switched from the retired `@modelcontextprotocol/server-github` stdio package (unsupported since Apr 2025) to the official HTTP server `https://api.githubcopilot.com/mcp/` (`github/github-mcp-server`) with a self-hosted Docker fallback — aligning with `docs/integrator-module/SPEC.md`. (DEC-DEV-0055)
+- **`output-styles/` wired-but-empty capability removed** from `/ecosystem:update` flat-subdir sync (8 references in `commands/ecosystem/update.md`), `README.md` repo structure, and the empty directory itself. SPEC forward-references to planned `product-report.md` / `integrator-report.md` output-styles retained; re-add to the sync allowlist when those ship. (DEC-DEV-0055)
+
+(Phase 6 / 1.4.0 shipped; next stop = runtime smoke S1-S7 на pilot session OR Phase 7 kickoff.)
 
 ---
 

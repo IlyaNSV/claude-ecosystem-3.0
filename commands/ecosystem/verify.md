@@ -61,7 +61,7 @@ Read `.claude/product.yaml` and check:
 - `validation_tier:` is valid (`pilot | mvp | full`)
 - `ecosystem_version:` present
 
-If `product.yaml` says `ecosystem_version: 1.0` but `.claude/CHANGELOG.md` shows `[2.0.0]` — flag as version drift, suggest `/ecosystem:upgrade` (future) or manual sync.
+If `product.yaml` says `ecosystem_version: 1.0` but `.claude/CHANGELOG.md` shows `[2.0.0]` — flag as version drift, suggest `/ecosystem:update` to sync the ecosystem zone to latest.
 
 ### Step 6: `.env` keys check (if exists)
 
@@ -165,7 +165,7 @@ If **only 🟡 Warnings:**
 
 - Not a linter for product artifacts (use `/product:validate` for that)
 - Not a contract verifier (use `/integrator:verify` for that)
-- Not an update trigger (future `/ecosystem:upgrade`)
+- Not an update trigger (use `/ecosystem:update` to sync to latest)
 - Not destructive — never modifies files
 
 ## Integration
