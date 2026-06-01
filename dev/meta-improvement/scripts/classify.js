@@ -151,6 +151,35 @@ function uniq(arr) {
 }
 
 /**
+ * Extract user-typed slash commands from a user message.
+ *
+ * Coverage-gap fix (Incr.2, DEC-DEV-0057): the `SlashCommand` tool_use only
+ * captures *assistant-invoked* commands. User-typed `/foo:bar` commands surface
+ * in user messages as a `<command-name>/foo:bar</command-name>` tag emitted by
+ * Claude Code (verified across pilot transcripts). Without this, pilot sessions
+ * driven entirely by user-typed commands had `slash_commands: []`, starving the
+ * classifier of its strongest intent signal. `content` may be a string or an
+ * array of text blocks.
+ */
+function extractUserSlashCommands(content) {
+  let text = '';
+  if (typeof content === 'string') {
+    text = content;
+  } else if (Array.isArray(content)) {
+    text = content
+      .filter((b) => b && b.type === 'text' && typeof b.text === 'string')
+      .map((b) => b.text)
+      .join('\n');
+  }
+  if (!text) return [];
+  const out = [];
+  const re = /<command-name>\s*(\/[^<\s]+)\s*<\/command-name>/g;
+  let m;
+  while ((m = re.exec(text)) !== null) out.push(m[1].trim());
+  return out;
+}
+
+/**
  * Build the session profile from the original transcript JSONL + marker.
  * `context` (optional): { repoRoot } — enables best-effort module_recently_shipped.
  */
@@ -169,7 +198,13 @@ function extractSignals(transcriptPath, marker, context) {
     let rec;
     try { rec = JSON.parse(line); } catch { continue; }
     if (rec && typeof rec.cwd === 'string') cwds.push(rec.cwd);
-    const content = rec && rec.message && rec.message.content;
+    const msg = rec && rec.message;
+    const content = msg && msg.content;
+    // User-typed slash commands live in user messages (string or text blocks),
+    // not in SlashCommand tool_use. Capture them before the array-only guard.
+    if (msg && msg.role === 'user') {
+      for (const c of extractUserSlashCommands(content)) slash_commands.push(c);
+    }
     if (!Array.isArray(content)) continue;
     for (const block of content) {
       if (!block || block.type !== 'tool_use') continue;
@@ -331,6 +366,7 @@ module.exports = {
   parseFrontmatter,
   parseTriggers,
   loadRubrics,
+  extractUserSlashCommands,
   extractSignals,
   computeRecentlyShipped,
   scoreRubric,
