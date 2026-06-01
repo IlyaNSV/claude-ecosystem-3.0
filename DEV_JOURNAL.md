@@ -4589,6 +4589,54 @@ Ship **Tier 1** = чистые one-time moves. 4 пункта реализова
 
 ---
 
+## DEC-DEV-0056 — Session Audit v2: из phase-валидатора в замкнутый универсальный механизм аудита сессий
+
+**Date:** 2026-05-31
+**Trigger:** Запрос переосмыслить `audit-smoke`: сейчас он ориентирован на проверку фазы реализации экосистемы (`--phase=N` → smoke-план → coverage), а нужен замкнутый автоматический механизм, который сам определяет специфику сессии («первая сессия после поставки модуля Design» vs «обычная сессия баг-фикса»), по специфике понимает с чем и по каким критериям сопоставлять и как это повлияло на продуктовый проект, фиксирует находки в журнале аудита, и позже из журнала синтезирует патчи-улучшения для экосистемы. Предшествующий обширный анализ — 4 read-only исследования (примитивы автоматизации харнесса + тракт синтеза патчей) + чтение `audit-smoke.js`/`session-audit.md` напрямую.
+
+**Tag:** #architecture #d7 #tooling #process-improvement
+
+### Context
+
+Текущий `audit-smoke` (DEC-DEV-0034) уже содержит зачатки универсальности — флаг `--no-plan` (catalog-only) и `check_id` A–G, проверяющие процесс-каталог независимо от фазы; capture/audit развязаны (SessionEnd-хук пишет маркер, тяжёлый `claude -p` отдельно; spawn-из-хука прототип отвергнут). Зазоры до потребности: (G1) нет автотриггера, (G2) нет классификатора специфики сессии, (G3) нет реестра рубрик «с чем/по каким критериям сравнивать», (G4) нет оценки эффекта на `.product/`, (G5) нет накопительного findings-журнала (per-phase summary эфемерны), (G6) нет синтезатора патчей.
+
+Ограничения, проверенные эмпирически: routines/`RemoteTrigger` исполняются в облаке → НЕ видят локальные транскрипты `~/.claude/projects/` и git (дисквалифицированы для локального аудита); `CronCreate`/`/loop`/`Monitor` требуют открытой Claude-сессии; автономный-когда-Claude-закрыт — только Windows Task Scheduler. CONVENTIONS §8 запрещает auto-fix (механизмы D7 только surface-findings, человек решает); §9 — синтезатор живёт в `dev/meta-improvement/`, пишет DEC-DEV (не реюзает Product-модуль meta-feedback).
+
+### Options considered
+
+1. **Триггер:** (a) Windows Task Scheduler — автономно когда Claude закрыт, но ручная настройка ОС; (b) полу-авто `/loop`/`CronCreate` — работает пока Claude открыт, проще; (c) routines — дисквалифицированы (облако, не видит локаль); (d) пока ручной. **Выбран (b)** как целевой (Инкр.2); (a) — записан upgrade-path; ручной остаётся для «сейчас».
+2. **Старт-инкремент:** (a) универсальный аудит G2+G3; (b) эффект G4; (c) журнал+синтез G5+G6; (d) всё сразу. **Выбран (a)** — ядро потребности «сам определяет специфику»; (d) отвергнут (риск самореферентного коллапса, против incremental pilot).
+3. **Классификация:** (a) чисто LLM в промпте vs (b) детерминированный пре-пасс (JS: git/slash-cmds/paths) → LLM уточняет. **Выбран (b)** — дёшево, воспроизводимо, по образцу `computeAggregate`.
+4. **Рубрики:** хранить как данные (`rubrics/*.md`), не хардкод в промпте — добавление класса без правки кода.
+5. **Синтез патчей:** surface-only с human-gate `[Y/N/E/D]` (паттерн meta-feedback, но в D7-территории, DEC-DEV-семантика) — не auto-apply (§8).
+
+### Decision
+
+Принять дизайн «замкнутого цикла» Session Audit v2 (см. [`dev/SESSION_AUDIT_V2_DESIGN.md`](dev/SESSION_AUDIT_V2_DESIGN.md)): эволюция движка, а не переписывание. Активная работа — **Инкремент 1**: пре-классификатор сессий + реестр рубрик (baseline/criteria/effect-focus per session-class) поверх существующего `--no-plan`; выбор рубрики становится результатом классификации, а не аргументом `--phase`. Целевой триггер — полу-авто (`/loop`/`CronCreate`), Инкр.2. Журнал+синтез патчей — Инкр.3. Все находки фиксируются surface-only; патчи применяет человек через DEC-DEV.
+
+### Outcome
+
+Создан design-doc `dev/SESSION_AUDIT_V2_DESIGN.md` + этот DEC-DEV. **Инкремент 1 (G2+G3) реализован.**
+
+Новые файлы: `dev/meta-improvement/scripts/classify.js` (чистый модуль — frontmatter-парсер рубрик, `extractSignals`, `classifySession`, render-хелперы) и `dev/meta-improvement/rubrics/` (README + 6 рубрик: feature-definition, integration, bug-fix, ecosystem-dev, module-delivery-shakedown, mixed-uncertain). Модифицированы: `scripts/audit-smoke.js` (флаг `--classify`, ветка классификации в per-session цикле, 4 новых плейсхолдера в `runAuditor`, запись `phase=—` / `mode=class:<id>` в Processed без слома схемы); `prompts/session-audit.md` (аддитивный rubric-guided режим, опц. поля `session_class`/`class_confidence`, check_id `class-mismatch`); `.claude/commands/meta/audit-smoke.md` (секция universal-режима). Хук `session-audit.js` **не тронут** — все сигналы берутся из транскрипта.
+
+Детерминированная верификация зелёная: `node --check` обоих скриптов; юнит 8/8 (feature/integration/bug-fix/ecosystem-dev/module-delivery/mixed + tie/threshold); реальный near-empty Pending-транскрипт → корректно `mixed-uncertain`; регрессия phase-режима (`--phase=4 --dry-run`) цела; `--help`/error-path корректны. **Не сделано:** живой `claude -p` E2E (дорогой спавн + мутирует audit-index/reports) — отложен до содержательной сессии, чтобы не затирать phase-4/5 audit-историю. Не закоммичено (на `main`).
+
+### Lessons
+
+1. **Timing-эвристика как самостоятельный сильный триггер ложно-срабатывает.** `module_recently_shipped` (любая сессия в 21-дневном окне после релиза, вес 3) единолично уводил почти-пустую сессию в `module-delivery-shakedown`. Smoke на реальном транскрипте поймал это сразу. *Fix:* `MIN_DECISIVE_SCORE=2` (одиночный сигнал веса 1 → mixed-uncertain) + recency понижен до буста (вес 1), решающим оставлен module-команда. *Apply:* широкие/слабые сигналы — буст, не самостоятельный решающий триггер; порог решительности — дешёвая защита от low-evidence догадок.
+2. **Эволюция вместо нового механизма подтвердилась.** Безфазовый путь (`--no-plan`) + check_id A–G + спавн-инфраструктура переиспользованы; classify — аддитивная ветка, phase-режим не тронут (пустой `{{RUBRIC_BLOCK}}`). Проверка «что можно скип/упростить» (CLAUDE.md §4) выполнена.
+3. **Data-driven реестр окупился.** Добавить рубрику = создать `.md` (классификатор грузит всё из `rubrics/`); калибровка module-delivery свелась к правке весов в одном файле, без кода.
+
+### Связь с другими entries
+
+- DEC-DEV-0034 — создание `audit-smoke` (capture/audit decoupling, отвергнутый spawn-из-хука); v2 строится поверх
+- CONVENTIONS §8 (no-auto-fix), §9 (self-application), §3 (mechanism-ratio) — инварианты дизайна
+- meta-feedback (Product-модуль) — референс trust-asymmetry, но Level A; не реюзается для D7
+- DEC-DEV-0055 — numbering verified против tail (0055→0056)
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
