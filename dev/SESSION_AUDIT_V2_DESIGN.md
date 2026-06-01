@@ -147,6 +147,15 @@
 
 `effect-probe.json` подаётся аудитору как вход; LLM интерпретирует «корректно/некорректно/можно лучше» в терминах рубрики.
 
+> **✅ Реализовано (Инкр.2, DEC-DEV-0057):** [`scripts/effect-probe.js`](meta-improvement/scripts/effect-probe.js).
+> Окно сессии деривируется из транскрипта (`timestamp`/`cwd`/`gitBranch`) — хук не тронут, работает
+> ретроактивно на captured-маркерах. `before`/`after` — `git rev-list --before=<ts>` на ветке пилота
+> (graceful: `committed:false` когда коммитов в окне нет). Валидатор — **standalone** (не реюз
+> Product-хука, §9): подмножество V-01/V-04/V-09/V-10 + B.1-anti-rename + dangling-ref (subset V-11).
+> Вместо хрупкой before/after re-валидации — **атрибуция** `touched_in_session` (находка на тронутом
+> сессией артефакте = её ответственность; на нетронутом = pre-existing debt). Full before/after diff и
+> drift-сигнал отложены. Проводка — `--classify` ветка драйвера → `{{EFFECT_PROBE}}` → Step 3.5 промпта.
+
 ---
 
 ## 6. Инкремент 3: журнал аудита + синтез патчей
@@ -209,10 +218,10 @@ findings-журнал → кластеризация по (check_id, class, sign
 
 ## 8. Открытые решения (отложены)
 
-1. **Переименование** `/meta:audit-smoke` → `/meta:audit` (и `audit-smoke.js` → `audit.js`?) — обобщение vs стабильность ссылок. Решить на старте реализации Инкр.1.
-2. **Реестр рубрик: формат** — `rubrics/*.md` (читаемо, как `patterns/`) vs единый `rubrics.yaml` (machine-friendly). Склоняюсь к `*.md` + парсируемый frontmatter.
+1. **Переименование** `/meta:audit-smoke` → `/meta:audit` (и `audit-smoke.js` → `audit.js`?) — обобщение vs стабильность ссылок. **Всё ещё отложено** (Инкр.1+2 не трогали имя; ссылок на `audit-smoke` много — стабильность пока перевешивает). Пересмотреть при Инкр.3.
+2. ✅ **Реестр рубрик: формат** — выбран `rubrics/*.md` + парсируемый frontmatter (Инкр.1).
 3. **Журнал: `.ndjson` vs `.yaml`** (Инкр.3) — append-эффективность vs читаемость.
-4. **Триггер интервал** для полу-авто `/loop` (Инкр.2).
+4. ✅ **Триггер интервал** — `audit-watch.js` дефолт `--since=1h`, рекомендуемый `/loop 45m` (Инкр.2). Гайд: `--since` ≥ интервала; widening для catch-up. См. `checklists/audit-watch.md`.
 
 ---
 
@@ -221,7 +230,7 @@ findings-журнал → кластеризация по (check_id, class, sign
 | Инкр. | Содержание | Gap | Smoke-критерий | Статус |
 |---|---|---|---|---|
 | **1** | Классификатор + реестр рубрик; универсальный режим без `--phase` | G2,G3 | Классы/рубрики на 3–4 Processed-сессиях совпадают с реальностью; вердикты не хуже | **✅ done** — deterministic smoke 8/8 + live `claude -p` E2E (integration) на ветке `feat/session-audit-v2-incr1`; класс. на 4 реальных транскриптах верна |
-| 2 | Полу-авто триггер (`/loop`/`CronCreate`) + effect-probe | G1,G4 | Полу-авто прогон на пилоте; effect-diff корректен | **next (kickoff)** |
+| 2 | Полу-авто триггер (`audit-watch.js`+`/loop`) + effect-probe | G1,G4 | Полу-авто вход идемпотентен; effect-probe корректен на пилоте | **✅ done** — `effect-probe.js` (window из транскрипта + git-окно + standalone-валидатор V-01/04/09/10 + B.1 + dangling-ref + attribution `touched_in_session`); проводка в `--classify` через `{{EFFECT_PROBE}}` + Step 3.5; `audit-watch.js` + `checklists/audit-watch.md`; classifier coverage-gap (user-typed slash) закрыт. 12/12 unit + live E2E (04649f41 → attributed V-09 на SEG-003). DEC-DEV-0057 |
 | 3 | Накопительный findings-журнал + синтезатор патчей | G5,G6 | ≥3 повтора сигнатуры → корректный patch-кандидат через `[Y/N/E/D]` | planned |
 
 Каждый инкремент — DEC-DEV запись + smoke (принцип «после Phase N — мини-тест»).
