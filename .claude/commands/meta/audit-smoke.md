@@ -92,6 +92,12 @@ Based on the summary's `status`:
 
 Типичный вызов: `--classify` (весь Pending) или `--classify --session-id=<uuid> --force` (одна сессия повторно). Переименование `/meta:audit-smoke`→`/meta:audit` отложено (см. `dev/SESSION_AUDIT_V2_DESIGN.md` §8).
 
+**Полу-авто (Инкр.2, DEC-DEV-0057):** держать аудит почти на автомате, пока Claude открыт —
+`/loop 45m node dev/meta-improvement/scripts/audit-watch.js` (тонкая обёртка над `--classify --since`,
+идемпотентна). В classify-режиме каждой сессии добавляется **effect-probe** (deterministic-замер эффекта на
+`.product/` пилота → секция «Effect on product» + `effect_summary` в отчёте). Ритуал:
+[`checklists/audit-watch.md`](../../../dev/meta-improvement/checklists/audit-watch.md).
+
 ## CLI exit codes
 
 | Exit | Meaning |
