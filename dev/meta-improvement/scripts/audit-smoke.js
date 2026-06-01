@@ -47,6 +47,7 @@ const path = require('path');
 const { spawnSync } = require('child_process');
 const auditIndex = require('./audit-index.js');
 const classify = require('./classify.js');
+const effectProbe = require('./effect-probe.js');
 
 const DEFAULT_CLAUDE_BIN = process.env.CLAUDE_CLI_PATH || 'claude';
 const AUDITOR_TIMEOUT_MS = parseInt(process.env.AUDIT_SMOKE_TIMEOUT_MS || '1200000', 10);
@@ -261,6 +262,22 @@ function stripLargeContent(rec) {
 // Auditor spawn
 // ============================================================================
 
+// Render an effect-probe object into the prompt block. Caps the findings list so a
+// messy pilot can't blow up the prompt; counts stay authoritative.
+function renderEffectProbe(probe) {
+  if (!probe || !probe.applicable) return 'none';
+  const clone = JSON.parse(JSON.stringify(probe));
+  const ps = clone.post_state;
+  if (ps && Array.isArray(ps.findings) && ps.findings.length > 60) {
+    const total = ps.findings.length;
+    // Keep blocking first, then the rest, up to 60.
+    const ordered = ps.findings.slice().sort((a, b) => (a.severity === 'blocking' ? -1 : 1) - (b.severity === 'blocking' ? -1 : 1));
+    ps.findings = ordered.slice(0, 60);
+    ps.findings_truncated = `showing 60 of ${total} (counts above are full)`;
+  }
+  return '```json\n' + JSON.stringify(clone, null, 2) + '\n```';
+}
+
 function runAuditor(opts) {
   const templatePath = path.join(opts.repoRoot, 'dev', 'meta-improvement', 'prompts', 'session-audit.md');
   const template = fs.readFileSync(templatePath, 'utf-8');
@@ -275,7 +292,8 @@ function runAuditor(opts) {
     .replace(/\{\{SESSION_CLASS\}\}/g, opts.sessionClass || 'none')
     .replace(/\{\{CLASS_CONFIDENCE\}\}/g, opts.classConfidence || 'none')
     .replace(/\{\{SESSION_PROFILE\}\}/g, opts.sessionProfile || 'none')
-    .replace(/\{\{RUBRIC_BLOCK\}\}/g, opts.rubricBlock || '');
+    .replace(/\{\{RUBRIC_BLOCK\}\}/g, opts.rubricBlock || '')
+    .replace(/\{\{EFFECT_PROBE\}\}/g, opts.effectProbe || 'none');
 
   const transcriptDir = path.dirname(opts.transcriptPath);
   const cliArgs = [
@@ -733,6 +751,31 @@ function main() {
       }
     }
 
+    // Effect-probe (universal mode only, G4): deterministic measure of the session's effect
+    // on the pilot's .product/. Uses the ORIGINAL transcript (needs timestamp/cwd/gitBranch).
+    // Non-fatal: on failure or no .product/, the auditor runs without it (EFFECT_PROBE=none).
+    let effectProbeBlock = 'none';
+    if (args.classify) {
+      try {
+        const probe = effectProbe.buildEffectProbe({
+          transcriptPath: session.transcript_path,
+          sessionId: session.session_id,
+          targetProject: session.target_project,
+        });
+        if (probe && probe.applicable) {
+          const probePath = path.join(tmpDir, `${session.session_id}.effect-probe.json`);
+          fs.writeFileSync(probePath, JSON.stringify(probe, null, 2));
+          effectProbeBlock = renderEffectProbe(probe);
+          const fc = probe.post_state.findings_count;
+          process.stdout.write(`  effect-probe: ${fc.blocking}B/${fc.warning}W post-state, ${probe.post_state.findings_attributed_to_session} attributed to session\n`);
+        } else {
+          process.stdout.write(`  effect-probe: n/a (${probe ? probe.reason : 'no probe'})\n`);
+        }
+      } catch (e) {
+        process.stderr.write(`  effect-probe failed: ${e.message}; auditor runs without it\n`);
+      }
+    }
+
     const result = runAuditor({
       sessionId: session.session_id,
       transcriptPath: tmpTranscript,
@@ -746,6 +789,7 @@ function main() {
       classConfidence: classification ? classification.confidence : '',
       rubricBlock,
       sessionProfile,
+      effectProbe: effectProbeBlock,
     });
 
     // A non-zero exit or spawn error (e.g. ETIMEDOUT) does not by itself mean
