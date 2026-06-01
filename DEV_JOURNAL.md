@@ -4589,6 +4589,113 @@ Ship **Tier 1** = чистые one-time moves. 4 пункта реализова
 
 ---
 
+## DEC-DEV-0056 — Session Audit v2: из phase-валидатора в замкнутый универсальный механизм аудита сессий
+
+**Date:** 2026-05-31
+**Trigger:** Запрос переосмыслить `audit-smoke`: сейчас он ориентирован на проверку фазы реализации экосистемы (`--phase=N` → smoke-план → coverage), а нужен замкнутый автоматический механизм, который сам определяет специфику сессии («первая сессия после поставки модуля Design» vs «обычная сессия баг-фикса»), по специфике понимает с чем и по каким критериям сопоставлять и как это повлияло на продуктовый проект, фиксирует находки в журнале аудита, и позже из журнала синтезирует патчи-улучшения для экосистемы. Предшествующий обширный анализ — 4 read-only исследования (примитивы автоматизации харнесса + тракт синтеза патчей) + чтение `audit-smoke.js`/`session-audit.md` напрямую.
+
+**Tag:** #architecture #d7 #tooling #process-improvement
+
+### Context
+
+Текущий `audit-smoke` (DEC-DEV-0034) уже содержит зачатки универсальности — флаг `--no-plan` (catalog-only) и `check_id` A–G, проверяющие процесс-каталог независимо от фазы; capture/audit развязаны (SessionEnd-хук пишет маркер, тяжёлый `claude -p` отдельно; spawn-из-хука прототип отвергнут). Зазоры до потребности: (G1) нет автотриггера, (G2) нет классификатора специфики сессии, (G3) нет реестра рубрик «с чем/по каким критериям сравнивать», (G4) нет оценки эффекта на `.product/`, (G5) нет накопительного findings-журнала (per-phase summary эфемерны), (G6) нет синтезатора патчей.
+
+Ограничения, проверенные эмпирически: routines/`RemoteTrigger` исполняются в облаке → НЕ видят локальные транскрипты `~/.claude/projects/` и git (дисквалифицированы для локального аудита); `CronCreate`/`/loop`/`Monitor` требуют открытой Claude-сессии; автономный-когда-Claude-закрыт — только Windows Task Scheduler. CONVENTIONS §8 запрещает auto-fix (механизмы D7 только surface-findings, человек решает); §9 — синтезатор живёт в `dev/meta-improvement/`, пишет DEC-DEV (не реюзает Product-модуль meta-feedback).
+
+### Options considered
+
+1. **Триггер:** (a) Windows Task Scheduler — автономно когда Claude закрыт, но ручная настройка ОС; (b) полу-авто `/loop`/`CronCreate` — работает пока Claude открыт, проще; (c) routines — дисквалифицированы (облако, не видит локаль); (d) пока ручной. **Выбран (b)** как целевой (Инкр.2); (a) — записан upgrade-path; ручной остаётся для «сейчас».
+2. **Старт-инкремент:** (a) универсальный аудит G2+G3; (b) эффект G4; (c) журнал+синтез G5+G6; (d) всё сразу. **Выбран (a)** — ядро потребности «сам определяет специфику»; (d) отвергнут (риск самореферентного коллапса, против incremental pilot).
+3. **Классификация:** (a) чисто LLM в промпте vs (b) детерминированный пре-пасс (JS: git/slash-cmds/paths) → LLM уточняет. **Выбран (b)** — дёшево, воспроизводимо, по образцу `computeAggregate`.
+4. **Рубрики:** хранить как данные (`rubrics/*.md`), не хардкод в промпте — добавление класса без правки кода.
+5. **Синтез патчей:** surface-only с human-gate `[Y/N/E/D]` (паттерн meta-feedback, но в D7-территории, DEC-DEV-семантика) — не auto-apply (§8).
+
+### Decision
+
+Принять дизайн «замкнутого цикла» Session Audit v2 (см. [`dev/SESSION_AUDIT_V2_DESIGN.md`](dev/SESSION_AUDIT_V2_DESIGN.md)): эволюция движка, а не переписывание. Активная работа — **Инкремент 1**: пре-классификатор сессий + реестр рубрик (baseline/criteria/effect-focus per session-class) поверх существующего `--no-plan`; выбор рубрики становится результатом классификации, а не аргументом `--phase`. Целевой триггер — полу-авто (`/loop`/`CronCreate`), Инкр.2. Журнал+синтез патчей — Инкр.3. Все находки фиксируются surface-only; патчи применяет человек через DEC-DEV.
+
+### Outcome
+
+Создан design-doc `dev/SESSION_AUDIT_V2_DESIGN.md` + этот DEC-DEV. **Инкремент 1 (G2+G3) реализован.**
+
+Новые файлы: `dev/meta-improvement/scripts/classify.js` (чистый модуль — frontmatter-парсер рубрик, `extractSignals`, `classifySession`, render-хелперы) и `dev/meta-improvement/rubrics/` (README + 6 рубрик: feature-definition, integration, bug-fix, ecosystem-dev, module-delivery-shakedown, mixed-uncertain). Модифицированы: `scripts/audit-smoke.js` (флаг `--classify`, ветка классификации в per-session цикле, 4 новых плейсхолдера в `runAuditor`, запись `phase=—` / `mode=class:<id>` в Processed без слома схемы); `prompts/session-audit.md` (аддитивный rubric-guided режим, опц. поля `session_class`/`class_confidence`, check_id `class-mismatch`); `.claude/commands/meta/audit-smoke.md` (секция universal-режима). Хук `session-audit.js` **не тронут** — все сигналы берутся из транскрипта.
+
+Детерминированная верификация зелёная: `node --check` обоих скриптов; юнит 8/8 (feature/integration/bug-fix/ecosystem-dev/module-delivery/mixed + tie/threshold); реальный near-empty Pending-транскрипт → корректно `mixed-uncertain`; регрессия phase-режима (`--phase=4 --dry-run`) цела; `--help`/error-path корректны.
+
+**Live E2E (ветка `feat/session-audit-v2-incr1`, изолированно через `--transcript` → без мутации `audit-index.md`):** прогон `--classify` на integration-сессии (`306c196c`) отработал end-to-end — классификатор → `integration` (medium) → `claude -p` → корректный rubric-guided отчёт (`mode: catalog-only`, `session_class`/`class_confidence` заполнены, A–F помечены неприменимыми, 2 warning + 1 info). Детерминированная классификация на 4 реальных транскриптах: feature-definition (high), integration ×2 (medium), mixed-uncertain (tie на реально-смешанной сессии) — все защитимы. Инкр.1 закоммичен 3 commit'ами на ветке.
+
+### Lessons
+
+1. **Timing-эвристика как самостоятельный сильный триггер ложно-срабатывает.** `module_recently_shipped` (любая сессия в 21-дневном окне после релиза, вес 3) единолично уводил почти-пустую сессию в `module-delivery-shakedown`. Smoke на реальном транскрипте поймал это сразу. *Fix:* `MIN_DECISIVE_SCORE=2` (одиночный сигнал веса 1 → mixed-uncertain) + recency понижен до буста (вес 1), решающим оставлен module-команда. *Apply:* широкие/слабые сигналы — буст, не самостоятельный решающий триггер; порог решительности — дешёвая защита от low-evidence догадок.
+2. **Эволюция вместо нового механизма подтвердилась.** Безфазовый путь (`--no-plan`) + check_id A–G + спавн-инфраструктура переиспользованы; classify — аддитивная ветка, phase-режим не тронут (пустой `{{RUBRIC_BLOCK}}`). Проверка «что можно скип/упростить» (CLAUDE.md §4) выполнена.
+3. **Data-driven реестр окупился.** Добавить рубрику = создать `.md` (классификатор грузит всё из `rubrics/`); калибровка module-delivery свелась к правке весов в одном файле, без кода.
+4. **Аудит окупился сразу — нашёл реальный баг, а не только проверил себя.** Live E2E на integration-сессии вскрыл кросс-платформенный дефект: `hooks/integrator/journal-hook.js` не логирует `Edit/Write` на Windows (`INTEGRATOR_PATH_PATTERNS` — регэкспы с прямыми слэшами против backslash-`file_path`), differential-доказательство (Bash-autolog работает, Edit — нет; вся история `#auto` = только Bash). Вне scope Инкр.1 → требует отдельной верификации+фикса; естественный кандидат для синтезатора патчей (Инкр.3). *Coverage-gap классификатора:* `slash_command`-сигнал ловит только assistant-invoked `SlashCommand` tool, не user-typed `/команды` (в пилотных сессиях `slash=[]`) — классификацию вытянули path/flag-сигналы, но user-slash-парсинг = fast-follow.
+
+### Связь с другими entries
+
+- DEC-DEV-0034 — создание `audit-smoke` (capture/audit decoupling, отвергнутый spawn-из-хука); v2 строится поверх
+- CONVENTIONS §8 (no-auto-fix), §9 (self-application), §3 (mechanism-ratio) — инварианты дизайна
+- meta-feedback (Product-модуль) — референс trust-asymmetry, но Level A; не реюзается для D7
+- DEC-DEV-0055 — numbering verified против tail (0055→0056)
+
+---
+
+## DEC-DEV-0057 — Session Audit v2 Инкремент 2: полу-авто триггер (G1) + effect-probe (G4)
+
+**Date:** 2026-06-01
+**Trigger:** Реализация Инкр.2 дизайна Session Audit v2 (`dev/SESSION_AUDIT_V2_DESIGN.md` §5): G1 (полу-авто триггер при появлении транскрипта) + G4 (deterministic-оценка «как сессия повлияла на продуктовый проект»). Предшествовал D7 phase-kickoff с эмпирическим разрешением 5 открытых развилок.
+
+**Tag:** #architecture #d7 #tooling #process-improvement
+
+### Context
+
+Инкр.1 (DEC-DEV-0056) дал классификатор + реестр рубрик (`--classify`). Инкр.2 закрывает два зазора §2 gap-анализа: **G1** (был только ручной `/meta:audit-smoke`) и **G4** (аудитор видел транскрипт + процесс-каталог, но не имел deterministic-замера эффекта на `.product/`). Драйвер уже идемпотентен (`--since`, skip Processed). Инварианты: NO auto-fix (CONVENTIONS §8), всё в `dev/meta-improvement/` (§9), phase-режим не ломать, classify аддитивен.
+
+Kickoff потребовал разрешить 5 развилок до кода — три из них разрешены **эмпирически** (проверкой кода/данных, не дедукцией), что предотвратило неверные архитектурные допущения (substrate premise verification, ср. DEC-DEV-0052).
+
+### Options considered
+
+1. **Окно git для effect-probe:** (a) обогатить маркер `git HEAD` в `hooks/session-audit.js` (один отложенный touch хука); (b) деривировать окно из транскрипта. **Проверено:** записи транскрипта несут `timestamp` (46/70 в образце), `cwd` (полный путь пилота), `gitBranch`. → **Выбран (b)** — не трогает capture-хук (сохраняет минимализм DEC-DEV-0034), работает **ретроактивно** на уже-captured маркерах (у них нет git-HEAD); (a) дал бы только END-HEAD, START всё равно деривировать.
+2. **Валидатор пост-состояния:** (a) реюз/извлечь логику `hooks/product/artifact-validate.js`; (b) standalone D7-валидатор. **Выбран (b)** — CONVENTIONS §9 запрещает D7 реюзать код Product-модуля; заимствуем *правила* (`docs/pmo/validation.md` §5.1), не код. Бонус: full-tree walker делает cross-file V-01/V-11, которые inline-хук явно откладывает.
+3. **Кросс-проектный доступ:** как effect-probe видит `.product/` пилота (другой git-репо). **Проверено:** `my-first-test` — git-репо, ветка main, `.product/` tracked (282 файла). → резолв корня пилота из `cwd` транскрипта + чтение текущего `.product/` + git-история. Оба репо на одной машине.
+4. **Форма триггера:** (a) документированный `/loop` + тонкая обёртка; (b) durable `CronCreate`; (c) только ручной. **Выбран (a)** — наименьший механизм (CONVENTIONS §3); `CronCreate` записан как альтернатива, ручной `--since` — «прямо сейчас». routines/RemoteTrigger дисквалифицированы (облако не видит локаль — подтверждено в DEC-DEV-0056).
+5. **Ветка:** (a) продолжить на `feat/session-audit-v2-incr1`; (b) merge Инкр.1 → main, новая ветка. **Выбран (a)** — Инкр.2 тесно строится на коде Инкр.1 (`--classify`, `classify.js`); один связный feature-branch v2.
+
+Доп. решения: **регрессия как атрибуция, а не before/after re-валидация** — каждой post-state находке проставляется `touched_in_session` (тронут ли артефакт сессией по transcript-writes ∪ git-diff окна); дёшево, детерминированно, прямо отвечает «эффект сессии». Полная before/after re-валидация и drift-сигнал отложены (cuttable scope, §4). **Coverage-gap классификатора** (loose end Инкр.1: `slash_command` ловил только assistant-invoked `SlashCommand`, не user-typed `/cmd`) свёрнут в Инкр.2.
+
+### Decision
+
+Реализовать Инкр.2 пятью sub-phase'ами на ветке `feat/session-audit-v2-incr1`: **2.A** classifier coverage-gap (парс `<command-name>/cmd</command-name>` из user-сообщений); **2.B** `scripts/effect-probe.js` (deriveWindow + gitWindow + touchedArtifacts + standalone validatePostState + readDebts + attribution + CLI); **2.C** проводка в `audit-smoke.js` `--classify` ветку через `{{EFFECT_PROBE}}` + Step 3.5 «Effect on product» в промпте + `effect_summary`; **2.D** `scripts/audit-watch.js` тонкая обёртка + `checklists/audit-watch.md` + CONVENTIONS §3/§4; **2.E** live E2E + этот DEC-DEV + design §5/§8/§9. Валидатор-scope (cuttable): V-01/V-04/V-09/V-10 + B.1-anti-rename + dangling-ref (subset V-11); полный bi-dir V-11 и семантические правила — у аудитора-LLM и `/product:validate`.
+
+### Outcome
+
+Новые файлы: `scripts/effect-probe.js` (standalone модуль + CLI), `scripts/audit-watch.js` (обёртка), `checklists/audit-watch.md` (ритуал). Модифицированы: `scripts/classify.js` (user-typed slash в `extractSignals` + экспорт `extractUserSlashCommands`); `scripts/audit-smoke.js` (require effect-probe, `renderEffectProbe`, вычисление effect-probe в classify-ветке, `effectProbe` opt, `{{EFFECT_PROBE}}` replace); `prompts/session-audit.md` (вход `{{EFFECT_PROBE}}`, Step 3.5, секция «Effect on product», `effect_summary`); `CONVENTIONS.md` §3/§4; `.claude/commands/meta/audit-smoke.md` (watcher-заметка). Хуки **не тронуты** (capture минимален — fork #1; Product-хук не реюзан — §9). 5 коммитов на ветке (2.A–2.D + 2.E).
+
+**Детерминированная верификация зелёная:** `node --check` всех скриптов; 2.A unit `extractUserSlashCommands` PASS + реальный эффект (3f8a137b: `slash=[]`→`/product:handoff`→class `feature-definition`); 2.B 12/12 unit (window derivation / touched / validator V-10×2/V-09/dangling/V-01-not-fired / committed:false / no-repo) + CLI E2E на пилоте (258 артефактов, faithful findings); 2.C phase-режим регрессия (`--phase=4 --dry-run` exit 0, `{{EFFECT_PROBE}}`→none), placeholder-render без утечек; 2.D `--help` + `--since=1m --dry-run` passthrough.
+
+**Live E2E (`--classify --transcript=04649f41 --force`, изолированно):** классификатор → `mixed-uncertain (low)` → effect-probe → `3B/1W post-state, 1 attributed to session` → `claude -p` аудитор → `status=findings` (2 Warning P-RULE-01/02, 1 Info), отчёт записан (закоммичен как evidence). **Секция «Effect on product» отработала как задумано** — аудитор не принял probe-атрибуцию за чистую монету: распознал, что `V-09 на SEG-003` (`touched_in_session:true`) — **path-based, а не каузальная** (SEG-001/002 несут идентичный V-09 с `touched:false` → все три SEG лишены `value_proposition` как pre-existing состояние, не регрессия сессии; «1 attributed честнее трактовать как 0 каузально-введённых»). Frontmatter `session_class`/`class_confidence`/`effect_summary` заполнены канонично. Подтверждает разделение «детерминированный замер + LLM-интерпретация».
+
+**Byproduct-баг (journal-hook Windows) — верифицирован по коду как ФАНТОМ, корректирует DEC-DEV-0056 Lesson #4.** Live-audit Инкр.1 заявил, что `hooks/integrator/journal-hook.js` не логирует Edit/Write на Windows (forward-slash regex против backslash `file_path`). Проверка кода: нормализация `pNorm = p.replace(/\\/g,'/')` присутствует и в source (коммит `4ac3981`, 2026-05-26), и в deployed-копии пилота. Это plausible-but-wrong находка LLM-аудитора (увидел forward-slash в `INTEGRATOR_PATH_PATTERNS`, не заметил строку нормализации). **Source НЕ тронут; отдельного bugfix/DEC-DEV нет.**
+
+### Lessons
+
+1. **Plausible-but-wrong audit finding — реальный риск, верифицировать по коду до фикса.** Byproduct-баг из DEC-DEV-0056 при проверке кода оказался фантомом (fix уже был). Differential-«доказательство» в исходной находке (Bash-autolog работает, Edit нет) звучало убедительно, но игнорировало строку нормализации. *Apply:* синтезатор Инкр.3 ОБЯЗАН включать adversarial-verify (несколько скептиков на находку, default-refute) до promotion в patch-кандидат — иначе фантомы попадут в патчи. Прямой довод за perspective-diverse verify.
+2. **Post-state одинаков across сессий — различает атрибуция.** Валидатор меряет текущий снапшот `.product/`, поэтому raw findings_count константен для всех транскриптов одного пилота; ценность effect-probe — в `touched_in_session` (regression-сигнал), не в абсолютном числе нарушений. *Apply:* в G4 акцент на attribution + git-diff окна, не на общем счёте.
+3. **Деривация из данных > обогащение источника, когда данные уже есть.** Окно git вытащено из существующих полей транскрипта — это убрало правку хука И дало ретроактивность на 60+ captured-маркерах. *Apply:* перед добавлением capture-поля проверь, нет ли сигнала уже в потоке.
+4. **Coverage-gap классификатора был существенным.** User-typed slash (канонический тег `<command-name>`) — сильнейший сигнал намерения; без него пилотные сессии шли `slash=[]` и тянулись path/flag-сигналами. Fix сразу сдвинул классификации (3f8a137b → feature-definition). Calibration validation: 04649f41/1cdfa987 показали `/design:start` → `mixed-uncertain` (design-рубрика отложена) — корректный fallback, не ошибка.
+5. **Cuttable scope удержан.** Before/after re-валидация (хрупкая, дорогая) заменена attribution-прокси; full V-11 bi-dir, drift-сигнал, переименование команды — отложены явно. Инкр.2 поставил минимум, замыкающий G1+G4.
+6. **Transcript-based `touched` недосчитывает subagent-работу — реальный лимит, вскрытый live E2E.** В 04649f41 русификация ~130 артефактов шла 7 background-субагентами; их Write/Edit — в sidechains, не в основном транскрипте, поэтому `touched` поймал лишь 2 файла (прямые правки). git-diff окна поймал бы всё, НО сессия uncommitted (`committed:false`) → атрибуция деградировала. Аудитор-LLM сам это вскрыл и пометил undercount. *Apply:* (a) Инкр.3 — рассмотреть скан subagent-sidechain транскриптов (`…/<uuid>/subagents/`) для полноты `touched`; (b) для committed-сессий git-diff уже покрывает; (c) ценный side-эффект: effect-probe честно сигналит, когда крупный diff не закоммичен.
+
+### Связь с другими entries
+
+- DEC-DEV-0056 — Инкр.1 (classifier+rubrics); Инкр.2 строится поверх; **корректирует его Lesson #4** (byproduct-баг = фантом)
+- DEC-DEV-0034 — capture/audit decoupling; fork #1 сохраняет минимализм хука
+- CONVENTIONS §3 (mechanism-ratio — watcher = наименьший механизм), §8 (no-auto-fix — probe read-only), §9 (self-application — standalone validator, не реюз Product-хука)
+- DEC-DEV-0052 — substrate premise verification (развилки разрешены эмпирически, не дедукцией)
+- numbering verified против tail (0056→0057)
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

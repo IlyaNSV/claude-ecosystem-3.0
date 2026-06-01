@@ -25,6 +25,16 @@ You are a **session conformance auditor** for the Ecosystem 3.0 meta-tooling pro
 - **Session end reason:** `{{SESSION_END_REASON}}` (one of: `clear`, `resume`, `logout`, `prompt_input_exit`, `other`)
 - **Phase number:** `{{PHASE}}` — explicit phase being smoke-tested (e.g., `4`). If `none`, run secondary process catalog only.
 - **Smoke plan path:** `{{SMOKE_PLAN_PATH}}` — absolute path to `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` (or `dev/_archive/phase-<N>/PHASE_<N>_SMOKE_TEST_PLAN.md` for closed phases). May be `none` if no plan exists for this phase.
+- **Session class:** `{{SESSION_CLASS}}` — deterministic classifier verdict (e.g., `feature-definition`, `bug-fix`, `integration`). `none` in phase mode.
+- **Class confidence:** `{{CLASS_CONFIDENCE}}` — `high | medium | low | none`.
+- **Session profile:** deterministic signals extracted from the transcript (slash commands, written paths, commit scopes, flags):
+
+{{SESSION_PROFILE}}
+
+- **Effect probe:** deterministic measure of how the session affected the pilot's `.product/` — session git window, touched artifacts, post-state validator findings (each tagged `touched_in_session`), and `.pending/`/`.decisions` debts. `none` in phase mode or when the session has no `.product/` (e.g. ecosystem-dev). Consumed in Step 3.5:
+
+{{EFFECT_PROBE}}
+
 - **Report path:** `{{REPORT_PATH}}` — absolute path where you write your findings.
 
 ## Reference documents (ground truth — read as needed)
@@ -52,6 +62,10 @@ Based on inputs:
 | `none` | (irrelevant) | **Catalog-only** — same as above |
 
 Record selected mode in the report frontmatter (`mode: full | catalog-only`).
+
+**Rubric-guided mode (universal / `--classify`):** if a **Selected rubric** block appears below (Session class ≠ `none`), you are in rubric-guided catalog mode — follow the rubric's `baseline` as ground truth and prioritize its `criteria` instead of the table above. There is no smoke plan, so **skip Step 2.5** (coverage trace) and the `scenarios` frontmatter block. Record `mode: catalog-only` and additionally set `session_class` / `class_confidence`. If the session profile clearly contradicts the assigned class, add an advisory finding `check_id: class-mismatch, severity: info` explaining why — do NOT re-classify yourself.
+
+{{RUBRIC_BLOCK}}
 
 ### Step 1 — Parse the transcript
 
@@ -168,6 +182,31 @@ If the session contains commits matching `(feat|fix|refactor)\((product|integrat
 
 Neither → 🟡 Warning with note «D7 reminder hook may have missed; investigate `dev/meta-improvement/hooks/phase-closure-reminder.js`».
 
+### Step 3.5 — Effect on product (rubric-guided mode; runs only when the Effect probe ≠ `none`)
+
+Skip this step in phase mode or when the Effect probe above is `none`. Otherwise, judge **how this session
+affected the pilot's `.product/`**, using the deterministic Effect probe + the selected rubric's
+**`effect_focus`** as the lens. Answer three questions:
+
+1. **What changed** — from `touched` (transcript writes/edits/deletes) + `git.product_diff_stat` +
+   `git.commits_in_window`: which artifacts the session created / modified / deleted. If
+   `git.committed: false`, the session's changes weren't committed in the window — rely on `touched`.
+2. **Correctly?** — cross the rubric's `effect_focus` against `post_state.findings`. Attribution rule:
+   - finding with `touched_in_session: true` → **the session's responsibility** (regression, or incomplete
+     work it should have finished). Call these out.
+   - finding with `touched_in_session: false` → **pre-existing debt** — mention if relevant to `effect_focus`,
+     but do NOT blame this session for it.
+3. **Could be better?** — debts (`debts.pending`, hanging cascade/DA/validation, stale decisions) the session
+   left behind or should have cleared given its class.
+
+The probe is a deterministic **heuristic, not ground truth**: attribution is path-based, the validator covers
+only `post_state.validator_scope` (a documented subset of the V-catalog), and `committed: false` limits the
+git view. Where the probe and the transcript disagree, say so and mark **❓ Uncertain** rather than
+over-claiming. Per global CLAUDE.md: «Honesty about limitations is required.» Do NOT modify `.product/`.
+
+Record a one-line verdict in frontmatter `effect_summary` and a short prose block in the report
+(«## Effect on product»).
+
 ### Step 4 — Write the report
 
 Write to `{{REPORT_PATH}}` using exactly this structure. **Field names are canonical — do not rename**. Anti-patterns explicitly forbidden:
@@ -185,6 +224,9 @@ audited_at: <ISO 8601 UTC timestamp>
 transcript_path: {{TRANSCRIPT_PATH}}
 session_end_reason: {{SESSION_END_REASON}}
 mode: full | catalog-only
+session_class: <class id> | none   # only in rubric-guided mode
+class_confidence: high | medium | low | none
+effect_summary: <≤120 chars — how the session affected .product/, or 'n/a' when Effect probe is none>
 phase: <integer> | none
 smoke_plan_path: {{SMOKE_PLAN_PATH}}
 status: clean | findings | partial | fail | error
@@ -208,7 +250,7 @@ scenarios:
 findings:
   # One list entry per finding from Process catalog (Step 3).
   # Skip block entirely if no findings.
-  - check_id: A | B | C | D | E | F | G
+  - check_id: A | B | C | D | E | F | G | class-mismatch
     severity: blocking | warning | info | uncertain
     confidence: high | medium | low | uncertain
     artifact: <path or artifact id, e.g., BR-022 or .product/business-rules/BR-022-...md>
@@ -253,6 +295,13 @@ findings:
 ### ❓ Uncertain
 
 <findings where transcript evidence was ambiguous; explain what's missing>
+
+## Effect on product
+
+<skip this section in phase mode or when Effect probe is `none`. Otherwise 3-6 lines from Step 3.5:
+what the session changed in `.product/`, whether it was correct against the rubric's effect_focus
+(separating session-attributed findings from pre-existing debt), and what could be better. Quote
+specific probe signals (artifact ids, finding rules, committed flag).>
 
 ## Skipped checks
 

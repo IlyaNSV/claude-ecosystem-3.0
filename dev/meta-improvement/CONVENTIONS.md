@@ -95,7 +95,7 @@ dev/meta-improvement/
 - **Checklists** (default): phase-closure.md, phase-kickoff.md, audit-smoke-workflow.md (Phase 4.1)
 - **Patterns** (Stage 3, mostly provisional): 5 в `patterns/`
 - **Skills** (Stage 4): memory-sync.md (formalizes phase-closure Step 5; manual run still default)
-- **Scripts** (Stage 4 + Phase 4.1): verify-update.sh / .ps1 (post-/ecosystem:update verification); audit-smoke.js + audit-index.js (Phase 4.1 D7 conformance auditor CLI)
+- **Scripts** (Stage 4 + Phase 4.1 + Audit v2): verify-update.sh / .ps1 (post-/ecosystem:update verification); audit-smoke.js + audit-index.js (Phase 4.1 D7 conformance auditor CLI); classify.js + effect-probe.js + audit-watch.js (Session Audit v2 Incr.1-2 — universal session auditor: deterministic classifier, effect-on-product probe, semi-auto watcher; DEC-DEV-0056/0057)
 - **Hooks** (Stage 4 + Phase 4.1): phase-closure-reminder.js (PostToolUse on Bash; surfaces stderr reminder when phase-completion commit detected без closure entry); session-audit.js (SessionEnd marker writer for pilot projects, Phase 4.1)
 - **Slash commands** (Phase 4.1): `/meta:audit-smoke` (.claude/commands/meta/, ecosystem-repo-local), `/ecosystem:enable-d7-audit` (deployable but D7-internal — opt-in setup для pilot)
 - **Composite mechanism** (Phase 4.1): hook-collects-state + command-consumes-batch pattern — `session-audit.js` пишет markers в `audit-index.md`, `/meta:audit-smoke` обрабатывает batch'ем
@@ -123,6 +123,8 @@ dev/meta-improvement/
 | `hooks/session-audit.js` | SessionEnd in pilot project | Per session | **Auto** (registered в pilot's `.claude/settings.local.json` via `/ecosystem:enable-d7-audit`) — writes marker only, no spawn |
 | `/meta:audit-smoke` (+ `scripts/audit-smoke.js`) | Post-smoke, after N sessions in pilot accumulated markers | Once per phase smoke | Manual (developer types invocation from ecosystem repo cwd) |
 | `checklists/audit-smoke-workflow.md` | Developer reference for the smoke-then-audit ritual | Per phase | Manual (developer reads) |
+| `scripts/audit-watch.js` (+ `/loop`) | Pilot sessions accumulated, Claude session open | Per loop interval (~45m) | **Semi-auto** (`/loop`/`CronCreate` drives `audit-smoke.js --classify --since`; idempotent skip-Processed; routines/RemoteTrigger disqualified — cloud can't see local transcripts/git). Session Audit v2 Incr.2, DEC-DEV-0057 |
+| `checklists/audit-watch.md` | Developer reference for the semi-auto watcher | Ad-hoc | Manual (developer reads) |
 
 **Reminder integration:**
 - D7 section в `CLAUDE.md` § «Что делать в этой сессии (Claude)» — ensures discovery (single block за all D7 mechanisms)
