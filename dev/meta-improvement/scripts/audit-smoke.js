@@ -12,6 +12,8 @@
  * Options:
  *   --phase=<N>             Phase number to audit against (required unless --no-plan)
  *   --no-plan               Skip smoke plan; per-session auditor runs catalog-only
+ *   --classify              Universal mode: classify each session and audit against the
+ *                           matched rubric (dev/meta-improvement/rubrics/). No --phase needed.
  *   --since=<duration>      Filter Pending by recency (e.g., 24h, 7d, 30m)
  *   --target-project=<name> Filter Pending by target project basename
  *   --session-id=<uuid>     Audit a single session (must be in Pending or use --transcript)
@@ -44,6 +46,7 @@ const os = require('os');
 const path = require('path');
 const { spawnSync } = require('child_process');
 const auditIndex = require('./audit-index.js');
+const classify = require('./classify.js');
 
 const DEFAULT_CLAUDE_BIN = process.env.CLAUDE_CLI_PATH || 'claude';
 const AUDITOR_TIMEOUT_MS = parseInt(process.env.AUDIT_SMOKE_TIMEOUT_MS || '1200000', 10);
@@ -60,7 +63,7 @@ function parseArgs(argv) {
   const out = {
     phase: null, since: null, target: null, sessionId: null, transcript: null,
     force: false, dryRun: false, noPlan: false, skipAggregate: false,
-    reAggregate: false, help: false,
+    reAggregate: false, help: false, classify: false,
   };
   for (const arg of argv) {
     if (arg === '--help' || arg === '-h') out.help = true;
@@ -69,6 +72,7 @@ function parseArgs(argv) {
     else if (arg === '--no-plan') out.noPlan = true;
     else if (arg === '--skip-aggregate') out.skipAggregate = true;
     else if (arg === '--re-aggregate') out.reAggregate = true;
+    else if (arg === '--classify') out.classify = true;
     else if (arg.startsWith('--phase=')) out.phase = parseInt(arg.slice(8), 10);
     else if (arg.startsWith('--since=')) out.since = arg.slice(8);
     else if (arg.startsWith('--target-project=')) out.target = arg.slice(17);
@@ -267,7 +271,11 @@ function runAuditor(opts) {
     .replace(/\{\{REPORT_PATH\}\}/g, opts.reportPath)
     .replace(/\{\{SESSION_END_REASON\}\}/g, opts.sessionEndReason || 'unknown')
     .replace(/\{\{PHASE\}\}/g, opts.phase != null ? String(opts.phase) : 'none')
-    .replace(/\{\{SMOKE_PLAN_PATH\}\}/g, opts.smokePlanPath || 'none');
+    .replace(/\{\{SMOKE_PLAN_PATH\}\}/g, opts.smokePlanPath || 'none')
+    .replace(/\{\{SESSION_CLASS\}\}/g, opts.sessionClass || 'none')
+    .replace(/\{\{CLASS_CONFIDENCE\}\}/g, opts.classConfidence || 'none')
+    .replace(/\{\{SESSION_PROFILE\}\}/g, opts.sessionProfile || 'none')
+    .replace(/\{\{RUBRIC_BLOCK\}\}/g, opts.rubricBlock || '');
 
   const transcriptDir = path.dirname(opts.transcriptPath);
   const cliArgs = [
@@ -536,8 +544,8 @@ function main() {
       process.stderr.write('Error: --re-aggregate is incompatible with --session-id, --transcript, --force, --dry-run, --skip-aggregate.\n');
       process.exit(2);
     }
-  } else if (args.phase == null && !args.noPlan && !args.sessionId && !args.transcript) {
-    process.stderr.write('Error: --phase=<N> is required (or pass --no-plan, --session-id, --transcript).\n');
+  } else if (args.phase == null && !args.noPlan && !args.sessionId && !args.transcript && !args.classify) {
+    process.stderr.write('Error: --phase=<N> is required (or pass --classify, --no-plan, --session-id, --transcript).\n');
     process.exit(2);
   }
 
@@ -671,6 +679,18 @@ function main() {
   fs.mkdirSync(reportsDir, { recursive: true });
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-smoke-'));
 
+  // Load rubric registry once (classify mode)
+  let rubrics = null;
+  if (args.classify) {
+    try {
+      rubrics = classify.loadRubrics(repoRoot);
+      process.stdout.write(`Classify mode: loaded ${rubrics.length} rubric(s).\n`);
+    } catch (e) {
+      process.stderr.write(`Error: failed to load rubrics: ${e.message}\n`);
+      process.exit(1);
+    }
+  }
+
   // Per-session audit loop
   const succeeded = [];
   for (const session of sessions) {
@@ -693,6 +713,26 @@ function main() {
     }
     process.stdout.write(`  preprocessed: ${recordCount} relevant records\n`);
 
+    // Classify (universal mode) — deterministic pre-pass picks the rubric
+    let classification = null;
+    let rubricBlock = '';
+    let sessionProfile = '';
+    if (args.classify && rubrics) {
+      try {
+        const signals = classify.extractSignals(session.transcript_path, session, { repoRoot });
+        classification = classify.classifySession(signals, rubrics);
+        const rubric = rubrics.find((r) => r.id === classification.class)
+          || rubrics.find((r) => r.id === 'mixed-uncertain');
+        if (rubric) {
+          rubricBlock = classify.renderRubricBlock(rubric, classification);
+          sessionProfile = classify.renderSessionProfile(signals);
+        }
+        process.stdout.write(`  classified: ${classification.class} (confidence=${classification.confidence})\n`);
+      } catch (e) {
+        process.stderr.write(`  classification failed: ${e.message}; auditor runs catalog-only\n`);
+      }
+    }
+
     const result = runAuditor({
       sessionId: session.session_id,
       transcriptPath: tmpTranscript,
@@ -702,6 +742,10 @@ function main() {
       reportPath,
       sessionEndReason: session.reason || 'unknown',
       claudeBin: DEFAULT_CLAUDE_BIN,
+      sessionClass: classification ? classification.class : '',
+      classConfidence: classification ? classification.confidence : '',
+      rubricBlock,
+      sessionProfile,
     });
 
     // A non-zero exit or spawn error (e.g. ETIMEDOUT) does not by itself mean
@@ -745,8 +789,8 @@ function main() {
         auditIndex.moveToProcessed(repoRoot, session.session_id, {
           audited_at: frontmatter.audited_at || new Date().toISOString(),
           target_project: session.target_project,
-          phase: frontmatter.phase != null ? frontmatter.phase : (args.phase != null ? args.phase : '—'),
-          mode: frontmatter.mode || (smokePlanPath ? 'full' : 'catalog-only'),
+          phase: args.classify ? '—' : (frontmatter.phase != null ? frontmatter.phase : (args.phase != null ? args.phase : '—')),
+          mode: (args.classify && classification) ? `class:${classification.class}` : (frontmatter.mode || (smokePlanPath ? 'full' : 'catalog-only')),
           status: frontmatter.status || 'error',
           coverage_summary: frontmatter.coverage_summary,
           findings_count: frontmatter.findings_count,

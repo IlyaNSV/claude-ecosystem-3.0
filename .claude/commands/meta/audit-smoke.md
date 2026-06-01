@@ -1,6 +1,6 @@
 ---
 description: Audit accumulated session markers against the active phase smoke test plan (D7 conformance auditor).
-argument-hint: --phase=<N> [--since=<duration>] [--target-project=<name>] [--session-id=<uuid>] [--transcript=<path>] [--force] [--dry-run] [--no-plan] [--skip-aggregate]
+argument-hint: --phase=<N> | --classify [--since=<duration>] [--target-project=<name>] [--session-id=<uuid>] [--transcript=<path>] [--force] [--dry-run] [--no-plan] [--skip-aggregate]
 allowed-tools: Bash(node:*), Read, Glob
 ---
 
@@ -24,7 +24,7 @@ Verify cwd contains `dev/meta-improvement/audit-index.md`. If not — instruct u
 
 ### Step 2 — Validate arguments
 
-User must pass `--phase=<N>` OR `--no-plan` OR `--session-id=<uuid>` OR `--transcript=<path>`. If none of these — surface the help text from `node dev/meta-improvement/scripts/audit-smoke.js --help` and stop.
+User must pass `--phase=<N>` OR `--classify` OR `--no-plan` OR `--session-id=<uuid>` OR `--transcript=<path>`. If none of these — surface the help text from `node dev/meta-improvement/scripts/audit-smoke.js --help` and stop.
 
 ### Step 3 — Show what will be audited (dry run first if many)
 
@@ -79,6 +79,18 @@ Based on the summary's `status`:
 | `findings` | «Есть findings — посмотри Critical issues в summary; реши: inline fix / queue к Phase N+1 readiness / defer к v1.1.» |
 | `partial` | «Часть сценариев PARTIAL — посмотри per-session reports, реши, нужны ли дополнительные сессии smoke.» |
 | `fail` | «🔴 Есть FAIL сценарии — Phase {{N}} имеет регрессии; разберись и при необходимости патч/откат, не закрывай Phase {{N}} closure ritual до фикса.» |
+
+## Universal (classify) mode
+
+`--classify` запускает универсальный аудит без привязки к фазе (Session Audit v2, Инкр.1, DEC-DEV-0056). Для каждой сессии:
+
+1. Детерминированный пре-пасс ([`classify.js`](../../../dev/meta-improvement/scripts/classify.js)) строит профиль (slash-команды, тронутые пути, scope коммитов, флаги) и выбирает **session-class** по реестру [`rubrics/`](../../../dev/meta-improvement/rubrics/).
+2. `claude -p`-аудитор сверяет сессию с `baseline`/`criteria` выбранной рубрики (rubric-guided catalog mode).
+3. Пишется per-session отчёт с `session_class` / `class_confidence` во frontmatter. **Phase-summary НЕ создаётся** (нет фазы — нечего агрегировать).
+
+В Processed-строке `audit-index.md`: `phase = —`, `mode = class:<session-class>`. CLI печатает `classified: <class> (confidence=…)` на каждую сессию.
+
+Типичный вызов: `--classify` (весь Pending) или `--classify --session-id=<uuid> --force` (одна сессия повторно). Переименование `/meta:audit-smoke`→`/meta:audit` отложено (см. `dev/SESSION_AUDIT_V2_DESIGN.md` §8).
 
 ## CLI exit codes
 

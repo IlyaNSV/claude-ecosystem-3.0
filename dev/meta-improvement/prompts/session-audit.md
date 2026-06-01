@@ -25,6 +25,12 @@ You are a **session conformance auditor** for the Ecosystem 3.0 meta-tooling pro
 - **Session end reason:** `{{SESSION_END_REASON}}` (one of: `clear`, `resume`, `logout`, `prompt_input_exit`, `other`)
 - **Phase number:** `{{PHASE}}` — explicit phase being smoke-tested (e.g., `4`). If `none`, run secondary process catalog only.
 - **Smoke plan path:** `{{SMOKE_PLAN_PATH}}` — absolute path to `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` (or `dev/_archive/phase-<N>/PHASE_<N>_SMOKE_TEST_PLAN.md` for closed phases). May be `none` if no plan exists for this phase.
+- **Session class:** `{{SESSION_CLASS}}` — deterministic classifier verdict (e.g., `feature-definition`, `bug-fix`, `integration`). `none` in phase mode.
+- **Class confidence:** `{{CLASS_CONFIDENCE}}` — `high | medium | low | none`.
+- **Session profile:** deterministic signals extracted from the transcript (slash commands, written paths, commit scopes, flags):
+
+{{SESSION_PROFILE}}
+
 - **Report path:** `{{REPORT_PATH}}` — absolute path where you write your findings.
 
 ## Reference documents (ground truth — read as needed)
@@ -52,6 +58,10 @@ Based on inputs:
 | `none` | (irrelevant) | **Catalog-only** — same as above |
 
 Record selected mode in the report frontmatter (`mode: full | catalog-only`).
+
+**Rubric-guided mode (universal / `--classify`):** if a **Selected rubric** block appears below (Session class ≠ `none`), you are in rubric-guided catalog mode — follow the rubric's `baseline` as ground truth and prioritize its `criteria` instead of the table above. There is no smoke plan, so **skip Step 2.5** (coverage trace) and the `scenarios` frontmatter block. Record `mode: catalog-only` and additionally set `session_class` / `class_confidence`. If the session profile clearly contradicts the assigned class, add an advisory finding `check_id: class-mismatch, severity: info` explaining why — do NOT re-classify yourself.
+
+{{RUBRIC_BLOCK}}
 
 ### Step 1 — Parse the transcript
 
@@ -185,6 +195,8 @@ audited_at: <ISO 8601 UTC timestamp>
 transcript_path: {{TRANSCRIPT_PATH}}
 session_end_reason: {{SESSION_END_REASON}}
 mode: full | catalog-only
+session_class: <class id> | none   # only in rubric-guided mode
+class_confidence: high | medium | low | none
 phase: <integer> | none
 smoke_plan_path: {{SMOKE_PLAN_PATH}}
 status: clean | findings | partial | fail | error
@@ -208,7 +220,7 @@ scenarios:
 findings:
   # One list entry per finding from Process catalog (Step 3).
   # Skip block entirely if no findings.
-  - check_id: A | B | C | D | E | F | G
+  - check_id: A | B | C | D | E | F | G | class-mismatch
     severity: blocking | warning | info | uncertain
     confidence: high | medium | low | uncertain
     artifact: <path or artifact id, e.g., BR-022 or .product/business-rules/BR-022-...md>
