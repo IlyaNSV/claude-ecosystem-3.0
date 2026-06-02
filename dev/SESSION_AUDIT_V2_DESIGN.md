@@ -1,8 +1,9 @@
 # Session Audit v2 — Design Doc
 
-> **Status:** DESIGN DRAFT (не реализовано) · **Created:** 2026-05-31 · **Decision ref:** [DEC-DEV-0056](../DEV_JOURNAL.md)
-> **Scope сейчас:** Инкремент 1 — **универсальный аудит** (классификатор сессий + реестр рубрик) поверх существующего `--no-plan`.
-> **Целевой триггер:** полу-авто (`/loop` / `CronCreate`), территория Инкремента 2.
+> **Status:** Инкр.1 SHIPPED (DEC-DEV-0056) · Инкр.2 SHIPPED (DEC-DEV-0057) · **Инкр.3 АКТИВНЫЙ** (DEC-DEV-0059) · **Created:** 2026-05-31
+> **Decision refs:** [DEC-DEV-0056](../DEV_JOURNAL.md) (Инкр.1) · [DEC-DEV-0057](../DEV_JOURNAL.md) (Инкр.2) · [DEC-DEV-0059](../DEV_JOURNAL.md) (Инкр.3 kickoff — re-anchor оракула; 0058 занят параллельной Orchestrator-сессией)
+> **Scope сейчас:** Инкр.3 — re-anchor оракула на **PMO-зоны (two-axis multi-label)** + накопительный findings-журнал + синтезатор патчей.
+> **Важно (DEC-DEV-0059):** механизм аудитит **только продуктовые сессии**. `ecosystem-dev`/self-dev аудит выкинут. Зоны — **owned-only** (D1, D2-B вкл. design, integrator-handoff); делегированные D2-T/D3/D4 невидимы в Claude-сессии.
 > **Принадлежность:** D7 meta-improvement. Артефакт dev-only, НЕ деплоится в пользовательские проекты (CONVENTIONS §2/§9).
 
 ---
@@ -60,8 +61,8 @@
    ▼
 [Драйвер audit v2]
    1. Детерминир. пре-пасс (JS): профиль сессии — commits, slash-cmds, тронутые пути, git-diff .product/
-   2. Классификатор → session-class                    ← [Инкр.1]  G2
-   3. Реестр рубрик → baseline + criteria + effect-focus   ← [Инкр.1]  G3
+   2. Классификатор → зоны[] (multi-label, owned-only) + mode                    ← [Инкр.1]  G2
+   3. Zone-references → ОБЪЕДИНЁННЫЙ baseline + criteria всех затронутых зон   ← [Инкр.1]  G3
    4. claude -p аудитор, параметризован РУБРИКОЙ (не --phase)   ← [Инкр.1] эволюция Step 0/2.5/3
         + dimension «эффект на .product/» (effect-probe)   ← [Инкр.2]  G4
    ▼
@@ -92,6 +93,8 @@
 
 ### 4.2 Таксономия классов и реестр рубрик
 
+> **⚠ SUPERSEDED частично (DEC-DEV-0059, Инкр.3a):** модель «один task-class через argmax» заменяется на **two-axis zone-anchored multi-label** (см. новый §6.0). Таблица ниже сохранена как исторический контекст Инкр.1; строка `ecosystem-dev` **удалена** — механизм аудитит только продуктовые сессии.
+
 Рубрика = тройка **«baseline (с чем сопоставить) + criteria (по каким критериям) + effect-focus (что проверить в продукте)»**. Хранится как **данные** — `dev/meta-improvement/rubrics/*.md` (или `rubrics.yaml`), НЕ хардкод в промпте. Это позволяет добавлять классы без правки кода.
 
 | session-class | Триггер-сигналы | Baseline (с чем сравнить) | Criteria | Effect-on-product focus |
@@ -104,7 +107,7 @@
 | **bug-fix** | `fix(...)` коммиты, нет новых feature-артефактов | **прежнее валидное состояние** (regression baseline) | не сломаны ли инварианты/валидация; журналирование fix | regression: ранее-валидные артефакты/hooks не «покраснели» |
 | **refactor** | `refactor(...)` | behavior-preservation | doc-consistency, нет дрейфа терминов | поведение сохранено |
 | **maintenance/docs** | `docs`/`chore` | лёгкая | только convention | минимальный |
-| **ecosystem-dev** (meta/D7) | работа в репо самой экосистемы | D7 CONVENTIONS, kickoff/closure | DEC-DEV дисциплина, phase hygiene (G) | n/a (нет `.product/`) |
+| ~~**ecosystem-dev**~~ | ❌ **УДАЛЕНО** (DEC-DEV-0059) — аудитим только продуктовые сессии, не self-dev экосистемы | — | — | — |
 | **mixed / uncertain** | конфликт сигналов | catalog-only (текущий fallback) | A–G | best-effort |
 
 Это прямой ответ на «сам определяет специфику и понимает как проверять». Ключевой сдвиг промпта: Step 0 вместо таблицы Full/Catalog-only читает **выбранную рубрику** и подставляет её baseline+criteria в Step 2.5/3.
@@ -160,6 +163,33 @@
 
 ## 6. Инкремент 3: журнал аудита + синтез патчей
 
+> **Порядок (DEC-DEV-0059):** 3a (re-anchor оракула, §6.0) → 3b (журнал, §6.1) → 3c (синтезатор, §6.2). Один branch `feat/session-audit-v2-incr3`.
+
+### 6.0 Re-anchor оракула: two-axis zone-anchored (3a) — supersedes §4.2
+
+**Проблема Инкр.1 (вскрыта на kickoff):** рубрики ключены по абстрактному task-class, классификатор берёт argmax (один победитель). Это (а) lossy для мульти-зонных сессий (одна продуктовая сессия легитимно идёт D1→D2-B→handoff), (б) неверная ось — эталон «как должно было пройти» привязан к PMO-зоне/модулю, а не к задаче (критерии A–G уже кластеризуются по зонам).
+
+**Модель — две ортогональные оси:**
+
+1. **Зона (первичная, multi-label, owned-only).** Классификатор детектит ВСЕ затронутые зоны (по порогу активации, не argmax). Owned-зоны — единственные, что видны в Claude-сессии продукта:
+
+   | zone id | модуль | baseline (ground truth) | criteria |
+   |---|---|---|---|
+   | `D1-discovery` | Product | `processes.md` (P1), `product-module/SPEC.md`, `artifacts/{PS,HYP,SEG,VP,MR,CA,MVP,RM,RL}` | A, E, D |
+   | `D2B-behavioral` | Product | `processes.md` (P-RULE-01/02), `product-module/SPEC.md` F.0–F.10, `artifacts/{FM,SC,BR,IC,LC,NFR,VC,RPM,BG}` | A, B, C, D, F |
+   | `D2B04-design` | Design | `design-module/SPEC.md`, `artifacts/{MK,DS,NM}` | A, D, F |
+   | `D6-integrator` | Integrator | `integrator-module/SPEC.md`, `handoff-spec.md` | handoff DoR, V-11 |
+
+   Делегированные D2-T/D3/D4/D5 **не заводятся** — их работы в Claude-сессии нет, виден только handoff в них (= D6).
+
+2. **Mode (вторичная, модификатор строгости).** `feature | fix | refactor | maintenance` из commit_type + occasion-флаг `module-shakedown`. Модулирует строгость (semantic vs cosmetic; напр. cosmetic-правка BR не требует DA).
+
+**Аудитор** читает ОБЪЕДИНЕНИЕ baseline всех затронутых зон как ground truth; criteria — объединение по зонам, отфильтрованное mode.
+
+**ecosystem-dev удалён** (только продуктовый аудит). Inventory чистки — DEC-DEV-0059 Outcome (6 мест).
+
+**Хранение:** `rubrics/` остаётся data-driven (концепт «task-class рубрика» → «zone-reference»; зоны не хардкодятся в коде — добавить зону = добавить `.md`). Имя директории `rubrics/` сохраняем для стабильности ссылок (переименование — §8).
+
 ### 6.1 Накопительный findings-журнал (G5)
 
 Сейчас находки эфемерны (per-phase summary пересобираются и теряются; Processed — плоский индекс обработки). Между «сырыми per-session findings» и «дистиллированными `patterns/`» **нет постоянного слоя**.
@@ -167,10 +197,11 @@
 Предложение: **append-only** `dev/meta-improvement/audit-journal.ndjson` (или `.yaml`) с устойчивым ключом:
 
 ```yaml
-- finding_id: <hash(check_id|class|artifact|signature)>
+- finding_id: <hash(zone|check_id|artifact|signature)>   # zone-anchored (DEC-DEV-0059)
   first_seen: <ISO>     last_seen: <ISO>
   session_ids: [<uuid>, …]      # накопление инстансов
-  session_class: bug-fix
+  zone: D2B-behavioral          # первичная ось (§6.0)
+  mode: fix                     # вторичная ось (модификатор)
   target_project: my-first-test
   check_id: B           severity: blocking   confidence: high
   signature: "IC edit без DA-review"
@@ -192,8 +223,10 @@
 
 **Пайплайн:**
 ```
-findings-журнал → кластеризация по (check_id, class, signature)
+findings-журнал → кластеризация по (zone, check_id, signature)   ← zone-anchored (DEC-DEV-0059)
   → recurring (≥3 инстансов) = systemic
+  → ADVERSARIAL-VERIFY (несколько скептиков на кластер, default-refute)  ← ОБЯЗАТЕЛЬНО (DEC-DEV-0057 Lesson #1)
+       выжил ≥majority → patch-кандидат; иначе → drop / status: uncertain
   → patch-кандидат {проблема, инстансы-evidence, целевые файлы, тип
        (codify-pattern | patch-template | add-hook | doc-fix | spec-change), risk, confidence, оценка}
   → human gate [Y/N/E/D]
