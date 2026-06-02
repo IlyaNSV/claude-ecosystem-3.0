@@ -4744,10 +4744,23 @@ Kickoff потребовал разрешить 5 развилок до кода
 
 **Сохраняем (это продуктовый аудит, не self-dev):** `module-delivery-shakedown` (→ occasion/mode), phase-mode (`--phase=N`), effect-probe no-`.product/` handling.
 
-### Lessons (предварительно; дополнятся по реализации)
+### Outcome — реализовано (3a/3b/3c, commits a4ba265/49b63fe/d83625b + 3c)
+
+**3a (re-anchor):** `classify.js` argmax→`classifyZones` multi-label (порог активации 2) + `detectMode` + `renderZonesBlock`; флаг `is_ecosystem_repo`/cwd убран. `rubrics/`: 6 task-class файлов → 4 owned zone-references (`D1-discovery`, `D2B-behavioral`, `D2B04-design`, `D6-integrator`) + `mixed-uncertain`; удалены bug-fix/feature-definition/integration/module-delivery-shakedown/ecosystem-dev. Промпт: zone-guided union baseline, check_id G + CONVENTIONS-ref удалены, frontmatter `session_zones`/`session_mode`. Driver: zones+mode проводка, audit-index `mode=zones:..|mode`. Верификация: 20/20 unit; calibration `1cdfa987` (`/design:start`) под старой моделью = `mixed-uncertain`, теперь = `D2B04-design+D2B-behavioral+D6-integrator`.
+
+**3b (журнал G5):** `scripts/audit-journal.js` — парс отчётов, zone-инференция из artifact, `finding_id=sha1(zone|check|artifact|signature)`, накопление session_ids, ndjson (deduped+sorted, human-status сохраняется), `--rebuild/--report/--stats`; skip removed G + advisory. Live-ingest в classify-режиме. Backfill из 20 отчётов: 47 находок, 7 systemic кластеров. 17/17 unit.
+
+**3c (синтезатор G6):** `prompts/patch-synth.md` (Stage 1 adversarial-verify ≥3 линзы default-refute → Stage 2 patch-кандидат) + `scripts/patch-synth.js` (кластеризация → systemic → `claude -p` → candidate + статус журнала) + `patch-candidates/` ([Y/N/E/D] gate). NO auto-fix (§8).
+
+**Live E2E (`--cluster=D2B-behavioral:C`, 9 находок/7 сессий):** survived → patch-proposed. **Adversarial-verify сработал как задумано — прямое подтверждение Lesson #1 на реальных данных:** синтезатор распознал кластер как ГЕТЕРОГЕННЫЙ (9 находок = ≥3 root cause), выделил реальный spine из 3, отбросил 6 ложно-systemic — включая русификацию как cosmetic/maintenance по `rubrics/D2B-behavioral.md:32` mode-clause (двухосевая модель end-to-end) и auditor-self-marked non-violations. Already-handled lens прочитал реальные skills/commands. Предложил наименьший механизм (patch-template), аргументировал против hook (§3/§2/§9). Кандидат `patch-candidates/D2B-behavioral__C.md`, gate pending.
+
+**Follow-up (после merge, как Инкр.1/2 через PR #20):** ROADMAP «Где мы сейчас» + memory-sync + PR; остальные 6 systemic кластеров — операционный прогон синтезатора пользователем.
+
+### Lessons
 
 1. **Оракул-точность — substrate-вопрос, всплывает при kickoff надстройки.** Вопрос «откуда эталон?» при kickoff надстроечного Инкр.3 вскрыл изъян нижележащего Инкр.1. *Apply:* при kickoff надстроечной фазы verify, что нижний слой даёт корректный сигнал, а не строй слепо поверх (ср. substrate premise verification, DEC-DEV-0052).
 2. **Вторичная классификация переоткрыла структуру первичных данных.** Критерии A–G уже кластеризовались по зонам; ярлык задачи был лишним слоем косвенности. *Apply:* когда так — ключуй по первичной структуре, не по производному ярлыку.
+3. **Кластер `(zone, check_id)` может быть гетерогенным — adversarial-verify нужен именно для расслоения, не только против фантомов.** Live-E2E: топ-кластер (9 находок) смешивал ≥3 root cause; детерминированный счётчик дал «9 systemic», но verify выделил spine из 3 и отбросил 6 (cosmetic-mode / anti-circular / separate-root-cause). *Apply:* синтезатор НЕ патчит кластер целиком по счётчику ≥3 — verify обязан дать per-finding disposition. Усиливает DEC-DEV-0057 Lesson #1.
 
 ### Связь с другими entries
 - DEC-DEV-0056 — Инкр.1 (классификатор+рубрики); 0059 **переархитектурит его модель рубрик** (task-class → zone-anchored) + удаляет ecosystem-dev
