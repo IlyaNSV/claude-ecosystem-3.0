@@ -4696,6 +4696,60 @@ Kickoff потребовал разрешить 5 развилок до кода
 
 ---
 
+## DEC-DEV-0058 — Orchestrator Module: направление «concept + dogfood» + ядро на in-harness Workflow
+
+**Date:** 2026-06-02
+**Trigger:** Открытый архитектурный запрос пользователя на проектирование Orchestrator Module (двухнедельный накопленный brain-dump). Research текущего состояния + разрешение двух стартовых развилок → фиксация направления до реализации.
+
+**Tag:** #architecture #orchestrator #kickoff #scope-cut #tooling
+
+### Context
+
+Orchestrator Module — последний непостроенный продуктовый модуль, блокирующий PILOT POINT. В репозитории он существовал только как **концепт-граница**, прописанная со стороны Интегратора (Integrator SPEC §8): «запускает инструменты, классифицирует, маршрутизирует», читает tool-docs/active-tools/pmo-mapping/contracts. ROADMAP держит его в v1.1+ backlog с формулировкой «draft SPEC **после** реального pilot experience» — при том что «PILOT POINT **requires** Orchestrator» (циклическая зависимость, зафиксирована для разрешения).
+
+Research вскрыл два факта, корректирующих вводные пользователя:
+1. **Реально заведён только cc-sdd** (адаптер `handoff-to-ccsdd.js`, D2-T01/T06). «beads» и «docker mcp» из запроса — лишь иллюстративные примеры в доках, не интегрированы. Значит оркестрировать сегодня почти нечего; яркие сценарии (deploy/rollback) блокированы отсутствием D3/D5-инструментов.
+2. Связь Интегратор↔Оркестратор в доках **односторонняя** (Integrator → tool-docs → Orchestrator). Пользовательское требование «Оркестратор командует Интегратору установить pgsql» — **новое**, требует обратного канала.
+
+Запрос пользователя структурирован в 10 требований (R1-R10); сердце — R10+R4: «динамический путь, но воспроизводимый результат».
+
+### Options considered
+
+**Развилка 1 — стартовый подход** (с учётом предупреждения CLAUDE.md §3 про self-referential collapse):
+1. Полный spec-first kickoff — быстрее к структуре, но риск проектировать на непроверенных допущениях.
+2. Pilot-first — максимум dogfood, но дольше до кодифицированной структуры.
+3. **Concept-SPEC + scoped dogfood** — тонкий концепт сейчас, затем 1-2 ручных прогона cc-sdd для эмпирического снятия регламентов. **Выбран** (баланс дизайна и валидации; прямой ответ на self-referential-collapse risk).
+
+**Развилка 2 — субстрат ядра:**
+1. **In-harness Opus 4.8 Workflow сейчас** — детерминированный хребет, минимум ops. **Выбран.**
+2. Гибрид с n8n сразу — мощнее, но внешняя инфраструктура и ops-нагрузка преждевременны.
+3. Спайк обоих — дольше; не оправдано при отсутствии durable-потребности.
+
+Дополнительно приняты дефолты OD1-OD3 (см. SPEC §9): OD1 — команды Orchestrator→Integrator проходят сохранённый hard-approve gate (auto-approve только whitelisted dev-tier); OD2 — `orchestrator/processes/` + `skills/orchestrator/`; OD3 — первый процесс `route-handoff-to-cc-sdd` (= dogfood-цель, = вырезанная Phase 5 работа DEC-DEV-0040 Q3).
+
+### Decision
+
+Зафиксировать направление и написать три артефакта: `docs/orchestrator-module/SPEC.md` (concept draft v0), эту запись, `dev/ORCHESTRATOR_DOGFOOD_PLAN.md` (чек-лист ручного прогона). Реализацию НЕ начинать до dogfood-снятия регламентов. Трёхслойная модель детерминизма (скелет/суждение/гейт) — рамка R10. Autonomy tiers переиспользуют built-предохранители Интегратора (env_tiers, scope-guard, pending-actions, hard-approve gate — DEC-DEV-0047). Computer Use и n8n — отложены до конкретной потребности (cuttable scope).
+
+### Outcome
+
+Написаны 3 артефакта + SSOT-sync (ROADMAP «Где мы сейчас» строка про concept + README module-table статус `🔬 concept draft v0`) выполнен в **этом же коммите**. Работа смёржена в main через PR поверх параллельно-смёрженного Session Audit v2 Incr.3: FF на свежий `main` (`0c688a8`) + переприменение этой записи **перед** DEC-DEV-0059 (правильный numerical order). Эмпирические регламенты — pending dogfood. Циклическая зависимость PILOT↔Orchestrator разрешается выбранным путём: dogfood = ручная оркестрация = «manual pilot», из которого снимается регламент для автоматизации.
+
+### Lessons
+
+1. **Вводные пользователя про tool landscape надо верифицировать по репозиторию.** «cc-sdd + beads + docker mcp» при проверке свелось к одному cc-sdd; остальное — иллюстративные примеры. Проектирование scope на непроверенном списке инструментов дало бы нереалистичный первый инкремент. *Apply:* перед scope-планированием Оркестратора всегда сверять `active-tools.yaml`/`adapters/` с заявленным.
+2. **Концепт-границу выгодно снимать со «смежного» модуля.** Самое детальное описание Оркестратора лежало в Integrator SPEC (что Интегратор *отдаёт* и чего *не делает*) — готовый негатив-отпечаток роли. *Apply:* при проектировании нового модуля сперва читать границы соседних.
+3. **Built-предохранители одного модуля — готовый фундамент автономии другого.** env_tiers/scope-guard/pending-actions/hard-approve gate (Интегратор, DEC-DEV-0047) — ровно то, что нужно автономному-но-безопасному Оркестратору. Не строить заново.
+
+### Связь с другими entries
+
+- DEC-DEV-0040 Q3 — production routing (handoff → live /kiro:spec-init) вырезан из Phase 5 → Оркестратор; = первый процесс `route-handoff-to-cc-sdd`
+- DEC-DEV-0047 — env_tiers + scope-guard + pending-actions + hard-approve gate; переиспользуются для autonomy tiers (§7) и OD1
+- DEC-DEV-0052 — substrate premise verification (вводные верифицированы эмпирически, не приняты на веру) — применён здесь к tool landscape
+- DEC-DEV-0059 — параллельная Session Audit Incr.3 сессия; взяла 0059, уступив 0058 этой Orchestrator-работе (порядок в журнале 0057→0058→0059)
+
+---
+
 ## DEC-DEV-0059 — Session Audit v2 Инкремент 3 kickoff: re-anchor оракула на PMO-зоны (two-axis), журнал + синтезатор
 
 **Date:** 2026-06-02
