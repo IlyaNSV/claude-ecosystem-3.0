@@ -67,8 +67,8 @@ node dev/meta-improvement/scripts/audit-smoke.js --classify --session-id=<uuid> 
 
 ## После прогона
 
-1. Новые per-session отчёты — `dev/meta-improvement/audit-reports/<uuid>.md` (с `session_class`,
-   `effect_summary`, секцией «Effect on product»). В Processed: `phase = —`, `mode = class:<class>`.
+1. Новые per-session отчёты — `dev/meta-improvement/audit-reports/<uuid>.md` (с `session_zones`,
+   `session_mode`, `effect_summary`, секцией «Effect on product»). В Processed: `phase = —`, `mode = zones:<z1+z2>|<mode>`.
 2. Просмотри findings и эффект на `.product/`; реши: inline-fix / queue / defer (NO auto-fix — CONVENTIONS §8).
 3. Накопление отчётов across сессий — вход для синтезатора патчей (Инкр.3, ещё не реализован).
 

@@ -82,13 +82,13 @@ Based on the summary's `status`:
 
 ## Universal (classify) mode
 
-`--classify` запускает универсальный аудит без привязки к фазе (Session Audit v2, Инкр.1, DEC-DEV-0056). Для каждой сессии:
+`--classify` запускает универсальный аудит **продуктовых** сессий без привязки к фазе (Session Audit v2, Инкр.1 DEC-DEV-0056 → re-anchor Инкр.3a DEC-DEV-0059). Для каждой сессии:
 
-1. Детерминированный пре-пасс ([`classify.js`](../../../dev/meta-improvement/scripts/classify.js)) строит профиль (slash-команды, тронутые пути, scope коммитов, флаги) и выбирает **session-class** по реестру [`rubrics/`](../../../dev/meta-improvement/rubrics/).
-2. `claude -p`-аудитор сверяет сессию с `baseline`/`criteria` выбранной рубрики (rubric-guided catalog mode).
-3. Пишется per-session отчёт с `session_class` / `class_confidence` во frontmatter. **Phase-summary НЕ создаётся** (нет фазы — нечего агрегировать).
+1. Детерминированный пре-пасс ([`classify.js`](../../../dev/meta-improvement/scripts/classify.js)) строит профиль (slash-команды, тронутые пути, scope коммитов, флаги) и детектит **зоны** (multi-label, owned-only PMO) + **mode** по реестру [`rubrics/`](../../../dev/meta-improvement/rubrics/). Одна сессия может затронуть несколько зон.
+2. `claude -p`-аудитор сверяет сессию с **объединённым** `baseline`/`criteria` всех активных зон (zone-guided catalog mode); `mode` модулирует строгость.
+3. Пишется per-session отчёт с `session_zones` / `session_mode` во frontmatter. **Phase-summary НЕ создаётся** (нет фазы — нечего агрегировать).
 
-В Processed-строке `audit-index.md`: `phase = —`, `mode = class:<session-class>`. CLI печатает `classified: <class> (confidence=…)` на каждую сессию.
+В Processed-строке `audit-index.md`: `phase = —`, `mode = zones:<z1+z2>|<mode>`. CLI печатает `classified zones: <z1,z2> · mode=<mode>` на каждую сессию.
 
 Типичный вызов: `--classify` (весь Pending) или `--classify --session-id=<uuid> --force` (одна сессия повторно). Переименование `/meta:audit-smoke`→`/meta:audit` отложено (см. `dev/SESSION_AUDIT_V2_DESIGN.md` §8).
 

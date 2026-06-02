@@ -289,8 +289,8 @@ function runAuditor(opts) {
     .replace(/\{\{SESSION_END_REASON\}\}/g, opts.sessionEndReason || 'unknown')
     .replace(/\{\{PHASE\}\}/g, opts.phase != null ? String(opts.phase) : 'none')
     .replace(/\{\{SMOKE_PLAN_PATH\}\}/g, opts.smokePlanPath || 'none')
-    .replace(/\{\{SESSION_CLASS\}\}/g, opts.sessionClass || 'none')
-    .replace(/\{\{CLASS_CONFIDENCE\}\}/g, opts.classConfidence || 'none')
+    .replace(/\{\{SESSION_ZONES\}\}/g, opts.sessionZones || 'none')
+    .replace(/\{\{SESSION_MODE\}\}/g, opts.sessionMode || 'none')
     .replace(/\{\{SESSION_PROFILE\}\}/g, opts.sessionProfile || 'none')
     .replace(/\{\{RUBRIC_BLOCK\}\}/g, opts.rubricBlock || '')
     .replace(/\{\{EFFECT_PROBE\}\}/g, opts.effectProbe || 'none');
@@ -697,14 +697,14 @@ function main() {
   fs.mkdirSync(reportsDir, { recursive: true });
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-smoke-'));
 
-  // Load rubric registry once (classify mode)
-  let rubrics = null;
+  // Load zone-reference registry once (classify mode)
+  let zones = null;
   if (args.classify) {
     try {
-      rubrics = classify.loadRubrics(repoRoot);
-      process.stdout.write(`Classify mode: loaded ${rubrics.length} rubric(s).\n`);
+      zones = classify.loadZones(repoRoot);
+      process.stdout.write(`Classify mode: loaded ${zones.length} zone-reference(s).\n`);
     } catch (e) {
-      process.stderr.write(`Error: failed to load rubrics: ${e.message}\n`);
+      process.stderr.write(`Error: failed to load zone-references: ${e.message}\n`);
       process.exit(1);
     }
   }
@@ -731,21 +731,20 @@ function main() {
     }
     process.stdout.write(`  preprocessed: ${recordCount} relevant records\n`);
 
-    // Classify (universal mode) — deterministic pre-pass picks the rubric
+    // Classify (universal mode) — deterministic pre-pass detects zones (multi-label) + mode
     let classification = null;
     let rubricBlock = '';
     let sessionProfile = '';
-    if (args.classify && rubrics) {
+    if (args.classify && zones) {
       try {
         const signals = classify.extractSignals(session.transcript_path, session, { repoRoot });
-        classification = classify.classifySession(signals, rubrics);
-        const rubric = rubrics.find((r) => r.id === classification.class)
-          || rubrics.find((r) => r.id === 'mixed-uncertain');
-        if (rubric) {
-          rubricBlock = classify.renderRubricBlock(rubric, classification);
-          sessionProfile = classify.renderSessionProfile(signals);
-        }
-        process.stdout.write(`  classified: ${classification.class} (confidence=${classification.confidence})\n`);
+        classification = classify.classifyZones(signals, zones);
+        rubricBlock = classify.renderZonesBlock(classification, zones);
+        sessionProfile = classify.renderSessionProfile(signals);
+        const zoneLabel = classification.zones.length
+          ? classification.zones.map((z) => z.id).join(',')
+          : 'mixed-uncertain';
+        process.stdout.write(`  classified zones: ${zoneLabel} · mode=${classification.mode}${classification.shakedown ? ' · shakedown' : ''}\n`);
       } catch (e) {
         process.stderr.write(`  classification failed: ${e.message}; auditor runs catalog-only\n`);
       }
@@ -785,8 +784,10 @@ function main() {
       reportPath,
       sessionEndReason: session.reason || 'unknown',
       claudeBin: DEFAULT_CLAUDE_BIN,
-      sessionClass: classification ? classification.class : '',
-      classConfidence: classification ? classification.confidence : '',
+      sessionZones: classification
+        ? (classification.zones.length ? classification.zones.map((z) => z.id).join(', ') : 'mixed-uncertain')
+        : '',
+      sessionMode: classification ? classification.mode : '',
       rubricBlock,
       sessionProfile,
       effectProbe: effectProbeBlock,
@@ -834,7 +835,9 @@ function main() {
           audited_at: frontmatter.audited_at || new Date().toISOString(),
           target_project: session.target_project,
           phase: args.classify ? '—' : (frontmatter.phase != null ? frontmatter.phase : (args.phase != null ? args.phase : '—')),
-          mode: (args.classify && classification) ? `class:${classification.class}` : (frontmatter.mode || (smokePlanPath ? 'full' : 'catalog-only')),
+          mode: (args.classify && classification)
+            ? `zones:${classification.zones.length ? classification.zones.map((z) => z.id).join('+') : 'mixed'}|${classification.mode}`
+            : (frontmatter.mode || (smokePlanPath ? 'full' : 'catalog-only')),
           status: frontmatter.status || 'error',
           coverage_summary: frontmatter.coverage_summary,
           findings_count: frontmatter.findings_count,
