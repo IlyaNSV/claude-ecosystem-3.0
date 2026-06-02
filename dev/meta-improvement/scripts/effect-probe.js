@@ -356,7 +356,7 @@ function readDebts(productDir) {
 /**
  * Build the full effect-probe object for one session transcript.
  * Always returns an object; sets `applicable: false` when there is no `.product/`
- * to measure (e.g. ecosystem-dev sessions) so the caller can pass `none` to the auditor.
+ * to measure (no `.product/` writes, or cwd not resolved) so the caller can pass `none` to the auditor.
  */
 function buildEffectProbe({ transcriptPath, sessionId, targetProject }) {
   const notes = [];
@@ -374,7 +374,7 @@ function buildEffectProbe({ transcriptPath, sessionId, targetProject }) {
     return {
       schema: 'effect-probe/v1',
       applicable: false,
-      reason: 'no .product/ for this session (likely ecosystem-dev or non-product cwd)',
+      reason: 'no .product/ for this session (no .product/ writes, or cwd not resolved)',
       session_id: sessionId || null,
       target_project: targetProject || null,
       window,

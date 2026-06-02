@@ -1,18 +1,26 @@
 #!/usr/bin/env node
 /**
- * classify.js — Session classifier + rubric registry loader for Session Audit v2.
+ * classify.js — Session zone classifier + zone-reference registry for Session Audit v2.
  *
  * Deterministic pre-pass consumed by scripts/audit-smoke.js in --classify mode:
- *   1. loadRubrics(repoRoot)          → parse dev/meta-improvement/rubrics/*.md
+ *   1. loadZones(repoRoot)            → parse dev/meta-improvement/rubrics/*.md (zone-references)
  *   2. extractSignals(transcript, …)  → session profile from transcript + marker
- *   3. classifySession(signals, …)    → { class, confidence, scores }
- *   4. renderRubricBlock / renderSessionProfile → text injected into auditor prompt
+ *   3. classifyZones(signals, zones)  → { zones: [{id,score,confidence}], mode, shakedown, fallback }
+ *   4. renderZonesBlock / renderSessionProfile → text injected into auditor prompt
  *
- * Pure & deterministic: no Date.now()/random in classification logic — timing
- * signals derive from inputs passed in (marker.ended_at + CHANGELOG date), so
- * the same inputs always yield the same class (unit-testable).
+ * Two-axis model (DEC-DEV-0059, Increment 3a re-anchor):
+ *   - PRIMARY axis: zone coverage (MULTI-LABEL, owned-only PMO zones). One product
+ *     session legitimately spans D1 → D2-B → handoff, so we activate ALL zones whose
+ *     score clears the threshold — not a single argmax winner.
+ *   - SECONDARY axis: work mode (feature|fix|refactor|maintenance from commit types) +
+ *     a module-shakedown occasion flag. Modulates strictness; it does NOT pick the baseline.
+ * Audits PRODUCT sessions only — ecosystem self-dev (Level B) is out of scope (DEC-DEV-0059).
  *
- * Per DEC-DEV-0056 (Session Audit v2, Increment 1). D7 dev-only.
+ * Pure & deterministic: no Date.now()/random in classification logic — timing signals
+ * derive from inputs (marker.ended_at + CHANGELOG date), so the same inputs always yield
+ * the same result (unit-testable).
+ *
+ * Per DEC-DEV-0056 (Increment 1) + DEC-DEV-0059 (Increment 3a re-anchor). D7 dev-only.
  */
 
 'use strict';
@@ -24,12 +32,12 @@ const SIGNAL_TYPES = new Set([
   'slash_command', 'written_path', 'commit_type', 'commit_scope', 'subagent_type', 'flag',
 ]);
 const RECENT_SHIP_DAYS = 21;
-// A lone weight-1 signal is not enough to assign a specific class — below this
-// the session falls to mixed-uncertain rather than a low-evidence guess.
-const MIN_DECISIVE_SCORE = 2;
+// A zone activates only when its score clears this bar; a lone weight-1 signal is not
+// enough to pull a zone's full baseline/criteria into the audit (multi-label, not argmax).
+const ZONE_ACTIVATION_SCORE = 2;
 
 // ============================================================================
-// Minimal frontmatter reader (controlled rubric grammar only)
+// Minimal frontmatter reader (controlled zone-reference grammar only)
 // ============================================================================
 
 function stripQuotes(s) {
@@ -39,7 +47,7 @@ function stripQuotes(s) {
 }
 
 /**
- * Parse rubric frontmatter. Supports: `key: scalar`, inline list `key: [a, b]`,
+ * Parse zone-reference frontmatter. Supports: `key: scalar`, inline list `key: [a, b]`,
  * and block list (`key:` then indented `  - item` lines). Returns { data, body }.
  */
 function parseFrontmatter(content) {
@@ -85,7 +93,7 @@ function parseFrontmatter(content) {
 }
 
 // ============================================================================
-// Rubric registry
+// Zone-reference registry
 // ============================================================================
 
 function parseTriggers(raw) {
@@ -106,16 +114,22 @@ function rubricsDir(repoRoot) {
   return path.join(repoRoot, 'dev', 'meta-improvement', 'rubrics');
 }
 
-function loadRubrics(repoRoot) {
+/**
+ * Load zone-references from dev/meta-improvement/rubrics/*.md. Each file is one PMO zone
+ * (owned-only) or the `mixed-uncertain` fallback. Data-driven: adding a zone = adding a
+ * `.md` file, no code change. Directory name stays `rubrics/` for reference stability.
+ */
+function loadZones(repoRoot) {
   const dir = rubricsDir(repoRoot);
   const files = fs.readdirSync(dir).filter((f) => f.endsWith('.md') && f !== 'README.md');
-  const rubrics = [];
+  const zones = [];
   for (const f of files) {
     const { data, body } = parseFrontmatter(fs.readFileSync(path.join(dir, f), 'utf-8'));
     if (!data.id) continue;
-    rubrics.push({
+    zones.push({
       id: data.id,
       title: data.title || data.id,
+      module: data.module || '',
       triggers: parseTriggers(data.triggers),
       criteria: Array.isArray(data.criteria) ? data.criteria : [],
       baseline: Array.isArray(data.baseline) ? data.baseline : [],
@@ -123,7 +137,7 @@ function loadRubrics(repoRoot) {
       body: (body || '').trim(),
     });
   }
-  return rubrics;
+  return zones;
 }
 
 // ============================================================================
@@ -190,14 +204,12 @@ function extractSignals(transcriptPath, marker, context) {
   const bash_commands = [];
   const commit_types = [];
   const commit_scopes = [];
-  const cwds = [];
 
   const lines = fs.readFileSync(transcriptPath, 'utf-8').split('\n');
   for (const line of lines) {
     if (!line.trim()) continue;
     let rec;
     try { rec = JSON.parse(line); } catch { continue; }
-    if (rec && typeof rec.cwd === 'string') cwds.push(rec.cwd);
     const msg = rec && rec.message;
     const content = msg && msg.content;
     // User-typed slash commands live in user messages (string or text blocks),
@@ -223,10 +235,8 @@ function extractSignals(transcriptPath, marker, context) {
     }
   }
 
-  const cwdStr = (uniq(cwds).join(' ') + ' ' + (marker && marker.target_project || '')).toLowerCase();
   const wp = uniq(written_paths);
   const flags = {
-    is_ecosystem_repo: /claude-ecosystem/.test(cwdStr),
     touched_product: wp.some((p) => p.includes('.product/')),
     has_feature_artifact: wp.some((p) => /\.product\/features\//.test(p)),
     has_design_artifact: wp.some((p) => /\.product\/(mockups|design-system)/.test(p) || /\/(MK|NM|DS)-/.test(p)),
@@ -266,7 +276,7 @@ function computeRecentlyShipped(repoRoot, endedAtIso) {
 }
 
 // ============================================================================
-// Classification
+// Classification (two-axis: zones multi-label + mode modifier)
 // ============================================================================
 
 function triggerMatches(trig, signals) {
@@ -281,42 +291,59 @@ function triggerMatches(trig, signals) {
   }
 }
 
-function scoreRubric(signals, rubric) {
+function scoreZone(signals, zone) {
   let sum = 0;
-  for (const trig of rubric.triggers) {
+  for (const trig of zone.triggers) {
     if (triggerMatches(trig, signals)) sum += trig.weight;
   }
   return sum;
 }
 
+function zoneConfidence(score) {
+  if (score >= 4) return 'high';
+  if (score >= 2) return 'medium';
+  return 'low';
+}
+
 /**
- * Returns { class, confidence: high|medium|low, scores: [{id, score}] }.
- * Deterministic. Falls back to 'mixed-uncertain' when no decisive winner.
+ * Work-mode modifier (secondary axis) from conventional-commit types. Returns the
+ * STRICTEST mode present (feature > refactor > fix > maintenance) so a mixed session
+ * is audited at the higher bar. 'unknown' when no commits → auditor applies full strictness.
  */
-function classifySession(signals, rubrics) {
-  const scored = rubrics
-    .filter((r) => r.triggers.length > 0)
-    .map((r) => ({ id: r.id, score: scoreRubric(signals, r) }))
+function detectMode(signals) {
+  const t = signals.commit_types || [];
+  if (t.includes('feat')) return 'feature';
+  if (t.includes('refactor')) return 'refactor';
+  if (t.includes('fix')) return 'fix';
+  if (t.length > 0 && t.every((x) => x === 'docs' || x === 'chore')) return 'maintenance';
+  return 'unknown';
+}
+
+/**
+ * MULTI-LABEL zone classification (DEC-DEV-0059). Returns every zone whose score clears
+ * ZONE_ACTIVATION_SCORE — not a single argmax winner — because a product session can
+ * legitimately span several owned zones. `fallback: true` (zones: []) when nothing clears
+ * the bar → auditor runs catalog-only (mixed-uncertain). Deterministic.
+ *
+ * Returns { zones: [{id, score, confidence}], fallback, mode, shakedown, scores }.
+ */
+function classifyZones(signals, zones) {
+  const scored = zones
+    .filter((z) => z.triggers.length > 0)
+    .map((z) => ({ id: z.id, score: scoreZone(signals, z) }))
     .sort((a, b) => b.score - a.score);
 
-  const fallback = { class: 'mixed-uncertain', scores: scored };
+  const active = scored
+    .filter((s) => s.score >= ZONE_ACTIVATION_SCORE)
+    .map((s) => ({ id: s.id, score: s.score, confidence: zoneConfidence(s.score) }));
 
-  if (scored.length === 0 || scored[0].score < MIN_DECISIVE_SCORE) {
-    return { ...fallback, confidence: 'low' };
-  }
-
-  const top = scored[0];
-  const second = scored[1] || { score: 0 };
-  const tie = scored.filter((s) => s.score === top.score).length > 1;
-  if (tie) return { ...fallback, confidence: 'low' };
-
-  const margin = top.score - second.score;
-  let confidence;
-  if (top.score >= 4 && margin >= 2) confidence = 'high';
-  else if (top.score >= 2 && margin >= 1) confidence = 'medium';
-  else confidence = 'low';
-
-  return { class: top.id, confidence, scores: scored };
+  return {
+    zones: active,
+    fallback: active.length === 0,
+    mode: detectMode(signals),
+    shakedown: !!(signals.flags && signals.flags.module_recently_shipped),
+    scores: scored,
+  };
 }
 
 // ============================================================================
@@ -337,40 +364,77 @@ function renderSessionProfile(signals) {
   return '```json\n' + JSON.stringify(compact, null, 2) + '\n```';
 }
 
-function renderRubricBlock(rubric, verdict) {
-  const baseline = rubric.baseline.length
-    ? rubric.baseline.map((b) => `- ${b}`).join('\n')
+/**
+ * Render the `{{RUBRIC_BLOCK}}` text for the auditor: the UNION of baseline + criteria
+ * across all activated zones, plus the mode modifier. Falls back to a catalog-only block
+ * when no zone activated.
+ */
+function renderZonesBlock(classification, zones) {
+  const byId = new Map(zones.map((z) => [z.id, z]));
+  const active = classification.zones.map((z) => byId.get(z.id)).filter(Boolean);
+  const modeLine = `**Mode (строгость):** ${classification.mode}`
+    + (classification.shakedown ? ' · occasion: **module-shakedown** (вероятно первая боевая сессия после поставки модуля — проверь, что поставленный модуль реально работает)' : '');
+
+  if (active.length === 0) {
+    const fb = byId.get('mixed-uncertain');
+    return [
+      '## Selected zones — none decisive (mixed / uncertain)',
+      '',
+      modeLine,
+      '',
+      'Детерминированный классификатор не выделил ни одной зоны с достаточным сигналом.',
+      'Работай в **catalog-only** режиме: общая сверка с процесс-каталогом (A–F), без зонного приоритета.',
+      fb && fb.body ? '\n**Rationale fallback:**\n' + fb.body : '',
+    ].join('\n');
+  }
+
+  const baselineSet = [];
+  const criteriaSet = new Set();
+  for (const z of active) {
+    for (const b of z.baseline) if (!baselineSet.includes(b)) baselineSet.push(b);
+    for (const c of z.criteria) criteriaSet.add(c);
+  }
+  const zoneLines = active.map((z) =>
+    `- **${z.id}**${z.module ? ` (${z.module})` : ''} — ${z.title}`
+    + `\n  criteria: ${z.criteria.join(', ') || '(общая)'} · effect_focus: ${z.effect_focus || 'n/a'}`
+  ).join('\n');
+  const baselineLines = baselineSet.length
+    ? baselineSet.map((b) => `- ${b}`).join('\n')
     : '- (нет явного — общая сверка с процесс-каталогом)';
-  const criteria = rubric.criteria.length ? rubric.criteria.join(', ') : '(общая сверка)';
+
   return [
-    `## Selected rubric — ${rubric.id} (class confidence: ${verdict.confidence})`,
+    `## Selected zones (multi-label) — ${active.map((z) => z.id).join(', ')}`,
     '',
-    'Ты в **rubric-guided режиме**. Используй baseline ниже как ground truth (читай эти файлы),',
-    'приоритизируй перечисленные criteria, можешь скипнуть нерелевантные catalog-проверки.',
-    'Если профиль сессии явно не соответствует этому классу — отметь это advisory-находкой',
-    '(check_id: class-mismatch, severity: info) и поясни; НЕ переклассифицируй сам.',
+    modeLine,
     '',
-    '**Baseline (с чем сравнивать):**',
-    baseline,
+    'Ты в **zone-guided режиме**. Сессия могла затронуть НЕСКОЛЬКО зон — проверяй против',
+    'ОБЪЕДИНЕНИЯ их baseline (читай эти файлы как ground truth) и приоритизируй объединённые criteria.',
+    'mode модулирует строгость: `maintenance`/`fix` → не штрафуй за отсутствие тяжёлых ритуалов на',
+    'косметических правках; `feature`/`refactor`/`unknown` → полная строгость.',
+    'Если профиль сессии явно противоречит назначенным зонам — отметь advisory-находкой',
+    '(check_id: zone-mismatch, severity: info) и поясни; НЕ переклассифицируй сам.',
     '',
-    `**Criteria (приоритет, check_id):** ${criteria}`,
+    '**Затронутые зоны:**',
+    zoneLines,
     '',
-    `**Effect focus (контекст):** ${rubric.effect_focus || '(n/a)'}`,
+    '**Baseline (объединение, читай как ground truth):**',
+    baselineLines,
     '',
-    '**Rationale рубрики:**',
-    rubric.body || '(нет)',
+    `**Criteria (объединение, check_id):** ${Array.from(criteriaSet).join(', ') || '(общая сверка)'}`,
   ].join('\n');
 }
 
 module.exports = {
   parseFrontmatter,
   parseTriggers,
-  loadRubrics,
+  loadZones,
   extractUserSlashCommands,
   extractSignals,
   computeRecentlyShipped,
-  scoreRubric,
-  classifySession,
+  scoreZone,
+  zoneConfidence,
+  detectMode,
+  classifyZones,
   renderSessionProfile,
-  renderRubricBlock,
+  renderZonesBlock,
 };

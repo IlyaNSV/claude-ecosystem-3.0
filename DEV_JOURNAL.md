@@ -4696,6 +4696,81 @@ Kickoff потребовал разрешить 5 развилок до кода
 
 ---
 
+## DEC-DEV-0059 — Session Audit v2 Инкремент 3 kickoff: re-anchor оракула на PMO-зоны (two-axis), журнал + синтезатор
+
+**Date:** 2026-06-02
+**Trigger:** D7 phase-kickoff (inline) для Инкр.3 дизайна Session Audit v2 (`dev/SESSION_AUDIT_V2_DESIGN.md` §6: G5 findings-журнал + G6 синтезатор патчей). В Section 1 (architectural readiness) вопрос заказчика «откуда механизм берёт эталон корректности сессии?» вскрыл структурный изъян модели рубрик Инкр.1 → решение переархитектурить оракул ДО строительства журнала/синтезатора.
+
+**Tag:** #architecture #d7 #tooling #process-improvement #kickoff
+
+### Context
+
+Инкр.1 (DEC-DEV-0056) ввёл рубрики, ключённые по **абстрактному session-class** (feature-definition / bug-fix / integration / ecosystem-dev / module-delivery-shakedown / mixed-uncertain); классификатор берёт **argmax — один класс-победитель** (`classify.js:296`). Kickoff вскрыл две структурные проблемы:
+
+1. **Single-label lossy.** PMO-карта (`docs/pmo/pmo-map.md`) показывает: одна продуктовая сессия легитимно охватывает D1 → D2-B → handoff. Winner-take-all схлопывает её в один класс, теряя остальные зоны. Заказчик: «3 модуля в одной сессии — это нормально».
+2. **Task-class — неверная ось.** Эталон «как сессия должна была пройти» естественно привязан к **PMO-зоне/модулю** (что и какими спеками сверять), а не к абстрактной задаче. Доказательство: критерии аудитора A–G уже кластеризуются по зонам (B/C → D2-B, E → D1, G → Level B), рубрики лишь переоткрывают набор критериев зоны под ярлыком задачи.
+
+Заказчик (solo dev) сформулировал направление: эталон = подгружать «судье» спеки/доки экосистемы (формальный step-trace не нужен — сессии не детерминированы); рубрики привязать к конкретным модулям и зонам PMO coverage. Дополнительно: механизм аудитит **только продуктовые сессии** — аудит self-dev сессий самой экосистемы выкинуть.
+
+### Options considered
+
+1. **Ключ рубрики:** (a) сохранить task-class; (b) zone-anchored; (c) гибрид. **Выбран (b)+нюанс (c)** — первичная ось зона, вторичная режим (#3).
+2. **Лейблинг:** (a) single-label argmax (Инкр.1); (b) multi-label по порогу активации. **Выбран (b)** — прямо отражает мульти-зонные сессии; веса триггеров реюзаются как пороги активации, не argmax.
+3. **Число осей:** (a) только зоны; (b) две оси (зона + mode-модификатор). **Выбран (b)** — зона задаёт baseline + применимые критерии; режим (feature/fix/refactor/maintenance из commit_type) модулирует строгость (semantic vs cosmetic, ср. Step 3.B/C P-RULE-01/02). Чистые зоны потеряли бы эту градацию.
+4. **Граница зон:** (a) только owned (D1, D2-B вкл. design, integrator-handoff); (b) + делегированные (D2-T/D3/D4). **Выбран (a)** — D2-T/D3/D4 делегированы внешним тулам (`pmo-map.md:68-112`), их работы в Claude-сессии нет — виден только handoff в них (= D6). Рубрики для невидимого = риск пустых baseline.
+5. **ecosystem-dev:** (a) сохранить аудит self-dev сессий экосистемы; (b) выкинуть. **Выбран (b)** — только продуктовые сессии. **Верификация (заказчик попросил):** ecosystem-dev был латентной заготовкой — никогда не captured (хук `session-audit.js` ставится лишь в пилотах через `/ecosystem:enable-d7-audit`; все маркеры = `my-first-test`) и ни разу не run. Удаление = чистка мёртвого кода, не слом рабочего пути.
+6. **Порядок работ:** (a) re-anchor отдельным инкрементом (2 PR); (b) 3a внутри Инкр.3. **Выбран (b)** — 3a (re-anchor) → 3b (журнал) → 3c (синтезатор), один feature-branch. Re-anchor усиливает ось кластеризации журнала/синтезатора: `(zone, check_id)` осмысленнее абстрактного class.
+
+### Decision
+
+Переархитектурить оракул в **two-axis zone-anchored multi-label** до строительства журнала/синтезатора:
+
+- **Зоны (owned-only, multi-label):** `D1-discovery`, `D2B-behavioral`, `D2B04-design`, `D6-integrator`. Хранятся данными в `rubrics/` (концепт task-class → zone-reference; зоны не хардкодятся в коде классификатора — сохраняем «добавить зону = добавить `.md`»).
+- **Mode (модификатор строгости):** feature | fix | refactor | maintenance (из commit_type) + occasion-флаг `module-shakedown`.
+- **Журнал (3b):** `finding_id = hash(zone | check_id | artifact | signature)`; накопление `session_ids`, `first/last_seen`, `status` (open|clustered|patch-proposed|patched|dismissed).
+- **Синтезатор (3c):** кластеризация по `(zone, check_id)` → ≥3 инстансов = systemic → patch-кандидат → human gate `[Y/N/E/D]`; **ОБЯЗАТЕЛЬНЫЙ adversarial-verify** до промоушна (DEC-DEV-0057 Lesson #1 — фантомы). NO auto-fix (CONVENTIONS §8).
+
+Реализация на `feat/session-audit-v2-incr3` (от main).
+
+### Outcome (план; детали Outcome — по завершении 3c)
+
+**ecosystem-dev removal inventory (3a):**
+1. `rubrics/ecosystem-dev.md` — удалить
+2. `classify.js:229` флаг `is_ecosystem_repo` + использования — удалить
+3. `prompts/session-audit.md` — check_id G + Step 3.G + reference-док CONVENTIONS (стр. 48) удалить
+4. `dev/SESSION_AUDIT_V2_DESIGN.md` §4.2 / §5 таблицы + `rubrics/README.md` — обновить таксономию
+5. `rubrics/integration.md` anti-pattern note «не путать с ecosystem-dev» — обновить
+6. `effect-probe.js` (стр. 359/377) — снять формулировку «ecosystem-dev», механизм no-`.product/` оставить
+
+**Сохраняем (это продуктовый аудит, не self-dev):** `module-delivery-shakedown` (→ occasion/mode), phase-mode (`--phase=N`), effect-probe no-`.product/` handling.
+
+### Outcome — реализовано (3a/3b/3c, commits a4ba265/49b63fe/d83625b + 3c)
+
+**3a (re-anchor):** `classify.js` argmax→`classifyZones` multi-label (порог активации 2) + `detectMode` + `renderZonesBlock`; флаг `is_ecosystem_repo`/cwd убран. `rubrics/`: 6 task-class файлов → 4 owned zone-references (`D1-discovery`, `D2B-behavioral`, `D2B04-design`, `D6-integrator`) + `mixed-uncertain`; удалены bug-fix/feature-definition/integration/module-delivery-shakedown/ecosystem-dev. Промпт: zone-guided union baseline, check_id G + CONVENTIONS-ref удалены, frontmatter `session_zones`/`session_mode`. Driver: zones+mode проводка, audit-index `mode=zones:..|mode`. Верификация: 20/20 unit; calibration `1cdfa987` (`/design:start`) под старой моделью = `mixed-uncertain`, теперь = `D2B04-design+D2B-behavioral+D6-integrator`.
+
+**3b (журнал G5):** `scripts/audit-journal.js` — парс отчётов, zone-инференция из artifact, `finding_id=sha1(zone|check|artifact|signature)`, накопление session_ids, ndjson (deduped+sorted, human-status сохраняется), `--rebuild/--report/--stats`; skip removed G + advisory. Live-ingest в classify-режиме. Backfill из 20 отчётов: 47 находок, 7 systemic кластеров. 17/17 unit.
+
+**3c (синтезатор G6):** `prompts/patch-synth.md` (Stage 1 adversarial-verify ≥3 линзы default-refute → Stage 2 patch-кандидат) + `scripts/patch-synth.js` (кластеризация → systemic → `claude -p` → candidate + статус журнала) + `patch-candidates/` ([Y/N/E/D] gate). NO auto-fix (§8).
+
+**Live E2E (`--cluster=D2B-behavioral:C`, 9 находок/7 сессий):** survived → patch-proposed. **Adversarial-verify сработал как задумано — прямое подтверждение Lesson #1 на реальных данных:** синтезатор распознал кластер как ГЕТЕРОГЕННЫЙ (9 находок = ≥3 root cause), выделил реальный spine из 3, отбросил 6 ложно-systemic — включая русификацию как cosmetic/maintenance по `rubrics/D2B-behavioral.md:32` mode-clause (двухосевая модель end-to-end) и auditor-self-marked non-violations. Already-handled lens прочитал реальные skills/commands. Предложил наименьший механизм (patch-template), аргументировал против hook (§3/§2/§9). Кандидат `patch-candidates/D2B-behavioral__C.md`, gate pending.
+
+**Follow-up (после merge, как Инкр.1/2 через PR #20):** ROADMAP «Где мы сейчас» + memory-sync + PR; остальные 6 systemic кластеров — операционный прогон синтезатора пользователем.
+
+### Lessons
+
+1. **Оракул-точность — substrate-вопрос, всплывает при kickoff надстройки.** Вопрос «откуда эталон?» при kickoff надстроечного Инкр.3 вскрыл изъян нижележащего Инкр.1. *Apply:* при kickoff надстроечной фазы verify, что нижний слой даёт корректный сигнал, а не строй слепо поверх (ср. substrate premise verification, DEC-DEV-0052).
+2. **Вторичная классификация переоткрыла структуру первичных данных.** Критерии A–G уже кластеризовались по зонам; ярлык задачи был лишним слоем косвенности. *Apply:* когда так — ключуй по первичной структуре, не по производному ярлыку.
+3. **Кластер `(zone, check_id)` может быть гетерогенным — adversarial-verify нужен именно для расслоения, не только против фантомов.** Live-E2E: топ-кластер (9 находок) смешивал ≥3 root cause; детерминированный счётчик дал «9 systemic», но verify выделил spine из 3 и отбросил 6 (cosmetic-mode / anti-circular / separate-root-cause). *Apply:* синтезатор НЕ патчит кластер целиком по счётчику ≥3 — verify обязан дать per-finding disposition. Усиливает DEC-DEV-0057 Lesson #1.
+
+### Связь с другими entries
+- DEC-DEV-0056 — Инкр.1 (классификатор+рубрики); 0059 **переархитектурит его модель рубрик** (task-class → zone-anchored) + удаляет ecosystem-dev
+- DEC-DEV-0057 — Инкр.2; Lesson #1 (adversarial-verify) — жёсткое требование к синтезатору 3c
+- DEC-DEV-0040 — функциональная PMO-декомпозиция (D2-B/D2-T/D3/D4), источник зонной таксономии
+- CONVENTIONS §1.3 (D6 vs D7 — почему ecosystem-dev/Level B вне продуктового аудита), §8 (no-auto-fix), §9 (self-application)
+- numbering: tail был 0057; **0058 занят параллельной Orchestrator-сессией** (worktree `graceful-petting-hanrahan`, uncommitted, зафиксировано в shared memory) → этот entry = **0059**. Разрыв намеренный во избежание коллизии при будущем merge.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
