@@ -48,6 +48,7 @@ const { spawnSync } = require('child_process');
 const auditIndex = require('./audit-index.js');
 const classify = require('./classify.js');
 const effectProbe = require('./effect-probe.js');
+const auditJournal = require('./audit-journal.js');
 
 const DEFAULT_CLAUDE_BIN = process.env.CLAUDE_CLI_PATH || 'claude';
 const AUDITOR_TIMEOUT_MS = parseInt(process.env.AUDIT_SMOKE_TIMEOUT_MS || '1200000', 10);
@@ -709,6 +710,10 @@ function main() {
     }
   }
 
+  // Accumulating findings journal (G5, Incr.3b) — populated live in classify mode.
+  const journalPath = path.join(repoRoot, 'dev', 'meta-improvement', 'audit-journal.ndjson');
+  const journalMap = args.classify ? auditJournal.loadJournal(journalPath) : null;
+
   // Per-session audit loop
   const succeeded = [];
   for (const session of sessions) {
@@ -829,6 +834,18 @@ function main() {
 
     succeeded.push({ session, frontmatter, reportPath });
 
+    if (journalMap) {
+      try {
+        const rep = auditJournal.parseReport(reportPath);
+        if (rep) {
+          const added = auditJournal.ingestReport(journalMap, rep, session.target_project);
+          if (added) process.stdout.write(`  journal: +${added} finding(s) accumulated\n`);
+        }
+      } catch (e) {
+        process.stderr.write(`  warning: journal ingest failed: ${e.message}\n`);
+      }
+    }
+
     try {
       if (session.source === 'index') {
         auditIndex.moveToProcessed(repoRoot, session.session_id, {
@@ -847,6 +864,16 @@ function main() {
       process.stdout.write(`  ✓ status=${frontmatter.status} → ${path.relative(repoRoot, reportPath)}\n`);
     } catch (e) {
       process.stderr.write(`  warning: index update failed: ${e.message}\n`);
+    }
+  }
+
+  // Persist the accumulating findings journal (Incr.3b).
+  if (journalMap) {
+    try {
+      const n = auditJournal.writeJournal(journalPath, journalMap);
+      process.stdout.write(`\nJournal updated: ${n} distinct finding(s) → ${path.relative(repoRoot, journalPath)}\n`);
+    } catch (e) {
+      process.stderr.write(`Journal write failed: ${e.message}\n`);
     }
   }
 
