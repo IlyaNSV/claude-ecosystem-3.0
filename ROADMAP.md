@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-05-28 (Phase 6 — Design Module v1.0 shipped — DEC-DEV-0053; 1.4.0 release; 8 sub-phase commits A→I; 6 commands + 6 skills + 1 hook + manifest + handoff-generator.md Step 8c; static smoke 19/19 PASS; runtime smoke deferred).
+> **Последнее обновление:** 2026-06-02 (Session Audit v2 D7-tooling — Инкр.1+2+3 merged, DEC-DEV-0056/0057/0059, PR #20/#21; продуктовый авто-аудитор сессий. Предыдущая фаза: Phase 6 Design Module v1.0 — 1.4.0, DEC-DEV-0053, 2026-05-28). Примечание: промежуточные DEC-DEV-0054 (Tier 1 doc reform, PR #18) и DEC-DEV-0055 (harness-audit hygiene, PR #19) в этот status-блок пока не внесены.
 
 ## Где мы сейчас
 
@@ -92,7 +92,12 @@
 ✅ Pre-Phase-6 architectural addendum (DEC-DEV-0048, 2026-05-27) — SPEC v1.1 (Claude Design co-primary + IR groundwork)
 ✅ Phase 6 kickoff (DEC-DEV-0052, 2026-05-27) — 12 Qs / 13 ambiguities resolved + 5 cuts approved; sub-phase A→I готов
 ✅ **Phase 6 — Design Module v1.0 (DEC-DEV-0053, 2026-05-28) — 1.4.0 release** — 8 sub-phase commits A→I; 6 commands + 6 skills + 1 hook + manifest + handoff-generator.md Step 8c. All 12 Qs implemented; 5 cuts respected; 13 ambiguities resolved at locations. Static smoke 19/19 PASS. Runtime smoke S1-S7 (`dev/PHASE_6_SMOKE_TEST_PLAN.md`) deferred к next pilot session per Phase 5 precedent.
-   ▲ последнее отгруженное = ТЕКУЩИЙ статус (новейшая ✅-строка; маркер «[We are here]» удалён — был drift-bait, Tier-1 doc reform)
+   ▲ последняя отгруженная ФАЗА = ТЕКУЩИЙ phase-статус (следующая фаза = Phase 7); D7 meta-tooling трекается отдельной строкой ниже. Маркер «[We are here]» удалён — был drift-bait (Tier-1 doc reform)
+
+✅ **Session Audit v2 — D7 universal session auditor (2026-06-01..02)** — эволюция Phase 4.1 аудитора из phase-валидатора в замкнутый авто-механизм аудита ПРОДУКТОВЫХ сессий. D7 dev-only (`dev/meta-improvement/`, НЕ деплоится); phase-прогрессия не затронута. Гайд: `dev/meta-improvement/SESSION_AUDIT_GUIDE.md`
+   — Инкр.1+2 merged 2026-06-01 (PR #20, DEC-DEV-0056/0057): классификатор сессий + реестр рубрик + полу-авто watcher (`audit-watch.js` + /loop) + effect-probe G4 (эффект на `.product/`)
+   — Инкр.3 merged 2026-06-02 (PR #21, DEC-DEV-0059): re-anchor оракула на PMO-зоны (two-axis multi-label, owned-only; `ecosystem-dev` убран — только продуктовый аудит) + findings-журнал G5 (`audit-journal.ndjson`) + синтезатор патчей G6 с adversarial-verify (`patch-synth.js`)
+   — Pending: patch-candidate `D2B-behavioral__C.md` ждёт [Y/N/E/D]; 9 pending-сессий в `audit-index.md` не прогнаны
 
 ──────────── Не отгружено (next → deferred → future) ────────────
 
