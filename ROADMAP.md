@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-06-02 (Session Audit v2 D7-tooling — Инкр.1+2+3 merged, DEC-DEV-0056/0057/0059, PR #20/#21; продуктовый авто-аудитор сессий. Предыдущая фаза: Phase 6 Design Module v1.0 — 1.4.0, DEC-DEV-0053, 2026-05-28). Примечание: промежуточные DEC-DEV-0054 (Tier 1 doc reform, PR #18) и DEC-DEV-0055 (harness-audit hygiene, PR #19) в этот status-блок пока не внесены.
+> **Последнее обновление:** 2026-06-02 (Session Audit v2 D7-tooling — Инкр.1+2+3 merged, DEC-DEV-0056/0057/0059, PR #20/#21; продуктовый авто-аудитор сессий. Предыдущая фаза: Phase 6 Design Module v1.0 — 1.4.0, DEC-DEV-0053, 2026-05-28). Примечание: промежуточные DEC-DEV-0054 (Tier 1 doc reform, PR #18) и DEC-DEV-0055 (harness-audit hygiene, PR #19) в этот status-блок пока не внесены. Также добавлен Orchestrator Module concept draft v0 (DEC-DEV-0058, не реализован — pending dogfood).
 
 ## Где мы сейчас
 
@@ -98,6 +98,8 @@
    — Инкр.1+2 merged 2026-06-01 (PR #20, DEC-DEV-0056/0057): классификатор сессий + реестр рубрик + полу-авто watcher (`audit-watch.js` + /loop) + effect-probe G4 (эффект на `.product/`)
    — Инкр.3 merged 2026-06-02 (PR #21, DEC-DEV-0059): re-anchor оракула на PMO-зоны (two-axis multi-label, owned-only; `ecosystem-dev` убран — только продуктовый аудит) + findings-журнал G5 (`audit-journal.ndjson`) + синтезатор патчей G6 с adversarial-verify (`patch-synth.js`)
    — Pending: patch-candidate `D2B-behavioral__C.md` ждёт [Y/N/E/D]; 9 pending-сессий в `audit-index.md` не прогнаны
+
+🔬 **Orchestrator Module — concept draft v0 (DEC-DEV-0058, 2026-06-02)** — открыт дизайн последнего непостроенного модуля (блокер PILOT POINT). Направление «concept + dogfood» (НЕ spec-first); ядро = in-harness Opus 4.8 Workflow. Concept-SPEC `docs/orchestrator-module/SPEC.md` (роль «тимлид PMO» над D2-Technical + D3+; 3-слойная детерминизм-модель скелет/суждение/гейт; двусторонний канал Orchestrator↔Integrator — НОВОЕ). **НЕ реализован** — эмпирические регламенты pending dogfood (`dev/ORCHESTRATOR_DOGFOOD_PLAN.md`)
 
 ──────────── Не отгружено (next → deferred → future) ────────────
 
