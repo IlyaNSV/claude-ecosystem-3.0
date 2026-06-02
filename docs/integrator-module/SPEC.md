@@ -8,6 +8,8 @@
 > - D2 (`approve_overrides`) — Integrator validates contracts с учётом overrides (если handoff содержит `dor_overrides[]`, Integrator адаптер отображает их receiver-у).
 > - B1 (validation_tier) — Integrator при `/integrator:add <tool>` генерирует V-I-* per current tier (pilot tier = меньше cross-boundary правил).
 >
+> **Scope note (DEC-DEV-0060, concept-tied):** под двусторонний канал с Оркестратором роль Интегратора расширяется с «внешние инструменты» до полного слоя **capability = «руки» (tool/MCP/доступ) + «голова» (bespoke role-агент + предметный skill)**. Интегратор **оснащает**; инфра-шаг (deploy/provision) исполняет Оркестратор. Forward-looking — направление принято, в shipped v1.0 не реализовано. См. [orchestrator-module/SPEC.md §6](../orchestrator-module/SPEC.md).
+>
 > **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones — D2-Tech/D3-D6 delegated) · [product-module/SPEC.md](../product-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules) · [../../adapters/README.md](../../adapters/README.md) (reference adapters — Phase 5)
 
 ## 1. Философия модуля
@@ -16,6 +18,7 @@
 
 - **Исследует** инструменты под конкретную потребность из PMO
 - **Устанавливает и настраивает** инструменты (npm/npx/git/MCP, конфиги, env, smoke-тесты)
+- **Оснащает capability-«головой»** *(scope-расширение под Orchestrator-канал — DEC-DEV-0060, concept-tied, не реализовано в shipped v1.0)*: заводит *bespoke* role-агентов + предметные skills под PMO-зону, когда нужной «головы» нет в составе ни одного external tool. «Руки» (tool/MCP/доступ) + «голова» (role-агент/skill) = полный слой capability для Оркестратора. Сам процесс role-агентом **не исполняет** (§1.2, §1.4)
 - **Маппит** их возможности на PMO-зоны проекта
 - **Создаёт контракты** между инструментами (адаптеры форматов, маршруты данных)
 - **Обновляет, заменяет, удаляет** инструменты с переносом контрактов
@@ -971,7 +974,9 @@ Orchestrator в будущем будет читать этот файл и по
 | Установить инструмент | ✅ | ❌ | ❌ |
 | Настроить инструмент | ✅ | ❌ | ❌ |
 | Создать контракты | ✅ | ❌ | ❌ |
+| Завести role-агента + предметный skill под зону (DEC-DEV-0060) | ✅ (capability) | ❌ (запрашивает) | ❌ |
 | Запустить инструмент в сценарии | ❌ | ✅ | ❌ |
+| Исполнить инфра-шаг (deploy/provision БД) оснащённой capability | ❌ | ✅ | ❌ |
 | Решить какой инструмент использовать | Предлагает | Выбирает | ❌ |
 | Записать в `.product/` | ❌ | ❌ | ✅ |
 | Починить сломанный инструмент | ✅ | Поднимет флаг | ❌ |

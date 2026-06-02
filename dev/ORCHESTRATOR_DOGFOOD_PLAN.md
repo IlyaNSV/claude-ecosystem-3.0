@@ -11,7 +11,7 @@
 На каждом шаге фиксируем 4 вещи:
 1. **Фактическая последовательность** — что за чем, какие команды cc-sdd.
 2. **Точки решений** — где нужно суждение (динамический выбор), где — детерминированный шаг.
-3. **Integrator-команды** — где всплыла потребность в инфраструктуре (§6 SPEC), какой формат запроса был бы нужен.
+3. **Capability-запросы Интегратору** — где не хватило «рук» (tool/MCP/доступ) или «головы» (role-агент+skill) под шаг (§6 SPEC, role A / DEC-DEV-0060), какой формат capability-spec был бы нужен. NB: запрос — на оснащение, не на исполнение инфра-шага.
 4. **Гейты** — где требуется verification и/или человеческий approve (autonomy tier, §7 SPEC).
 
 ---
@@ -39,9 +39,10 @@
 - [ ] `/kiro:steering` (если fresh) → `/kiro:spec-init` → `spec-requirements` → `spec-design` → `spec-tasks`.
 - [ ] **Harvest:** последовательность и её жёсткость (что нельзя параллелить — ср. tool-docs «Operating Protocols»); точки, где cc-sdd принял арх-решение (стек, БД).
 
-### 3. Integrator-команда (§6 SPEC) — если возникла
-- [ ] Если cc-sdd выбрал инфраструктуру (например, pgsql) — сформулировать запрос Интегратору «обеспечь X vY, tier=dev».
-- [ ] **Harvest:** какой формат запроса нужен; сработал бы auto-approve (dev-tier whitelist) или потребовался hard-approve gate (OD1).
+### 3. Capability self-check → запрос Интегратору (§6 SPEC) — если возникла
+- [ ] Перед инфра-шагом — **capability self-check**: есть ли «руки» (docker MCP / доступ / env) и «голова» (role-агент+skill, напр. `db-admin`)?
+- [ ] Если чего-то нет — сформулировать **capability-spec** Интегратору: «обеспечь {tool|mcp|role-agent|skill} X vY, зона=D3-05, tier=dev». **НЕ** «разверни БД» — deploy Оркестратор исполняет сам после оснащения (role A / DEC-DEV-0060).
+- [ ] **Harvest:** какие поля capability-spec реально нужны (OD5); чего не хватило в self-check; сработал бы auto-approve (dev-tier whitelist) или нужен hard-approve gate (OD1).
 
 ### 4. Verification-гейт (§2 SPEC)
 - [ ] Сверить выход cc-sdd (`tasks.md` / spec) с контрактом handoff (acceptance из SC/BR).
