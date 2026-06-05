@@ -4875,6 +4875,88 @@ Research (Integrator SPEC целиком, Orchestrator SPEC v0, dogfood-план
 
 ---
 
+## DEC-DEV-0061 — Level-2 wipe protection: git safety-commit footprint'а инструментов перед `/ecosystem:update`
+
+**Date:** 2026-06-05
+**Trigger:** Запрос пользователя: «создай/перепроверь механизм создания коммитов на все возможные артефакты инструментов, установленных из продуктового проекта, на предмет стирания при update. защита от wipe второго уровня». Re-verify показал: git-механизма защиты нет вообще — только файловые backup'ы (level-1).
+**Tag:** #architecture #spec-revision #wipe-protection #integrator #ecosystem-update #policy-revision
+
+### Context
+
+`/ecosystem:update` имел **только level-1** защиту от wipe — файловые снапшоты:
+- Step 2a: `.claude-backup-<TS>/` (снапшот всего `.claude/`)
+- Step 2b (DEC-DEV-0051): `_external/` — integrator-managed paths вне `.claude/` (`.kiro/`, `.beads/`) из `active-tools.yaml#claude_primitives[].path`
+- Step 5.1/Step 6 (DEC-DEV-0049/0051): namespace-aware preserve + hooks merge-preserve — *предотвращают* затирание, но не дают recovery layer
+- `/integrator:*` Stage 1: пер-команда backup в `.claude/integrator/backups/`
+
+Все они **файловые** и хрупкие как единственный слой:
+- `.claude/integrator/backups/` — **в `.gitignore`** (gitignore.template:16) → не в истории
+- `.claude-backup-<TS>/` — untracked dir → стирается `git clean -fdx`, теряется при ручном cleanup, отсутствует после свежего clone
+- если артефакты инструмента были uncommitted working-tree изменениями, update их затёр, **и** backup-папку потом удалили → полная потеря
+
+Существующая политика явно запрещала git-защиту: *«DO NOT auto-commit anything to git (user reviews + commits manually)»* (update.md + CLAUDE.md). Запрос пользователя — сознательная ревизия этой политики ради durable level-2.
+
+**Критическая граница:** `.claude/integrator/secrets/` и прочие gitignored-пути НЕЛЬЗЯ коммитить. Их покрывает только level-1.
+
+### Options considered
+
+**Развилка 1 — форма коммита (спрошено у пользователя):**
+1. **Обычный commit в текущую ветку (выбрано пользователем).** `git add -- <footprint>` + `git commit`. Виден в `git log`, восстановление через `git restore --source=<sha>`. Минус: засоряет историю ветки; нарушает прежнюю no-auto-commit-политику (принято осознанно).
+2. Выделенный git-ref/тег (`refs/ecosystem-safety/pre-update-<TS>`) без движения HEAD — не засоряет историю, согласуется с no-auto-commit-в-ветку. Отклонено пользователем (предпочтена простота и видимость в `git log`).
+3. `git stash -u` с меткой — fragile (stash легко потерять/перезаписать), плохо покрывает committed-state. Отклонено.
+
+**Развилка 2 — default (спрошено у пользователя):**
+1. **Вкл по умолчанию + `--no-safety-commit` (выбрано).** Максимальная защита из коробки; symmetric с тем, что level-1 backup тоже on-by-default.
+2. Opt-in через `--safety-commit`. Отклонено — пользователь просил именно «защиту».
+
+**Развилка 3 — размещение шага (решено мной):**
+1. **Step 5.0 (выбрано)** — в начале apply, после Step 4 `[Y/n]` gate, до первой деструктивной операции. Коммит создаётся только на подтверждённом пути применения, никогда в `--dry-run`/abort.
+2. Step 2c (рядом с level-1 backup) — отклонено: коммит — это git-мутация, в `--dry-run` (который exit'ит на Step 4) его быть не должно, и создавать коммит для впоследствии отменённого update неаккуратно.
+
+**Развилка 4 — охват команд (решено мной, cuttable-scope):**
+1. **Только `/ecosystem:update` (выбрано).** Это и есть единственный однозначный wipe-вектор (вся сага DEC-DEV-0049/0051 — про него). `/integrator:*` уже имеют пер-команда backup + rollback и сами являются инсталляторами инструментов.
+2. Зеркалить в `/integrator:update` тоже — отложено как симметричный кандидат (дублирование протокола в installation-protocol.md; преждевременно без явной потребности).
+
+### Decision
+
+**Новый Step 5.0 в `commands/ecosystem/update.md`** — scoped git safety-commit footprint'а инструментов, on-by-default, `--no-safety-commit` для отключения. Обычный commit в текущую ветку.
+
+**Footprint** (= «все артефакты установленных инструментов»):
+- `.claude/integrator/` целиком (registry + contracts + adapters + tool-docs + project-journal; gitignored под-пути `secrets/`/`backups/`/`baseline.yaml` авто-исключаются `git add`)
+- все `claude_primitives[].path` из `active-tools.yaml` — внутри И снаружи `.claude/` (тот же парсер, что Step 2b, но без фильтра «outside `.claude/`»)
+- `.claude/settings.json` (third-party hook-инъекции)
+
+**Инварианты:** (1) никогда `git add -f` (секреты вне level-2); (2) scoped commit `git commit … -- <paths>` (чужой WIP не затрагивается и не теряется); (3) skip-not-abort при любой git-проблеме (не git-репо / detached HEAD / merge|rebase в процессе / ошибка) — level-2 никогда не блокирует update; (4) no-op если footprint уже == HEAD (HEAD и есть recovery point).
+
+### Outcome
+
+Правки (spec-only, как DEC-DEV-0049/0051 — Claude интерпретирует `.md`):
+- `commands/ecosystem/update.md` — frontmatter (description + `--no-safety-commit` в argument-hint); «What it does» (level-1/level-2 bullets); Flags (`--no-safety-commit`, dry-run note); Step 2 forward-reference; **новый Step 5.0** (Why + footprint + 4 инварианта + bash + PowerShell reference impl); Step 4 dry-run note; Step 8 summary (level-1/level-2 блок); Error handling (строка safety-commit → skip-not-abort); What NOT to do (политика сужена); Rollback (новая секция «Level-2 recovery»); Comparison table (2 строки).
+- `gitignore.template` — добавлен `.claude-backup-*/` (транзитные level-1 backup'ы не коммитить).
+- `CHANGELOG.md` — `[Unreleased] ### Added` (2 пункта).
+- `ROADMAP.md` — «Где мы сейчас» строка + «Последнее обновление» 2026-06-05.
+- `CLAUDE.md` — `last memory-sync` 2026-06-05 (зеркало ROADMAP).
+- `DEV_JOURNAL.md` — эта запись.
+
+**Не реализовано (намеренно):** зеркало в `/integrator:update` (развилка 4 опция 2 — отложено); bootstrap не трогается (greenfield — нечего wipe'ать). **Pending:** runtime smoke на pilot — `/ecosystem:update` в проекте с cc-sdd/beads: ожидается (a) safety-коммит с footprint'ом в `git show --stat`; (b) секреты НЕ в коммите; (c) `--no-safety-commit` пропускает; (d) `--dry-run` не коммитит; (e) не-git-репо → skip-not-abort.
+
+### Lessons
+
+1. **Один уровень защиты — не защита, если он хрупкий по конструкции.** Level-1 был файловым и частично gitignored; единственный слой, который сам себя стирает при `git clean`. Два *независимых* слоя (файл + git-история) с разными failure-модами — реальная durability. *Apply:* для любого recovery-механизма спрашивать «что стирает сам backup?» и добавлять ортогональный слой.
+2. **Re-verify до проектирования отделяет «создай» от «перепроверь».** Запрос был «создай/перепроверь»; проверка показала отсутствие git-слоя целиком — значит «создай». Без неё легко надстроить дубль над несуществующим. *Apply:* на «создай/перепроверь» сначала эмпирически верифицировать наличие (родственно `feedback_substrate_premise_verification`).
+3. **Память отставала на номере DEC (0058/0059 vs журнал на 0060).** Verify-against-journal-tail (урок DEC-DEV-0050 R2) поймал коллизию → 0061. *Apply:* всегда grep'ать хвост DEV_JOURNAL перед присвоением номера; память — не источник истины для нумерации.
+4. **Сужать запреты, а не отменять.** Политику «никогда не auto-commit» не сняли, а сузили до одного scoped opt-out коммита с явными инвариантами (-f запрещён, pathspec, skip-not-abort). *Apply:* при ревизии запрета формулировать новую границу точечно, чтобы не открыть широкий класс нежелательного поведения.
+5. **Платформенный паритет обязателен (Windows-разработчик).** bash + PowerShell для Step 5.0 с самого начала (урок DEC-DEV-0047 L2 / DEC-DEV-0050 finding 5).
+
+### Связь с другими entries
+
+- DEC-DEV-0051 — Step 2b external-paths backup; Step 5.0 переиспользует его парсер `claude_primitives[].path` (снимая фильтр «outside `.claude/`»)
+- DEC-DEV-0049 — Step 6 hooks merge-preserve; `.claude/settings.json` в footprint'е по той же причине (third-party hook-инъекции)
+- DEC-DEV-0042 — closed-list contamination removal; родственный паттерн «узко, не-деструктивно»
+- DEC-DEV-0050 R2 — verify next DEC number против хвоста журнала (сработало здесь)
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

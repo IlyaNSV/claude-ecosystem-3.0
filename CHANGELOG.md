@@ -8,6 +8,11 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- **Level-2 wipe protection for `/ecosystem:update` — git safety commit of the integrator-managed tool footprint** (DEC-DEV-0061). New **Step 5.0** (runs on the confirmed apply path, before any destructive sync; never in `--dry-run`) creates a scoped git commit (`chore(ecosystem): safety snapshot before /ecosystem:update [level-2 wipe protection]`) capturing `.claude/integrator/`, all `active-tools.yaml` `claude_primitives[].path` (internal + external — `.kiro/`, `.beads/`, `.claude/skills/kiro-*/`, …), and `.claude/settings.json`. Complements the existing level-1 filesystem backup (`.claude-backup-<TS>/`), which is fragile as the sole layer (untracked → wiped by `git clean`; `.claude/integrator/backups/` is gitignored). The git snapshot survives `git clean` / backup-dir deletion and enables single-artifact recovery weeks later (`git restore --source=<sha> -- <path>`). Default on; skip with `--no-safety-commit`. Invariants: never `git add -f` (secrets/gitignored excluded), scoped pathspec commit (user's unrelated WIP untouched), skip-not-abort on any git problem (not a repo / detached HEAD / merge in progress). New `--no-safety-commit` flag; new level-2 recovery section in Rollback. **Policy revision:** the prior blanket "DO NOT auto-commit anything to git" is narrowed to allow this one scoped, opt-out safety commit.
+- **`gitignore.template`** now ignores `.claude-backup-*/` — transient level-1 update backups should never be committed (also keeps them out of an accidental `git add -A`).
+
 ### Fixed
 
 - **Model pin bumped `claude-opus-4-7` → `claude-opus-4-8`** across all live harness surfaces (`settings.json.template` main-session + `_model_strategy`, `agents/product/devils-advocate.md`, `commands/ecosystem/bootstrap.md`, `templates/project/CLAUDE.md.template`). Integrator subagent pins (`claude-sonnet-4-6`) left as-is — already current. (harness-audit follow-up; DEC-DEV-0055)
