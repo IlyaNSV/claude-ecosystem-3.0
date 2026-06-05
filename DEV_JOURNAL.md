@@ -4875,6 +4875,75 @@ Research (Integrator SPEC целиком, Orchestrator SPEC v0, dogfood-план
 
 ---
 
+## DEC-DEV-0061 — LESSON-* : атомарная самокоррекция (find→fix→record), неоткладываемая; инверс .pending
+
+**Date:** 2026-06-06
+**Trigger:** Пользователь спросил, есть ли в экосистеме надёжный триггер фиксации **собственной ошибки в продуктовых проектах** — когда стало понятно, что задача сделана некорректно, чтобы это писалось в журнал для доработок и не терялось/откладывалось. Аудит продуктовой стороны показал: автоловушка есть только для **структурных** нарушений (V-* → `.product/.pending/`, scope-guard → `pending-actions.md`); **смысловой** класс «сделал задачу неверно» не покрыт ничем — ни триггера, ни журнала, ни артефакта. Запрошена сборка механизма `LESSON-*`.
+**Tag:** #architecture #product #hooks #self-correction #lesson #atomicity #validation #governance
+
+### Context
+
+Два класса ошибок. Структурный (битая ссылка, невалидный frontmatter, нарушение зоны) — ловится хуками надёжно. Смысловой («это решение/артефакт оказались неверными», «переделка по факту») — нет. Среди 22 типов артефактов нет defect/lesson/rework; `.pending/` — это **отложенная** очередь (инверс того, что нужно); decision journal отвечает «почему выбрали», не «что сломалось + как уже починено». DEV_JOURNAL — dev-only, в продуктовые проекты не деплоится.
+
+Дизайн собран workflow'ом (13 агентов: 5 читателей конвенций → 3 угла enforcement + синтез → 3 адверсариальных критика → финал). Затем **web-search верифицировал hook-контракт** по официальной доке (`code.claude.com/docs/en/hooks`) — это сняло главный residual-risk (см. ниже).
+
+### Options considered
+
+**Enforcement (как сделать «не теряется/не откладывается»):**
+1. Hook-gate primary (Stop/PreToolUse блокирует) — сильные зубы, но риск wedge.
+2. Command-transaction primary (только протокол) — просто, но «cannot be lost» держится на «модель не отвлеклась».
+3. **Hybrid (выбрано):** mandate (триггер) + write-ahead command (атомарность) + двупронговый gate (non-deferrability). Каждый слой закрывает отказ других.
+
+**Gate mode (после web-search, развилка вынесена пользователю):**
+1. Strict на обоих prongs — макс. зубы, но PreToolUse-strict рискует self-deadlock протокола (блокирует его собственные Write/Bash) при неточной marker-exemption.
+2. **Strict Stop, warn PreToolUse (выбрано пользователем).** Stop-блок документирован + auto-override после 8 блоков (не зависнет) + не мешает протоколу (срабатывает только на границе сессии); PreToolUse пока только напоминает — его marker-exemption проверяется живым смоуком (S-LE) до включения deny.
+3. Warn на обоих — безопасно, но без зубов.
+
+### Decision
+
+23-й тип артефакта `LESSON-*` в `.product/lessons/LESSON-NNN-slug.md` (no-dot → git-tracked wildcard'ом), структурный (как HYP/BR, не freeform как NOTE), `status: open | active | deprecated`. Три слоя:
+
+1. **Триггер (mandate, soft):** в момент осознания ошибки — `/product:lesson` до любой другой работы. Живёт в `templates/project/CLAUDE.md.template` **И** в синкаемом `skills/ecosystem/self-correction.md` (чтобы existing installs, получающие только `/ecosystem:update`, имели триггер, а не только зубы).
+2. **Атомарность (write-ahead command transaction):** `open`-файл (+ маркер `lesson-in-progress`) пишется **до** того, как фикс коснётся диска; затем фикс; затем verify с recorded evidence; затем флип `open→active` одним полным Write. Любой краш оставляет громкий git-tracked `open`-tripwire; полу-записанный файл ловит gate.
+3. **Non-deferrability (двупронговый gate):** `lesson-gate.js` (Stop, **strict**) не даёт чисто закрыть сессию при `open`; `lesson-presence-gate.js` (PreToolUse+UserPromptSubmit, **warn**) напоминает каждый ход (deny — за `LESSON_GATE_MODE=strict`, после S-LE).
+
+**Инвариант (V-LE-02/03):** `active ⇒ fix_ref резолвится ∧ recorded verification evidence ∧ guard present` — структурная инверс тихого `.pending` finding.
+
+### Outcome
+
+18 файлов (без коммита):
+- **Создано:** `docs/pmo/artifacts/LESSON.md`, `skills/product/lesson-capture.md`, `commands/product/lesson.md`, `hooks/product/lesson-gate.js`, `hooks/product/lesson-presence-gate.js`, `skills/ecosystem/self-correction.md`.
+- **Изменено:** `hooks/product/manifest.yaml`, `settings.json.template`, `docs/pmo/validation.md` (§0 namespace + §5.1b V-LE-01..05), `skills/product/validation-runner.md`, `docs/pmo/artifacts/README.md` (счётчики 21/22→23 + tree), `docs/pmo/processes.md` (§8/§10/§14.2/§6.5), `docs/product-module/SPEC.md` (21→23, 6→8 hooks), `commands/ecosystem/bootstrap.md` (mkdir lessons + Step 6b пример), `templates/project/CLAUDE.md.template` (mandate), `commands/ecosystem/verify.md` (Step 8.5 self-check), `dev/PHASE_6_SMOKE_TEST_PLAN.md` (S-LE), `DEV_JOURNAL.md` (эта запись).
+
+**Версия:** помечено v1.5.0 (next minor после 1.4.0 Design Module). CHANGELOG/ROADMAP «Где мы сейчас» — не тронуты до решения по коммиту/релизу (обсуждается с пользователем).
+
+**Авторизованные намеренные отклонения:**
+- **Первый блокирующий хук** в экосистеме (против конвенции «Hook never blocks», `hooks/product/manifest.yaml:79` / handoff-gate). Scoped к corrective lessons; fail-open на любой ошибке; `LESSON_GATE_MODE` opt-out; auto-override после 8 блоков.
+- `status: open` **подменяет** generic `draft` (не добавляется рядом). Rationale: `draft` parkable-навсегда; `open` должен быть non-parkable.
+- **«verified» = model-attested с recorded evidence**, не машинно-доказанная корректность (V-LE-02/03 проверяют резолв ссылки + непустую секцию, не что фикс реально чинит баг).
+
+**Критические поправки исходного синтеза после web-search (важно для будущего):**
+- Дока подтвердила: **Stop-хук МОЖЕТ блокировать** (`exit 2`, stderr → модели; платформо-независимо). Заметка в `session-audit.js:26` («SessionEnd cannot block») верна **для SessionEnd**, но синтез ошибочно обобщил её на Stop — это была Stop/SessionEnd конфляция. Prong A реально работает.
+- PreToolUse denies через `hookSpecificOutput.permissionDecision:"deny"` (+ `permissionDecisionReason`), **не** `{continue:false}` (последнее = «остановить Claude целиком»). Хук переписан на `permissionDecision`.
+- `stop_hook_active` guard реален и нужен (8-block auto-override — документированный safety valve против wedge).
+
+### Lessons
+
+1. **Верифицируй runtime-контракт по доке до того, как ставить на него гарантию.** Синтез заложил «Stop не блокирует» из локальной заметки репо — web-search опроверг за 2 минуты и перевёл gate из warn-навсегда в strict-Stop. *Apply:* для любого hook-блокирующего механизма — сверка с `code.claude.com/docs/en/hooks` обязательна, не доверять второисточнику в репо.
+2. **«atomic temp+rename» из дизайна не маппится на инструменты ассистента** (он пишет через Write одним вызовом). Реальная гарантия — write-ahead ordering + полный валидный файл за один Write + truncated-file tripwire в хуке. *Apply:* проектируя протокол для LLM-исполнителя, выражай атомарность через порядок операций и backstop, не через fs-примитивы, которых у него нет.
+3. **Детект — нередуцируемое слабое место.** Все слои активируются после того, как ошибка замечена. Гарантия честно = «не теряется ОДНАЖДЫ обнаруженное», не «всё ловится». Event-driven кандидаты (DA-dismiss/validation-fail/cascade) частично де-софтят. *Apply:* не переоценивать «надёжный триггер» — формулировать границу честно.
+4. **Self-referential safety:** механизм деплоится в продуктовые проекты, но **не** регистрируется в dev-сессии экосистемы (нет `.product/`, хуки no-op). Блокирующий Stop-gate в dev-сессии = риск self-collapse (CLAUDE.md принцип №3), сознательно не сделано.
+
+### Связь с другими entries
+
+- DEC-DEV-0012 — explicit frontmatter template + anti-pattern warnings в skills; `lesson-capture.md` следует этой конвенции (canonical fields: `fix_ref`/`guard`/`guard_kind`, запрещены `fixed`/`mitigation`/`takeaway`/…).
+- DEC-DEV-0040 — функциональная PMO-декомпозиция; LESSON — cross-cutting, вне D1-D2 графа (как NOTE).
+- DEC-DEV-0023 F5 — quiet-draft + auto-purge pending; LESSON сознательно **инверс** (не quiet, не deferred).
+- DEC-DEV-0030 lesson #2 — hardcode validation-runner vs parser; V-LE зеркалированы вручную (линтера catalog↔runner нет).
+- **S-LE** (dev/PHASE_6_SMOKE_TEST_PLAN.md) — hard-prereq живой проверки контрактов Stop-exit-2 / PreToolUse-deny / bootstrap Step 6b new-event-key до перевода PreToolUse в strict.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

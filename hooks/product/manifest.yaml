@@ -77,3 +77,19 @@ hooks:
       - type: PostToolUse
         matcher: "Write|Edit"
     description: "Handoff drift detection per V-H-04 (handoff-spec §10). Scans .product/handoffs/*.md after .product/ artifact saves; если edited artifact appears в handoff artifact_hashes — recomputes current hash через hooks/product/lib/hash.js (DEC-DEV-0025 C.1 + DEC-DEV-0030 contract: body markdown без frontmatter, LF-normalized, SHA-256, sha256:<hex64>). Mismatch → stderr warning suggesting /product:handoff <FM-id> --regenerate. Non-blocking — informs про staleness only (V-H-04 declared Warning level, не Blocking; aligns с CLAUDE.md «Hook never blocks»). Phase 4.F deliverable."
+
+  - id: lesson-gate
+    file: lesson-gate.js
+    events:
+      - type: Stop
+        matcher: ""
+    description: "LESSON-* non-deferrability gate (PRONG A, Stop). Per DEC-DEV-0061. The FIRST blocking hook in the ecosystem — a DELIBERATE, DEC-DEV-authorized departure from the «Hook never blocks» convention, scoped to corrective lessons only. Refuses a clean session close while any .product/lessons/LESSON-*.md is status:open OR mid-write-truncated (open frontmatter fence без closing fence). Blocking contract verified against code.claude.com/docs/en/hooks (Stop exit 2 blocks; stderr fed back to Claude; platform-independent; auto-overridden after 8 consecutive blocks). Default strict (exit 2); env LESSON_GATE_MODE=warn downgrades to advisory stderr, =off silences. Fail-open on any parse/fs error; stop_hook_active re-entrancy guard. No-op if no .product/ dir."
+
+  - id: lesson-presence-gate
+    file: lesson-presence-gate.js
+    events:
+      - type: PreToolUse
+        matcher: "Write|Edit|Bash|NotebookEdit"
+      - type: UserPromptSubmit
+        matcher: ""
+    description: "LESSON-* non-deferrability backstop (PRONG B). Per DEC-DEV-0061. Closes the «session never ends → Stop never fires» hole. SHIPS DEFAULTED TO WARN per «Strict Stop, warn PreToolUse» decision: UserPromptSubmit re-surfaces open lessons every turn via hookSpecificOutput.additionalContext (never blocks a prompt); PreToolUse in warn mode = stderr nag only. Only when LESSON_GATE_MODE=strict does PreToolUse deny a mutating tool call via hookSpecificOutput.permissionDecision=deny (contract per code.claude.com/docs/en/hooks), WITH marker-exemption: a fresh .product/.sessions/lesson-in-progress.<id> marker means the /product:lesson protocol is actively resolving → not denied (avoids self-deadlock). strict mode pending S-LE live smoke. Fail-open on any error; no-op if no .product/ dir."

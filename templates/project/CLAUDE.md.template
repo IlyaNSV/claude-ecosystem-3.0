@@ -33,6 +33,7 @@ This project uses **Ecosystem 3.0** for product management.
 │   ├── nfr/                 # NFR-*
 │   ├── mockups/             # MK-*, NM-* (if has_ui)
 │   ├── notes/               # NOTE-*
+│   ├── lessons/             # LESSON-* (corrective; non-deferrable)
 │   ├── handoffs/            # Generated handoffs per FM
 │   ├── problem.md           # PS
 │   ├── market-research.md   # MR
@@ -80,6 +81,7 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 - `/product:drift-check` — structural self-audit against original PS/HYP/MVP
 - `/product:patterns` — meta-linter for recurring anti-patterns
 - `/product:meta-feedback` — propose ecosystem-level tuning
+- `/product:lesson "<...>"` — atomic self-correction: find→fix→record a corrective LESSON-* (use the instant an error is self-detected; non-deferrable)
 
 ### Design (D2-B04, conditional on `has_ui: true`)
 
@@ -107,10 +109,24 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 
 1. **Assistant-led, human-approved** (DEC-P13). AI drafts, human approves via explicit gates.
 2. **Tool-agnostic** for D2-Tech and D3-D6 (DEC-A06). External tools replaceable through Integrator.
-3. **Draft → iterate → approve** pattern for all 22 artifact types.
+3. **Draft → iterate → approve** pattern for all 23 artifact types.
 4. **Tier-aware validation**: in `pilot` tier, only 🔴 Blocking rules run inline. Others queued for `/product:status` and approve gates.
 5. **Drift detection**: `confidence:` in frontmatter, `/product:drift-check`, `/product:patterns`, `/product:meta-feedback` — active protection against AI's tendency to lose coherence over long sessions.
 6. **Self-contained handoff**: universal markdown for any external tool, via adapter in Integrator.
+
+---
+
+## Self-correction is non-deferrable (LESSON-*)
+
+**В момент, когда ты (ассистент) или человек понимает, что задача / артефакт / решение сделаны НЕКОРРЕКТНО и это исправимо сейчас — запусти `/product:lesson` ДО любой другой работы.** Не дописывай текущую задачу, не клади в очередь `.product/.pending/`.
+
+Операция атомарна и неоткладываема: **find → примени фикс сейчас → запиши `LESSON-*`** (`status: active`, `fix_ref` заполнен, переиспользуемый `guard`) → готово к использованию. Это **инверс** `.product/.pending/` (там — отложенная работа; здесь фикс уже применён).
+
+- Если исправить сейчас **нельзя** — это `NOTE-*`, не LESSON (`/product:note`).
+- LESSON, оставленный в `status: open`, **блокирует чистое закрытие сессии** (хук `lesson-gate.js`) — это by design. Доведи через `/product:lesson --resume <id>`.
+- Genuine false alarm (ни один фикс не лёг) → `/product:lesson --withdraw <id> "<reason>"`.
+
+Связывающее enforcement живёт в синкаемом `.claude/` (хуки + `.claude/skills/ecosystem/self-correction.md`), поэтому действует даже после `/ecosystem:update`, который этот project-root `CLAUDE.md` не трогает.
 
 ---
 
@@ -205,7 +221,7 @@ For detailed info, browse `.claude/docs/`:
 - `.claude/docs/pmo/pmo-map.md` — PMO map (D1-D6 domains)
 - `.claude/docs/pmo/processes.md` — P1-P5 process methodology
 - `.claude/docs/pmo/validation.md` — 33 validation rules + 2 process rules
-- `.claude/docs/pmo/artifacts/README.md` — 22 artifact types catalog
+- `.claude/docs/pmo/artifacts/README.md` — 23 artifact types catalog
 - `.claude/docs/product-module/SPEC.md` — Product Module detailed spec
 - `.claude/docs/product-module/handoff-spec.md` — handoff format
 - `.claude/docs/design-module/SPEC.md` — Design Module (conditional)

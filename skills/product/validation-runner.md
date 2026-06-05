@@ -155,6 +155,20 @@ V-MK-01..V-MK-08 не shipped в Phase 4 — Design module conditional Phase 6.
   To activate: /design:start <FM-id> (Phase 6) → re-run /product:validate.
   ```
 
+### V-LE-01..05 — LESSON validation (corrective lessons, DEC-DEV-0061)
+
+LESSON-* — corrective lesson артефакт (см. `validation.md §5.1b`). Вне dependency graph (как NOTE): V-01..V-16, V-MK-*, V-H-*, cascade (V-11), orphan (V-15) **не применяются**. Только V-LE-01..05.
+
+| Rule | Severity | Artifacts | Check method | Description |
+|---|---|---|---|---|
+| V-LE-01 | 🔴 Blocking | LESSON | frontmatter parse; required `id,type,title,status,confidence,created,updated,version`; `id` matches `LESSON-\d{3}`; `status ∈ {open,active,deprecated}`; `confidence_notes` if `confidence!=high` | Frontmatter & status integrity (block open→active on fail) |
+| V-LE-02 | 🔴 Blocking | LESSON | if `status=active`: `fix_ref` non-empty AND each ref path/id exists (existence-only) AND body `## Fix applied` non-empty | Applied-fix invariant (the LESSON↔.pending difference) |
+| V-LE-03 | 🔴 Blocking | LESSON | if `status=active`: `guard` non-empty AND `guard_kind` set AND body `## Guard (reusable)` non-empty | Reusable-guard invariant |
+| V-LE-04 | 🟡 Warning | LESSON | `applies_to[]` entries resolve (informational; orphans allowed by design) | applies_to references |
+| V-LE-05 | 🟡 Warning | LESSON | `status=open` AND `now - created > open_lesson_age_days` (default 7); surfaced on-demand + session-start | Open-lesson age hygiene |
+
+**Gate semantics:** V-LE-01/02/03 Blocking failure keeps the lesson `status: open` (blocks `open→active` and `none→active`). Real-time non-deferrability — это hooks `lesson-gate.js` (Stop) + `lesson-presence-gate.js` (PreToolUse/UPS), не runner; V-LE-05 — hygiene backstop поверх gate.
+
 ## Execution flow
 
 1. **Parse args.** Defaults: tier from `product.yaml`, format=both, no filters.

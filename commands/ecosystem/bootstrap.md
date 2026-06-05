@@ -374,7 +374,7 @@ If a `settings.json` or `.env.template` already existed (rare, ecosystem re-inst
 Create directory skeleton (but NO artifacts — those come from `/product:init`):
 
 ```bash
-mkdir -p .product/{segments,value-propositions,hypotheses,releases,features,scenarios,business-rules,lifecycles,verification,invariants,nfr,mockups,notes,handoffs,.sessions,.pending,.da-findings,.decisions}
+mkdir -p .product/{segments,value-propositions,hypotheses,releases,features,scenarios,business-rules,lifecycles,verification,invariants,nfr,mockups,notes,lessons,handoffs,.sessions,.pending,.da-findings,.decisions}
 ```
 
 Create `.product/.sessions/.gitkeep` and `.product/.pending/.gitkeep` so empty directories are trackable if user ever needs to.
@@ -483,9 +483,42 @@ Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module direc
 }
 ```
 
+**Example result for non-`PostToolUse` events** (LESSON-* gate, DEC-DEV-0061 — the first `Stop` / `PreToolUse` / `UserPromptSubmit` hooks). Mirror this shape when the manifest declares a new top-level event key; `settings.json.template` already pre-seeds these keys empty, so this is an append into an existing array, not a brand-new-key creation:
+
+```json
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/product/lesson-gate.js" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|Bash|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/product/lesson-presence-gate.js" }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "node .claude/hooks/product/lesson-presence-gate.js" }
+        ]
+      }
+    ]
+  }
+}
+```
+
 **Convention for future phases:** when adding new hook files, drop them alongside existing in `hooks/<module>/` AND add entry to `hooks/<module>/manifest.yaml`. Re-running `/ecosystem:bootstrap` (or `/ecosystem:update`) will re-scan manifests and update `settings.json`. Manifest is the single source of truth for hook registration.
 
-**Idempotency:** running Step 6b on already-registered settings.json is safe — merge dedupes by command string. No double-registration.
+**Idempotency:** running Step 6b on already-registered settings.json is safe — merge dedupes by command string. No double-registration. The empty-matcher (`matcher: ""`) entries dedupe identically — one registration each on re-run. (New-event-key emission + empty-matcher dedup are verified by S-LE in the active phase smoke plan.)
 
 **If manifest is missing for a module but hook files exist** → warn user, skip registration for that module. Suggest: create manifest.yaml per the convention in existing `hooks/product/manifest.yaml`.
 

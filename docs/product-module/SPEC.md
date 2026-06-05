@@ -100,7 +100,7 @@
 | **Slash-commands** | 15 команд UX для пользователя | `.claude/commands/product/` |
 | **Skills** | ~20 methodology files, lazy-loaded per процесс | `.claude/skills/product/` |
 | **Subagents** | 3 research-heavy / isolated агента | `.claude/agents/product/` |
-| **Hooks** | 6 hooks для automation и enforcement | `.claude/hooks/product-*.js` |
+| **Hooks** | 8 hooks для automation и enforcement | `.claude/hooks/product-*.js` |
 | **Memory directory** | Долгоживущие уроки, shared между сессиями | `~/.claude/memory/product/` |
 | **Config** | Global + per-project settings | `~/.claude/product-config.yaml` + `.claude/product.yaml` |
 
@@ -118,7 +118,7 @@
 │   discovery-session, feature-enrichment, bg-extraction, ... │
 ├─────────────────────────────────────────────────────────────┤
 │ Слой 1: Artifacts (из pmo/artifacts/)                       │
-│   21 тип со schema, rules, relationships, lifecycle         │
+│   23 типа со schema, rules, relationships, lifecycle        │
 ├─────────────────────────────────────────────────────────────┤
 │ Слой 0: Automation (hooks)                                  │
 │   bg-extractor, validate, session-state, DA triggers        │
@@ -133,7 +133,7 @@
 
 | Директория / файл | Назначение | Git |
 |---|---|---|
-| `.product/**/*.md` | Все артефакты (21 тип) | ✓ tracked |
+| `.product/**/*.md` | Все артефакты (23 типа; `.product/lessons/` покрыта wildcard) | ✓ tracked |
 | `.product/handoffs/` | Сгенерированные handoff snapshots | ✓ tracked |
 | `.product/.sessions/` | Session state для recovery | ✗ gitignored |
 | `.product/.pending/` | Pending BG terms, DA findings | ✗ gitignored |
@@ -415,7 +415,7 @@
 
 ## 6. Hooks
 
-6 hooks автоматизации и enforcement:
+8 hooks автоматизации и enforcement (LESSON-* gate добавил первые **Stop / PreToolUse / UserPromptSubmit** хуки модуля — DEC-DEV-0061; первый блокирующий хук в экосистеме, scoped к corrective lessons):
 
 ### 6.1 `product-artifact-validate.js` (PostToolUse) — tier-aware + quiet-mode
 
