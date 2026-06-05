@@ -1,6 +1,6 @@
 ---
-description: Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/). For greenfield install — use /ecosystem:bootstrap instead.
-argument-hint: "[--offline] [--dry-run] [--force] [--no-backup]"
+description: Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead.
+argument-hint: "[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-commit]"
 ---
 
 # /ecosystem:update
@@ -13,7 +13,8 @@ argument-hint: "[--offline] [--dry-run] [--force] [--no-backup]"
 - **Re-derives** hooks section в settings.json from new manifest
 - **Preserves** user zone (settings.local.json, product.yaml, .env, integrator/ state, all Claude Code auto-files)
 - **Never copies** dev-only files (root CLAUDE.md, DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md)
-- **Backs up** `.claude/` → `.claude-backup-<timestamp>/` before any changes
+- **Backs up** `.claude/` → `.claude-backup-<timestamp>/` before any changes (**level-1** wipe protection — filesystem snapshot)
+- **Safety-commits** the integrator-managed tool footprint to git before applying (**level-2** wipe protection — durable, survives `git clean` / backup-dir deletion; skip with `--no-safety-commit`)
 
 User invoked: `/ecosystem:update $ARGUMENTS`
 
@@ -35,9 +36,10 @@ Per [DEC-DEV-0019](../../DEV_JOURNAL.md), `/ecosystem:bootstrap` was designed д
 ## Flags
 
 - `--offline` — use local cache `~/.claude/ecosystem/` instead of fresh git clone
-- `--dry-run` — preview changes without applying (RECOMMENDED for first run)
+- `--dry-run` — preview changes without applying (RECOMMENDED for first run). No filesystem changes, **no safety commit** (it is a real git mutation — only the confirmed apply path creates it; see Step 5.0).
 - `--force` — skip confirmations
-- `--no-backup` — skip `.claude-backup-<timestamp>/` step (faster, riskier)
+- `--no-backup` — skip `.claude-backup-<timestamp>/` step (faster, riskier) — disables **level-1** filesystem backup only
+- `--no-safety-commit` — skip the **level-2** git safety commit (Step 5.0). Level-1 filesystem backup still applies unless `--no-backup` also passed.
 
 ## Quick install — permission modes
 
@@ -64,6 +66,8 @@ Check **all three** present:
 **If all present** → proceed.
 
 ### Step 2: Backup `.claude/` + integrator-managed external paths (unless `--no-backup`)
+
+This step is **level-1** wipe protection: a filesystem snapshot. It is complemented by **level-2** — a git safety commit of the integrator-managed tool footprint — applied later in **Step 5.0** (only on the confirmed apply path, never in `--dry-run`). Two independent recovery layers: a backup directory that survives a bad git state, and a git commit that survives backup-dir deletion / `git clean`.
 
 **Phase 2a — `.claude/` snapshot:**
 
@@ -300,12 +304,128 @@ Skipped (never-copy zone, NOT entering .claude/):
   CLAUDE.md (root, dev's), DEV_JOURNAL.md, dev/, INSTALL-HUMAN.md
 ```
 
-**If `--dry-run`** → print preview, cleanup temp, exit. NO changes applied. **STRONGLY recommended for first run on any project.**
+**If `--dry-run`** → print preview, cleanup temp, exit. NO changes applied — **including no level-2 safety commit** (it runs only on the confirmed apply path, Step 5.0). **STRONGLY recommended for first run on any project.**
 
 **Else** → ask user to confirm (unless `--force`):
 > Apply changeset? [Y/n]
 
 ### Step 5: Apply changes (if confirmed)
+
+#### 5.0 Level-2 wipe protection — git safety commit (DEC-DEV-0061)
+
+**Runs first inside Step 5** — only on the confirmed apply path (after the Step 4 `[Y/n]` gate or `--force`), and therefore **never in `--dry-run`** (dry-run exits at Step 4). Skipped if `--no-safety-commit`. Executes **before** any destructive sync (5.1).
+
+**Why this exists (DEC-DEV-0061):** Step 2 creates a *filesystem* backup (`.claude-backup-<TS>/`, plus `_external/`). That is wipe protection **level-1** — but fragile as the *only* layer: the backup dir is untracked (wiped by `git clean -fdx`, lost on manual cleanup, absent after a fresh clone), and `.claude/integrator/backups/` is itself gitignored. If a tool's artifacts were uncommitted working-tree changes that the update overwrote, and the backup dir is later deleted → total loss. A git snapshot of the footprint in repo history is the durable **level-2**: it survives `git clean`, backup-dir deletion, is shareable, and lets you restore a single artifact weeks later (`git restore --source=<sha> -- <path>`).
+
+**What is committed (footprint — "all artifacts of installed tools"):**
+
+- `.claude/integrator/` (whole dir: registry + contracts + adapters + tool-docs + project-journal). Gitignored sub-paths (`secrets/`, `backups/`, `baseline.yaml`) are auto-excluded by `git add` — see invariants.
+- All `claude_primitives[].path` from `active-tools.yaml` — **internal AND external** (`.claude/skills/kiro-*/`, `.kiro/`, `.beads/`, …). Reuse Step 2b's parser; drop its "outside `.claude/`" filter so the full footprint is taken.
+- `.claude/settings.json` — carries third-party hook injections that Step 6 merge-preserves.
+
+**Invariants (mandatory):**
+
+1. **Never `git add -f`.** Secrets and gitignored paths stay out of level-2 (covered by level-1 only). Force-adding secrets is forbidden.
+2. **Scoped commit.** Only footprint paths are committed (`git commit … -- <paths>`); the user's unrelated staged/unstaged changes are neither swept in nor lost.
+3. **Skip, never abort.** Any git problem (not a repo, detached HEAD, merge/rebase in progress, git error) → warn + skip level-2 + continue the update (level-1 still protects). The safety commit must never block the update.
+4. **No-op when clean.** If the footprint already matches HEAD, no commit is made — current HEAD already *is* the recovery point.
+
+**Reference implementation (bash):**
+
+```bash
+if [ "$NO_SAFETY_COMMIT" = "1" ]; then
+  echo "Level-2 safety commit: skipped (--no-safety-commit)"
+elif ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Level-2 safety commit: skipped — not a git repository (level-1 filesystem backup still applies)"
+else
+  GIT_DIR_PATH=$(git rev-parse --git-dir)
+  if [ -e "$GIT_DIR_PATH/MERGE_HEAD" ] || [ -d "$GIT_DIR_PATH/rebase-merge" ] || [ -d "$GIT_DIR_PATH/rebase-apply" ]; then
+    echo "Level-2 safety commit: skipped — merge/rebase in progress (resolve first; level-1 backup still applies)"
+  elif ! git symbolic-ref --quiet HEAD >/dev/null 2>&1; then
+    echo "Level-2 safety commit: skipped — detached HEAD (no branch to commit to); checkout a branch to enable. Level-1 backup still applies."
+  else
+    # Footprint = .claude/integrator + .claude/settings.json + ALL active-tools primitives (internal + external)
+    FOOTPRINT=()
+    [ -e .claude/integrator ]    && FOOTPRINT+=(".claude/integrator")
+    [ -e .claude/settings.json ] && FOOTPRINT+=(".claude/settings.json")
+    if [ -f .claude/integrator/active-tools.yaml ]; then
+      # ALL_PRIMITIVE_PATHS = claude_primitives[].path (internal AND external) — Step 2b parser, no .claude/ filter
+      for P in $ALL_PRIMITIVE_PATHS; do
+        [ -e "$P" ] && FOOTPRINT+=("$P")
+      done
+    fi
+
+    if [ ${#FOOTPRINT[@]} -eq 0 ]; then
+      echo "Level-2 safety commit: nothing to protect (no integrator-managed tool footprint present)"
+    else
+      BRANCH=$(git symbolic-ref --quiet --short HEAD)
+      git add -- "${FOOTPRINT[@]}"   # respects .gitignore — secrets never staged; NEVER use -f
+      if git diff --cached --quiet -- "${FOOTPRINT[@]}"; then
+        echo "Level-2 safety commit: footprint already matches HEAD ($(git rev-parse --short HEAD)) — no commit needed; HEAD is the recovery point"
+      else
+        git commit -m "chore(ecosystem): safety snapshot before /ecosystem:update [level-2 wipe protection]" -- "${FOOTPRINT[@]}"
+        SAFETY_SHA=$(git rev-parse HEAD)
+        echo "Level-2 safety commit: ${SAFETY_SHA} on ${BRANCH}"
+        echo "  Recover a file:  git restore --source=${SAFETY_SHA} -- <path>"
+        echo "  Inspect:         git show ${SAFETY_SHA}"
+        echo "  Drop if update healthy (only if no later commits): git reset --soft HEAD~1"
+      fi
+    fi
+  fi
+fi
+```
+
+**PowerShell equivalent (Windows):**
+
+```powershell
+if ($NoSafetyCommit) {
+  Write-Host "Level-2 safety commit: skipped (--no-safety-commit)"
+} else {
+  git rev-parse --is-inside-work-tree *> $null
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "Level-2 safety commit: skipped — not a git repository (level-1 filesystem backup still applies)"
+  } else {
+    $gitDir = (git rev-parse --git-dir).Trim()
+    $inProgress = (Test-Path (Join-Path $gitDir 'MERGE_HEAD')) -or (Test-Path (Join-Path $gitDir 'rebase-merge')) -or (Test-Path (Join-Path $gitDir 'rebase-apply'))
+    git symbolic-ref --quiet HEAD *> $null
+    $detached = ($LASTEXITCODE -ne 0)
+    if ($inProgress) {
+      Write-Host "Level-2 safety commit: skipped — merge/rebase in progress (resolve first; level-1 backup still applies)"
+    } elseif ($detached) {
+      Write-Host "Level-2 safety commit: skipped — detached HEAD (no branch to commit to); checkout a branch to enable. Level-1 backup still applies."
+    } else {
+      $footprint = New-Object System.Collections.Generic.List[string]
+      if (Test-Path '.claude\integrator')    { $footprint.Add('.claude/integrator') }
+      if (Test-Path '.claude\settings.json') { $footprint.Add('.claude/settings.json') }
+      if (Test-Path '.claude\integrator\active-tools.yaml') {
+        # $allPrimitivePaths = claude_primitives[].path (internal AND external) — Step 2b parser, no .claude/ filter
+        foreach ($p in $allPrimitivePaths) { if (Test-Path $p) { $footprint.Add($p) } }
+      }
+
+      if ($footprint.Count -eq 0) {
+        Write-Host "Level-2 safety commit: nothing to protect (no integrator-managed tool footprint present)"
+      } else {
+        $branch = (git symbolic-ref --quiet --short HEAD).Trim()
+        git add -- $footprint     # respects .gitignore — secrets never staged; NEVER use -f
+        git diff --cached --quiet -- $footprint
+        if ($LASTEXITCODE -eq 0) {
+          $head = (git rev-parse --short HEAD).Trim()
+          Write-Host "Level-2 safety commit: footprint already matches HEAD ($head) — no commit needed; HEAD is the recovery point"
+        } else {
+          git commit -m "chore(ecosystem): safety snapshot before /ecosystem:update [level-2 wipe protection]" -- $footprint
+          $safetySha = (git rev-parse HEAD).Trim()
+          Write-Host "Level-2 safety commit: $safetySha on $branch"
+          Write-Host "  Recover a file:  git restore --source=$safetySha -- <path>"
+          Write-Host "  Inspect:         git show $safetySha"
+          Write-Host "  Drop if update healthy (only if no later commits): git reset --soft HEAD~1"
+        }
+      }
+    }
+  }
+}
+```
+
+Record `SAFETY_SHA` for the Step 8 summary. The `.claude-backup-<TS>/` dir from Step 2 is untracked and outside the footprint pathspec, so it is never staged by the scoped `git add` (and is gitignored via `gitignore.template`).
 
 **Two sync modes per subdir class** (per Step 4 classification — DEC-DEV-0051):
 
@@ -654,9 +774,14 @@ If any missing → flag, suggest restore from backup.
   Ecosystem 3.0 — Update complete
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Backup: .claude-backup-<timestamp>/
-  - .claude/ snapshot
-  - _external/ (J integrator-managed paths outside .claude/, per active-tools.yaml; .kiro/, .beads/, ...)
+Wipe protection:
+  Level-1 backup: .claude-backup-<timestamp>/
+    - .claude/ snapshot
+    - _external/ (J integrator-managed paths outside .claude/, per active-tools.yaml; .kiro/, .beads/, ...)
+  Level-2 safety commit: <SAFETY_SHA> on <branch>   (DEC-DEV-0061; integrator-managed tool footprint)
+    — or "footprint already at HEAD; no commit needed"
+    — or "skipped (--no-safety-commit / not a git repo / merge in progress)"
+    Recover a file: git restore --source=<SAFETY_SHA> -- <path>
 
 Synced from upstream (namespace-aware sync — DEC-DEV-0051):
   commands/ — managed namespaces re-derived; T1 third-party namespaces preserved
@@ -705,7 +830,8 @@ What's next?
 | Ecosystem signature missing | Abort; suggest `/ecosystem:bootstrap` |
 | `git clone` failed | Suggest `--offline` if cache exists; check network |
 | Backup failed (disk space) | Abort; do NOT proceed без backup unless `--no-backup` |
-| Sync interrupted (network/Ctrl-C) | Restore from backup: `rm -rf .claude && mv .claude-backup-* .claude` |
+| Safety commit failed (not a git repo / detached HEAD / merge in progress / git error) | Warn + skip level-2; **continue** the update (level-1 filesystem backup still protects). Never block the update on a git problem (Step 5.0 invariant 3). |
+| Sync interrupted (network/Ctrl-C) | Restore from backup: `rm -rf .claude && mv .claude-backup-* .claude`; the Step 5.0 safety commit (if made) is an additional recovery point |
 | Settings.json malformed | Skip hook re-derivation; warn user; preserve old settings; suggest manual fix |
 | Verify failed post-update | Suggest restore from backup |
 
@@ -717,7 +843,8 @@ What's next?
 - DO NOT overwrite `.claude/product.yaml` (project config)
 - DO NOT touch `.claude/integrator/` contents (Integrator state)
 - DO NOT copy CLAUDE.md (root), DEV_JOURNAL.md, dev/, или INSTALL-HUMAN.md from upstream — these are ecosystem developer artifacts (causes contamination per DEC-DEV-0019 Finding A)
-- DO NOT auto-commit anything to git (user reviews + commits manually)
+- DO NOT auto-commit anything to git **except** the scoped level-2 safety commit (Step 5.0, default on). That one stages **only** the integrator-managed tool footprint — **never `git add -f`**, never secrets/gitignored, never the user's unrelated WIP. Everything else: user reviews + commits manually. Disable with `--no-safety-commit`. (Policy revised by DEC-DEV-0061; pre-0061 the rule was a blanket "never auto-commit".)
+- DO NOT let a git problem block the update — Step 5.0 must skip-not-abort (invariant 3)
 - DO NOT skip backup unless `--no-backup` explicitly passed
 - DO NOT install MCPs (separate concern; user manages MCPs post-bootstrap independently)
 - DO NOT extend the obsolete-contamination closed list at runtime (Step 4 / 5a) — if a new contamination class emerges, patch this spec + bump CHANGELOG instead
@@ -777,6 +904,28 @@ if (Test-Path $extDir) {
 
 If multiple backups present (subsequent updates) → keep latest backup, delete older periodically. Check `$BACKUP/_external/MANIFEST.yaml` to see what external paths the backup contains.
 
+### Level-2 recovery (git safety commit — DEC-DEV-0061)
+
+Independent of the filesystem backup. Use when the backup dir was deleted / `git clean`-ed, or to pull back a single artifact:
+
+```bash
+# Find the safety commit (printed at update time; or search history)
+git log --oneline --grep="\[level-2 wipe protection\]" -n 5
+
+SAFETY_SHA=<sha from above>
+
+# Restore one artifact:
+git restore --source=${SAFETY_SHA} -- .kiro/specs/<feature>/
+
+# Restore the whole footprint:
+git restore --source=${SAFETY_SHA} -- .claude/integrator .kiro .beads .claude/settings.json
+
+# Inspect what the safety commit captured:
+git show --stat ${SAFETY_SHA}
+```
+
+If the update went fine and you don't want the safety commit in branch history, and **no commits were made after it**: `git reset --soft HEAD~1` (un-commits, keeps files staged). Otherwise leave it — it is a harmless, auditable snapshot.
+
 ## Comparison: bootstrap vs update
 
 | Aspect | `/ecosystem:bootstrap` | `/ecosystem:update` |
@@ -787,9 +936,10 @@ If multiple backups present (subsequent updates) → keep latest backup, delete 
 | `.env` | Creates from template + asks keys | Untouched |
 | `product.yaml` | Creates с user choices | Untouched |
 | MCP install | Step 9 (asks per-MCP) | Skipped (user manages MCPs separately) |
-| Hook registration | Step 6b — first-time merge | Step 6 — re-derive from latest manifest (replace, not merge) |
+| Hook registration | Step 6b — first-time merge-preserve | Step 6 — re-derive ecosystem hooks from latest manifest; preserve third-party injections (pattern-preserving merge, DEC-DEV-0049) |
 | Ecosystem files | First copy (cp -rn additive) | Overwrite (rsync-style sync с delete) |
-| Backup | N/A (greenfield) | `.claude-backup-<timestamp>/` (default) |
+| Backup (level-1, filesystem) | N/A (greenfield) | `.claude-backup-<timestamp>/` (default) |
+| Safety commit (level-2, git) | N/A (greenfield — nothing to wipe) | Footprint git commit before apply (default; `--no-safety-commit` to skip) |
 | Settings.json | Created from template | Permissions preserved, hooks re-derived |
 | Dev contamination risk | High (cp -rn от full clone) | None (allowlist explicit) |
 | Existing contamination (from old bootstraps) | N/A | Step 5a removes closed-list items (DEC-DEV-0042) |
