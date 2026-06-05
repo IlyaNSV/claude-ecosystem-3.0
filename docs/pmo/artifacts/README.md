@@ -47,7 +47,7 @@
 |---|---|---|---|---|
 | BG | Business Glossary | 🟡 Standard | Singleton | [BG.md](BG.md) |
 | NOTE-* | Unstructured Note | 🟡 Standard | Per note (D3 modification) | [NOTE.md](NOTE.md) |
-| LESSON-* | Corrective Lesson | 🟡 Standard | Per lesson (DEC-DEV-0061) | [LESSON.md](LESSON.md) |
+| LESSON-* | Corrective Lesson | 🟡 Standard | Per lesson (DEC-DEV-0062) | [LESSON.md](LESSON.md) |
 
 ### D2-Behavioral (7 типов)
 
@@ -276,7 +276,7 @@ draft ──────▶ active ──────▶ deprecated
 ├── notes/                              # NOTE-* (D3 modification)
 │   ├── NOTE-001-<slug>.md
 │   └── ...
-├── lessons/                            # LESSON-* (corrective; DEC-DEV-0061)
+├── lessons/                            # LESSON-* (corrective; DEC-DEV-0062)
 │   ├── LESSON-001-<slug>.md
 │   └── ...
 └── handoffs/

@@ -823,7 +823,7 @@ Human reviews findings:
 
 **Важно:** DA findings не блокируют автоматически. Human решает per finding. Но **dismissed** всегда фиксируется в journal с rationale (anti-sycophancy механизм — нельзя просто проигнорировать, всегда обоснование).
 
-**Candidate LESSON-* (event-driven, opt-in, DEC-DEV-0061):** если **dismissed**/deferred finding позже оказался реальной ошибкой — это сигнал для `/product:lesson`. Это один из event-driven входов LESSON (наряду с validation-fail / cascade), снижающий зависимость от in-the-moment self-awareness. NB: LESSON имеет **два непересекающихся триггера** — (1) any-time self-correction mandate (ортогонален §2.5.1 post-approve automation — это **не** step ~9 approve-цепочки) и (2) escalation-кандидаты здесь / на validation-fail / cascade. LESSON — **не** отложенный P3 feedback loop (см. §3.4): фикс применяется атомарно сейчас, а не маршрутизируется обратно в D1.
+**Candidate LESSON-* (event-driven, opt-in, DEC-DEV-0062):** если **dismissed**/deferred finding позже оказался реальной ошибкой — это сигнал для `/product:lesson`. Это один из event-driven входов LESSON (наряду с validation-fail / cascade), снижающий зависимость от in-the-moment self-awareness. NB: LESSON имеет **два непересекающихся триггера** — (1) any-time self-correction mandate (ортогонален §2.5.1 post-approve automation — это **не** step ~9 approve-цепочки) и (2) escalation-кандидаты здесь / на validation-fail / cascade. LESSON — **не** отложенный P3 feedback loop (см. §3.4): фикс применяется атомарно сейчас, а не маршрутизируется обратно в D1.
 
 ### 6.6 Builder/Critic separation
 
@@ -919,7 +919,7 @@ Mapping команды → процессы → артефакты:
 | `/product:meta-feedback` | AI proposes ecosystem-level changes (C3) | Validation overrides / config tweaks с rationale в journal |
 | `/product:patterns` | Meta-linter on `.product/` (C4) | Recurring anti-patterns report |
 | `/product:promote-note <NOTE-id> to <TYPE>` | Convert NOTE-* to structured artifact (D3) | New artifact draft |
-| `/product:lesson "<...>"` | Atomic self-correction find→fix→record (DEC-DEV-0061) | Fixed error + active LESSON-* (ready to use) |
+| `/product:lesson "<...>"` | Atomic self-correction find→fix→record (DEC-DEV-0062) | Fixed error + active LESSON-* (ready to use) |
 | `/product:lesson --resume <LESSON-id>` | Finish an open lesson → active | LESSON-* open→active |
 | `/product:lesson --withdraw <LESSON-id> "<reason>"` | Genuine false alarm (no fix landed) | LESSON-* deprecated + NOTE-* rationale |
 | `/product:handoff <FM-id> --mode draft` | Relaxed-DoR handoff (D1) | handoff.md `status: partial` с warnings |
@@ -1175,7 +1175,7 @@ NFR на solo-уровне — **очертания достаточности, 
 - `ic-change-trigger.js` — P-RULE-01 enforcement (adaptive-depth single subagent invocation, см. §6.2; refactored DEC-DEV-0012)
 - `br-change-trigger.js` — P-RULE-02 enforcement (adaptive-depth, см. §6.2; refactored DEC-DEV-0012)
 - `cascade-check.js` — на approve
-- `lesson-gate.js` — **Stop** event; LESSON-* non-deferrability gate (PRONG A). The **first blocking hook** (DEC-DEV-0061 departure from «Hook never blocks», scoped to corrective lessons). Default strict (`exit 2`) blocks clean session close while any LESSON is `status: open` or write-truncated; `LESSON_GATE_MODE=warn` downgrades.
+- `lesson-gate.js` — **Stop** event; LESSON-* non-deferrability gate (PRONG A). The **first blocking hook** (DEC-DEV-0062 departure from «Hook never blocks», scoped to corrective lessons). Default strict (`exit 2`) blocks clean session close while any LESSON is `status: open` or write-truncated; `LESSON_GATE_MODE=warn` downgrades.
 - `lesson-presence-gate.js` — **PreToolUse** + **UserPromptSubmit** backstop (PRONG B). Ships **warn** (re-surfaces open lessons each turn; PreToolUse nag); `LESSON_GATE_MODE=strict` enables `permissionDecision:deny` on mutating calls with `lesson-in-progress` marker-exemption (pending S-LE live smoke).
 
 **B2: Quiet draft hooks behavior.** Все hooks при artifact `status: draft` работают в **quiet mode**:

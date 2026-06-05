@@ -4,7 +4,7 @@ description: Non-deferrable self-correction mandate — the instant a task/artif
 
 # Self-Correction Mandate — Skill for Ecosystem
 
-Per DEC-DEV-0061 (LESSON-* atomic self-correction mechanism).
+Per DEC-DEV-0062 (LESSON-* atomic self-correction mechanism).
 
 This skill is the **synced** home of the self-correction mandate. The same rule is authored once into a product project's root `CLAUDE.md` at bootstrap — but `/ecosystem:update` syncs `.claude/` and **never** touches project-root `CLAUDE.md`. So this `.claude/skills/ecosystem/` surface guarantees existing installs receive the **trigger**, not only the hook **teeth** (`lesson-gate.js` / `lesson-presence-gate.js`).
 
@@ -34,7 +34,7 @@ This skill is the **synced** home of the self-correction mandate. The same rule 
 
 - `lesson-gate.js` (Stop, **strict** по умолчанию) не даст чисто закрыть сессию, пока есть `status: open` урок.
 - `lesson-presence-gate.js` (PreToolUse + UserPromptSubmit, **warn** по умолчанию) напоминает каждый ход.
-- Опт-аут: env `LESSON_GATE_MODE` = `warn` | `off` (см. DEC-DEV-0061). `/ecosystem:verify` предупреждает, если gate тихо отключён.
+- Опт-аут: env `LESSON_GATE_MODE` = `warn` | `off` (см. DEC-DEV-0062). `/ecosystem:verify` предупреждает, если gate тихо отключён.
 
 ## Related
 

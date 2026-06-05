@@ -3,7 +3,7 @@
  * hooks/product/lesson-presence-gate.js — LESSON-* non-deferrability backstop
  * (PRONG B, PreToolUse + UserPromptSubmit).
  *
- * Per DEC-DEV-0061 (LESSON-* atomic self-correction mechanism).
+ * Per DEC-DEV-0062 (LESSON-* atomic self-correction mechanism).
  *
  * Closes the "session never ends, so the Stop gate never fires" deferral hole:
  * while a corrective LESSON-* is left `status: open`, this hook re-surfaces it on

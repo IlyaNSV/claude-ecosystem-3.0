@@ -54,7 +54,7 @@
 | Artifact validation | V-01..V-16 | Интегральная проверка артефактов `.product/` | 15 |
 | Handoff validation | V-H-01..V-H-11 | Структурная целостность handoff.md | 11 |
 | Design validation | V-MK-01..V-MK-08 | UI spec completeness (conditional has_ui) | 8 |
-| Lesson validation | V-LE-01..V-LE-05 | Corrective LESSON-* артефакты (DEC-DEV-0061) | 5 |
+| Lesson validation | V-LE-01..V-LE-05 | Corrective LESSON-* артефакты (DEC-DEV-0062) | 5 |
 | Integrator validation | V-I-* | Cross-boundary (контракты с внешними инструментами) | future |
 | Process rules | P-RULE-* | Обязательные ручные проверки (не автоматизация) | 2 |
 
@@ -383,7 +383,7 @@ NOTE-* — unstructured catch-all артефакт (см. [pmo/artifacts/NOTE.md
 
 **НЕ применяются:** V-01..V-15, V-MK-*, V-H-* (NOTE не embed в handoff). Cascade не работает (NOTE-* не имеет dependencies).
 
-### 5.1b LESSON-* validation (V-LE-01..05 — corrective lessons, DEC-DEV-0061)
+### 5.1b LESSON-* validation (V-LE-01..05 — corrective lessons, DEC-DEV-0062)
 
 LESSON-* — corrective lesson артефакт с уже применённым+проверенным фиксом (см. [pmo/artifacts/LESSON.md](artifacts/LESSON.md)). Вне dependency graph, как NOTE.
 

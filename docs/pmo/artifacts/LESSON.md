@@ -5,7 +5,7 @@
 > **Review:** 🟡 Standard
 > **Cardinality:** Per lesson (без верхней границы)
 > **Владелец:** любой процесс / ассистент при self-detected error
-> **Введён:** v1.5.0 (atomic find→fix→record; инверс `.pending/` deferred queue, DEC-DEV-0061)
+> **Введён:** v1.5.0 (atomic find→fix→record; инверс `.pending/` deferred queue, DEC-DEV-0062)
 
 ## Purpose
 
@@ -96,7 +96,7 @@ open ──(fix applied + verified, guard recorded)──▶ active ──(super
 - **active** — терминальный успех: ошибка найдена, фикс **применён И проверен** (с recorded evidence), root cause + reusable guard записаны. `severity`/`fix_ref`/`guard`/`guard_kind` обязательны. Готов к использованию сразу.
 - **deprecated** — вытеснен более поздним уроком (`supersedes`/`superseded`) или защищаемый путь больше не существует; также терминальное состояние для genuine false-alarm `--withdraw` (когда ни один фикс не лёг — дополнительно пишется `NOTE-*` с обоснованием).
 
-> **Намеренное отклонение от конвенции:** LESSON **подменяет** generic `draft` на `open` (а не добавляет `open` рядом с `draft`). Rationale: `draft` везде parkable-навсегда (quiet-draft mode существует чтобы драфты лежали); LESSON нужно **non-parkable** незавершённое состояние. Зафиксировано в DEC-DEV-0061.
+> **Намеренное отклонение от конвенции:** LESSON **подменяет** generic `draft` на `open` (а не добавляет `open` рядом с `draft`). Rationale: `draft` везде parkable-навсегда (quiet-draft mode существует чтобы драфты лежали); LESSON нужно **non-parkable** незавершённое состояние. Зафиксировано в DEC-DEV-0062.
 
 ## Examples
 

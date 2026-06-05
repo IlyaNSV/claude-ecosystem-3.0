@@ -415,7 +415,7 @@
 
 ## 6. Hooks
 
-8 hooks автоматизации и enforcement (LESSON-* gate добавил первые **Stop / PreToolUse / UserPromptSubmit** хуки модуля — DEC-DEV-0061; первый блокирующий хук в экосистеме, scoped к corrective lessons):
+8 hooks автоматизации и enforcement (LESSON-* gate добавил первые **Stop / PreToolUse / UserPromptSubmit** хуки модуля — DEC-DEV-0062; первый блокирующий хук в экосистеме, scoped к corrective lessons):
 
 ### 6.1 `product-artifact-validate.js` (PostToolUse) — tier-aware + quiet-mode
 

@@ -483,7 +483,7 @@ Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module direc
 }
 ```
 
-**Example result for non-`PostToolUse` events** (LESSON-* gate, DEC-DEV-0061 — the first `Stop` / `PreToolUse` / `UserPromptSubmit` hooks). Mirror this shape when the manifest declares a new top-level event key; `settings.json.template` already pre-seeds these keys empty, so this is an append into an existing array, not a brand-new-key creation:
+**Example result for non-`PostToolUse` events** (LESSON-* gate, DEC-DEV-0062 — the first `Stop` / `PreToolUse` / `UserPromptSubmit` hooks). Mirror this shape when the manifest declares a new top-level event key; `settings.json.template` already pre-seeds these keys empty, so this is an append into an existing array, not a brand-new-key creation:
 
 ```json
 {

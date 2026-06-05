@@ -16,6 +16,11 @@
 .claude/integrator/backups/
 .claude/integrator/_backup/
 
+# === Level-1 update backups (created by /ecosystem:update Step 2) ===
+# Transient filesystem snapshots — recovery source, never committed.
+# (Level-2 wipe protection is a git safety commit, which IS in history — see /ecosystem:update Step 5.0.)
+.claude-backup-*/
+
 # === Source-controlled — DO NOT add these to gitignore ===
 # Keeping these comments to make the intent explicit:
 # .claude/integrator/active-tools.yaml     ← team-shared tool config

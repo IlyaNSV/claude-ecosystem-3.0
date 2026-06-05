@@ -89,7 +89,7 @@ Check if project is a git repo:
 - If yes — note current branch, untracked files count
 - If no — note: "Not a git repo. Consider `git init` for version control."
 
-### Step 8.5: LESSON-* gate self-check (DEC-DEV-0061)
+### Step 8.5: LESSON-* gate self-check (DEC-DEV-0062)
 
 So an unenforced-but-believed-enforced gate cannot pass silently. Read `.claude/settings.json` hooks and check:
 
@@ -133,7 +133,7 @@ SPECS
 ARTIFACTS CATALOG
   ✓ 23 type files + README    (incl. LESSON-*)
 
-LESSON-* GATE (DEC-DEV-0061)
+LESSON-* GATE (DEC-DEV-0062)
   ✓ lesson-gate.js registered (Stop, strict)
   ✓ lesson-presence-gate.js registered (PreToolUse+UPS, warn)
 

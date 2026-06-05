@@ -2,7 +2,7 @@
 /**
  * hooks/product/lesson-gate.js — LESSON-* non-deferrability gate (PRONG A, Stop event).
  *
- * Per DEC-DEV-0061 (LESSON-* atomic self-correction mechanism).
+ * Per DEC-DEV-0062 (LESSON-* atomic self-correction mechanism).
  *
  * Stop hook. Refuses a CLEAN session close while a corrective LESSON-* is left
  * unresolved — i.e. any `.product/lessons/LESSON-*.md` with `status: open`, or
@@ -19,7 +19,7 @@
  * platform-independent (Windows == macOS == Linux). Do NOT confuse with
  * SessionEnd, which canNOT block ("session already ending"). The repo's earlier
  * assumption that Stop cannot block was a Stop/SessionEnd conflation — corrected
- * in DEC-DEV-0061. Claude Code auto-overrides a Stop hook after 8 consecutive
+ * in DEC-DEV-0062. Claude Code auto-overrides a Stop hook after 8 consecutive
  * blocks, so strict mode cannot permanently wedge a session (documented safety
  * valve); the `stop_hook_active` guard below avoids re-blocking within one stop.
  *

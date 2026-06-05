@@ -155,7 +155,7 @@ V-MK-01..V-MK-08 не shipped в Phase 4 — Design module conditional Phase 6.
   To activate: /design:start <FM-id> (Phase 6) → re-run /product:validate.
   ```
 
-### V-LE-01..05 — LESSON validation (corrective lessons, DEC-DEV-0061)
+### V-LE-01..05 — LESSON validation (corrective lessons, DEC-DEV-0062)
 
 LESSON-* — corrective lesson артефакт (см. `validation.md §5.1b`). Вне dependency graph (как NOTE): V-01..V-16, V-MK-*, V-H-*, cascade (V-11), orphan (V-15) **не применяются**. Только V-LE-01..05.
 

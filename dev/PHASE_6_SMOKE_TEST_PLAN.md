@@ -151,9 +151,9 @@
 
 ---
 
-### S-LE — LESSON-* gate runtime contracts (DEC-DEV-0061, cross-cutting)
+### S-LE — LESSON-* gate runtime contracts (DEC-DEV-0062, cross-cutting)
 
-**Trigger:** added 2026-06-06 (DEC-DEV-0061). **HARD prerequisite** для перевода `lesson-presence-gate.js` из warn в strict — проверяет runtime-контракты, которые нельзя верифицировать из исходников (хотя дока `code.claude.com/docs/en/hooks` их подтверждает, нужен живой прогон на конкретной версии Claude Code / Windows). Не зависит от Design Module — host-plan выбран как «next pilot session».
+**Trigger:** added 2026-06-06 (DEC-DEV-0062). **HARD prerequisite** для перевода `lesson-presence-gate.js` из warn в strict — проверяет runtime-контракты, которые нельзя верифицировать из исходников (хотя дока `code.claude.com/docs/en/hooks` их подтверждает, нужен живой прогон на конкретной версии Claude Code / Windows). Не зависит от Design Module — host-plan выбран как «next pilot session».
 
 **Setup:** pilot project с установленным LESSON-* (после `/ecosystem:bootstrap` или `/ecosystem:update`); `.product/` существует; хуки зарегистрированы (Step 8.5 verify passes).
 
