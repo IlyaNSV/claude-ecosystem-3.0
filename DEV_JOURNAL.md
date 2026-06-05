@@ -5026,6 +5026,65 @@ Research (Integrator SPEC целиком, Orchestrator SPEC v0, dogfood-план
 
 ---
 
+## DEC-DEV-0063 — open-design: из ad-hoc per-project install в переиспользуемый Dockerized viewer экосистемы
+
+**Date:** 2026-06-06
+**Trigger:** Пользователь подключил open-design (nexu-io/open-design, Apache-2.0) в продуктовом проекте `my-first-test` как альтернативный HTML-viewer/migrate-target для Stitch-макетов — но через одноразовый `/integrator:add`. Запрос: переиспользовать инструмент для **множества** проектов → переиспользуемые куски в репо экосистемы (расходятся `/ecosystem:update`) + машинно-глобальный общий daemon, per-project — тонкий стейт. Реализация по implementation-prompt (`my-first-test/.claude/integrator/open-design-ecosystem-patch.PROMPT.md`).
+**Tag:** #architecture #integrator #design #tooling #docker #adapter
+
+### Context
+
+open-design = Dockerized HTML **viewer**, не генератор и не источник истины: переносится только визуальный HTML, метаданные (SC/BR/state-matrix/DS-tokens) НЕ мигрируют, канон в MK/NM. Host-Node route непригоден (нужен Node 24 + pnpm; host на Node 18, corepack broken) → daemon в контейнере (node:24-alpine, порт 7456, volume open_design_data). Reference-реализация в `my-first-test` была one-off; gold-адаптер нёс конкретные install-time метаданные и читал токен только из env. Gap: в репо `adapters/` отсутствовали И `stitch-to-opendesign.js`, И `mk-to-stitch.js` (CNT-002) — нарушение tri-location pattern (DEC-DEV-0040 Q1 / DEC-DEV-0044).
+
+### Options considered
+
+**Где живут design-facing возможности (viewer / migrate-target / `external_viewers` дефолт):**
+1. В Integrator (он ставил инструмент) — но UI-визуализация = зона D2-B04 = Design Module.
+2. **В Design Module (выбрано).** Integrator держит только инфраструктуру (daemon-mgmt + контракт + адаптер); Design Module — viewer/migrate-target/template-дефолт/status-check. Зеркалит границу DEC-DEV-0060 (role A).
+
+**migrate `--to open-design` семантика:**
+1. Как regeneration-цель (brief → генерация) — неверно: open-design ничего не генерирует.
+2. **Viewer-import (выбрано):** import существующего HTML через adapter `--import`; нет brief, нет генерации, нет миграции метаданных, **НЕ инкрементит `iteration`** (import ≠ regeneration). Отдельная ветка Step 5-OD + reframed gate/preview.
+
+**Setup-док машинного daemon:** dev/ vs **BOOTSTRAP.md (выбрано пользователем)** — раздел «open-design shared daemon (machine-global)».
+
+**Viewer dispatch:** расширить design-session.md vs **новый skill `open-design-viewer.md` (выбрано)** — нет iteration loop, симметрия с stitch-workflow/html-fallback.
+
+**mk-to-stitch.js gap:** только зафиксировать vs **backfill (выбрано)** — чистый additive lift, закрывает тот же tri-location gap.
+
+### Decision
+
+Три слоя. **Layer 1 (машинно-глобальный):** token precedence в адаптере (`--token` → env → `~/.claude/integrator/secrets/open-design.token` → `./.claude/...`) — один токен/daemon на машину; BOOTSTRAP-раздел (recipe + token gen + health). **Layer 2 (патч репо):** Integrator — reference-адаптеры + `source: docker` + SPEC §4.1.1 daemon-pattern + add.md docker-path; Design — migrate `--to open-design` + open-design-viewer skill + `external_viewers` template + status-check + SPEC §3.6/§4.4b. **Layer 3:** reconcile my-first-test (local) + live E2E.
+
+Инварианты соблюдены: D2-B04=Design зона; viewer≠generator; HTTP `/api/import/claude-design` не `od mcp`; tri-location adapter с reference-blanks; draft→verify→active + hard approve gates; token-gated `127.0.0.1`; supply-chain (non-pilot = pinned digest/build-from-source); pilot-light (no global npm, user-zone не клоббрится).
+
+### Outcome
+
+Файлы (Layer 1+2, на фича-ветке `feat/open-design-ecosystem-extraction`, 6 коммитов + этот meta):
+- **Создано:** `adapters/stitch-to-opendesign.js`, `adapters/mk-to-stitch.js`, `skills/design/open-design-viewer.md`.
+- **Изменено:** `adapters/README.md`, `docs/integrator-module/SPEC.md` (§4.1 enum + §4.1.1), `skills/integrator/tool-profiling.md` (enum), `commands/integrator/add.md` (docker path), `commands/design/migrate.md` (--to open-design + Step 5-OD), `commands/design/start.md` (external_viewers template), `commands/design/status.md` (daemon check), `docs/design-module/SPEC.md` (§3.6 + §4.4b), `BOOTSTRAP.md` (daemon setup), `CHANGELOG.md`, `DEV_JOURNAL.md`.
+- **Не в PR экосистемы:** reconcile my-first-test (local к тому репо); машинно-глобальный `~/.claude/integrator/tool-catalog/open-design.yaml` (опц.).
+
+**Версия:** target v1.5.0 (как и DEC-DEV-0062 LESSON). CHANGELOG — под `[Unreleased] ### Added`; формальный cut `[1.5.0]` с датой — **отложенное релиз-решение** (разделяется с 0061/0062, обсуждается с пользователем), единолично не дату́рую.
+
+**Нумерация:** изначально план целил 0062, но rebase на актуальный main вскрыл, что 0062 занят LESSON-atomic (бывшая коллизия 0061 в main разрешена в его пользу) → эта запись = **0063**. Подтвердило §F плана (verify номер по git перед присвоением).
+
+### Lessons
+
+1. **Rebase на актуальный main до написания meta-файлов.** Ветка была ответвлена от устаревшего main (a612e56); локальный main уже ушёл на 3863eeb (PR #24/#25). Писать CHANGELOG/journal против стейл-базы → коллизия номеров + конфликты. *Apply:* перед L2-META всегда `git rebase main` + re-grep highest DEC-DEV.
+2. **Viewer ≠ generator должно быть видно в коде, не только в доке.** Инвариант «no metadata, no iteration bump» закодирован отдельной веткой migrate Step 5-OD и viewer-only skill, который НЕ мутирует MK (A8 владеет записями). *Apply:* семантические инварианты выражай структурно (отдельный путь), не комментарием в общем пути.
+3. **Reference-blanks vs instance-values.** Gold-инстанс нёс конкретные `@source_ref`/`@installed_at`/`@target_tool_version` — в репо-reference они обнулены до placeholder'ов (как handoff-to-ccsdd.js); инжект значений — задача Stage 5 `/integrator:add`. *Apply:* поднимая instance→reference, всегда снимай install-time метаданные.
+
+### Связь с другими entries
+
+- DEC-DEV-0040 Q1 / DEC-DEV-0044 — tri-location adapter + reference-blanks; этот entry применил паттерн к docker-tool и закрыл gap (оба адаптера отсутствовали в репо).
+- DEC-DEV-0060 — граница Integrator↔Orchestrator (role A); здесь зеркальная граница Integrator↔Design (инфра vs design-facing).
+- DEC-DEV-0052 — Design Module; `/design:migrate` расширен viewer-import целью без слома Stitch↔HTML пути.
+- DEC-DEV-0062 — тоже target v1.5.0, тоже отложил CHANGELOG/ROADMAP до релиз-решения; cut 1.5.0 объединит обе работы + 0055/0061.
+- DEC-INT-0011 / DEC-INT-RESEARCH-0003 (my-first-test project-journal) — install-решение + research (env-блокер, auth-уроки, supply-chain caveat) — источник обобщения.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
