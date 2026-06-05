@@ -88,6 +88,22 @@ mcp_preferences:
     - figma               # если подключён в future
     - penpot              # если подключён в future
 
+# External viewers (NOT screen generators) — import + preview self-contained HTML.
+# Uncomment + wire via `/integrator:add open-design` once the shared daemon is up
+# (see BOOTSTRAP.md «open-design shared daemon»). Visual-only — canon stays in MK/NM.
+# external_viewers:
+#   open-design:
+#     kind: viewer                 # imports + previews self-contained HTML; NOT a screen generator
+#     transport: http              # Dockerized daemon at http://127.0.0.1:7456 (token-gated)
+#     contract: CNT-003            # stitch/MK HTML ZIP -> POST /api/import/claude-design
+#     adapter: .claude/integrator/adapters/stitch-to-opendesign.js
+#     secret_token: .claude/integrator/secrets/open-design.token   # OD_API_TOKEN (gitignored; ~/.claude/... machine-global takes precedence)
+#     exports: [html, pdf, pptx, mp4, zip]
+#     notes: |
+#       Alternative to local Chrome-render for visualizing Stitch/MK HTML mockups —
+#       interactive iframe preview + multi-format export. Use as a /design:migrate
+#       --to open-design target. Carries visual HTML only (no MK metadata).
+
 # Brand hints (опциональные — задаются вручную user'ом после первого review)
 brand_hints:
   colors: {}
