@@ -1,6 +1,6 @@
 ---
-description: Add an external tool (npm package, MCP server, git repo) under Integrator management. 6-stage flow with approve gate before install. Idempotent re-run after partial failure.
-argument-hint: "<tool-name>[@version] [--source npm|mcp|git|binary]"
+description: Add an external tool (npm package, MCP server, git repo, or Dockerized shared daemon) under Integrator management. 6-stage flow with approve gate before install. Idempotent re-run after partial failure.
+argument-hint: "<tool-name>[@version] [--source npm|mcp|git|binary|docker]"
 ---
 
 # /integrator:add
@@ -53,6 +53,8 @@ Subagent returns: full YAML profile + UX report block (conflicts, confidence).
 
 **If baseline missing** — invoke `/integrator:scan` first, then re-spawn profiler with populated baseline. Never profile blind.
 
+**Skip re-profiling when catalog is fresh (thin add).** If a recent machine-global profile `~/.claude/integrator/tool-catalog/<tool>.yaml` AND a dated research-cache `~/.claude/integrator/research-cache/*-<tool>.md` already exist (e.g. open-design, profiled in a prior session), do NOT re-spawn `tool-profiler`. Reuse the cached profile and build the Stage 2 card from it. Greenfield tools with no cache still profile normally. This is what makes a second-project `/integrator:add <docker-tool>` thin. The Stage 2 approve gate still fires unconditionally.
+
 ### Stage 2/6 — Propose (UX narrative)
 
 Present to user, in this order:
@@ -86,9 +88,13 @@ Now begin destructive operations. Wrap each in try/catch with rollback path.
    - MCP: write entry to `.mcp.json` (or `.claude/settings.json` mcpServers) per tool profile
    - git: `git clone <url> <target>`
    - binary: per profile install instructions
-4. **Verify install** — run smoke command from profile (e.g., check that `/kiro:steering` is registered)
+   - **docker (Dockerized shared daemon — SPEC §4.1.1):** do NOT install a package and do NOT write `.claude/` primitives. Instead **validate connectivity** to the shared machine-global daemon:
+     1. Resolve the token by precedence (`$OD_API_TOKEN` → `~/.claude/integrator/secrets/<tool>.token` → `./.claude/integrator/secrets/<tool>.token`). If absent, surface the BOOTSTRAP recipe («open-design shared daemon») so the user can generate it; do not fabricate a token.
+     2. Health-check: `curl -s -m 5 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer <token>" http://127.0.0.1:<port>/api/health` → expect `200`.
+     3. If unreachable: **do NOT auto-`docker run`** (daemon lifecycle is operator-owned). Surface the BOOTSTRAP recipe + ask the user to start the daemon, then retry. The "install" deliverable here is a validated connection, not a package.
+4. **Verify install** — run smoke command from profile (e.g., check that `/kiro:steering` is registered; for `docker` tools the smoke IS the `/api/health` 200 above)
 
-If any step fails: surface error, offer rollback (restore baseline backup, uninstall package if possible). Do NOT proceed silently.
+If any step fails: surface error, offer rollback (restore baseline backup, uninstall package if possible). Do NOT proceed silently. For `docker` tools there is nothing to uninstall — rollback is just removing the `active-tools.yaml` entry written in Stage 4.
 
 ### Stage 4/6 — Configure
 
@@ -100,6 +106,8 @@ If any step fails: surface error, offer rollback (restore baseline backup, unins
    - `D2-B02` — note in `boundary:` field that Product Module owns; cc-sdd consumes via handoff
 3. **Inherit global settings** — e.g., model_provider from `~/.claude/global-settings.yaml` if applicable
 4. **Re-run `/integrator:scan`** to refresh baseline with newly installed primitives now classified as `integrator_owned`
+
+**For `docker` tools (e.g. open-design — SPEC §4.1.1):** the `active-tools.yaml` entry carries `source: docker`, image ref + digest, ports, volume, token location, `claude_primitives: []` (ZERO — external daemon), `contracts: [CNT-NNN]`, `pmo_zones: [D2-B04]`, and `side_effects` (container + volume + secret token). In `pmo-mapping.yaml`, append the tool to `D2-B04` `covered_by[]` + `supports[]` and add the contract; **`primary` stays `design-module`** (open-design is a supporting viewer, not the zone owner — D2-B04 belongs to Design Module). The Stage-4 `/integrator:scan` re-run is a no-op for primitives (there are none) but still refreshes baseline state.
 
 ### Stage 5/6 — Contract design (subagent per pair)
 
@@ -118,6 +126,8 @@ Project fixture path: tests/fixtures/FM-FIXTURE-001-handoff.md
 
 For cc-sdd specifically: one pair `product-module → cc-sdd /kiro:spec-init`. Subagent will check `.claude/adapters/handoff-to-ccsdd.js` (project-local reference layer per DEC-DEV-0040 Q1 refined; deployed by `/ecosystem:bootstrap` and synced by `/ecosystem:update`), inject metadata, run `--verify-only` smoke.
 
+For **open-design** (`source: docker`): the pair is `design-module/stitch → open-design`; reference adapter `.claude/adapters/stitch-to-opendesign.js` → instance `.claude/integrator/adapters/stitch-to-opendesign.js` (same cp + metadata inject — `@target_tool_version` from profile, `@source_ref` from `.claude/adapters/.sync-metadata.yaml`, `@installed_at`, `@status: draft`). The Stage-6 fixture is an HTML/ZIP mockup (e.g. an `SI-*.html`), NOT a handoff fixture. Contract = CNT-003.
+
 If `.claude/adapters/` directory is missing → bootstrap regression. Surface to user: «`.claude/adapters/` отсутствует — run `/ecosystem:update` before retrying». Do NOT proceed to Stage 5.
 
 Receive subagent output (3 blocks: CNT YAML + companion .md + status report). Write CNT files to `.claude/integrator/contracts/`. Adapter instance already at `.claude/integrator/adapters/<adapter>.js` (subagent did the cp + metadata inject).
@@ -135,7 +145,7 @@ node .claude/integrator/adapters/<adapter>.js --verify-only --fixture tests/fixt
 echo "exit: $?"
 ```
 
-Expect exit 0 + `contract_validation.passed: true` in JSON output. If pass:
+Expect exit 0 + `contract_validation.passed: true` in JSON output. For **`docker` tools** the fixture is an HTML/ZIP mockup and the daemon-free `--verify-only` exit 0 + `passed:true` IS the pass criterion (deterministic without Docker running); an optional live `--import` smoke runs only if the daemon is up. If pass:
 
 1. Generate **tool-docs** at `.claude/integrator/tool-docs/<tool>.md` via `.claude/skills/integrator/tool-docs-generator.md` skill (per SPEC §14 style guide: universal English, API reference, project-agnostic). This is the deliverable for future Orchestrator Module.
 2. Update contract `last_verified` timestamp
@@ -239,6 +249,8 @@ Idempotency relies on `active-tools.yaml` as state-of-truth. If it shows tool as
 | 1 | Subagent timeout / no profile | Surface error, offer retry with reduced depth or manual profile |
 | 2 | User says `n` | Clean cancellation; record in journal as `#cancelled` |
 | 3 | npm install fails | Restore backup, no state change; ask user to investigate |
+| 3 | docker daemon unreachable / `/api/health` ≠ 200 | Surface BOOTSTRAP recipe; do NOT auto-`docker run`; ask user to start daemon, then retry. No state change. |
+| 3 | docker token missing | Surface BOOTSTRAP token-gen step; do not fabricate a token; pause until resolved |
 | 3 | Smoke verify fails post-install | Rollback (uninstall + restore); journal entry `#install-rollback` |
 | 4 | YAML write error | Restore previous active-tools.yaml + pmo-mapping.yaml from backup |
 | 5 | Subagent fails / contract smoke fails | Mark contract draft; pause Stage 6; ask user |
