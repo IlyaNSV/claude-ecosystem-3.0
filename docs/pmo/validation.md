@@ -54,6 +54,7 @@
 | Artifact validation | V-01..V-16 | Интегральная проверка артефактов `.product/` | 15 |
 | Handoff validation | V-H-01..V-H-11 | Структурная целостность handoff.md | 11 |
 | Design validation | V-MK-01..V-MK-08 | UI spec completeness (conditional has_ui) | 8 |
+| Lesson validation | V-LE-01..V-LE-05 | Corrective LESSON-* артефакты (DEC-DEV-0062) | 5 |
 | Integrator validation | V-I-* | Cross-boundary (контракты с внешними инструментами) | future |
 | Process rules | P-RULE-* | Обязательные ручные проверки (не автоматизация) | 2 |
 
@@ -381,6 +382,59 @@ NOTE-* — unstructured catch-all артефакт (см. [pmo/artifacts/NOTE.md
 При `status: promoted` — frontmatter должен содержать `promoted_to: <ARTIFACT-ID>` (запись о конвертации через `/product:promote-note`).
 
 **НЕ применяются:** V-01..V-15, V-MK-*, V-H-* (NOTE не embed в handoff). Cascade не работает (NOTE-* не имеет dependencies).
+
+### 5.1b LESSON-* validation (V-LE-01..05 — corrective lessons, DEC-DEV-0062)
+
+LESSON-* — corrective lesson артефакт с уже применённым+проверенным фиксом (см. [pmo/artifacts/LESSON.md](artifacts/LESSON.md)). Вне dependency graph, как NOTE.
+
+**НЕ применяются:** V-01..V-16, V-MK-*, V-H-* (LESSON не embed в handoff). Cascade (V-11) и orphan detection (V-15) не работают (LESSON не имеет dependencies; «orphan» by design).
+
+**Применяются только V-LE-01..05.** Семантика Blocking-tier gate `draft→active` распространяется на переход LESSON `open→active` (и прямой `none→active`): blocking failure оставляет урок в `open`.
+
+#### V-LE-01: Frontmatter & status integrity
+- **Tier:** 🔴 Blocking
+- **Statement:** Frontmatter parseable YAML; required `id, type, title, status, confidence, created, updated, version` присутствуют; `id` матчит `LESSON-\d{3}`; `status ∈ {open, active, deprecated}`; `confidence_notes` присутствует если `confidence != high`.
+- **Artifacts affected:** LESSON-*
+- **Automation:** ✅ Frontmatter parse + regex
+- **When:** Inline + Approve gate (open→active) + On-demand. **Never** Handoff.
+- **On failure:** block `open→active` (и `none→active`); урок остаётся `open`.
+- **Rationale:** базовая целостность; `status` парсится хуком `lesson-gate.js` буквально (одно значение).
+
+#### V-LE-02: Applied-fix invariant
+- **Tier:** 🔴 Blocking
+- **Statement:** Если `status: active` — `fix_ref` непустой И каждый ref резолвится в существующий путь/артефакт (existence-only, без content-hashing — избегаем CRLF-drift класса, ср. DEV_JOURNAL C.1) И секция тела `## Fix applied` непустая (recorded verification evidence).
+- **Artifacts affected:** LESSON-*
+- **Automation:** ✅ Field presence + path existence + body section check
+- **When:** Inline + Approve gate + On-demand.
+- **On failure:** не достичь `active`. Для `guard_kind` ∈ {validation-rule, checklist-item} предпочтительно подтвердить, что referenced content изменился с `created`.
+- **Rationale:** делает «уже ИСПРАВЛЕНО, не просто отмечено» структурно истинным — это и есть разница между LESSON и `.pending` finding.
+
+#### V-LE-03: Reusable-guard invariant
+- **Tier:** 🔴 Blocking
+- **Statement:** Если `status: active` — `guard` непустой И `guard_kind` задан (один из validation-rule | checklist-item | skill-note | convention | test) И секция тела `## Guard (reusable)` непустая.
+- **Artifacts affected:** LESSON-*
+- **Automation:** ✅ Field + body section check
+- **When:** Inline + Approve gate + On-demand.
+- **On failure:** не достичь `active`.
+- **Rationale:** «переиспользуемый урок, готовый к применению сразу». Guard без содержания = просто инцидент-лог.
+
+#### V-LE-04: applies_to references (informational)
+- **Tier:** 🟡 Warning
+- **Statement:** Записи `applies_to[]` ссылаются на существующие артефакты (informational only; orphans разрешены by design, как у NOTE — LESSON вне dependency graph).
+- **Artifacts affected:** LESSON-*
+- **Automation:** ✅ Path/id existence check
+- **When:** On-demand.
+- **On failure:** flag в report (non-blocking).
+- **Rationale:** ловит опечатки в ссылках, не принуждая к связности.
+
+#### V-LE-05: Open-lesson age hygiene
+- **Tier:** 🟡 Warning
+- **Statement:** LESSON в `status: open` дольше N дней (config, default 7) — флагуется. Поверх on-demand — **surfacing автоматически** через gate / session-start path (не только на `/product:validate`), чтобы возрастной deferral не прятался за всегда-открытой сессией.
+- **Artifacts affected:** LESSON-*
+- **Automation:** ✅ Age check (updated/created vs now)
+- **When:** On-demand + session-start surfacing. Real-time enforcement — это gate (Prong A/B); V-LE-05 — hygiene backstop.
+- **On failure:** flag (non-blocking — нет hard-block по возрасту).
+- **Rationale:** `open` — tripwire, не parking; возрастной мониторинг ловит забытые уроки.
 
 ### 5.2 Handoff Validation (V-H-01..V-H-11)
 

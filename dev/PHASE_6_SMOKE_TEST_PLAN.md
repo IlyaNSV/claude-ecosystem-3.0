@@ -151,6 +151,28 @@
 
 ---
 
+### S-LE — LESSON-* gate runtime contracts (DEC-DEV-0062, cross-cutting)
+
+**Trigger:** added 2026-06-06 (DEC-DEV-0062). **HARD prerequisite** для перевода `lesson-presence-gate.js` из warn в strict — проверяет runtime-контракты, которые нельзя верифицировать из исходников (хотя дока `code.claude.com/docs/en/hooks` их подтверждает, нужен живой прогон на конкретной версии Claude Code / Windows). Не зависит от Design Module — host-plan выбран как «next pilot session».
+
+**Setup:** pilot project с установленным LESSON-* (после `/ecosystem:bootstrap` или `/ecosystem:update`); `.product/` существует; хуки зарегистрированы (Step 8.5 verify passes).
+
+**Steps & pass criteria:**
+1. **Stop-block контракт.** Создать `LESSON-001` со `status: open`, попытаться завершить сессию.
+   - ✅ `lesson-gate.js` (strict default) блокирует чистое закрытие; stderr с инструкцией виден; **подтвердить, что блок именно `exit 2`** (а не no-op).
+   - ✅ `stop_hook_active` присутствует в payload; повторный блок не зацикливается (auto-override после 8 — не достигается при нормальном flow).
+2. **Stop payload.** Подтвердить, что harness **всегда** подаёт JSON в stdin Stop-хука (нет tty-зависания `fs.readFileSync(0)`); `cwd` присутствует.
+3. **PreToolUse deny контракт** (включить `LESSON_GATE_MODE=strict`). При `open`-уроке и **без** свежего `lesson-in-progress` маркера — мутирующий вызов отклоняется через `{"hookSpecificOutput":{"permissionDecision":"deny",...}}`.
+   - ✅ deny срабатывает и причина видна модели.
+   - ✅ **marker-exemption:** при свежем `.product/.sessions/lesson-in-progress.<id>` (идёт `/product:lesson`) — собственные Write/Edit/Bash протокола **не** отклоняются (нет self-deadlock).
+4. **UserPromptSubmit.** При `open`-уроке — `additionalContext` reminder входит в контекст; промпт **не** блокируется.
+5. **Bootstrap Step 6b.** Подтвердить, что emission новых ключей `Stop`/`PreToolUse`/`UserPromptSubmit` в `settings.json` работает, и двойной bootstrap/update даёт **ровно одну** регистрацию каждого (empty-matcher `""` dedup).
+6. **Fail-open.** Скормить хуку битый stdin / отсутствующий `.product/` — `exit 0`, никакого блока.
+
+**Until S-LE passes:** `lesson-presence-gate.js` остаётся defaulted к warn (ставится безвредно); `lesson-gate.js` Stop strict считается работающим по доке, но финально подтверждается здесь. FAIL по шагу 1 (Stop не блокирует) → откатить дефолт Stop в warn и пересмотреть Prong A.
+
+---
+
 ### S6 (deferred) — Claude Design path full pilot
 
 **Trigger:** C1 unlock (когда `claude-design-workflow.md` full skill ships в v1.1+).

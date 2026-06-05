@@ -39,7 +39,7 @@ Verify each. Report ❌ / 🟡 / ✓ per file.
 
 ### Step 3: Artifact catalog completeness
 
-Count `.claude/docs/pmo/artifacts/*.md` — expect **23 files** (22 type files + README.md).
+Count `.claude/docs/pmo/artifacts/*.md` — expect **24 files** (23 type files + README.md).
 
 If count differs, list missing or unexpected files.
 
@@ -89,6 +89,22 @@ Check if project is a git repo:
 - If yes — note current branch, untracked files count
 - If no — note: "Not a git repo. Consider `git init` for version control."
 
+### Step 8.5: LESSON-* gate self-check (DEC-DEV-0062)
+
+So an unenforced-but-believed-enforced gate cannot pass silently. Read `.claude/settings.json` hooks and check:
+
+- `lesson-gate.js` is registered under **`Stop`** (matcher `""`).
+- `lesson-presence-gate.js` is registered under **`PreToolUse`** (matcher `Write|Edit|Bash|NotebookEdit`) and **`UserPromptSubmit`**.
+- Both hook files exist at `.claude/hooks/product/`.
+- `LESSON_GATE_MODE` env: if set to `warn` or `off`, the **non-deferrability guarantee is downgraded** — surface this **loudly** (not a silent pass).
+
+Report:
+- ✓ if both hooks registered for their events and mode is strict-default (unset).
+- 🟡 if registered but `LESSON_GATE_MODE=warn|off` — note "LESSON gate is advisory only; open lessons will NOT block session close."
+- ❌ if `lesson-gate.js` is missing from `Stop` while the file exists — note "**existing installs are UNPROTECTED until `/ecosystem:update` re-registers hooks.**" Suggest `/ecosystem:update`.
+
+(Per "Strict Stop, warn PreToolUse" ship default: PreToolUse in warn mode is **expected**, not a defect — it nags rather than denies until the S-LE live smoke confirms the deny contract. Flag only the Stop prong being non-strict, or hooks missing entirely.)
+
 ### Step 9: Summary report
 
 ```
@@ -103,7 +119,7 @@ Validation tier: <pilot | mvp | full>
 
 CORE INSTALLATION
   ✓ .claude/         present with N subdirectories
-  ✓ .product/        18 subdirectories (skeleton correct)
+  ✓ .product/        19 subdirectories (skeleton correct)
   ✓ CLAUDE.md        present
   ✓ .env             4 of 5 recommended keys configured
   ✓ .gitignore       ecosystem entries present
@@ -115,7 +131,11 @@ SPECS
   ✓ Handoff SPEC              (lines: 945)
 
 ARTIFACTS CATALOG
-  ✓ 22 type files + README    (expected for v1.0)
+  ✓ 23 type files + README    (incl. LESSON-*)
+
+LESSON-* GATE (DEC-DEV-0062)
+  ✓ lesson-gate.js registered (Stop, strict)
+  ✓ lesson-presence-gate.js registered (PreToolUse+UPS, warn)
 
 COMMANDS
   ✓ integrator/: 6/6           (Phase 1 complete)

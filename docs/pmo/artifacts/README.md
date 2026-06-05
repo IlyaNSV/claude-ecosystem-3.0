@@ -1,7 +1,7 @@
 # Каталог артефактов D1-D2 — Ecosystem 3.0
 
 > **Версия:** 1.1 draft (2026-04-17)
-> **Назначение:** единый справочник формата всех 21 типов артефактов Product Layer.
+> **Назначение:** единый справочник формата всех 23 типов артефактов Product Layer.
 > **Принцип:** декларативные правила здесь, процессуальные — в skills Product Module.
 > **Обновления v1.1:** добавлен NFR-* (закрытие OQ-03)
 
@@ -19,7 +19,7 @@
 | **Внешний реализатор** (через handoff) | Понимает формат передаваемых данных |
 | **Будущий Orchestrator** | Валидирует состояние `.product/` при маршрутизации |
 
-## 22 типа артефактов
+## 23 типа артефактов
 
 ### D1 — Product Discovery & Strategy (9 типов)
 
@@ -47,6 +47,7 @@
 |---|---|---|---|---|
 | BG | Business Glossary | 🟡 Standard | Singleton | [BG.md](BG.md) |
 | NOTE-* | Unstructured Note | 🟡 Standard | Per note (D3 modification) | [NOTE.md](NOTE.md) |
+| LESSON-* | Corrective Lesson | 🟡 Standard | Per lesson (DEC-DEV-0062) | [LESSON.md](LESSON.md) |
 
 ### D2-Behavioral (7 типов)
 
@@ -274,6 +275,9 @@ draft ──────▶ active ──────▶ deprecated
 │   └── ...
 ├── notes/                              # NOTE-* (D3 modification)
 │   ├── NOTE-001-<slug>.md
+│   └── ...
+├── lessons/                            # LESSON-* (corrective; DEC-DEV-0062)
+│   ├── LESSON-001-<slug>.md
 │   └── ...
 └── handoffs/
     └── FM-<NNN>-handoff.md            # генерируется Product Module
