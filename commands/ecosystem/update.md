@@ -936,7 +936,7 @@ If the update went fine and you don't want the safety commit in branch history, 
 | `.env` | Creates from template + asks keys | Untouched |
 | `product.yaml` | Creates с user choices | Untouched |
 | MCP install | Step 9 (asks per-MCP) | Skipped (user manages MCPs separately) |
-| Hook registration | Step 6b — first-time merge | Step 6 — re-derive from latest manifest (replace, not merge) |
+| Hook registration | Step 6b — first-time merge-preserve | Step 6 — re-derive ecosystem hooks from latest manifest; preserve third-party injections (pattern-preserving merge, DEC-DEV-0049) |
 | Ecosystem files | First copy (cp -rn additive) | Overwrite (rsync-style sync с delete) |
 | Backup (level-1, filesystem) | N/A (greenfield) | `.claude-backup-<timestamp>/` (default) |
 | Safety commit (level-2, git) | N/A (greenfield — nothing to wipe) | Footprint git commit before apply (default; `--no-safety-commit` to skip) |
