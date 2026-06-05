@@ -32,8 +32,11 @@ Extract structured tool metadata into YAML profile per `docs/integrator-module/S
 tool:
   name: <tool-name>
   version_installed: <version>           # null if research only
-  source: npm | pip | git | mcp | binary
-  source_spec: <full install spec>       # e.g., "beads@1.2.0", "github:org/repo#tag"
+  source: npm | pip | git | mcp | binary | docker
+  # docker ⇒ Dockerized shared-daemon: профиль пишет image ref + digest pin, ports,
+  # volume, required env + token location. Install = provision/validate connectivity
+  # к общему daemon (не package install). См. SPEC §4.1.1.
+  source_spec: <full install spec>       # e.g., "beads@1.2.0", "github:org/repo#tag", "docker run vanjayak/open-design@sha256:..."
   installed_at: YYYY-MM-DD                # null if research only
   last_verified: YYYY-MM-DD                # last /integrator:verify pass
   home_url: <homepage URL>
