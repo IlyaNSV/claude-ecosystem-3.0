@@ -14,7 +14,7 @@
 
 | Модуль | SPEC | Зона ответственности |
 |---|---|---|
-| **Product Module** | [product-module/SPEC.md](product-module/SPEC.md) | D1 (Discovery + Planning) + D2-Behavioral; 22 артефакта; handoff generation |
+| **Product Module** | [product-module/SPEC.md](product-module/SPEC.md) | D1 (Discovery + Planning) + D2-Behavioral; 23 артефакта; handoff generation |
 | **Integrator Module** | [integrator-module/SPEC.md](integrator-module/SPEC.md) | «Сисадмин» экосистемы — install/configure/connect внешние инструменты под PMO-карту |
 | **Design Module** | [design-module/SPEC.md](design-module/SPEC.md) | Условный sub-module: D2-B04 UI Design когда `FM.has_ui=true` |
 | **Orchestrator Module** | _(planned, post-pilot)_ | Запуск инструментов и оркестрация сценариев D3-D6 |
@@ -29,8 +29,8 @@
 |---|---|---|
 | 🗺️ **Карта 6 доменов** | [pmo/pmo-map.md](pmo/pmo-map.md) | D1-D6 функциональные обязанности; кто owns, что delegated |
 | ⚙️ **Процессы P1-P5** | [pmo/processes.md](pmo/processes.md) | Методология создания/обновления артефактов; approve gates; BG extraction; cascade; DA review |
-| ✅ **Validation rules** | [pmo/validation.md](pmo/validation.md) | 33 активных правила (V-*, V-H-*, V-MK-*) + adaptive-depth + tier activation |
-| 📚 **22 типа артефактов** | [pmo/artifacts/README.md](pmo/artifacts/README.md) | Каталог: PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, FM, SC, BR, LC, VC, IC, RPM, NFR, BG, MK, DS, NM, NOTE |
+| ✅ **Validation rules** | [pmo/validation.md](pmo/validation.md) | 39 активных правил (V-*, V-H-*, V-MK-*, V-LE-*) + adaptive-depth + tier activation |
+| 📚 **23 типа артефактов** | [pmo/artifacts/README.md](pmo/artifacts/README.md) | Каталог: PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, FM, SC, BR, LC, VC, IC, RPM, NFR, BG, MK, DS, NM, NOTE, LESSON |
 | 📦 **Handoff формат** | [product-module/handoff-spec.md](product-module/handoff-spec.md) | Universal markdown snapshot для D2-Tech delegation |
 
 ---
