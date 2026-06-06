@@ -4,7 +4,7 @@
 > **Роль:** ядро Ecosystem 3.0 — управление D1 (Discovery + Planning) и D2-Behavioral артефактами через унифицированный паттерн «Продуктовый ассистент draft → iterate → approve».
 > **Закрывает:** DEC-A08 (Product Assistant как отдельный agent), DEC-P13 (универсальный паттерн), DEC-ART01..11 (каталог), все итерации 1-9.
 > **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, meta-feedback, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
-> **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones) · [pmo/processes.md](../pmo/processes.md) (P1-P5 methodology) · [pmo/validation.md](../pmo/validation.md) (V-* rules) · [pmo/artifacts/](../pmo/artifacts/) (22 типа) · [handoff-spec.md](handoff-spec.md) (handoff format) · [integrator-module/SPEC.md](../integrator-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules)
+> **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones) · [pmo/processes.md](../pmo/processes.md) (P1-P5 methodology) · [pmo/validation.md](../pmo/validation.md) (V-* rules) · [pmo/artifacts/](../pmo/artifacts/) (23 типа) · [handoff-spec.md](handoff-spec.md) (handoff format) · [integrator-module/SPEC.md](../integrator-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules)
 
 ## 1. Philosophy & Role
 
@@ -72,7 +72,7 @@
 **Единая персона** ведёт диалог с человеком во всех процессах Product Module. Не разные агенты для разных задач — один голос, один стиль, одна roadmap decisions в контексте проекта. Это отличается от Integrator (там возможны разные subagent-ы для разных операций).
 
 **Персона характеризуется:**
-- Знанием всех 22 типов артефактов и их взаимосвязей
+- Знанием всех 23 типов артефактов и их взаимосвязей
 - Умением вести structured dialogue: предлагать варианты, обосновывать, не навязывать
 - Памятью о решениях в проекте (через Memory MCP + decision journal)
 - Adversarial consciousness: adaptive-depth DA review (см. processes.md §6.2 — refactored DEC-DEV-0012): subagent сам classifies cosmetic vs significant и адаптирует depth в одном invocation
@@ -976,9 +976,9 @@ Design Module — отдельный SPEC (`design-module/`). Интегриру
 
 **Статус ядра 3.0 после этой итерации:**
 
-- ✅ Artifacts catalog (21 тип)
+- ✅ Artifacts catalog (23 типа)
 - ✅ Handoff spec (universal, tool-agnostic)
-- ✅ Validation (33 rules + 2 process rules)
+- ✅ Validation (39 rules + 2 process rules)
 - ✅ Processes (P1-P5 + P2.5 outline)
 - ✅ Integrator Module SPEC
 - ✅ **Product Module SPEC (этот документ)**

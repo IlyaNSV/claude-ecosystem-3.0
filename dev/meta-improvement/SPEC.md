@@ -98,7 +98,7 @@ User clarified scope (ответ #4):
 
 **Stage 1 deliverables (этот commit):**
 - `dev/meta-improvement/SPEC.md` (этот документ) — preliminary spec, capture только
-- `dev/meta-improvement/DESIGN_KICKOFF.md` — kickoff prompt для следующей сессии
+- `dev/_archive/meta-improvement/DESIGN_KICKOFF.md` — kickoff prompt для следующей сессии (архивирован после завершения Stage 1-6)
 - DEV_JOURNAL DEC-DEV-0015 — decision entry о создании D7 module preliminary
 
 **Stage 1 НЕ включает:**
@@ -107,7 +107,7 @@ User clarified scope (ответ #4):
 - CLAUDE.md updates с D7 references (defer to design session)
 - Naming conventions для D7 entries (DEC-META vs DEC-D7 — open question)
 
-**Stage 2+ (subsequent sessions):** см. DESIGN_KICKOFF.md.
+**Stage 2+ (subsequent sessions):** см. `dev/_archive/meta-improvement/DESIGN_KICKOFF.md` (архивирован).
 
 ---
 

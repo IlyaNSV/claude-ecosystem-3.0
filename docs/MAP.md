@@ -4,7 +4,7 @@
 >
 > **Канонические авторитеты** (диаграммы их визуализируют, не заменяют):
 > - Pipeline D1-D6, кто owns / что delegated → [docs/pmo/pmo-map.md](pmo/pmo-map.md)
-> - Артефакты (22 типа) и их зависимости → [docs/pmo/artifacts/README.md](pmo/artifacts/README.md)
+> - Артефакты (23 типа) и их зависимости → [docs/pmo/artifacts/README.md](pmo/artifacts/README.md)
 > - Процессы P1-P5 → [docs/pmo/processes.md](pmo/processes.md) · Правила валидации → [docs/pmo/validation.md](pmo/validation.md)
 > - Модули → [docs/product-module/SPEC.md](product-module/SPEC.md), [docs/design-module/SPEC.md](design-module/SPEC.md), [docs/integrator-module/SPEC.md](integrator-module/SPEC.md)
 > - Статус «где мы сейчас» → [ROADMAP.md](../ROADMAP.md#где-мы-сейчас) (единственный источник)
@@ -92,6 +92,6 @@ D6 vs D7 disambiguation: [dev/meta-improvement/CONVENTIONS.md §1.3](../dev/meta
 
 ## 3. Artifact dependency graph (ERD) — reference-глубина
 
-Граф зависимостей 22 артефактов (PS → HYP → FM → SC/BR/LC/…) намеренно **не дублируется** здесь — он живёт в прозе/таблицах [docs/pmo/artifacts/README.md](pmo/artifacts/README.md) (dependency graph) и в [pmo-map.md](pmo/pmo-map.md) (per-домен). Визуальный ERD — кандидат на добавление сюда, если/когда понадобится (low priority; обновляется только при добавлении типа артефакта).
+Граф зависимостей 23 артефактов (PS → HYP → FM → SC/BR/LC/…) намеренно **не дублируется** здесь — он живёт в прозе/таблицах [docs/pmo/artifacts/README.md](pmo/artifacts/README.md) (dependency graph) и в [pmo-map.md](pmo/pmo-map.md) (per-домен). Визуальный ERD — кандидат на добавление сюда, если/когда понадобится (low priority; обновляется только при добавлении типа артефакта).
 
 > _Сознательно НЕ включено:_ таблица artifact→skill→command cross-ref. Она fine-grained (ломается почти каждую фазу при переименовании skill/добавлении команды) — высокий sync-cost, а неверная карта хуже отсутствующей. При необходимости — генерировать из frontmatter, не вести руками.
