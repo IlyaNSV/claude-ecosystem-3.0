@@ -11,7 +11,17 @@ Markers waiting to be processed. Hook appends rows between the sentinel comments
 | session_id | ended_at | target_project | transcript_path |
 |---|---|---|---|
 <!-- PENDING_ROWS_START -->
-| `918c01be-acc8-4308-bc1d-f0664b922af8` | 2026-05-31T09:49:10.342Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\918c01be-acc8-4308-bc1d-f0664b922af8.jsonl` (reason: other) |
+| `01f5af73-76ba-439f-8050-c13e34a071ef` | 2026-06-11T13:06:16.664Z | robust-herding-gosling | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test--claude-worktrees-robust-herding-gosling\01f5af73-76ba-439f-8050-c13e34a071ef.jsonl` (reason: other) |
+| `b93269d3-675d-47e9-9458-ab7666d530bf` | 2026-06-06T19:59:46.094Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test--claude-worktrees-whimsical-inventing-frog\b93269d3-675d-47e9-9458-ab7666d530bf.jsonl` (reason: prompt_input_exit) |
+| `256c3749-d126-4599-ba16-f48da0092bf8` | 2026-06-06T18:49:45.695Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test--claude-worktrees-elegant-beaming-parrot\256c3749-d126-4599-ba16-f48da0092bf8.jsonl` (reason: prompt_input_exit) |
+| `7b8004f2-a703-4860-9fe7-63ab597e7fae` | 2026-06-06T12:28:24.594Z | logical-noodling-sparrow | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test--claude-worktrees-logical-noodling-sparrow\7b8004f2-a703-4860-9fe7-63ab597e7fae.jsonl` (reason: clear) |
+| `5135a30d-8c71-4475-80d6-5a69aa1dc3d3` | 2026-06-05T21:43:03.076Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\5135a30d-8c71-4475-80d6-5a69aa1dc3d3.jsonl` (reason: prompt_input_exit) |
+| `65bfd146-619f-4396-9f96-efcc0d8a2801` | 2026-06-05T21:15:16.223Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test--claude-worktrees-generic-nibbling-nebula\65bfd146-619f-4396-9f96-efcc0d8a2801.jsonl` (reason: prompt_input_exit) |
+| `e3fedd85-2839-4b4a-a6c3-5602cddf77f4` | 2026-06-05T20:55:51.796Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\e3fedd85-2839-4b4a-a6c3-5602cddf77f4.jsonl` (reason: resume) |
+| `48cb5bfe-6ed5-40a4-960c-1ccc97b29e8f` | 2026-06-05T20:38:26.097Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\48cb5bfe-6ed5-40a4-960c-1ccc97b29e8f.jsonl` (reason: resume) |
+| `b87c7903-b0bb-4190-ab60-429f8534e141` | 2026-06-05T19:53:14.552Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test--claude-worktrees-fluffy-toasting-charm\b87c7903-b0bb-4190-ab60-429f8534e141.jsonl` (reason: prompt_input_exit) |
+| `e6ac6f02-c594-4f46-b9f6-d9505a24145a` | 2026-06-02T18:49:42.218Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\e6ac6f02-c594-4f46-b9f6-d9505a24145a.jsonl` (reason: prompt_input_exit) |
+| `9fac10c2-240c-42af-a84c-68cf97ed008e` | 2026-06-02T18:49:26.243Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\9fac10c2-240c-42af-a84c-68cf97ed008e.jsonl` (reason: other) |
 <!-- PENDING_ROWS_END -->
 
 ## Processed
@@ -21,6 +31,16 @@ Sessions already audited. Re-audit requires `--force` (will overwrite per-sessio
 | session_id | audited_at | target | phase | mode | status | coverage (cov/part/fail/nc/unc) | findings (b/w/i) | report |
 |---|---|---|---|---|---|---|---|---|
 <!-- PROCESSED_ROWS_START -->
+| `918c01be-acc8-4308-bc1d-f0664b922af8` | 2026-06-02T15:21:02Z | my-first-test | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`918c01be-acc8-4308-bc1d-f0664b922af8.md`](audit-reports/918c01be-acc8-4308-bc1d-f0664b922af8.md) |
+| `1cdfa987-2c7f-40c1-9ee1-957b14951f11` | 2026-06-02T15:17:45Z | my-first-test | — | zones:D2B04-design+D2B-behavioral+D6-integrator|unknown | findings | 0/0/0/0/0 | 0/0/0 | [`1cdfa987-2c7f-40c1-9ee1-957b14951f11.md`](audit-reports/1cdfa987-2c7f-40c1-9ee1-957b14951f11.md) |
+| `3f8a137b-32b4-46e2-a4ee-56b90b57a3b2` | 2026-06-02T15:12:00Z | my-first-test | — | zones:D2B-behavioral|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`3f8a137b-32b4-46e2-a4ee-56b90b57a3b2.md`](audit-reports/3f8a137b-32b4-46e2-a4ee-56b90b57a3b2.md) |
+| `24ebc347-4bed-4dd5-8f9e-5159bfd7ce2d` | 2026-06-02T15:08:23Z | my-first-test | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`24ebc347-4bed-4dd5-8f9e-5159bfd7ce2d.md`](audit-reports/24ebc347-4bed-4dd5-8f9e-5159bfd7ce2d.md) |
+| `43542e98-ec02-4ce5-a3c3-ab8dafb10a55` | 2026-06-02T15:06:39Z | my-first-test | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`43542e98-ec02-4ce5-a3c3-ab8dafb10a55.md`](audit-reports/43542e98-ec02-4ce5-a3c3-ab8dafb10a55.md) |
+| `4661365d-aa7a-4fe9-b81d-5b86a1d7a7d3` | 2026-06-02T15:04:21Z | zippy-popping-gem | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`4661365d-aa7a-4fe9-b81d-5b86a1d7a7d3.md`](audit-reports/4661365d-aa7a-4fe9-b81d-5b86a1d7a7d3.md) |
+| `10ff79bd-5953-4aaa-b786-ca385c86028a` | 2026-06-02T15:02:31Z | my-first-test | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`10ff79bd-5953-4aaa-b786-ca385c86028a.md`](audit-reports/10ff79bd-5953-4aaa-b786-ca385c86028a.md) |
+| `abb35d42-8702-4438-b6ec-e2e18d85f575` | 2026-06-02T14:53:29Z | my-first-test | — | zones:D2B-behavioral+D6-integrator|unknown | findings | 0/0/0/0/0 | 1/0/0 | [`abb35d42-8702-4438-b6ec-e2e18d85f575.md`](audit-reports/abb35d42-8702-4438-b6ec-e2e18d85f575.md) |
+| `0ba814b3-fd3d-49d1-a8ac-ce867399c933` | 2026-06-02T14:46:06Z | my-first-test | — | zones:D2B-behavioral|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`0ba814b3-fd3d-49d1-a8ac-ce867399c933.md`](audit-reports/0ba814b3-fd3d-49d1-a8ac-ce867399c933.md) |
+| `4c0cd8f6-223e-4ee3-b36c-6a4db3dd31f1` | 2026-06-02T14:42:41Z | my-first-test | — | zones:D2B-behavioral+D6-integrator|feature | clean | 0/0/0/0/0 | 0/0/0 | [`4c0cd8f6-223e-4ee3-b36c-6a4db3dd31f1.md`](audit-reports/4c0cd8f6-223e-4ee3-b36c-6a4db3dd31f1.md) |
 | `945809f4-bb16-4fe0-97e5-8cdd91155392` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | clean | 0/0/0/13/0 | 0/0/0 | [`945809f4-bb16-4fe0-97e5-8cdd91155392.md`](audit-reports/945809f4-bb16-4fe0-97e5-8cdd91155392.md) |
 | `e3bfd3a3-7fda-4ed8-be87-d6a713ef4a32` | 2026-05-26T00:00:00Z | my-first-test | 4 | full | findings | 0/0/0/13/0 | 1/2/2 | [`e3bfd3a3-7fda-4ed8-be87-d6a713ef4a32.md`](audit-reports/e3bfd3a3-7fda-4ed8-be87-d6a713ef4a32.md) |
 | `fd5cc61e-66c9-4d78-893c-eae967efd1c2` | 2026-05-26T09:55:04Z | my-first-test | 4 | full | clean | 0/0/0/13/0 | 0/0/0 | [`fd5cc61e-66c9-4d78-893c-eae967efd1c2.md`](audit-reports/fd5cc61e-66c9-4d78-893c-eae967efd1c2.md) |
