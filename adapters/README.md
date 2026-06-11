@@ -27,6 +27,10 @@
 | Адаптер | Целевой инструмент | PMO coverage | Phase | Status |
 |---|---|---|---|---|
 | `handoff-to-ccsdd.js` | cc-sdd | D2-T01 primary, D2-T06 primary, D2-T04 partial, D2-B02 boundary | Phase 5 | ⏳ TBA (sub-phase C) |
+| `mk-to-stitch.js` | stitch (MCP) | D2-B04 supports | Phase 6 / Design | ✅ active (CNT-002) |
+| `stitch-to-opendesign.js` | open-design (viewer/import) | D2-B04 supports | Phase 6 / Design | ✅ active (CNT-003) |
+
+> **Dockerized external-daemon adapter** (`stitch-to-opendesign.js`): целит общий Docker-daemon open-design по HTTP (`POST /api/import/claude-design`, token-gated), но всё равно держит обязательный daemon-free `--verify-only --fixture` (§ «Принципы реализации»). Token precedence: `--token` → `$OD_API_TOKEN` → `~/.claude/integrator/secrets/open-design.token` (машинно-глобальный, один daemon на машину) → `./.claude/integrator/secrets/open-design.token`. Setup daemon'а: см. [`BOOTSTRAP.md`](../BOOTSTRAP.md) раздел «open-design shared daemon».
 
 ## Что НЕ кладём в этот каталог
 

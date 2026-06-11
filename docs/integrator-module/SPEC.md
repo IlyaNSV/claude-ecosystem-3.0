@@ -193,7 +193,7 @@ Integrator — гибрид, как и Product Module:
 tool:
   name: beads
   version_installed: 1.2.0
-  source: npm
+  source: npm                      # npm | pip | git | mcp | binary | docker (см. §4.1.1)
   source_spec: beads@1.2.0
   installed_at: 2026-05-01
   last_verified: 2026-05-15
@@ -285,6 +285,29 @@ notes:
   - "Supports parallel execution but we use sequential in this project"
   - "Known issue #123: timeouts on Windows, use WSL"
 ```
+
+### 4.1.1. Dockerized external-daemon tool pattern (`source: docker`)
+
+Generic-паттерн для инструментов, которые **не устанавливаются в проект как пакет/примитив**, а живут как **общий Docker-daemon на машину** и говорят по HTTP. Вводится в Phase 6 на примере **open-design** (D2-B04 / CNT-003), но обобщён для будущих tools.
+
+**Когда применять:** host-окружение несовместимо с native-установкой (напр. open-design требует Node 24, host на Node 18 + pnpm/corepack broken) → tool гоняется в контейнере; ОДИН daemon обслуживает ВСЕ проекты; per-project остаётся только контракт/адаптер.
+
+**Свойства паттерна:**
+
+| Аспект | Native tool (npm/pip/git/binary) | Dockerized daemon (`source: docker`) |
+|---|---|---|
+| Install (Stage 3) | package install в проект | provision/validate connectivity к общему daemon (НЕ авто-`docker run` — lifecycle daemon operator-owned) |
+| `.claude/`-примитивы | command/agent/hook/skill/mcp | **ZERO** (`claude_primitives: []`) — external daemon |
+| State в проекте | tool-specific files | только `active-tools.yaml` entry + контракт + адаптер-инстанс |
+| Transport контракта | CLI/file (adapter `--verify-only`) | HTTP (multipart/JSON) + обязательный daemon-free `--verify-only` |
+| Auth | env / config | **token-gated**: Bearer на ВСЕХ `/api/*` (Docker bridge → host-запросы non-loopback) |
+| Адрес | — | `http://127.0.0.1:<port>` (НЕ `localhost` — Windows IPv6 ::1 EACCES) |
+| Token storage | — | precedence: `--token` → env → `~/.claude/integrator/secrets/<tool>.token` (машинно-глобальный) → `./.claude/integrator/secrets/<tool>.token` |
+| Version pin | semver | image digest (`@sha256:...`) — supply-chain; non-pilot = pinned digest ИЛИ build-from-source |
+
+**Профиль (`source: docker`) пишет:** `source_spec: "docker run <image>@sha256:<digest>"`, ports, volume, required env, token location, `claude_primitives: []`. Verify в Stage 6 — daemon-free `--verify-only --fixture` (детерминированно без Docker); опциональный live-import только если daemon поднят.
+
+**Границы (D2-B04 split):** Integrator владеет инфраструктурой — daemon-mgmt + контракт + адаптер. Design-facing wiring (viewer, `/design:migrate --to <tool>` target, `external_viewers` дефолт в `design.yaml`) принадлежит **Design Module** (см. `docs/design-module/SPEC.md`). Setup общего daemon: [`BOOTSTRAP.md`](../../BOOTSTRAP.md) раздел «open-design shared daemon».
 
 ### 4.2. Confidence levels для PMO coverage
 

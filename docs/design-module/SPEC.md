@@ -218,6 +218,7 @@ Product Module P2 F.8 triggers
 
 - **Процесс:** смена `design_tool` для одного MK или batch
 - **Поддерживаемые переходы (v1):** Stitch ↔ HTML fallback ↔ Claude Design (любая пара)
+- **v1.5 — `--to open-design` (VIEWER-IMPORT target, не regeneration):** импорт существующего визуального HTML MK в open-design Dockerized viewer через CNT-003 adapter (`POST /api/import/claude-design`). Отличается от regeneration-целей: **нет brief, нет генерации экранов, нет миграции метаданных, НЕ инкрементит `iteration`**. Канон остаётся в MK/NM; open-design — supporting viewer, не генератор и не источник истины. Wiring декларируется в `design.yaml.external_viewers.open-design`; один общий daemon на машину (см. `docs/integrator-module/SPEC.md §4.1.1` + `BOOTSTRAP.md`). Per-MK hard gate (Q1) фигачит, но с viewer-import framing. Исполнение — `skills/design/open-design-viewer.md` (Step 5-OD команды).
 - **Шаги:**
   1. Snapshot текущего состояния — записать `previous_tools[]` entry в MK frontmatter + `tool_switched_at`
   2. (v2 hook) Если включён IR-режим — экспортировать IR snapshot в `.product/.design-sessions/ir/<MK-id>-<timestamp>.yaml` и записать `ir_snapshot_path` в MK
@@ -283,6 +284,15 @@ Product Module P2 F.8 triggers
   - Они **комплементарны**: Ecosystem handoff может содержать §10 ссылку на Claude Design handoff bundle
 - Subscription tiers (Pro/Max/Team/Enterprise — default off для Enterprise) — handled gracefully при unavailable
 - Known limitations (как baseline 2026-05-27): comment persistence issues, compact view save errors, large codebase lag — документировать workarounds
+
+### 4.4b `open-design-viewer.md` (v1.5)
+
+- Tool-specific: импорт визуального HTML MK в open-design viewer (`--to open-design` target команды `/design:migrate`)
+- **Viewer-only — НЕ генератор:** запускает CNT-003 adapter `--import` (HTTP в общий Dockerized daemon `http://127.0.0.1:7456`, token-gated Bearer); нет brief, нет генерации, нет миграции метаданных, нет iteration bump
+- Token precedence (`$OD_API_TOKEN` → `~/.claude/...` → `./.claude/...`); `127.0.0.1` не `localhost`
+- Не мутирует MK — A8-последовательность команды владеет записями frontmatter; skill импортирует и возвращает result, при failure не трогает файлы
+- Boundary: «visual-only, no metadata» — канон в MK/NM; модель «один daemon на машину»
+- Setup daemon: `BOOTSTRAP.md` «open-design shared daemon»; инфра-паттерн: `docs/integrator-module/SPEC.md §4.1.1`
 
 ### 4.5 `design-validation.md`
 

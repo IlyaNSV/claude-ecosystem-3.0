@@ -146,6 +146,62 @@ To update an installed project to the latest ecosystem version, run `/ecosystem:
 
 A future `/ecosystem:upgrade` (v1.1) will layer automatic breaking-change migration on top of `/ecosystem:update`.
 
+## Optional: open-design shared daemon (machine-global)
+
+[open-design](https://github.com/nexu-io/open-design) (Apache-2.0) is an **alternative HTML viewer / migrate-target** for Stitch-generated mockups — an interactive iframe preview + multi-format export (html/pdf/pptx/mp4/zip), used via `/design:migrate <MK> --to open-design`. It is a **viewer, not a generator**: only visual HTML crosses; canon stays in MK/NM.
+
+It runs as **one Docker daemon per machine** (not per project) on `127.0.0.1:7456`. All projects share it; per-project you only wire a thin contract/adapter. The host-Node route is intentionally avoided (open-design needs Node 24 + pnpm; a Dockerized daemon sidesteps host-version blockers).
+
+### One-time machine setup
+
+**1. Generate a machine-global token** (the daemon refuses to boot without `OD_API_TOKEN`; it is gitignored and shared by all projects):
+
+```bash
+mkdir -p ~/.claude/integrator/secrets
+openssl rand -hex 32 > ~/.claude/integrator/secrets/open-design.token
+```
+
+```powershell
+# Windows PowerShell equivalent
+New-Item -ItemType Directory -Force "$HOME\.claude\integrator\secrets" | Out-Null
+-join ((1..32) | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) }) |
+  Out-File -Encoding ascii -NoNewline "$HOME\.claude\integrator\secrets\open-design.token"
+```
+
+**2. Start the daemon** (bind to loopback; named volume persists imported projects):
+
+```bash
+docker run -d --name open-design -p 127.0.0.1:7456:7456 \
+  -e OD_API_TOKEN="$(cat ~/.claude/integrator/secrets/open-design.token)" \
+  -e OD_BIND_HOST=0.0.0.0 -e OD_PORT=7456 \
+  -v open_design_data:/app/.od \
+  docker.io/vanjayak/open-design:latest
+```
+
+> **Supply-chain caveat.** `vanjayak/open-design` is a personal-namespace image (reports `0.8.1`; upstream `main` is `0.9.0`), pre-1.0. For anything beyond a pilot, **pin a vetted digest** (`docker.io/vanjayak/open-design@sha256:<digest>`) **or build from source** (`git clone` the repo, then `docker compose -f deploy/docker-compose.yml up -d --build`). `:latest` is pilot-only.
+
+**3. Health check** — every `/api/*` route (incl. `/api/health`) requires the Bearer token, because the Docker bridge makes host requests appear non-loopback. Use `127.0.0.1`, **not** `localhost` (Windows resolves `localhost` to `::1`, which the daemon refuses with `EACCES`):
+
+```bash
+curl -s -H "Authorization: Bearer $(cat ~/.claude/integrator/secrets/open-design.token)" \
+  http://127.0.0.1:7456/api/health
+# → 200 {"ok":true,"version":"0.8.1"}
+```
+
+### Per-project wiring (after the daemon is up)
+
+```
+> /ecosystem:update                       # pulls the reference adapter + design.yaml external_viewers default
+> /integrator:add open-design             # thin install — validates daemon connectivity, instantiates CNT-003 adapter
+> /design:migrate <MK-id> --to open-design  # imports the MK's visual HTML into the viewer
+```
+
+Token resolution precedence (so one machine-global token serves every project): `--token` → `$OD_API_TOKEN` → `~/.claude/integrator/secrets/open-design.token` → `<project>/.claude/integrator/secrets/open-design.token`. The reference adapter (`adapters/stitch-to-opendesign.js`) and the Dockerized-daemon tool pattern are documented in [`docs/integrator-module/SPEC.md §4.1.1`](docs/integrator-module/SPEC.md).
+
+### Lifecycle
+
+The daemon's lifecycle is **operator-owned** — `/integrator:add` and `/design:migrate` never auto-`docker run` it; they validate connectivity and point back here if it's down. Stop/restart with `docker stop open-design` / `docker start open-design`. Imported projects live in the `open_design_data` volume (not version-controlled).
+
 ## Troubleshooting
 
 | Issue | Fix |
@@ -155,6 +211,8 @@ A future `/ecosystem:upgrade` (v1.1) will layer automatic breaking-change migrat
 | No network during bootstrap | Use `/ecosystem:bootstrap --offline` (copies from `~/.claude/ecosystem/` cache instead of git clone) |
 | API keys forgotten / skipped | Edit `.env` manually later; Deep mode research will use fallback until filled |
 | MCP install failed | Check `/integrator:journal` for error details; retry with `/integrator:add <mcp>` |
+| open-design `/api/health` not 200 | Daemon down or token mismatch. Check `docker ps` for `open-design`; ensure Bearer token matches the container's `OD_API_TOKEN`; use `127.0.0.1` not `localhost` |
+| open-design `EACCES` / connection refused on `localhost` | Use `http://127.0.0.1:7456` — Windows `localhost`→`::1` is refused |
 
 ## For ecosystem developers
 

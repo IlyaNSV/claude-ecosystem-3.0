@@ -59,6 +59,7 @@ Read-only scan:
    - Stitch MCP: check via `claude mcp list` parse (look for `stitch` entry; status Connected/Failed)
    - Claude Design: not MCP в v1.0 — show «manual workflow (web UI)» indicator (per C1 stub)
    - HTML fallback: always available (Claude Code primitive)
+   - open-design viewer: only if `.claude/design.yaml` has an uncommented `external_viewers.open-design`. Probe (read-only): `curl -s -m 5 -o /dev/null -w '%{http_code}' -H "Authorization: Bearer <resolved token>" http://127.0.0.1:7456/api/health` → `Connected` (200) / `Not reachable` (timeout/conn-refused) / `Not configured` (section absent). Token resolved by precedence (`$OD_API_TOKEN` → `~/.claude/...` → `./.claude/...`); never print the token.
 
 7. **PA design entries** (filter source=design via `.claude/pending-actions.md`):
    - Count pending entries
@@ -101,6 +102,7 @@ Tool stack:
              Usage: <month_count>/<month_limit> (month YYYY-MM)
   Claude Design: manual workflow (v1.0 stub — С1 cut)
   HTML fallback: available
+  open-design (viewer): Connected | Not reachable | Not configured
   Fallback chain: <list from design.yaml>
 
 Pending user actions (design source): N pending
@@ -151,6 +153,7 @@ Add per-MK Screen Inventory dump + DS tokens used + accessibility notes excerpt.
 
 Если detected issues — surface inline:
 - Stitch MCP Failed → suggest `claude mcp get stitch` for debug
+- open-design viewer «Not reachable» (configured but daemon down) → suggest BOOTSTRAP «open-design shared daemon» или `/integrator:add open-design`
 - Design session с iter >7 (per Q7 deadlock) → surface gate UX reminder: «iter Z exceeds deadlock threshold — run `/design:start FM-NNN --continue` чтобы trigger 4-choice menu»
 - DS pending items aged >7 days → surface «pending tokens accumulated — recommend `/design:system --review`»
 - Active session 30+ days old → surface «stale session — consider `/design:start FM-NNN --abandon` or resume via `--continue`»
@@ -171,6 +174,7 @@ Add per-MK Screen Inventory dump + DS tokens used + accessibility notes excerpt.
 | `--fm <FM-id>` not found | Show list available FMs; abort |
 | Malformed MK/NM frontmatter | Show what parsed; log warning; не abort |
 | Stitch MCP query timeout | Display «Not reachable» (не «Failed»); не abort |
+| open-design /api/health timeout or token unresolved | Display «Not reachable»; не abort (read-only probe) |
 | `.product/.design-sessions/` empty | «No active sessions»; не error |
 
 ## Related
