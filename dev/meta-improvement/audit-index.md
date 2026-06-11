@@ -11,6 +11,9 @@ Markers waiting to be processed. Hook appends rows between the sentinel comments
 | session_id | ended_at | target_project | transcript_path |
 |---|---|---|---|
 <!-- PENDING_ROWS_START -->
+| `c5f7fb5f-f511-4772-bbac-6b58f7daca8a` | 2026-06-11T20:44:32.889Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\c5f7fb5f-f511-4772-bbac-6b58f7daca8a.jsonl` (reason: other) |
+| `0f2827ea-a7a1-4f9f-8f8e-fb9839df526e` | 2026-06-11T19:12:04.076Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\0f2827ea-a7a1-4f9f-8f8e-fb9839df526e.jsonl` (reason: other) |
+| `a8afb3b1-2291-4f74-9335-f11abebe145d` | 2026-06-11T19:12:03.972Z | design-fm004 | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\a8afb3b1-2291-4f74-9335-f11abebe145d.jsonl` (reason: other) |
 <!-- PENDING_ROWS_END -->
 
 ## Processed
