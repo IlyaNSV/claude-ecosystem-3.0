@@ -15,7 +15,7 @@
 | 🤔 **Первый раз — что это и зачем** | [Концепция в одной строке](#концепция-в-одной-строке) + [Четыре модуля](#четыре-модуля) ниже → потом [ROADMAP.md «Где мы сейчас»](ROADMAP.md) |
 | 🔧 **Установить и запустить** | [BOOTSTRAP.md](BOOTSTRAP.md) → [INSTALL-HUMAN.md](INSTALL-HUMAN.md) → [Quick Start](#quick-start--двухфазная-установка) ниже |
 | 📖 **Развиваю саму экосистему** | [CLAUDE.md](CLAUDE.md) (repo conventions) → [DEV_JOURNAL.md](DEV_JOURNAL.md) последние 5 entries → [ROADMAP.md](ROADMAP.md) |
-| 🧠 **Понять прошлые decisions** | [DEV_JOURNAL.md](DEV_JOURNAL.md) (DEC-DEV-XXXX entries — 46 на 2026-05-27) |
+| 🧠 **Понять прошлые decisions** | [DEV_JOURNAL.md](DEV_JOURNAL.md) (DEC-DEV-XXXX entries — 62 на 2026-06-06) |
 | 📚 **API / module reference** | [docs/README.md](docs/README.md) → конкретный module SPEC |
 | 🗺️ **PMO карта (D1-D6)** | [docs/pmo/pmo-map.md](docs/pmo/pmo-map.md) |
 
@@ -29,7 +29,7 @@
 
 | Модуль | Ответственность | Статус |
 |---|---|---|
-| **Product Module** | D1 + D2-Behavioral: 22 типа артефактов, процессы P1-P5, handoff-генерация | ✅ SPEC v1.0 |
+| **Product Module** | D1 + D2-Behavioral: 23 типа артефактов, процессы P1-P5, handoff-генерация | ✅ SPEC v1.0 |
 | **Design Module** | D2-B04 UI Design: итеративная генерация через Stitch/HTML, conditional на `has_ui=true` | ✅ SPEC v1.0 |
 | **Integrator Module** | Подключение/замена внешних инструментов под PMO-карту («сисадмин») | ✅ SPEC v1.0 |
 | **Orchestrator Module** | Runtime-владелец D2-Technical + D3+: проводит PMO-процессы end-to-end силами role-агентов по регламентам | 🔬 concept draft v0 (DEC-DEV-0058; граница уточнена 0060) |
@@ -47,7 +47,7 @@ claude-ecosystem-3.0/
 │   ├── integrator-module/
 │   └── pmo/
 │       ├── pmo-map.md, processes.md, validation.md
-│       └── artifacts/                      # 22 типа артефактов
+│       └── artifacts/                      # 23 типа артефактов
 ├── commands/                               # slash-команды → .claude/commands/
 │   ├── ecosystem/                          # /ecosystem:bootstrap, /ecosystem:verify
 │   └── integrator/                         # /integrator:* (6 read-only)

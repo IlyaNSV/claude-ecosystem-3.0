@@ -970,9 +970,9 @@ IR-слой имеет нетривиальные costs (8-15ч design + 4-8ч p
 
 **Статус ядра 3.0 после этой итерации:**
 
-- ✅ Artifacts catalog (22 типа, считая NOTE)
+- ✅ Artifacts catalog (23 типа, считая NOTE и LESSON)
 - ✅ Handoff spec (universal, tool-agnostic)
-- ✅ Validation (33 rules + 2 process rules)
+- ✅ Validation (39 rules + 2 process rules)
 - ✅ Processes (P1-P5 + P2.5 с полной детализацией через Design Module SPEC)
 - ✅ Integrator Module SPEC
 - ✅ Product Module SPEC

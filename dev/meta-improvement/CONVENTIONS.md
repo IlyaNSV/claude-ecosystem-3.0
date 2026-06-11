@@ -57,8 +57,8 @@ When writing/reading «meta» / «governance» — disambiguate target audience:
 ```
 dev/meta-improvement/
 ├── SPEC.md                      # v1.0 spec (Stage 1 substrate + Stage 6 finalization)
-├── DESIGN_KICKOFF.md            # design session prompt (Stage 1, archival)
 ├── CONVENTIONS.md               # this file (Stage 2 + Stage 6 update)
+│                                # (DESIGN_KICKOFF.md → dev/_archive/meta-improvement/, archived after Stage 6)
 ├── checklists/
 │   ├── phase-closure.md         # Stage 2 + Stage 2.5 refinements
 │   └── phase-kickoff.md         # Stage 2
