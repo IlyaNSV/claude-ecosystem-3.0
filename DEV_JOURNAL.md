@@ -5083,6 +5083,10 @@ open-design = Dockerized HTML **viewer**, не генератор и не ист
 - DEC-DEV-0062 — тоже target v1.5.0, тоже отложил CHANGELOG/ROADMAP до релиз-решения; cut 1.5.0 объединит обе работы + 0055/0061.
 - DEC-INT-0011 / DEC-INT-RESEARCH-0003 (my-first-test project-journal) — install-решение + research (env-блокер, auth-уроки, supply-chain caveat) — источник обобщения.
 
+### Релиз
+
+**1.5.0 cut 2026-06-11 (PR #26 merge).** Бандл накопленного с 1.4.0: DEC-DEV-0055 (harness-audit hygiene, PR #19) + 0061 (level-2 wipe protection) + 0062 (LESSON-*) + 0063 (open-design). Механика: CHANGELOG `[Unreleased]` → `[1.5.0] — 2026-06-11` (+ свежий пустой Unreleased); ROADMAP-маркеры `(Unreleased)` → `(1.5.0)` + новая status-строка 0063 + bump «Последнее обновление»; тег `v1.5.0`. **Сознательный cut с deferred runtime smoke:** S-LE (LESSON-gate контракты) + Phase 6 S1-S7 остаются непрогнанными — отгружено code-complete со static verification, по прецеденту Phase 5 (1.3.3/1.4.0 отгружались так же). Релиз НЕ снимает S-LE как hard-prereq перед переводом `lesson-presence-gate.js` PreToolUse warn→strict — это отдельный гейт на следующую pilot-сессию.
+
 ---
 
 ## Шаблон новой записи

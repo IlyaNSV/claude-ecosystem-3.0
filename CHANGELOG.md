@@ -8,6 +8,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+_No unreleased changes yet._
+
+---
+
+## [1.5.0] — 2026-06-11
+
+**Minor release — accumulated since 1.4.0:** harness-audit hygiene (DEC-DEV-0055), `/ecosystem:update` level-2 wipe protection (DEC-DEV-0061), `LESSON-*` atomic self-correction (DEC-DEV-0062), and the open-design reusable Dockerized viewer extraction (DEC-DEV-0063). Runtime smoke (`S-LE` LESSON-gate contracts + Phase 6 `S1-S7`) remains deferred to the next pilot session per the Phase 5 precedent — shipped code-complete with static verification only.
+
 ### Added
 
 - **`LESSON-*` — atomic self-correction mechanism for product projects** (DEC-DEV-0062; targets `1.5.0`; merged via PR #25). New 23rd artifact type (`.product/lessons/LESSON-<NNN>-<slug>.md`, git-tracked) that captures the **semantic** error class — "a task / artifact / decision was done incorrectly" — which until now had no trigger, journal, or artifact (only *structural* violations were caught, via `.product/.pending/`). The `find → fix → record → ready` sequence is a **single atomic, non-deferrable operation** — the deliberate inverse of the deferred `.pending/` queues. Three layers: **(1) trigger** — a non-deferrable mandate (`templates/project/CLAUDE.md.template` + synced `skills/ecosystem/self-correction.md`, so existing installs that only receive `/ecosystem:update` still get the trigger, not just the teeth) to run `/product:lesson` the instant an error is self-detected, before any other work; **(2) atomicity** — a write-ahead command transaction (`skills/product/lesson-capture.md`): the `open` tripwire file is written *before* the fix touches disk, then the fix is applied, then verified with recorded evidence, then flipped `open → active` in one write — a crash always leaves a loud git-tracked `open` marker, never a silent loss; **(3) non-deferrability** — a two-pronged gate: `hooks/product/lesson-gate.js` (Stop, **strict** — blocks clean session close while any lesson is `open`) + `hooks/product/lesson-presence-gate.js` (PreToolUse + UserPromptSubmit, **warn** — reminds every turn; `deny` path gated behind `LESSON_GATE_MODE=strict` pending the S-LE live smoke). Invariant (V-LE-01..05): `status: active ⇒ fix applied + verified + reusable guard present` — the structural inverse of a quiet `.pending` finding. **First blocking hook in the ecosystem** (scoped to corrective lessons; fail-open on any error; `LESSON_GATE_MODE` opt-out; 8-block auto-override against wedge). New command `/product:lesson` (+ `--resume` / `--withdraw`); 5 new validation rules V-LE-01..05. The `strict Stop / warn PreToolUse` gate mode was chosen after the hook contract was verified against the official docs — correcting a Stop/SessionEnd conflation in the original synthesis (DEC-DEV-0062 Lesson #1). Runtime-contract verification (`S-LE`, `dev/S_LE_LESSON_GATE_SMOKE.md`) is a hard prerequisite before flipping PreToolUse to strict.
@@ -24,8 +32,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **Stale `/ecosystem:upgrade` pointers → `/ecosystem:update`** in consumer-facing update guidance: generated `templates/project/CLAUDE.md.template` (command list + regeneration note), `commands/ecosystem/verify.md` (version-drift suggestion + "not an update trigger"), `commands/ecosystem/bootstrap.md` (manifest re-scan note + "update mechanism" section), and root `BOOTSTRAP.md` (no longer recommends a manual `git pull`). Roadmap/history references to the future `/ecosystem:upgrade` superset preserved. (DEC-DEV-0055)
 - **GitHub MCP install** (`commands/ecosystem/bootstrap.md` Step 9) switched from the retired `@modelcontextprotocol/server-github` stdio package (unsupported since Apr 2025) to the official HTTP server `https://api.githubcopilot.com/mcp/` (`github/github-mcp-server`) with a self-hosted Docker fallback — aligning with `docs/integrator-module/SPEC.md`. (DEC-DEV-0055)
 - **`output-styles/` wired-but-empty capability removed** from `/ecosystem:update` flat-subdir sync (8 references in `commands/ecosystem/update.md`), `README.md` repo structure, and the empty directory itself. SPEC forward-references to planned `product-report.md` / `integrator-report.md` output-styles retained; re-add to the sync allowlist when those ship. (DEC-DEV-0055)
-
-(Phase 6 / 1.4.0 shipped. Unreleased on `main`: DEC-DEV-0061 wipe-protection + DEC-DEV-0062 LESSON-*. Next stop = S-LE live smoke + runtime smoke S1-S7 on a pilot session, then a `1.5.0` cut OR Phase 7 kickoff.)
 
 ---
 
