@@ -5139,6 +5139,50 @@ open-design = Dockerized HTML **viewer**, не генератор и не ист
 
 ---
 
+## DEC-DEV-0065 — Реконсиляция пилот↔экосистема: research двустороннего дрейфа + upstream worktree pre-flight (шаг 1)
+
+**Date:** 2026-06-12
+**Trigger:** Пользователь запросил детальное сравнение актуальной экосистемы с экосистемным слоем пилота `my-first-test` (фичи добавлялись в пилоте «как частный случай»), затем — старт upstream'а с worktree-хуков и наладку двустороннего моста синхронизации.
+**Tag:** #reconciliation #hooks #worktree #pilot #drift
+
+### Context — двусторонний дрейф (результаты исследования)
+
+Baseline пилота = **v1.4.0** (последний полный sync — `af2b1b8` в пилоте) + один частичный reconcile DEC-DEV-0063 (`ad17588`, только `stitch-to-opendesign.js`). Метод: рекурсивный diff деплоируемой зоны + **трёхстороннее сравнение** каждого расходящегося файла против блоба v1.4.0 → направление дрейфа per-file (а не просто факт различия). Gotcha метода: `diff --exclude=integrator` маскировал и `commands/integrator/` — exclude матчит basename на любом уровне; перепроверено отдельным проходом.
+
+- **Экосистема впереди (пилот byte-equal v1.4.0):** 28 изменённых + 9 новых файлов — LESSON-* (0062), wipe-protection update (0061), viewer-остаток open-design (0063), V-18/DA-контракт (0064), harness-audit (0055), doc-реформа (MAP.md, orchestrator SPEC, счётчики). Чистое отставание, закрывается `/ecosystem:update`.
+- **Пилот впереди (локальные фичи):** 3 кластера, ~1840 строк ecosystem-зоны + 416 строк instance-адаптеров: **(1) App Map** — де-факто 24-й тип артефакта `AM` + `/design:map` + skill + 6 хуков `app-map-*.js` + V-AM-* в validate (пилотные коммиты `019bf5e`, `c561dc1`); **(2) open-design как ГЕНЕРАТОР** (CNT-004, DEC-INT-0012, `edf7057`) — концептуальная развилка с каноном (там viewer-only CNT-003, DEC-DEV-0063); **(3) worktree pre-flight** (`887c52f`) — этот патч.
+- **Конфликты:** `hooks/product/manifest.yaml` (append-append, тривиален) и `docs/pmo/artifacts/README.md` — обе стороны написали «23 типа», но это **разные 23** (канон: 22+LESSON; пилот: 22+AM); честный merge = 24. Та же count-drift gotcha, что в PR #27.
+- **Риск:** `/ecosystem:update` сейчас = rsync-with-delete в managed namespaces → удалит все пилотные фичи из рабочего слоя (восстановимо из git/backup'ов, но слой ломается: `design.yaml` останется с `default_design_tool: open-design` при удалённом skill'е). Порядок «сначала upstream, потом update» — обязателен.
+
+Полный inventory + последовательность шагов: `dev/PILOT_RECONCILIATION_PLAN.md` (новый, этим же патчем).
+
+### Что сделано (шаг 1 — worktree pre-flight upstream)
+
+- `hooks/product/worktree-preflight.js` (265 строк) + `worktree-enter-guard.js` (83) скопированы из пилота с единственной генерализацией: убрана продукт-специфичная ссылка «bead m5k» из описания `.design-sessions`.
+- `manifest.yaml`: entry `worktree-enter-guard` (PreToolUse, matcher `EnterWorktree`), warn-only.
+- `smoke-hooks.js`: +2 кейса (foreign-tool no-op; EnterWorktree advisory с `CLAUDE_PROJECT_DIR=tmp`). Прогон 21/21 PASS. Preflight покрыт транзитивно: его crash попал бы в banner guard'а → FATAL_PATTERNS.
+- eslint: 0 errors / 6 warnings (база hooks/ = 103 warnings — в пределах принятого шума).
+
+### Ключевые решения
+
+1. **Worktree-хуки первыми** — самый самодостаточный кластер (не трогает каталог артефактов/счётчики/SPEC), низкий риск, немедленная ценность: сам этот репозиторий активно работает в worktree'ях, а dogfood-план Оркестратора уже ссылается на pre-flight сверку.
+2. **Upstream verbatim, не переписывание** — хуки уже соответствуют конвенциям (warn-only, fail-open, Node stdlib, RU-вывод, additionalContext-инъекция). Единственная правка — генерализация bead-ссылки.
+3. **`worktree-preflight.js` остаётся helper'ом без manifest-entry** — это standalone-инструмент (`--strict`/`--json`), который guard вызывает `spawnSync`'ом; не hook-событие. Прецедент non-hook файла рядом: `hooks/product/lib/`.
+4. **Реконсиляция — планом, не серией ad-hoc сессий:** App Map требует решения «канонизировать ли 24-й тип» (счётчики по ~10 докам, см. reference_pmo_canonical_counts), open-design-generator требует отдельного DEC о пересмотре viewer-only модели. Оба вынесены в план, не смешаны с этим патчем (cuttable scope).
+
+### Lessons
+
+- Независимая эволюция инсталляции и канона без моста дала за ~2 недели два встречных потока по ~2-3 kLoC; «оба написали 23» показал, что **счётчик без enumeration — ловушка merge'а** (число совпадает, множества разные). При sync'е счётчиков сверять списком, не числом.
+- Session Audit v2 дрейф **видел** (patch-candidate `D2B04-design__A`), но вердикт refuted («pilot-fork drift, не дефект канона») оставил его без owner'а — у аудита нет категории «канонизировать пилотную фичу». Мост = этот план + журнал.
+
+### Follow-ups
+
+- **Шаг 2:** App Map extraction (отдельный DEC; счётчики 23→24; merge `artifacts/README.md` = LESSON + AM).
+- **Шаг 3:** open-design generator — DEC о судьбе CNT-004 в каноне (generator vs viewer-only; канонизация `od-mcp-call.cjs`/`od-consolidate.cjs`/`od-fidelity-check.js` в repo `adapters/`; `design_tool` enum в MK.md).
+- **Шаг 4:** `/ecosystem:update` в пилоте (закрывает «экосистема впереди» одним прогоном) + ручной merge двух конфликтных файлов; затем smoke S-LE / S1-S7 там же.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
