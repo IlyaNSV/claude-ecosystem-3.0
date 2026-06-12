@@ -10,7 +10,8 @@ confidence: medium
 patch_type: codify-pattern
 risk: low
 finding_ids: [594322f47ffd, 1eb76ab23bd4, 4ab0c898e4a2, 81113d433b06, e5ea9d1081fe]
-gate: pending          # human sets: accepted | rejected | edited | deferred  ([Y/N/E/D])
+gate: accepted          # [Y] 2026-06-12 — D1 (R1 codify-pattern half, with C); R4 registration deferred to live-harness
+dec_dev_ref: DEC-DEV-0064
 ---
 
 # Patch candidate — D2B-behavioral / B

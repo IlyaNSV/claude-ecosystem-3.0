@@ -10,7 +10,8 @@ confidence: medium
 patch_type: add-hook
 risk: medium
 finding_ids: [1e18b6d8c972, 3441931da1f1, 613ae7128d66, 7dbaf0922cb3, f7039575c7e5, 13fafe80a7f8, 7f01559525d7, 84886f6af31c, 99030316972c, 3cf4371caedf]
-gate: pending          # human sets: accepted | rejected | edited | deferred  ([Y/N/E/D])
+gate: accepted          # [Y] 2026-06-12 — D2 (V-18 per-type schema hook, IC/BR/SC scope)
+dec_dev_ref: DEC-DEV-0064
 ---
 
 # Patch candidate — D2B-behavioral / A

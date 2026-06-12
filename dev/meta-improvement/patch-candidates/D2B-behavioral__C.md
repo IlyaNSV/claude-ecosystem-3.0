@@ -10,7 +10,8 @@ confidence: high
 patch_type: patch-template
 risk: low
 finding_ids: [1ff552c0c6b4, 55e019642cc7, de9d27ea6afb, 3331299ce15f, 685265ce3985, 94dc1b5a4ff9, b2e3035c3fdd, 2fffc308fb96, 335c0ad6d370]
-gate: pending          # human sets: accepted | rejected | edited | deferred  ([Y/N/E/D])
+gate: accepted          # [Y] 2026-06-12 — D1 (DA subagent-type contract, consolidated with B)
+dec_dev_ref: DEC-DEV-0064
 ---
 
 # Patch candidate — D2B-behavioral / C
