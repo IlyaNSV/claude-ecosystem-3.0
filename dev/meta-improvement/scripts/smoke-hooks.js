@@ -371,6 +371,29 @@ const TEST_CASES = [
     },
     expectStderrIncludes: /V-DS-id.*id should be 'DS' literally/,
   },
+
+  // ---------- worktree-enter-guard (DEC-DEV-0065, upstream из пилота) ----------
+  // 2 cases:
+  //   1. foreign tool → defensive no-op (matcher должен фильтровать, но guard перепроверяет tool_name)
+  //   2. EnterWorktree → spawns worktree-preflight.js (same dir) с cwd=CLAUDE_PROJECT_DIR;
+  //      banner в stderr. Транзитивно покрывает preflight runtime: его SyntaxError/throw
+  //      попал бы в banner и сматчился бы FATAL_PATTERNS.
+  {
+    hook: 'hooks/product/worktree-enter-guard.js',
+    label: 'foreign-tool-no-op',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    env: { CLAUDE_PROJECT_DIR: TMP_DIR },
+    expectStderrAbsent: /Worktree pre-flight/,
+  },
+  {
+    hook: 'hooks/product/worktree-enter-guard.js',
+    label: 'enterworktree-advisory',
+    toolName: 'EnterWorktree',
+    toolInput: {},
+    env: { CLAUDE_PROJECT_DIR: TMP_DIR },
+    expectStderrIncludes: /Worktree pre-flight/,
+  },
 ];
 
 // Patterns в stderr that signal real bugs (vs benign log).

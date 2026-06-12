@@ -93,3 +93,10 @@ hooks:
       - type: UserPromptSubmit
         matcher: ""
     description: "LESSON-* non-deferrability backstop (PRONG B). Per DEC-DEV-0062. Closes the «session never ends → Stop never fires» hole. SHIPS DEFAULTED TO WARN per «Strict Stop, warn PreToolUse» decision: UserPromptSubmit re-surfaces open lessons every turn via hookSpecificOutput.additionalContext (never blocks a prompt); PreToolUse in warn mode = stderr nag only. Only when LESSON_GATE_MODE=strict does PreToolUse deny a mutating tool call via hookSpecificOutput.permissionDecision=deny (contract per code.claude.com/docs/en/hooks), WITH marker-exemption: a fresh .product/.sessions/lesson-in-progress.<id> marker means the /product:lesson protocol is actively resolving → not denied (avoids self-deadlock). strict mode pending S-LE live smoke. Fail-open on any error; no-op if no .product/ dir."
+
+  - id: worktree-enter-guard
+    file: worktree-enter-guard.js
+    events:
+      - type: PreToolUse
+        matcher: "EnterWorktree"
+    description: "Pre-flight advisory before entering a git worktree. Upstreamed from the my-first-test pilot per DEC-DEV-0065 (pilot↔ecosystem reconciliation, step 1). Runs worktree-preflight.js (same dir) from the main checkout via spawnSync, where gitignored per-checkout state is still visible, and surfaces hazards that won't follow into the worktree: non-empty .product/.pending/ queues, fresh .sessions/current.yaml + git_head_sha drift, beads in_progress (the only cross-checkout coordination signal — OQ-PM-02 concurrent-session-detection is unimplemented), and shared gitignored resources (.env, .design-sessions/, integrator/secrets/). Warn-only — emits report to stderr AND injects PreToolUse additionalContext with permissionDecision=allow; exit 0 always (never blocks; aligns с CLAUDE.md «Hook never blocks»). Helper worktree-preflight.js also runnable standalone (--strict exits 1 on warnings; --json)."
