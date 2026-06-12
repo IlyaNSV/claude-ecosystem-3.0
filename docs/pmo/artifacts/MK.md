@@ -22,7 +22,7 @@ scenarios: [SC-<NNN>, ...]                      # какие SC визуализ
 scenario_steps: {SC-<NNN>: [1, 2, 3]}            # какие шаги конкретно
 roles: [R-<role>, ...]                           # какие роли видят UI
 platform: web | mobile | responsive | desktop
-design_tool: stitch | claude-design | figma | penpot | html   # v1.1: claude-design added
+design_tool: stitch | open-design | claude-design | figma | penpot | html   # v1.1: claude-design; DEC-DEV-0067: open-design (generator, CNT-004-class)
 tool_project_url: "https://..."                  # ссылка на внешний макет (current tool)
 status: draft | review | active | deprecated
 iteration: 3                                      # счётчик итераций

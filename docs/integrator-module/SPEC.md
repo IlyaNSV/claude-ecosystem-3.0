@@ -309,6 +309,8 @@ Generic-паттерн для инструментов, которые **не у
 
 **Границы (D2-B04 split):** Integrator владеет инфраструктурой — daemon-mgmt + контракт + адаптер. Design-facing wiring (viewer, `/design:migrate --to <tool>` target, `external_viewers` дефолт в `design.yaml`) принадлежит **Design Module** (см. `docs/design-module/SPEC.md`). Setup общего daemon: [`BOOTSTRAP.md`](../../BOOTSTRAP.md) раздел «open-design shared daemon».
 
+**Generate-путь поверх daemon-паттерна (DEC-DEV-0067):** помимо HTTP viewer-import (CNT-003), daemon-инструмент может экспонировать **MCP-stdio управляющий канал** (`docker exec -i <container> … mcp`) — для open-design это generator-путь CNT-004-class: агент авторит артефакты прямо в проектах daemon'а (`create_project` / `create_artifact` / `write_file`). Канонический драйвер: `adapters/od-mcp-call.cjs` (держит stdin открытым до прихода всех async-ответов — EOF-truncation guard); QA миграций: `adapters/od-fidelity-check.js` (sha256 round-trip). Эти драйверы daemon-coupled — осознанное исключение из daemon-free `--verify-only` правила (см. `adapters/README.md`). Design-facing исполнение generator-роли — `skills/design/open-design-workflow.md` (Design Module SPEC §4.4c).
+
 ### 4.2. Confidence levels для PMO coverage
 
 Single-layer declared confidence. Integrator не делает continuous tracking или smoke tests в v1 — его роль «сисадмин», не «observer». Empirical feedback приходит через human discovery (debug session после fail, `/product:meta-feedback` при наблюдаемых проблемах).
