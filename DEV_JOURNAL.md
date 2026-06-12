@@ -5183,6 +5183,43 @@ Baseline пилота = **v1.4.0** (последний полный sync — `af
 
 ---
 
+## DEC-DEV-0066 — App Map (AM) канонизирован как 24-й тип артефакта (reconciliation шаг 2)
+
+**Date:** 2026-06-13
+**Trigger:** Шаг 2 плана `dev/PILOT_RECONCILIATION_PLAN.md` (DEC-DEV-0065). Пользователь подтвердил направление («merge, и переходи к шагу 2») и попросил завершить процесс автономно.
+**Tag:** #reconciliation #design #app-map #artifacts #validation
+
+### Context
+
+App Map существовал только в пилоте my-first-test (коммиты `019bf5e`, `c561dc1`): де-факто 24-й тип артефакта без канонической спеки. Session Audit видел его файлы и рефьютил находки как «pilot-fork drift» — тип нужно было либо канонизировать, либо осознанно отвергнуть. Польза доказана пилотом (L0-обзор + USER FLOW walker на 6 фичах TranslateIt) → канонизируем.
+
+### Decision
+
+**AM = канонический 24-й тип** (D2-B04, 🟢 Confirmation, root singleton `.product/app-map.md` — рядом с problem.md, это обзор продукта, не часть mockups-кластера). Перенесено: спека `AM.md`, `/design:map`, skill `app-map-generate.md`, 6 скриптов `app-map-*.js` (hook-событие только `app-map-cascade`; остальные — helpers по прецеденту `hooks/product/lib/`), V-AM-ветка в `design-artifact-validate.js`, manifest-merge.
+
+### Ключевые решения
+
+1. **V-AM зарегистрированы в validation.md (§5.3b), а не оставлены «неучтёнными»** — хук, эмитящий правила вне SSOT-каталога, ровно тот класс дрейфа, против которого V-18 (DEC-DEV-0064). Идентификаторы оставлены описательными (`V-AM-frontmatter`/`-id`/`-module-ref`/`-nm-ref`) как в пилотном хуке — перенумерация в V-AM-01..04 разошлась бы с уже работающим кодом ради косметики. Счётчик правил 40→44.
+2. **Счётчик артефактов 23→24 — сверен списком, не числом** (урок DEC-DEV-0065: «оба написали 23» = разные 23). Sweep по всем носителям: README, docs/README, docs/MAP, pmo-map (3 места + D2-B04 row + формула разбивки), processes (2), validation (2), product SPEC (5 — вкл. найденные вне memory-списка строки 121/136/979), design SPEC (2). Заодно закрыт отложенный 0064 follow-up «count-sweep 39→40» (39-остатки в pmo-map:5,176, validation:112, обоих SPEC ушли сразу на 44).
+3. **Внутренний дрейф пилота исправлен при канонизации:** command/skill/manifest ссылались на `.product/mockups/app-map.md`, тогда как hook-regex, спека AM.md и реальный файл пилота живут в корне `.product/` — канон унифицирован на корень (эмпирически проверено по пилоту).
+4. **Генерализации:** bd-ссылки пилота убраны из заголовков скриптов; `generated: '2026-06-06'` (hardcoded) → динамическая дата; FM-001/FM-002-специфика в thumbs-комментариях обобщена; «m5k pattern» → «committed canonical screens»; Related Skills в AM.md обновлены с «planned» на фактический tooling.
+5. **app-map-viewer.js — браузерный ES5, не Node-хук:** scoped `eslint-disable no-var, no-undef` с пояснением вместо правки кода под Node-конфиг (код инлайнится в генерируемый HTML).
+6. **design SPEC: компактный §3.6b вместо renumber** — вставка между 3.6 и 3.7 не ломает существующие кросс-ссылки. Таблица примитивов §2.1 синхронизирована эмпирически (7 команд / 9 скиллов / 2 хука) — была stale ещё с Phase 6 (заявляла 6 скиллов при фактических 7).
+
+### Verify
+
+- smoke-hooks: +4 кейса (V-AM-id warning на active, valid-AM quiet, cascade no-op без AM, cascade AM-stale на mechanical drift) — **25/25 PASS**.
+- eslint hooks/design/: **0 errors** / 19 warnings (в пределах принятой базы).
+- Counts: `git ls-files docs/pmo/artifacts/ | grep -v README | grep '\.md$' | wc -l` = 24; grep-sweep по «23 тип/39 прав/40 актив» — пусто.
+
+### Follow-ups
+
+- Handoff §10/§11 site-map embedding (AM.md Relationships «опц.») — не реализовано ни в пилоте, ни здесь; ждёт реальной потребности.
+- V-18 расширение на `type: app-map` (per-type schema) — вместе с общим V-18 ростом (0064 follow-up).
+- AM cascade v1.1: per-module signature (has_ui flip без изменения набора FM сейчас не детектится — known gap, задокументирован в хуке).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

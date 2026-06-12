@@ -394,6 +394,70 @@ const TEST_CASES = [
     env: { CLAUDE_PROJECT_DIR: TMP_DIR },
     expectStderrIncludes: /Worktree pre-flight/,
   },
+
+  // ---------- App Map (AM) — DEC-DEV-0066 (canonized из пилота) ----------
+  // design-artifact-validate: AM root-singleton branch (V-AM-*).
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'am-wrong-singleton-id-active',
+    filePath: path.join(TMP_PRODUCT, 'app-map.md'),
+    setup: (ctx) => {
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'app-map.md'),
+        '---\nid: APP\ntype: app-map\ntitle: "App Map: smoke"\nstatus: active\nmodules: [FM-001]\n---\n\n# AM\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /V-AM-id/,
+  },
+  {
+    hook: 'hooks/design/design-artifact-validate.js',
+    label: 'am-valid-active-quiet',
+    filePath: path.join(TMP_PRODUCT, 'app-map.md'),
+    setup: (ctx) => {
+      // valid singleton: id literal AM + resolvable module ref (FM-001-test.md создан ранее)
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'features', 'FM-001-test.md'),
+        '---\nid: FM-001\ntype: feature-map-entry\nstatus: in-progress\nhas_ui: true\n---\n\n# FM-001\n',
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'app-map.md'),
+        '---\nid: AM\ntype: app-map\ntitle: "App Map: smoke"\nstatus: active\nmodules: [FM-001]\n---\n\n# AM\n',
+        'utf-8'
+      );
+    },
+    expectStderrAbsent: /V-AM/,
+  },
+  // app-map-cascade: drift trigger (own pending queue + stderr signal).
+  {
+    hook: 'hooks/design/app-map-cascade.js',
+    label: 'no-am-file-no-op',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    setup: (ctx) => {
+      try { fs.unlinkSync(path.join(ctx.tmpProduct, 'app-map.md')); } catch (_e) { /* absent ok */ }
+    },
+    expectStderrAbsent: /AM-stale/,
+  },
+  {
+    hook: 'hooks/design/app-map-cascade.js',
+    label: 'mechanical-drift-am-stale',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    setup: (ctx) => {
+      // AM persists FM-999, которого нет на диске → scan vs AM = drift → AM-stale
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'features', 'FM-001-test.md'),
+        '---\nid: FM-001\ntype: feature-map-entry\nstatus: in-progress\nhas_ui: true\n---\n\n# FM-001\n',
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'app-map.md'),
+        '---\nid: AM\ntype: app-map\ntitle: "App Map: smoke"\nstatus: active\nmodules: [FM-001, FM-999]\nnavigation_maps: []\n---\n\n# AM\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /AM-stale/,
+  },
 ];
 
 // Patterns в stderr that signal real bugs (vs benign log).

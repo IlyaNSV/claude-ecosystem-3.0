@@ -1,10 +1,10 @@
 # Validation Rules Catalog — Ecosystem 3.0
 
 > **Версия:** 1.0 (2026-04-18)
-> **Объём:** 40 активных правил (V-*: 16, V-H-*: 11, V-MK-*: 8, V-LE-*: 5) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
+> **Объём:** 44 активных правила (V-*: 16, V-H-*: 11, V-MK-*: 8, V-LE-*: 5, V-AM-*: 4) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
 > **Назначение:** единый каталог валидационных правил для артефактов D1-D2, handoff и Design Module.
 > **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:meta-feedback` workflow), D2 (`approve_overrides` per artifact).
-> **Читать вместе с:** [pmo-map.md](pmo-map.md) (functional zones), [processes.md](processes.md) (P1-P5 methodology), [artifacts/](artifacts/) (23 типа артефактов), [../product-module/handoff-spec.md](../product-module/handoff-spec.md) (V-H-* handoff rules).
+> **Читать вместе с:** [pmo-map.md](pmo-map.md) (functional zones), [processes.md](processes.md) (P1-P5 methodology), [artifacts/](artifacts/) (24 типа артефактов), [../product-module/handoff-spec.md](../product-module/handoff-spec.md) (V-H-* handoff rules).
 
 ## 0. Critical Review Summary
 
@@ -55,6 +55,7 @@
 | Handoff validation | V-H-01..V-H-11 | Структурная целостность handoff.md | 11 |
 | Design validation | V-MK-01..V-MK-08 | UI spec completeness (conditional has_ui) | 8 |
 | Lesson validation | V-LE-01..V-LE-05 | Corrective LESSON-* артефакты (DEC-DEV-0062) | 5 |
+| App Map validation | V-AM-* | AM derived-обзор: singleton id + modules/NM refs (DEC-DEV-0066) | 4 |
 | Integrator validation | V-I-* | Cross-boundary (контракты с внешними инструментами) | future |
 | Process rules | P-RULE-* | Обязательные ручные проверки (не автоматизация) | 2 |
 
@@ -109,7 +110,7 @@ Validation — это **safety net**, а не bureaucracy. Каждое прав
 |---|---|---|
 | **`pilot`** (default для bootstrap) | Только 🔴 Blocking | 🟡 Warning, 🔵 Info |
 | **`mvp`** | 🔴 Blocking + 🟡 Warning | 🔵 Info |
-| **`full`** | Все 39 правил | (none) |
+| **`full`** | Все 44 правила | (none) |
 
 **Обоснование:** на ранних стадиях продукта (pilot, ≤5 active FM) бóльшая часть правил не имеет реального application. Tier-based activation снижает ноткс-шум, не отключая правила полностью. Upgrade tier — осознанное решение когда продукт растёт.
 
@@ -594,6 +595,39 @@ LESSON-* — corrective lesson артефакт с уже применённым
 - **Automation:** ✅ Token extraction + lookup
 - **When:** MK save (inline), Approve gate, DS update
 - **On failure:** Auto-extraction в DS (создание draft DS entry с предложением human confirm) ИЛИ block с «hardcoded value: #3B82F6, not in DS — add?».
+
+### 5.3b App Map Validation (V-AM — DEC-DEV-0066)
+
+> AM — derived-обзор (L0) поверх FM/NM/SC: механический слой генерируется `/design:map`, editorial-слой
+> живёт во frontmatter `.product/app-map.md`. Валидация сознательно **light** (per AM.md): жёсткие правила
+> на derived-артефакте дублировали бы upstream-валидацию FM/NM. Реализация: `hooks/design/design-artifact-validate.js`
+> (ветка `type: app-map`); quiet-draft режим §B2 общий с V-MK-*. Дрейф механического слоя ловит отдельный
+> hook `app-map-cascade.js` (queue `.product/.pending/app-map-pending.yaml` — это cascade-сигнал,
+> не validation rule).
+
+#### V-AM-frontmatter: Required fields present
+- **Tier:** 🟡 Warning
+- **Statement:** Frontmatter AM содержит `id`, `type`, `status`.
+- **Automation:** ✅ Inline hook (design-artifact-validate.js)
+- **When:** AM save (inline)
+
+#### V-AM-id: Singleton id literal
+- **Tier:** 🟡 Warning
+- **Statement:** `id` равен литерально `AM` (singleton без номера, как `DS`).
+- **Automation:** ✅ Inline hook
+- **When:** AM save (inline)
+
+#### V-AM-module-ref: modules[] resolve to FM files
+- **Tier:** 🔵 Info
+- **Statement:** Каждый id из `modules[]` существует в `.product/features/`. Quiet пока ссылка реально не сломана (drift-сигнал).
+- **Automation:** ✅ Inline hook (fs.exists)
+- **When:** AM save (inline)
+
+#### V-AM-nm-ref: navigation_maps[] resolve to NM files
+- **Tier:** 🔵 Info
+- **Statement:** Каждый id из `navigation_maps[]` существует в `.product/mockups/`.
+- **Automation:** ✅ Inline hook (fs.exists)
+- **When:** AM save (inline)
 
 ---
 

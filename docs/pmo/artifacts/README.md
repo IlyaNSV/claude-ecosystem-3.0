@@ -1,7 +1,7 @@
 # Каталог артефактов D1-D2 — Ecosystem 3.0
 
 > **Версия:** 1.1 draft (2026-04-17)
-> **Назначение:** единый справочник формата всех 23 типов артефактов Product Layer.
+> **Назначение:** единый справочник формата всех 24 типов артефактов Product Layer.
 > **Принцип:** декларативные правила здесь, процессуальные — в skills Product Module.
 > **Обновления v1.1:** добавлен NFR-* (закрытие OQ-03)
 
@@ -19,7 +19,7 @@
 | **Внешний реализатор** (через handoff) | Понимает формат передаваемых данных |
 | **Будущий Orchestrator** | Валидирует состояние `.product/` при маршрутизации |
 
-## 23 типа артефактов
+## 24 типа артефактов
 
 ### D1 — Product Discovery & Strategy (9 типов)
 
@@ -61,13 +61,14 @@
 | IC-* | Invariant Check | 🔴 Critical | Per invariant | [IC.md](IC.md) |
 | NFR-* | Non-Functional Requirement | 🟠 Strategic | Per NFR | [NFR.md](NFR.md) |
 
-### D2-B04 — Design (3 типа)
+### D2-B04 — Design (4 типа)
 
 | ID | Имя | Review | Cardinality | Файл |
 |---|---|---|---|---|
 | MK-* | Mockup Package | 🟠 Strategic | Per screen/flow | [MK.md](MK.md) |
 | DS | Design System | 🟡 Standard | Singleton | [DS.md](DS.md) |
 | NM-* | Navigation Map | 🟢 Confirmation | Per flow | [NM.md](NM.md) |
+| AM | App Map (+ CJM) | 🟢 Confirmation | Singleton (DEC-DEV-0066) | [AM.md](AM.md) |
 
 ## Граф зависимостей
 
@@ -131,6 +132,13 @@
               │        │         scope=global или per_feature
               └────────┘ ──────▶ питает VC extensions, D4 тесты
                                   (embedded в handoff §11)
+
+              ┌────────┐
+              │  AM    │ ◀────── derived from FM-* (модули) + NM-* (per-flow drill-down +
+              │ (App   │         cross-module рёбра) + SC-* (primary journeys / кейсы);
+              │  Map)  │         + LC/BR guards, HYP/PS для CJM болей/эмоций. Singleton.
+              └────────┘ ──────▶ site-map обзор (handoff §10/§11, опц.);
+                                  USER FLOW HTML walker (/design:map --html)
 ```
 
 ## Cross-cutting правила
@@ -140,7 +148,7 @@
 ```yaml
 ---
 # Identity
-id: "<PREFIX>-<NNN>" | "<FIXED>"   # SEG-001, FM-042, PS, BG, MVP, RM, RPM, DS
+id: "<PREFIX>-<NNN>" | "<FIXED>"   # SEG-001, FM-042, PS, BG, MVP, RM, RPM, DS, AM
 type: "<kebab-case-type>"          # problem-statement, segment, feature-map-entry
 title: "Человеко-читаемое название"
 status: draft | active | deprecated | <special-per-type>
@@ -206,7 +214,7 @@ draft ──────▶ active ──────▶ deprecated
 ### Naming conventions
 
 **ID-формат:**
-- Singleton: `PS`, `MVP`, `RM`, `BG`, `RPM`, `DS` — без номера
+- Singleton: `PS`, `MVP`, `RM`, `BG`, `RPM`, `DS`, `AM` — без номера
 - Enumerable: `<PREFIX>-<NNN>` — SEG-001, FM-042 (трёхзначное с ведущими нулями)
 
 **Файлы в `.product/`:**
@@ -235,6 +243,7 @@ draft ──────▶ active ──────▶ deprecated
 ├── roadmap.md                          # RM
 ├── glossary.md                         # BG (cross-cutting)
 ├── design-system.md                    # DS (cross-cutting)
+├── app-map.md                          # AM (root singleton; + генерируемый app-map.html — DEC-DEV-0066)
 ├── rpm.md                              # RPM
 ├── segments/
 │   ├── SEG-001-<slug>.md

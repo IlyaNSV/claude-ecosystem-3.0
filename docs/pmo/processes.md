@@ -8,7 +8,7 @@
 
 ### 1.1 Фундаментальный паттерн: «Продуктовый ассистент draft → iterate → approve» (DEC-P13)
 
-**Ни один артефакт не создаётся человеком с чистого листа.** Все 23 типа артефактов создаётся через унифицированный паттерн:
+**Ни один артефакт не создаётся человеком с чистого листа.** Все 24 типа артефактов создаётся через унифицированный паттерн:
 
 ```
 1. Ассистент готовит draft на основе доступных входов
@@ -1190,7 +1190,7 @@ NFR на solo-уровне — **очертания достаточности, 
 Помимо BG/cascade/bi-dir refs, экосистема имеет **активные** механизмы против дрифта при долгих сессиях:
 
 - **C1 `/product:drift-check`** — on-demand или auto перед `/product:handoff`. Skill `drift-detector.md` читает PS + active HYP primary + MVP scope + последние 10 изменённых артефактов, выдаёт direction alignment report.
-- **C2 `confidence:` field в frontmatter** — все 23 типа артефактов имеют `confidence: high | medium | low` + `confidence_notes`. ИИ обязан articulate уверенность при approve. Tied with A1 auto-approve и meta-feedback usage stats.
+- **C2 `confidence:` field в frontmatter** — все 24 типа артефактов имеют `confidence: high | medium | low` + `confidence_notes`. ИИ обязан articulate уверенность при approve. Tied with A1 auto-approve и meta-feedback usage stats.
 - **C3 `/product:meta-feedback`** — ИИ может инициировать ecosystem-level proposals (override rule, refine threshold, suggest skill update). Skill `meta-feedback.md`. Approval — human, запись в `.claude/integrator/decision-journal.md`.
 - **C4 `/product:patterns`** — meta-linter on demand. Skill `pattern-linter.md`. Анализ `.product/` на повторяющиеся anti-patterns:
   - Hard-coded values across multiple BR (suggest extract to shared)
