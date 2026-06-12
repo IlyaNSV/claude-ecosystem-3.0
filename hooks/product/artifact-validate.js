@@ -20,7 +20,8 @@
  *
  * Exit 0 always — non-blocking.
  *
- * Scope v1: V-01, V-03, V-04, V-09, V-10, V-11 (basic, automatable).
+ * Scope v1: V-01, V-03, V-04, V-09, V-10, V-11 (basic, automatable) + V-18 (per-type
+ *   frontmatter schema conformance for IC/BR/SC — DEC-DEV-0064).
  * Full catalog in .claude/docs/pmo/validation.md §5.
  */
 
@@ -182,6 +183,49 @@ if (fm.status === 'active' && !fm.confidence) {
     severity: 'warning',
     message: `${fm.id} in active status but missing 'confidence:' field (C2 modification)`,
   });
+}
+
+// V-18: per-type frontmatter schema conformance (DEC-DEV-0064, from Session Audit
+// cluster D2B-behavioral::A). Warning-level + override-aware (rule 'V-18' in
+// overrideMap is skipped like any other) + tier-aware (surfaces at mvp/full, queued
+// at pilot). Scoped to IC / BR / SC — the types with confirmed canonical enums and
+// the highest observed drift — to keep false-positives low; other types deferred.
+// Canonical source of truth: docs/pmo/artifacts/<TYPE>.md.
+{
+  const idPrefix = (String(fm.id).match(/^([A-Z]+)-/) || [])[1];
+  const LIFECYCLE = ['draft', 'active', 'deprecated']; // common status enum (README.md)
+  const v18 = (message) => findings.push({ rule: 'V-18', severity: 'warning', message });
+
+  if (idPrefix === 'IC') {
+    if (fm.type && fm.type !== 'invariant-check') {
+      v18(`IC ${fm.id} type='${fm.type}' should be 'invariant-check' (IC.md)`);
+    }
+    if (fm.severity && !['critical', 'high', 'medium'].includes(fm.severity)) {
+      v18(`IC ${fm.id} severity='${fm.severity}' off canonical enum (critical|high|medium) (IC.md)`);
+    }
+    if (fm.status && !LIFECYCLE.includes(fm.status)) {
+      v18(`IC ${fm.id} status='${fm.status}' off canonical enum (draft|active|deprecated)`);
+    }
+    if (fm.status === 'active') {
+      for (const req of ['severity', 'entity', 'testable_as']) {
+        if (!fm[req]) v18(`IC ${fm.id} active but missing required per-type field '${req}' (IC.md)`);
+      }
+    }
+  } else if (idPrefix === 'BR') {
+    if (fm.type && fm.type !== 'business-rule') {
+      v18(`BR ${fm.id} type='${fm.type}' should be 'business-rule' (BR.md)`);
+    }
+    if (fm.category && !['validation', 'calculation', 'authorization', 'workflow', 'constraint', 'state-transition'].includes(fm.category)) {
+      v18(`BR ${fm.id} category='${fm.category}' off canonical enum (validation|calculation|authorization|workflow|constraint|state-transition) (BR.md)`);
+    }
+    if (fm.status && !LIFECYCLE.includes(fm.status)) {
+      v18(`BR ${fm.id} status='${fm.status}' off canonical enum (draft|active|deprecated)`);
+    }
+  } else if (idPrefix === 'SC') {
+    if (fm.status && !LIFECYCLE.includes(fm.status)) {
+      v18(`SC ${fm.id} status='${fm.status}' off canonical enum (draft|active|deprecated)`);
+    }
+  }
 }
 
 // ---------- Filter by tier (B1 modification) + D2 overrides ----------

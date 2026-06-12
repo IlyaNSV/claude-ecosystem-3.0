@@ -1,7 +1,7 @@
 # Validation Rules Catalog — Ecosystem 3.0
 
 > **Версия:** 1.0 (2026-04-18)
-> **Объём:** 39 активных правил (V-*: 15, V-H-*: 11, V-MK-*: 8, V-LE-*: 5) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
+> **Объём:** 40 активных правил (V-*: 16, V-H-*: 11, V-MK-*: 8, V-LE-*: 5) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
 > **Назначение:** единый каталог валидационных правил для артефактов D1-D2, handoff и Design Module.
 > **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:meta-feedback` workflow), D2 (`approve_overrides` per artifact).
 > **Читать вместе с:** [pmo-map.md](pmo-map.md) (functional zones), [processes.md](processes.md) (P1-P5 methodology), [artifacts/](artifacts/) (23 типа артефактов), [../product-module/handoff-spec.md](../product-module/handoff-spec.md) (V-H-* handoff rules).
@@ -368,6 +368,15 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 - **On tier upgrade (MVP → MMP):** все FM со status=declined или pending автоматически попадают в batch re-review. Ассистент спрашивает: «В MVP вы выбрали defaults для FM-003. При переходе к MMP хотите явно определить NFR?»
 - **Interaction with sanity-check:** если NFR имеет `sanity_check: overridden`, V-16 предупреждает «NFR overridden — проверено через DA review?»
 - **Rationale:** Opt-in philosophy (DEC-NFR-F08). NFR не обязательны. Правило отслеживает **осознанность решения**, не принуждает к определению. Только высокорисковые фичи без rationale блокируются.
+
+#### V-18: Per-type frontmatter schema conformance (IC/BR/SC)
+- **Tier:** 🟡 Warning
+- **Statement:** Per-type frontmatter соответствует канону `docs/pmo/artifacts/<TYPE>.md`: корректное значение `type`, обязательные per-type поля, членство ключевых scalar-enum'ов. v1 scope: **IC** (`type: invariant-check`; `status: active` ⇒ `severity`/`entity`/`testable_as` присутствуют; `severity ∈ critical|high|medium`), **BR** (`type: business-rule`; `category ∈ validation|calculation|authorization|workflow|constraint|state-transition`), **IC/BR/SC** (`status ∈ draft|active|deprecated`). Прочие типы — deferred (контроль false-positive; у LESSON/HYP свои status-enum'ы).
+- **Artifacts affected:** IC-*, BR-*, SC-*
+- **Automation:** ✅ Inline hook (`artifact-validate.js`) на каждом `.product/**/*.md` save; override-aware (`validation_overrides`/`approve_overrides`), tier-aware (surfaces at mvp/full, queued at pilot).
+- **When:** Inline save (PostToolUse), On-demand validate.
+- **On failure:** 🟡 Warning list (non-blocking) с указанием каноничного значения; легитимные локальные конвенции снимаются через `validation_overrides`.
+- **Rationale:** B.1 templates предотвращают drift только когда creating-skill в контексте; при inline/bulk-авторинге шаблон не загружен, и ни inline-хук (до DEC-DEV-0064), ни on-demand runner не проверяли per-type schema → одна и та же IC-сигнатура (`type=invariant`, missing severity/entity/testable_as) рецидивировала across сессий (Session Audit cluster `D2B-behavioral::A`). Наименьший gap-closing механизм — расширить уже работающий save-хук. Per DEC-DEV-0064.
 
 ### 5.1a NOTE-* validation (D3 modification — minimal coverage)
 

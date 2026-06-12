@@ -5089,6 +5089,56 @@ open-design = Dockerized HTML **viewer**, не генератор и не ист
 
 ---
 
+## DEC-DEV-0064 — Первый принятый patch из Session Audit v2: DA subagent-type контракт (B+C) + V-18 schema-хук (A)
+
+**Date:** 2026-06-12
+**Trigger:** После прогона 11-сессионной Pending-очереди (журнал 50→66) и синтеза, human-gate `[Y/N/E/D]` по 3 survived-кандидатам. Пользователь выбрал путь (а): принять A/B/C и собрать **один патч**. Первое прохождение полного цикла Session Audit v2 до applied fix (find→accumulate→synthesize→verify→**accept→patch**).
+**Tag:** #meta-improvement #product #da #validation #session-audit #patch
+
+### Context
+
+Три выживших кластера (adversarial-verified), два из них — **один корень**:
+- `D2B-behavioral::C` (patch-template) — F.3 batched BR→DA вызывался через `general-purpose` (нет каноничного batched-invocation для копирования).
+- `D2B-behavioral::B` (codify-pattern) — IC→DA: харнесс «Agent type 'product-devils-advocate' not found» → **тихий** fallback в `general-purpose`.
+- `D2B-behavioral::A` (add-hook) — `.product/` артефакты на диске с не-каноничным per-type frontmatter; ни inline-хук, ни runner не проверяли per-type schema.
+
+### Что сделано (2 deliverable)
+
+**D1 — DA subagent-type контракт (консолидирует B+C):**
+- `skills/product/feature-session.md` §«DA orchestration flow» Step 4: явный канонический `Agent({subagent_type:"product-devils-advocate", …})` сниппет (зеркало `product-da-review.md:117-120`) + batched-BR ветка (кластер = multi-artifact brief к тому же каноничному subagent) + правило «not found ⇒ STOP, не тихий fallback». Anti-patterns #9 (запрет `general-purpose`) + #10 (not-found = blocking setup-ошибка).
+- НОВЫЙ `dev/meta-improvement/patterns/da-subagent-type-contract.md` (D7 codify-pattern, provisional).
+
+**D2 — V-18 per-type schema conformance (A):**
+- `hooks/product/artifact-validate.js`: новое warning-level правило, override-/tier-aware, **scoped to IC/BR/SC** (подтверждённые enum'ы, highest drift) для контроля false-positive. Verify: smoke на drifted IC (3 находки) / clean IC (0) / drifted BR (category) PASS; exit 0 (non-blocking).
+- `docs/pmo/validation.md` §5.1: каталог-запись V-18 + счётчик 39→40 (V-*: 15→16).
+
+### Ключевые решения
+
+1. **Консолидация B+C** — один корень (каноничный DA-тип не используется), правят одну секцию `feature-session.md`. Не два полу-фикса.
+2. **R4 (почему агент «not found») НЕ трогаем** — требует live-harness (вложенный путь `agents/product/` vs `name`-поле vs stale bootstrap пилота). Спекулятивный bootstrap-фикс из prompt-scope = ровно plausible-but-wrong патч, против которого DEC-DEV-0057 Lesson #1. Кодифицирован как открытый follow-up (наследует DEC-DEV-0043 R4).
+3. **V-18 scoped to IC/BR/SC, не blanket** — у LESSON (`open|active`) и HYP свои status-enum'ы; blanket-проверка статуса дала бы false-positive. Warning, не blocking; override-escape через `validation_overrides`.
+4. **Hard enforcement hook отвергнут** для D1 — PostToolUse не наблюдает `subagent_type` Agent-вызова надёжно; template-fix = наименьший механизм (CONVENTIONS §3).
+
+### Journal writeback
+
+11 spine-находок → `patched` (+`dec_dev_ref: DEC-DEV-0064`); 5 явных non-violations → `dismissed` (anti-circular / cosmetic / da-remediation). 8 периферийных остаются `patch-proposed` — флагнуты в Evidence кандидатов как **отдельные** items (separate root cause): `br-change-trigger.js` dedup-wipe (`1ff552c0c6b4`), re-DA owner-call (`b2e3035c3fdd`/`685265ce3985`), `.da-findings/` schema (`613ae7128d66`/`f7039575c7e5`/`13fafe80a7f8`), body-cascade rename (`99030316972c`), cosmetic russification (`1eb76ab23bd4`).
+
+### Follow-ups (cuttable-scope, вынесены из патча)
+
+- **R4 registration root-cause** (live-harness) — promote pattern provisional→validated после закрытия.
+- **Cross-doc count sweep 39→40** — `validation.md` обновлён; остальные ~9 canonical-count доков ([[reference_pmo_canonical_counts]]) — отдельный sync.
+- **V-18 расширение** — runner-mirror (`validation-runner.md`) + типы за пределами IC/BR/SC, когда подтвердятся enum'ы.
+- **`patch-synth.js:214` silent-failure** — логирует только `res.stderr`, а `claude -p` ошибки в stdout → 2 кластера упали «тихо» (диагностировано вручную). Печатать stdout-хвост на провале.
+
+### Связь с другими entries
+
+- DEC-DEV-0056/0057/0059 — Session Audit v2 (механизм, давший эти кандидаты); это первый его applied-patch outcome.
+- DEC-DEV-0043 R1/R4 + DEC-DEV-0038 — DA subagent-type как known debt; D1 = исполнение R1, R4 остаётся.
+- DEC-DEV-0057 Lesson #1 — de-conflate before synthesizing; применён и при scope'ировании spine (3 of 9 в C, 5 of 10 в A), и при отказе от спекулятивного R4-фикса.
+- DEC-DEV-0012 / B.1 pattern — V-18 закрывает enforcement-gap, который B.1 templates (prevention-only) не покрывают при inline-авторинге.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

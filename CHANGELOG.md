@@ -8,7 +8,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Added
+
+- **`V-18` — per-type frontmatter schema conformance** (DEC-DEV-0064; from Session Audit cluster `D2B-behavioral::A`). New warning-level rule in `hooks/product/artifact-validate.js` that checks `.product/` artifacts on save against the canonical per-type schema in `docs/pmo/artifacts/<TYPE>.md`: correct `type` value, required per-type fields, and key enum membership. v1 scope is **IC** (`type: invariant-check`; active ⇒ `severity`/`entity`/`testable_as`; `severity ∈ critical|high|medium`), **BR** (`type: business-rule`; `category` enum), and **IC/BR/SC** (`status ∈ draft|active|deprecated`) — other types deferred to keep false-positives low (LESSON/HYP carry their own status enums). Warning severity, `validation_overrides`-aware, tier-aware (surfaces at mvp/full, queued at pilot). Closes the gap where B.1 inline templates prevent drift only when the creating skill is in context — bulk/inline authoring went unvalidated. Catalog entry + count `39 → 40` in `validation.md`.
+
+### Fixed
+
+- **DA subagent-type contract** in the Product feature flow (DEC-DEV-0064; from Session Audit clusters `D2B-behavioral::C` + `::B`). `skills/product/feature-session.md` «DA orchestration flow» now shows the **explicit canonical `Agent({ subagent_type: "product-devils-advocate", … })`** invocation (mirroring the manual `/product:da-review` path), covers the **batched F.3 BR→DA** cluster path (one multi-artifact brief to the same canonical subagent — not a `general-purpose` hand-roll), and mandates **STOP-on-«Agent type not found»** instead of a silent fallback to `general-purpose` + role-adoption (which loses the model/tools pin, the isolated Builder/Critic separation, and the `.da-findings/` schema — the recurring «S8 P1 regression»). New anti-patterns #9 (no `general-purpose`) and #10 (not-found = blocking setup error). The registration root-cause (why the type sometimes fails to resolve) is deferred to a live-harness step (DEC-DEV-0043 R4), codified as the D7 pattern `dev/meta-improvement/patterns/da-subagent-type-contract.md`.
 
 ---
 

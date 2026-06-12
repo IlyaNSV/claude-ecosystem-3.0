@@ -349,15 +349,26 @@ After each BR or IC active write, hook (`br-change-trigger.js` или `ic-change
 1. Hook detects change → writes `.product/.pending/da-pending.yaml` entry с artifact id + git diff
 2. Hook outputs stderr signal: «DA review pending for <ARTIFACT-ID> (mode: adaptive). See .product/.pending/da-pending.yaml.»
 3. **Orchestrator (этот skill)** reads stderr from tool result → sees pending DA notification
-4. Orchestrator immediately spawns `product-devils-advocate` subagent via Agent tool с brief:
+4. Orchestrator immediately spawns the **canonical** DA subagent via the Agent tool — **always with `subagent_type: "product-devils-advocate"`, never a `general-purpose` role-adoption workaround** (anti-patterns #9/#10):
+   ```
+   Agent({
+     subagent_type: "product-devils-advocate",   // MANDATORY — mirrors product-da-review.md; never general-purpose
+     description: "DA review <BR-NNN | IC-NNN | batched BR-NNN..BR-MMM>",
+     prompt: <brief below>
+   })
+   ```
+   Brief:
    ```
    Mode: adaptive
    Artifact(s) under review: <BR-NNN | IC-NNN>
+     # F.3 batched DA: list the WHOLE cluster (BR-NNN..BR-MMM) in ONE Agent call — still subagent_type: product-devils-advocate.
+     #   There is no separate "batched" agent type; the cluster is just a multi-artifact brief to the canonical subagent.
    Trigger: P-RULE-01 | P-RULE-02 (hook)
    Diff (for adaptive mode): <git diff против HEAD — copied from da-pending.yaml entry>
    Context files to read: .product/business-rules/, .product/scenarios/, .product/lifecycles/, .product/glossary.md
    Project context: <stage from RM, tier from product.yaml.validation_tier, prior DA findings if any>
    ```
+   **If the harness replies «Agent type 'product-devils-advocate' not found» → STOP.** Surface to the user that the canonical DA agent is not registered (a bootstrap/registration issue) — **do NOT silently fall back to `general-purpose` + a role-adoption prompt.** That workaround loses the agent's `model`/`tools` pin, the isolated Builder/Critic separation, and the canonical `.da-findings/` schema, and is the recurring «S8 P1 regression» (anti-pattern #10).
 5. Subagent (per refactored devils-advocate.md, DEC-DEV-0013 A.1):
    - Step 1 classify magnitude (cosmetic | significant)
    - Step 2 adapt depth (cosmetic → quick consistency check; significant → full 6-lens)
@@ -597,6 +608,8 @@ Resolve findings before approve.
 6. **F.5a / F.8 / F.9 implementing inline.** Phase 4 / Phase 6 work — surface placeholder, не attempt inline. Discipline.
 7. **Drift в feature-progress.yaml.** Atomicity per DEC-DEV-0010 — read-modify-write, не overwrite.
 8. **Spawn subagent не на adaptive mode.** Hook-triggered DA — always Mode: adaptive (per DEC-DEV-0013 #8 + refactored devils-advocate.md). Mode: full только для manual /product:da-review (Phase 4).
+9. **DA subagent через `general-purpose`.** DA **MUST** spawn с `subagent_type: "product-devils-advocate"` — и в hook-driven (F.3/F.5), и в manual путях. `general-purpose` + role-adoption prompt теряет `model`/`tools` pin, isolated Builder/Critic separation и canonical `.da-findings/` schema, даже если adversarial-контент произведён. Зеркало `product-da-review.md` anti-pattern #5. Это касается и **batched** F.3 DA (кластер BR в одном вызове) — тип всё равно канонический (per DEC-DEV-0064, кластеры C+A).
+10. **Тихий fallback при «Agent type not found».** Если харнесс отвечает «Agent type 'product-devils-advocate' not found» — это **BLOCKING setup-ошибка**: STOP, surface к user (канонический DA-агент не зарегистрирован). Не падать молча в `general-purpose`. Почему агент «not found» (вложенный путь `agents/product/` vs `name`-поле vs stale bootstrap пилота) — **отдельный live-harness шаг** (DEC-DEV-0064 → DEC-DEV-0043 R4), не чинится из этого skill.
 
 ## Related
 
