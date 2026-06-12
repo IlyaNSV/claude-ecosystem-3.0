@@ -27,7 +27,7 @@ started_at: "<ISO>"
 last_touched_at: "<ISO>"
 current_step: D.1 | D.2 | D.3 | D.4 | D.5 | D.6 | complete
 current_iteration: 0
-design_tool: stitch | claude-design | html
+design_tool: stitch | open-design | claude-design | html
 tool_project_url: "<url или null>"
 fallback_active: false                # true если switched к non-primary
 brief_path: ".product/.design-sessions/<FM-id>-brief.md"
@@ -184,6 +184,7 @@ Silence treated as «specify choice» — не proceed.
    - Skip immediately если quota exceeded (Stitch): jump to fallback per `mcp_preferences.fallback_chain`
 3. **Dispatch к tool-specific skill:**
    - `stitch` → load `stitch-workflow.md` skill (sub-phase E)
+   - `open-design` → load `open-design-workflow.md` skill (CNT-004-class generator, agent-authoring Mode A — DEC-DEV-0067)
    - `claude-design` → load `claude-design-workflow.md` skill (sub-phase E — v1.0 stub per C1)
    - `html` (fallback) → load `html-fallback.md` skill (sub-phase E — v1.0 minimal per C4)
 4. Tool-specific skill generates N screens; returns list of `{si_id, tool_url_or_path, description}` плюс potential issues

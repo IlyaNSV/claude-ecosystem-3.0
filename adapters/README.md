@@ -29,8 +29,13 @@
 | `handoff-to-ccsdd.js` | cc-sdd | D2-T01 primary, D2-T06 primary, D2-T04 partial, D2-B02 boundary | Phase 5 | ⏳ TBA (sub-phase C) |
 | `mk-to-stitch.js` | stitch (MCP) | D2-B04 supports | Phase 6 / Design | ✅ active (CNT-002) |
 | `stitch-to-opendesign.js` | open-design (viewer/import) | D2-B04 supports | Phase 6 / Design | ✅ active (CNT-003) |
+| `od-mcp-call.cjs` | open-design (`od mcp` stdio — generator path) | D2-B04 supports | DEC-DEV-0067 | ✅ active в пилоте (CNT-004-class) |
+| `od-fidelity-check.js` | open-design (round-trip QA миграции) | D2-B04 supports | DEC-DEV-0067 | ✅ active в пилоте |
+| `od-consolidate.cjs` | open-design (maintenance: per-screen → per-FM) | D2-B04 supports | DEC-DEV-0067 | ✅ active в пилоте (per-project FEATURES config) |
 
 > **Dockerized external-daemon adapter** (`stitch-to-opendesign.js`): целит общий Docker-daemon open-design по HTTP (`POST /api/import/claude-design`, token-gated), но всё равно держит обязательный daemon-free `--verify-only --fixture` (§ «Принципы реализации»). Token precedence: `--token` → `$OD_API_TOKEN` → `~/.claude/integrator/secrets/open-design.token` (машинно-глобальный, один daemon на машину) → `./.claude/integrator/secrets/open-design.token`. Setup daemon'а: см. [`BOOTSTRAP.md`](../BOOTSTRAP.md) раздел «open-design shared daemon».
+>
+> **`od mcp` stdio drivers** (`od-mcp-call.cjs`, `od-consolidate.cjs`, `od-fidelity-check.js` — DEC-DEV-0067, generator-путь): осознанное исключение из правила «verify-mode обязателен» — это daemon-coupled драйверы (`docker exec -i … od mcp` / `docker cp`), без daemon'а им нечего dry-run'ить. Подняты в канон as-is из работающего пилота (lift gold pattern DEC-DEV-0063); роль verify-пути для миграций несёт `od-fidelity-check.js` (детерминированный sha256 round-trip). `od-consolidate.cjs` требует per-project конфиг `FEATURES` в instance-копии (в reference — закомментированный шаблон).
 
 ## Что НЕ кладём в этот каталог
 
