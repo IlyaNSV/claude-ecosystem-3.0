@@ -2,7 +2,7 @@
 
 > **Роль:** Навигационная карта PMO-процессов. Говорит ЧТО должно быть сделано, не КАК.
 > **Принцип:** функциональная карта = job descriptions ролей. Для **owned**-зон (D1, D2-Behavioral, D6) — детальные обязанности и артефакты. Для **delegated**-зон (D2-Technical, D3, D4, D5) — те же функциональные обязанности (стабильны, tool-agnostic), но реализация делегирована внешним инструментам через Integrator. Mетодика конкретного инструмента (implementation methodology) — НЕ зашита в карту, она в tool-docs.
-> **Читать вместе с:** [processes.md](processes.md) (методология P1-P5), [validation.md](validation.md) (39 правил), [artifacts/](artifacts/) (23 типа), [../product-module/SPEC.md](../product-module/SPEC.md), [../integrator-module/SPEC.md](../integrator-module/SPEC.md), [../design-module/SPEC.md](../design-module/SPEC.md), [../README.md](../README.md) (docs index).
+> **Читать вместе с:** [processes.md](processes.md) (методология P1-P5), [validation.md](validation.md) (44 правила), [artifacts/](artifacts/) (24 типа), [../product-module/SPEC.md](../product-module/SPEC.md), [../integrator-module/SPEC.md](../integrator-module/SPEC.md), [../design-module/SPEC.md](../design-module/SPEC.md), [../README.md](../README.md) (docs index).
 
 ## Модель жизненного цикла продукта
 
@@ -56,14 +56,14 @@
 | D2-B01 | Project Context Setup | Перенос D1-стратегии в рабочий контекст фичеделия | наследуется из D1 | ✅ |
 | D2-B02 | Feature Specification | Поведенческая спецификация фичи | FM, SC, BR, VC, IC, RPM | ✅ |
 | D2-B03 | Behavioral Data Modeling | Жизненный цикл сущностей / поведенческая модель данных | LC | ✅ |
-| D2-B04 | UX/UI Design *(если has_ui)* | Дизайн интерфейса (Design Module) | MK, DS, NM | ✅ SPEC v1.1 + Phase 6 v1.0 (1.4.0) |
+| D2-B04 | UX/UI Design *(если has_ui)* | Дизайн интерфейса (Design Module) | MK, DS, NM, AM | ✅ SPEC v1.1 + Phase 6 v1.0 (1.4.0) |
 | D2-B05 | Adversarial Review | Состязательная проверка спецификации | Product DA findings | ✅ |
 
 **Связанные артефакты D2-Behavioral:** BG, SC, BR, LC, RPM, VC, IC, NFR, MK, DS, NM → 11 типов (BG — сквозной; NFR — opt-in per FM, идёт как F.5a; DS — cross-cutting для дизайна; NM — per flow)
 
 **Cross-cutting (не привязан к домену):** NOTE-* — unstructured catch-all для idea-capture, insights, deferred decisions. Не участвует в dependency graph, не валидируется V-*. Конвертируется в другой тип через `/product:promote-note`. **LESSON-*** — corrective lesson (atomic find→fix→record, DEC-DEV-0062): не участвует в dependency graph, валидируется только V-LE-01..05; cardinality per lesson.
 
-**Итого: 23 типа артефактов** (9 D1 + 1 мост FM + 11 D2-Behavioral + 1 unstructured NOTE + 1 cross-cutting LESSON).
+**Итого: 24 типа артефактов** (9 D1 + 1 мост FM + 12 D2-Behavioral вкл. AM + 1 unstructured NOTE + 1 cross-cutting LESSON).
 
 #### D2-Technical — Роль: **Технический архитектор** (delegated, через Integrator)
 
@@ -159,7 +159,7 @@
 
 ## Связь с артефактами
 
-Подробная спецификация 23 типов артефактов → см. `artifacts/` (каталог готов).
+Подробная спецификация 24 типов артефактов → см. `artifacts/` (каталог готов).
 
 Процессы создания и обновления артефактов → см. `processes.md`.
 
@@ -173,7 +173,7 @@ Activation Matrix говорит, какие **процессы** включен
 |---|---|
 | `pilot` (default для bootstrap) | Только 🔴 Blocking. Остальное queued в `/product:status` |
 | `mvp` | + 🟡 Warning |
-| `full` | Все 39 V-* правил |
+| `full` | Все 44 V-* правила |
 
 Это разделение защищает ранние стадии от validation-шума, не отключая правила полностью.
 

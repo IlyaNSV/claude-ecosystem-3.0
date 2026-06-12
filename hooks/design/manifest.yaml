@@ -6,6 +6,9 @@
 # Schema reference: hooks/product/manifest.yaml header.
 #
 # Phase 6 / DEC-DEV-0053 — initial design hooks.
+# DEC-DEV-0066 — App Map (AM) canonization: app-map-cascade hook + AM checks in
+# design-artifact-validate. Helper scripts app-map-{scan,flow,html,thumbs,viewer}.js
+# live alongside but are NOT hook events (invoked by /design:map; precedent: hooks/product/lib/).
 
 version: 1
 module: design
@@ -16,4 +19,11 @@ hooks:
     events:
       - type: PostToolUse
         matcher: "Write|Edit"
-    description: "Inline validation для .product/mockups/MK-*.md + .product/mockups/NM-*.md + .product/design-system.md per DEC-DEV-0052 Q8. Checks: YAML frontmatter parseable; 5 required fields для MK (id, type, feature, design_tool, scenarios); ref existence (FM / SC / MK via fs.exists); V-MK-08 token coverage (regex /DS\\.\\w+\\.\\w+/g vs DS body). Cross-platform path norm per Phase 5 bug 3 (replace /\\\\/g, '/'). SPEC §B2 quiet-draft mode (status: draft → queue findings к .product/.pending/validation-pending.yaml; status: non-draft → stderr surface). Exit 0 always (non-blocking; strict mode deferred к v1.1+ per v1_1_backlog hard-block class pattern)."
+    description: "Inline validation для .product/mockups/MK-*.md + .product/mockups/NM-*.md + .product/design-system.md + .product/app-map.md (AM root singleton, DEC-DEV-0066) per DEC-DEV-0052 Q8. Checks: YAML frontmatter parseable; 5 required fields для MK (id, type, feature, design_tool, scenarios); ref existence (FM / SC / MK via fs.exists); V-MK-08 token coverage (regex /DS\\.\\w+\\.\\w+/g vs DS body); AM light checks (id=='AM', modules→FM / navigation_maps→NM ref existence as Info). Cross-platform path norm per Phase 5 bug 3 (replace /\\\\/g, '/'). SPEC §B2 quiet-draft mode (status: draft → queue findings к .product/.pending/validation-pending.yaml; status: non-draft → stderr surface). Exit 0 always (non-blocking; strict mode deferred к v1.1+ per v1_1_backlog hard-block class pattern)."
+
+  - id: app-map-cascade
+    file: app-map-cascade.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "App Map (AM) cascade/drift trigger per DEC-DEV-0066 + AM.md cascade-impact. Fires on .product/{features/FM-*, mockups/NM-*, scenarios/SC-*}.md changes; if .product/app-map.md exists & active, reuses scan() from app-map-scan.js (no spawn) to compare fresh mechanical layer (FM-id set + NM coverage) vs persisted modules[]/navigation_maps[]. On drift → appends .product/.pending/app-map-pending.yaml (rule AM-stale | AM-journey-ref, action needs_review) + stderr signal 'run /design:map --write'. Own pending queue (mirrors br-change-trigger.js → da-pending.yaml), NOT a cascade-check.js modification. Quiet when AM or source artifact is draft (product.yaml draft_mode_quiet_hooks, default true). Exit 0 always (non-blocking)."

@@ -54,11 +54,13 @@ if (!filePath) {
 
 const normalized = filePath.replace(/\\/g, '/');
 
-// MK + NM live in .product/mockups/; DS is .product/design-system.md singleton
+// MK + NM live in .product/mockups/; DS is .product/design-system.md singleton;
+// AM (App Map) is .product/app-map.md root singleton
 const isMockup = /\.product\/mockups\/(MK|NM)-[^/]+\.md$/.test(normalized);
 const isDS = /\.product\/design-system\.md$/.test(normalized);
+const isAppMap = /\.product\/app-map\.md$/.test(normalized);
 
-if (!isMockup && !isDS) {
+if (!isMockup && !isDS && !isAppMap) {
   process.exit(0);
 }
 
@@ -270,6 +272,36 @@ if (fm.type === 'mockup-package') {
           severity: 'blocking',
           message: `NM ${fm.id}: mockups reference ${mkId} not found в .product/mockups/`,
         });
+      }
+    }
+  }
+} else if (fm.type === 'app-map') {
+  // AM (App Map) — light validation per DEC-DEV-0066. id, type, status required; id must be 'AM'.
+  // Ref checks (modules→FM, navigation_maps→NM) are Info — quiet unless a ref actually breaks
+  // (the cascade/drift signal). Tier-gated suppression deferred к v1.1; здесь полагаемся на то,
+  // что findings всплывают только при реально сломанной ссылке + только для non-draft (quiet-draft ниже).
+  const required = ['id', 'type', 'status'];
+  for (const field of required) {
+    if (!fm[field]) {
+      findings.push({ rule: 'V-AM-frontmatter', severity: 'warning', message: `AM: missing required frontmatter field '${field}'` });
+    }
+  }
+  if (fm.id && fm.id !== 'AM') {
+    findings.push({ rule: 'V-AM-id', severity: 'warning', message: `AM singleton: id should be 'AM' literally (found: '${fm.id}')` });
+  }
+  if (Array.isArray(fm.modules)) {
+    const fmDir = path.join(projectRoot, '.product', 'features');
+    for (const id of fm.modules) {
+      if (!checkArtifactExists(fmDir, id)) {
+        findings.push({ rule: 'V-AM-module-ref', severity: 'info', message: `AM: module ${id} not found в .product/features/` });
+      }
+    }
+  }
+  if (Array.isArray(fm.navigation_maps)) {
+    const mkDir = path.join(projectRoot, '.product', 'mockups');
+    for (const id of fm.navigation_maps) {
+      if (!checkArtifactExists(mkDir, id)) {
+        findings.push({ rule: 'V-AM-nm-ref', severity: 'info', message: `AM: navigation_maps ${id} not found в .product/mockups/` });
       }
     }
   }
