@@ -397,7 +397,7 @@ function isStrictAppend(old_string, new_string) {
 
 ### Defence-in-depth — git pre-commit hook
 
-**Расположение:** `hooks/ecosystem/git-precommit-charter.sh` + installation instructions в `dev/wiki-design.md` (этом файле).
+**Расположение:** `hooks/ecosystem/git-precommit-charter.sh` + installation instructions в `dev/deferred/wiki-design.md` (этом файле).
 
 ```bash
 #!/usr/bin/env bash
@@ -807,9 +807,9 @@ jobs:
 ## §17. Источники и references
 
 - Design conversation 2026-05-26 — закрепляет 4 раунда AskUserQuestion ответов (audiences, format, истина, automation; SSG; cost control; charter location; immutability; versioning; deploy; roadmap fit; decisions wiki)
-- [`CLAUDE.md`](../CLAUDE.md) — repo conventions (hooks, skills, commits, DEV_JOURNAL)
-- [`dev/meta-improvement/checklists/phase-kickoff.md`](meta-improvement/checklists/phase-kickoff.md) — kickoff procedure
-- [`dev/meta-improvement/checklists/phase-closure.md`](meta-improvement/checklists/phase-closure.md) — closure procedure
-- [`dev/PHASE_5_READINESS.md`](_archive/phase-5/PHASE_5_READINESS.md) — structural reference для readiness style
+- [`CLAUDE.md`](../../CLAUDE.md) — repo conventions (hooks, skills, commits, DEV_JOURNAL)
+- [`dev/meta-improvement/checklists/phase-kickoff.md`](../meta-improvement/checklists/phase-kickoff.md) — kickoff procedure
+- [`dev/meta-improvement/checklists/phase-closure.md`](../meta-improvement/checklists/phase-closure.md) — closure procedure
+- [`dev/_archive/phase-5/PHASE_5_READINESS.md`](../_archive/phase-5/PHASE_5_READINESS.md) — structural reference для readiness style
 - MkDocs Material docs — https://squidfunk.github.io/mkdocs-material/
 - peter-evans/create-pull-request — https://github.com/peter-evans/create-pull-request

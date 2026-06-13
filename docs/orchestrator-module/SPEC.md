@@ -1,6 +1,6 @@
 # Orchestrator Module — SPEC
 
-> **Статус:** `concept draft v0` (2026-06-02) — **не** implementation-ready. Зафиксировано направление (DEC-DEV-0058); эмпирические регламенты будут сняты на dogfood-прогоне (`dev/ORCHESTRATOR_DOGFOOD_PLAN.md`), после чего этот документ дорабатывается до v1.0.
+> **Статус:** `concept draft v0` (2026-06-02) — **не** implementation-ready. Зафиксировано направление (DEC-DEV-0058); эмпирические регламенты будут сняты на dogfood-прогоне (`dev/plans/ORCHESTRATOR_DOGFOOD_PLAN.md`), после чего этот документ дорабатывается до v1.0.
 > **Роль:** «Тимлид PMO» — runtime-владелец зон D2-Technical + D3 и выше. Берёт PMO-процесс и проводит его **end-to-end** силами role-агентов, действующих по регламентам.
 > **Не путать с:** Integrator Module (он *ставит и настраивает* инструменты; Оркестратор их *запускает*) и Product Module (он владеет `.product/` и бизнес-решениями).
 > **Читать вместе с:** [../integrator-module/SPEC.md](../integrator-module/SPEC.md) (§8 граница, §14 tool-docs), [../pmo/pmo-map.md](../pmo/pmo-map.md) (D2-T/D3/D4 декомпозиция), [DEC-DEV-0040 Q3](../../DEV_JOURNAL.md) (production routing вырезан Phase 5 → Оркестратор), [DEC-DEV-0058](../../DEV_JOURNAL.md) (это направление).
@@ -190,5 +190,5 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 ## Changelog
 
-- `v0` (2026-06-02) — concept draft. Направление и scope зафиксированы DEC-DEV-0058. Эмпирические регламенты — pending dogfood (`dev/ORCHESTRATOR_DOGFOOD_PLAN.md`).
+- `v0` (2026-06-02) — concept draft. Направление и scope зафиксированы DEC-DEV-0058. Эмпирические регламенты — pending dogfood (`dev/plans/ORCHESTRATOR_DOGFOOD_PLAN.md`).
 - `v0.1` (2026-06-02) — коррекция границы (DEC-DEV-0060): командный канал §6 = запрос **capability** (руки/голова), не инфра-исполнения; добавлен capability self-check; OD5 уточнён до capability-spec; OD6 принят (Интегратор оснащает «голову» = role-агент/skill, role A).

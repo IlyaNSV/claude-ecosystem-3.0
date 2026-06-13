@@ -90,7 +90,7 @@ Based on the summary's `status`:
 
 В Processed-строке `audit-index.md`: `phase = —`, `mode = zones:<z1+z2>|<mode>`. CLI печатает `classified zones: <z1,z2> · mode=<mode>` на каждую сессию.
 
-Типичный вызов: `--classify` (весь Pending) или `--classify --session-id=<uuid> --force` (одна сессия повторно). Переименование `/meta:audit-smoke`→`/meta:audit` отложено (см. `dev/SESSION_AUDIT_V2_DESIGN.md` §8).
+Типичный вызов: `--classify` (весь Pending) или `--classify --session-id=<uuid> --force` (одна сессия повторно). Переименование `/meta:audit-smoke`→`/meta:audit` отложено (см. `dev/_archive/session-audit-v2/SESSION_AUDIT_V2_DESIGN.md` §8).
 
 **Полу-авто (Инкр.2, DEC-DEV-0057):** держать аудит почти на автомате, пока Claude открыт —
 `/loop 45m node dev/meta-improvement/scripts/audit-watch.js` (тонкая обёртка над `--classify --since`,

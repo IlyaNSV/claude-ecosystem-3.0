@@ -3,7 +3,7 @@
 > Output of the **patch synthesizer** ([`../scripts/patch-synth.js`](../scripts/patch-synth.js)).
 > Each `<zone>__<check>.md` = ONE systemic finding cluster (≥3 instances) that was run through
 > **adversarial verification** and either survived (→ patch proposal) or was refuted.
-> **Surface only — никогда не применяется автоматически** (CONVENTIONS §8). Дизайн: [`../../SESSION_AUDIT_V2_DESIGN.md`](../../SESSION_AUDIT_V2_DESIGN.md) §6.2 · DEC-DEV-0059.
+> **Surface only — никогда не применяется автоматически** (CONVENTIONS §8). Дизайн: [`../../_archive/session-audit-v2/SESSION_AUDIT_V2_DESIGN.md`](../../_archive/session-audit-v2/SESSION_AUDIT_V2_DESIGN.md) §6.2 · DEC-DEV-0059.
 
 ## Поток
 

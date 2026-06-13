@@ -1,5 +1,5 @@
 # capture-pilot-state.ps1 -- snapshot pilot project state for S7 update-compat smoke
-# (see dev/PHASE_6_SMOKE_TEST_PLAN.md S7 "/ecosystem:update compatibility post 1.4.0").
+# (see dev/gates/PHASE_6_SMOKE_TEST_PLAN.md S7 "/ecosystem:update compatibility post 1.4.0").
 #
 # Use cases:
 #   1. Pre-update snapshot -- capture state before /ecosystem:update invocation

@@ -19,8 +19,8 @@ Prerequisite chain status:
 - ⏸ Phase 7 — kickoff pending
 
 Open prerequisite work blocks (non-blocking для kickoff itself, но context inputs):
-- ⏳ Runtime smoke S1-S5 Patch 1.3.3 (`dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md`) — deferred к next pilot session
-- ⏳ Runtime smoke S1-S7 Phase 6 (`dev/PHASE_6_SMOKE_TEST_PLAN.md`) — deferred к next pilot session
+- ⏳ Runtime smoke S1-S5 Patch 1.3.3 (`dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md`) — deferred к next pilot session
+- ⏳ Runtime smoke S1-S7 Phase 6 (`dev/gates/PHASE_6_SMOKE_TEST_PLAN.md`) — deferred к next pilot session
 - Both runtime smokes могут surface Phase 7 findings (e.g., scope-guard interactions с design Module activation; design hook quiet-draft mode edge cases)
 
 ---
@@ -32,7 +32,7 @@ Open prerequisite work blocks (non-blocking для kickoff itself, но context 
 **Phase 6 chain (closed):**
 - [x] Phase 6 implementation closure (DEC-DEV-0053, 2026-05-28) — 1.4.0 release
 - [x] Phase 6 implementation static smoke 19/19 PASS (sub-phase H)
-- [ ] Phase 6 runtime smoke S1-S7 (`dev/PHASE_6_SMOKE_TEST_PLAN.md`) — deferred; **non-blocking для Phase 7 kickoff** (orthogonal scope)
+- [ ] Phase 6 runtime smoke S1-S7 (`dev/gates/PHASE_6_SMOKE_TEST_PLAN.md`) — deferred; **non-blocking для Phase 7 kickoff** (orthogonal scope)
 - [x] Phase 6 plan archived `dev/_archive/phase-6/`; closure findings addressed or explicitly deferred
 
 **Patch 1.3.x chain (closed):**
@@ -41,7 +41,7 @@ Open prerequisite work blocks (non-blocking для kickoff itself, но context 
 - [x] Closure ritual (DEC-DEV-0050) executed
 
 **This file:**
-- [x] `dev/PHASE_7_READINESS.md` skeleton created (this commit)
+- [x] `dev/gates/PHASE_7_READINESS.md` skeleton created (this commit)
 - [ ] Phase 7 architectural kickoff session — to be scheduled
 
 ### A.1 Ready-to-kickoff assessment

@@ -136,14 +136,16 @@ dev/meta-improvement/
 
 ## 5. Cleanup criteria
 
-**Convention:** archive `dev/PHASE_<N>_*` docs post-closure when criteria met. NEVER archive certain files.
+**Convention:** active phase-gate docs live в `dev/gates/`; archive `dev/gates/PHASE_<N>_*` docs post-closure when criteria met. NEVER archive certain files.
+
+> **Локация (reorg 2026-06-14):** активные `PHASE_<N>_READINESS.md` / `PHASE_<N>_SMOKE_TEST_PLAN.md` лежат в `dev/gates/` (не в корне `dev/`). Тулинг (`scripts/audit-smoke.js`) резолвит live-план из `dev/gates/`, archived — из `dev/_archive/phase-<N>/`.
 
 ### 5.1 Archive eligible
 
 | File pattern | When archive | Where |
 |---|---|---|
-| `dev/PHASE_<N>_READINESS.md` | Post-Phase-N closure | `dev/_archive/phase-<N>/` |
-| `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` | After smoke run done | `dev/_archive/phase-<N>/` |
+| `dev/gates/PHASE_<N>_READINESS.md` | Post-Phase-N closure | `dev/_archive/phase-<N>/` |
+| `dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md` | After smoke run done | `dev/_archive/phase-<N>/` |
 | Pre-Phase-N proposals (e.g., spec drafts если были) | Post-decision | `dev/_archive/phase-<N>/` |
 
 ### 5.2 NEVER archive
@@ -152,14 +154,14 @@ dev/meta-improvement/
 - `CHANGELOG.md` — consumer-facing release notes
 - `ROADMAP.md`, `README.md`, `CLAUDE.md` — live root docs
 - `dev/v1_1_backlog.md` — living deferral context
-- `dev/PHASE_<N+1>_READINESS.md` — active for next phase
+- `dev/gates/PHASE_<N+1>_READINESS.md` — active for next phase
 - `dev/meta-improvement/SPEC.md`, `CONVENTIONS.md`, `checklists/*` — D7 living docs
 
 ### 5.3 Mechanics
 
 ```bash
 mkdir -p dev/_archive/phase-<N>/
-git mv dev/PHASE_<N>_READINESS.md dev/_archive/phase-<N>/
+git mv dev/gates/PHASE_<N>_READINESS.md dev/_archive/phase-<N>/
 git commit -m "chore(meta-improvement): archive PHASE_<N>_READINESS post-closure"
 ```
 

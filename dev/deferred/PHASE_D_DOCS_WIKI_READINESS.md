@@ -2,7 +2,7 @@
 
 > ⏸ **STATUS: DEFERRED to v1.1+ (2026-05-27)** per DEC-DEV-0046.
 >
-> **Active alternative:** [`dev/LOCAL_DOCS_POLISH_PLAN.md`](LOCAL_DOCS_POLISH_PLAN.md) (Obsidian + README polish, 4-9h).
+> **Active alternative:** [`dev/plans/LOCAL_DOCS_POLISH_PLAN.md`](../plans/LOCAL_DOCS_POLISH_PLAN.md) (Obsidian + README polish, 4-9h).
 >
 > **Rationale:** phantom-audience guard fired. Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; single active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h light-touch альтернативу.
 >
@@ -12,13 +12,13 @@
 > - Solo dev обнаруживает Obsidian недостаточным (audience-tagging, cross-tool sharing)
 > - Ecosystem 3.0 готовится к public release (>2 weeks horizon)
 >
-> **Preservation:** все Phase D artifacts сохранены без изменения тела — этот readiness gate, [`dev/wiki-design.md`](wiki-design.md), [`dev/PHASE_D_IMPLEMENTATION_PLAN.md`](PHASE_D_IMPLEMENTATION_PLAN.md). Resumption — fresh-session kickoff per Section H instructions.
+> **Preservation:** все Phase D artifacts сохранены без изменения тела — этот readiness gate, [`dev/deferred/wiki-design.md`](wiki-design.md), [`dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md`](PHASE_D_IMPLEMENTATION_PLAN.md). Resumption — fresh-session kickoff per Section H instructions.
 >
 > ---
 >
 > **Назначение (original):** проверки и решения, которые нужно сделать **до** старта Phase D implementation (интерактивная документация по самой Ecosystem 3.0 в стиле Confluence через MkDocs Material + Charter + auto-sync action).
 >
-> **Статус (на момент создания, 2026-05-26):** ⏳ дизайн заморожен (см. [`dev/wiki-design.md`](wiki-design.md)); implementation **заблокирован Phase 5 closure ritual Unit 2**. *(Phase 5 closure completed via DEC-DEV-0044 + 0045; Phase D briefly UNBLOCKED 2026-05-26 → 2026-05-27 before deferral.)*
+> **Статус (на момент создания, 2026-05-26):** ⏳ дизайн заморожен (см. [`dev/deferred/wiki-design.md`](wiki-design.md)); implementation **заблокирован Phase 5 closure ritual Unit 2**. *(Phase 5 closure completed via DEC-DEV-0044 + 0045; Phase D briefly UNBLOCKED 2026-05-26 → 2026-05-27 before deferral.)*
 >
 > **Принцип:** Phase D — meta-инфраструктура, не product feature. Аудитория тройная (solo dev memory + end-users + stakeholders). Не блокировать перфекционизмом, но и не пропускать критичные пункты. Каждому пункту присвоен приоритет: 🔴 блокер, 🟡 важный, 🔵 необязательный.
 
@@ -26,7 +26,7 @@
 
 ## Status banner
 
-⏳ **Design frozen, implementation blocked.** Все архитектурные развилки разрешены через design conversation 2026-05-26 (см. [`dev/wiki-design.md`](wiki-design.md) §A-K). Implementation стартует **после** Phase 5 closure ritual Unit 2 + runtime smoke S1-S6.
+⏳ **Design frozen, implementation blocked.** Все архитектурные развилки разрешены через design conversation 2026-05-26 (см. [`dev/deferred/wiki-design.md`](wiki-design.md) §A-K). Implementation стартует **после** Phase 5 closure ritual Unit 2 + runtime smoke S1-S6.
 
 **Перед стартом Phase D implementation:**
 - [ ] Phase 5 closure ritual Unit 2 (D7 phase-closure.md 6 steps) — fresh session
@@ -70,7 +70,7 @@ Per `dev/meta-improvement/checklists/phase-closure.md`. Fresh-session run requir
 
 ## B. Дизайн-решения Phase D — ✅ ЗАМОРОЖЕНЫ (design conversation 2026-05-26)
 
-> **Status:** все архитектурные развилки разрешены через design conversation. Полный rationale + alternatives в [`dev/wiki-design.md`](wiki-design.md). Сводка ниже; формальный DEC-DEV-NNNN entry записывается при open Phase D после Phase 5 closure.
+> **Status:** все архитектурные развилки разрешены через design conversation. Полный rationale + alternatives в [`dev/deferred/wiki-design.md`](wiki-design.md). Сводка ниже; формальный DEC-DEV-NNNN entry записывается при open Phase D после Phase 5 closure.
 
 **Сводка решений:**
 
@@ -289,7 +289,7 @@ Phase D считается «done», когда:
 
 ### 🔴 Обязательное чтение перед Phase D implementation
 
-1. **`dev/wiki-design.md`** — полный design doc; rationale + alternatives. Primary reference на весь implementation цикл.
+1. **`dev/deferred/wiki-design.md`** — полный design doc; rationale + alternatives. Primary reference на весь implementation цикл.
 2. **`CLAUDE.md`** «Hook конвенции» + «Skill конвенции» (DEC-DEV-0012) — для DW.B и DW.C compliance.
 3. **`dev/meta-improvement/checklists/phase-kickoff.md`** — fresh-session kickoff mandatory перед DW.A старт.
 
