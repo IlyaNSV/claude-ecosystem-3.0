@@ -96,7 +96,7 @@ claude-ecosystem-3.0/
 │   ├── integrator-module/SPEC.md
 │   └── pmo/
 │       ├── pmo-map.md, processes.md, validation.md
-│       └── artifacts/        # 22 типа артефактов
+│       └── artifacts/        # 24 типа артефактов
 ├── commands/                 # → пользовательский .claude/commands/
 │   ├── ecosystem/, integrator/, product/  # design/ — Phase 6
 ├── skills/                   # → .claude/skills/ (lazy-loaded methodology)

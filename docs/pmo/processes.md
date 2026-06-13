@@ -401,7 +401,7 @@ auto_approve_confirmation_artifacts:
 
 10. **F.8 Design Module (if has_ui=true) → P2.5**
     - Параллельно с F.2-F.7 запускается P2.5 (см. §3.3)
-    - Создание MK-* (Design Package), обновление DS, создание NM-*
+    - Создание MK-* (Design Package), обновление DS, создание NM-*, обновление AM (app-map singleton)
 
 11. **F.9 Product DA Review (optional, recommended для complex фич)**
     - Запускается перед handoff
@@ -447,7 +447,7 @@ auto_approve_confirmation_artifacts:
 
 ### 3.3 P2.5: Design Module (conditional: has_ui=true)
 
-**Цель:** создать полноценный Design Package (MK), обновить DS, построить NM.
+**Цель:** создать полноценный Design Package (MK), обновить DS, построить NM, обновить AM (app-map singleton, `/design:map`).
 
 **Триггер:** F.8 в P2, если FM.has_ui=true. Также standalone: `/design:start FM-xxx`.
 
