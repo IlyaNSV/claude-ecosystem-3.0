@@ -102,6 +102,21 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 - **P5:** `gate-risk-classifier` (router тяжести гейта inline-vs-independent — детерминированный предикат, **design: [`dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`](../../dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md)**, DEC-DEV-0068 P0-2; валидирован 16/17 против RUN 01), persistent inter-task **Notes-ledger** (forward-deps), per-step mini-orient + idempotent selective-commit, **нативная реализация** (не обёртка `/kiro-impl`).
 - **P6:** механический слой + 3 параллельных валидатора + `verify-finding-before-act` (находка валидатора → grep ground-truth → только тогда remediation).
 
+> **[S5a build — DEC-DEV-0071] P3 реализован ГИБРИДНО (оркеструем, не переписываем).**
+> Чтение реального cc-sdd показало: `kiro-spec-batch` **уже** делает волновой барьер +
+> параллельный per-feature dispatch + **10-точечный cross-spec consistency review +
+> 3-раундовый fix-loop**. Поэтому role-агенты `spec-author`/`cross-spec-reviewer`/`spec-fixer`
+> из таксономии §3.3 в первом инкременте **не строятся** — они покрыты инструментом.
+> Оркестратор **вызывает** `kiro-spec-batch` и добавляет лишь то, чего у cc-sdd нет:
+> (1) **мост** `handoff → brief.md + roadmap.md` — программная замена `kiro-discovery`
+> (тот `disable-model-invocation` + интерактивный); (2) **preflight C-07** (адаптерный
+> content-fidelity гейт); (3) **`coverage-oracle`** — детерминированное дополнение к
+> LLM-ревью kiro (код по ground-truth, не self-report); (4) **durable Workflow-скелет**
+> (границы фаз переживают /compact). Файлы: `orchestrator/processes/batch-features-to-cc-sdd.mjs`,
+> `orchestrator/lib/coverage-oracle.cjs`, `skills/orchestrator/*`, `commands/orchestrator/run.md`,
+> `orchestrator/README.md`. Cross-spec owner-arbitration **не** добавлен — kiro Step 4 строже;
+> вернёмся, только если live-прогон вскроет пробел, который oracle не ловит.
+
 ### 3.3. Role-агенты (таксономия RUN 01) **[RUN 01]**
 
 Роли = «сотрудники» с job description (system prompt) = регламент роли. Параллелизм через `parallel()`; длинные шаги — Background Agents. В RUN 01 **все 11 ролей собирались вручную из general-purpose субагентов** (хотя `kiro-*` шаблоны существовали) — отсюда требование **реестра role-агентов под PMO-зону** (источник-истины для «голова»-self-check §6). Каждая роль обязана возвращать **structured-verdict schema** (делает синтез вердиктов детерминированным, а не ручным thinking).

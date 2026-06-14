@@ -5387,6 +5387,55 @@ SPEC §8 + OD10 → РЕШЕНО E2+E4. Reshape плана: S5 = build P3 + P5; 
 
 ---
 
+## DEC-DEV-0071 — S5a build: P3 `batch-features-to-cc-sdd` реализован ГИБРИДНО (оркеструем cc-sdd, не переписываем)
+
+**Date:** 2026-06-14
+**Trigger:** S5a build (kickoff §E) — первый implementation-инкремент Оркестратора; в процессе вопрос человека «а агенты kiro не использовались? давай брать best practices, не писать всё с нуля» вскрыл, что часть первого черновика дублировала готовую машинерию cc-sdd.
+**Tag:** #orchestrator #build #cc-sdd #hybrid #cost-discipline #DEC-DEV-0068-followup
+
+### Context
+
+Kickoff (DEC-DEV-0070) зафиксировал scope E2+E4. S5a = build P3 `batch-features-to-cc-sdd`. Первый черновик (роли `spec-author`/`cross-spec-reviewer`/`spec-fixer` инлайн в `.mjs` per D.1, собственная wave-логика, собственный `build-steering`) был написан **до** проверки того, что реально ставит cc-sdd. Read-only инспекция пилота (`my-first-test/.claude/skills/kiro-*`) показала: cc-sdd поставляет методологию как **17 kiro-skills** (агентов вообще не ставит — `.claude/agents/` содержит только наши `integrator`/`product`). Критично — `kiro-spec-batch` **уже** делает: dependency-wave grouping → параллельный per-feature dispatch (kiro-spec-init→requirements→design→tasks) → **10-точечный cross-spec consistency review (Step 4)** → **3-раундовый fix-loop** → finalize. Его входы: `.kiro/steering/roadmap.md ## Specs (dependency order)` + per-feature `brief.md`.
+
+### Decision
+
+**P3 реализован как тонкая оркестрация поверх cc-sdd, а не как переписывание его машинерии.** Оркестратор **вызывает** `kiro-spec-batch` и добавляет ровно то, чего у cc-sdd нет:
+
+1. **Мост `handoff → brief.md + roadmap.md ## Specs`** (`skills/orchestrator/build-briefs-from-handoff.md`). Это **программная замена `kiro-discovery`** — тот `disable-model-invocation: true` **и** интерактивный (AskUserQuestion) → из Workflow недоступен в принципе. Product-модуль уже сделал discovery (владеет `.product/`, эмитит handoff'ы); мост кормит batch-движок из handoff'ов вместо kiro-discovery.
+2. **Preflight C-07** — адаптерный content-fidelity гейт перед brief'ом (cc-sdd доверяет входу; мы проверяем, что §10 не затёр §5/§6).
+3. **`coverage-oracle`** (новый детерминированный хелпер `orchestrator/lib/coverage-oracle.cjs`, P1-1) — независимый ID-coverage по ground-truth. **Дополнение** к LLM-ревью kiro Step 4, не дубль: отвечает на вопрос, который LLM-ревьюер может провалить, доверившись self-report.
+4. **Durable Workflow-скелет** — границы фаз переживают /compact (P0-3).
+
+**Дропнуто как дублирующее** (kiro делает лучше): `agents/orchestrator/{spec-author,cross-spec-reviewer,spec-fixer}.md` + `skills/orchestrator/arbitrate-cross-spec.md` (4 файла, написанные в том же заходе). `build-steering` переписан в делегирование `kiro-steering`. Wave-логика-реинвент убрана из `.mjs` (kiro-spec-batch грубит волны сам).
+
+### Alternatives rejected
+
+- **Self-contained роли (полностью свои spec-author/reviewer/fixer).** Отвергнуто: реинвентит ~половину `kiro-spec-batch` (включая его строгий 10-точечный cross-spec review), больше поддержки, и прямо против просьбы «брать best practices, не писать всё». Робастность к version-drift cc-sdd не перевешивает.
+- **Wrap `kiro-spec-batch` целиком как одну skill-обёртку без Workflow.** Отвергнуто: `kiro-spec-batch` — in-context skill-контроллер, durability/resume-across-/compact теряется; P3 тогда почти не нуждается в Workflow, что ослабляет reason-to-exist модуля (хотя P5 его всё равно требует). Выбран гибрид: Workflow держит durable-границы + детерминированные гейты, per-feature генерацию отдаёт cc-sdd. (Решение человека из 3 вариантов.)
+
+### Harness-находки
+
+- **`node --check` неприменим к Workflow-`.mjs`.** Харнесс-диалект (`export const meta` = ESM-goal + top-level `await` **и** top-level `return`, который харнесс разрешает обёрткой) даёт `SyntaxError: Illegal return statement` в чистом ESM. Smoke переписан: `tests/orchestrator/workflow-syntax.smoke.cjs` стрипает `export ` и парсит тело как AsyncFunction (парс без исполнения — ловит синтаксис, игнорит инъецированные глобалы/отсутствие FS).
+- **Инлайн ролей per D.1 НЕ понадобился** для P3: раз роли = kiro-skills (вызываются `agent`'ом через Skill-tool, не `disable-model-invocation`), инлайнить нечего. D.1-ограничение остаётся релевантным для P5 (если будем лифтить kiro-impl/kiro-review методологию) и для любых bespoke-ролей.
+
+### Smoke (S5a, на fixtures — не live)
+
+`npm run verify` exit 0: adapters 4/4, **coverage-oracle 6/6** (FIXTURE-001 ground-truth SC-001/002+BR-001+IC-001; FIXTURE-002 §10-clobber — нет утечки в SC/BR/IC; coverage-miss ловится; self-report omission+fabrication ловятся), **workflow-syntax smoke 2/2**. Детерминированные хелперы (адаптер C-07 + oracle) зелёные на обеих фикстурах.
+
+### Lessons
+
+1. **Проверяй, что реально ставит инструмент, ДО написания ролей.** Полчаса инспекции `.claude/skills/kiro-*` сэкономили бы первый черновик 4 файлов. «Оркестратор оркеструет, не переписывает» — теперь явный принцип в `orchestrator/README.md`.
+2. **`disable-model-invocation` — это не только про `/kiro-impl`.** `kiro-discovery` тоже помечен → его нельзя звать из Workflow. Это и дало мосту чёткий reason-to-exist (а не «ещё один способ сделать то же»).
+3. **Cost-минимизация ≠ меньше кода везде.** coverage-oracle мы написали с нуля (детерминированного аналога у cc-sdd нет) — там это и есть value-add; а cross-spec роли выкинули (там cc-sdd сильнее). Граница «писать/брать» проходит по «есть ли у инструмента детерминированный ground-truth гейт».
+
+### Follow-ups
+
+- **Live cc-sdd прогон (S6 / прогон №2):** проверить, вызывается ли `kiro-spec-batch` (он сам спавнит субагентов) из Workflow-`agent()` — nested-subagent caveat. У Author-фазы `.mjs` есть fallback (прогнать kiro-spec-* пофично самому). Пилот в S5a не трогали.
+- **S5b — P5 `feature-to-tdd-impl` (нативный, OD9):** здесь `disable-model-invocation` на `/kiro-impl` реально кусает → Workflow читает tasks.md и диспатчит implementer'ов сам; методологию implementer/reviewer лифтить из `kiro-impl`/`kiro-review` (не писать с нуля — урок этого DEC). `gate-risk-classifier` (DEC-DEV-0068 P0-2 design) подключается тут.
+- Точная схема `brief.md` (поля, что именно kiro-spec-batch читает) — уточнить на live-прогоне; в S5a мост документирует формат, детерминированные гейты smoke-зелёные.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
