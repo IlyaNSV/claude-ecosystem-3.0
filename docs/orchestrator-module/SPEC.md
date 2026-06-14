@@ -1,9 +1,9 @@
 # Orchestrator Module — SPEC
 
-> **Статус:** `concept draft v0` (2026-06-02) — **не** implementation-ready. Зафиксировано направление (DEC-DEV-0058); эмпирические регламенты будут сняты на dogfood-прогоне (`dev/ORCHESTRATOR_DOGFOOD_PLAN.md`), после чего этот документ дорабатывается до v1.0.
+> **Статус:** `v1.0-draft (dogfood RUN 01 harvest)` (2026-06-14, DEC-DEV-0068) — **ещё не** implementation-ready, но эмпирически обоснован. Направление зафиксировано DEC-DEV-0058 (v0.1); регламенты сняты с **фактического** dogfood-прогона (сессия `6dc62bc8`, см. `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`), который прожил полную цепочку D2-T → D3-impl → validation → runtime. Разделы, помеченные **[RUN 01]**, обоснованы прогоном; scope первого инкремента (§8) — открытое решение.
 > **Роль:** «Тимлид PMO» — runtime-владелец зон D2-Technical + D3 и выше. Берёт PMO-процесс и проводит его **end-to-end** силами role-агентов, действующих по регламентам.
 > **Не путать с:** Integrator Module (он *ставит и настраивает* инструменты; Оркестратор их *запускает*) и Product Module (он владеет `.product/` и бизнес-решениями).
-> **Читать вместе с:** [../integrator-module/SPEC.md](../integrator-module/SPEC.md) (§8 граница, §14 tool-docs), [../pmo/pmo-map.md](../pmo/pmo-map.md) (D2-T/D3/D4 декомпозиция), [DEC-DEV-0040 Q3](../../DEV_JOURNAL.md) (production routing вырезан Phase 5 → Оркестратор), [DEC-DEV-0058](../../DEV_JOURNAL.md) (это направление).
+> **Читать вместе с:** [../integrator-module/SPEC.md](../integrator-module/SPEC.md) (§8 граница, §14 tool-docs), [../pmo/pmo-map.md](../pmo/pmo-map.md) (D2-T/D3/D4 декомпозиция), [DEC-DEV-0040 Q3](../../DEV_JOURNAL.md) (production routing вырезан Phase 5 → Оркестратор), [DEC-DEV-0058](../../DEV_JOURNAL.md) (направление), [DEC-DEV-0068](../../DEV_JOURNAL.md) + [`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`](../../dev/ORCHESTRATOR_DOGFOOD_RUN_01.md) (этот harvest).
 
 ---
 
@@ -55,6 +55,18 @@
 
 In-harness Workflow-механизм (Opus 4.8) поддерживает это нативно: control-flow в скрипте детерминирован; `Date.now()`/`Math.random()` в скриптах запрещены ради воспроизводимости/resume; resume отдаёт кэш неизменённого префикса `agent()`-вызовов (тот же скрипт + те же входы → 100% cache hit).
 
+### 2-bis. Эмпирика движка из RUN 01 **[RUN 01]**
+
+Прогон использовал связку `/loop /kiro-impl auth` + `ScheduleWakeup` как автономный движок — де-факто это **уже был** «in-harness Workflow (dynamic)», но **без durable-носителя скелета**. Человек вынужден был руками материализовать «continuation contract» в `tasks.md`. Сильнейший факт: после `/compact` (полная потеря контекста) цикл восстановился **побайтово** из git + tasks.md + beads — доказательство, что скелет был экстернализованной структурой, а не контекстом. Workflow-скрипт даёт это by-design (его state переживает /compact). Это — **сильнейший структурный аргумент ЗА модуль**.
+
+**Три провала durability при настоящей автономии**, которые прогон НЕ закрыл (их маскировал человек за терминалом):
+
+1. **Cross-session.** `ScheduleWakeup` = «this session only». Закрыл сессию → движок мёртв. Нужен **внешний durable-планировщик** (n8n / cron / cloud routine), дёргающий `orchestrator resume`. → §10.
+2. **Idempotency-дыра.** Крэш между impl-шагом и commit-шагом → resume перезапустит implementer поверх изменённых файлов. Нужен idempotency-токен шага.
+3. **`disable-model-invocation`.** `/kiro-impl` помечен так → Workflow **не сможет** вызвать process-skill программно. → P5 реализуется **нативно** (Workflow читает `tasks.md` и диспатчит implementer'ов напрямую), не как обёртка `/kiro-impl`. См. §3.2 P5.
+
+Вывод: Workflow-скрипт заменяет **слой-1** (скелет) и router выбора гейта; НЕ заменяет **слой-2** (implementer/reviewer остаются `agent()`). Длинные шаги (implementer ~10-11 мин) → **Background Agent**, не inline (риск /compact посреди шага).
+
 ---
 
 ## 3. Регламенты и каталог процессов (R1)
@@ -68,18 +80,45 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 
 «Офис» = каталог именованных процессов. Регламент = детерминированный скелет + ссылка на skill + определения role-агентов + точки гейтов и Integrator-команд.
 
-### 3.2. Каталог процессов (process catalog, целевой)
+### 3.2. Каталог процессов (process catalog) **[RUN 01]**
 
-| Процесс | Зона | Готовность инструментов |
-|---|---|---|
-| `route-handoff-to-cc-sdd` | D2-T01/T06 | ✅ cc-sdd заведён — **первый инкремент** |
-| `deploy-to-stage` | D3-05/D3-06 | ❌ нужен D3-инструмент (Интегратор) |
-| `rollback-release` | D3-06 | ❌ нужен D3-инструмент |
-| `take-feature-full-cycle` | D2-T → D3 → D4 | ❌ нужны D3/D4-инструменты |
+Концепт v0.1 знал 1 целевой процесс (`route-handoff-to-cc-sdd`). RUN 01 раскрыл **7 процессов**, образующих связную цепочку D2-T → D3 → validation → runtime (полная карта прогона — `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` §1):
 
-### 3.3. Role-агенты
+| # | Процесс (playbook) | Зона | Триггер | Role-агенты | Готовность |
+|---|---|---|---|---|---|
+| **P1** | `orchestrator-init` (+resume после /compact) | все | старт / re-entry | — | ✅ (только чтение `.product/` + tool-docs) |
+| **P2** | `decide-architecture-foundation` (опц.) | D2-T01/T02 | scope-defining gate | architecture-consilium ×3 | ✅ |
+| **P3** | `batch-features-to-cc-sdd` ⟸ это и есть §8 первый инкремент | D2-T01/T06 | батч готовых handoff'ов | spec-author, cross-spec-reviewer, spec-fixer | ✅ cc-sdd заведён |
+| **P4** | `audit-spec-fidelity` | D2-T verify | перед route-to-impl | fidelity-auditor ×N | ✅ |
+| **P5** | `feature-to-tdd-impl` | D3 | spec готов, depth=до-кода | tdd-implementer, adversarial-reviewer | ⚠ нужен env-стек (Docker/PG/Redis); реализуется нативно (§2-bis) |
+| **P6** | `validate-feature-impl` (GO-gate) | D3 verify | последняя задача `[x]` | 3 валидатора | ✅ |
+| **P7** | `runtime-smoke-readiness` | D3+ runtime | «стартует ли dev?» | — (+capability→Integrator) | ❌ нужны D3-runtime инструменты |
+| — | `deploy-to-stage` / `rollback-release` | D3-05/06 | выкатка/откат | — | ❌ нужны D3-инструменты (не достигнуты в RUN 01) |
 
-Роли = «сотрудники» с job description (system prompt) = регламент роли. Параллелизм через Agent Teams / `parallel()`; длинные шаги — Background Agents. Детали технологий — §10.
+`P2` опционален (нужен при нерешённой архитектурной развилке); `P7` раскрыт, но **не оснащён**. Детерминированные shape-скелеты P3 и P5 (с разметкой `[S]`/`agent()`/`[GATE]`/`[AUTONOMY]`) — в harvest-логе §3 / `out-dim-1`.
+
+**Что прогон добавил к каждому процессу (vs концепт v0.1):**
+- **P3:** волновой барьер (`[GATE]` между волнами зависимостей), **content-level adapter-verify** (P0-1: семантика маппинга, не наличие секций — урок silent fidelity-loss), петля cross-spec с критерием выхода (`all RESOLVED`), `coverage-oracle` (не доверяя self-report).
+- **P5:** `gate-risk-classifier` (router тяжести гейта), persistent inter-task **Notes-ledger** (forward-deps), per-step mini-orient + idempotent selective-commit, **нативная реализация** (не обёртка `/kiro-impl`).
+- **P6:** механический слой + 3 параллельных валидатора + `verify-finding-before-act` (находка валидатора → grep ground-truth → только тогда remediation).
+
+### 3.3. Role-агенты (таксономия RUN 01) **[RUN 01]**
+
+Роли = «сотрудники» с job description (system prompt) = регламент роли. Параллелизм через `parallel()`; длинные шаги — Background Agents. В RUN 01 **все 11 ролей собирались вручную из general-purpose субагентов** (хотя `kiro-*` шаблоны существовали) — отсюда требование **реестра role-агентов под PMO-зону** (источник-истины для «голова»-self-check §6). Каждая роль обязана возвращать **structured-verdict schema** (делает синтез вердиктов детерминированным, а не ручным thinking).
+
+| ID | Роль | Фаза | Parallel/Seq | Выход |
+|---|---|---|---|---|
+| RA-1 | `architecture-consilium` (multi-prior: velocity/fidelity/integrity) | P2 | parallel ×3 | вердикт по развилке + риски своего prior |
+| RA-2 | `spec-author` (cc-sdd pipeline 1 фичи) | P3 | волна1 seq, волна2 par | `.kiro/specs/<f>/*` + coverage |
+| RA-3/3' | `cross-spec-reviewer` (+re-reviewer) | P3 | sequential | issues + canonical owner / RESOLVED-карта |
+| RA-4 | `spec-fixer` (consumer-conform) | P3 | parallel (scope-изоляция) | правленый спек |
+| RA-5 | `fidelity-auditor` (spec vs `.product`) | P4 | parallel ×N | FAITHFUL/DRIFT + класс находки |
+| RA-6/6' | `tdd-implementer` (+remediation-режим) | P5 | sequential | Status Report (STATUS/FILES/REQ/TESTS/CONCERNS) |
+| RA-7 | `adversarial-task-reviewer` (kiro-review) | P5 | sequential (выборочно по risk-tier) | VERDICT APPROVED/REJECTED + FINDINGS |
+| RA-8/9/10 | `requirements-coverage` / `design-alignment` / `integration-boundary` валидаторы | P6 | parallel ×3 | COVERED/ALIGNED/CLEAN + находки |
+| **RA-0** | `orchestrator-controller` (мета, **главный агент**) | все | — | владеет sequencing/risk-классификацией/синтезом/arbitration/commit/self-pace |
+
+**RA-0 — ровно та роль, которую Оркестратор должен нести Workflow-скелетом, а не суждением.** Большинство gap'ов прогона = «решения RA-0, которые надо кодифицировать в скелет». Полные job-description'ы — harvest-лог §4 / `out-dim-1` §A.
 
 ---
 
@@ -106,7 +145,7 @@ phase('verify'); const gate = await agent('сверить выход с конт
 1. **Инструменты и команды** — `active-tools.yaml` + `tool-docs/*` (от Интегратора).
 2. **Покрытие зон** — `pmo-mapping.yaml` (кто что покрывает) + `gaps`.
 3. **Статусы задач** — выход `/product:status`, карта `.product/` и её содержимое.
-4. **Состояние среды** — git-ветка/статус, env-tier, активные контракты.
+4. **Состояние среды** — git-ветка/статус, env-tier, активные контракты + **[RUN 01] `env-readiness-probe`**: версии (node/pnpm/docker) + матрица совместимости из steering `tech.md` + наличие секретов (без значений) + build-graph. Превентивно ловит version-mismatch (#1/#2/#4 прогона) **до** код-фазы, а не реактивно внутри субагента.
 
 Выход — структурированная сводка, на которой строится динамический план процесса. Она же — вход для per-step **capability self-check** (§6): по `pmo-mapping`/`gaps`/`active-tools` Оркестратор видит, каких «рук»/«головы» не хватает под шаг, и решает — исполнять самому или запросить оснащение у Интегратора.
 
@@ -125,6 +164,26 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 Формат запроса (OD5) — **capability-spec**, не deploy-request: `type` (tool | mcp | role-agent | skill), идентификатор/версия, целевая зона PMO, tier, обоснование. Точная схема снимается на dogfood (вероятно, мини-аналог `handoff.md`).
 
+### 6-bis. Эмпирика канала из RUN 01 — **канал v0.1 не активировался ни разу** **[RUN 01]**
+
+Главный и неожиданный вывод прогона: **за 13ч ни один из ~24 capability-дефицитов не прошёл через канал §6**, потому что инфра была оснащена заранее (вне сессии); env-дефициты Оркестратор **поглотил сам** (нарушив границу); внешние API/секреты **замокал**; prod-инфру **вынес в follow-up**. Полный реестр — harvest-лог §2.3 / `out-dim-3`. Следствия для дизайна:
+
+1. **§6 нельзя валидировать на `route-handoff-to-cc-sdd` (P3).** P3 требует только cc-sdd skill + чтение `.product/` — инфра-каналу нечего делать. §6 по-настоящему нагрузится только на **P5 (D3-impl) с неоснащённой инфрой** — а именно эта зона помечена «нет инструментов». **§6 надо проектировать сразу под D3-кейсы**, не под первый инкремент. (открытый вопрос RUN 01 №1)
+
+2. **Граница Orchestrator↔Integrator НЕ enforced — Оркестратор её систематически поглощает.** Анти-эталон: фикс адаптера CNT-001 (#195–262) — Оркестратор обнаружил дефект (✓ его зона: verification-gate), но **сам починил адаптер** обеих копий + контракт (✗ зона Интегратора). Должен был `capability-request(type:tool, id:CNT-001)`. Эталон корректного поведения: Docker-стек (#10) — оснащено заранее → Оркестратор только исполняет `docker compose up`. **Без enforced async-протокола `request→await-fix→resume` Оркестратор всегда чинит сам** (быстрее, чем эскалировать в вакуум). Механизм: capability-spec → `pending-actions.md` → блок шага через ScheduleWakeup-проверку «capability готова?», **не чинить сам**.
+
+3. **OD5-типология `tool|mcp|role-agent|skill` неполна.** Прогон вскрыл 2 непокрытых класса:
+   - `+ env-constraint` — несовместимость версии env с контрактом steering (кейс #2: Node18-рантайм vs Node20/22 в tech.md, `EBADENGINE`; #5 esbuild не эмитит decorator-metadata; #6 prisma не читает .env). Не «нет инструмента», а «инструмент не той версии / не сконфигурирован». Поле `constraint` (version-range / build-capability / wiring).
+   - `+ secret` — провижининг секрета внешнего аккаунта (#16–21: Google OAuth, SendGrid, ЮKassa). Execution в dev = mock; provisioning real-ключа = staging/prod.
+
+4. **Добавить поля capability-spec:**
+   - `route ∈ {integrator, product}` — **обратный канал к Product** (новое): дефекты канона `.product` (#486–500: NFR-004/005 vs BR-040), under-spec («design молчит → дефолт 30д», #1715), и **выбор провайдера** (DeepL vs Yandex — бизнес-решение) идут к Product, не к Интегратору.
+   - **Раздельные `provisioning-tier` и `execution-tier`** — оснащение и исполнение оснащённым имеют разную обратимость. Поднять Docker-стек: provisioning dev/auto, execution dev/auto. Завести Hetzner VPS: provisioning **prod/human-gate** (деньги/внешний аккаунт), хотя последующий deploy-шаг автономен. Секрет: execution dev (mock), provisioning real-ключа staging.
+
+5. **Реестр role-агентов под PMO-зону** — без него «голова»-self-check («есть ли role-агент `architecture-consilium`?») неисполним машинно. В RUN 01 все роли собирались вручную (см. §3.3).
+
+6. **`env-readiness-probe` в orchestrator-init (§5 п.4)** — версии (node/pnpm/docker) + матрица совместимости из steering `tech.md` + наличие секретов (без значений). Превентивно ловит #1/#2/#4 **до** код-фазы; в прогоне они всплыли реактивно внутри субагента (#449).
+
 ---
 
 ## 7. Autonomy tiers (R4, R5)
@@ -139,6 +198,16 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 Маппится на существующие `env_tiers` (dev/staging/prod suitability, DEC-DEV-0047). Работа Интегратора уже заложила ровно эти примитивы.
 
+### 7-bis. Реальная раскладка из RUN 01 **[RUN 01]**
+
+Все 4 человеческих гейта прогона пришлись на E0/E1 (scope/архитектура, первая треть); весь E4 (23 из 26 задач) прошёл **без единого человеческого гейта**. Человеческое суждение концентрируется в **scope-defining фазе**, не в исполнении. Три уточнения к модели:
+
+1. **Подлинно неустранимы только 2 суждения:** выбор tech-стека (цементируется в 4 design.md) и «что считаем deliverable». Остальные 2.5 из 4 гейтов — **артефакт отсутствия авто-вывода зависимостей и tier-механики с дефолтами** (напр. развилка pnpm-vs-npm авто-разрешима — есть fallback). Их надо превращать из open-choice в **tier-предложение с дефолтом** (approve), а не выносить как вопрос.
+
+2. **Re-formulation-петля.** 2 из 4 AskUserQuestion были **ОТКЛОНЕНЫ** пользователем с «хочу уточнить» (#118 стек, #461 глубина). §7 моделирует `pending-actions` как бинарный approve/reject — реальность дала `rejected → clarify-loop → переформулированный гейт`. Оркестратор должен уметь вести многоходовый clarification-диалог при отклонённом гейте, а не продавливать или падать.
+
+3. **provisioning vs execution** (см. §6-bis п.4) — autonomy-tier берётся **раздельно** для оснащения и для исполнения оснащённым.
+
 ---
 
 ## 8. Scope первого инкремента
@@ -151,6 +220,8 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 `deploy-to-stage` / `rollback-release` — **после** того как Интегратор заведёт D3/D5-инструменты.
 
+> **[RUN 01] Открытое решение по scope.** Прогон прожил E2–E6 (D2-T → D3-impl → validation → runtime), но это **не значит**, что первый инкремент должен покрыть всё. Рекомендация harvest'а: **первый инкремент = E2-only** (`batch-features-to-cc-sdd` = P3 из §3.2 — он самодостаточен и, главное, **не нагружает §6**, который нельзя на нём провалидировать). P4–P6 спроектированы (см. §3.2/§3.3) и канонизируемы, но **P5/§6 требуют отдельного прогона с неоснащённой инфрой** (открытый вопрос RUN 01 №1). Решение E2-only-vs-extend **ещё не зафиксировано** — это следующий шаг (DEC-DEV-0068 follow-up №3).
+
 ---
 
 ## 9. Открытые решения
@@ -161,8 +232,12 @@ phase('verify'); const gate = await agent('сверить выход с конт
 | **OD2** | Где живут регламенты | процессы — `orchestrator/processes/`; skills — `skills/orchestrator/` | принят дефолт |
 | **OD3** | Первый кодифицируемый процесс | `route-handoff-to-cc-sdd` (= dogfood-цель) | принят дефолт |
 | **OD4** | Мульти-инструмент на одну зону (OQ-I9) | правила выбора в контрактах | отложено до 2-го инструмента |
-| **OD5** | Формат Integrator-запроса (§6) | **capability-spec**: type (tool\|mcp\|role-agent\|skill) + id/версия + зона PMO + tier + обоснование | дефолт принят; схема снимается на dogfood |
+| **OD5** | Формат Integrator-запроса (§6) | **capability-spec**: type (tool\|mcp\|role-agent\|skill\|**env-constraint**\|**secret**) + id/версия + `constraint` + зона PMO + `route`(integrator\|product) + раздельные provisioning/execution-tier + обоснование | **уточнён RUN 01** (§6-bis); полная схема — прогон №2 на D3 |
 | **OD6** | Кто заводит *bespoke* role-агента + предметный skill под зону (не из external package) | **Интегратор** — role A: capability = «руки» (tool/MCP/доступ) + «голова» (role-агент/skill); Оркестратор только потребляет и исполняет | **принято** (DEC-DEV-0060) |
+| **OD7** | Как enforce'ить границу Orch↔Integrator (Оркестратор по умолчанию её поглощает) | **async-протокол** `request→await-fix→resume`: capability-spec в `pending-actions.md`, блок шага через ScheduleWakeup-проверку, **не чинить сам** | **новое (RUN 01)**; гипотеза, не проверена — анти-эталон #29, эталон #10 |
+| **OD8** | Куда идут дефекты канона `.product` / under-spec / выбор провайдера | **второй обратный канал →Product** (поле `route`); не Integrator-capability | **новое (RUN 01)** §6-bis п.4 |
+| **OD9** | Как Оркестратор исполняет P5 при `disable-model-invocation` на `/kiro-impl` | **нативный Workflow-скелет**: читает `tasks.md`, диспатчит implementer'ов напрямую (не обёртка) | **новое (RUN 01)** §2-bis; рекомендовано, не прототипировано |
+| **OD10** | Scope первого инкремента (E2-only vs extend до E4-E6) | **E2-only** (`batch-features-to-cc-sdd`), E4-E6 отложены до прогона с неоснащённой инфрой | **открыто (RUN 01)** §8 — следующий шаг |
 
 ---
 
@@ -192,3 +267,4 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 - `v0` (2026-06-02) — concept draft. Направление и scope зафиксированы DEC-DEV-0058. Эмпирические регламенты — pending dogfood (`dev/ORCHESTRATOR_DOGFOOD_PLAN.md`).
 - `v0.1` (2026-06-02) — коррекция границы (DEC-DEV-0060): командный канал §6 = запрос **capability** (руки/голова), не инфра-исполнения; добавлен capability self-check; OD5 уточнён до capability-spec; OD6 принят (Интегратор оснащает «голову» = role-агент/skill, role A).
+- `v1.0-draft` (2026-06-14, DEC-DEV-0068) — **dogfood RUN 01 harvest** (сессия `6dc62bc8`, `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`). §2-bis (эмпирика движка + 3 провала durability); §3.2 каталог 1→7 процессов; §3.3 таксономия 11 role-агентов; §6-bis (канал §6 не активировался ни разу — типология +env-constraint/secret, поле `route`, раздельные tier'ы, async-протокол); §7-bis (реальная раскладка автономии + re-formulation-петля); §8 пометка E2-only; OD5 уточнён, OD7–OD10 добавлены. **Не** implementation-ready: scope (OD10) и §6 на D3 — открыты.
