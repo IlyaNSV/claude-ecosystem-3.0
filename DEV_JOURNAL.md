@@ -5301,6 +5301,226 @@ C2 (clean audit-reports >30 дн) оказался **no-op**: эмпиричес
 1. **Конвенция с хардкодом ≠ бардак.** Прежде чем «прибирать» файлы в корне, проверь, не завязан ли на их расположение тулинг/конвенция (grep скриптов на путь). Косметический фолдеринг против хардкода — высокая цена, синхронный патч обязателен.
 2. **Перемещение на уровень глубже ломает `../`-ссылки целым классом.** Файл из `dev/X.md` → `dev/sub/X.md`: все `](../root-file)` становятся `](../../root-file)`, а bare `](meta-improvement/...)` → `](../meta-improvement/...)`. Первый проход (только кросс-папочные target'ы) это пропустил; поймал второй проход (link-existence scan на диск). Урок: после любого перемещения markdown — проверять резолв ссылок физически, а не только переименованные target'ы.
 3. **Читай frontmatter, не угадывай объём чистки.** План закладывал «~20-30 clean-отчётов на удаление»; реальность (чтение 44 frontmatter) — 0. Эмпирика дешевле и честнее оценки.
+## DEC-DEV-0073 — Orchestrator dogfood RUN 01: реверс-инжиниринг 13ч-сессии → каталог из 7 процессов + SPEC v1.0-draft
+
+**Date:** 2026-06-14
+**Trigger:** Пользователь прошёл фактический dogfood-прогон роли Оркестратора над cc-sdd (сессия `6dc62bc8`, my-first-test, 2026-06-13). Поручение: многосторонний аудит прогона перед доработкой модуля — «как и почему claude делал каждое действие и как с этим должен справляться оркестратор».
+**Tag:** #pilot-finding #architecture #spec-revision #orchestrator
+
+### Context
+
+Концепт Оркестратора (DEC-DEV-0058, SPEC v0.1) зафиксировал направление, но эмпирические регламенты ждали dogfood (`ORCHESTRATOR_DOGFOOD_PLAN.md`). План целил снять **один** процесс (`route-handoff-to-cc-sdd`, D2-T spec-генерация, одна фича FM-001). Фактическая сессия ушла **далеко за scope**: батч из 4 фич через консилиум архитекторов → cross-spec review → fidelity-аудит → **полная TDD-реализация auth (FM-001, 26 задач)** через self-paced `/loop` с per-task implementer + adversarial-reviewer субагентами → feature-validation → live runtime-smoke. ~13ч, 2168-строчный транскрипт (6.5 МБ), 55 субагентов, пережила один `/compact`.
+
+### Что сделано
+
+- **Метод разбора:** mагентный Workflow (14 агентов) — 8 построчных action-леджеров по чанкам транскрипта (что/почему/как/как-должен-оркестратор/gap) + 5 сквозных измерений (роли+каталог / гейты+автономия / capability-канал / движок / ручные-точки) + синтез. Плюс ручное чтение крайних чанков для калибровки/контроля.
+- **Harvest-лог:** `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` (карта 7 этапов, таксономия 11 ролей, реестр 24 capability-дефицитов, находки P0/P1/P2, открытые вопросы).
+- **SPEC v0.1 → v1.0-draft:** развёрнут §3 (1 → 7 процессов с триггерами/ролями/гейтами), добавлена §3-bis таксономия role-агентов, переписаны §6/OD5 (типология +env-constraint/secret, поле `route`, раздельные provisioning/execution-tier, async-протокол) и §7 (реальная раскладка + re-formulation-петля), добавлена §2-bis (эмпирика движка /loop-vs-Workflow + три провала durability).
+
+### Ключевые решения / находки
+
+1. **Оркестратор — two-process pipeline (P3 spec-gen → P5 impl-loop)**, обрамлённый init (P1) и validation (P6), где детерминизм держится **не на качестве thinking субагента**, а на скелете + risk-classifier + verification-гейтах с независимыми oracle. Это эмпирически подтверждает 3-слойную модель §2.
+2. **Durable skeleton решает /compact-хрупкость бесплатно — сильнейший аргумент ЗА модуль.** После `/compact` (полная потеря контекста, #1124) цикл восстановился побайтово из git+tasks.md+beads, потому что человек вручную экстернализовал «continuation contract» в tasks.md. Workflow-скрипт несёт это by-design.
+3. **Канал §6 НЕ активировался ни разу за 13ч** — инфра оснащена заранее, env-дефициты Оркестратор поглотил сам (нарушив границу), API замокал, prod вынес в follow-up. Вывод: **§6 нельзя валидировать на `route-handoff-to-cc-sdd`** (он требует только cc-sdd skill + чтение `.product/`); §6 нагрузится только на D3 с неоснащённой инфрой. Эталон §6 — Docker-стек (#10); анти-эталон — фикс адаптера CNT-001 (#29, Оркестратор чинил чужую зону).
+4. **`gate-risk-classifier` — недостающее звено** между «всё inline» (дёшево, риск пропуска) и «всё adversarial» (дорого). Самое частое недокодифицированное человеческое суждение E4. Единственный REJECT прогона (4.6 timing-oracle) пришёлся ровно на HIGH-tier задачу — доказательство ценности independent-review.
+5. **`disable-model-invocation` на `/kiro-impl` ⊥ автономии** → P5 реализовать **нативно** (Workflow читает tasks.md и диспатчит implementer'ов напрямую), не как обёртку `/kiro-impl`.
+6. **Scope первого инкремента — оставлен открытым (рекомендация E2-only).** P3 (`batch-features-to-cc-sdd`) самодостаточен и не нагружает §6; E4–E6 спроектированы, но отложены до прогона с неоснащённой инфрой. Решение НЕ фиксируется этой записью — это следующий шаг.
+
+### Verify
+
+- Реестр дефицитов и роли сверены против двух прочитанных вручную крайних чанков + 8 агентных леджеров (cross-check).
+- Эмпирический факт «тесты зелёные ≠ dev стартует» подтверждён в самом транскрипте: live-boot `node dist/main.js` дал 500 на signup/login (`.env` не грузится процессом), 201/401/200 после экспорта env (#2151–2156).
+- Баг адаптера (§10 затирает §1-7 + regex генератора `v1.(0|1|2)`) подтверждён **всё ещё присутствующим** в эталоне экосистемы `adapters/handoff-to-ccsdd.js` — фикс пилота не доехал upstream (вписывается в DEC-DEV-0065).
+
+### Lessons
+
+- **Spec-first на conditional-модуле опасен ровно так, как предупреждает CLAUDE.md §3.** Концепт §6 (capability-канал) спроектирован умозрительно; первый реальный прогон показал, что в его текущей форме он не срабатывает, а Оркестратор по умолчанию поглощает зону Интегратора. Регламент надо снимать с прогона, не кодировать из головы — что и сделано.
+- **Verification по содержанию, а не по наличию** — единственный дефект, тихо прошедший синтаксический гейт (адаптер C-04), был семантическим мис-маппингом. Presence-level гейты дают ложное «зелёно».
+- **mагентный реверс-инжиниринг длинной автономной сессии — переиспользуемый паттерн** (кандидат на канонизацию в D7).
+
+### Follow-ups
+
+1. Канонизировать **P0-1** (content-level adapter-oracle) + **пропагировать фикс адаптера upstream** в `adapters/handoff-to-ccsdd.js` (monotonic-guard + generator-regex до v1.4).
+2. Спроектировать `gate-risk-classifier` (P0-2) + стартовый реестр load-bearing инвариантов из auth-спека (IC-001..007, BR-007/009/012/013/020).
+3. Зафиксировать scope первого инкремента (E2-only vs extend) отдельным решением.
+4. Прототип **P5 как нативного Workflow-скелета** (снять конфликт `disable-model-invocation`).
+5. Прогон №2 с **неоснащённой** инфрой — единственный способ провалидировать §6 на D3.
+
+---
+
+## DEC-DEV-0074 — Адаптер handoff-to-ccsdd: фикс §10-клоббера upstream + блокирующий C-07 (канонизация P0-1)
+
+**Date:** 2026-06-14
+**Trigger:** Follow-up №1 из DEC-DEV-0073 (Orchestrator dogfood RUN 01). Harvest показал: пилот поймал и починил баг адаптера, но эталон экосистемы (`adapters/handoff-to-ccsdd.js`) **всё ещё его нёс** — фикс не доехал upstream (класс дрейфа DEC-DEV-0065).
+**Tag:** #bug-fix #pilot-finding #tooling
+
+### Context
+
+Root cause полностью разобран в DEC-DEV-0073 (P0-1): `extractSections` ключевал секции плоско по `## N.` (last-write-wins); v1.3/v1.4 handoff'ы встраивают MK/DS/NM UI-подсекции под §10 с рестартом нумерации `## 1.`–`## 7.`, тихо затирая реальные §1/§2/§5/§6. Контракт при этом рапортовал `passed: true` — presence-level `C-04` проверял лишь наличие `## N.` заголовка, не семантику маппинга. Это **единственный дефект прогона, тихо прошедший синтаксический гейт**.
+
+### Что сделано
+
+- **`extractSections` monotonic-guard:** `## N.` открывает top-level секцию только если N строго больше максимально принятого; вложенные рестарты (N ≤ max) уходят в тело §10. §11/12/13 (>10) принимаются.
+- **`C-03` supported-generator range** расширен до `product-module-v1.{0..4}` (адаптер теперь robust к v1.3/v1.4-структуре; v1.5+ остаётся warning'ом до ре-верификации).
+- **Новый блокирующий `C-07` content-fidelity** — body каждого ID-несущего поля обязан нести каноническое ID-семейство секции (§5→`SC-`, §6→`BR-`, §9→`IC-`). Пустые секции пропускаются. Это и есть **канонизация P0-1**: верификация по содержанию, не по наличию.
+- **Регресс-guard:** фикстура `tests/fixtures/FM-FIXTURE-002-handoff.md` (v1.4, §10 с вложенными MK/NM) + исполняемый тест `tests/adapters/handoff-ccsdd.contract.test.cjs` (4 кейса, включая **негативный** — доказывает, что C-07 блокирует клоббер). Подключён как `npm run test:adapters` и в `npm run verify`.
+- Доки: CHANGELOG `[Unreleased] → Fixed`; `adapters/README.md` + `tests/fixtures/README.md` ноты.
+
+### Ключевые решения
+
+1. **C-07 — blocking, не warning.** Смысл P0-1: presence-level гейт дал ложное «зелёно»; блокирующий content-gate — это и есть «реальный гейт, а не глаз человека». ID-семейства SC-/BR-/IC- мандатированы handoff-spec, поэтому false-positive риск низок; пустые секции пропускаются (фича может легитимно не иметь BR/IC).
+2. **`CONTRACT_SCHEMA_VERSION` не бампается.** Форма `cc_sdd_input` не изменилась — добавлена лишь запись в `contract_validation.checks[]`. Версия схемы governs output shape, а он идентичен.
+3. **Defense-in-depth:** monotonic-guard (root-cause) + C-07 (семантический детектор) независимы — даже если кто-то откатит guard, C-07 поймает клоббер (доказано негативным тестом).
+
+### Verify
+
+- `node --check` PASS; `npm run test:adapters` → 4/4 PASS (clean v1.2; §10-clobber v1.4 не затёрт; monotonic-unit; негативный C-07 fail→passed:false).
+- Обе фикстуры через CLI `--verify-only`: `passed: true`, C-07 pass, маппинг корректный (`scenarios`=SC-, `business_rules`=BR-).
+
+### Lessons
+
+- **Presence ≠ correctness.** Гейт, проверяющий «структура на месте», систематически пропускает «структура на месте, но содержимое подменено». Для любого адаптера/трансформа добавлять content-level oracle на каноническую сигнатуру выхода.
+- **Фикс в installed-инстансе пилота ≠ фикс в эталоне.** Tri-location pattern требует явной upstream-пропагации; иначе следующая переустановка вернёт баг (ровно класс DEC-DEV-0065).
+
+### Follow-ups
+
+- Остаются follow-up'ы DEC-DEV-0073: P0-2 `gate-risk-classifier` (#2), scope-решение OD10 (#3), нативный P5 (#4), прогон №2 на D3 (#5).
+
+---
+
+## DEC-DEV-0075 — OD10 решён: первый инкремент Оркестратора = E2+E4 (P3 + нативный P5), override harvest-рекомендации
+
+**Date:** 2026-06-14
+**Trigger:** DEC-DEV-0073 follow-up #3 (S4). Требовалось зафиксировать scope первого build-инкремента модуля перед прототипированием — он определяет, что строить (P3 vs P3+P5).
+**Tag:** #scope-change #architecture #orchestrator
+
+### Context
+
+RUN 01 (DEC-DEV-0073) раскрыл цепочку из 7 процессов (P1–P7). Concept §8 знал только `route-handoff-to-cc-sdd` (= P3, зона E2/D2-T). Прогон ушёл до E4 (P5 TDD-impl) — D3-кода. Вопрос: первый инкремент = только E2 (минимум, не нагружает непроверяемый §6) или расширить до E4 (полный pipeline до кода)?
+
+### Options considered
+
+1. **E2-only — build P3** (рекомендация harvest'а / synth §5 п.1). За: P3 самодостаточен; **не нагружает §6** (capability-канал нельзя провалидировать на P3 — он требует только cc-sdd skill + чтение `.product/`); низкий risk, чистая граница. Против: не строит то, что прогон реально доказал (E4 impl-loop); медленнее до «кода под ключ».
+2. **E2+E4 — build P3 + P5** (выбрано человеком). За: прогон эмпирически доказал, что E4 работает (26 задач auth до GO); полный pipeline до кода ценнее; gate-risk-classifier (P0-2) уже спроектирован и ждёт носителя (P5). Против: §6/capability-канал остаётся непровалидированным; больше surface; требует немедленно снять `disable-model-invocation` (нативный P5) и поставить вопрос durable-слоя.
+3. **Design-only — не строить.** За: максимум защиты от self-referential collapse (CLAUDE.md §3). Против: дольше до рабочего модуля; дизайн уже грунтован реальным прогоном, не «из головы».
+
+### Decision
+
+**Вариант 2 (E2+E4).** Решение человека, осознанный **override** рекомендации harvest'а. Первый инкремент = P3 `batch-features-to-cc-sdd` + P5 `feature-to-tdd-impl` (нативный).
+
+### Outcome
+
+SPEC §8 + OD10 → РЕШЕНО E2+E4. Reshape плана: S5 = build P3 + P5; S6 (прогон №2 для §6) повышается в важности (E4 в scope → §6-валидация обязательна позже). **Принятые риски зафиксированы:** (1) §6 непроверен → прогон №2 (S6); (2) `disable-model-invocation` → нативный P5 (OD9), не обёртка `/kiro-impl`; (3) durable-слой (n8n) под вопросом до cross-session-потребности.
+
+### Lessons
+
+- Рекомендация harvest'а (E2-only) опиралась на «не строй непроверяемое §6». Override валиден, потому что **§6 не на критическом пути P5**: P5 можно построить с pre-оснащённой инфрой (как в RUN 01) и провалидировать §6 отдельным прогоном — два независимых риска, не связанные блокировкой.
+- Защита от self-referential collapse (CLAUDE.md §3) здесь обеспечена не отказом от build'а, а тем, что **дизайн P5 снят с реального прогона** (RUN 01), а не из головы — risk уже снижен на этапе harvest.
+
+### Follow-ups
+
+- S5: build P3 + P5 — пройти D7 phase-kickoff (новый implementation-инкремент модуля; CLAUDE.md §«Перед стартом следующей phase»).
+- Снять `disable-model-invocation` нативной реализацией P5 (OD9) — обязательная часть S5.
+- S6 (прогон №2, §6) остаётся; durable-слой (n8n) — отдельное решение при cross-session-потребности.
+
+---
+
+## DEC-DEV-0076 — S5a build: P3 `batch-features-to-cc-sdd` реализован ГИБРИДНО (оркеструем cc-sdd, не переписываем)
+
+**Date:** 2026-06-14
+**Trigger:** S5a build (kickoff §E) — первый implementation-инкремент Оркестратора; в процессе вопрос человека «а агенты kiro не использовались? давай брать best practices, не писать всё с нуля» вскрыл, что часть первого черновика дублировала готовую машинерию cc-sdd.
+**Tag:** #orchestrator #build #cc-sdd #hybrid #cost-discipline #DEC-DEV-0073-followup
+
+### Context
+
+Kickoff (DEC-DEV-0075) зафиксировал scope E2+E4. S5a = build P3 `batch-features-to-cc-sdd`. Первый черновик (роли `spec-author`/`cross-spec-reviewer`/`spec-fixer` инлайн в `.mjs` per D.1, собственная wave-логика, собственный `build-steering`) был написан **до** проверки того, что реально ставит cc-sdd. Read-only инспекция пилота (`my-first-test/.claude/skills/kiro-*`) показала: cc-sdd поставляет методологию как **17 kiro-skills** (агентов вообще не ставит — `.claude/agents/` содержит только наши `integrator`/`product`). Критично — `kiro-spec-batch` **уже** делает: dependency-wave grouping → параллельный per-feature dispatch (kiro-spec-init→requirements→design→tasks) → **10-точечный cross-spec consistency review (Step 4)** → **3-раундовый fix-loop** → finalize. Его входы: `.kiro/steering/roadmap.md ## Specs (dependency order)` + per-feature `brief.md`.
+
+### Decision
+
+**P3 реализован как тонкая оркестрация поверх cc-sdd, а не как переписывание его машинерии.** Оркестратор **вызывает** `kiro-spec-batch` и добавляет ровно то, чего у cc-sdd нет:
+
+1. **Мост `handoff → brief.md + roadmap.md ## Specs`** (`skills/orchestrator/build-briefs-from-handoff.md`). Это **программная замена `kiro-discovery`** — тот `disable-model-invocation: true` **и** интерактивный (AskUserQuestion) → из Workflow недоступен в принципе. Product-модуль уже сделал discovery (владеет `.product/`, эмитит handoff'ы); мост кормит batch-движок из handoff'ов вместо kiro-discovery.
+2. **Preflight C-07** — адаптерный content-fidelity гейт перед brief'ом (cc-sdd доверяет входу; мы проверяем, что §10 не затёр §5/§6).
+3. **`coverage-oracle`** (новый детерминированный хелпер `orchestrator/lib/coverage-oracle.cjs`, P1-1) — независимый ID-coverage по ground-truth. **Дополнение** к LLM-ревью kiro Step 4, не дубль: отвечает на вопрос, который LLM-ревьюер может провалить, доверившись self-report.
+4. **Durable Workflow-скелет** — границы фаз переживают /compact (P0-3).
+
+**Дропнуто как дублирующее** (kiro делает лучше): `agents/orchestrator/{spec-author,cross-spec-reviewer,spec-fixer}.md` + `skills/orchestrator/arbitrate-cross-spec.md` (4 файла, написанные в том же заходе). `build-steering` переписан в делегирование `kiro-steering`. Wave-логика-реинвент убрана из `.mjs` (kiro-spec-batch грубит волны сам).
+
+### Alternatives rejected
+
+- **Self-contained роли (полностью свои spec-author/reviewer/fixer).** Отвергнуто: реинвентит ~половину `kiro-spec-batch` (включая его строгий 10-точечный cross-spec review), больше поддержки, и прямо против просьбы «брать best practices, не писать всё». Робастность к version-drift cc-sdd не перевешивает.
+- **Wrap `kiro-spec-batch` целиком как одну skill-обёртку без Workflow.** Отвергнуто: `kiro-spec-batch` — in-context skill-контроллер, durability/resume-across-/compact теряется; P3 тогда почти не нуждается в Workflow, что ослабляет reason-to-exist модуля (хотя P5 его всё равно требует). Выбран гибрид: Workflow держит durable-границы + детерминированные гейты, per-feature генерацию отдаёт cc-sdd. (Решение человека из 3 вариантов.)
+
+### Harness-находки
+
+- **`node --check` неприменим к Workflow-`.mjs`.** Харнесс-диалект (`export const meta` = ESM-goal + top-level `await` **и** top-level `return`, который харнесс разрешает обёрткой) даёт `SyntaxError: Illegal return statement` в чистом ESM. Smoke переписан: `tests/orchestrator/workflow-syntax.smoke.cjs` стрипает `export ` и парсит тело как AsyncFunction (парс без исполнения — ловит синтаксис, игнорит инъецированные глобалы/отсутствие FS).
+- **Инлайн ролей per D.1 НЕ понадобился** для P3: раз роли = kiro-skills (вызываются `agent`'ом через Skill-tool, не `disable-model-invocation`), инлайнить нечего. D.1-ограничение остаётся релевантным для P5 (если будем лифтить kiro-impl/kiro-review методологию) и для любых bespoke-ролей.
+
+### Smoke (S5a, на fixtures — не live)
+
+`npm run verify` exit 0: adapters 4/4, **coverage-oracle 6/6** (FIXTURE-001 ground-truth SC-001/002+BR-001+IC-001; FIXTURE-002 §10-clobber — нет утечки в SC/BR/IC; coverage-miss ловится; self-report omission+fabrication ловятся), **workflow-syntax smoke 2/2**. Детерминированные хелперы (адаптер C-07 + oracle) зелёные на обеих фикстурах.
+
+### Lessons
+
+1. **Проверяй, что реально ставит инструмент, ДО написания ролей.** Полчаса инспекции `.claude/skills/kiro-*` сэкономили бы первый черновик 4 файлов. «Оркестратор оркеструет, не переписывает» — теперь явный принцип в `orchestrator/README.md`.
+2. **`disable-model-invocation` — это не только про `/kiro-impl`.** `kiro-discovery` тоже помечен → его нельзя звать из Workflow. Это и дало мосту чёткий reason-to-exist (а не «ещё один способ сделать то же»).
+3. **Cost-минимизация ≠ меньше кода везде.** coverage-oracle мы написали с нуля (детерминированного аналога у cc-sdd нет) — там это и есть value-add; а cross-spec роли выкинули (там cc-sdd сильнее). Граница «писать/брать» проходит по «есть ли у инструмента детерминированный ground-truth гейт».
+
+### Follow-ups
+
+- **Live cc-sdd прогон (S6 / прогон №2):** проверить, вызывается ли `kiro-spec-batch` (он сам спавнит субагентов) из Workflow-`agent()` — nested-subagent caveat. У Author-фазы `.mjs` есть fallback (прогнать kiro-spec-* пофично самому). Пилот в S5a не трогали.
+- **S5b — P5 `feature-to-tdd-impl` (нативный, OD9):** здесь `disable-model-invocation` на `/kiro-impl` реально кусает → Workflow читает tasks.md и диспатчит implementer'ов сам; методологию implementer/reviewer лифтить из `kiro-impl`/`kiro-review` (не писать с нуля — урок этого DEC). `gate-risk-classifier` (DEC-DEV-0073 P0-2 design) подключается тут.
+- Точная схема `brief.md` (поля, что именно kiro-spec-batch читает) — уточнить на live-прогоне; в S5a мост документирует формат, детерминированные гейты smoke-зелёные.
+
+---
+
+## DEC-DEV-0077 — S5b build: P5 `feature-to-tdd-impl` — тонкий native-контроллер + лифт kiro-impl (OD9 решён лифтом)
+
+**Date:** 2026-06-14
+**Trigger:** S5b build (kickoff §E). Человек: «начни с тщательной read-first инспекции kiro-impl/review» — ровно дисциплина DEC-DEV-0076. Инспекция показала, что `kiro-impl` — почти весь P5, зрелый.
+**Tag:** #orchestrator #build #cc-sdd #lift #gate-risk-classifier #OD9 #DEC-DEV-0076-followup
+
+### Context
+
+OD9 (DEC-DEV-0073/0070): `/kiro-impl` — `disable-model-invocation` → P5 «нативно» (Workflow читает tasks.md, диспатчит implementer'ов сам). Read-first инспекция пилотного cc-sdd (read-only, файлы не трогал) уточнила картину: `kiro-impl` — **зрелый автономный TDD-контроллер** (per-task fresh implementer → independent `kiro-review` → `kiro-debug` на провале → `kiro-verify-completion` → selective commit → `## Implementation Notes` ledger → финальный `kiro-validate-impl` GO-гейт; bounded rounds 2/2/3; strict structured-handoff parse `STATUS`/`VERDICT`; Feature-Flag RED→GREEN; upstream-ownership routing). Диспатчит субагентов через **самодостаточные шаблоны** `templates/{implementer,reviewer,debugger}-prompt.md`. Только сам `kiro-impl` — disable-model-invocation; все гейты (`kiro-review`/`kiro-verify-completion`/`kiro-validate-impl`/`kiro-debug`) — invocable.
+
+### Decision
+
+**P5 = тонкий native dispatch-FSM + ЛИФТ всей методологии kiro-impl.** Workflow владеет минимальным контроллером (читает план, per-task последовательно: implementer → tier-роутинг гейта → bounded remediation/debug → verify-completion → selective commit; финал GO-гейт). **Каждый промпт субагента лифтится**: агент в прогоне **читает** kiro-шаблон `.claude/skills/kiro-impl/templates/*` и применяет (шаблоны встраивают протокол как fallback). Гейты — **вызов** kiro-skills. kiro в наш репо **не копируем** (иначе tri-location sync-долг, DEC-DEV-0040).
+
+**Net-new vs kiro-impl — ровно два:**
+1. **`gate-risk-classifier`** (`orchestrator/lib/gate-risk-classifier.cjs`, P0-2) — детерминированный предикат тяжести гейта: HIGH (императивная несущая логика: M1 security / M2 concurrency-idem / M3 shared primitive / M4 cross-FM / M5 first-task) → independent reviewer; LOW (профиль: declarative-invariant / pure-module / test-only / UI / infra) → inline-verify. kiro-impl **всегда** гоняет полный reviewer; классификатор рационирует (экономия ×2 субагента на LOW-задачах). **Ключевой рефайнмент:** «трогает инвариант» ≠ HIGH; решает enforcement (declarative UNIQUE/CHECK → LOW+интроспекция; imperative transaction/timing/row-lock → HIGH). Регрессия против таблицы RUN 01 §6: **17/17 с M5** (16/17 без — расхождение 1.1 scaffold в безопасную сторону).
+2. **Durable Workflow-скелет** (границы фаз переживают /compact; у kiro-impl resume-дисциплина уже хорошая — выигрыш инкрементальный).
+
+### Alternatives rejected
+
+- **Полный native контроллер (репликация FSM kiro-impl).** Отвергнут: дублирует ~250 строк зрелого, протестированного контроллера (риск повторить его баги/гапы + sync-бремя с cc-sdd) ради маржинального durability. Против урока DEC-DEV-0076.
+- **Classifier-хелпер + hand-off человеку в `/kiro-impl` (без Workflow-контроллера).** Самый дешёвый; отвергнут человеком в пользу Workflow-автономии impl-лупа (хотя классификатор — главный value-add в обоих). Выбран тонкий-native (из 3 вариантов).
+
+### Lift-механизм (как именно)
+
+Workflow-`.mjs` не читает FS (D.1) → лифт исполняет агент: prompt = «Read `${KIRO_TPL}/implementer-prompt.md` and apply it to task X.Y with context …». Шаблоны kiro живут в пилотном cc-sdd-install и читаются в прогоне. Это снимает копирование kiro-IP в экосистему и его licensing/drift-долг. Подтверждено: только `kiro-impl` disable-model-invocation; читаемость шаблонов + invocability гейтов — есть.
+
+### Smoke (S5b, на fixtures/таблице — не live)
+
+`npm run verify` exit 0: adapters 4/4, coverage-oracle 6/6, **gate-risk-classifier 8/8** (включая §6-репродукцию 17/17 + declarative-vs-imperative + DEFAULT-HIGH + deriveRegistry + parseTasks DAG), workflow-syntax smoke **3/3** (оба `.mjs`).
+
+### Lessons
+
+1. **Read-first дисциплина окупилась снова.** Инспекция kiro-impl до билда показала: писать надо **только** классификатор; весь контроллер-luxury — лифт. Без неё повторился бы черновик «написал FSM с нуля».
+2. **«Native» (OD9) ≠ «с нуля».** OD9 верно требовал, чтобы Workflow владел диспатчем (kiro-impl нельзя вызвать). Но «владеть диспатчем» и «переписать методологию» — разные вещи: первое неизбежно, второе — нет.
+3. **Граница value-add сужается с каждым процессом.** P3: мост + 2 гейта. P5: 1 гейт (классификатор). Чем зрелее инструмент, тем тоньше слой Оркестратора — и это правильный признак (оркеструем, не дублируем).
+
+### Follow-ups
+
+- **Live прогон (S6 / прогон №2):** (а) вызываются ли kiro-гейты (`kiro-review`/`kiro-verify-completion`/`kiro-validate-impl`) из **вложенных** Workflow-субагентов (шаблоны имеют embedded-fallback, но nested-skill-invocation не проверена); (б) читается ли шаблон агентом в прогоне без проблем. Пилот в билд-сессии не трогали.
+- **Per-project деривация load-bearing реестра** (design §5.1, скан requirements на M1/M2) — в v1 реестр опционален (предикат работает на маркерах+профилях); деривацию + override-ревью довести на live-фиче иного класса (FM-002 media / FM-005 billing — другие M1/M2, открытый вопрос §10 дизайна).
+- **M5 вариант A vs B** (first-task→HIGH) принят как A (default-on); подтвердить на старте других фич, что foundational-review повторяется.
+- **S6** (§6 capability-канал, неоснащённая инфра) остаётся — теперь важнее, т.к. P5 (D3-impl) — именно та зона, где §6 по-настоящему нагрузится.
+
+---
+
+## Шаблон новой записи
 
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
