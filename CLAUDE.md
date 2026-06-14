@@ -24,11 +24,11 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 `last memory-sync: 2026-06-11` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
-- `dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
-- `dev/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
-- `dev/PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 (next pilot session); `dev/_archive/phase-6/PHASE_6_READINESS.md` archived
-- `dev/PHASE_7_READINESS.md` — skeleton; Integrator maintenance + verify/debug/docs scope
-- `dev/S_LE_LESSON_GATE_SMOKE.md` — LESSON-* gate runtime contracts (S-LE); hard-prereq перед переводом `lesson-presence-gate.js` PreToolUse warn→strict (next pilot session, DEC-DEV-0062)
+- `dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
+- `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
+- `dev/gates/PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 (next pilot session); `dev/_archive/phase-6/PHASE_6_READINESS.md` archived
+- `dev/gates/PHASE_7_READINESS.md` — skeleton; Integrator maintenance + verify/debug/docs scope
+- `dev/gates/S_LE_LESSON_GATE_SMOKE.md` — LESSON-* gate runtime contracts (S-LE); hard-prereq перед переводом `lesson-presence-gate.js` PreToolUse warn→strict (next pilot session, DEC-DEV-0062)
 
 ## Принципы работы над экосистемой
 
@@ -96,7 +96,7 @@ claude-ecosystem-3.0/
 │   ├── integrator-module/SPEC.md
 │   └── pmo/
 │       ├── pmo-map.md, processes.md, validation.md
-│       └── artifacts/        # 22 типа артефактов
+│       └── artifacts/        # 24 типа артефактов
 ├── commands/                 # → пользовательский .claude/commands/
 │   ├── ecosystem/, integrator/, product/  # design/ — Phase 6
 ├── skills/                   # → .claude/skills/ (lazy-loaded methodology)

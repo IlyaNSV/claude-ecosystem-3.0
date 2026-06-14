@@ -572,7 +572,7 @@ function main() {
   let smokePlanPath = null;
   let plan = null;
   if (args.phase != null && !args.noPlan) {
-    const live = path.join(repoRoot, 'dev', `PHASE_${args.phase}_SMOKE_TEST_PLAN.md`);
+    const live = path.join(repoRoot, 'dev', 'gates', `PHASE_${args.phase}_SMOKE_TEST_PLAN.md`);
     const archived = path.join(repoRoot, 'dev', '_archive', `phase-${args.phase}`, `PHASE_${args.phase}_SMOKE_TEST_PLAN.md`);
     if (fs.existsSync(live)) smokePlanPath = live;
     else if (fs.existsSync(archived)) smokePlanPath = archived;

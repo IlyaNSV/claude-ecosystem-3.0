@@ -64,7 +64,7 @@ After real run completion, populate retroactive DEC-DEV entry:
 ## DEC-DEV-NNNN — Phase N smoke test results (real run on <pilot>)
 
 Date: <ISO>
-Trigger: Per Phase N.I plan (dev/PHASE_<N>_SMOKE_TEST_PLAN.md)
+Trigger: Per Phase N.I plan (dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md)
 Tag: #pilot-finding #validation
 
 ### Outcome
@@ -91,7 +91,7 @@ Smoke test passes when:
 
 ## Outputs
 
-- `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` — standalone document
+- `dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md` — standalone document
 - Static verification done by AI session (in same Phase N implementation commit)
 - Real run = user-driven, retroactive DEC-DEV-NNNN entry populates results
 

@@ -2,7 +2,7 @@
 
 > **Назначение:** инструкция и чеклист по тому, как использовать D7 conformance audit mechanism (Phase 4.1, DEC-DEV-0034) для валидации smoke-тестов фаз экосистемы.
 >
-> **Когда применять:** после имплементации новой фазы, когда написан `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` и нужно прогнать смоук в пилотном проекте.
+> **Когда применять:** после имплементации новой фазы, когда написан `dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md` и нужно прогнать смоук в пилотном проекте.
 >
 > **Время выполнения:** ~10 мин setup (one-time) + 5-30 мин на сам аудит после smoke (зависит от количества сессий).
 
@@ -27,7 +27,7 @@
 │   ├── audit-index.md                             ★ журнал (Pending + Processed)
 │   ├── audit-reports/                             ★ отчёты пишутся сюда
 │   └── scripts/audit-smoke.js                     ★ CLI
-├── dev/PHASE_<N>_SMOKE_TEST_PLAN.md               ← план, по которому сверяем
+├── dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md               ← план, по которому сверяем
 └── .claude/commands/meta/audit-smoke.md           ← слэш-команда
 
 <pilot-project>/                                   ← cwd во время smoke
@@ -83,7 +83,7 @@ node --version
 
 ### B.1 — Подготовка
 
-- [ ] Phase `<N>` имплементация завершена; написан `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` с пронумерованными `### S<N>` scenarios и `**Acceptance:** - [ ]` checklists
+- [ ] Phase `<N>` имплементация завершена; написан `dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md` с пронумерованными `### S<N>` scenarios и `**Acceptance:** - [ ]` checklists
 - [ ] Пилотный проект имеет registered hook (`/ecosystem:enable-d7-audit` уже выполнялся)
 - [ ] Знаешь, какие сценарии S1..Sn хочешь покрыть
 
@@ -101,7 +101,7 @@ claude
 
 ### B.3 — Выполни smoke шаги
 
-Открой `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` в репо экосистемы как референс. Выполняй S1, S2, ... в пилоте, можно за **несколько сессий** (одну часть в одной сессии, другую в другой — аудит соберёт всё вместе).
+Открой `dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md` в репо экосистемы как референс. Выполняй S1, S2, ... в пилоте, можно за **несколько сессий** (одну часть в одной сессии, другую в другой — аудит соберёт всё вместе).
 
 **Важно:** завершай каждую сессию нормально (`Ctrl+D`, `/exit`, или закрытием Claude Code). На SessionEnd хук запишет marker.
 
@@ -192,7 +192,7 @@ CLI напечатает paths к отчётам. Открой:
 
 ## Pre-flight checklist (sanity перед B.5)
 
-- [ ] `dev/PHASE_<N>_SMOKE_TEST_PLAN.md` существует в репо экосистемы
+- [ ] `dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md` существует в репо экосистемы
 - [ ] `dev/meta-improvement/audit-index.md` имеет ≥1 строку в Pending для нужной фазы
 - [ ] `claude --version` работает в текущем shell (CLI orchestrator вызывает `claude -p`)
 - [ ] Pending markers указывают на существующие `.jsonl` файлы (проверь random transcript_path — может ли его прочитать `cat`)

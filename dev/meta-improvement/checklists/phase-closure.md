@@ -76,7 +76,7 @@ For solo dev — fresh session = available substitute для absent code reviewe
    - `ROADMAP.md` § «Где мы сейчас» — последний завершённый phase правильный?
    - `README.md` Quick Start / status — references current?
    - `CLAUDE.md` § «Где мы сейчас» (если есть) — current?
-   - `dev/PHASE_<N+1>_READINESS.md` status banner — отражает что Phase N completed?
+   - `dev/gates/PHASE_<N+1>_READINESS.md` status banner — отражает что Phase N completed?
 
 2. **Cross-doc mentions of completed phase** — grep:
    ```bash
@@ -84,7 +84,7 @@ For solo dev — fresh session = available substitute для absent code reviewe
    ```
    Каждое упоминание должно быть либо «completed/done» либо historical reference. «Pending» / «in progress» / «ready to start» для completed phase = rot.
 
-3. **Phase N-specific instructions в CLAUDE.md / README** — обычно есть текст вроде «Если starting Phase N — пройди dev/PHASE_<N>_READINESS.md». После closure он rot. Generic заменить на «Если starting next phase» или удалить если cleanup.
+3. **Phase N-specific instructions в CLAUDE.md / README** — обычно есть текст вроде «Если starting Phase N — пройди dev/gates/PHASE_<N>_READINESS.md». После closure он rot. Generic заменить на «Если starting next phase» или удалить если cleanup.
 
 4. **Root doc snapshots + tree diagrams** (added Phase 3 closure refinement, 2026-04-28):
    - `CLAUDE.md` § «Где мы сейчас» (если есть snapshot block) — отрефреш list
@@ -266,7 +266,7 @@ Activates `verify-hooks.js` blocking gate когда `git commit` touches `hooks
 1. **Phase N readiness doc** — archive:
    ```bash
    mkdir -p dev/_archive/phase-<N>/
-   git mv dev/PHASE_<N>_READINESS.md dev/_archive/phase-<N>/
+   git mv dev/gates/PHASE_<N>_READINESS.md dev/_archive/phase-<N>/
    ```
 
 2. **Phase N smoke test plan** — archive **only after smoke test ran**. Если pending — leave active.
@@ -287,7 +287,7 @@ Activates `verify-hooks.js` blocking gate когда `git commit` touches `hooks
 5. **NEVER archive** (per CONVENTIONS.md §5.2):
    - `DEV_JOURNAL.md` (cross-session memory)
    - `CHANGELOG.md`, `ROADMAP.md`, `README.md`, `CLAUDE.md`
-   - `dev/v1_1_backlog.md`, `dev/PHASE_<N+1>_READINESS.md`
+   - `dev/v1_1_backlog.md`, `dev/gates/PHASE_<N+1>_READINESS.md`
    - `dev/meta-improvement/SPEC.md`, `CONVENTIONS.md`, `checklists/*`
 
 ### Pass

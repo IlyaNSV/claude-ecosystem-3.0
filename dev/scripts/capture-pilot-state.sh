@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # capture-pilot-state.sh — snapshot pilot project state для S7 update-compat smoke
-# (см. dev/PHASE_6_SMOKE_TEST_PLAN.md S7 «/ecosystem:update compatibility post 1.4.0»).
+# (см. dev/gates/PHASE_6_SMOKE_TEST_PLAN.md S7 «/ecosystem:update compatibility post 1.4.0»).
 #
 # Use cases:
 #   1. Pre-update snapshot — capture state before `/ecosystem:update` invocation
@@ -133,7 +133,7 @@ echo "  2. Run /ecosystem:update --dry-run (в Claude Code сессии на pil
 echo "  3. Verify preview: design namespaces в added list; third-party preserved; design.yaml не в overwrite path"
 echo "  4. Apply: /ecosystem:update (без --dry-run; backup default — creates .claude-backup-<ts>/)"
 echo "  5. Re-run этот script — output: новый .smoke-snapshot-<new-ts>.txt"
-echo "  6. diff old new — verify invariants (см. dev/PHASE_6_SMOKE_TEST_PLAN.md S7 pass criteria):"
+echo "  6. diff old new — verify invariants (см. dev/gates/PHASE_6_SMOKE_TEST_PLAN.md S7 pass criteria):"
 echo "     • .product/ checksums identical (invariant)"
 echo "     • .claude/{commands,skills,agents,hooks}/ now includes 'design' namespace (managed re-derived)"
 echo "     • settings.local.json hook count +1 (design-artifact-validate registered); third-party hooks preserved"

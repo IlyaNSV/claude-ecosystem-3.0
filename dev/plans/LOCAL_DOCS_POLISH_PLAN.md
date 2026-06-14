@@ -6,7 +6,7 @@
 >
 > **Создан:** 2026-05-27 (planning session, pivot from Phase D).
 >
-> **Source of truth для deferred Phase D:** [`dev/PHASE_D_IMPLEMENTATION_PLAN.md`](PHASE_D_IMPLEMENTATION_PLAN.md) (DEFERRED banner) + [`dev/wiki-design.md`](wiki-design.md) (design preserved).
+> **Source of truth для deferred Phase D:** [`dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md`](../deferred/PHASE_D_IMPLEMENTATION_PLAN.md) (DEFERRED banner) + [`dev/deferred/wiki-design.md`](../deferred/wiki-design.md) (design preserved).
 >
 > **Bring-forward triggers** для возврата к full Phase D wiki:
 > - First real end-user feedback / ask «where do I start»
@@ -35,8 +35,8 @@
   - Decision: defer Phase D, pursue Obsidian+README track
   - Bring-forward triggers (см. выше)
   - Reversibility note
-- [ ] 1.2 Add DEFERRED banner на `dev/PHASE_D_IMPLEMENTATION_PLAN.md` (done в этой сессии)
-- [ ] 1.3 Add DEFERRED banner на `dev/PHASE_D_DOCS_WIKI_READINESS.md` — со ссылкой на новый план
+- [ ] 1.2 Add DEFERRED banner на `dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md` (done в этой сессии)
+- [ ] 1.3 Add DEFERRED banner на `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — со ссылкой на новый план
 - [ ] 1.4 Update `dev/v1_1_backlog.md`:
   - Add «Phase D — Wiki initiative» как deferred item
   - Originally planned: 2026-05-26 design freeze
@@ -46,7 +46,7 @@
   - Estimated effort на возврат: 32-50ч (unchanged from design)
 - [ ] 1.5 Update `ROADMAP.md`:
   - Phase D строки 63-64: статус → ⏸ deferred to v1.1+
-  - Add brief note: «pivoted to local docs polish — см. `dev/LOCAL_DOCS_POLISH_PLAN.md`»
+  - Add brief note: «pivoted to local docs polish — см. `dev/plans/LOCAL_DOCS_POLISH_PLAN.md`»
   - «Где мы сейчас» reflect pivot
 - [ ] 1.6 Update `CLAUDE.md` «Где мы сейчас» snapshot:
   - Phase 5.1 done (unchanged)
@@ -266,7 +266,7 @@ Per ×2-4 множитель — **8-18ч realistic** (но scope меньше, 
 - ❌ Decisions wiki таблица
 - ❌ End-user / stakeholder onboarding artifact
 
-**Если что-то из этого реально потребуется** — это сигнал bring-forward trigger fired, и мы возвращаемся к [`dev/PHASE_D_IMPLEMENTATION_PLAN.md`](PHASE_D_IMPLEMENTATION_PLAN.md).
+**Если что-то из этого реально потребуется** — это сигнал bring-forward trigger fired, и мы возвращаемся к [`dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md`](../deferred/PHASE_D_IMPLEMENTATION_PLAN.md).
 
 ---
 
@@ -283,8 +283,8 @@ Per ×2-4 множитель — **8-18ч realistic** (но scope меньше, 
 
 ## References
 
-- [`dev/PHASE_D_IMPLEMENTATION_PLAN.md`](PHASE_D_IMPLEMENTATION_PLAN.md) — full Phase D plan (DEFERRED)
-- [`dev/PHASE_D_DOCS_WIKI_READINESS.md`](PHASE_D_DOCS_WIKI_READINESS.md) — Phase D readiness gate (DEFERRED)
-- [`dev/wiki-design.md`](wiki-design.md) — full wiki design (preserved для bring-forward)
-- [`dev/v1_1_backlog.md`](v1_1_backlog.md) — где Phase D будет жить как deferred item
-- [`CLAUDE.md`](../CLAUDE.md) §4 «Cuttable scope» — обоснование подхода
+- [`dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md`](../deferred/PHASE_D_IMPLEMENTATION_PLAN.md) — full Phase D plan (DEFERRED)
+- [`dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md`](../deferred/PHASE_D_DOCS_WIKI_READINESS.md) — Phase D readiness gate (DEFERRED)
+- [`dev/deferred/wiki-design.md`](../deferred/wiki-design.md) — full wiki design (preserved для bring-forward)
+- [`dev/v1_1_backlog.md`](../v1_1_backlog.md) — где Phase D будет жить как deferred item
+- [`CLAUDE.md`](../../CLAUDE.md) §4 «Cuttable scope» — обоснование подхода

@@ -15,7 +15,7 @@
 - [ ] Phase N-1 closure complete (DEC-DEV-NNNN closure findings entry exists)
 - [ ] Phase N-1 smoke test passed (или queued + risk accepted)
 - [ ] Phase N section в `ROADMAP.md` present с deliverables list
-- [ ] `dev/PHASE_<N>_READINESS.md` skeleton exists (created at Phase N-1 kickoff Section 5)
+- [ ] `dev/gates/PHASE_<N>_READINESS.md` skeleton exists (created at Phase N-1 kickoff Section 5)
 
 ---
 
@@ -39,7 +39,7 @@ Substrate (минимум):
 1. ROADMAP.md § «Где мы сейчас» + Phase <N> section
 2. CHANGELOG.md latest entry (что shipped к этому моменту)
 3. DEV_JOURNAL.md last 5 entries (recent decision context)
-4. dev/PHASE_<N>_READINESS.md (specific phase's readiness gate state)
+4. dev/gates/PHASE_<N>_READINESS.md (specific phase's readiness gate state)
 5. dev/v1_1_backlog.md (deferral context для cuttable scope discipline)
 6. dev/meta-improvement/CONVENTIONS.md (D7 conventions)
 7. dev/meta-improvement/checklists/phase-kickoff.md (то что executed)
@@ -210,7 +210,7 @@ Inline AI carries forward Phase N-1's mental model, may not see ambiguities intr
 
 2. **Smoke test plan placeholder** — identify scenarios для Phase N.I (real run). Pattern from DEC-DEV-0014 — «static verification suite valuable but doesn't replace real run» — split static + real.
 
-3. **Phase N+1 readiness placeholder** — create `dev/PHASE_<N+1>_READINESS.md` skeleton с sections A-G mirror current.
+3. **Phase N+1 readiness placeholder** — create `dev/gates/PHASE_<N+1>_READINESS.md` skeleton с sections A-G mirror current.
 
 4. **Update ROADMAP** — Phase N section reflects refined scope, sub-phase plan, smoke test path. Update «Где мы сейчас» indicators.
 
@@ -231,7 +231,7 @@ Inline AI carries forward Phase N-1's mental model, may not see ambiguities intr
 
 1. **DEC-DEV-NNNN entry** — record kickoff verified + decisions made (Sections 1-2 outputs)
 2. **Single prerequisite commit** — spec drift fixes from Section 3
-3. **Status banner update** — `dev/PHASE_<N>_READINESS.md` 🟢 READY for kick-off
+3. **Status banner update** — `dev/gates/PHASE_<N>_READINESS.md` 🟢 READY for kick-off
 4. **Begin implementation** — typically explicit «Стартуем!» от user
 
 ---
