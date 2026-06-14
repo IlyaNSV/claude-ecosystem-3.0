@@ -7,6 +7,7 @@ Self-contained handoff/artifact fixtures for adapter contract tests, hook smoke 
 | File | Used by | Purpose |
 |---|---|---|
 | `FM-FIXTURE-001-handoff.md` | `adapters/handoff-to-ccsdd.js --verify-only` | Minimal but realistic handoff (13 sections, frontmatter complete) for cc-sdd contract test (Phase 5 Stage 6 verify) |
+| `FM-FIXTURE-002-handoff.md` | `tests/adapters/handoff-ccsdd.contract.test.cjs` | **Regression (DEC-DEV-0068):** v1.4 handoff that embeds MK/NM UI sub-documents under §10 with restarted `## 1.`–`## 7.` numbering — exercises the `extractSections` monotonic guard + the blocking `C-07` content-fidelity check (silent §10-clobber from Orchestrator dogfood RUN 01) |
 
 ## Conventions
 
@@ -16,8 +17,18 @@ Self-contained handoff/artifact fixtures for adapter contract tests, hook smoke 
 
 ## Running adapter contract test
 
+Single fixture (manual smoke):
+
 ```bash
 node adapters/handoff-to-ccsdd.js --verify-only --fixture tests/fixtures/FM-FIXTURE-001-handoff.md
 ```
 
 Expected: exit 0, JSON output containing `contract_validation.passed: true` and a populated `cc_sdd_input` object.
+
+Full contract + content-fidelity regression suite (both fixtures + the C-07 negative case):
+
+```bash
+npm run test:adapters          # = node tests/adapters/handoff-ccsdd.contract.test.cjs
+```
+
+Also runs as part of `npm run verify`.

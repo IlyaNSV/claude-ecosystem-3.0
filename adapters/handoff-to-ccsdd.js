@@ -36,7 +36,11 @@ const path = require('path');
 
 const CONTRACT_SCHEMA_VERSION = 1;
 // Accept generator strings of form `product-module-v1.X` or `product-module-v1.X.Y` (patch suffix optional).
-const SUPPORTED_HANDOFF_GENERATOR_RE = /^product-module-v1\.(0|1|2)(\.\d+)?$/;
+// v1.3/v1.4 embed UI sub-documents under §10 with restarted `## N.` numbering; the
+// extractSections monotonic guard (DEC-DEV-0068) makes the adapter robust to that
+// shape, so v1.3/v1.4 join the supported set. v1.5+ stays a C-03 warning until its
+// structure is re-verified against the adapter.
+const SUPPORTED_HANDOFF_GENERATOR_RE = /^product-module-v1\.(0|1|2|3|4)(\.\d+)?$/;
 
 // ---------- Normalization ----------
 
@@ -185,6 +189,16 @@ function parseFrontmatter(raw) {
  * Returns Map<number, {title, content}>.
  *
  * Section headers per handoff-spec §6 are `## N. <Title>` at column 0.
+ *
+ * Monotonic-increase guard (DEC-DEV-0068): a `## N.` header opens a real
+ * top-level section only if N strictly exceeds the highest section accepted so
+ * far. v1.3+ handoffs embed UI sub-documents (MK/DS/NM) under §10 whose own
+ * `## 1.`–`## 7.` headers RESTART numbering; a naive flat keying (last-write-wins)
+ * let them silently clobber the real §1/§2/§5/§6 (cc-sdd then received WCAG notes
+ * as `scenarios` and UI edge-states as `business_rules` — silent fidelity loss,
+ * Orchestrator dogfood RUN 01). With the guard those restarted sub-doc headers
+ * (N ≤ maxAccepted) fall through into §10's body, while §11/§12/§13 (N > 10) are
+ * still accepted.
  */
 function extractSections(rawBody) {
   const body = normalizeLF(rawBody);
@@ -192,6 +206,7 @@ function extractSections(rawBody) {
   const lines = body.split('\n');
   let currentNum = null;
   let currentTitle = null;
+  let maxAccepted = 0;
   let buf = [];
 
   const flush = () => {
@@ -203,11 +218,14 @@ function extractSections(rawBody) {
 
   for (const line of lines) {
     const h = line.match(/^##\s+(\d+)\.\s+(.+)$/);
-    if (h) {
+    if (h && parseInt(h[1], 10) > maxAccepted) {
       flush();
       currentNum = parseInt(h[1], 10);
       currentTitle = h[2].trim();
+      maxAccepted = currentNum;
     } else {
+      // Non-header line OR a restarted sub-doc header (N ≤ maxAccepted) →
+      // body content of the current top-level section.
       if (currentNum !== null) buf.push(line);
     }
   }
@@ -284,6 +302,28 @@ function validateContract(fm, sections) {
       detail: 'handoff.status=partial — receiver should treat output as experimental' });
   } else {
     checks.push({ id: 'C-06', level: 'warning', status: 'pass' });
+  }
+
+  // C-07 (DEC-DEV-0068): content-level fidelity. C-04 only checks that a
+  // `## N.` HEADER exists; it cannot tell that the section BODY was clobbered.
+  // Each ID-bearing cc-sdd field must carry its section's canonical identifier
+  // family (handoff-spec: §5→SC-, §6→BR-, §9→IC-). This catches §10-sub-doc
+  // mis-mapping — and any future structural drift — LOUDLY (blocking) instead
+  // of emitting plausible garbage (the silent-fidelity-loss class that passed
+  // presence-level C-04 in dogfood RUN 01). Empty sections are skipped (a
+  // feature may legitimately have no business rules / invariants).
+  const fidelityFails = [];
+  const sec5c = sections.get(5)?.content || '';
+  const sec6c = sections.get(6)?.content || '';
+  const sec9c = sections.get(9)?.content || '';
+  if (sec5c && !/\bSC-\d/.test(sec5c)) fidelityFails.push('§5 Scenarios → `scenarios` carries no SC- id');
+  if (sec6c && !/\bBR-\d/.test(sec6c)) fidelityFails.push('§6 Business Rules → `business_rules` carries no BR- id');
+  if (sec9c && !/\bIC-\d/.test(sec9c)) fidelityFails.push('§9 Invariants → `invariants` carries no IC- id');
+  if (fidelityFails.length === 0) {
+    checks.push({ id: 'C-07', level: 'blocking', status: 'pass' });
+  } else {
+    checks.push({ id: 'C-07', level: 'blocking', status: 'fail',
+      detail: `content-fidelity (likely §10 sub-doc clobber / section mis-mapping): ${fidelityFails.join('; ')}` });
   }
 
   const blockingFails = checks.filter((c) => c.level === 'blocking' && c.status === 'fail');

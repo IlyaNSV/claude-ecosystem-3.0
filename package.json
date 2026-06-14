@@ -8,7 +8,8 @@
     "smoke:hooks:verbose": "node dev/meta-improvement/scripts/smoke-hooks.js --verbose",
     "lint:hooks": "eslint hooks/",
     "verify:hooks": "node dev/meta-improvement/scripts/verify-hooks.js",
-    "verify": "npm run verify:hooks"
+    "test:adapters": "node tests/adapters/handoff-ccsdd.contract.test.cjs",
+    "verify": "npm run verify:hooks && npm run test:adapters"
   },
   "devDependencies": {
     "eslint": "^9.13.0"
