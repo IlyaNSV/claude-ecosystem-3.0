@@ -1,5 +1,5 @@
 ---
-description: Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead.
+description: Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead.
 argument-hint: "[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-commit]"
 ---
 
@@ -8,7 +8,7 @@ argument-hint: "[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-com
 **Precondition:** ecosystem already installed в current project (i.e. `.claude/` has ecosystem signature). Для greenfield → use `/ecosystem:bootstrap`.
 
 **What it does:** syncs existing `.claude/` к latest upstream Ecosystem 3.0:
-- **Overwrites** ecosystem zone (commands/, skills/, agents/, hooks/, docs/, templates/, root references)
+- **Overwrites** ecosystem zone (commands/, skills/, agents/, hooks/, orchestrator/, docs/, templates/, root references)
 - **Removes** obsolete files в ecosystem subdirs (commands/skills/etc. that no longer exist upstream)
 - **Re-derives** hooks section в settings.json from new manifest
 - **Preserves** user zone (settings.local.json, product.yaml, .env, integrator/ state, all Claude Code auto-files)
@@ -178,7 +178,7 @@ rm -rf .claude-ecosystem-tmp/.git
 
 | Type | Items |
 |---|---|
-| **Subdirs** (sync с delete) | `commands/`, `skills/`, `agents/`, `hooks/`, `docs/`, `templates/`, `adapters/` |
+| **Subdirs** (sync с delete) | `commands/`, `skills/`, `agents/`, `hooks/`, `orchestrator/`, `docs/`, `templates/`, `adapters/` |
 | **Root files** (overwrite) | `README.md`, `BOOTSTRAP.md`, `CHANGELOG.md`, `ROADMAP.md`, `install.sh`, `install.ps1`, `.env.template`, `gitignore.template` |
 
 **Never-copy zone (explicitly skip — never enter `.claude/`):**
@@ -202,6 +202,7 @@ rm -rf .claude-ecosystem-tmp/.git
 - `.claude/design.yaml` (if exists) — per-project Design Module config (DEC-DEV-0052 / Phase 6 1.4.0); preserved verbatim per «not в Step 5 root-file allowlist» semantics — same treatment как `settings.local.json` (auto-init via `/design:start` на первой UI FM; user edits never wiped by upgrade)
 - `.claude/pending-actions.md` (if exists) — ecosystem-wide PA journal (DEC-DEV-0047 / patch 1.3.3); user entries preserved verbatim; init backfilled in Step 5b if missing
 - `.claude/integrator/` (если exists) — Integrator project state
+- `.claude/orchestrator/{registries,ledger,runs}/` (если exists) — Orchestrator per-project state (preserved as non-managed children; `processes/`+`lib/` ARE re-synced)
 - `.claude/.env` (если exists; usually .env at project root) — secrets
 - `.claude/projects/`, `todos/`, `statsig/`, `shell-snapshots/`, `ide/`, `plugins/` — Claude Code auto-files
 - `.product/` — entire (outside `.claude/`)
@@ -213,11 +214,11 @@ Subdirs split into two classes:
 
 | Subdir class | Subdirs | Semantics |
 |---|---|---|
-| **Namespace-aware** (third-party namespaces possible) | `commands/`, `skills/`, `agents/`, `hooks/` | Manage только ecosystem-owned namespaces (`{product, integrator, ecosystem, design}` — discovered dynamically from `.claude-ecosystem-tmp/<subdir>/` immediate children). Non-managed namespaces (e.g. `.claude/skills/kiro-*/` от cc-sdd) preserved untouched. |
+| **Namespace-aware** (third-party OR project-state children possible) | `commands/`, `skills/`, `agents/`, `hooks/`, `orchestrator/` | Manage только ecosystem-owned namespaces (discovered dynamically from `.claude-ecosystem-tmp/<subdir>/` immediate children — e.g. `{product, integrator, ecosystem, design}` for `skills/`; `{processes, lib}` for `orchestrator/`). Non-managed children preserved untouched — both **third-party** (e.g. `.claude/skills/kiro-*/` от cc-sdd) and **Orchestrator project-state** (`.claude/orchestrator/{registries,ledger,runs}/`, generated per-project — never shipped upstream, so always preserved). |
 | **Flat** (no third-party expected) | `docs/`, `templates/`, `adapters/` | Full subdir sync (delete obsolete + copy fresh). Если third-party tool пишет сюда — он breaks ecosystem convention; not supported. |
 
 **Per namespace-aware subdir:**
-- **Managed namespaces:** immediate children of `.claude-ecosystem-tmp/<subdir>/` (e.g. для `skills/`: `ecosystem/`, `integrator/`, `product/` + `design/` post-Phase-6).
+- **Managed namespaces:** immediate children of `.claude-ecosystem-tmp/<subdir>/` (e.g. для `skills/`: `ecosystem/`, `integrator/`, `product/` + `design/` post-Phase-6; для `orchestrator/`: `processes/`, `lib/` + the `README.md` flat file).
 - **To re-sync:** for each managed namespace N, compute diff `.claude/<subdir>/N` vs `.claude-ecosystem-tmp/<subdir>/N` (add/remove/update files inside N).
 - **Preserved (untouched):** any other children of `.claude/<subdir>/` (third-party namespaces или flat files). Не trim'ятся, не overwrite'ятся.
 
@@ -429,12 +430,12 @@ Record `SAFETY_SHA` for the Step 8 summary. The `.claude-backup-<TS>/` dir from 
 
 **Two sync modes per subdir class** (per Step 4 classification — DEC-DEV-0051):
 
-#### 5.1 Namespace-aware subdirs (`commands/`, `skills/`, `agents/`, `hooks/`)
+#### 5.1 Namespace-aware subdirs (`commands/`, `skills/`, `agents/`, `hooks/`, `orchestrator/`)
 
-Managed namespaces — re-derived from upstream. Non-managed namespaces (third-party integrator-installed tools) — preserved untouched. Managed namespace set discovered dynamically: immediate children of `.claude-ecosystem-tmp/<subdir>/`.
+Managed namespaces — re-derived from upstream. Non-managed namespaces (third-party integrator-installed tools, or Orchestrator project-state) — preserved untouched. Managed namespace set discovered dynamically: immediate children of `.claude-ecosystem-tmp/<subdir>/`.
 
 ```bash
-for SUBDIR in commands skills agents hooks; do
+for SUBDIR in commands skills agents hooks orchestrator; do
   if [ ! -d ".claude-ecosystem-tmp/$SUBDIR" ]; then
     continue
   fi
@@ -463,7 +464,7 @@ done
 **PowerShell equivalent (Windows):**
 
 ```powershell
-$namespaceAwareSubdirs = @('commands', 'skills', 'agents', 'hooks')
+$namespaceAwareSubdirs = @('commands', 'skills', 'agents', 'hooks', 'orchestrator')
 foreach ($subdir in $namespaceAwareSubdirs) {
   $upstreamPath = ".claude-ecosystem-tmp\$subdir"
   if (-not (Test-Path $upstreamPath)) { continue }
@@ -493,6 +494,8 @@ foreach ($subdir in $namespaceAwareSubdirs) {
 **Examples in current downstream:**
 - `.claude/skills/{ecosystem,integrator,product}/` — re-derived from upstream
 - `.claude/skills/kiro-*/` (17 cc-sdd dirs, если переустановлены) — **preserved untouched** ✓ (regression of pre-1.3.5 behavior где `rm -rf .claude/skills` уничтожал их)
+- `.claude/orchestrator/{processes,lib}/` — re-derived from upstream (Workflow scripts + deterministic helpers — what `/orchestrator:run` executes)
+- `.claude/orchestrator/{registries,ledger,runs}/` (если created by a prior run) — **preserved untouched** ✓ (project-state, never shipped upstream)
 
 #### 5.2 Flat subdirs (`docs/`, `templates/`, `adapters/`)
 
