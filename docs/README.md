@@ -29,7 +29,7 @@
 |---|---|---|
 | 🗺️ **Карта 6 доменов** | [pmo/pmo-map.md](pmo/pmo-map.md) | D1-D6 функциональные обязанности; кто owns, что delegated |
 | ⚙️ **Процессы P1-P5** | [pmo/processes.md](pmo/processes.md) | Методология создания/обновления артефактов; approve gates; BG extraction; cascade; DA review |
-| ✅ **Validation rules** | [pmo/validation.md](pmo/validation.md) | 39 активных правил (V-*, V-H-*, V-MK-*, V-LE-*) + adaptive-depth + tier activation |
+| ✅ **Validation rules** | [pmo/validation.md](pmo/validation.md) | 44 активных правила (V-*, V-H-*, V-MK-*, V-LE-*, V-AM-*) + adaptive-depth + tier activation |
 | 📚 **24 типа артефактов** | [pmo/artifacts/README.md](pmo/artifacts/README.md) | Каталог: PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, FM, SC, BR, LC, VC, IC, RPM, NFR, BG, MK, DS, NM, AM, NOTE, LESSON |
 | 📦 **Handoff формат** | [product-module/handoff-spec.md](product-module/handoff-spec.md) | Universal markdown snapshot для D2-Tech delegation |
 

@@ -4,7 +4,7 @@
 > **Введён:** DEC-DEV-0062 (2026-06-06).
 > **Тип:** HARD prerequisite — блокирует перевод `hooks/product/lesson-presence-gate.js` (PreToolUse prong) из `warn` в `strict`.
 > **Где прогонять:** следующая **продуктовая пилот-сессия на Windows** (напр. `my-first-test/`) с установленным/обновлённым LESSON-* (`/ecosystem:bootstrap` или `/ecosystem:update`). **НЕ** в dev-сессии самой экосистемы.
-> **Связано:** [DEV_JOURNAL DEC-DEV-0062](../DEV_JOURNAL.md), [PHASE_6_SMOKE_TEST_PLAN.md](PHASE_6_SMOKE_TEST_PLAN.md) (указывает сюда).
+> **Связано:** [DEV_JOURNAL DEC-DEV-0062](../../DEV_JOURNAL.md), [PHASE_6_SMOKE_TEST_PLAN.md](PHASE_6_SMOKE_TEST_PLAN.md) (указывает сюда).
 
 ---
 
@@ -94,8 +94,8 @@
 
 ## Cross-references
 
-- [DEV_JOURNAL.md → DEC-DEV-0062](../DEV_JOURNAL.md) — дизайн, rationale, Lessons (#1 web-search верификация контракта; #4 self-collapse guard).
-- [hooks/product/lesson-gate.js](../hooks/product/lesson-gate.js) — Prong A (Stop, strict).
-- [hooks/product/lesson-presence-gate.js](../hooks/product/lesson-presence-gate.js) — Prong B (PreToolUse + UserPromptSubmit, warn → strict после PASS).
-- [commands/ecosystem/verify.md](../commands/ecosystem/verify.md) — Step 8.5 self-check (предусловие Setup).
+- [DEV_JOURNAL.md → DEC-DEV-0062](../../DEV_JOURNAL.md) — дизайн, rationale, Lessons (#1 web-search верификация контракта; #4 self-collapse guard).
+- [hooks/product/lesson-gate.js](../../hooks/product/lesson-gate.js) — Prong A (Stop, strict).
+- [hooks/product/lesson-presence-gate.js](../../hooks/product/lesson-presence-gate.js) — Prong B (PreToolUse + UserPromptSubmit, warn → strict после PASS).
+- [commands/ecosystem/verify.md](../../commands/ecosystem/verify.md) — Step 8.5 self-check (предусловие Setup).
 - [PHASE_6_SMOKE_TEST_PLAN.md](PHASE_6_SMOKE_TEST_PLAN.md) — указывает сюда (S-LE вынесен в отдельный файл во избежание дублирования).

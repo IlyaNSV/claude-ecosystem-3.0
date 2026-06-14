@@ -153,7 +153,7 @@
 
 ### S-LE — LESSON-* gate runtime contracts (DEC-DEV-0062, cross-cutting)
 
-**Вынесен в отдельный запускаемый чеклист:** [`dev/S_LE_LESSON_GATE_SMOKE.md`](S_LE_LESSON_GATE_SMOKE.md) — полные setup / 6 шагов / таблица результатов / on-PASS + on-FAIL действия. Вынос во избежание дублирования: S-LE не относится к Design Module S1-S7, это cross-cutting проверка LESSON-* gate. HARD-prereq перед переводом `lesson-presence-gate.js` из warn в strict; прогоняется на той же next pilot session.
+**Вынесен в отдельный запускаемый чеклист:** [`dev/gates/S_LE_LESSON_GATE_SMOKE.md`](S_LE_LESSON_GATE_SMOKE.md) — полные setup / 6 шагов / таблица результатов / on-PASS + on-FAIL действия. Вынос во избежание дублирования: S-LE не относится к Design Module S1-S7, это cross-cutting проверка LESSON-* gate. HARD-prereq перед переводом `lesson-presence-gate.js` из warn в strict; прогоняется на той же next pilot session.
 
 ---
 

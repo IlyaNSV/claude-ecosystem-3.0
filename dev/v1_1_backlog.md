@@ -380,7 +380,7 @@ When picking option (v1.1):
 
 **Originally planned:** Phase D (design frozen 2026-05-26)
 **Deferred:** 2026-05-27 per DEC-DEV-0046 (phantom-audience guard)
-**Defer rationale:** Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; единственная active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h Obsidian + README polish (active alternative: `dev/LOCAL_DOCS_POLISH_PLAN.md`). Audience reality check should have happened before design freeze; done now via alternatives analysis pre-implementation.
+**Defer rationale:** Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; единственная active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h Obsidian + README polish (active alternative: `dev/plans/LOCAL_DOCS_POLISH_PLAN.md`). Audience reality check should have happened before design freeze; done now via alternatives analysis pre-implementation.
 **Bring-forward trigger:** any of:
 - First real end-user feedback / ask «where do I start»
 - Stakeholder asks for shareable URL
@@ -405,9 +405,9 @@ Full Phase D wiki implementation per design freeze 2026-05-26:
 
 ### Implementation notes
 
-**Full implementation plan preserved at** `dev/PHASE_D_IMPLEMENTATION_PLAN.md` (DEFERRED banner): 10 stages DW.A-DW.J, resumption-ready в любой future session via fresh-session kickoff.
+**Full implementation plan preserved at** `dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md` (DEFERRED banner): 10 stages DW.A-DW.J, resumption-ready в любой future session via fresh-session kickoff.
 
-**Decision options + 8 OQ-DW resolutions** documented в plan Stage 0.2. Design rationale + alternatives — `dev/wiki-design.md` §1-17. Risk register — `dev/wiki-design.md` §12 (10 risks с mitigations).
+**Decision options + 8 OQ-DW resolutions** documented в plan Stage 0.2. Design rationale + alternatives — `dev/deferred/wiki-design.md` §1-17. Risk register — `dev/deferred/wiki-design.md` §12 (10 risks с mitigations).
 
 **При resumption** — start от Stage 0 (kickoff), не от Stage 1; OQ resolutions могут drift'нуть с момента deferral. Особенно re-verify:
 - OQ-DW-02 (headless Claude auth + rate limits) — может измениться pricing/limits API
@@ -418,10 +418,10 @@ Full Phase D wiki implementation per design freeze 2026-05-26:
 
 ### References to existing spec
 
-- `dev/wiki-design.md` — full design doc (§1-17)
-- `dev/PHASE_D_DOCS_WIKI_READINESS.md` — readiness gate (Sections A-H, DEFERRED banner)
-- `dev/PHASE_D_IMPLEMENTATION_PLAN.md` — implementation plan (DEFERRED banner)
-- `dev/LOCAL_DOCS_POLISH_PLAN.md` — active alternative track
+- `dev/deferred/wiki-design.md` — full design doc (§1-17)
+- `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — readiness gate (Sections A-H, DEFERRED banner)
+- `dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md` — implementation plan (DEFERRED banner)
+- `dev/plans/LOCAL_DOCS_POLISH_PLAN.md` — active alternative track
 - DEC-DEV-0046 — defer decision (rationale + 5 options considered + lessons)
 
 ### Estimated effort при возврате

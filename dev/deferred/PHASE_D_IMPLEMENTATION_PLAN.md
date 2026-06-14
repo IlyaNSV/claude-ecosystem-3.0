@@ -2,7 +2,7 @@
 
 > ⏸ **STATUS: DEFERRED to v1.1+ (2026-05-27)**
 >
-> **Active alternative:** [`dev/LOCAL_DOCS_POLISH_PLAN.md`](LOCAL_DOCS_POLISH_PLAN.md) (Obsidian + README polish, 4-9ч).
+> **Active alternative:** [`dev/plans/LOCAL_DOCS_POLISH_PLAN.md`](../plans/LOCAL_DOCS_POLISH_PLAN.md) (Obsidian + README polish, 4-9ч).
 >
 > **Rationale:** phantom-audience guard fired. Pre-pilot Ecosystem 3.0 не имеет реальных end-user/stakeholder consumers; единственная audience сейчас — solo dev. Непропорционально инвестировать 32-50ч в 3-audience wiki когда 80% value достижимо через light-touch альтернативу.
 >
@@ -18,7 +18,7 @@
 >
 > ---
 >
-> **Назначение:** последовательный план реализации Phase D для resumption в любой следующей сессии. Источники истины — [`dev/wiki-design.md`](wiki-design.md) §1-17 + [`dev/PHASE_D_DOCS_WIKI_READINESS.md`](PHASE_D_DOCS_WIKI_READINESS.md) A-H. Этот файл — workflow guide.
+> **Назначение:** последовательный план реализации Phase D для resumption в любой следующей сессии. Источники истины — [`dev/deferred/wiki-design.md`](wiki-design.md) §1-17 + [`dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md`](PHASE_D_DOCS_WIKI_READINESS.md) A-H. Этот файл — workflow guide.
 >
 > **Создан:** 2026-05-27 (planning session post Phase 5.1 closure).
 >
@@ -59,12 +59,12 @@
   - `ROADMAP.md` § «Где мы сейчас» + Phase D section (строки 63-64 brief — расширяется в этом stage)
   - `CHANGELOG.md` latest entry
   - `DEV_JOURNAL.md` last 5 entries
-  - `dev/PHASE_D_DOCS_WIKI_READINESS.md` (specific phase readiness gate)
-  - `dev/wiki-design.md` (full design doc)
+  - `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` (specific phase readiness gate)
+  - `dev/deferred/wiki-design.md` (full design doc)
   - `dev/v1_1_backlog.md` (deferral context)
   - `dev/meta-improvement/CONVENTIONS.md` (D7 conventions)
   - `dev/meta-improvement/checklists/phase-kickoff.md` (executed checklist)
-  - `dev/PHASE_D_IMPLEMENTATION_PLAN.md` (этот файл)
+  - `dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md` (этот файл)
 - [ ] Execute Sections 1-5 phase-kickoff.md
 
 ### 0.2 — Section 1: Architectural readiness (OQ-DW-01..08)
@@ -349,7 +349,7 @@ Per readiness E.3:
 2. **R1 — Action создаёт мусорные правки** (high initial) — Mitigation: draft PR (не auto-merge); review дисциплина
 3. **R2 — Credit drain** (medium) — Mitigation: exclusion filters + heuristics + concurrency 1
 
-См. полный risk register в `dev/wiki-design.md` §12 (10 risks с mitigations).
+См. полный risk register в `dev/deferred/wiki-design.md` §12 (10 risks с mitigations).
 
 ---
 
@@ -371,9 +371,9 @@ Stage 8 (DW.H auto-sync)  →  Stage 9 (DW.I pilot)  →  Stage 10 (DW.J closure
 
 ## References
 
-- [`dev/wiki-design.md`](wiki-design.md) — full design doc (§1-17)
-- [`dev/PHASE_D_DOCS_WIKI_READINESS.md`](PHASE_D_DOCS_WIKI_READINESS.md) — readiness gate (A-H)
-- [`dev/meta-improvement/checklists/phase-kickoff.md`](meta-improvement/checklists/phase-kickoff.md) — D7 kickoff procedure
-- [`dev/meta-improvement/checklists/phase-closure.md`](meta-improvement/checklists/phase-closure.md) — D7 closure procedure
-- [`CLAUDE.md`](../CLAUDE.md) — repo conventions
-- [`DEV_JOURNAL.md`](../DEV_JOURNAL.md) — где DEC-DEV entries Phase D open/close будут
+- [`dev/deferred/wiki-design.md`](wiki-design.md) — full design doc (§1-17)
+- [`dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md`](PHASE_D_DOCS_WIKI_READINESS.md) — readiness gate (A-H)
+- [`dev/meta-improvement/checklists/phase-kickoff.md`](../meta-improvement/checklists/phase-kickoff.md) — D7 kickoff procedure
+- [`dev/meta-improvement/checklists/phase-closure.md`](../meta-improvement/checklists/phase-closure.md) — D7 closure procedure
+- [`CLAUDE.md`](../../CLAUDE.md) — repo conventions
+- [`DEV_JOURNAL.md`](../../DEV_JOURNAL.md) — где DEC-DEV entries Phase D open/close будут

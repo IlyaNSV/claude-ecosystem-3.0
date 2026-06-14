@@ -231,6 +231,6 @@
 
 ## After closure
 
-- Archive plan: `mv dev/PATCH_1.3.3_SMOKE_TEST_PLAN.md dev/_archive/patch-1.3.3/`.
+- Archive plan: `mv dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md dev/_archive/patch-1.3.3/`.
 - Archive readiness: `mv dev/PATCH_1.3.3_READINESS.md dev/_archive/patch-1.3.3/`.
 - Consider phase-closure ritual per `dev/meta-improvement/checklists/phase-closure.md` for cross-cutting lessons.
