@@ -8,7 +8,7 @@ The Orchestrator gathers a **multi-layer context** before building a process pla
 Cheapest self-useful layer first. This skill is the methodology behind the `init`
 phase of every process Workflow and the standalone re-orientation after a `/compact`.
 
-> RUN 01 grounding (DEC-DEV-0068): the init layer is read-only and is what made the
+> RUN 01 grounding (DEC-DEV-0073): the init layer is read-only and is what made the
 > session survivable across `/compact` — the durable skeleton (git + tasks + ledger)
 > re-hydrated the loop byte-for-byte. P1 is the contract for that re-hydration.
 

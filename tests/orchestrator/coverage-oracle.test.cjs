@@ -3,7 +3,7 @@
  * Contract test for orchestrator/lib/coverage-oracle.cjs.
  *
  * Canonizes P1-1 (coverage-oracle — "don't trust self-report") from Orchestrator
- * dogfood RUN 01 (DEC-DEV-0068). Locks in:
+ * dogfood RUN 01 (DEC-DEV-0073). Locks in:
  *   1. Source IDs are re-derived from GROUND TRUTH §5/§6/§9 — independent of any
  *      subagent claim.
  *   2. The §10-clobber shape (restarted `## N.` UI sub-docs) cannot leak IDs into
@@ -42,7 +42,7 @@ function test(name, fn) {
   }
 }
 
-console.log('coverage-oracle contract test (DEC-DEV-0068 P1-1)');
+console.log('coverage-oracle contract test (DEC-DEV-0073 P1-1)');
 
 // 1 — ground-truth extraction from a clean handoff
 test('FM-FIXTURE-001 (clean v1.2): source IDs from §5/§6/§9', () => {

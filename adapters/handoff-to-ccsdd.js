@@ -37,7 +37,7 @@ const path = require('path');
 const CONTRACT_SCHEMA_VERSION = 1;
 // Accept generator strings of form `product-module-v1.X` or `product-module-v1.X.Y` (patch suffix optional).
 // v1.3/v1.4 embed UI sub-documents under §10 with restarted `## N.` numbering; the
-// extractSections monotonic guard (DEC-DEV-0068) makes the adapter robust to that
+// extractSections monotonic guard (DEC-DEV-0073) makes the adapter robust to that
 // shape, so v1.3/v1.4 join the supported set. v1.5+ stays a C-03 warning until its
 // structure is re-verified against the adapter.
 const SUPPORTED_HANDOFF_GENERATOR_RE = /^product-module-v1\.(0|1|2|3|4)(\.\d+)?$/;
@@ -190,7 +190,7 @@ function parseFrontmatter(raw) {
  *
  * Section headers per handoff-spec §6 are `## N. <Title>` at column 0.
  *
- * Monotonic-increase guard (DEC-DEV-0068): a `## N.` header opens a real
+ * Monotonic-increase guard (DEC-DEV-0073): a `## N.` header opens a real
  * top-level section only if N strictly exceeds the highest section accepted so
  * far. v1.3+ handoffs embed UI sub-documents (MK/DS/NM) under §10 whose own
  * `## 1.`–`## 7.` headers RESTART numbering; a naive flat keying (last-write-wins)
@@ -304,7 +304,7 @@ function validateContract(fm, sections) {
     checks.push({ id: 'C-06', level: 'warning', status: 'pass' });
   }
 
-  // C-07 (DEC-DEV-0068): content-level fidelity. C-04 only checks that a
+  // C-07 (DEC-DEV-0073): content-level fidelity. C-04 only checks that a
   // `## N.` HEADER exists; it cannot tell that the section BODY was clobbered.
   // Each ID-bearing cc-sdd field must carry its section's canonical identifier
   // family (handoff-spec: §5→SC-, §6→BR-, §9→IC-). This catches §10-sub-doc

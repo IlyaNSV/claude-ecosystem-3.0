@@ -3,7 +3,7 @@
  * Contract + content-fidelity regression test for adapters/handoff-to-ccsdd.js.
  *
  * Canonizes P0-1 (content-level verification oracle) from Orchestrator dogfood
- * RUN 01 (DEC-DEV-0068). Locks in three things the silent §10-sub-doc clobber
+ * RUN 01 (DEC-DEV-0073). Locks in three things the silent §10-sub-doc clobber
  * exposed:
  *   1. extractSections monotonic guard — restarted `## N.` UI sub-doc headers
  *      must NOT overwrite the real §1/§5/§6.
@@ -51,7 +51,7 @@ function test(name, fn) {
   }
 }
 
-console.log('handoff-to-ccsdd contract + content-fidelity test (DEC-DEV-0068)');
+console.log('handoff-to-ccsdd contract + content-fidelity test (DEC-DEV-0073)');
 
 // 1 — clean baseline still green
 test('FM-FIXTURE-001 (clean v1.2) passes; mapping correct', () => {

@@ -7,7 +7,7 @@ Self-contained handoff/artifact fixtures for adapter contract tests, hook smoke 
 | File | Used by | Purpose |
 |---|---|---|
 | `FM-FIXTURE-001-handoff.md` | `adapters/handoff-to-ccsdd.js --verify-only` | Minimal but realistic handoff (13 sections, frontmatter complete) for cc-sdd contract test (Phase 5 Stage 6 verify) |
-| `FM-FIXTURE-002-handoff.md` | `tests/adapters/handoff-ccsdd.contract.test.cjs` | **Regression (DEC-DEV-0068):** v1.4 handoff that embeds MK/NM UI sub-documents under §10 with restarted `## 1.`–`## 7.` numbering — exercises the `extractSections` monotonic guard + the blocking `C-07` content-fidelity check (silent §10-clobber from Orchestrator dogfood RUN 01) |
+| `FM-FIXTURE-002-handoff.md` | `tests/adapters/handoff-ccsdd.contract.test.cjs` | **Regression (DEC-DEV-0073):** v1.4 handoff that embeds MK/NM UI sub-documents under §10 with restarted `## 1.`–`## 7.` numbering — exercises the `extractSections` monotonic guard + the blocking `C-07` content-fidelity check (silent §10-clobber from Orchestrator dogfood RUN 01) |
 
 ## Conventions
 

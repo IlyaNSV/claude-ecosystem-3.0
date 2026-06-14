@@ -9,13 +9,13 @@ export const meta = {
 }
 
 /*
- * Orchestrator process P5 `feature-to-tdd-impl` — THIN NATIVE design (DEC-DEV-0072,
+ * Orchestrator process P5 `feature-to-tdd-impl` — THIN NATIVE design (DEC-DEV-0077,
  * build S5b). Reading: SPEC §3.2 P5; gate-risk-classifier design
- * (dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md); RUN 01 harvest (DEC-DEV-0068).
+ * (dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md); RUN 01 harvest (DEC-DEV-0073).
  *
  * WHY NATIVE (OD9): cc-sdd's kiro-impl is a mature autonomous TDD controller, but it is
  * `disable-model-invocation: true` — neither a Workflow nor the model can invoke it.
- * So the Workflow must own the per-task dispatch FSM itself. BUT (lesson DEC-DEV-0071)
+ * So the Workflow must own the per-task dispatch FSM itself. BUT (lesson DEC-DEV-0076)
  * we do NOT rebuild kiro's methodology: every subagent prompt is LIFTED by reading
  * kiro's own self-contained templates at runtime
  * (.claude/skills/kiro-impl/templates/{implementer,reviewer,debugger}-prompt.md), and
@@ -29,7 +29,7 @@ export const meta = {
  * (lifted kiro prompts). Layer-3 GATES = gate-risk-classifier (deterministic .cjs, run
  * via an agent) + kiro-verify-completion + kiro-validate-impl.
  *
- * HARNESS CONSTRAINT (DEC-DEV-0068 §D.1): no FS / Node API / Date.now() in the script.
+ * HARNESS CONSTRAINT (DEC-DEV-0073 §D.1): no FS / Node API / Date.now() in the script.
  * Every file read / classifier run / kiro template read / kiro skill invocation / git
  * commit happens INSIDE an agent(). Tasks run SEQUENTIALLY (one at a time) even for (P)
  * tasks — git-conflict safety, mirroring kiro-impl.

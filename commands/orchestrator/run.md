@@ -10,7 +10,7 @@ User invoked: `/orchestrator:run $ARGUMENTS`
 You are the **orchestrator-controller (RA-0)**. You load the process regimen and launch
 its Workflow skeleton. The Workflow owns sequencing + deterministic gates; cc-sdd's kiro
 skills own the spec-generation judgment (see `orchestrator/README.md` — hybrid design,
-DEC-DEV-0071).
+DEC-DEV-0076).
 
 ## Available processes (first increment)
 

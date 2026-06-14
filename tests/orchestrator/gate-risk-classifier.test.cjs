@@ -3,7 +3,7 @@
  * Contract test for orchestrator/lib/gate-risk-classifier.cjs.
  *
  * Canonizes P0-2 (gate-risk-classifier) from Orchestrator dogfood RUN 01
- * (DEC-DEV-0068; design dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md). The regression
+ * (DEC-DEV-0073; design dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md). The regression
  * lock is the design §6 validation table: the predicate MUST reproduce the human's
  * actual gate decisions — 16/17 without the M5 first-task rule, 17/17 with it. The
  * one design discrepancy (task 1.1 scaffold) is the M5 case and is asserted both ways.
@@ -43,7 +43,7 @@ function test(name, fn) {
   catch (e) { console.error('  ✗', name, '\n      ', e.message); process.exitCode = 1; }
 }
 
-console.log('gate-risk-classifier contract test (DEC-DEV-0068 P0-2 — design §6 reproduction)');
+console.log('gate-risk-classifier contract test (DEC-DEV-0073 P0-2 — design §6 reproduction)');
 
 // ---- design §6 validation table: 17 RUN 01 gate decisions ----
 // Each fixture folds the resolved requirement text into `text` (the helper scans

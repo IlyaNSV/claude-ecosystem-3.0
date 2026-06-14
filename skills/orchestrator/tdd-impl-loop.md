@@ -10,7 +10,7 @@ escalation, and a final GO-gate. cc-sdd already has all of this in **`kiro-impl`
 invoke it (only a human typing the command). Therefore the Orchestrator owns the
 **dispatch FSM** itself, while **lifting** every piece of methodology from cc-sdd.
 
-> Cost discipline (DEC-DEV-0071/0072): do NOT rewrite kiro-impl's implementer/reviewer/
+> Cost discipline (DEC-DEV-0076/0072): do NOT rewrite kiro-impl's implementer/reviewer/
 > debugger methodology. Lift it. Net-new is the FSM + the gate-risk-classifier.
 
 ## What we LIFT vs what we OWN

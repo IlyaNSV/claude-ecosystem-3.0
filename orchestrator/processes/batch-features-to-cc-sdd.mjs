@@ -12,8 +12,8 @@ export const meta = {
 }
 
 /*
- * Orchestrator process P3 `batch-features-to-cc-sdd` — HYBRID design (DEC-DEV-0071,
- * build S5a). Reading: SPEC §3.2; RUN 01 harvest (DEC-DEV-0068); ORCHESTRATOR_BUILD_KICKOFF.
+ * Orchestrator process P3 `batch-features-to-cc-sdd` — HYBRID design (DEC-DEV-0076,
+ * build S5a). Reading: SPEC §3.2; RUN 01 harvest (DEC-DEV-0073); ORCHESTRATOR_BUILD_KICKOFF.
  *
  * WHY HYBRID: cc-sdd's `kiro-spec-batch` skill ALREADY does dependency-wave grouping,
  * parallel per-feature dispatch (kiro-spec-init→requirements→design→tasks), a 10-point
@@ -32,7 +32,7 @@ export const meta = {
  * the helpers (adapter C-07 preflight + coverage-oracle): an agent runs the helper via
  * Bash and relays its JSON — the verdict comes from CODE, not the agent's judgment.
  *
- * HARNESS CONSTRAINT (DEC-DEV-0068 §D.1): Workflow scripts have NO filesystem / Node
+ * HARNESS CONSTRAINT (DEC-DEV-0073 §D.1): Workflow scripts have NO filesystem / Node
  * API access and no Date.now()/Math.random(). Every file read / adapter run / oracle
  * run / kiro skill invocation / git commit happens INSIDE an agent() call (agents have
  * Bash/Read/Write/Skill). Inputs arrive via `args`; timestamps are stamped outside.

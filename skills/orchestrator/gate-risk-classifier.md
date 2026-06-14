@@ -9,7 +9,7 @@ expensive (×2 subagents on each of ~26 tasks). The most-frequent un-codified hu
 judgment in RUN 01 was "does THIS task need the independent reviewer, or is
 inline-verify enough?". This skill replaces that eyeball with a deterministic predicate.
 
-> RUN 01 grounding (P0-2, DEC-DEV-0068; full design `dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`):
+> RUN 01 grounding (P0-2, DEC-DEV-0073; full design `dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`):
 > validated 16/17 against the run's actual gate decisions, 17/17 with the M5 first-task
 > rule. The single REJECT of the whole run (atomic reset, task 4.6) landed on a HIGH-tier
 > task — and the predicate marks it HIGH.

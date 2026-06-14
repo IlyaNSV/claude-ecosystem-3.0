@@ -33,7 +33,7 @@ content_hashes:
 ---
 
 <!--
-  REGRESSION FIXTURE (DEC-DEV-0068 / Orchestrator dogfood RUN 01).
+  REGRESSION FIXTURE (DEC-DEV-0073 / Orchestrator dogfood RUN 01).
   This handoff embeds MK/NM UI sub-documents under §10 whose own `## 1.`–`## 7.`
   headers RESTART numbering. A naive flat section parser (last-write-wins) would
   clobber the real §1/§5/§6 with UI content — cc-sdd then receives WCAG notes as

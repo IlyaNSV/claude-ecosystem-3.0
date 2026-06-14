@@ -11,7 +11,7 @@ re-implement steering — it **delegates to kiro-steering** and adds only the tw
 cc-sdd's skill cannot know on its own: the Product framing from `.product/`, and that
 the tech stack is decided and pinned.
 
-> Cost discipline (DEC-DEV-0071): `kiro-steering` already does the bootstrap/sync work
+> Cost discipline (DEC-DEV-0076): `kiro-steering` already does the bootstrap/sync work
 > well. Re-authoring steering by hand duplicated it. This step is now a thin wrapper.
 
 ## Method
@@ -39,7 +39,7 @@ kiro-spec-batch and the later P5 inherit one foundation).
 ## Anti-patterns
 
 1. **Re-authoring steering by hand.** Delegate to `kiro-steering`; only supplement
-   Product framing + stack pinning. (The cost lesson of DEC-DEV-0071.)
+   Product framing + stack pinning. (The cost lesson of DEC-DEV-0076.)
 2. **Letting a stack be inferred silently.** An undecided stack is a human gate, not a
    default. Pin it or stop.
 3. **Unpinned versions.** "Node + Postgres" without versions defeats the

@@ -17,7 +17,7 @@ emits handoffs). So **this bridge is the programmatic replacement for kiro-disco
 it derives kiro-spec-batch's inputs from handoffs, with a content-fidelity gate in
 front. That is the Orchestrator's sharp, non-duplicative value over cc-sdd here.
 
-> RUN 01 grounding (P0-1, DEC-DEV-0068): a handoff can pass *presence-level* checks
+> RUN 01 grounding (P0-1, DEC-DEV-0073): a handoff can pass *presence-level* checks
 > yet have silently clobbered bodies (§10 UI sub-docs overwriting §1/§5/§6). The brief
 > is only as good as the handoff it derives from — so the fidelity gate runs first.
 

@@ -1,9 +1,9 @@
 # Orchestrator Module — SPEC
 
-> **Статус:** `v1.0-draft (dogfood RUN 01 harvest)` (2026-06-14, DEC-DEV-0068) — **ещё не** implementation-ready, но эмпирически обоснован. Направление зафиксировано DEC-DEV-0058 (v0.1); регламенты сняты с **фактического** dogfood-прогона (сессия `6dc62bc8`, см. `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`), который прожил полную цепочку D2-T → D3-impl → validation → runtime. Разделы, помеченные **[RUN 01]**, обоснованы прогоном; scope первого инкремента (§8) — открытое решение.
+> **Статус:** `v1.0-draft (dogfood RUN 01 harvest)` (2026-06-14, DEC-DEV-0073) — **ещё не** implementation-ready, но эмпирически обоснован. Направление зафиксировано DEC-DEV-0058 (v0.1); регламенты сняты с **фактического** dogfood-прогона (сессия `6dc62bc8`, см. `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`), который прожил полную цепочку D2-T → D3-impl → validation → runtime. Разделы, помеченные **[RUN 01]**, обоснованы прогоном; scope первого инкремента (§8) — открытое решение.
 > **Роль:** «Тимлид PMO» — runtime-владелец зон D2-Technical + D3 и выше. Берёт PMO-процесс и проводит его **end-to-end** силами role-агентов, действующих по регламентам.
 > **Не путать с:** Integrator Module (он *ставит и настраивает* инструменты; Оркестратор их *запускает*) и Product Module (он владеет `.product/` и бизнес-решениями).
-> **Читать вместе с:** [../integrator-module/SPEC.md](../integrator-module/SPEC.md) (§8 граница, §14 tool-docs), [../pmo/pmo-map.md](../pmo/pmo-map.md) (D2-T/D3/D4 декомпозиция), [DEC-DEV-0040 Q3](../../DEV_JOURNAL.md) (production routing вырезан Phase 5 → Оркестратор), [DEC-DEV-0058](../../DEV_JOURNAL.md) (направление), [DEC-DEV-0068](../../DEV_JOURNAL.md) + [`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`](../../dev/ORCHESTRATOR_DOGFOOD_RUN_01.md) (этот harvest).
+> **Читать вместе с:** [../integrator-module/SPEC.md](../integrator-module/SPEC.md) (§8 граница, §14 tool-docs), [../pmo/pmo-map.md](../pmo/pmo-map.md) (D2-T/D3/D4 декомпозиция), [DEC-DEV-0040 Q3](../../DEV_JOURNAL.md) (production routing вырезан Phase 5 → Оркестратор), [DEC-DEV-0058](../../DEV_JOURNAL.md) (направление), [DEC-DEV-0073](../../DEV_JOURNAL.md) + [`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`](../../dev/ORCHESTRATOR_DOGFOOD_RUN_01.md) (этот harvest).
 
 ---
 
@@ -99,10 +99,10 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 
 **Что прогон добавил к каждому процессу (vs концепт v0.1):**
 - **P3:** волновой барьер (`[GATE]` между волнами зависимостей), **content-level adapter-verify** (P0-1: семантика маппинга, не наличие секций — урок silent fidelity-loss), петля cross-spec с критерием выхода (`all RESOLVED`), `coverage-oracle` (не доверяя self-report).
-- **P5:** `gate-risk-classifier` (router тяжести гейта inline-vs-independent — детерминированный предикат, **design: [`dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`](../../dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md)**, DEC-DEV-0068 P0-2; валидирован 16/17 против RUN 01), persistent inter-task **Notes-ledger** (forward-deps), per-step mini-orient + idempotent selective-commit, **нативная реализация** (не обёртка `/kiro-impl`).
+- **P5:** `gate-risk-classifier` (router тяжести гейта inline-vs-independent — детерминированный предикат, **design: [`dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`](../../dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md)**, DEC-DEV-0073 P0-2; валидирован 16/17 против RUN 01), persistent inter-task **Notes-ledger** (forward-deps), per-step mini-orient + idempotent selective-commit, **нативная реализация** (не обёртка `/kiro-impl`).
 - **P6:** механический слой + 3 параллельных валидатора + `verify-finding-before-act` (находка валидатора → grep ground-truth → только тогда remediation).
 
-> **[S5a build — DEC-DEV-0071] P3 реализован ГИБРИДНО (оркеструем, не переписываем).**
+> **[S5a build — DEC-DEV-0076] P3 реализован ГИБРИДНО (оркеструем, не переписываем).**
 > Чтение реального cc-sdd показало: `kiro-spec-batch` **уже** делает волновой барьер +
 > параллельный per-feature dispatch + **10-точечный cross-spec consistency review +
 > 3-раундовый fix-loop**. Поэтому role-агенты `spec-author`/`cross-spec-reviewer`/`spec-fixer`
@@ -117,7 +117,7 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 > `orchestrator/README.md`. Cross-spec owner-arbitration **не** добавлен — kiro Step 4 строже;
 > вернёмся, только если live-прогон вскроет пробел, который oracle не ловит.
 
-> **[S5b build — DEC-DEV-0072] P5 реализован ТОНКИМ native-контроллером + лифт kiro-impl.**
+> **[S5b build — DEC-DEV-0077] P5 реализован ТОНКИМ native-контроллером + лифт kiro-impl.**
 > `kiro-impl` — зрелый автономный TDD-контроллер (per-task implementer→independent review→
 > debug→verify-completion→selective commit→Implementation Notes→`kiro-validate-impl` GO-гейт,
 > bounded rounds, strict structured-handoff parse, Feature-Flag, upstream-routing), но он
@@ -250,7 +250,7 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 `deploy-to-stage` / `rollback-release` — **после** того как Интегратор заведёт D3/D5-инструменты.
 
-> **[RUN 01] Решение по scope — РЕШЕНО E2+E4 (DEC-DEV-0070).** Harvest рекомендовал **E2-only** (`batch-features-to-cc-sdd` = P3 — самодостаточен и не нагружает §6, который нельзя на нём провалидировать). Человек **выбрал расширение до E4** (build P3 + P5 `feature-to-tdd-impl`): прогон доказал, что E4 работает, и полный pipeline до кода ценнее минимального. **Принятые риски:** (1) §6/capability-канал остаётся непровалидированным — выносится в прогон №2 с неоснащённой инфрой (S6); (2) `disable-model-invocation` снимается **нативной** реализацией P5 (Workflow читает tasks.md и диспатчит implementer'ов сам, OD9), а не обёрткой `/kiro-impl`; (3) durable-слой (n8n) под вопросом до появления cross-session-потребности (§10). P4/P6 канонизируются вместе с P3/P5.
+> **[RUN 01] Решение по scope — РЕШЕНО E2+E4 (DEC-DEV-0075).** Harvest рекомендовал **E2-only** (`batch-features-to-cc-sdd` = P3 — самодостаточен и не нагружает §6, который нельзя на нём провалидировать). Человек **выбрал расширение до E4** (build P3 + P5 `feature-to-tdd-impl`): прогон доказал, что E4 работает, и полный pipeline до кода ценнее минимального. **Принятые риски:** (1) §6/capability-канал остаётся непровалидированным — выносится в прогон №2 с неоснащённой инфрой (S6); (2) `disable-model-invocation` снимается **нативной** реализацией P5 (Workflow читает tasks.md и диспатчит implementer'ов сам, OD9), а не обёрткой `/kiro-impl`; (3) durable-слой (n8n) под вопросом до появления cross-session-потребности (§10). P4/P6 канонизируются вместе с P3/P5.
 
 ---
 
@@ -267,7 +267,7 @@ phase('verify'); const gate = await agent('сверить выход с конт
 | **OD7** | Как enforce'ить границу Orch↔Integrator (Оркестратор по умолчанию её поглощает) | **async-протокол** `request→await-fix→resume`: capability-spec в `pending-actions.md`, блок шага через ScheduleWakeup-проверку, **не чинить сам** | **новое (RUN 01)**; гипотеза, не проверена — анти-эталон #29, эталон #10 |
 | **OD8** | Куда идут дефекты канона `.product` / under-spec / выбор провайдера | **второй обратный канал →Product** (поле `route`); не Integrator-capability | **новое (RUN 01)** §6-bis п.4 |
 | **OD9** | Как Оркестратор исполняет P5 при `disable-model-invocation` на `/kiro-impl` | **нативный Workflow-скелет**: читает `tasks.md`, диспатчит implementer'ов напрямую (не обёртка) | **новое (RUN 01)** §2-bis; рекомендовано, не прототипировано |
-| **OD10** | Scope первого инкремента (E2-only vs extend до E4-E6) | **E2+E4** — build P3 `batch-features-to-cc-sdd` + P5 `feature-to-tdd-impl` (нативный, не обёртка `/kiro-impl`). Решение человека (DEC-DEV-0070), override рекомендации harvest'а (E2-only); риски приняты: §6 не валиден (S6/прогон №2), `disable-model-invocation` снимается нативным P5 (OD9), durable-слой n8n под вопрос | **РЕШЕНО (DEC-DEV-0070)** |
+| **OD10** | Scope первого инкремента (E2-only vs extend до E4-E6) | **E2+E4** — build P3 `batch-features-to-cc-sdd` + P5 `feature-to-tdd-impl` (нативный, не обёртка `/kiro-impl`). Решение человека (DEC-DEV-0075), override рекомендации harvest'а (E2-only); риски приняты: §6 не валиден (S6/прогон №2), `disable-model-invocation` снимается нативным P5 (OD9), durable-слой n8n под вопрос | **РЕШЕНО (DEC-DEV-0075)** |
 
 ---
 
@@ -297,4 +297,4 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 - `v0` (2026-06-02) — concept draft. Направление и scope зафиксированы DEC-DEV-0058. Эмпирические регламенты — pending dogfood (`dev/ORCHESTRATOR_DOGFOOD_PLAN.md`).
 - `v0.1` (2026-06-02) — коррекция границы (DEC-DEV-0060): командный канал §6 = запрос **capability** (руки/голова), не инфра-исполнения; добавлен capability self-check; OD5 уточнён до capability-spec; OD6 принят (Интегратор оснащает «голову» = role-агент/skill, role A).
-- `v1.0-draft` (2026-06-14, DEC-DEV-0068) — **dogfood RUN 01 harvest** (сессия `6dc62bc8`, `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`). §2-bis (эмпирика движка + 3 провала durability); §3.2 каталог 1→7 процессов; §3.3 таксономия 11 role-агентов; §6-bis (канал §6 не активировался ни разу — типология +env-constraint/secret, поле `route`, раздельные tier'ы, async-протокол); §7-bis (реальная раскладка автономии + re-formulation-петля); §8 пометка E2-only; OD5 уточнён, OD7–OD10 добавлены. **Не** implementation-ready: scope (OD10) и §6 на D3 — открыты.
+- `v1.0-draft` (2026-06-14, DEC-DEV-0073) — **dogfood RUN 01 harvest** (сессия `6dc62bc8`, `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`). §2-bis (эмпирика движка + 3 провала durability); §3.2 каталог 1→7 процессов; §3.3 таксономия 11 role-агентов; §6-bis (канал §6 не активировался ни разу — типология +env-constraint/secret, поле `route`, раздельные tier'ы, async-протокол); §7-bis (реальная раскладка автономии + re-formulation-петля); §8 пометка E2-only; OD5 уточнён, OD7–OD10 добавлены. **Не** implementation-ready: scope (OD10) и §6 на D3 — открыты.

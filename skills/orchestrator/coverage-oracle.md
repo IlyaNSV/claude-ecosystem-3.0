@@ -8,11 +8,11 @@ The closing gate of the P3 spec-author wave (and reusable in P6). It answers "di
 spec cover every source requirement?" from **ground truth**, not from the subagent
 that authored the spec.
 
-> RUN 01 grounding (P1-1, DEC-DEV-0068): in the dogfood run, coverage was taken from
+> RUN 01 grounding (P1-1, DEC-DEV-0073): in the dogfood run, coverage was taken from
 > the spec-author's self-report. A subagent that silently drops SC-002 also reports
 > "all scenarios covered". The gate must re-derive IDs from the handoff independently.
 
-> Positioning (DEC-DEV-0071): this is the **deterministic complement** to
+> Positioning (DEC-DEV-0076): this is the **deterministic complement** to
 > kiro-spec-batch's Step 4 cross-spec review. That review is thorough but LLM-judgment
 > (data models, interfaces, naming…); this gate is code over ground truth — it answers
 > the one question an LLM reviewer can still get wrong by trusting a self-report:

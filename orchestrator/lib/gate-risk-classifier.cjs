@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * gate-risk-classifier.cjs — deterministic verify-gate-severity predicate for the
- * Orchestrator P5 `feature-to-tdd-impl` process (DEC-DEV-0068 P0-2, design in
- * dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md; build S5b / DEC-DEV-0072).
+ * Orchestrator P5 `feature-to-tdd-impl` process (DEC-DEV-0073 P0-2, design in
+ * dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md; build S5b / DEC-DEV-0077).
  *
  * WHY THIS EXISTS (RUN 01, P0-2):
  *   cc-sdd's kiro-impl runs a full independent adversarial reviewer (kiro-review)

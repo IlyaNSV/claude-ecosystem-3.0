@@ -4,10 +4,10 @@
 > и проводит его end-to-end, оркеструя role-агентов и инструменты по регламентам.
 > **Спецификация:** [`docs/orchestrator-module/SPEC.md`](../docs/orchestrator-module/SPEC.md).
 > **Эмпирика:** [`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`](../dev/ORCHESTRATOR_DOGFOOD_RUN_01.md) (RUN 01 harvest).
-> **Статус:** первый инкремент — **P3 `batch-features-to-cc-sdd`** (S5a, DEC-DEV-0071) +
-> **P5 `feature-to-tdd-impl`** (S5b, DEC-DEV-0072). Оба построены гибридно (оркеструют cc-sdd).
+> **Статус:** первый инкремент — **P3 `batch-features-to-cc-sdd`** (S5a, DEC-DEV-0076) +
+> **P5 `feature-to-tdd-impl`** (S5b, DEC-DEV-0077). Оба построены гибридно (оркеструют cc-sdd).
 
-## Принцип: оркеструем, не переписываем (DEC-DEV-0071)
+## Принцип: оркеструем, не переписываем (DEC-DEV-0076)
 
 Оркестратор **не дублирует** машинерию инструментов, которые завёл Интегратор. cc-sdd
 уже умеет генерить спеки волнами с cross-spec review (`kiro-spec-batch`), вести steering
@@ -95,14 +95,14 @@ Net-new vs `kiro-impl`: **gate-risk-classifier** (он всегда гоняет
 ## Sync-обязательства
 
 - **`lib/coverage-oracle.cjs` monotonic section-guard зеркалит** `adapters/handoff-to-ccsdd.js`
-  `extractSections` (DEC-DEV-0068). Намеренно продублированы, чтобы развязать runtime install-пути
+  `extractSections` (DEC-DEV-0073). Намеренно продублированы, чтобы развязать runtime install-пути
   (tri-location урок DEC-DEV-0040). Меняешь guard в адаптере — отрази здесь. Оба покрыты тестами.
 - **`lib/gate-risk-classifier.cjs` — load-bearing реестр опционален в v1.** Предикат
   работает на маркерах M1–M5 + профилях; реестр лишь уточняет declarative-vs-imperative для
   упомянутых IC/BR. Per-project деривация реестра (скан requirements на M1/M2, design §5.1) —
   **задокументированный follow-up**, не блокер. Регрессия предиката против таблицы RUN 01 §6
   (17/17 с M5) — в тесте.
-- **Harness fs-constraint (DEC-DEV-0068 §D.1):** Workflow-скрипты не имеют доступа к FS/Node API
+- **Harness fs-constraint (DEC-DEV-0073 §D.1):** Workflow-скрипты не имеют доступа к FS/Node API
   и `Date.now()`/`Math.random()`. Поэтому каждое чтение файла / запуск хелпера / вызов
   kiro-skill / git-commit — **внутри `agent()`**, не в теле скрипта. Входы — через `args`.
 

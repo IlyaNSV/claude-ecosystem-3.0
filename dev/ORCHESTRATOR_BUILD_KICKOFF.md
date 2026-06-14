@@ -1,6 +1,6 @@
 # Orchestrator Module — Build Kickoff (P3 + P5, E2+E4)
 
-> **Статус:** `kickoff` (2026-06-14, DEC-DEV-0070 / S5). D7 phase-kickoff для **первого implementation-инкремента** модуля Оркестратора. Scope зафиксирован OD10 = **E2+E4** (P3 `batch-features-to-cc-sdd` + нативный P5 `feature-to-tdd-impl`).
+> **Статус:** `kickoff` (2026-06-14, DEC-DEV-0075 / S5). D7 phase-kickoff для **первого implementation-инкремента** модуля Оркестратора. Scope зафиксирован OD10 = **E2+E4** (P3 `batch-features-to-cc-sdd` + нативный P5 `feature-to-tdd-impl`).
 > **Источник дизайна:** `ORCHESTRATOR_DOGFOOD_RUN_01.md` (RUN 01 harvest), `docs/orchestrator-module/SPEC.md` v1.0-draft, `ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`.
 > **Чеклист:** `dev/meta-improvement/checklists/phase-kickoff.md` (inline-mode, продолжение рабочей сессии).
 > **Главный вывод kickoff'а:** инкремент **большой и содержит ≥6 архитектурных «would-I-be-guessing»** (Section 1 Fail-критерий → split). Рекомендация — **split S5 → S5a (P3) → smoke → S5b (P5)** (incremental-pilot, CLAUDE.md §2). Несколько решений требуют подтверждения человека перед генерацией (§D).
@@ -83,18 +83,18 @@ Per «cuttable scope». P3+P5 целиком — слишком много на 
 
 ## E. RESUME POINTER (для продолжения после context-compaction)
 
-> **Где мы:** S1–S4 + S5-kickoff завершены. **S5a (P3) ЗАВЕРШЁН** (DEC-DEV-0071) — но **гибридно**, не по inline-roles плану ниже: read-only инспекция cc-sdd показала, что `kiro-spec-batch` уже делает волны+dispatch+10-точечный cross-spec+fix → роли `spec-author`/`cross-spec-reviewer`/`spec-fixer` НЕ строились (дропнуты), Оркестратор их **вызывает**. Реализовано: мост `handoff→brief.md/roadmap` (замена `kiro-discovery`), preflight C-07, детерминир. `coverage-oracle`(+тест), Workflow-скелет `.mjs`, `commands/orchestrator/run.md`, `orchestrator/README.md`. Smoke зелёный (`npm run verify` exit 0). **Следующее действие — S5b build (P5 `feature-to-tdd-impl`, нативный).** Пилот не трогаем; smoke на `tests/fixtures/`.
+> **Где мы:** S1–S4 + S5-kickoff завершены. **S5a (P3) ЗАВЕРШЁН** (DEC-DEV-0076) — но **гибридно**, не по inline-roles плану ниже: read-only инспекция cc-sdd показала, что `kiro-spec-batch` уже делает волны+dispatch+10-точечный cross-spec+fix → роли `spec-author`/`cross-spec-reviewer`/`spec-fixer` НЕ строились (дропнуты), Оркестратор их **вызывает**. Реализовано: мост `handoff→brief.md/roadmap` (замена `kiro-discovery`), preflight C-07, детерминир. `coverage-oracle`(+тест), Workflow-скелет `.mjs`, `commands/orchestrator/run.md`, `orchestrator/README.md`. Smoke зелёный (`npm run verify` exit 0). **Следующее действие — S5b build (P5 `feature-to-tdd-impl`, нативный).** Пилот не трогаем; smoke на `tests/fixtures/`.
 >
-> ⚠ **План «S5a — порядок генерации» ниже УСТАРЕЛ** (предполагал inline-роли). Канон того, что построено — `orchestrator/README.md` + DEC-DEV-0071/0072 + трекер §9.
+> ⚠ **План «S5a — порядок генерации» ниже УСТАРЕЛ** (предполагал inline-роли). Канон того, что построено — `orchestrator/README.md` + DEC-DEV-0076/0072 + трекер §9.
 >
-> **S5b (P5) ЗАВЕРШЁН** (DEC-DEV-0072) — тонкий native-контроллер + лифт kiro-impl: Workflow владеет минимальным dispatch-FSM, агент читает `kiro-impl/templates/*` в прогоне + зовёт kiro-гейты; net-new = `gate-risk-classifier.cjs` (P0-2, §6-регрессия 17/17) + durable скелет. Smoke зелёный. **Следующее действие — S6 (прогон №2, §6 capability-канал на неоснащённой инфре)** ИЛИ другие follow-up'ы (Tier 2 / Phase 6 runtime smoke / Orchestrator live-прогон P3+P5 на пилоте). Пилот в билд-сессии не трогали — live-прогон отдельным осознанным заходом.
+> **S5b (P5) ЗАВЕРШЁН** (DEC-DEV-0077) — тонкий native-контроллер + лифт kiro-impl: Workflow владеет минимальным dispatch-FSM, агент читает `kiro-impl/templates/*` в прогоне + зовёт kiro-гейты; net-new = `gate-risk-classifier.cjs` (P0-2, §6-регрессия 17/17) + durable скелет. Smoke зелёный. **Следующее действие — S6 (прогон №2, §6 capability-канал на неоснащённой инфре)** ИЛИ другие follow-up'ы (Tier 2 / Phase 6 runtime smoke / Orchestrator live-прогон P3+P5 на пилоте). Пилот в билд-сессии не трогали — live-прогон отдельным осознанным заходом.
 
 **Durable-состояние (всё в git, читать в этом порядке):**
 1. `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` §9 — **трекер прогресса** (S1–S6 статусы + commit'ы).
 2. Этот файл (`ORCHESTRATOR_BUILD_KICKOFF.md`) §D/§D.1/§5 — решения + harness-ограничение + sub-phase план.
 3. `docs/orchestrator-module/SPEC.md` v1.0-draft §3.2/§3.3 — каталог процессов P1–P7 + роли + скелеты P3/P5.
 4. `dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md` — P0-2 (нужен в S5b).
-5. `DEV_JOURNAL.md` DEC-DEV-0068/0069/0070 — решения и rationale.
+5. `DEV_JOURNAL.md` DEC-DEV-0073/0069/0070 — решения и rationale.
 
 **S5a — порядок генерации (build в репо, роли инлайнятся в .mjs per D.1):**
 1. `orchestrator/README.md` — структура модуля + sync-обязательство ролей.

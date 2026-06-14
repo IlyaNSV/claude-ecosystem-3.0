@@ -3,7 +3,7 @@
  * coverage-oracle.cjs — deterministic requirement-coverage oracle for the
  * Orchestrator P3 `batch-features-to-cc-sdd` process (and reusable by P6).
  *
- * WHY THIS EXISTS (RUN 01, P1-1 — DEC-DEV-0068):
+ * WHY THIS EXISTS (RUN 01, P1-1 — DEC-DEV-0073):
  *   In the dogfood run, "did the generated spec cover every source requirement?"
  *   was answered by the spec-author subagent's own self-report. A subagent that
  *   silently dropped SC-002 also reported "all scenarios covered". The fix is a
@@ -17,7 +17,7 @@
  *   - Self-contained: does NOT require() the integrator adapter, so the oracle
  *     keeps working regardless of where (or whether) the adapter is installed.
  *   - Section extraction uses the SAME monotonic-increase guard as the adapter
- *     (DEC-DEV-0068) so §10 UI sub-documents with restarted `## N.` numbering
+ *     (DEC-DEV-0073) so §10 UI sub-documents with restarted `## N.` numbering
  *     cannot leak their IDs into §5/§6/§9. ⚠ SYNC OBLIGATION: if the adapter's
  *     extractSections guard changes, mirror it here (the two are intentionally
  *     duplicated to decouple runtime install paths — tri-location lesson
