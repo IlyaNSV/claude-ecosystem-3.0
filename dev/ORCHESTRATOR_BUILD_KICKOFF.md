@@ -64,16 +64,49 @@ Per «cuttable scope». P3+P5 целиком — слишком много на 
 
 ---
 
-## D. Требует подтверждения человека (перед генерацией)
+## D. Решения (подтверждены человеком 2026-06-14)
 
-> Не угадываю — это решения, влияющие на структуру модуля.
+- **Q1 (packaging/invocation, A1):** ✅ **`orchestrator/processes/*.mjs` + `/orchestrator:run`** запускает harness-Workflow. (smoke opt-in-триггера — в S5a-smoke.)
+- **Q2 (роли, A3):** ✅ **`agents/orchestrator/*.md`** — канонические определения ролей.
+- **Q3 (split):** ✅ **Split S5a (P3) → smoke → S5b (P5).**
+- **Q4 (build/smoke):** ✅ **Build в репо + smoke на `tests/fixtures/`.** Пилот не трогаем; live-прогон — отдельным осознанным заходом.
 
-- **Q1 (packaging/invocation, A1):** ОК ли модель «`orchestrator/processes/*.mjs` + `/orchestrator:run` команда, запускающая harness-Workflow»? Или ты видишь процессы иначе (напр. целиком внутри skill-а, без отдельных .mjs)? Это определяет весь file-layout. *(Рекомендую: .mjs + команда — это прямое следствие SPEC §4 «ядро = in-harness Workflow».)*
-- **Q2 (роли, A3):** `agents/orchestrator/*.md` (отдельные файлы, переиспользуемо) vs inline-промпты в Workflow-скрипте? *(Рекомендую: отдельные файлы — консистентно с agents/product|integrator.)*
-- **Q3 (split):** Согласен на **split S5a (P3) → smoke → S5b (P5)**, а не оба разом? *(Рекомендую: да — incremental-pilot, и P3 самоценен.)*
-- **Q4 (где билдим/смоук):** P3/P5 строим в репо экосистемы (канон), смоук — против fixture или против `my-first-test`? Прогон против пилота меняет его состояние (нужна ветка/осторожность с reconcile DEC-DEV-0065). *(Рекомендую: build в репо + smoke на fixture-handoff'ах; live-прогон на пилоте — отдельным осознанным заходом.)*
+### D.1 — Harness-ограничение (уточняет Q1/Q2)
+
+⚠ **Workflow-скрипты харнесса НЕ имеют доступа к файловой системе** (`No filesystem / Node.js API access` из спецификации Workflow-tool; также запрещены `Date.now()`/`Math.random()`). Следствия:
+
+1. **Role-промпты нельзя `readFileSync` из `agents/orchestrator/*.md`** внутри `.mjs`. Резолюция: роли **канонически живут** в `agents/orchestrator/*.md` (источник истины + Agent-tool/manual-путь), а в Workflow-скрипт **инлайнятся как `const`-строки**. Обязательство синхронизации — в шапке скрипта + README (drift-риск как у tri-location адаптеров). Альтернатива `opts.agentType` (резолв роли харнессом) **отложена**: резолюция custom project-agent как subagent_type ненадёжна (тот же «S8 P1 regression», DEC-DEV-0064); инлайн надёжнее для первого build.
+2. **Входы (handoff-пути, FM-список, fixture-режим) — через `args`** Workflow, не чтением.
+3. **Стампы/недетерминизм — вне скрипта** (после возврата Workflow), per SPEC §2.
+
+---
+
+## E. RESUME POINTER (для продолжения после context-compaction)
+
+> **Где мы:** S1–S4 + S5-kickoff завершены и закоммичены (ветка `feat/orchestrator-dogfood-run01`, до `a6078fc`). Q1–Q4 подтверждены. **Следующее действие — S5a build (P3).** Пилот не трогаем; smoke на `tests/fixtures/`.
+
+**Durable-состояние (всё в git, читать в этом порядке):**
+1. `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` §9 — **трекер прогресса** (S1–S6 статусы + commit'ы).
+2. Этот файл (`ORCHESTRATOR_BUILD_KICKOFF.md`) §D/§D.1/§5 — решения + harness-ограничение + sub-phase план.
+3. `docs/orchestrator-module/SPEC.md` v1.0-draft §3.2/§3.3 — каталог процессов P1–P7 + роли + скелеты P3/P5.
+4. `dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md` — P0-2 (нужен в S5b).
+5. `DEV_JOURNAL.md` DEC-DEV-0068/0069/0070 — решения и rationale.
+
+**S5a — порядок генерации (build в репо, роли инлайнятся в .mjs per D.1):**
+1. `orchestrator/README.md` — структура модуля + sync-обязательство ролей.
+2. `agents/orchestrator/{spec-author,cross-spec-reviewer,spec-fixer}.md` — канонические роли (RA-2/3/4 из SPEC §3.3; structured-verdict VC-7).
+3. `skills/orchestrator/{orchestrator-init,build-steering,build-briefs-from-handoff,coverage-oracle,arbitrate-cross-spec}.md` — регламент-методология.
+4. `orchestrator/processes/batch-features-to-cc-sdd.mjs` — Workflow-скелет (SPEC §3.2 P3: init → steering/briefs → preflight-gate[adapter content-verify C-07] → wave-barrier → cross-spec loop[критерий выхода] → coverage-oracle → commit); роли инлайн.
+5. `commands/orchestrator/run.md` — `/orchestrator:run`.
+6. **Smoke:** `node --check` на .mjs; прогон детерминированных хелперов (adapter content-verify, brief-деривация, coverage-oracle) на `tests/fixtures/FM-FIXTURE-*`; зафиксировать, что full cc-sdd-прогон требует пилота (отдельный заход).
+7. Closure: DEC-DEV (S5a) + трекер S5a→done + smoke перед S5b.
+
+**Инварианты процесса (не потерять после compaction):**
+- Коммитить **только свои файлы**; pre-existing ` D PATCH_1.3.3` + ` M audit-index.md` НЕ трогать (оставлены unstaged намеренно).
+- Push требует `dangerouslyDisableSandbox: true`. Локально не запушено: коммиты после `880f97d` (трекер, S3, OD10, kickoff).
+- Каждый шаг: harness `/tasks` (#5 in-progress) + трекер §9 + DEC-DEV при значимом решении.
 
 ---
 
 ## Статус
-🟡 **KICKOFF — ожидает подтверждения D-Q1..Q4 перед генерацией модуля.** После подтверждения: 🟢 → S5a build.
+🟢 **READY — S5a (P3) build.** Q1–Q4 подтверждены, D.1-ограничение учтено. **Это удобная точка для context-compaction** (см. §E).
