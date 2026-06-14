@@ -184,7 +184,7 @@ Pre-flight-скелет (worktree `immutable-snuggling-cascade`, 2026-06-06) о�
 |---|---|---|---|---|
 | **S1** | Harvest сессии + SPEC v0.1→v1.0-draft | DEC-DEV-0068 | ✅ done | `5a4f906` |
 | **S2** | Канонизация **P0-1** (content-level oracle C-07) + upstream-фикс адаптера + регресс-тест | DEC-DEV-0069 / follow-up #1 | ✅ done | `880f97d` |
-| **S3** | `gate-risk-classifier` (**P0-2**) + реестр load-bearing инвариантов (seed из auth: IC-001..007, BR-007/009/012/013/020) | follow-up #2 | 🔄 in-progress | — |
+| **S3** | `gate-risk-classifier` (**P0-2**) + реестр load-bearing инвариантов — **design** (`dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`, валидирован 16/17 против RUN 01; wiring отложен в S5 per OD10) | follow-up #2 | ✅ design done | `5350a6d` |
 | **S4** | Решить **OD10** — scope 1-го инкремента (E2-only vs extend до E4-E6) | follow-up #3 | ⬜ pending (решение человека) | — |
 | **S5** | Прототип **P5 как нативного Workflow-скелета** (снять `disable-model-invocation`, OD9) | follow-up #4 | ⬜ pending | — |
 | **S6** | Прогон №2 с **неоснащённой** инфрой — провалидировать §6 на D3 (откр. вопрос №1) | follow-up #5 | ⬜ pending | — |
