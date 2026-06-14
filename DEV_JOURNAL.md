@@ -5436,6 +5436,52 @@ Kickoff (DEC-DEV-0070) зафиксировал scope E2+E4. S5a = build P3 `bat
 
 ---
 
+## DEC-DEV-0072 — S5b build: P5 `feature-to-tdd-impl` — тонкий native-контроллер + лифт kiro-impl (OD9 решён лифтом)
+
+**Date:** 2026-06-14
+**Trigger:** S5b build (kickoff §E). Человек: «начни с тщательной read-first инспекции kiro-impl/review» — ровно дисциплина DEC-DEV-0071. Инспекция показала, что `kiro-impl` — почти весь P5, зрелый.
+**Tag:** #orchestrator #build #cc-sdd #lift #gate-risk-classifier #OD9 #DEC-DEV-0071-followup
+
+### Context
+
+OD9 (DEC-DEV-0068/0070): `/kiro-impl` — `disable-model-invocation` → P5 «нативно» (Workflow читает tasks.md, диспатчит implementer'ов сам). Read-first инспекция пилотного cc-sdd (read-only, файлы не трогал) уточнила картину: `kiro-impl` — **зрелый автономный TDD-контроллер** (per-task fresh implementer → independent `kiro-review` → `kiro-debug` на провале → `kiro-verify-completion` → selective commit → `## Implementation Notes` ledger → финальный `kiro-validate-impl` GO-гейт; bounded rounds 2/2/3; strict structured-handoff parse `STATUS`/`VERDICT`; Feature-Flag RED→GREEN; upstream-ownership routing). Диспатчит субагентов через **самодостаточные шаблоны** `templates/{implementer,reviewer,debugger}-prompt.md`. Только сам `kiro-impl` — disable-model-invocation; все гейты (`kiro-review`/`kiro-verify-completion`/`kiro-validate-impl`/`kiro-debug`) — invocable.
+
+### Decision
+
+**P5 = тонкий native dispatch-FSM + ЛИФТ всей методологии kiro-impl.** Workflow владеет минимальным контроллером (читает план, per-task последовательно: implementer → tier-роутинг гейта → bounded remediation/debug → verify-completion → selective commit; финал GO-гейт). **Каждый промпт субагента лифтится**: агент в прогоне **читает** kiro-шаблон `.claude/skills/kiro-impl/templates/*` и применяет (шаблоны встраивают протокол как fallback). Гейты — **вызов** kiro-skills. kiro в наш репо **не копируем** (иначе tri-location sync-долг, DEC-DEV-0040).
+
+**Net-new vs kiro-impl — ровно два:**
+1. **`gate-risk-classifier`** (`orchestrator/lib/gate-risk-classifier.cjs`, P0-2) — детерминированный предикат тяжести гейта: HIGH (императивная несущая логика: M1 security / M2 concurrency-idem / M3 shared primitive / M4 cross-FM / M5 first-task) → independent reviewer; LOW (профиль: declarative-invariant / pure-module / test-only / UI / infra) → inline-verify. kiro-impl **всегда** гоняет полный reviewer; классификатор рационирует (экономия ×2 субагента на LOW-задачах). **Ключевой рефайнмент:** «трогает инвариант» ≠ HIGH; решает enforcement (declarative UNIQUE/CHECK → LOW+интроспекция; imperative transaction/timing/row-lock → HIGH). Регрессия против таблицы RUN 01 §6: **17/17 с M5** (16/17 без — расхождение 1.1 scaffold в безопасную сторону).
+2. **Durable Workflow-скелет** (границы фаз переживают /compact; у kiro-impl resume-дисциплина уже хорошая — выигрыш инкрементальный).
+
+### Alternatives rejected
+
+- **Полный native контроллер (репликация FSM kiro-impl).** Отвергнут: дублирует ~250 строк зрелого, протестированного контроллера (риск повторить его баги/гапы + sync-бремя с cc-sdd) ради маржинального durability. Против урока DEC-DEV-0071.
+- **Classifier-хелпер + hand-off человеку в `/kiro-impl` (без Workflow-контроллера).** Самый дешёвый; отвергнут человеком в пользу Workflow-автономии impl-лупа (хотя классификатор — главный value-add в обоих). Выбран тонкий-native (из 3 вариантов).
+
+### Lift-механизм (как именно)
+
+Workflow-`.mjs` не читает FS (D.1) → лифт исполняет агент: prompt = «Read `${KIRO_TPL}/implementer-prompt.md` and apply it to task X.Y with context …». Шаблоны kiro живут в пилотном cc-sdd-install и читаются в прогоне. Это снимает копирование kiro-IP в экосистему и его licensing/drift-долг. Подтверждено: только `kiro-impl` disable-model-invocation; читаемость шаблонов + invocability гейтов — есть.
+
+### Smoke (S5b, на fixtures/таблице — не live)
+
+`npm run verify` exit 0: adapters 4/4, coverage-oracle 6/6, **gate-risk-classifier 8/8** (включая §6-репродукцию 17/17 + declarative-vs-imperative + DEFAULT-HIGH + deriveRegistry + parseTasks DAG), workflow-syntax smoke **3/3** (оба `.mjs`).
+
+### Lessons
+
+1. **Read-first дисциплина окупилась снова.** Инспекция kiro-impl до билда показала: писать надо **только** классификатор; весь контроллер-luxury — лифт. Без неё повторился бы черновик «написал FSM с нуля».
+2. **«Native» (OD9) ≠ «с нуля».** OD9 верно требовал, чтобы Workflow владел диспатчем (kiro-impl нельзя вызвать). Но «владеть диспатчем» и «переписать методологию» — разные вещи: первое неизбежно, второе — нет.
+3. **Граница value-add сужается с каждым процессом.** P3: мост + 2 гейта. P5: 1 гейт (классификатор). Чем зрелее инструмент, тем тоньше слой Оркестратора — и это правильный признак (оркеструем, не дублируем).
+
+### Follow-ups
+
+- **Live прогон (S6 / прогон №2):** (а) вызываются ли kiro-гейты (`kiro-review`/`kiro-verify-completion`/`kiro-validate-impl`) из **вложенных** Workflow-субагентов (шаблоны имеют embedded-fallback, но nested-skill-invocation не проверена); (б) читается ли шаблон агентом в прогоне без проблем. Пилот в билд-сессии не трогали.
+- **Per-project деривация load-bearing реестра** (design §5.1, скан requirements на M1/M2) — в v1 реестр опционален (предикат работает на маркерах+профилях); деривацию + override-ревью довести на live-фиче иного класса (FM-002 media / FM-005 billing — другие M1/M2, открытый вопрос §10 дизайна).
+- **M5 вариант A vs B** (first-task→HIGH) принят как A (default-on); подтвердить на старте других фич, что foundational-review повторяется.
+- **S6** (§6 capability-канал, неоснащённая инфра) остаётся — теперь важнее, т.к. P5 (D3-impl) — именно та зона, где §6 по-настоящему нагрузится.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

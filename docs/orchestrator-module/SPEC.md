@@ -117,6 +117,21 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 > `orchestrator/README.md`. Cross-spec owner-arbitration **не** добавлен — kiro Step 4 строже;
 > вернёмся, только если live-прогон вскроет пробел, который oracle не ловит.
 
+> **[S5b build — DEC-DEV-0072] P5 реализован ТОНКИМ native-контроллером + лифт kiro-impl.**
+> `kiro-impl` — зрелый автономный TDD-контроллер (per-task implementer→independent review→
+> debug→verify-completion→selective commit→Implementation Notes→`kiro-validate-impl` GO-гейт,
+> bounded rounds, strict structured-handoff parse, Feature-Flag, upstream-routing), но он
+> **`disable-model-invocation`** → Workflow его не вызовет (это и есть OD9). Поэтому P5 владеет
+> **минимальным dispatch-FSM**, но **лифтит** всю методологию: агент в прогоне читает
+> самодостаточные шаблоны `.claude/skills/kiro-impl/templates/{implementer,reviewer,debugger}-prompt.md`
+> и зовёт invocable-гейты `kiro-review`/`kiro-verify-completion`/`kiro-validate-impl`/`kiro-debug`.
+> **Net-new = только** `gate-risk-classifier` (P0-2, детерминир. предикат HIGH→independent /
+> LOW→inline-verify — kiro-impl всегда гоняет полный reviewer; рубрика валидирована 17/17
+> против таблицы RUN 01 §6 с M5) **+** durable Workflow-скелет. Роли `tdd-implementer`/
+> `adversarial-reviewer` из §3.3 заново **не пишутся** (лифт). Tasks выполняются
+> **последовательно** (git-safety). Файлы: `orchestrator/processes/feature-to-tdd-impl.mjs`,
+> `orchestrator/lib/gate-risk-classifier.cjs`(+тест §6), `skills/orchestrator/{gate-risk-classifier,tdd-impl-loop}.md`.
+
 ### 3.3. Role-агенты (таксономия RUN 01) **[RUN 01]**
 
 Роли = «сотрудники» с job description (system prompt) = регламент роли. Параллелизм через `parallel()`; длинные шаги — Background Agents. В RUN 01 **все 11 ролей собирались вручную из general-purpose субагентов** (хотя `kiro-*` шаблоны существовали) — отсюда требование **реестра role-агентов под PMO-зону** (источник-истины для «голова»-self-check §6). Каждая роль обязана возвращать **structured-verdict schema** (делает синтез вердиктов детерминированным, а не ручным thinking).

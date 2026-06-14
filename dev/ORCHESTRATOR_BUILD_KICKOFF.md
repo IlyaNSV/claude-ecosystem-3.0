@@ -85,7 +85,9 @@ Per «cuttable scope». P3+P5 целиком — слишком много на 
 
 > **Где мы:** S1–S4 + S5-kickoff завершены. **S5a (P3) ЗАВЕРШЁН** (DEC-DEV-0071) — но **гибридно**, не по inline-roles плану ниже: read-only инспекция cc-sdd показала, что `kiro-spec-batch` уже делает волны+dispatch+10-точечный cross-spec+fix → роли `spec-author`/`cross-spec-reviewer`/`spec-fixer` НЕ строились (дропнуты), Оркестратор их **вызывает**. Реализовано: мост `handoff→brief.md/roadmap` (замена `kiro-discovery`), preflight C-07, детерминир. `coverage-oracle`(+тест), Workflow-скелет `.mjs`, `commands/orchestrator/run.md`, `orchestrator/README.md`. Smoke зелёный (`npm run verify` exit 0). **Следующее действие — S5b build (P5 `feature-to-tdd-impl`, нативный).** Пилот не трогаем; smoke на `tests/fixtures/`.
 >
-> ⚠ **План «S5a — порядок генерации» ниже УСТАРЕЛ** (предполагал inline-роли). Канон того, что построено — `orchestrator/README.md` + DEC-DEV-0071 + трекер §9. Для S5b: **лифтить** методологию из `kiro-impl`/`kiro-review` (не писать с нуля — урок DEC-DEV-0071); `gate-risk-classifier` design (`ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`) подключается тут; `/kiro-impl` `disable-model-invocation` → Workflow читает tasks.md и диспатчит implementer'ов сам (OD9).
+> ⚠ **План «S5a — порядок генерации» ниже УСТАРЕЛ** (предполагал inline-роли). Канон того, что построено — `orchestrator/README.md` + DEC-DEV-0071/0072 + трекер §9.
+>
+> **S5b (P5) ЗАВЕРШЁН** (DEC-DEV-0072) — тонкий native-контроллер + лифт kiro-impl: Workflow владеет минимальным dispatch-FSM, агент читает `kiro-impl/templates/*` в прогоне + зовёт kiro-гейты; net-new = `gate-risk-classifier.cjs` (P0-2, §6-регрессия 17/17) + durable скелет. Smoke зелёный. **Следующее действие — S6 (прогон №2, §6 capability-канал на неоснащённой инфре)** ИЛИ другие follow-up'ы (Tier 2 / Phase 6 runtime smoke / Orchestrator live-прогон P3+P5 на пилоте). Пилот в билд-сессии не трогали — live-прогон отдельным осознанным заходом.
 
 **Durable-состояние (всё в git, читать в этом порядке):**
 1. `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` §9 — **трекер прогресса** (S1–S6 статусы + commit'ы).
