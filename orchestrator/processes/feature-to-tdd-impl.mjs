@@ -200,6 +200,20 @@ const gate = (task, impl) => {
   )
 }
 
+// FB-007: on BLOCK, don't leave the _Blocked_ annotation uncommitted and route nowhere.
+// Commit the annotation (so the tree stays clean for the next task) AND record a
+// pending-action with the route, so the operator sees what's blocked and where it goes.
+const recordBlock = (taskId, reason) =>
+  agent(
+    `Task ${taskId} is BLOCKED: ${reason}.\n` +
+    `1) Append "_Blocked: ${reason}_" under task ${taskId} in ${SPEC_DIR}/tasks.md.\n` +
+    `2) Commit ONLY that tasks.md change — explicit path, NEVER git add -A — message: ` +
+    `chore(${FEATURE}): block ${taskId} (surface blocker). This keeps the tree clean for the next task (FB-007).\n` +
+    `3) Append an entry to .claude/pending-actions.md (create if absent) with the blocker text and the route it needs ` +
+    `(Product | Integrator | manual-staging | human) so it isn't silently lost. Do NOT commit code.`,
+    { phase: 'Implement', label: `block:${taskId}` },
+  )
+
 // ---- Phase 2: implement — sequential per-task FSM --------------------------
 phase('Implement')
 const implemented = []
@@ -222,9 +236,9 @@ for (const task of tasks) {
     impl = await implement(task, ` Debug FIX_PLAN: ${d.fix_plan || ''}.`)
   }
   if (!impl || impl.status !== 'READY_FOR_REVIEW') {
-    log(`task ${task.id} blocked (impl) — appending _Blocked_, skipping`)
+    log(`task ${task.id} blocked (impl) — recording block + route, skipping`)
     blockedTasks.push(task.id)
-    await agent(`Append "_Blocked: ${(impl && impl.blocker) || 'impl did not reach READY_FOR_REVIEW'}_" under task ${task.id} in ${SPEC_DIR}/tasks.md. Do not commit code.`, { phase: 'Implement', label: `block:${task.id}` })
+    await recordBlock(task.id, (impl && impl.blocker) || 'impl did not reach READY_FOR_REVIEW')
     continue
   }
 
@@ -247,9 +261,9 @@ for (const task of tasks) {
     }
   }
   if (!verdict || verdict.verdict !== 'APPROVED') {
-    log(`task ${task.id} blocked (review) — appending _Blocked_, skipping`)
+    log(`task ${task.id} blocked (review) — recording block + route, skipping`)
     blockedTasks.push(task.id)
-    await agent(`Append "_Blocked: review not APPROVED — ${(verdict && (verdict.findings || []).join('; ')) || 'unresolved'}_" under task ${task.id} in ${SPEC_DIR}/tasks.md.`, { phase: 'Implement', label: `block:${task.id}` })
+    await recordBlock(task.id, `review not APPROVED — ${(verdict && (verdict.findings || []).join('; ')) || 'unresolved'}`)
     continue
   }
 
