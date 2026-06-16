@@ -1,6 +1,6 @@
 ---
 description: Update an installed tool to a new version. Backup → install new → drift detection → contract repair → verify. Per SPEC §7.4 + DEC-DEV-0040 Q2 (kept in Phase 5, not Maintenance).
-argument-hint: "<tool-name> [<target-version>] [--check-only]"
+argument-hint: "<tool-name> [<target-version>] [--check-only] [--repair]"
 ---
 
 # /integrator:update
@@ -30,7 +30,9 @@ Determine **target version**:
 - `<target-version>` in `$ARGUMENTS` → that exact version
 - Else → query upstream registry for latest (npm: `npm view <pkg> version`; MCP: registry; git: `git ls-remote --tags`)
 
-If target == installed version → no-op, just refresh `last_verified` timestamps; exit with note.
+If target == installed version:
+- **Default** → no-op, just refresh `last_verified` timestamps; exit with note. **But** if you suspect adapter drift (e.g. a recent `/ecosystem:update` advanced the pilot reference adapter while the installed instance lagged), tell the user to re-run with `--repair`.
+- **`--repair` / `--drift-only`** → do NOT no-op. Same-version drift-repair mode: **skip Stage 2 (no new version to install)** and run Stage 1 (backup) → Stage 3 (drift detection) → Stage 4 (contract repair) → Stage 5 (verify) against the currently-installed version on both axes. This is the dual-location DEC-DEV-0040 case (FB-011, live-run RUN 01): the documented repair machinery must be reachable without a version bump. (`--check-only` still applies — `--repair --check-only` = detect + report, no mutation.)
 
 ### Stage 1/5 — Backup
 
@@ -41,6 +43,8 @@ Per skill Section 4:
 3. **Snapshot installed adapter metadata** — extract `@target_tool_version`, `@contract_schema_version`, `@source_ref`, `@installed_at` from each adapter header → save to `backups/<ts>/adapter-metadata.json`
 
 ### Stage 2/5 — Install new version
+
+**If `--repair` (same-version drift mode): SKIP this stage entirely** — there is no new version to install. Leave `active-tools.yaml` `version_installed` unchanged and go straight to Stage 3, comparing the pilot reference adapter against the installed instance (D2/D3) at the current version.
 
 Same install command as add-flow Stage 3, but with new version spec:
 - npm: `npx <tool>@<target-version> <init-flags-from-profile>` (or `npm install <pkg>@<target>` if globally tracked)
@@ -235,6 +239,7 @@ Also cleanup on rollback / failure paths. Stale marker = false-positive `scope-g
 ## Important constraints
 
 - **`--check-only` mode never mutates state.** Useful for "what would change if I updated?"
+- **`--repair` / `--drift-only` repairs same-version drift.** Runs detection + repair + verify when `target == installed` (skips Stage 2). This is the only path to fix dual-location adapter drift that arose without a tool version bump (e.g. `/ecosystem:update` advanced the reference adapter). Combine with `--check-only` to detect-and-report without mutating.
 - **Backup before every modification** — adapter metadata snapshot in Stage 1 enables reliable rollback.
 - **Contract repair is per-contract** — partial success allowed (some contracts repair OK, others marked broken).
 - **Never silently downgrade.** If target < installed, refuse and require explicit `--allow-downgrade` flag (deferred to v1.1; for now: refuse).
