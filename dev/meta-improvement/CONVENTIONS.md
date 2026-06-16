@@ -61,7 +61,8 @@ dev/meta-improvement/
 │                                # (DESIGN_KICKOFF.md → dev/_archive/meta-improvement/, archived after Stage 6)
 ├── checklists/
 │   ├── phase-closure.md         # Stage 2 + Stage 2.5 refinements
-│   └── phase-kickoff.md         # Stage 2
+│   ├── phase-kickoff.md         # Stage 2
+│   └── patch-cut.md             # DEC-DEV-0079 follow-up — version cut ritual
 ├── patterns/                    # Stage 3 (5 patterns, mostly provisional)
 │   ├── README.md                # index
 │   ├── spec-drift-sweep.md
@@ -117,6 +118,7 @@ dev/meta-improvement/
 |---|---|---|---|
 | `phase-kickoff.md` | Before Phase N implementation | Once per phase | Manual (user types invocation) |
 | `phase-closure.md` | After Phase N implementation, before Phase N+1 readiness gate | Once per phase | Manual (user types invocation) |
+| `patch-cut.md` | Before accumulated `[Unreleased]` must reach pilot (i.e. before `/ecosystem:update` in a product project / live run) | Per delivery event (NOT scheduled / not «N features») | Manual (developer runs) |
 | `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | Manual (user types invocation) |
 | `scripts/verify-update.sh` | Post-/ecosystem:update | Per update | Manual (user runs externally) |
 | `hooks/phase-closure-reminder.js` | PostToolUse on Bash matching `git commit` с phase-completion pattern | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
@@ -252,6 +254,44 @@ git commit -m "chore(meta-improvement): archive PHASE_<N>_READINESS post-closure
 - Refine pattern emergence (Stage 3+ readiness)
 
 Updates committed как `chore(meta-improvement): D7 refinement post-Phase-<N> closure`.
+
+---
+
+## 11. Patch accumulation & cut
+
+> **Codified:** DEC-DEV-0079 follow-up. Тонкий ритуал поверх существующих блоков
+> (CHANGELOG `[Unreleased]` + DEV_JOURNAL + `/ecosystem:update`), не новый тулинг —
+> SPEC §5 anti-pattern #4 «tooling over discipline» honored.
+
+### 11.1 Контракт накопления (per-change)
+
+**Convention:** каждое смёрженное изменение несёт запись в `CHANGELOG.md [Unreleased]`
+(consumer-facing, `### Added | Fixed | Modified`) + при наличии rationale — `DEC-DEV-NNNN`
+в `DEV_JOURNAL.md`. Это per-change дисциплина, не только фазовая (`phase-closure.md`
+Pre-flight/Step 4 — фазовый чекпоинт того же контракта; для ad-hoc работы вне фаз контракт
+тот же).
+
+**Rationale:** `[Unreleased]` — единственная «корзина», из которой режется патч. Пропущенная
+запись = тихо потерянная из release-notes фича. Разделение CHANGELOG↔DEV_JOURNAL — по
+таблице в `CLAUDE.md` (что/где).
+
+### 11.2 Модель доставки (важно — снимает недопонимание)
+
+`/ecosystem:update` синкает из **upstream HEAD `main`**, НЕ из тега. Следствие: всё
+смёрженное в `main` доезжает в пилот при следующем `update`, нарезана версия или нет.
+**Cut — это bundling + gates + ярлык, не gate доставки.** Порядок: cut смёржен в `main` →
+затем `update` в пилоте.
+
+### 11.3 Cut-ритуал
+
+**Convention:** нарезка версии из `[Unreleased]` — по чеклисту
+[`checklists/patch-cut.md`](checklists/patch-cut.md). Каденс **по событию** (перед
+доставкой в пилот / live-прогоном), не по расписанию и не «N фич» — пустых cut'ов нет.
+Bump patch vs minor — semver-ish (patch = багфиксы + аддитивные opt-in фичи; minor =
+заметный модуль/связка). Cut коммитится как `chore(release): cut vX.Y.Z` + тег.
+
+**Mechanism level (D7 §3):** checklist (default). Promotion к skill/script — отложено, пока
+ручной ритуал не докажет «too rote» (порог: 3+ cut'а с одинаковой рутиной).
 
 ---
 
