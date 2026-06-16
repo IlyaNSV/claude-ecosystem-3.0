@@ -60,7 +60,7 @@ started_at: "<ISO timestamp>"
 project: "<from product.yaml.project_name>"
 language: "<from product.yaml.project_language>"
 
-current_step: D1.1
+current_step: D1.0
 last_completed_step: null
 last_approved_gates: []
 
@@ -70,6 +70,7 @@ bg_candidates_queued: 0
 bg_synonym_warnings: 0
 
 next_steps:
+  - D1.0 Product Classification (product.yaml; advisory, not a gate)
   - D1.1 Problem Discovery → G1
 
 progress_percent: 0
@@ -82,6 +83,7 @@ progress_percent: 0
 ### Step 4: Delegate to discovery-session skill
 
 Load `discovery-session.md`. It handles:
+- D1.0 Product Classification (writes `product_class` to `product.yaml`; advisory, not a gate — DEC-DEV-0079)
 - D1.1 Problem Discovery (G1 approve)
 - D1.2 Market Research (queued for Discovery Review Checkpoint — A2 modification)
 - D1.3 Competitive Analysis (queued for DRC)
@@ -103,6 +105,7 @@ When all gates passed + BG extraction done:
   ```
   Discovery Session complete.
   Artifacts created:
+    ✓ product_class (product.yaml: <archetype>)
     ✓ PS (problem.md)
     ✓ MR (market-research.md, <N> sources, credibility med-high)
     ✓ CA (competitive-analysis.md, <N> competitors)

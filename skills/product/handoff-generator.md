@@ -20,7 +20,7 @@ Per [handoff-spec.md §1](../../docs/product-module/handoff-spec.md): self-conta
 - `FM-<NNN>` — must exist в `.product/features/`
 - `FM.status: in-progress` или `shipped` (per V-H-* B1 blocker)
 - All FM dependencies (SC, BR, LC, VC, IC, MK если has_ui, RPM, NFR если active) в required states (см. DoR §7)
-- `.claude/product.yaml` для validation_tier
+- `.claude/product.yaml` для validation_tier + `product_class` block (DEC-DEV-0079 — advisory hint, echo в §1/frontmatter)
 
 ## Output
 
@@ -87,6 +87,12 @@ Parse FM.frontmatter (через Read + manual YAML parse):
 - `nfr_status`, `nfr[]`, `nfr_decline_reason`, `nfr_reviewed_at` — для §11
 - `has_ui` — для §10 conditional
 - `approve_overrides[]` — для D2 handling (если present)
+
+**Также прочитай `.claude/product.yaml` → `product_class` block** (DEC-DEV-0079). Если
+`archetype != unset` — echo в §1 строку `Product class:` + во frontmatter блок `product_class`
+(advisory hint, см. Step 8/Step 9). Если `unset` / блок отсутствует — обе позиции **опускаются
+целиком** (receiver выводит форму сам, как до 0079). Это derive из SSOT `product.yaml` —
+не переписывать, не угадывать.
 
 ### Step 3: Drift detection (если file exists)
 
@@ -272,7 +278,7 @@ Sections в фиксированном порядке:
 
 | # | Section | Required | Content |
 |---|---|---|---|
-| 1 | Executive Summary | MUST | FM title, SEG primary + JTBD, primary HYP с thresholds, RL, has_ui, dependencies, 2-3 sentence description |
+| 1 | Executive Summary | MUST | FM title, SEG primary + JTBD, primary HYP с thresholds, RL, has_ui, **Product class** (если != unset — advisory: `<archetype> (<runtime_locus>/<interface>/<distribution>)`), dependencies, 2-3 sentence description |
 | 2 | Business Context | MUST | FM full body + SEG excerpt + VP statement + HYP statement+thresholds |
 | 3 | Terminology | MUST | BG excerpt filtered к terms used в embedded artifacts (table format) |
 | 4 | Role & Permission Model | MUST | RPM filtered к roles в SC.actors + actions matrix |
@@ -495,6 +501,13 @@ artifact_hashes:
   SC-NNN: "sha256:<hex64>"
   # ... все embedded; full hex64
 
+product_class:                            # DEC-DEV-0079 — derived from product.yaml; OMIT whole block если archetype=unset
+  archetype: web-service                  # advisory hint, NOT a stack directive
+  runtime_locus: server
+  interface: api
+  distribution: saas
+  data_sensitivity: pii                   # optional
+
 target_adapter: "universal"
 target_tool: null
 target_tool_version: null
@@ -523,6 +536,7 @@ updated: <YYYY-MM-DD>
 - ❌ `decline_reason`, `nfr_reason` → canonical = `nfr_decline_reason`
 - ❌ `passed_rules`, `validation_passed_list` → canonical = `validation_rules_passed` (array of V-* IDs)
 - ❌ `failed_rules`, `validation_failed_list` → canonical = `validation_rules_failed`
+- ❌ `product_type`, `class`, `product_category` → canonical = `product_class` (block; DEC-DEV-0079; derive из `product.yaml`, не переписывать; OMIT whole block если `archetype=unset`)
 
 **Filename slug rule** (per `docs/product-module/handoff-spec.md §4 Naming convention`): `<FM-id>-handoff.md` для feature-level (e.g., `FM-001-handoff.md`); `<RL-id>-handoff.md` для release-level (deferred к v1.1+). Никаких суффиксов c version-номером в filename — версии preserved через git history.
 

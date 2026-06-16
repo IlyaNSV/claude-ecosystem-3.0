@@ -177,6 +177,15 @@ artifact_hashes:
   BR-010: "sha256:..."
   # ... все embedded артефакты
 
+# Product context (DEC-DEV-0079 — derived from product.yaml; advisory hint, NOT a stack directive)
+# Omitted entirely if product.yaml.product_class.archetype == unset (pre-0079 / not set).
+product_class:
+  archetype: web-service
+  runtime_locus: server
+  interface: api
+  distribution: saas
+  data_sensitivity: pii                 # optional
+
 # Target information
 target_adapter: "universal"             # или конкретный: "cc-sdd", "kiro", "custom-langraph"
 target_tool: null                       # null пока не передан в конкретный инструмент
@@ -209,9 +218,13 @@ Handoff имеет **13 обязательных секций** в фиксир�
 **Validates hypothesis:** <HYP primary> (success = <metric>)
 **Release:** <RL-NNN>, target <target_date>
 **Has UI:** yes/no
+**Product class:** <archetype> (<runtime_locus> / <interface> / <distribution>) — *advisory; форма продукта, не стек* (DEC-DEV-0079)
 **Critical dependencies:** <list of other FMs>
 
 Brief 2-3 sentence explanation of what the feature does and why it matters.
+
+> Строка `Product class` опускается, если `product.yaml.product_class.archetype` = `unset`
+> (проект до DEC-DEV-0079 или класс не задан) — receiver тогда выводит форму сам, как раньше.
 ```
 
 ### Раздел 2: Business Context (MUST)
@@ -414,6 +427,10 @@ Secция 11 **всегда присутствует**. Receiver не долже
 - **External integrations:** с какими системами интегрируется (payment, email, storage)
 - **Data assumptions:** на каких данных работает (uploads? migrations?)
 - **Environment prerequisites:** какие services/DB/queues должны быть доступны
+- **Product class (advisory, DEC-DEV-0079):** форма продукта из `product_class` (см. §1 +
+  frontmatter). Ожидаемые типы тестов и инфра-shape для этого класса — в
+  `docs/pmo/product-class-taxonomy.md §6`. Это **подсказка, не директива**: выбор стека,
+  библиотек и реализации остаётся за D2-T (см. AP-9). Опускается, если класс = `unset`.
 
 ### Раздел 13: Out of Scope (MUST)
 
