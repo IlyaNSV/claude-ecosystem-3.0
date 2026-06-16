@@ -38,7 +38,11 @@ export const meta = {
  * needs a pilot with cc-sdd + an implemented spec (separate session).
  */
 
-const A = args || {}
+// FB-001 (live-run RUN 01): the harness passes `args` verbatim, and an invoking agent
+// may stringify it (args:"{...}") instead of passing an object — run.md shows the object
+// form, but defend in depth: parse a JSON string so A.feature is never silently undefined
+// (which let the Plan agent improvise a wrong target — FB-002).
+const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const FEATURE = A.feature || ''                                  // cc-sdd feature slug (e.g. "auth")
 const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const CLASSIFIER = A.classifier || '.claude/orchestrator/lib/gate-risk-classifier.cjs'
@@ -46,6 +50,16 @@ const KIRO_TPL = A.kiroTemplates || '.claude/skills/kiro-impl/templates'
 const REGISTRY = A.registry || ''                                // optional load-bearing.<FM>.yaml/json
 const MAX_REVIEW_ROUNDS = A.maxReviewRounds || 2
 const MAX_DEBUG_ROUNDS = A.maxDebugRounds || 2
+
+// FB-002 (live-run RUN 01): deterministic guard — refuse to run feature-less. With an
+// empty FEATURE the Plan agent previously scanned .kiro/specs/ and silently picked a
+// different feature (billing implemented under an "auth" run; 7 tasks committed before
+// the operator caught it). Spec-existence is checked inside the Plan agent (no FS here,
+// per DEC-DEV-0073 §D.1); this catches the empty-target case up front.
+if (!FEATURE) {
+  log('HALT: empty feature — refusing to run (FB-002). Pass args as an OBJECT, e.g. {feature:"auth"}.')
+  return { error: 'feature-to-tdd-impl: empty feature (FB-002 guard)', feature: '', implemented: [], blocked: [] }
+}
 
 // ---- schemas (mirror kiro's structured handoff formats) --------------------
 const PLAN_SCHEMA = {
@@ -134,7 +148,8 @@ const GATE_SCHEMA = {
 phase('Plan')
 const plan = await agent(
   `Run orchestrator-init (skills/orchestrator/orchestrator-init.md) for feature ${FEATURE}, then build the task plan.\n` +
-  `1) Load ${SPEC_DIR}/{spec.json,requirements.md,design.md,tasks.md}; confirm tasks approved.\n` +
+  `1) Load ${SPEC_DIR}/{spec.json,requirements.md,design.md,tasks.md}; confirm tasks approved. ` +
+  `If ${SPEC_DIR}/spec.json does not exist, STOP: return tasks:[] with a note — do NOT scan .kiro/specs/ or pick another feature yourself (FB-002).\n` +
   `2) Discover validation commands (TEST/BUILD/SMOKE) from repo manifests/CI per kiro-impl preflight.\n` +
   `3) Run the gate-risk-classifier (skills/orchestrator/gate-risk-classifier.md): ` +
   `node ${CLASSIFIER} --tasks ${SPEC_DIR}/tasks.md --requirements ${SPEC_DIR}/requirements.md` +

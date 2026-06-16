@@ -44,11 +44,22 @@ export const meta = {
  */
 
 // ---- inputs (args; defaults are the pilot install paths) -------------------
-const A = args || {}
+// FB-001 (live-run RUN 01): defend against stringified args — the harness passes `args`
+// verbatim and an invoking agent may pass a JSON string (args:"{...}") instead of an
+// object, leaving A.handoffs silently undefined. See feature-to-tdd-impl.mjs.
+const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const HANDOFFS = A.handoffs || []                         // [".product/handoffs/FM-001-handoff.md", ...]
 const ADAPTER = A.adapter || '.claude/integrator/adapters/handoff-to-ccsdd.js'
 const ORACLE = A.oracle || '.claude/orchestrator/lib/coverage-oracle.cjs'
 const STACK_DECIDED = A.stackDecided !== false            // P2/user decided the stack (S5a assumes yes)
+
+// FB-002 (live-run RUN 01): refuse to run with no handoffs rather than spinning up
+// Init+Steering only to halt at the Bridge. (--all must be expanded to explicit paths by
+// the /orchestrator:run command before invoking this Workflow.)
+if (!HANDOFFS.length) {
+  log('HALT: no handoffs (empty args.handoffs). Pass args as an OBJECT, e.g. {handoffs:["...FM-001-handoff.md"]}.')
+  return { specced: [], blocked: [], reason: 'empty handoffs (FB-002 guard)' }
+}
 
 // ---- verification-gate schemas (Layer-3) -----------------------------------
 const BRIDGE_SCHEMA = {

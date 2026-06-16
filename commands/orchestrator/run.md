@@ -51,6 +51,13 @@ substitute.
 
 Load the regimen skills for context, then launch the matching Workflow.
 
+> **Pass `args` as an OBJECT, not a JSON string.** Write `args: { feature: "auth" }`,
+> NOT `args: "{\"feature\":\"auth\"}"`. The harness forwards `args` verbatim — a
+> stringified value reaches the script as a string, so `feature`/`handoffs` come back
+> undefined and the process runs target-less (live-run RUN 01 FB-001/FB-002: an empty
+> feature let the Plan agent pick the wrong spec). The scripts now defensively parse a
+> string, but pass an object so the guard is belt-and-suspenders.
+
 **P3 — `batch-features-to-cc-sdd`** (skills: `orchestrator-init`, `build-steering`,
 `build-briefs-from-handoff`, `coverage-oracle`):
 
