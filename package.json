@@ -12,7 +12,8 @@
     "test:orchestrator": "node tests/orchestrator/coverage-oracle.test.cjs && node tests/orchestrator/gate-risk-classifier.test.cjs && node tests/orchestrator/args-parsing.test.cjs",
     "smoke:orchestrator": "node tests/orchestrator/workflow-syntax.smoke.cjs",
     "test:audit": "node tests/audit/classify-orchestrator.test.cjs",
-    "verify": "npm run verify:hooks && npm run test:adapters && npm run test:orchestrator && npm run smoke:orchestrator && npm run test:audit"
+    "test:product": "node tests/product/cascade-scalar.test.cjs",
+    "verify": "npm run verify:hooks && npm run test:adapters && npm run test:orchestrator && npm run smoke:orchestrator && npm run test:audit && npm run test:product"
   },
   "devDependencies": {
     "eslint": "^9.13.0"
