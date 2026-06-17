@@ -10,7 +10,7 @@ confidence: high
 patch_type: none
 risk: low
 finding_ids: [1f983743ff78, 9b29da98a4c4, 449a0d0901d9, 74ae51a9c084, 9abc5726638b, d6690b1d59a9, f408601e0053, 9c4f02f03cdf]
-gate: pending          # human sets: accepted | rejected | edited | deferred  ([Y/N/E/D])
+gate: rejected         # [N] 2026-06-17: dismissed per synthesizer rec (refuted — classifier fallback; spine already-handled in cleanup-detector AP#2)
 ---
 
 # Patch candidate — mixed-uncertain / F

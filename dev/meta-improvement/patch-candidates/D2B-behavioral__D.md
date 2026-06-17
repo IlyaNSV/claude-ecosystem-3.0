@@ -2,158 +2,154 @@
 schema: patch-candidate/v1
 zone: D2B-behavioral
 check_id: D
-verdict: refuted
-instances: 5
-sessions: 5
+verdict: survived
+instances: 11
+sessions: 10
 severity: warning
 confidence: high
-patch_type: none
-risk: low
-finding_ids: [680f790f4e91, e365213552d3, a0c1debb8d48, 39c99904200c, 96d7df26b0a1]
-gate: pending          # human sets: accepted | rejected | edited | deferred  ([Y/N/E/D])
+patch_type: add-hook
+risk: medium
+finding_ids: [20890600456e, 5e6afa9a788d, 680f790f4e91, 95ff47f6cb97, e365213552d3, 03d380467184, a0c1debb8d48, 39c99904200c, 964d0e0c5eb4, 96d7df26b0a1, 9db903148f07]
+gate: edited           # [E] 2026-06-17 (DEC-DEV-0080): SC↔MK spine accepted (mockup-package case + scalar write-back); secondary IC↔BR scope dropped
+prior_decision: this candidate was REFUTED on a 5-finding cluster in a prior synth run with an explicit re-open condition (verified canonical-field bi-dir violation from in-session edits). The cluster grew 5→11; the re-open condition is now MET → overturned to survived.
+supersedes: D2B-behavioral__D.md (prior refuted version, 5 findings)
 ---
 
 # Patch candidate — D2B-behavioral / D
 
+Check **D** = **V-11 (bi-directional references consistent)** — rubric `rubrics/D2B-behavioral.md:30`
+(«D (V-11)»), effect_focus «FM-граф консистентен (bi-dir refs целы)».
+
 ## Verdict (adversarial verification)
 
-**Majority verdict: REFUTED (4/4 lenses).** Check D = V-11 bi-directional reference integrity. The
-cluster deterministically grouped by `(zone=D2B-behavioral, check=D)` is the **heterogeneous
-co-tagged** kind that DEC-DEV-0057 Lesson #1 (the journal-hook phantom) warns against: 5 findings that
-share only the `(zone, check)` tag but split across **3 different artifact pairings** (IC↔BR, SC↔BR,
-SC↔MK) and **4 different failure modes** (genuine-but-confounded / empty-forward-misframe /
-unverified×3). Headline "5 distinct findings / 5 sessions" collapses, on inspection of the real
-artifacts and the auditors' own words, to **at most one arguably-real instance, itself confounded with
-a different root cause**. That is not a systemic problem; it is a tag bucket.
+**Majority verdict: SURVIVED (overturns the prior refutation; de-conflated to one verified spine).**
+A prior synth run REFUTED this check on a 5-finding cluster, but set an explicit **re-open condition**:
+*«if check D recurs with canonical frontmatter (canonical `rules`/`invariants`, actual in-session edits,
+and a verified absent reverse ref — not a sandbox-blocked or no-edit speculation), that is a legitimate
+add-hook topology-extension candidate.»* The cluster grew 5→11; **two new high-confidence findings
+satisfy that bar on every clause**, so the survivor is the **SC↔MK (mockup-package ↔ scenario) topology
+gap in `cascade-check.js`**. The remaining findings are explicitly separated (merge-bypass) or discarded
+(unverifiable), per the de-conflation discipline of DEC-DEV-0064 / DEC-DEV-0057 Lesson #1.
 
-**Honesty caveat (per global CLAUDE.md «state uncertainty»):** the cited `.product/` artifacts live in
-the audited product sessions' workspaces (`my-first-test`), not in this repo (`ls .product` → absent).
-I verified (a) the **canonical schemas** the auditor measured against, (b) the **actual mechanism**
-(`hooks/product/cascade-check.js`, `docs/pmo/validation.md` V-11), and (c) the **full audit reports**
-that are in this repo (`audit-reports/0781ad12…md`, `…/1cdfa987…md`). For findings 3/4/5 the refutation
-rests on the auditors' **own snippet text** declaring non-verification — which is airtight regardless
-of opening the product files.
+**Lens 1 — Reality (REAL; two findings independently verified).** Unlike the prior 5 (all
+non-observations / misframes), the two new high-confidence findings are **observed and corroborated**,
+and both auditors independently reached the SAME source-level diagnosis I did:
+- `5e6afa9a788d` (warning/high, session `4b141121`, 2026-06-16): the auditor read MK-007 frontmatter
+  (`scenarios: [SC-027, SC-028, SC-029]`, transcript L112) AND SC-027 frontmatter (L62 — carries
+  `rules/lifecycle/verification` but **no `mockup` field at all**), cited canonical `SC.md:26`
+  (`mockup: MK-<NNN>`) + `validation.md:313` (V-11), and pinpointed the mechanism:
+  «`cascade-check.js` `getForwardSpecs` … для `mockup-package` уходит в `default` → `return []` … V-11
+  auto-fix **не покрывает MK↔SC**» (`audit-reports/4b141121-…md:90-101`).
+- `20890600456e` (warning/high, session `a8afb3b1`, 2026-06-16): MK-004 written with
+  `scenarios: [SC-015, SC-015a, SC-015e1, SC-015e2]` (Write #114); the **effect-probe git diff** lists
+  FM-004/MK-004/NM-004/design-system but **no `scenarios/SC-015*` edits** — verified-absent reverse, not
+  speculation (`audit-reports/a8afb3b1-…md:95-103`). The auditor notes the MK→SC auto-fix is
+  «currently **deferred to v1.2 per DEC-DEV-0023**» (`:142`).
+- I independently confirmed the mechanism in-repo: `MK.scenarios[]` ↔ `SC.mockup` is canonical
+  (`MK.md:21`, `SC.md:26`); `getForwardSpecs('mockup-package')` falls to `default → []`
+  (`cascade-check.js:398-401`); the `scenario` case has no `mockup` spec (`:365-373`); and the Design
+  hook only checks ref **existence** (`design-artifact-validate.js:173-186`), never writes back
+  `SC.mockup`. **Mechanism proven; instances corroborated by transcript + effect-probe.**
+- Caveat (honesty): no `.product/` exists in this repo (`Glob .product/**` → none), so I could not open
+  the SC files myself — I rely on the auditors' quoted frontmatter + effect-probe. The MECHANISM,
+  however, is fully verified in-repo.
 
-### Lens 1 — Reality (genuine violation vs auditor non-observation)
+**Lens 2 — Systemic (REAL spine after de-conflation).** The 11-finding cluster shares only `(zone,
+check)`; it splits by root cause:
+- **(a) SC↔MK topology gap — the spine.** 5 findings / 5 sessions: `20890600456e` (high✓),
+  `5e6afa9a788d` (high✓), `95ff47f6cb97` (medium), `964d0e0c5eb4` (uncertain), `96d7df26b0a1`
+  (uncertain). One verifiable root cause (`mockup-package → default → []`). Systemic by the journal's
+  ≥3 rule, with 2 independently-verified high-confidence anchors. **← survives.**
+- **(b) IC↔BR topology gap — same class, but the cited instance is confounded.** `680f790f4e91`
+  (high). `IC.rules[]` ↔ `BR.invariants[]` IS canonical (`IC.md:23`, `BR.md:23`) and IS absent from
+  `getForwardSpecs` (`invariant-check` exposes only `feature` `:384-387`; `business-rule` lacks
+  `invariants` `:374-378`). BUT the audited ICs used the **non-canonical** field `related_brs` (not
+  `rules`) — a check-A frontmatter-drift symptom, already targeted by `D2B-behavioral__A.md` (V-18). A
+  topology fix keyed on canonical `rules` would no-op on that instance. → folded in as a **secondary,
+  lower-confidence** scope item, not the spine.
+- **(c) Merge-bypass — different root cause.** `e365213552d3`, `03d380467184` («наследовано через
+  merge», `4b141121-…md:114`), `9db903148f07` («worktree gone»). These edges ARE in the topology; the
+  gap is that artifacts entered via git merge, so PostToolUse never fired. A topology fix won't help. →
+  separated.
+- **(d) Unverifiable.** `a0c1debb8d48` («not directly verified»), `39c99904200c` («sandbox blocked»).
+  → discarded.
 
-Only **1 of 5** is an arguably-genuine, observed violation; the rest are unverified or misframed:
+**Lens 3 — Already-handled (NOT handled for SC↔MK).** Auto path `cascade-check.js`: NO (`default →
+[]`). Design hook `design-artifact-validate.js`: existence-check only, no back-write. Manual path
+`/product:validate --fix`: does V-11 for «all» artifacts (`validation-runner.md:62,187`) but explicitly
+**skips V-MK-\*** as Phase-6 conditional (`:145-152`) and is a Phase-4 command whose `cross_refs` graph I
+could not confirm walks the mockup edge. Net: the SC↔MK reverse ref is maintained by **no automatic
+mechanism** — it is a *known deferred* item (DEC-DEV-0023, «v1.2»), and its bring-forward trigger
+(recurring verified pattern, cuttable-scope-discipline) has now fired.
 
-- **`680f790f4e91` (warning/high) — arguably real but CONFOUNDED.** IC↔BR bi-dir IS canonical:
-  `docs/pmo/artifacts/IC.md:22` (`rules: [BR-…]`) ↔ `docs/pmo/artifacts/BR.md:23` (`invariants: [IC-…]`).
-  BUT the audited ICs used the **non-canonical** field `related_brs`, not `rules`
-  (`audit-reports/0781ad12…md:196`, Warning A: «`related_brs` ← non-canonical (canonical: `rules`)»).
-  So the V-11 "violation" is a **downstream symptom of frontmatter drift**, which the SAME session
-  already flags under **check A** (`…:50-51, 184-200`). It is double-counted: one event, two checks.
-- **`e365213552d3` (warning/medium) — MISFRAMED.** Snippet: «SC written with `rules: []` /
-  `verification: []`; BR/VC reverse refs never backfilled». An **empty** forward array has nothing to
-  mirror — V-11 ("if A.refs B, then B.refs A") is vacuously satisfied. This is a **completeness** gap
-  (V-02 «SC references ≥1 BR», `docs/pmo/validation.md:231-238`, explicitly 🟡 *warning, downgraded
-  because some SC are pure navigation*), not a bi-dir **integrity** violation. Mislabeled as check D.
-- **`a0c1debb8d48` (info/low) — NOT OBSERVED.** Auditor's own words: «V-11 bi-dir refs **claimed
-  auto-fixed** by cascade-check.js; **not directly verified** in transcript». This testifies the
-  mechanism *exists*; it is not evidence of a defect.
-- **`39c99904200c` (uncertain/low) — NOT OBSERVED.** Auditor's own words: «bi-dir refs SC↔BR **not
-  verified** (read access to my-first-test **blocked by sandbox**)». An audit-tooling limitation, not a
-  product violation.
-- **`96d7df26b0a1` (uncertain/uncertain) — NOT OBSERVED / NON-FINDING.** Auditor's own words: «V-11
-  reverse refs SC.mockup=MK-001 **not evidenced**; **no SC edits in session**». The full report
-  (`audit-reports/1cdfa987…md:9,37`) summarizes the very session as «MK-001/DS/NM-001 created clean +
-  FM-001 bi-dir ref … **0 new validator findings**» and «образцовая git/integrator-гигиена». Nothing
-  was edited that could violate V-11; the finding is pure speculation about pre-existing SCs the
-  auditor never read.
-
-Reality: **REFUTED.** 3/5 are self-declared non-observations, 1/5 is misframed, and the lone
-arguably-real one is a re-tag of a frontmatter-drift event.
-
-### Lens 2 — Systemic (same root cause vs coincidental same tag)
-
-The findings do **not** share a root cause:
-
-- **Three distinct pairings:** IC↔BR (`680f790f4e91`), SC↔BR (`e365213552d3`, `a0c1debb8d48`,
-  `39c99904200c`), SC↔MK (`96d7df26b0a1`).
-- **Heterogeneous mechanisms:** genuine-missing-reverse-via-non-canonical-field / empty-forward /
-  hook-ran-but-unobserved / sandbox-blocked-read / no-edits-speculation.
-- **Spread:** 5 sessions, 4 dates (2026-05-15, -20, -26, 2026-06-02), 2 projects (`my-first-test`
-  product sessions + one Design-Module shakedown).
-
-They co-occur only because each auditor mentioned "V-11" and the classifier filed them under check D.
-Coincidental co-tagging ≠ systemic. **REFUTED.**
-
-### Lens 3 — Already-handled (existing mechanism makes a fix redundant?)
-
-The pairings the cluster actually keeps citing are **already covered**:
-
-- **V-11 is a documented 🔴 Blocking rule *with auto-fix*** (`docs/pmo/validation.md:311-319`), and
-  `hooks/product/cascade-check.js` implements it forward-driven on every active `.product/**/*.md` save
-  (`:115-153`). Its topology (`getForwardSpecs`, `:363-402`) covers **SC↔BR, SC↔LC, SC↔VC, SC↔FM,
-  BR↔SC, BR↔FM, LC↔SC, LC↔FM, IC↔FM, VC↔SC, VC↔FM**. So all three SC↔BR findings
-  (`a0c1debb8d48`, `39c99904200c`, and the vacuous `e365213552d3`) fall squarely inside an existing
-  auto-fix — which is exactly why the auditors saw "claimed auto-fixed" / couldn't observe a violation
-  (the hook edits silently, signalling only via stderr, `:217-229`).
-- **The narrow genuine gap is real but is NOT what the cluster is about** (see "Residual signal").
-
-Already-handled: **REFUTED in the cluster's favour** (i.e., the dominant cited cases are handled, so a
-patch would be redundant for them).
-
-### Lens 4 — Safety / regression of a hypothetical fix
-
-A naïve "fix" (broaden `cascade-check.js` topology to IC↔BR) would **mirror the wrong field**: in
-`680f790f4e91` the source field is the non-canonical `related_brs`, so an auto-fix keyed on the
-canonical `rules` would no-op, while one keyed on `related_brs` would **entrench the drift**. The
-correct lever for that finding is the **frontmatter-conformance hook already proposed under check A**
-(`patch-candidates/D2B-behavioral__A.md`, V-18) — fix the field name, and the V-11 symptom dissolves.
-Patching V-11 here would be effort against a symptom and could harden a bad convention. **A fix is
-misdirected.**
+**Majority: 3/3 lenses support a real, systemic, not-auto-handled SC↔MK gap.**
 
 ## Problem (if survived)
 
-_N/A — refuted._
+`cascade-check.js` auto-fixes V-11 reverse refs only for the edges hard-coded in `getForwardSpecs()`.
+When the Design Module (Phase 6) made **MK (mockup-package) ↔ SC** canonical (`MK.scenarios[]` ↔ scalar
+`SC.mockup`), the topology was not extended — `mockup-package` falls to `default → []`, and the
+`scenario` case has no `mockup` spec. So every time a designer authors/activates an MK with `scenarios:`,
+the reverse `SC.mockup` is left unwritten, surfacing repeatedly as a V-11 asymmetry (MK→SC present,
+SC→MK absent). This was consciously deferred to v1.2 (DEC-DEV-0023); the deferral's bring-forward trigger
+has now fired with two verified high-confidence recurrences.
 
 ## Evidence
 
-Per-instance disposition (recommend journal status in brackets):
+Spine — SC↔MK (the patch target):
+- `20890600456e` high✓ — MK-004.scenarios=[SC-015…] but no SC.mockup; effect-probe confirms no SC edits · `a8afb3b1` (2026-06-16)
+- `5e6afa9a788d` high✓ — MK-007.scenarios=[SC-027..029] but SC-027 frontmatter lacks `mockup` · `4b141121` (2026-06-16)
+- `95ff47f6cb97` medium — MK-002.scenarios lists 6 SC; no SC.mockup reverse · `e3fedd85` (2026-06-11)
+- `964d0e0c5eb4` uncertain — MK-003 declares 5 scenarios[]; SC reverse not visible · `b93269d3` (2026-06-11)
+- `96d7df26b0a1` uncertain — MK-001 ↔ SC-001…; SC.mockup reverse not evidenced · `1cdfa987` (2026-06-02)
 
-- `680f790f4e91` — warning/high — `BR-064..076.invariants[]` missing reverse of IC `related_brs[]` —
-  session `0781ad12` (2026-05-26). **Confounded re-tag of a check-A frontmatter-drift event**
-  (non-canonical `related_brs`). → defer to check-A candidate (V-18); **dismiss as standalone V-11**.
-- `e365213552d3` — warning/medium — `SC-015..SC-015e2` with `rules: []` / `verification: []` — session
-  `e1615a0c` (2026-05-20). **Misframed: empty forward = no bi-dir to maintain; it is a V-02
-  completeness note.** → **dismiss** (or re-file under a V-02 completeness bucket).
-- `a0c1debb8d48` — info/low — `SC-010, BR-043` — session `fbb32599` (2026-05-15). Auditor: «not
-  directly verified». **Not observed.** → **dismiss.**
-- `39c99904200c` — uncertain/low — `SC-015…↔BR-054..063` — session `e3bfd3a3` (2026-05-26). Auditor:
-  «not verified — sandbox blocked». **Not observed (tooling limitation).** → **dismiss.**
-- `96d7df26b0a1` — uncertain/uncertain — `MK-001↔SC-001…` — session `1cdfa987` (2026-06-02). Auditor:
-  «not evidenced; no SC edits in session»; report = «0 new validator findings». **Non-finding.** →
-  **dismiss.**
+Secondary — IC↔BR (same class; instance confounded with check-A drift):
+- `680f790f4e91` high — IC→BR via non-canonical `related_brs[]`; `BR.invariants[]` reverse absent · `0781ad12` (2026-05-26)
 
-### Residual signal (preserve — do NOT use to survive this cluster)
+Separated — merge-bypass (NOT this root cause):
+- `e365213552d3` medium — SC rules:[]/verification:[]; reverse never backfilled · `e1615a0c` (2026-05-20)
+- `03d380467184` info — SC.verification:[] vs VC-034..036, «наследовано через merge» · `4b141121`
+- `9db903148f07` uncertain — SC-027..029 reverse arrays; «worktree gone» · `ebf3cc2c`
 
-There **is** one narrow, genuine, *unhandled* gap worth a future eye, but the current evidence does not
-establish it: `cascade-check.js`'s V-11 topology omits the **cross-derived** bi-dir pairings among
-D2-behavioral artifacts — **IC↔BR** (`IC.rules` ↔ `BR.invariants`), **IC↔LC**, **BR↔LC**, and
-**SC↔MK** (`SC.mockup` ↔ MK reverse) — because `invariant-check` exposes only `feature`
-(`cascade-check.js:384-387`), `business-rule` only `scenarios`/`feature` (`:374-378`), and MK is in the
-`default` no-cascade case (`:397-401`). **Re-open condition:** if check D recurs with **canonical
-frontmatter** (canonical `rules`/`invariants`, actual in-session edits, and a *verified* absent reverse
-ref — not a sandbox-blocked or no-edit speculation), that is a legitimate `add-hook` topology-extension
-candidate. The present cluster fails that bar on every instance.
+Discarded — unverifiable:
+- `a0c1debb8d48` info — «claimed auto-fixed; not directly verified» · `fbb32599`
+- `39c99904200c` uncertain — «not verified — sandbox blocked» · `e3bfd3a3`
 
 ## Proposed patch (if survived)
 
-_N/A — refuted (`patch_type: none`)._ No source, spec, hook, skill, or artifact was modified by this
-synthesizer; only this candidate file was written.
+- **Type:** add-hook (extend the existing cascade hook — not a new hook). This is the exact fix both
+  auditors recommended (`4b141121-…md:101,146`; `a8afb3b1-…md:142`).
+- **Target files:** `hooks/product/cascade-check.js` (primary); cascade smoke fixtures; secondary note
+  in `docs/pmo/validation.md §6` cascade-scope table if the topology is documented there. DEC-DEV-0023
+  «v1.2 deferral» note should be retired in the journal on accept.
+- **Change (described, NOT applied):**
+  1. Add a `mockup-package` case to `getForwardSpecs()`:
+     `{ fieldName: 'scenarios', depDir: 'scenarios', depReverseField: 'mockup', isScalar: false, reverseIsScalar: true }`,
+     and add to the `scenario` case `{ fieldName: 'mockup', depDir: 'mockups', depReverseField: 'scenarios', isScalar: true }` so both write directions are maintained.
+  2. **Scalar write-back (the riskiest part).** `SC.mockup` is a **scalar** (`mockup: MK-004`), but
+     `injectListField` (`cascade-check.js:285-315`) only emits list syntax (`field: [v]`). Naive reuse
+     would write malformed `mockup: [MK-004]`. Add a scalar branch (write/replace `mockup: MK-004`)
+     gated on `reverseIsScalar`. Needs its own fixture.
+  3. **(Secondary, [E]-scopable)** Add `{ fieldName: 'rules', depDir: 'business-rules',
+     depReverseField: 'invariants', isScalar: false }` to `invariant-check` and the mirror
+     `{ fieldName: 'invariants', depDir: 'invariants', depReverseField: 'rules', isScalar: false }` to
+     `business-rule` (both list↔list — work with existing `injectListField`). NOTE: this won't fix the
+     `680f790f4e91` instance (non-canonical `related_brs`); that needs the check-A V-18 field-name fix.
+- **Risk (medium):** (a) new scalar write-back path over a list-only helper — a bug there corrupts
+  `SC.mockup` format; (b) MK/IC/BR saves now mutate partner SC/BR/IC files — more cascade churn + stderr
+  noise; (c) this patch does NOT address merge-bypass (artifacts entering via `git merge` never trigger
+  PostToolUse) — that needs a separate `/product:cascade --revalidate`-on-merge mechanism.
+- **Confidence / estimate:** confidence high (mechanism verified in-repo by me + 2 independent auditors;
+  2 verified high-confidence instances; known-deferred item with fired bring-forward trigger). Estimate
+  ~1-2h: small surface (1-2 new edges + scalar branch) but each write direction + the scalar path need
+  fixture coverage in the cascade smoke set.
 
 ## Human gate — [Y / N / E / D]
 
-- **[Y] accept** → n/a (refuted; nothing to patch).
-- **[N] reject** → set `gate: rejected`. **Recommended.** Journal status for all 5 findings →
-  **dismissed** with reason: heterogeneous co-tagged cluster; 3 self-declared non-observations, 1
-  misframe (V-02, not V-11), 1 confounded re-tag of a check-A frontmatter-drift event already targeted
-  by `D2B-behavioral__A.md` (V-18). The SC↔BR core is already auto-fixed by `cascade-check.js`. Open a
-  suppress window on check D for the SC↔BR/SC↔MK pairings.
-- **[E] edit** → if you want the **residual signal** pursued, convert this into a *separate* narrow
-  `add-hook` candidate that extends `cascade-check.js` topology to IC↔BR/IC↔LC/BR↔LC/SC↔MK — but only
-  after a session produces a *verified* canonical-field bi-dir violation (the re-open condition above).
-- **[D] defer** → set `gate: deferred`; revisit on next synth run if check D recurs with verified
-  canonical-field evidence.
+- **[Y] accept** → draft DEC-DEV entry (retire the DEC-DEV-0023 v1.2 deferral for MK↔SC) + branch/PR
+  extending `getForwardSpecs` with the `mockup-package` case + scalar write-back; set `gate: accepted`,
+  journal status → patched for the 5 SC↔MK findings.
+- **[N] reject** → set `gate: rejected`; journal status → dismissed + reason (suppress window).
+- **[E] edit** → accept the SC↔MK spine only and **drop the secondary IC↔BR scope** (its cited instance
+  is a check-A frontmatter-drift symptom; defer to V-18); or scope to the scalar fix alone first.
+- **[D] defer** → set `gate: deferred`; revisit on next synth run.

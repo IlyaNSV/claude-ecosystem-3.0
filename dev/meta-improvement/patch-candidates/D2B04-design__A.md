@@ -10,7 +10,7 @@ confidence: high
 patch_type: none
 risk: low
 finding_ids: [610527279177, 6eff514c473f, 7d461a40cbab, c5c0338c9563, 6e783899bc96]
-gate: pending          # human sets: accepted | rejected | edited | deferred  ([Y/N/E/D])
+gate: rejected         # [N] 2026-06-17: dismissed per synthesizer rec (refuted — AM exists only in pilot fork; back-port = DEC-DEV-scale)
 ---
 
 # Patch candidate — D2B04-design / A
