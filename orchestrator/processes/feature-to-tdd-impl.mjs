@@ -38,7 +38,11 @@ export const meta = {
  * needs a pilot with cc-sdd + an implemented spec (separate session).
  */
 
-const A = args || {}
+// FB-001 (live-run RUN 01): the harness passes `args` verbatim, and an invoking agent
+// may stringify it (args:"{...}") instead of passing an object — run.md shows the object
+// form, but defend in depth: parse a JSON string so A.feature is never silently undefined
+// (which let the Plan agent improvise a wrong target — FB-002).
+const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const FEATURE = A.feature || ''                                  // cc-sdd feature slug (e.g. "auth")
 const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const CLASSIFIER = A.classifier || '.claude/orchestrator/lib/gate-risk-classifier.cjs'
@@ -46,6 +50,16 @@ const KIRO_TPL = A.kiroTemplates || '.claude/skills/kiro-impl/templates'
 const REGISTRY = A.registry || ''                                // optional load-bearing.<FM>.yaml/json
 const MAX_REVIEW_ROUNDS = A.maxReviewRounds || 2
 const MAX_DEBUG_ROUNDS = A.maxDebugRounds || 2
+
+// FB-002 (live-run RUN 01): deterministic guard — refuse to run feature-less. With an
+// empty FEATURE the Plan agent previously scanned .kiro/specs/ and silently picked a
+// different feature (billing implemented under an "auth" run; 7 tasks committed before
+// the operator caught it). Spec-existence is checked inside the Plan agent (no FS here,
+// per DEC-DEV-0073 §D.1); this catches the empty-target case up front.
+if (!FEATURE) {
+  log('HALT: empty feature — refusing to run (FB-002). Pass args as an OBJECT, e.g. {feature:"auth"}.')
+  return { error: 'feature-to-tdd-impl: empty feature (FB-002 guard)', feature: '', implemented: [], blocked: [] }
+}
 
 // ---- schemas (mirror kiro's structured handoff formats) --------------------
 const PLAN_SCHEMA = {
@@ -134,7 +148,8 @@ const GATE_SCHEMA = {
 phase('Plan')
 const plan = await agent(
   `Run orchestrator-init (skills/orchestrator/orchestrator-init.md) for feature ${FEATURE}, then build the task plan.\n` +
-  `1) Load ${SPEC_DIR}/{spec.json,requirements.md,design.md,tasks.md}; confirm tasks approved.\n` +
+  `1) Load ${SPEC_DIR}/{spec.json,requirements.md,design.md,tasks.md}; confirm tasks approved. ` +
+  `If ${SPEC_DIR}/spec.json does not exist, STOP: return tasks:[] with a note — do NOT scan .kiro/specs/ or pick another feature yourself (FB-002).\n` +
   `2) Discover validation commands (TEST/BUILD/SMOKE) from repo manifests/CI per kiro-impl preflight.\n` +
   `3) Run the gate-risk-classifier (skills/orchestrator/gate-risk-classifier.md): ` +
   `node ${CLASSIFIER} --tasks ${SPEC_DIR}/tasks.md --requirements ${SPEC_DIR}/requirements.md` +
@@ -152,6 +167,7 @@ const implement = (task, extra = '') =>
     `Read ${KIRO_TPL}/implementer-prompt.md and apply it (TDD: RED→GREEN→REFACTOR) to task ${task.id}: "${task.text || ''}".\n` +
     `Spec: ${SPEC_DIR}/{requirements,design,tasks}.md. Requirements §: ${(task.requirements || []).join(', ')}. _Boundary_: ${task.boundary || 'n/a'}. ` +
     `Validation commands: ${JSON.stringify((plan && plan.validation_commands) || {})}. ${task.behavioral ? 'BEHAVIORAL — apply the Feature Flag Protocol.' : 'Non-behavioral.'}\n` +
+    `FB-006: do NOT make project-global changes outside your _Boundary_ — never alter git core.hooksPath, root package.json lifecycle scripts (prepare/postinstall), or install hook-managing tooling (e.g. husky) that hijacks git hooks (the pilot's beads owns core.hooksPath). If the task seems to require it, return BLOCKED and surface it rather than silently doing it.\n` +
     `Do NOT commit, do NOT edit tasks.md. End with the exact ## Status Report block.${extra}`,
     { schema: IMPL_SCHEMA, phase: 'Implement', label: `impl:${task.id}` },
   )
@@ -169,6 +185,7 @@ const gate = (task, impl) => {
     return agent(
       `Read ${KIRO_TPL}/reviewer-prompt.md (kiro-review protocol) — INDEPENDENT adversarial review of task ${task.id}. ` +
       `Run git diff yourself; do NOT trust the implementer report. Verify against requirements §${(task.requirements || []).join(', ')} + design + _Boundary_ ${task.boundary || 'n/a'}. ` +
+      `Also flag: (a) FB-010 — any new exported/public method this task created that has NO production call-site (orphan export = cross-task integration gap; per-task review is the only place narrow enough to spot it before the seam is forgotten); (b) FB-006 — any change to project-global config outside _Boundary_ (git core.hooksPath, root lifecycle scripts, hook-managing tooling). ` +
       `Return the exact ## Review Verdict block. Set gate:independent.`,
       { schema: REVIEW_SCHEMA, phase: 'Implement', label: `review:${task.id}` },
     )
@@ -182,6 +199,20 @@ const gate = (task, impl) => {
     { schema: REVIEW_SCHEMA, phase: 'Implement', label: `verify:${task.id}` },
   )
 }
+
+// FB-007: on BLOCK, don't leave the _Blocked_ annotation uncommitted and route nowhere.
+// Commit the annotation (so the tree stays clean for the next task) AND record a
+// pending-action with the route, so the operator sees what's blocked and where it goes.
+const recordBlock = (taskId, reason) =>
+  agent(
+    `Task ${taskId} is BLOCKED: ${reason}.\n` +
+    `1) Append "_Blocked: ${reason}_" under task ${taskId} in ${SPEC_DIR}/tasks.md.\n` +
+    `2) Commit ONLY that tasks.md change — explicit path, NEVER git add -A — message: ` +
+    `chore(${FEATURE}): block ${taskId} (surface blocker). This keeps the tree clean for the next task (FB-007).\n` +
+    `3) Append an entry to .claude/pending-actions.md (create if absent) with the blocker text and the route it needs ` +
+    `(Product | Integrator | manual-staging | human) so it isn't silently lost. Do NOT commit code.`,
+    { phase: 'Implement', label: `block:${taskId}` },
+  )
 
 // ---- Phase 2: implement — sequential per-task FSM --------------------------
 phase('Implement')
@@ -205,9 +236,9 @@ for (const task of tasks) {
     impl = await implement(task, ` Debug FIX_PLAN: ${d.fix_plan || ''}.`)
   }
   if (!impl || impl.status !== 'READY_FOR_REVIEW') {
-    log(`task ${task.id} blocked (impl) — appending _Blocked_, skipping`)
+    log(`task ${task.id} blocked (impl) — recording block + route, skipping`)
     blockedTasks.push(task.id)
-    await agent(`Append "_Blocked: ${(impl && impl.blocker) || 'impl did not reach READY_FOR_REVIEW'}_" under task ${task.id} in ${SPEC_DIR}/tasks.md. Do not commit code.`, { phase: 'Implement', label: `block:${task.id}` })
+    await recordBlock(task.id, (impl && impl.blocker) || 'impl did not reach READY_FOR_REVIEW')
     continue
   }
 
@@ -230,9 +261,9 @@ for (const task of tasks) {
     }
   }
   if (!verdict || verdict.verdict !== 'APPROVED') {
-    log(`task ${task.id} blocked (review) — appending _Blocked_, skipping`)
+    log(`task ${task.id} blocked (review) — recording block + route, skipping`)
     blockedTasks.push(task.id)
-    await agent(`Append "_Blocked: review not APPROVED — ${(verdict && (verdict.findings || []).join('; ')) || 'unresolved'}_" under task ${task.id} in ${SPEC_DIR}/tasks.md.`, { phase: 'Implement', label: `block:${task.id}` })
+    await recordBlock(task.id, `review not APPROVED — ${(verdict && (verdict.findings || []).join('; ')) || 'unresolved'}`)
     continue
   }
 
@@ -243,7 +274,9 @@ for (const task of tasks) {
   )
   const commit = await agent(
     `Selective commit for task ${task.id}: stage ONLY the changed files (${(impl.files_changed || []).join(', ')}) + ${SPEC_DIR}/tasks.md; mark task ${task.id} [x] in tasks.md; append a one-line ## Implementation Notes entry IF the task revealed a cross-cutting insight. ` +
-    `NEVER git add -A / git add . — explicit paths only. Commit message: feat(${FEATURE}): ${task.id} ${task.text || ''}. Return the sha.`,
+    `NEVER git add -A / git add . — explicit paths only. ` +
+    `FB-005: after staging, run git status --porcelain. If files this task introduced but that fell outside files_changed remain unstaged (lockfile/manifest churn it caused — package.json, pnpm-lock.yaml — or wiring it added, e.g. a worker entrypoint), STAGE THEM into this commit too so the task is committed completely and the tree is clean for the next task. Leave genuinely unrelated/ambient churn (.beads/, integrator project-journal) unstaged. Report any in-boundary file you had to add and any leftover. ` +
+    `Commit message: feat(${FEATURE}): ${task.id} ${task.text || ''}. Return the sha.`,
     { schema: COMMIT_SCHEMA, phase: 'Implement', label: `commit:${task.id}` },
   )
   implemented.push({ id: task.id, tier: task.tier, sha: commit && commit.sha })
@@ -252,16 +285,25 @@ for (const task of tasks) {
 
 // ---- Phase 3: feature-level GO/NO-GO (lift kiro-validate-impl) -------------
 phase('Validate')
+// FB-010 (live-run RUN 01): run the feature-level gate whenever ANY task landed — a
+// single blocked task must NOT suppress it. The GO-gate (kiro-validate-impl) is the only
+// check wide enough to catch cross-task integration seams (a method built by task A but
+// never wired by task B passes both per-task reviews). Previously `!blockedTasks.length`
+// skipped it on any block, which masked exactly such a gap. With blocked tasks we run it
+// in ADVISORY mode: surface cross-task findings, do not remediate, never claim GO.
 let go = null
-if (implemented.length && !blockedTasks.length) {
+if (implemented.length) {
+  const degraded = blockedTasks.length > 0
   go = await agent(
     `Invoke kiro-validate-impl ${FEATURE} as the feature-level GO/NO-GO gate (cross-task consistency, full suite, spec coverage). ` +
-    `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`,
-    { schema: GATE_SCHEMA, phase: 'Validate', label: 'validate-impl' },
+    (degraded
+      ? `ADVISORY MODE — ${blockedTasks.length} task(s) blocked (${blockedTasks.join(', ')}); the feature is NOT complete. Do NOT remediate. Run the cross-task / integration checks anyway and SURFACE any seams (orphan wiring, unhandled events, missing call-sites) as findings. Return MANUAL_VERIFY_REQUIRED + findings (FB-010: a blocked task must not hide a cross-task gap).`
+      : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`),
+    { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
   )
-  log(`feature GO-gate: ${(go && go.result) || 'n/a'}`)
+  log(`feature GO-gate${degraded ? ' (advisory — blocked tasks present)' : ''}: ${(go && go.result) || 'n/a'}`)
 } else {
-  log(`skipping GO-gate: ${blockedTasks.length} blocked task(s) — feature not complete`)
+  log('skipping GO-gate: no tasks implemented')
 }
 
 return {

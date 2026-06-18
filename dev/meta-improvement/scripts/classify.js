@@ -204,6 +204,7 @@ function extractSignals(transcriptPath, marker, context) {
   const bash_commands = [];
   const commit_types = [];
   const commit_scopes = [];
+  const workflow_scripts = [];
 
   const lines = fs.readFileSync(transcriptPath, 'utf-8').split('\n');
   for (const line of lines) {
@@ -231,16 +232,26 @@ function extractSignals(transcriptPath, marker, context) {
         parseCommitFromBash(input.command, commit_types, commit_scopes);
       } else if (name === 'Agent' || name === 'Task') {
         subagent_types.push(input.subagent_type || input.description || '');
+      } else if (name === 'Workflow') {
+        // Orchestrator P3/P5 run via the Workflow tool — its core action. Without
+        // capturing it, an orchestrator session is invisible to the classifier and
+        // gets misrouted (live-run RUN 01 c4546225 → D6/maintenance). Record the
+        // process script (named or scriptPath); inline `script:` workflows have neither.
+        const sp = typeof input.scriptPath === 'string' ? input.scriptPath
+          : (typeof input.name === 'string' ? input.name : '');
+        if (sp) workflow_scripts.push(sp.replace(/\\/g, '/'));
       }
     }
   }
 
   const wp = uniq(written_paths);
+  const ws = uniq(workflow_scripts);
   const flags = {
     touched_product: wp.some((p) => p.includes('.product/')),
     has_feature_artifact: wp.some((p) => /\.product\/features\//.test(p)),
     has_design_artifact: wp.some((p) => /\.product\/(mockups|design-system)/.test(p) || /\/(MK|NM|DS)-/.test(p)),
     has_discovery_artifact: wp.some((p) => /\.product\/(problems|hypotheses|segments|value-prop|market|competitive)/.test(p)),
+    used_orchestrator_workflow: ws.some((s) => /orchestrator\/processes\//.test(s)),
     module_recently_shipped: false,
   };
 
@@ -252,6 +263,7 @@ function extractSignals(transcriptPath, marker, context) {
     slash_commands: uniq(slash_commands),
     subagent_types: uniq(subagent_types),
     written_paths: wp,
+    workflow_scripts: ws,
     commit_types: uniq(commit_types),
     commit_scopes: uniq(commit_scopes),
     target_project: (marker && marker.target_project) || null,
@@ -354,6 +366,7 @@ function renderSessionProfile(signals) {
   const compact = {
     slash_commands: signals.slash_commands,
     subagent_types: signals.subagent_types,
+    workflow_scripts: signals.workflow_scripts || [],
     written_paths: signals.written_paths.slice(0, 40),
     commit_types: signals.commit_types,
     commit_scopes: signals.commit_scopes,

@@ -10,7 +10,7 @@ confidence: high
 patch_type: none
 risk: low
 finding_ids: [b240a4635e71, b406b7e6c467, 3f4645670d87, 7e1d349cd4ca]
-gate: pending          # human sets: accepted | rejected | edited | deferred  ([Y/N/E/D])
+gate: rejected         # [N] 2026-06-17: dismissed per synthesizer rec (refuted — classifier fallback; foreign/unverifiable; templates already canonical)
 ---
 
 # Patch candidate — mixed-uncertain / A

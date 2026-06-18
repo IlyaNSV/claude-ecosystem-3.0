@@ -49,6 +49,12 @@ const INTEGRATOR_BASH_PATTERNS = [
   /\.claude\/integrator\/adapters\/[^\s]+\.js/, // adapter execution
 ];
 
+// FB-008 (orchestrator live-run RUN 01): the broad `npx` pattern above also matches
+// incidental dev-tool runs (prettier/eslint/tsc/…). Orchestrator P5 subagents fire many
+// of these during implement, flooding the integrator journal with #auto noise. The hook
+// is for integrator TOOL-MANAGEMENT actions, not formatter/linter/test runs — skip these.
+const INCIDENTAL_NPX_TOOLS = /^(?:prettier|eslint|tsc|typescript|vitest|jest|mocha|playwright|cypress|tsx|ts-node|nodemon|concurrently|rimraf|husky|biome|stylelint)$/;
+
 // ---------- IO helpers ----------
 
 function readStdinSync() {
@@ -104,6 +110,13 @@ function classifyAction(toolName, toolInput) {
   if (toolName === 'Bash') {
     const cmd = (toolInput.command || '').trim();
     if (!cmd) return null;
+    // FB-008: skip incidental dev-tool runs (npx/pnpm dlx/npm exec prettier|eslint|…) —
+    // these are not integrator tool-management actions and would otherwise spam the journal.
+    const runner = cmd.match(/^\s*(?:npx|pnpm\s+dlx|npm\s+exec)\s+(?:-{1,2}[^\s]+\s+)*([@\w./-]+)/);
+    if (runner) {
+      const tool = runner[1].replace(/@.*/, '').replace(/^.*\//, '');
+      if (INCIDENTAL_NPX_TOOLS.test(tool)) return null;
+    }
     for (const pat of INTEGRATOR_BASH_PATTERNS) {
       if (pat.test(cmd)) {
         return { action: 'shell', subject: cmd.slice(0, 200), tool: 'Bash' };

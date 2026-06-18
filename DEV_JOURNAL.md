@@ -5618,6 +5618,33 @@ S1-инкремент: `product_class` как opt-in блок в `product.yaml` 
 
 ---
 
+## DEC-DEV-0080 — cascade SC↔MK reverse-ref: topology-расширение `cascade-check.js` + scalar write-back (Session Audit `D2B-behavioral::D`)
+
+**Date:** 2026-06-17
+**Trigger:** Session-audit синтезатор вынес survived-кандидат `D2B-behavioral__D` (V-11 asymmetry MK↔SC, 5 findings/5 сессий, 2 high-confidence); human gate **[E]**.
+**Tag:** #session-audit #cascade #design-module #V-11
+
+### Context
+Phase 6 сделал каноническими `MK(mockup-package).scenarios[]` ↔ `SC.mockup` (`MK.md:21`, `SC.md:26`), но `cascade-check.js` `getForwardSpecs()` так и не получил кейс `mockup-package` → уходил в `default → []`. Следствие: при сохранении MK обратная ссылка `SC.mockup` не писалась, и V-11-асимметрия (MK→SC есть, SC→MK нет) всплывала из сессии в сессию (MK-001/002/003/004/007). Это был **сознательно отложенный** пункт DEC-DEV-0023 («reverse-driven … deferred to v1.2»), чей bring-forward триггер (повторяющийся верифицированный паттерн + cuttable-scope discipline) теперь сработал. Две high-confidence инстанции — MK-004↔SC-015 (`a8afb3b1`), MK-007↔SC-027 (`4b141121`) — подтверждены двумя независимыми аудиторами + перепроверены синтезатором in-repo.
+
+### Options considered
+1. **Полный кандидат (SC↔MK + вторичный IC↔BR topology edge)** — отвергнут: цитируемая IC↔BR-инстанция (`680f790f`) использует неканоничное `related_brs`, поэтому фикс, ключёванный на каноничном `rules`, на ней бы no-op'нул — это территория check-A / V-18 (DEC-DEV-0064), не topology.
+2. **Только SC↔MK spine ([E])** — выбрано. Smallest-mechanism; единственный верифицированный корень.
+3. **Reject / defer** — отвергнуто: known-deferred пункт, чей триггер сработал; ручная поддержка `SC.mockup` рецидивит каждую дизайн-сессию.
+
+### Decision
+Расширить `getForwardSpecs()`: кейс `mockup-package` (`scenarios` → `SC.mockup`, `reverseIsScalar:true`) + добавить `mockup`-spec в кейс `scenario` (`SC.mockup` → `MK.scenarios[]`). Новый хелпер `injectScalarField` для скалярной обратной записи — `SC.mockup` это скаляр `MK-NNN`, а list-only `injectListField` испортил бы его в `[MK-NNN]` (ровно риск, который кандидат пометил «riskiest part»). Scalar-conflict guard: если `SC.mockup` уже указывает на ДРУГОЙ MK — не перезатирать, а класть `needs_manual_fix` в `cascade-pending.yaml`. Вторичный IC↔BR scope **отброшен** ([E]).
+
+### Outcome
+Реализовано на ветке `chore/session-audit-pending-2026-06-16`. Зелёно: `tests/product/cascade-scalar.test.cjs` — 14 ассертов (scalar-формат / list-направление / conflict / no-op / draft), подключён в `npm run verify`; +1 функциональный кейс в `smoke-hooks.js` (26/26). Ребро MK↔SC задокументировано в SPEC §6.7.1 (forward-driven topology table). **Уточнение по «deferral»:** специфичной текстовой пометки «MK↔SC deferred to v1.2» не существовало — deferral был *неявным* (`mockup-package` отсутствовал в `getForwardSpecs` → `default → []`), и снят добавлением кейса. Общая пометка про reverse-driven *review-rules* (BR→LC re-validate, `processes.md:567`/SPEC §6.7) — это ДРУГОЙ механизм, остаётся в силе. Journal-status reconcile выполнен: 5 spine→patched/0080, 59 refuted→dismissed (анти-фантом подтверждён `patch-synth --dry-run`: ни один из 9 gated-кластеров не всплывает); genuine re-routed сигналы → `dev/meta-improvement/audit-reroutes.md`.
+**Numbering:** ветка базируется на `7193afb` (до PR #35/#36); `0079` занят product-class на main → эта запись = **0080** (gap 0078→0080 на ветке схлопнется в непрерывный после merge с main).
+
+### Lessons
+- Пункт «deferred to vNext» в cascade-topology тихо копит V-11-долг каждую дизайн-сессию, пока его триггер не уважат явно — именно session-audit синтезатор это всплыл и **датировал** триггер (ценность накопительного журнала находок).
+- Скалярные vs списочные reverse-поля требуют разных путей записи: переиспользование list-хелпера для скаляра — латентная порча, пойманная только потому, что кандидат пометил риск, а отдельный тест запинил формат.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

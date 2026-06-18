@@ -9,9 +9,11 @@
     "lint:hooks": "eslint hooks/",
     "verify:hooks": "node dev/meta-improvement/scripts/verify-hooks.js",
     "test:adapters": "node tests/adapters/handoff-ccsdd.contract.test.cjs",
-    "test:orchestrator": "node tests/orchestrator/coverage-oracle.test.cjs && node tests/orchestrator/gate-risk-classifier.test.cjs",
+    "test:orchestrator": "node tests/orchestrator/coverage-oracle.test.cjs && node tests/orchestrator/gate-risk-classifier.test.cjs && node tests/orchestrator/args-parsing.test.cjs",
     "smoke:orchestrator": "node tests/orchestrator/workflow-syntax.smoke.cjs",
-    "verify": "npm run verify:hooks && npm run test:adapters && npm run test:orchestrator && npm run smoke:orchestrator"
+    "test:audit": "node tests/audit/classify-orchestrator.test.cjs",
+    "test:product": "node tests/product/cascade-scalar.test.cjs",
+    "verify": "npm run verify:hooks && npm run test:adapters && npm run test:orchestrator && npm run smoke:orchestrator && npm run test:audit && npm run test:product"
   },
   "devDependencies": {
     "eslint": "^9.13.0"

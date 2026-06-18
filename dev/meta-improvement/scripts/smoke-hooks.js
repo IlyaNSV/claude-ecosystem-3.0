@@ -113,6 +113,26 @@ const TEST_CASES = [
   { hook: 'hooks/product/artifact-validate.js',     filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
   { hook: 'hooks/product/bg-extractor.js',          filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
   { hook: 'hooks/product/cascade-check.js',         filePath: path.join(TMP_PRODUCT, 'scenarios', 'SC-001-test.md') },
+  // Functional: SC↔MK topology (DEC-DEV-0080). Saving an active MK with scenarios:[SC]
+  // must auto-fix the SCALAR reverse SC.mockup (format pinned in tests/product/cascade-scalar.test.cjs).
+  {
+    hook: 'hooks/product/cascade-check.js',
+    label: 'mk-scenarios-scalar-reverse',
+    filePath: path.join(TMP_PRODUCT, 'mockups', 'MK-010-pkg.md'),
+    setup: (ctx) => {
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'scenarios', 'SC-010-flow.md'),
+        '---\nid: SC-010\ntype: scenario\nstatus: active\nrules: []\nlifecycle: []\nverification: []\n---\n\n# SC-010\n',
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'mockups', 'MK-010-pkg.md'),
+        '---\nid: MK-010\ntype: mockup-package\nstatus: active\nfeature: FM-001\nscenarios: [SC-010]\n---\n\n# MK-010\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /V-11 auto-fixed/,
+  },
   { hook: 'hooks/product/br-change-trigger.js',     filePath: path.join(TMP_PRODUCT, 'business-rules', 'BR-001-test.md') },
   { hook: 'hooks/product/ic-change-trigger.js',     filePath: path.join(TMP_PRODUCT, 'invariants', 'IC-001-test.md') },
   { hook: 'hooks/product/session-state.js',         filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },

@@ -51,6 +51,13 @@ substitute.
 
 Load the regimen skills for context, then launch the matching Workflow.
 
+> **Pass `args` as an OBJECT, not a JSON string.** Write `args: { feature: "auth" }`,
+> NOT `args: "{\"feature\":\"auth\"}"`. The harness forwards `args` verbatim — a
+> stringified value reaches the script as a string, so `feature`/`handoffs` come back
+> undefined and the process runs target-less (live-run RUN 01 FB-001/FB-002: an empty
+> feature let the Plan agent pick the wrong spec). The scripts now defensively parse a
+> string, but pass an object so the guard is belt-and-suspenders.
+
 **P3 — `batch-features-to-cc-sdd`** (skills: `orchestrator-init`, `build-steering`,
 `build-briefs-from-handoff`, `coverage-oracle`):
 
@@ -85,6 +92,16 @@ Workflow({
 The Workflow runs in the background; watch progress with `/workflows`. P3 returns
 features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P5 returns
 implemented task ids / blocked / GO-gate result.
+
+> **One orchestrator workflow per repo at a time (FB-004).** Two processes that both
+> `git commit` race on the shared git index even when their file zones don't overlap
+> (corrupt index / failed commit). Run P3 and P5 sequentially, not concurrently.
+
+> **Run records (FB-003).** The source of truth for a run is the harness transcript-dir
+> (`/workflows`, `…/subagents/workflows/wf_*`) plus the Workflow return value above.
+> `.claude/orchestrator/runs/` is NOT auto-created by the processes in this increment —
+> it exists only when a human/agent writes a feedback journal or checkpoint there. Don't
+> expect an auto run-ledger (a durable per-run ledger is a tracked follow-up).
 
 ## Autonomy & gates (SPEC §6/§7)
 

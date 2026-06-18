@@ -113,25 +113,49 @@ for (const dep of dependentRefs) {
   if (!depFm.id || !depFm.type) continue;
 
   // V-11 check: bi-dir ref consistency
-  // Saved artifact references dep.id; dep should reference saved.id back в reverse field
+  // Saved artifact references dep.id; dep should reference saved.id back в reverse field.
+  // reverseIsScalar=true: the reverse field holds a single id (e.g. SC.mockup: MK-NNN),
+  // not a YAML list — parse + write it as a scalar (DEC-DEV-0080, SC↔MK topology).
   const reverseField = dep.reverseField;
-  const depRefArray = parseListField(depFm[reverseField]);
+  const reverseIsScalar = dep.reverseIsScalar === true;
+  const depRefArray = reverseIsScalar
+    ? parseRefValue(depFm[reverseField], true)
+    : parseListField(depFm[reverseField]);
 
   if (!depRefArray.includes(fm.id)) {
-    // V-11 broken — auto-fix if dep active, queue if draft
-    if (depFm.status === 'active') {
-      // Auto-fix: rewrite dep file с appended id
-      const fixed = injectListField(depContent, reverseField, fm.id);
+    const relFile = path.relative(projectRoot, dep.path).replace(/\\/g, '/');
+    // Scalar reverse field already occupied by a DIFFERENT id → genuine conflict
+    // (a scenario can belong to only one mockup-package). Never silently overwrite;
+    // queue for human review instead (DEC-DEV-0080).
+    const scalarConflict = reverseIsScalar && depRefArray.length > 0;
+
+    if (scalarConflict) {
+      pendingEntries.push({
+        artifact: depFm.id,
+        file: relFile,
+        triggered_by: fm.id,
+        rule: 'V-11',
+        action: 'needs_manual_fix',
+        detail: `${depFm.id}.${reverseField} already = ${depRefArray[0]}; ${fm.id} also references it (scalar reverse conflict — not auto-overwritten)`,
+        at: now,
+      });
+    } else if (depFm.status === 'active') {
+      // Auto-fix: rewrite dep file с appended/set reverse ref
+      const fixed = reverseIsScalar
+        ? injectScalarField(depContent, reverseField, fm.id)
+        : injectListField(depContent, reverseField, fm.id);
       if (fixed && fixed !== depContent) {
         try {
           fs.writeFileSync(dep.path, fixed);
           pendingEntries.push({
             artifact: depFm.id,
-            file: path.relative(projectRoot, dep.path).replace(/\\/g, '/'),
+            file: relFile,
             triggered_by: fm.id,
             rule: 'V-11',
             action: 'auto-fixed',
-            detail: `Added ${fm.id} к ${depFm.id}.${reverseField}[] (was missing reverse ref)`,
+            detail: reverseIsScalar
+              ? `Set ${depFm.id}.${reverseField} = ${fm.id} (was missing scalar reverse ref)`
+              : `Added ${fm.id} к ${depFm.id}.${reverseField}[] (was missing reverse ref)`,
             at: now,
           });
         } catch (e) {
@@ -142,11 +166,11 @@ for (const dep of dependentRefs) {
       // Skip auto-fix on draft (B2 quiet mode); queue for manual fix
       pendingEntries.push({
         artifact: depFm.id,
-        file: path.relative(projectRoot, dep.path).replace(/\\/g, '/'),
+        file: relFile,
         triggered_by: fm.id,
         rule: 'V-11',
         action: 'needs_manual_fix',
-        detail: `Reverse ref to ${fm.id} missing в ${depFm.id}.${reverseField}[]; target draft, skip auto-fix per quiet mode`,
+        detail: `Reverse ref to ${fm.id} missing в ${depFm.id}.${reverseField}${reverseIsScalar ? '' : '[]'}; target draft, skip auto-fix per quiet mode`,
         at: now,
       });
     }
@@ -314,6 +338,32 @@ function injectListField(content, fieldName, valueToAdd) {
   return content.replace(m[0], opener + newFmBody + closer);
 }
 
+function injectScalarField(content, fieldName, value) {
+  // Set a SCALAR frontmatter field (e.g. SC.mockup: MK-NNN). Unlike injectListField
+  // this never emits list syntax. Writes only into an empty/missing field; a field
+  // already holding a different value is left intact (the caller queues the conflict
+  // rather than overwriting). (DEC-DEV-0080 — SC↔MK topology, Session Audit D2B-behavioral::D)
+  const m = /^(---\r?\n)([\s\S]*?)(\r?\n---)/m.exec(content);
+  if (!m) return null;
+  const [, opener, fmBody, closer] = m;
+
+  const fieldRe = new RegExp(`^(${fieldName}\\s*:\\s*)(.*)$`, 'm');
+  const fieldMatch = fieldRe.exec(fmBody);
+
+  let newFmBody;
+  if (fieldMatch) {
+    const current = fieldMatch[2].trim().replace(/\s+#.*$/, '').replace(/^["'](.*)["']$/, '$1');
+    if (current === value) return null;                  // already correct — no change
+    if (current !== '' && current !== '[]') return null; // occupied by another value — caller handles conflict
+    newFmBody = fmBody.replace(fieldRe, `${fieldMatch[1]}${value}`);
+  } else {
+    // Field absent — append к frontmatter end as a scalar
+    newFmBody = fmBody + `\n${fieldName}: ${value}`;
+  }
+
+  return content.replace(m[0], opener + newFmBody + closer);
+}
+
 function identifyDependents(fm, projectRoot) {
   // Per processes.md §4.1 trigger matrix.
   //
@@ -341,6 +391,7 @@ function identifyDependents(fm, projectRoot) {
       results.push({
         path: depFile,
         reverseField: spec.depReverseField,
+        reverseIsScalar: spec.reverseIsScalar === true,
         reviewRules: spec.additionalRules || [],
       });
     }
@@ -370,6 +421,8 @@ function getForwardSpecs(type, sourceId) {
         { fieldName: 'verification', depDir: 'verification',   depReverseField: 'scenario',  isScalar: false,
           additionalRules: [{ rule: 'V-07', detail: `VC coverage check: SC ${sourceId} flow changed` }] },
         { fieldName: 'feature',      depDir: 'features',       depReverseField: 'scenarios', isScalar: true },
+        // SC.mockup (scalar) ↔ MK.scenarios[] (list) — DEC-DEV-0080 (Session Audit D2B-behavioral::D)
+        { fieldName: 'mockup',       depDir: 'mockups',        depReverseField: 'scenarios', isScalar: true },
       ];
     case 'business-rule':
       return [
@@ -390,12 +443,21 @@ function getForwardSpecs(type, sourceId) {
         { fieldName: 'scenario', depDir: 'scenarios', depReverseField: 'verification', isScalar: true },
         { fieldName: 'feature',  depDir: 'features',  depReverseField: 'verification', isScalar: true },
       ];
+    case 'mockup-package':
+      // MK ↔ SC topology (DEC-DEV-0080, Session Audit cluster D2B-behavioral::D).
+      // MK.scenarios[] (list) ↔ SC.mockup (scalar). reverseIsScalar drives the scalar
+      // write-back path so SC.mockup is set as `MK-NNN`, not the malformed `[MK-NNN]`.
+      // Closes the V-11 asymmetry left when Phase 6 made MK↔SC canonical but the cascade
+      // topology was not extended (mockup-package previously fell to default → []).
+      return [
+        { fieldName: 'scenarios', depDir: 'scenarios', depReverseField: 'mockup', isScalar: false, reverseIsScalar: true },
+      ];
     case 'feature-map-entry':
       // FM changes — minimal cascade in v1; status alignment with embedded artifacts
       // covered by individual artifact saves.
       return [];
     default:
-      // Other types (PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, BG, RPM, NFR, MK, DS, NM, NOTE)
+      // Other types (PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, BG, RPM, NFR, DS, NM, NOTE)
       // Cascade impact per processes.md §4.1, but less common in P2 enrichment.
       return [];
   }

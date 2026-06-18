@@ -11,9 +11,6 @@ Markers waiting to be processed. Hook appends rows between the sentinel comments
 | session_id | ended_at | target_project | transcript_path |
 |---|---|---|---|
 <!-- PENDING_ROWS_START -->
-| `c5f7fb5f-f511-4772-bbac-6b58f7daca8a` | 2026-06-11T20:44:32.889Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\c5f7fb5f-f511-4772-bbac-6b58f7daca8a.jsonl` (reason: other) |
-| `0f2827ea-a7a1-4f9f-8f8e-fb9839df526e` | 2026-06-11T19:12:04.076Z | my-first-test | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\0f2827ea-a7a1-4f9f-8f8e-fb9839df526e.jsonl` (reason: other) |
-| `a8afb3b1-2291-4f74-9335-f11abebe145d` | 2026-06-11T19:12:03.972Z | design-fm004 | `C:\Users\pw201\.claude\projects\C--Users-pw201-WebstormProjects-my-first-test\a8afb3b1-2291-4f74-9335-f11abebe145d.jsonl` (reason: other) |
 <!-- PENDING_ROWS_END -->
 
 ## Processed
@@ -23,6 +20,19 @@ Sessions already audited. Re-audit requires `--force` (will overwrite per-sessio
 | session_id | audited_at | target | phase | mode | status | coverage (cov/part/fail/nc/unc) | findings (b/w/i) | report |
 |---|---|---|---|---|---|---|---|---|
 <!-- PROCESSED_ROWS_START -->
+| `a8afb3b1-2291-4f74-9335-f11abebe145d` | 2026-06-16T13:31:19Z | design-fm004 | — | zones:D2B04-design+D2B-behavioral+D6-integrator|unknown | findings | 0/0/0/0/0 | 0/1/2 | [`a8afb3b1-2291-4f74-9335-f11abebe145d.md`](audit-reports/a8afb3b1-2291-4f74-9335-f11abebe145d.md) |
+| `0f2827ea-a7a1-4f9f-8f8e-fb9839df526e` | 2026-06-16T13:21:46Z | my-first-test | — | zones:D2B04-design+D2B-behavioral|unknown | findings | 0/0/0/0/0 | 0/0/2 | [`0f2827ea-a7a1-4f9f-8f8e-fb9839df526e.md`](audit-reports/0f2827ea-a7a1-4f9f-8f8e-fb9839df526e.md) |
+| `c5f7fb5f-f511-4772-bbac-6b58f7daca8a` | 2026-06-16T13:16:13Z | my-first-test | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`c5f7fb5f-f511-4772-bbac-6b58f7daca8a.md`](audit-reports/c5f7fb5f-f511-4772-bbac-6b58f7daca8a.md) |
+| `963f2666-eb87-410a-bdbc-22d94f460e4a` | 2026-06-16T13:13:07Z | my-first-test | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`963f2666-eb87-410a-bdbc-22d94f460e4a.md`](audit-reports/963f2666-eb87-410a-bdbc-22d94f460e4a.md) |
+| `4e5d7666-9d9e-4618-a6d0-42719a4f2775` | 2026-06-16T13:08:15Z | my-first-test | — | zones:D2B-behavioral+D6-integrator|unknown | findings | 0/0/0/0/0 | 0/1/2 | [`4e5d7666-9d9e-4618-a6d0-42719a4f2775.md`](audit-reports/4e5d7666-9d9e-4618-a6d0-42719a4f2775.md) |
+| `a64afb94-6081-40ef-8d6e-f69aa47ee136` | 2026-06-16T13:00:57Z | my-first-test | — | zones:D2B-behavioral+D6-integrator|unknown | findings | 0/0/0/0/0 | 0/1/3 | [`a64afb94-6081-40ef-8d6e-f69aa47ee136.md`](audit-reports/a64afb94-6081-40ef-8d6e-f69aa47ee136.md) |
+| `ebf3cc2c-af71-46d5-bc3e-3db2722798a9` | 2026-06-16T12:52:05Z | my-first-test | — | zones:D2B-behavioral+D6-integrator|feature | findings | 0/0/0/0/0 | 2/1/2 | [`ebf3cc2c-af71-46d5-bc3e-3db2722798a9.md`](audit-reports/ebf3cc2c-af71-46d5-bc3e-3db2722798a9.md) |
+| `4b141121-d0b0-4128-a8bf-eb72f77bdd43` | 2026-06-16T12:14:19Z | my-first-test | — | zones:D2B04-design+D2B-behavioral|unknown | findings | 0/0/0/0/0 | 0/2/2 | [`4b141121-d0b0-4128-a8bf-eb72f77bdd43.md`](audit-reports/4b141121-d0b0-4128-a8bf-eb72f77bdd43.md) |
+| `483517bb-f1cf-46b9-a57a-9b7275bb3ac6` | 2026-06-16T12:06:59Z | my-first-test | — | zones:D6-integrator|unknown | findings | 0/0/0/0/0 | 0/0/2 | [`483517bb-f1cf-46b9-a57a-9b7275bb3ac6.md`](audit-reports/483517bb-f1cf-46b9-a57a-9b7275bb3ac6.md) |
+| `52fff494-0bce-4393-af73-ee374148081d` | 2026-06-16T11:57:42Z | my-first-test | — | zones:mixed|unknown | findings | 0/0/0/0/0 | 0/1/1 | [`52fff494-0bce-4393-af73-ee374148081d.md`](audit-reports/52fff494-0bce-4393-af73-ee374148081d.md) |
+| `6dc62bc8-457d-4911-a412-99a46488aa46` | 2026-06-16T11:51:30Z | my-first-test | — | zones:D6-integrator|unknown | findings | 0/0/0/0/0 | 0/0/2 | [`6dc62bc8-457d-4911-a412-99a46488aa46.md`](audit-reports/6dc62bc8-457d-4911-a412-99a46488aa46.md) |
+| `c3c33e81-c19c-4eb9-9a2d-23df507b7466` | 2026-06-16T11:44:32Z | my-first-test | — | zones:mixed|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`c3c33e81-c19c-4eb9-9a2d-23df507b7466.md`](audit-reports/c3c33e81-c19c-4eb9-9a2d-23df507b7466.md) |
+| `c4546225-9d22-4325-8a0a-13a57e4eafd6` | 2026-06-16T11:39:16Z | my-first-test | — | zones:D6-integrator|maintenance | findings | 0/0/0/0/0 | 0/0/1 | [`c4546225-9d22-4325-8a0a-13a57e4eafd6.md`](audit-reports/c4546225-9d22-4325-8a0a-13a57e4eafd6.md) |
 | `9fac10c2-240c-42af-a84c-68cf97ed008e` | 2026-06-11T15:00:26Z | my-first-test | — | zones:D6-integrator|unknown | clean | 0/0/0/0/0 | 0/0/0 | [`9fac10c2-240c-42af-a84c-68cf97ed008e.md`](audit-reports/9fac10c2-240c-42af-a84c-68cf97ed008e.md) |
 | `e6ac6f02-c594-4f46-b9f6-d9505a24145a` | 2026-06-11T14:54:05Z | my-first-test | — | zones:D2B-behavioral+D2B04-design|unknown | findings | 0/0/0/0/0 | 0/0/1 | [`e6ac6f02-c594-4f46-b9f6-d9505a24145a.md`](audit-reports/e6ac6f02-c594-4f46-b9f6-d9505a24145a.md) |
 | `b87c7903-b0bb-4190-ab60-429f8534e141` | 2026-06-11T14:49:15Z | my-first-test | — | zones:D6-integrator|unknown | findings | 0/0/0/0/0 | 0/2/2 | [`b87c7903-b0bb-4190-ab60-429f8534e141.md`](audit-reports/b87c7903-b0bb-4190-ab60-429f8534e141.md) |
