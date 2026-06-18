@@ -277,7 +277,7 @@ Design session должна ответить: borrow product semantic (с D7 nam
 
 ### Internal (this repo)
 
-- [DEV_JOURNAL.md](../../DEV_JOURNAL.md) — все 14 DEC-DEV entries; especially:
+- [DEV_JOURNAL.md](../../DEV_JOURNAL.md) — для свежего контекста читай последние ~5 entries (tail, не весь журнал); эти foundational — especially:
   - DEC-DEV-0007 (DEV_JOURNAL framework establishment)
   - DEC-DEV-0008 (incremental pilot, dogfooding direction)
   - DEC-DEV-0011 (B.1 frontmatter convention)
