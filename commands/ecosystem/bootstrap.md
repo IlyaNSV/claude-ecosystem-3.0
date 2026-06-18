@@ -594,6 +594,20 @@ validation_tier: pilot                     # B1 modification — start minimal
 default_discovery_mode: quick
 nfr_default_tier: mvp
 
+# Product class (DEC-DEV-0079) — filled during D1.0 Discovery via
+# skills/product/product-class.md. Open vocabulary, advisory-only (seeds NFR/test
+# defaults + handoff hint), never gates. Absent/unset == pre-0079 behavior 1:1.
+# Taxonomy + facet defaults: docs/pmo/product-class-taxonomy.md
+product_class:
+  archetype: unset                         # set in D1.0; taxonomy §4 vocab (or `other` + notes)
+  runtime_locus: unset                     # auto-derived from archetype (taxonomy §5)
+  interface: unset
+  distribution: unset
+  data_sensitivity: unset                  # optional
+  confidence: unset                        # high | medium | low
+  source: unset                            # discovery | manual | inferred
+  notes: ""
+
 # Confidence (C2 modification)
 confidence_required_at_approve: true
 

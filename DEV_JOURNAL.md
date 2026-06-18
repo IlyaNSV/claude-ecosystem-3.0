@@ -5562,6 +5562,62 @@ Build S5a/S5b (DEC-DEV-0076/0077) положил Workflow-скелеты и де
 
 ---
 
+## DEC-DEV-0079 — Концепт «класс продукта» (`product_class`): dimensional facets в product.yaml + advisory-проброс в handoff
+
+**Date:** 2026-06-16
+**Trigger:** Вопрос пользователя об адаптивности/универсальности — фиксирует ли экосистема в D1 класс продукта (web-service / CLI / browser-extension / library / …) и умеет ли подбирать инфру/типы тестов под класс. Аудит показал: нигде структурно не фиксируется; D2-Technical вынужден *угадывать* форму из поведенческой спеки, у Product Layer нет рычага направить. Запрос на проектирование внедрения с балансом «польза данных для экосистемы ↔ сохранение универсальности».
+**Tag:** #product-module #d1 #handoff #architecture #adaptivity #cuttable-scope
+
+### Context
+
+Зазор подтверждён чтением контрактов: ни один из D1-артефактов (PS/MR/CA/SEG/VP/HYP/MVP/RM/RL) не несёт поля класса продукта; единственный близкий сигнал — `FM.has_ui` (per-feature boolean). `handoff-spec.md` намеренно behavior-only (AP-9: «не специфицирует стек»). Итог: класс/инфра/типы тестов целиком на стороне внешнего D2-T инструмента, который их *выводит* из поведения. Центральная напряжённость задачи: данные должны реально потребляться экосистемой (иначе мёртвые метаданные), но не должны убить tool-agnostic универсальность (закрытая таксономия = ловушка).
+
+### Options considered
+
+**1. Модель класса.** (a) плоский enum `product_type: web|cli|extension` — отвергнуто: «веб-сервис», «CLI», «расширение» лежат на разных осях, плоский enum заставляет лгать о гибридах (CLI с веб-дашбордом, extension с бэкендом). (b) **dimensional — `archetype` + ортогональные фасеты (выбрано):** каждый фасет драйвит отдельный дефолт; фасеты авто-выводятся из архетипа → богатые данные при near-zero трении.
+
+**2. Словарь.** (a) закрытый enum — отвергнуто: убивает универсальность. (b) **открытый controlled vocab + `other`+`notes` (выбрано):** незнакомое значение легально, экосистема деградирует до «дефолты вручную», не отказывает.
+
+**3. Природа данных.** (a) prescriptive/gating — отвергнуто: новый hard-gate против духа warn→strict дисциплины проекта. (b) **descriptive/advisory (выбрано):** сеет дефолты/хинты с override; класс никогда не меняет *что обязательно*, только *что предлагается*.
+
+**4. SSOT-локация.** (a) PS — отвергнуто: spec требует tech-free (`PS.md` Content Rules); класс — форма решения. (b) MVP frontmatter — отвергнуто: lifecycle-bound (draft→achieved→evolved) + запрет impl-деталей; класс стабильнее любого MVP. (c) новый артефакт PC (Product Charter) — отложено: дороже (новый spec + slug + validation + canonical-count sweep 24→25); чистый upgrade-путь на v1.1, если понадобятся версия/review/каскад. (d) **блок `product_class` в `product.yaml` (выбрано):** проектно-стабильный факт рядом с дефолтами, которые он сеет (`nfr_default_tier`), без каскада PS, opt-in.
+
+**5. Набор фасетов.** (a) только `archetype` — отвергнуто: почти плоский enum, теряем точность дефолтов/routing. (b) **`archetype` + `runtime_locus`/`interface`/`distribution` + опц. `data_sensitivity` (выбрано):** каждый — отдельный драйвер дефолта; фасеты авто-выводятся. (c) полный набор (+`multi_tenant`/`offline_capable` обязательными) — отвергнуто: трение + риск мёртвых метаданных.
+
+Решения по 4 и 5 подтверждены пользователем явно (AskUserQuestion).
+
+### Decision
+
+S1-инкремент: `product_class` как opt-in блок в `product.yaml` (SSOT), захват в новом шаге D1.0 Discovery, advisory-проброс в handoff (§1 строка + frontmatter блок + §12 receiver-нота, помечено «shape, not stack»). Таксономия + дефолты — данные в одном расширяемом доке (новый класс = правка таблиц, ноль кода). Backfill для существующих проектов — режим skill'а + одноразовый промпт в CHANGELOG migration-ноте. Отсутствие/`unset` блока = поведение 1:1 как до 0079.
+
+### Outcome
+
+Файлы (ветка `feat/product-class`):
+- `docs/pmo/product-class-taxonomy.md` (NEW) — SSOT концепта: открытые словари, archetype→facets, class→дефолты (NFR-акценты/типы тестов/advisory hint), гарантии адаптивности, протокол расширения.
+- `skills/product/product-class.md` (NEW) — capture (D1.0) + backfill режимы; канонический шаблон блока + anti-pattern имена полей.
+- `commands/ecosystem/bootstrap.md` Step 7 — блок `product_class` (`unset`) в схеме `product.yaml`.
+- `skills/product/discovery-session.md` + `commands/product/init.md` — шаг D1.0 Product Classification (не gate) + session-state.
+- `docs/product-module/handoff-spec.md` + `skills/product/handoff-generator.md` — echo в §1/frontmatter/§12, derive из `product.yaml`, omit при `unset`.
+- `CHANGELOG.md` [Unreleased]/Added — запись + одноразовый backfill-промпт.
+
+Без изменения canonical counts (config-блок, не артефакт; combo-валидация отложена в S2). Deferred S2+: Integrator `supported_archetypes` routing-скоринг, авто-сев NFR-акцентов, D4 test-type чеклист, при необходимости промоут в PC-артефакт.
+
+### Lessons
+
+1. **Dimensional > flat enum для классификаций с ортогональными осями.** Один enum заставляет лгать о гибридах; набор фасетов + авто-вывод из «ярлыка» даёт и точность, и низкое трение.
+2. **Открытый словарь + advisory = универсальность не страдает от добавления пользы.** Ключ к разрешению напряжённости «польза ↔ универсальность»: данные descriptive, потребители — overridable дефолты, словарь — degrade-not-reject.
+3. **SSOT в config + derive в handoff — против дрейфа.** Класс хранится в одном месте, handoff/прочее только читают. Согласуется с pointer-collapse дисциплиной проекта.
+4. **Build ≠ delivery (повтор урока DEC-DEV-0078).** Новый `docs/pmo/*.md` + skill должны попасть в `/ecosystem:update` allowlist, иначе в пилоте сломаются ссылки skill'а. Verify allowlist для `docs/pmo/` — follow-up (пересекается со следующей задачей: механизм накопления изменений для патчей).
+
+### Follow-ups
+
+- Verify: `docs/pmo/` и `skills/product/` в allowlist `/ecosystem:update` (иначе taxonomy-док/skill не доедут в пилот).
+- Backfill-промпт пользователя — выполнено (CHANGELOG migration-нота).
+- Механизм накопления изменений по версиям для патчей + доставка через update — отдельная задача (ресёрч сначала).
+- S2+ потребители класса (routing-скоринг / NFR-сев / D4-чеклист) — при появлении 2-го D2-T инструмента или live-сигнала.
+
+---
+
 ## DEC-DEV-0080 — cascade SC↔MK reverse-ref: topology-расширение `cascade-check.js` + scalar write-back (Session Audit `D2B-behavioral::D`)
 
 **Date:** 2026-06-17

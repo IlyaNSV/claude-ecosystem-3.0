@@ -16,6 +16,21 @@ User chooses. Cannot downgrade Deep → Quick mid-session (subagents already run
 
 ## Flow
 
+### D1.0 Product Classification
+
+Load `.claude/skills/product/product-class.md` (mode `discovery`). Один вопрос — что строим
+по форме (archetype); фасеты (`runtime_locus / interface / distribution` + опц.
+`data_sensitivity`) авто-выводятся из таксономии; записывается блок `product_class` в
+`.claude/product.yaml`.
+
+- **Advisory only** — сеет дефолты NFR/тестов + handoff-hint ниже по пайплайну; **никогда
+  не gate'ит**. Открытый словарь; `archetype: other` + `notes` всегда валиден.
+- **НЕ пишет в PS** (PS обязан быть tech-free) — только в `product.yaml`.
+- Быстрый шаг (~1-2 мин). Если форма ещё не ясна — `confidence: low` + best-guess; уточнить
+  позже через `/product:init --continue` или backfill-промпт.
+
+Не gate. После записи — переход к D1.1.
+
 ### D1.1 Problem Discovery → G1
 
 Load `.claude/skills/product/problem-discovery.md`. Output: `.product/problem.md` in active after G1.
@@ -156,7 +171,7 @@ started_at: <timestamp>
 project: <project_name>
 language: <from product.yaml>
 
-current_step: D1.1 | D1.2 | D1.3 | D1.4 | D1.4a | D1.5 | D1.5z | complete
+current_step: D1.0 | D1.1 | D1.2 | D1.3 | D1.4 | D1.4a | D1.5 | D1.5z | complete
 last_completed_step: <prior step or null>
 
 last_approved_gates:
@@ -187,6 +202,7 @@ progress_percent: <0-100>
 
 | Момент | current_step → | last_approved_gates += | pending_drafts |
 |---|---|---|---|
+| product_class set (D1.0) | D1.1 | — (не gate) | — |
 | approve PS (G1) | D1.2 | G1/PS | — |
 | MR draft готов | D1.3 | — | += MR |
 | CA draft готов | D1.4 | — | += CA |
