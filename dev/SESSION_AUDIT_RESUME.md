@@ -78,16 +78,12 @@ PR #35/#36» — **завершена** (оба merged 2026-06-16 15:33).
 
 ## ОСТАЛОСЬ (ordered, actionable)
 
-1. **Journal-status reconcile** в `dev/meta-improvement/audit-journal.ndjson`:
-   - 5 findings SC↔MK кластера D (`20890600456e`, `5e6afa9a788d`, `95ff47f6cb97`, `964d0e0c5eb4`, `96d7df26b0a1`) → `status: patched`, `dec_dev_ref: DEC-DEV-0080`.
-   - findings 8 refuted-кластеров → `status: dismissed` + dismiss_reason (по рекомендациям из секций Evidence каждого кандидата — **применить per-finding re-routes**, не потерять genuine-сигналы: blocking `309cc2cf` (handoff path-bug), DA-findings-format trio, BR-027 body-ref, cleanup-detector «out-of-scope git/semantic»).
-   - Анти-фантом-память: suppress-окна для already-handled кластеров (B/C — до закрытия R4; A — до пилот-reconcile).
-2. **Снять** в DEV_JOURNAL/где-зафиксировано пометку DEC-DEV-0023 «reverse-driven … deferred to v1.2» для MK↔SC (теперь покрыто 0080).
-3. **Audit-index reconcile:** в main-worktree `audit-index.md` хук дозаполнил pending-строки; в этой ветке index уже перенёс pending→processed. Свести при merge (не задвоить).
-4. **Commit-split (если не сделан на checkpoint):** (a) cascade-патч + тесты + journal/changelog 0080; (b) audit-run output + gates + этот resume-док.
-5. **Push + PR** ветки в `main`. ⚠ Push/PR/merge через `gh` требуют `dangerouslyDisableSandbox: true` (port-443 timeout иначе — см. memory `env_git_network_needs_sandbox_off`).
-6. **Rebase/merge на main:** ветка на `7193afb`; на main уже 0079 (product-class) + patch-cut. Ожидаемые конфликты: `DEV_JOURNAL.md` (0079 vs 0080 — оба после 0078), `CHANGELOG.md [Unreleased]`, возможно `dev/meta-improvement/`. DEC-DEV номер 0080 уже выбран без коллизии.
-7. **(Опц.) DA-findings format trio** (`5a2a945b` + `613ae7128d` + `f7039575c7`) — если решишь, что schema DA-findings-memo стоит механизма: отдельный кандидат на template в `agents/product/devils-advocate.md`, НЕ A-кластер (см. D2B-behavioral__A [E]).
+1. ✅ **DONE — Journal-status reconcile** (`audit-journal.ndjson`): 5 SC↔MK spine → `patched`/`DEC-DEV-0080`; 59 refuted → `dismissed` + per-cluster reason; 16 уже-patched/dismissed (0064) не тронуты. Анти-фантом подтверждён `patch-synth --dry-run` (всплыл бы только pending `D2B04-design::F`, не из этого цикла). Статусы: 16 patched / 64 dismissed / 11 open / 4 clustered.
+2. ✅ **DONE — DEC-DEV-0023 deferral:** специфичной пометки «MK↔SC deferred» не было (deferral неявный via `mockup-package → default → []`); снят добавлением кейса + ребро задокументировано в SPEC §6.7.1. Общая reverse-driven-*review-rules* пометка (BR→LC) — другой механизм, остаётся.
+3. ✅ **DONE — genuine re-routes:** `dev/meta-improvement/audit-reroutes.md` (blocking `309cc2cf` handoff path-bug, cleanup-detector out-of-scope, DA-findings-format trio, pending `D2B04-design::F`, и др.).
+4. **Push + PR** ветки в `main`. ⚠ Push/PR/merge через `gh` требуют `dangerouslyDisableSandbox: true` (port-443 timeout иначе — см. memory `env_git_network_needs_sandbox_off`).
+5. **Rebase/merge на main:** ветка на `7193afb`; на main уже 0079 (product-class) + patch-cut. Ожидаемые конфликты: `DEV_JOURNAL.md` (0079 vs 0080 — оба после 0078), `CHANGELOG.md [Unreleased]`, возможно `dev/meta-improvement/`. DEC-DEV номер 0080 уже выбран без коллизии.
+6. **Audit-index reconcile:** в main-worktree `audit-index.md` хук дозаполнил pending-строки; в этой ветке index уже перенёс pending→processed. Свести при merge (не задвоить).
 
 ---
 

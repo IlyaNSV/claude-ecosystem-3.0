@@ -487,6 +487,8 @@
 | `scenario` | `lifecycle` → lifecycles/ | `scenarios` (multi) | |
 | `scenario` | `verification` → verification/ | `scenario` (multi) | |
 | `scenario` | `feature` → features/ | `scenarios` (multi) | scalar |
+| `scenario` | `mockup` → mockups/ | `scenarios` (multi) | scalar source (SC.mockup ↔ MK.scenarios) — DEC-DEV-0080 |
+| `mockup-package` | `scenarios` → scenarios/ | `mockup` (**scalar**) | reverse is scalar — written via `injectScalarField`, not list syntax (DEC-DEV-0080); previously fell to `default → []` (the implicit "v1.2" MK↔SC deferral, now retired) |
 | `business-rule` | `scenarios` → scenarios/ | `rules` (multi) | |
 | `business-rule` | `feature` → features/ | `rules` (multi) | scalar |
 | `lifecycle` | `scenarios` → scenarios/ | `lifecycle` (multi) | |
