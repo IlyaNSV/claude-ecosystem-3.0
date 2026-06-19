@@ -98,7 +98,7 @@ const IMPL_SCHEMA = {
     files_changed: { type: 'array', items: { type: 'string' } },
     red_phase_output: { type: 'string' },
     requirements_checked: { type: 'string' },
-    concerns: { type: 'string' },
+    concerns: { type: 'string' },                              // FB-013: deferred-capability / mock-stand-in flags — read + propagated, not dropped
     blocker: { type: 'string' },
     missing: { type: 'string' },
   },
@@ -168,6 +168,7 @@ const implement = (task, extra = '') =>
     `Spec: ${SPEC_DIR}/{requirements,design,tasks}.md. Requirements §: ${(task.requirements || []).join(', ')}. _Boundary_: ${task.boundary || 'n/a'}. ` +
     `Validation commands: ${JSON.stringify((plan && plan.validation_commands) || {})}. ${task.behavioral ? 'BEHAVIORAL — apply the Feature Flag Protocol.' : 'Non-behavioral.'}\n` +
     `FB-006: do NOT make project-global changes outside your _Boundary_ — never alter git core.hooksPath, root package.json lifecycle scripts (prepare/postinstall), or install hook-managing tooling (e.g. husky) that hijacks git hooks (the pilot's beads owns core.hooksPath). If the task seems to require it, return BLOCKED and surface it rather than silently doing it.\n` +
+    `FB-013: if you satisfy a real external/provider/secret/adapter seam with a Mock or unwired skeleton because real access is DEFERRED (not out of scope), state that explicitly in the CONCERNS field of your Status Report — it is propagated downstream, not dropped.\n` +
     `Do NOT commit, do NOT edit tasks.md. End with the exact ## Status Report block.${extra}`,
     { schema: IMPL_SCHEMA, phase: 'Implement', label: `impl:${task.id}` },
   )
@@ -214,10 +215,35 @@ const recordBlock = (taskId, reason) =>
     { phase: 'Implement', label: `block:${taskId}` },
   )
 
+// FB-013 (DEC-DEV-0081 fix #1): a task can reach READY_FOR_REVIEW + APPROVED and STILL
+// carry a non-blocking CONCERN — e.g. a real provider/API/secret/adapter seam deliberately
+// satisfied in-dev by a Mock or unwired skeleton because real access is DEFERRED (not out
+// of product scope). In S6 the implementer correctly emitted exactly this in its CONCERNS
+// field, but the FSM never read it — so it was silently dropped and the feature closed at
+// GO with the deferred capability hidden (DEC-DEV-0081 root cause: §6 fired only on BLOCKS,
+// never on a non-blocking deferral). This routing branch is keyed on a NON-BLOCKING concern
+// (not only status=BLOCKED): it PROPAGATES the concern instead of dropping it. It does NOT
+// block the task and does NOT commit code — it records a tracking item so the gap is visible.
+const surfaceConcern = (taskId, concern) =>
+  agent(
+    `Task ${taskId} reached APPROVED but its implementer reported a CONCERN: "${concern}".\n` +
+    `Decide whether it flags a DEFERRED CAPABILITY or external seam that must outlive this run — ` +
+    `a real provider/API/secret/tool satisfied in-dev by a Mock or unwired skeleton because real ` +
+    `access is deferred (NOT out of product scope), or any acceptance/E2E that ran on a stand-in.\n` +
+    `If so: append a NON-BLOCKING tracking entry to .claude/pending-actions.md (create if absent) — ` +
+    `the deferred capability, its route (Integrator for access/tool/secret; Product for provider CHOICE), ` +
+    `and provisioning-tier (staging/prod). Mark it tracking/disclosure, NOT a blocking request now ` +
+    `(real access is a future deliverable, not something to provision today).\n` +
+    `If the concern is a routine note (refactor/cleanup/style), do NOTHING. ` +
+    `Never block the task, never commit code.`,
+    { phase: 'Implement', label: `concern:${taskId}` },
+  )
+
 // ---- Phase 2: implement — sequential per-task FSM --------------------------
 phase('Implement')
 const implemented = []
 const blockedTasks = []
+const concerns = []   // FB-013 (DEC-DEV-0081 fix #1): non-blocking implementer CONCERNS, propagated not dropped
 
 for (const task of tasks) {
   log(`task ${task.id} [${task.tier}${task.tier === 'LOW' ? `:${task.profile || '?'}` : ''}] — implementing`)
@@ -279,7 +305,14 @@ for (const task of tasks) {
     `Commit message: feat(${FEATURE}): ${task.id} ${task.text || ''}. Return the sha.`,
     { schema: COMMIT_SCHEMA, phase: 'Implement', label: `commit:${task.id}` },
   )
-  implemented.push({ id: task.id, tier: task.tier, sha: commit && commit.sha })
+  // FB-013 (DEC-DEV-0081 fix #1): propagate a non-blocking CONCERN (deferred-capability /
+  // mock-stand-in) rather than dropping it — read it from the final implementer report and
+  // route it via surfaceConcern (non-blocking; the task still committed cleanly above).
+  if (impl.concerns && impl.concerns.trim()) {
+    concerns.push({ task: task.id, concern: impl.concerns.trim() })
+    await surfaceConcern(task.id, impl.concerns.trim())
+  }
+  implemented.push({ id: task.id, tier: task.tier, sha: commit && commit.sha, concern: (impl.concerns && impl.concerns.trim()) || null })
   log(`task ${task.id} ✓ committed ${(commit && commit.sha) || ''}`)
 }
 
@@ -294,11 +327,17 @@ phase('Validate')
 let go = null
 if (implemented.length) {
   const degraded = blockedTasks.length > 0
+  // FB-013 (DEC-DEV-0081 fix #1): surface propagated CONCERNS to the feature-level gate so a
+  // deferred real seam (e.g. a provider satisfied only by a Mock) is DISCLOSED at GO, not
+  // hidden. A GO over a deferred capability is GO-with-caveats, not a clean production GO.
+  const concernNote = concerns.length
+    ? ` DEFERRED-CAPABILITY CONCERNS surfaced during impl (FB-013): ${concerns.map((c) => `${c.task}: ${c.concern}`).join(' | ')}. Factor these into the verdict and DISCLOSE them in findings — a GO over a deferred real seam (mock-only provider / unwired skeleton) is GO-with-caveats, not a clean production GO.`
+    : ''
   go = await agent(
     `Invoke kiro-validate-impl ${FEATURE} as the feature-level GO/NO-GO gate (cross-task consistency, full suite, spec coverage). ` +
     (degraded
       ? `ADVISORY MODE — ${blockedTasks.length} task(s) blocked (${blockedTasks.join(', ')}); the feature is NOT complete. Do NOT remediate. Run the cross-task / integration checks anyway and SURFACE any seams (orphan wiring, unhandled events, missing call-sites) as findings. Return MANUAL_VERIFY_REQUIRED + findings (FB-010: a blocked task must not hide a cross-task gap).`
-      : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`),
+      : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote,
     { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
   )
   log(`feature GO-gate${degraded ? ' (advisory — blocked tasks present)' : ''}: ${(go && go.result) || 'n/a'}`)
@@ -310,5 +349,6 @@ return {
   feature: FEATURE,
   implemented: implemented.map((t) => t.id),
   blocked: blockedTasks,
+  concerns,                       // FB-013 (DEC-DEV-0081 fix #1): deferred-capability flags, propagated not dropped
   go_gate: go && go.result,
 }

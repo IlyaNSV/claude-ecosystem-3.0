@@ -5645,6 +5645,65 @@ Phase 6 сделал каноническими `MK(mockup-package).scenarios[]`
 
 ---
 
+## DEC-DEV-0081 — S6 dogfood: §6-канал = обработчик блокировок, не детектор пробелов; + потеря CONCERNS в FSM-плумбинге
+
+**Date:** 2026-06-19
+**Trigger:** Проведён S6 — второй dogfood Оркестратора (uncontaminated §6 re-test, FM-002 localization, P5/D3; DEC-DEV-0075 риск #1). Грейд §6-контракта + root-cause форензика «почему агенты так поступили» (два multi-agent Workflow в репо экосистемы; executor/reviewer separation, грейд пост-фактум по транскрипту `bee01557`). Журнал прогона: пилот `.claude/orchestrator/runs/S6-FEEDBACK-JOURNAL.md` (FB-012…018).
+**Tag:** #orchestrator #dogfood #capability-channel #root-cause #S6 #DEC-DEV-0075-followup #DEC-DEV-0078-followup
+
+### Context
+
+S6 строился, чтобы проверить открытый вопрос RUN 01 №1: сработает ли §6-канал Orchestrator→Integrator на D3 в среде БЕЗ реального доступа к провайдерам (Translate/TTS/transcription). Грейд: **§6-A DETECT / B SURFACE / C ESCALATE→AWAIT / D BOUNDARY / E QUALITY + Q#2 = все FAIL** — канал не сработал ни разу по тому пробелу, ради которого существует (реальный provider-access DeepL/ElevenLabs/Whisper). При этом localization доведена до GO (26/26, push `c87ad02`) многопроходным re-drive (RUN 01→04).
+
+**Но первое (grade-only) предложение фикса — «добавить deferred-capability surfacing rule» — оказалось necessary-but-insufficient.** Отдельная root-cause-форензика (конкурирующие гипотезы H1–H7 + контрастная причинность billing-vs-providers) дала более резкую и местами иную картину.
+
+### Options considered
+
+1. **Единственный фикс «deferred-capability rule» (вывод grade-аудита)** — отвергнут как достаточный: (a) голодал бы без входа — контроллер не получает сигнал, который субагент уже корректно шлёт (FB-013); (b) на localization-as-is не валидируем и не достижим (Mock убирает триггер, H6); (c) для §6-E лечит лишь downstream-симптом (дефект в рубрике, не в поведении).
+2. **Принять multi-fix-набор из root-cause-аудита (выбрано):** 5 ранжированных фиксов по слоям, 3 валидируемы прямо сейчас (на артефактах S6), 2 — только под S7-фикстурой.
+3. **Reject/defer** — отвергнуто: дефект FB-013 (потеря CONCERNS) реальный, MEDIUM, валидируемый сейчас; откладывать = плодить anti-pattern в P4/P6.
+
+### Decision
+
+**Зафиксировать вердикт S6 и причинную модель; реализацию фиксов вынести отдельной инженерной задачей.** Корневой механизм и набор фиксов:
+
+**Корень (слой инструкции):** весь §6-капабилити/disclosure-канал завязан исключительно на *блокирующие* сигналы (`needs+lacks` / `missing` / `failure` / `mismatch` / `_Blocked_`) — это **обработчик блокировок, а не детектор пробелов**. Контраст как чистый эксперимент: **billing** жёстко заблокировал (TS2307-каскад) → контроллер вынужден в stop-or-fix-гейт, отработал textbook (`fix(billing)` 7edd8de, tri-source verified — **защитимый in-zone fix, не поглощение границы**); **providers** закрыты spec-mandated Mock (DEC-A06) → не блокирует → §6 молчит. DEC-A06 — *механизм*, сделавший пробел не-блокирующим (contributing); block-only keying — *почему* не-блокирующий пробел нигде не всплывает (primary).
+
+**Конкретный баг кода (валидируем сейчас):** субагент-implementer task 1.2 корректно записал отложенность в template-предписанное поле **CONCERNS** («real adapters intentionally NOT wired … throw rather than fabricate … wiring later task»), но `feature-to-tdd-impl.mjs` читает `concerns` **ноль раз** (схема L101), роутит только по `impl.status` (L226-268), а FSM-возврат (L309-314) их отбрасывает → контроллер сигнал не получил → тихое закрытие capability на GO. **Сигнал существовал и потерян плумбингом** — не суждение агента.
+
+**Ранжированный набор фиксов (реализация — отдельная задача):**
+
+| # | Фикс | Слой | Валидируемо на S6? |
+|---|---|---|---|
+| 1 | Пробросить CONCERNS через FSM (`feature-to-tdd-impl.mjs` L101/L226-268/L309-314) + ветка роутинга на non-blocking concern | архитектура | **ДА** (сигнал уже в артефактах) |
+| 2 | GO-summary substrate-disclosure rule (`run.md:117`): раскрывать Mock/stub-субстрат при приёмке | инструкция | **ДА** (over-claim-саммари существует) |
+| 5 | §6-E в рубрике грейда = N/A/gated, когда запрос не выдан (не FAIL) — против phantom-инфляции (5 FAIL = ~2 независимых + 3 наследника) | рубрика | **ДА** (независимо от субстрата) |
+| 3 | env-probe (уровень `run.md`, не только `orchestrator-init.md:36` который грузит лишь Plan-субагент) перечисляет spec-named provider-секреты + диспозиция `EXPECTED-ABSENT-BUT-DEFERRED` ≠ mismatch/non-gap | инструкция + steering↔§6 | **НЕТ** (H6 → нужен S7) |
+| 4 | deferred-capability rule переформулировать как **tracking/disclosure**, не «request to Integrator» (сейчас нечего запрашивать — реальный доступ = будущий RL-002+) | инструкция | **НЕТ** (H6) |
+
+**Severity:** §6-real-provider-BLOCK sub-case = **inconclusive** (substrate-weak, H6 — Mock убрал блок; detect-leg валидируется только под реально неоснащённой инфрой). Dropped-CONCERNS (#1) + non-disclosure (#2) = **реальный MEDIUM-дефект, не артефакт теста** (верификатор успешно оспорил исходную grade-оценку «всё это substrate-артефакт»).
+
+**DEC-DEV-0078 runtime-smoke = PASS** (доставка orchestrator/, сохранность state, 0 удалений, `/orchestrator:run` распознан) — снят отложенный smoke записи 0078.
+
+### Outcome
+
+Зафиксировано (ветка `worktree-whimsical-exploring-pie`, не закоммичено до отдельного слова):
+- Пилот: `.claude/orchestrator/runs/S6-FEEDBACK-JOURNAL.md` (FB-012 block-handler-root / FB-013 dropped-CONCERNS / FB-018 GO-disclosure / FB-014 billing-defensible+ / FB-015 transient-re-drive+ / FB-016 update-smoke PASS / FB-017 PA-003 provenance).
+- Экосистема: эта запись; трекер `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md §9` (S6 ⬜→✅); ROADMAP «Где мы сейчас» (S6 executed, §6 FAIL/root-caused, 0078 smoke PASS).
+- Реализация фиксов #1/#2/#5 (валидируемых сейчас) — **СДЕЛАНО (этот же заход):** #1 `feature-to-tdd-impl.mjs` читает `impl.concerns` + non-blocking `surfaceConcern` routing-ветка (tracking-запись в `pending-actions.md`, не блок) + проброс в GO-gate + `concerns[]` в return; #2 `run.md` After-the-run = mandatory substrate-disclosure rule (+ P5-return-док); #5 рубрика брифа Часть 3 = §6-E N/A-gating. Тест `tests/orchestrator/concerns-propagation.test.cjs` (6 инвариантов, подключён в `npm run verify` — exit 0). CHANGELOG [Unreleased]/Fixed. **#3/#4 (detect-leg) + S7-ретест — open.**
+
+**S7-ретест** для detect-leg (#3/#4): нужен in-scope блокирующий provider-пробел (напр. реальное RL-002+ вендор-wiring с отсутствующим ключом) ЛИБО пере-скоуп отложенности как tracked OPEN item; executor/reviewer separation сохранить.
+
+### Lessons
+
+1. **Grade ≠ root-cause.** Грейд-аудит дал «всё FAIL» + один фикс; root-cause-форензика показала, что фикс мис-таргетен и пропускает критическое звено (потерю CONCERNS). Прыжок от «что» к «как чинить» на одной непроверенной гипотезе — ловушка; root-cause — предпосылка правильного патча.
+2. **«Instruction-gap» легко становится ленивым catch-all.** Adversarial-verifier поймал over-reach («всё это substrate-артефакт») и вытащил реальный, валидируемый дефект кода. Контрастная причинность (billing-сработал vs providers-молчок, варьируя одно — блокирующесть) — самый чистый способ изолировать корень.
+3. **Агенты не накосячили — дефект в правилах/плумбинге.** Где правило принуждало (billing-блок) — контроллер отработал textbook; где молчало (не-блокирующая отложенность) — нечему подчиняться. §6 спроектирован как block-handler; нужен detection-leg на не-блокирующие отложенные пробелы + forcing-функция раскрытия в GO.
+4. **Сигнал бесполезен, если плумбинг его роняет.** Субагент честно исполнил surfacing-долг (CONCERNS); канал под ним выбросил сигнал. Контракты role-агентов нужно проводить через FSM-возврат, не только по `status`.
+5. **Substrate теста определяет, что вообще измеримо.** Mock-as-deliverable (DEC-A06) сделал detect-leg непроверяемым на этом прогоне (H6). Валидация поведенческого контракта требует фикстуры, реально нагружающей контракт.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

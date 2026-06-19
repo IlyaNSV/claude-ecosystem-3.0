@@ -91,7 +91,8 @@ Workflow({
 
 The Workflow runs in the background; watch progress with `/workflows`. P3 returns
 features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P5 returns
-implemented task ids / blocked / GO-gate result.
+implemented task ids / blocked / **`concerns`** (deferred-capability / mock-stand-in flags,
+FB-013) / GO-gate result.
 
 > **One orchestrator workflow per repo at a time (FB-004).** Two processes that both
 > `git commit` race on the shared git index even when their file zones don't overlap
@@ -115,6 +116,13 @@ implemented task ids / blocked / GO-gate result.
 ## After the run
 
 - Surface the summary + the commit sha(s) to the user.
+- **Disclose the test substrate at GO (FB-013, DEC-DEV-0081).** If a deliverable's acceptance
+  / E2E ran against Mock or stub stand-ins for a *deferred* real seam (provider / API / secret
+  / adapter), the GO summary MUST say so — e.g. "E2E ran on Mock providers; real adapters are
+  unwired skeletons; real access deferred." A clean "feature complete / GO" over an unwired
+  real seam is an over-claim. Surface every `concerns[]` item the run returned + its route
+  (Integrator for access/tool/secret; Product for provider choice) — a green GO must not hide
+  them. (S6/DEC-DEV-0081: the implementer flagged exactly this and the FSM used to drop it.)
 - **P3:** if `coverage_incomplete` is non-empty → those features miss source ids in their
   specs; recommend re-running the relevant `kiro-spec-*`. If blocked features exist →
   surface the route (Product / Integrator) per item. Live caveat: can a Workflow `agent()`
@@ -123,7 +131,10 @@ implemented task ids / blocked / GO-gate result.
 - **P5:** per-task commits land as the loop runs (selective staging). If `blocked` is
   non-empty → those tasks hit `_Blocked_`; an upstream-ownership block routes back to the
   owning spec (do not patch around it). If the GO-gate is `NO-GO` after 3 remediation
-  rounds, or `MANUAL_VERIFY_REQUIRED` → surface the findings; the feature is not done. Live
+  rounds, or `MANUAL_VERIFY_REQUIRED` → surface the findings; the feature is not done. If
+  `concerns` is non-empty → a task met a real seam with a Mock/unwired skeleton because real
+  access is deferred (FB-013); those are tracked in `pending-actions.md` and MUST be disclosed
+  at GO (above) — a GO over them is GO-with-caveats. Live
   caveat: the lift reads kiro templates + invokes kiro gates (`kiro-review` /
   `kiro-verify-completion` / `kiro-validate-impl`) from Workflow agents — confirm nested
   skill invocation works in the pilot; the templates embed the protocol as a fallback.
