@@ -238,7 +238,7 @@ Inline AI carries forward Phase N-1's mental model, may not see ambiguities intr
 
 ## Refinement tracker
 
-> **Retired (DEC-DEV-0082).** Трекер дрейфил (TBD-строки не заполнялись после Phase 3, пока
+> **Retired (DEC-DEV-0083).** Трекер дрейфил (TBD-строки не заполнялись после Phase 3, пока
 > репо дошёл до 1.6.0). Per-kickoff refinements теперь — в DEV_JOURNAL DEC-DEV-записях.
 > Историчная строка оставлена для контекста.
 

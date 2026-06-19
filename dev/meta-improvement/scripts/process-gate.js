@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * process-gate.js — D7 BLOCKING commit gate (DEC-DEV-0082).
+ * process-gate.js — D7 BLOCKING commit gate (DEC-DEV-0083).
  *
  * Invoked as a git `commit-msg` hook:  node process-gate.js <commit-msg-file>
  * Blocks the commit (exit 1) when the development-process obligations the 2026-06-19
@@ -21,7 +21,7 @@
  * Skip-not-abort: any internal error → exit 0 (a tooling bug must never wedge the repo).
  *
  * NB on philosophy: this gate deliberately overrides the D7 "tooling over discipline"
- * default (SPEC §5 #4) — an explicit owner decision (DEC-DEV-0082) to harden the two
+ * default (SPEC §5 #4) — an explicit owner decision (DEC-DEV-0083) to harden the two
  * worst silently-violated obligations with a real block, not just a reminder.
  */
 
@@ -96,7 +96,7 @@ function main() {
   failures.forEach((f, i) => process.stderr.write(`  [${i + 1}] ${f}\n\n`));
   process.stderr.write('Fix the above and re-commit, or bypass intentionally with ' +
     '[skip-process-gate] in the commit message.\n');
-  process.stderr.write('(D7 process gate — DEC-DEV-0082; see CLAUDE.md "Process triggers — harness contract".)\n');
+  process.stderr.write('(D7 process gate — DEC-DEV-0083; see CLAUDE.md "Process triggers — harness contract".)\n');
   return 1;
 }
 

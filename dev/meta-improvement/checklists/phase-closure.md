@@ -360,7 +360,7 @@ If закрытие revealed что-то that should've been в Phase N implemen
 
 ## Refinement tracker
 
-> **Retired (DEC-DEV-0082).** Этот трекер дрейфил — обрывался на Phase 4, пока репо дошёл до
+> **Retired (DEC-DEV-0083).** Этот трекер дрейфил — обрывался на Phase 4, пока репо дошёл до
 > 1.6.0 (refinement protocol §10 задокументирован, но трекер не вёлся). Per-closure refinements
 > теперь живут в **DEV_JOURNAL DEC-DEV-записях**. Историчные строки оставлены для контекста.
 

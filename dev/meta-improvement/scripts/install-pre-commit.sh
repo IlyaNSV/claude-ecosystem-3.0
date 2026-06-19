@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# install-pre-commit.sh — install the ecosystem git hooks (DEC-DEV-0023 + DEC-DEV-0082).
+# install-pre-commit.sh — install the ecosystem git hooks (DEC-DEV-0023 + DEC-DEV-0083).
 #
 # Installs TWO hooks:
 #   - pre-commit  → pre-commit.sh   (hook-smoke gate; blocks on hooks/ verification failure)
@@ -54,7 +54,7 @@ install_hook commit-msg  commit-msg.sh
 echo ""
 echo "Git hooks installed:"
 echo "  pre-commit — runs verify-hooks.js when hooks/ change (DEC-DEV-0023)"
-echo "  commit-msg — D7 process gate: count drift / CHANGELOG / DEV_JOURNAL (DEC-DEV-0082)"
+echo "  commit-msg — D7 process gate: count drift / CHANGELOG / DEV_JOURNAL (DEC-DEV-0083)"
 echo ""
 echo "Bypass a single commit: add [skip-process-gate] to the message, or git commit --no-verify"
 echo "(use sparingly — CLAUDE.md forbids --no-verify without explicit need)."

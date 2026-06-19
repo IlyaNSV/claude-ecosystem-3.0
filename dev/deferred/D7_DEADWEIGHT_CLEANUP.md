@@ -1,7 +1,7 @@
 # D7 Deadweight Cleanup — оставить только работающее и используемое
 
 > 🅀 **STATUS: QUEUED** (зарегистрировано 2026-06-19). Запускается **после** того как текущий
-> D7 process-hardening (spine + блокирующий gate + полная уборка дрейфа, DEC-DEV-0082) смёржен в
+> D7 process-hardening (spine + блокирующий gate + полная уборка дрейфа, DEC-DEV-0083) смёржен в
 > `main`. Это **не** bring-forward по внешнему триггеру — чистая sequencing-зависимость.
 >
 > **Owner:** developer + Claude (D7 self-maintenance).
@@ -81,7 +81,7 @@ Session Audit v2 subsystem). Для **каждого** собрать evidence-o
 
 ## Sequencing-триггер (когда снять с QUEUED)
 
-✅ Текущий D7 process-hardening (DEC-DEV-0082: spine + gate + drift-fix) **смёржен в `main`**.
+✅ Текущий D7 process-hardening (DEC-DEV-0083: spine + gate + drift-fix) **смёржен в `main`**.
 
 ## Output
 

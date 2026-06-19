@@ -4,7 +4,7 @@
 >
 > **Status:** v1.0 final state (2026-04-28). Stages 1-6 shipped per DEC-DEV-0015..0021. SPEC §6 open questions resolved (8/10 settled v1.0; 2 open kept як ongoing refinement triggers).
 >
-> **Refinement:** triggers и updates documented per-convention. Update via `chore(meta-improvement): D7 refinement post-Phase-<N> closure` commit. ~~Structural growth complete; ongoing changes refine existing mechanisms rather than add new ones.~~ **Перекрыто DEC-DEV-0082:** структурный рост возобновлён осознанным решением — добавлены enforcement-механизмы (блокирующий `commit-msg` gate `process-gate.js` + детерминированный `check-counts.js`), что **перевешивает** дефолт §3 «tooling over discipline». Operational SSOT для harness = `CLAUDE.md` «Process triggers — harness contract».
+> **Refinement:** triggers и updates documented per-convention. Update via `chore(meta-improvement): D7 refinement post-Phase-<N> closure` commit. ~~Structural growth complete; ongoing changes refine existing mechanisms rather than add new ones.~~ **Перекрыто DEC-DEV-0083:** структурный рост возобновлён осознанным решением — добавлены enforcement-механизмы (блокирующий `commit-msg` gate `process-gate.js` + детерминированный `check-counts.js`), что **перевешивает** дефолт §3 «tooling over discipline». Operational SSOT для harness = `CLAUDE.md` «Process triggers — harness contract».
 
 ---
 
@@ -52,7 +52,7 @@ When writing/reading «meta» / «governance» — disambiguate target audience:
 
 **Rationale:** D7 governs ecosystem dev (Level B), не user projects (Level A). Strict separation per SPEC §4.3 keeps architectural cleanliness, avoids self-referential collapse risk (SPEC §5.1).
 
-**Layout (updated DEC-DEV-0082 — reflects actual tree):**
+**Layout (updated DEC-DEV-0083 — reflects actual tree):**
 
 ```
 dev/meta-improvement/
@@ -78,8 +78,8 @@ dev/meta-improvement/
 │   ├── verify-update.sh / .ps1         # post-/ecosystem:update verification
 │   ├── verify-hooks.js / smoke-hooks.js   # hook syntax + runtime smoke
 │   ├── pre-commit.sh / commit-msg.sh / install-pre-commit.sh   # git-hook gates
-│   ├── check-counts.js                 # canonical-count reconciler (DEC-DEV-0082)
-│   ├── process-gate.js                 # blocking commit-msg gate (DEC-DEV-0082)
+│   ├── check-counts.js                 # canonical-count reconciler (DEC-DEV-0083)
+│   ├── process-gate.js                 # blocking commit-msg gate (DEC-DEV-0083)
 │   └── audit-smoke.js · audit-watch.js · audit-index.js · audit-journal.js · classify.js · effect-probe.js · patch-synth.js   # Session Audit v2
 ├── hooks/                       # registered in .claude/settings.local.json
 │   ├── phase-closure-reminder.js       # PostToolUse Bash — warn: phase-completion commit без closure
@@ -100,7 +100,7 @@ dev/meta-improvement/
 **Hierarchy (least → most ceremony):**
 
 1. **Checklist (markdown)** — manual, developer runs, ≤60 min. **DEFAULT for Stage 2.**
-2. **Skill** — AI-assisted execution, lazy-loaded. **Promote when:** checklist has 3+ instances + steps too rote to remember. *(Согласовано с «Promotion criteria» ниже — было «5+», DEC-DEV-0082 свёл к одному порогу «3+».)*
+2. **Skill** — AI-assisted execution, lazy-loaded. **Promote when:** checklist has 3+ instances + steps too rote to remember. *(Согласовано с «Promotion criteria» ниже — было «5+», DEC-DEV-0083 свёл к одному порогу «3+».)*
 3. **Command** (`/<namespace>:<name>`) — explicit invocation. **Promote when:** skill has 10+ instances + needs argument support.
 4. **Hook** — automatic on event. **Promote when:** command needs to fire on commit/file-change без developer action.
 

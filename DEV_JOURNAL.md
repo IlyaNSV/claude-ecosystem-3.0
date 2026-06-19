@@ -5645,7 +5645,7 @@ Phase 6 сделал каноническими `MK(mockup-package).scenarios[]`
 
 ---
 
-## DEC-DEV-0081 — verify/status дрейфуют как snapshot-промпты: patch-cut count-sweep покрывает только каталог, не per-command ожидания
+## DEC-DEV-0082 — verify/status дрейфуют как snapshot-промпты: patch-cut count-sweep покрывает только каталог, не per-command ожидания
 
 **Date:** 2026-06-19
 **Trigger:** Вопрос из пилотной перспективы — «после `/ecosystem:update` до 1.6.0 знают ли `verify`/`status` о новом функционале и нет ли чеклиста backward-compat при нарезке патчей?». Эмпирическая сверка `commands/ecosystem/verify.md` против фактического состояния `main` вскрыла протухшие хардкод-счётчики и полное слепое пятно на Orchestrator-модуль.
@@ -5680,7 +5680,7 @@ Root cause: `patch-cut.md` Step 4 (count-drift sweep) синхронизируе
 
 ---
 
-## DEC-DEV-0082 — D7 process-hardening: auto-loaded harness-contract spine + блокирующий commit-msg gate + полная уборка дрейфа
+## DEC-DEV-0083 — D7 process-hardening: auto-loaded harness-contract spine + блокирующий commit-msg gate + полная уборка дрейфа
 
 **Date:** 2026-06-19
 **Trigger:** Пользователь заказал тщательный аудит процессов доработки/доставки патчей с целью «чтобы я как harness следовал процессам сам и не нарушал их». 3-agent аудит (инвентарь D7 / цепочка накопление→cut→доставка / слой принуждения) вынес диагноз: процессы **рекламируются** харнессу, но не **принуждаются** — 6 из 8 обязательств держатся на памяти, активны только 2 warn-only напоминалки на `git commit`, session-audit пост-хок (не может остановить по ходу), машиночитаемого индекса обязательств нет. Решения по развилкам: **механизм = spine + блокирующий gate**, **объём = полная уборка**, **`update.md` чинить тоже**.

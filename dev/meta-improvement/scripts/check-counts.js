@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-counts.js — D7 canonical-count reconciler (DEC-DEV-0082).
+ * check-counts.js — D7 canonical-count reconciler (DEC-DEV-0083).
  *
  * Closes the worst count-drift blind spot found by the 2026-06-19 D7 process audit:
  * the patch-cut count-sweep covered only SOME docs, so per-command / per-doc counts

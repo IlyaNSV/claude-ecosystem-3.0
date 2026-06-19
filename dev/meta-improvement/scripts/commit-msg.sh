@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# commit-msg.sh — git commit-msg hook for the ecosystem repo (D7 process gate, DEC-DEV-0082).
+# commit-msg.sh — git commit-msg hook for the ecosystem repo (D7 process gate, DEC-DEV-0083).
 #
 # Delegates to process-gate.js, which blocks the commit if accumulation/consistency
 # obligations are unmet (count drift / missing CHANGELOG / missing DEV_JOURNAL).

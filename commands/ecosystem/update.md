@@ -693,7 +693,7 @@ scope-guard hook, and any other ecosystem skill that surfaces a user-only action
 
 Confirm `.claude/pending-actions.md` is **not** added к `.gitignore` (it's committed).
 
-### Step 5c: Re-stamp `ecosystem_version` in `product.yaml` (DEC-DEV-0082)
+### Step 5c: Re-stamp `ecosystem_version` in `product.yaml` (DEC-DEV-0083)
 
 **Why (D7 audit 2026-06-19):** pre-0082 `update` synced `.claude/CHANGELOG.md` but **never** touched `product.yaml`, so `ecosystem_version` stayed frozen at its bootstrap value while the CHANGELOG advanced — **stale-by-default after every update**, and `/ecosystem:verify`'s version-drift check (Step 5) could not catch it. `ecosystem_version` is an **ecosystem-managed stamp**, not user config — so `update` now re-stamps **only that one line**, preserving every other `product.yaml` field verbatim.
 
@@ -847,7 +847,7 @@ Obsolete contamination cleaned (DEC-DEV-0042):
 
 Preserved (untouched):
   .claude/settings.local.json (your permissions)
-  .claude/product.yaml (your config — only ecosystem_version re-stamped, Step 5c / DEC-DEV-0082)
+  .claude/product.yaml (your config — only ecosystem_version re-stamped, Step 5c / DEC-DEV-0083)
   .claude/design.yaml (per-project Design Module config — preserved if exists; auto-init by /design:start)
   .claude/pending-actions.md (your pending-actions journal — backfilled if pre-1.3.3 install; existing entries intact)
   .claude/integrator/ (Integrator state)
@@ -887,7 +887,7 @@ What's next?
 - DO NOT touch `.product/` (artifacts are user data — entirely outside `.claude/`)
 - DO NOT modify `.env` at project root (secrets)
 - DO NOT overwrite `.claude/settings.local.json` (user permissions)
-- DO NOT overwrite `.claude/product.yaml` user config — **EXCEPT** the ecosystem-managed `ecosystem_version` stamp (surgical single-line re-stamp, Step 5c / DEC-DEV-0082). All other fields stay verbatim.
+- DO NOT overwrite `.claude/product.yaml` user config — **EXCEPT** the ecosystem-managed `ecosystem_version` stamp (surgical single-line re-stamp, Step 5c / DEC-DEV-0083). All other fields stay verbatim.
 - DO NOT touch `.claude/integrator/` contents (Integrator state)
 - DO NOT copy CLAUDE.md (root), DEV_JOURNAL.md, dev/, или INSTALL-HUMAN.md from upstream — these are ecosystem developer artifacts (causes contamination per DEC-DEV-0019 Finding A)
 - DO NOT auto-commit anything to git **except** the scoped level-2 safety commit (Step 5.0, default on). That one stages **only** the integrator-managed tool footprint — **never `git add -f`**, never secrets/gitignored, never the user's unrelated WIP. Everything else: user reviews + commits manually. Disable with `--no-safety-commit`. (Policy revised by DEC-DEV-0061; pre-0061 the rule was a blanket "never auto-commit".)

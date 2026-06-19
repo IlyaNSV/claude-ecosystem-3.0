@@ -54,7 +54,7 @@ Count per namespace:
 
 Report counts + note what's expected for current ROADMAP phase.
 
-> **Note (DEC-DEV-0081):** these per-namespace counts are a **baseline snapshot as of the
+> **Note (DEC-DEV-0082):** these per-namespace counts are a **baseline snapshot as of the
 > current ecosystem version**, not a hard contract — new commands land between cuts. A mismatch
 > may mean drift in **this list** (it wasn't refreshed when a command was added) as easily as a
 > defective install. Investigate which before raising a ❌; an *extra* command vs. this baseline
