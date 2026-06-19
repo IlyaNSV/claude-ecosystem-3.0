@@ -17,9 +17,10 @@ DEC-DEV-0076).
 | `<process>` | What it does | Zone |
 |---|---|---|
 | `batch-features-to-cc-sdd` | Route a batch of `status: ready\|partial` handoffs into cc-sdd specs (P3) | D2-T01/T06 |
+| `audit-spec-fidelity` | Audit generated specs against `.product` for fidelity drift, before impl (P4) | D2-T verify |
 | `feature-to-tdd-impl` | Drive one feature's `tasks.md` to implemented code via native TDD loop (P5) | D3 |
 
-Other processes (P2/P4/P6/P7) are deferred.
+Other processes (P2/P6/P7) are deferred.
 
 ## Pre-flight (read-only, before launching)
 
@@ -46,6 +47,12 @@ substitute.
 3. **Env ready?** `feature-to-tdd-impl` implements real code — the env-readiness-probe must
    pass (runtime versions, datastore up if the stack needs it). A missing tool/secret is a
    capability gap → request from Integrator (§6), do not self-equip.
+
+**For `audit-spec-fidelity` (P4):**
+1. The features' specs exist (`.kiro/specs/<feature>/{requirements,design,tasks}.md`) — run P3 first.
+2. `fidelity-oracle` present (`.claude/orchestrator/lib/fidelity-oracle.cjs`).
+3. Resolve `--feature` slug(s) to audit; each needs its `.product` source (handoff + traced
+   FM/SC/BR/IC/NFR artifacts) readable for the deterministic trace-integrity gate.
 
 ## Launch
 
@@ -89,8 +96,23 @@ Workflow({
 })
 ```
 
+**P4 — `audit-spec-fidelity`** (skills: `orchestrator-init`, `audit-spec-fidelity`) — run
+between P3 and P5 (pre-impl fidelity gate):
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/audit-spec-fidelity.mjs',
+  args: {
+    features: [ "<cc-sdd slug>", ... ],   // resolved above
+    specBase: '.kiro/specs',
+    oracle: '.claude/orchestrator/lib/fidelity-oracle.cjs'
+  }
+})
+```
+
 The Workflow runs in the background; watch progress with `/workflows`. P3 returns
-features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P5 returns
+features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P4 returns
+audited / faithful / spec_fixed / product_routed / residual / impl_ready; P5 returns
 implemented task ids / blocked / **`concerns`** (deferred-capability / mock-stand-in flags,
 FB-013) / GO-gate result.
 
@@ -128,6 +150,10 @@ FB-013) / GO-gate result.
   surface the route (Product / Integrator) per item. Live caveat: can a Workflow `agent()`
   invoke `kiro-spec-batch` (which self-dispatches)? If not, the Author phase falls back to
   running the kiro-spec-* pipeline per feature itself.
+- **P4:** `impl_ready` lists features safe to route to P5. `spec_fixed` had spec-route drift
+  repaired + re-audited clean. `product_routed` drift went to Product via `pending-actions.md`
+  (OD8) — it is NOT auto-fixed; surface it. `residual` = spec drift unresolved after the
+  re-audit rounds — those features are NOT impl-ready; surface for manual review before P5.
 - **P5:** per-task commits land as the loop runs (selective staging). If `blocked` is
   non-empty → those tasks hit `_Blocked_`; an upstream-ownership block routes back to the
   owning spec (do not patch around it). If the GO-gate is `NO-GO` after 3 remediation

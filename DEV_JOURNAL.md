@@ -5704,6 +5704,39 @@ S6 строился, чтобы проверить открытый вопрос
 
 ---
 
+## DEC-DEV-0084 — Orchestrator Phase N+1a: P4 `audit-spec-fidelity` (pre-impl fidelity-гейт) построен
+
+**Date:** 2026-06-20
+**Trigger:** После закрытия S6 (DEC-DEV-0081) пользователь выбрал «P4/P6-расширение» как следующий тред модуля (плановый Phase N+1 per `ORCHESTRATOR_BUILD_KICKOFF.md` §5). Kickoff — `dev/ORCHESTRATOR_P4_P6_KICKOFF.md`; split N+1a (P4) → smoke → N+1b (P6).
+**Tag:** #orchestrator #P4 #fidelity #pipeline #DEC-DEV-0075-followup
+
+### Context
+
+P3+P5 построены (DEC-DEV-0073/0076/0077), но pipeline неполон. P4 `audit-spec-fidelity` (RUN_01 E3 / RA-5 / P1-2) — pre-impl фиделити-гейт между P3 и P5: спека может быть полностью ПРИСУТСТВУЮЩЕЙ (coverage-oracle зелёный) и внутренне СОГЛАСОВАННОЙ (cc-sdd cross-spec review зелёный), но при этом ИСКАЖАТЬ интент `.product` — RUN 01 нашёл NFR-backoff против BR-040, устаревшие event-имена, **фабрикованную trace-ссылку** (fictitious IC-013, внесённую cross-spec ремедиацией). Это отдельная ось от C-07 (handoff→brief маппинг), coverage-oracle (presence) и cross-spec review (специ согласованы между собой).
+
+### Options considered
+
+1. **P4 — отдельный процесс vs фаза** в P3/P5 → **отдельный** (`processes/audit-spec-fidelity.mjs`, `/orchestrator:run audit-spec-fidelity`): re-audit в любой момент, process-catalog модель, слотится как P5-preflight.
+2. **Детерминир. слой — новый oracle vs расширить coverage-oracle** → **новый** `fidelity-oracle.cjs` (trace-integrity = spec-refs ⊆ product-ids — ИНВЕРС coverage = product-ids ⊆ spec-refs), но **переиспользует** id-extraction примитивы coverage-oracle (один грамматический источник истины). coverage-oracle остаётся сфокусирован на presence.
+3. **Роли — inline vs `agents/orchestrator/`** → **inline-const** `FIDELITY_AUDITOR` (per D.1 harness-ограничение; реестр ролей — отдельный backlog-item).
+4. **owner-arbitration** → простое правило consumer-conforms-to-owner (не авто-консилиум, CUT).
+
+### Decision
+
+P4 = **два слоя** (детерминизм §2): Layer-3 `fidelity-oracle.cjs` trace-integrity (ловит фабрикацию/dangling-ссылки кодом, не суждением) + Layer-2 inline `fidelity-auditor` (семантика: value-mismatch / contradiction / stale-entity / weakened-acceptance). **Триаж каждого дрейфа → маршрут:** `spec-defect` → fix спеки + **auto-re-audit** (P1-2, bounded ≤2 — ремедиация сама вносит drift); `product-defect` → **route к Product** через `pending-actions.md` (OD8 reverse-канал — спека НЕ патчится вокруг дефектного канона, `.product/` не редактируется). **P6 (N+1b) — отложен в следующую сессию** (решение пользователя; smoke-гейт между сабфазами пройден).
+
+### Outcome
+
+Файлы (ветка `worktree-whimsical-exploring-pie`): `orchestrator/lib/fidelity-oracle.cjs` (+`tests/.../fidelity-oracle.test.cjs` 7/7, CLI ловит fictitious IC-013 exit 1); `orchestrator/processes/audit-spec-fidelity.mjs` (+`tests/.../audit-fidelity-wiring.test.cjs` 7/7 static-инварианты); `skills/orchestrator/audit-spec-fidelity.md`; `commands/orchestrator/run.md` (P4 в таблице/preflight/launch/return-док/after-run); `package.json` (+2 теста); kickoff doc. **`npm run verify` exit 0** (args-parsing 13/13, workflow-smoke парсит новый `.mjs`). **Дизайн-бонус:** P4 доставляет **частичный OD8** (product-defect route). Также написан `dev/ORCHESTRATOR_S7_BRIEF.md` (детект-leg #3/#4 валидация, отдельный тред) + строка S7 в трекере §9.
+
+### Lessons
+
+1. **Trace-integrity — детерминированное дополнение coverage.** coverage = «все product-ids присутствуют в спеке»; fidelity-trace = «все ссылки спеки существуют в product». Вторая ловит фабрикацию (fictitious-trace), которую первая пропускает. Две дешёвые кодовые проверки закрывают обе стороны.
+2. **P4 естественно несёт reverse→Product (OD8).** Триаж дрейфа на spec-defect vs product-defect — это и есть точка, где обратный канал к Product становится нужен; строить отдельный OD8-механизм не пришлось, он выпал из P4-триажа.
+3. **`const A = …args…` строку нельзя завершать трейлинг-комментарием** — `args-parsing.test.cjs` eval'ит именно эту строку (`${line}; return A;`), и `//`-комментарий съедает `return A`. Держать комментарий НАД строкой (как P3/P5). Зафиксировано комментом в P4-скрипте.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
