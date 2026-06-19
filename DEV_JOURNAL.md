@@ -5690,7 +5690,7 @@ S6 строился, чтобы проверить открытый вопрос
 Зафиксировано (ветка `worktree-whimsical-exploring-pie`, не закоммичено до отдельного слова):
 - Пилот: `.claude/orchestrator/runs/S6-FEEDBACK-JOURNAL.md` (FB-012 block-handler-root / FB-013 dropped-CONCERNS / FB-018 GO-disclosure / FB-014 billing-defensible+ / FB-015 transient-re-drive+ / FB-016 update-smoke PASS / FB-017 PA-003 provenance).
 - Экосистема: эта запись; трекер `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md §9` (S6 ⬜→✅); ROADMAP «Где мы сейчас» (S6 executed, §6 FAIL/root-caused, 0078 smoke PASS).
-- Реализация фиксов #1/#2/#5 (валидируемых сейчас) — **отдельная инженерная задача** (не в этой записи).
+- Реализация фиксов #1/#2/#5 (валидируемых сейчас) — **СДЕЛАНО (этот же заход):** #1 `feature-to-tdd-impl.mjs` читает `impl.concerns` + non-blocking `surfaceConcern` routing-ветка (tracking-запись в `pending-actions.md`, не блок) + проброс в GO-gate + `concerns[]` в return; #2 `run.md` After-the-run = mandatory substrate-disclosure rule (+ P5-return-док); #5 рубрика брифа Часть 3 = §6-E N/A-gating. Тест `tests/orchestrator/concerns-propagation.test.cjs` (6 инвариантов, подключён в `npm run verify` — exit 0). CHANGELOG [Unreleased]/Fixed. **#3/#4 (detect-leg) + S7-ретест — open.**
 
 **S7-ретест** для detect-leg (#3/#4): нужен in-scope блокирующий provider-пробел (напр. реальное RL-002+ вендор-wiring с отсутствующим ключом) ЛИБО пере-скоуп отложенности как tracked OPEN item; executor/reviewer separation сохранить.
 
