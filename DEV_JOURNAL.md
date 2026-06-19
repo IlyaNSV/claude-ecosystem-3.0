@@ -5704,6 +5704,72 @@ S6 строился, чтобы проверить открытый вопрос
 
 ---
 
+## DEC-DEV-0082 — verify/status дрейфуют как snapshot-промпты: patch-cut count-sweep покрывает только каталог, не per-command ожидания
+
+**Date:** 2026-06-19
+**Trigger:** Вопрос из пилотной перспективы — «после `/ecosystem:update` до 1.6.0 знают ли `verify`/`status` о новом функционале и нет ли чеклиста backward-compat при нарезке патчей?». Эмпирическая сверка `commands/ecosystem/verify.md` против фактического состояния `main` вскрыла протухшие хардкод-счётчики и полное слепое пятно на Orchestrator-модуль.
+**Tag:** #spec-revision #pilot-finding #bug-fix #process-gap
+
+### Context
+`verify.md`/`status.md` лежат в ecosystem-зоне и перезатираются `/ecosystem:update` (Step 5.1) — *доставка* их свежая всегда, «старой поставки» в пилоте не остаётся. Но это **AI-интерпретируемые промпты с вшитыми снапшот-ожиданиями**, замороженными на момент написания. Сверка с `main`:
+- `verify.md` Step 4: `ecosystem` ожидает **2** (bootstrap, verify) — реально **5** (+update, pending-actions, enable-d7-audit); `integrator` ожидает **6** — реально **9** (+add, remove, update).
+- Orchestrator-модуль (1.6.0, `commands/orchestrator/run.md`) — **0 упоминаний** в `verify.md` (ни в шагах, ни в summary-шаблоне `COMMANDS`).
+- `status.md` дашборд не содержит строки `AM` (App Map, 24-й артефакт, DEC-DEV-0066).
+- Контраст: счётчик артефактов `24` в `verify.md` Step 3 — **корректен**, потому что его держит patch-cut Step 4 count-drift sweep.
+
+Практический вред: поскольку это промпт, протухшее «expect 2» не падает с ошибкой — модель сравнивает факт (5) с ожиданием (2) и выдаёт **ложный drift-warning** на здоровой установке, а Orchestrator **молча не попадает** в health-отчёт. Команда «успешно» вводит в заблуждение.
+
+Root cause: `patch-cut.md` Step 4 (count-drift sweep) синхронизирует только канонические каталожные счётчики (~10 доков: artifacts README, validation.md), но **не** per-namespace command counts в `verify.md` и не feature-awareness дашбордов. Cross-component осведомлённость держится только на памяти разработчика в момент написания фичи — Orchestrator/AM показывают, что память подвела. Гейта «фича добавлена → пройди по компонентам, которые её отражают (verify/status/шаблоны)» в процессе нарезки патчей нет. Принцип CLAUDE.md §6 («backwards-compat пока не важна») это частично объясняет, но verify/status — consumer-facing health-команды, для них корректность health-сигнала критична даже pre-pilot.
+
+### Options considered
+1. **Только починить числа в verify.md** — выбрано как первый шаг. Smallest-mechanism, снимает острый false-positive/слепое-пятно. Но числа снова протухнут при следующей новой команде (системная проблема не закрыта).
+2. **+ Добавить процессный гейт в `patch-cut.md` Step 4** — отложено (в этой сессии пользователь выбрал journal + fix, не процессный гейт). Это правильное системное закрытие; зафиксировано как deferred follow-up.
+3. **Сделать verify детерминированным скриптом** (вычислять managed-namespace counts из upstream вместо хардкода) — отвергнуто как over-engineering для текущей фазы; verify по дизайну — промпт, не валидатор. Но как направление снимало бы класс целиком.
+
+### Decision
+Вариант 1 + защитная формулировка. Поправлены `verify.md` Step 4 (`ecosystem 2→5`, `integrator 6→9`, добавлен `orchestrator`) и summary-шаблон `COMMANDS` (добавлен orchestrator, актуализированы числа). Добавлена строка-оговорка в Step 4: счётчики — baseline-снапшот на момент версии; mismatch может означать дрейф *списка*, а не установки — investigate перед ❌ (снижает false-positive без процессного гейта). `status.md` AM-строка и patch-cut гейт — **не** в этой правке (deferred, см. ниже).
+
+### Outcome
+`verify.md` поправлен. Numbering: `0080` занят cascade SC↔MK → эта запись = **0081**. CHANGELOG `[Unreleased] ### Fixed` получил consumer-facing запись. **Deferred follow-ups (не потерять):** (а) `status.md` — добавить `AM-*` в дашборд-секцию D2-B04; (б) `patch-cut.md` Step 4 — под-пункт «sweep per-command counts + feature-awareness в verify/status/summary-шаблонах»; (в) рассмотреть вычисляемые counts в verify (вариант 3) как post-pilot класс-фикс.
+
+### Lessons
+- Snapshot-числа в промпт-командах — тот же класс долга, что и каталожные счётчики, но они вне count-drift sweep, поэтому тихо протухают. Любой sweep, нацеленный на «числа», должен явно перечислять ВСЕ их носители, а не только каталог.
+- «Доставка свежая» ≠ «содержимое актуально»: файл в ecosystem-зоне всегда доезжает свежим, но если его внутренние ожидания не рефрешат в лок-степ с остальной версией — он свежо-протухший. Health-команда, которая врёт «успешно», опаснее упавшей.
+- Новый модуль (Orchestrator) надо протягивать не только в свои файлы, но и в поперечные обзорные компоненты (verify/status/MAP). Отсутствие этого = слепое пятно, которое health-check не подсветит, потому что сам health-check о модуле не знает.
+
+---
+
+## DEC-DEV-0083 — D7 process-hardening: auto-loaded harness-contract spine + блокирующий commit-msg gate + полная уборка дрейфа
+
+**Date:** 2026-06-19
+**Trigger:** Пользователь заказал тщательный аудит процессов доработки/доставки патчей с целью «чтобы я как harness следовал процессам сам и не нарушал их». 3-agent аудит (инвентарь D7 / цепочка накопление→cut→доставка / слой принуждения) вынес диагноз: процессы **рекламируются** харнессу, но не **принуждаются** — 6 из 8 обязательств держатся на памяти, активны только 2 warn-only напоминалки на `git commit`, session-audit пост-хок (не может остановить по ходу), машиночитаемого индекса обязательств нет. Решения по развилкам: **механизм = spine + блокирующий gate**, **объём = полная уборка**, **`update.md` чинить тоже**.
+**Tag:** #architecture #tooling #process-gap #spec-revision
+
+### Context
+Знание процессов невидимо для harness по умолчанию: auto-loaded только корневой `CLAUDE.md` + `MEMORY.md`; вся методология (`CONVENTIONS`/`SPEC`/checklists/patterns) читается, только если вспомню. Принуждение почти нулевое: единственный блокирующий хук экосистемы (`lesson-gate.js`) — `.product/`-gated (downstream), на self-dev не срабатывает. Худшие слепые пятна: count-drift и CHANGELOG-накопление (ноль автоматического ловца). Плюс сама проза дрейфила (ложное утверждение в `patch-cut.md` про авто-штамп `ecosystem_version`; битые ссылки; frozen SPEC; устаревший layout в CONVENTIONS; неведомые refinement-трекеры; принцип 6 «backwards-compat не важна» противоречит практике живого пилота).
+
+### Options considered
+1. **Spine-only (чистая convention)** — auto-loaded trigger-таблица, без хуков. В духе иерархии §3, но следование всё ещё зависит от того, что я честно сверюсь. Отвергнут как недостаточный для «не нарушал».
+2. **Spine + warn-апгрейд существующих напоминалок** — мягко, но слепые пятна остаются.
+3. **Spine + блокирующий gate** — выбрано пользователем. **Сознательно перевешивает** §3 anti-pattern #4 «tooling over discipline» — зафиксировано как owner-решение, не дрейф.
+
+### Decision
+**(A) Enforcement.** `scripts/check-counts.js` — детерминированный реконсилятор: ground-truth артефактов из файлов `docs/pmo/artifacts/` (24), правил — из SSOT `validation.md` (44); сканирует live-доки (исключая dev/_archive/audit-reports/DEV_JOURNAL/CHANGELOG), флагует расхождения; subset-guard против ложных «3 типа артефактов D2-B04». `scripts/process-gate.js` — блокирующий **`commit-msg`** git-хук (не PreToolUse: на commit-msg index финален + сообщение доступно): блокирует при (1) count-drift, (2) feat/fix в consumer-zone без CHANGELOG, (3) fix:/DEC-DEV без DEV_JOURNAL. Escape `[skip-process-gate]`; skip-not-abort на внутренней ошибке. `commit-msg.sh` (тонкий хук) + переписанный worktree-safe `install-pre-commit.sh` (через `git rev-parse --git-path hooks` — старый `$REPO_ROOT/.git/hooks` ломался в worktree). Хуки установлены.
+**(B) Spine.** Новый auto-loaded блок в `CLAUDE.md` «Process triggers — harness contract» — таблица «ситуация → обязан», строки 🔒 = принуждаются gate'ом.
+**(C) Поведенческая правка доставки.** `update.md` Step 5c: `/ecosystem:update` теперь **перештамповывает `ecosystem_version`** (surgical single-line) из первой `[X.Y.Z]` CHANGELOG — durable-фикс слабого звена «stale-by-default» (раньше update синкал CHANGELOG, но `product.yaml` не трогал). `ecosystem_version` объявлен ecosystem-managed штампом, не user-config.
+**(D) Полная уборка дрейфа (#1-#9):** `patch-cut.md` ложный авто-штамп → правда (#1); `update.md` re-stamp (#2); мёртвые ссылки `audit-watch.md`→`_archive` (#3); SPEC §2.2 «0001-0014» + битые §7-пути + frozen-caveat (#4); CONVENTIONS §2 layout актуализирован + §3 порог 5→3 (#5/#6); refinement-трекеры ретайрнуты в пользу DEV_JOURNAL (#7); принцип 6 переписан под реальность пилота (#8); count-sweep дедуплицирован на `check-counts.js` в patch-cut Step 4 (#9, остальные overlap'ы — намеренное слоение, оставлены).
+
+### Outcome
+Gate self-tested: `fix:` без CHANGELOG/journal → BLOCK (exit 1, обе причины), `[skip-process-gate]` → pass, `chore:` при зелёных счётчиках → pass. `check-counts.js` зелёный после фиксов. **Реконсилятор поймал 3 пропущенных дрейфа**, включая один, что пропустил 0081: `verify.md` Step 3 «23 type files»→24 / «24 files»→25 + summary; `skills/product/validation-runner.md` «25 rules»→44 — прямое подтверждение ценности инструмента. Хуки установлены в общий `.git/hooks`. **Numbering:** 0081 (числа verify) занят в этой же сессии → эта запись = 0082. Follow-up `dev/deferred/D7_DEADWEIGHT_CLEANUP.md` (прунинг D7 до работающего+используемого) остаётся QUEUED — триггер: этот хардненинг смёржен в `main`. Эта правка сама догфудит gate (её коммит обязан его пройти).
+
+### Lessons
+- «Доставка свежая ≠ содержимое актуально» (из 0081) масштабируется: ecosystem_version доезжал свежим? нет — `update` его не трогал вовсе. Фикс — сделать доставку ответственной за штамп, а не полагаться на ручной Edit.
+- Реконсилятор счётчиков должен **вычислять** ground-truth (файлы/SSOT), а не **утверждать** число — иначе он сам становится носителем дрейфа. И нужен subset-guard (catalog total ≠ «3 типа из подмножества»). Технический гвоздь: JS `\b` — ASCII-only, кириллицу не bound'ит (guard сначала не сработал).
+- Осознанный override принципа дизайна («tooling over discipline») надо **записывать как решение** в SPEC/CONVENTIONS/журнал — иначе следующий аудитор пометит gate как нарушение собственной иерархии.
+- Health/process-инструмент, который «успешно» врёт (stale verify, ложный auto-stamp claim), опаснее упавшего — детерминированный gate переводит молчаливое нарушение в шумное.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

@@ -293,7 +293,7 @@ Actionable next:
 
 ## Related
 
-- Catalog spec: `.claude/docs/pmo/validation.md` (25 rules + 2 process rules)
+- Catalog spec: `.claude/docs/pmo/validation.md` (44 rules + 2 process rules)
 - Companion command: `.claude/commands/product/validate.md`
 - Inline hook (Phase 2): `.claude/hooks/product/artifact-validate.js`
 - Pending state: `.product/.pending/validation-pending.yaml`

@@ -360,8 +360,11 @@ If закрытие revealed что-то that should've been в Phase N implemen
 
 ## Refinement tracker
 
+> **Retired (DEC-DEV-0083).** Этот трекер дрейфил — обрывался на Phase 4, пока репо дошёл до
+> 1.6.0 (refinement protocol §10 задокументирован, но трекер не вёлся). Per-closure refinements
+> теперь живут в **DEV_JOURNAL DEC-DEV-записях**. Историчные строки оставлены для контекста.
+
 | Phase | Closure date | Findings count | Time | Refinements |
 |---|---|---|---|---|
 | Phase 3 | 2026-04-28 | 9 (5 doc rot + 1 consistency + 1 archive + 3 memory + 1 bootstrap pending user) | ~45 min | Step 1.4 (root doc snapshots), Step 3.5 (count verification) |
-| Phase 4 | 2026-05-13 | 9 (3 doc rot + 3 consistency + 2 memory + 1 bootstrap pending user) — DEC-DEV-0033 | ~60 min | Refinement candidates H.1-H.5 surfaced (see `dev/PHASE_5_READINESS.md` Section H); recommended Phase 5: H.1 root-doc snapshot diff script + H.4 command path consistency check |
-| Phase 5 | TBD | | | |
+| Phase 4 | 2026-05-13 | 9 (3 doc rot + 3 consistency + 2 memory + 1 bootstrap pending user) — DEC-DEV-0033 | ~60 min | Refinement candidates H.1-H.5 surfaced |
