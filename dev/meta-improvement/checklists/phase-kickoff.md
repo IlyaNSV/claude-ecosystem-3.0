@@ -238,8 +238,10 @@ Inline AI carries forward Phase N-1's mental model, may not see ambiguities intr
 
 ## Refinement tracker
 
+> **Retired (DEC-DEV-0082).** Трекер дрейфил (TBD-строки не заполнялись после Phase 3, пока
+> репо дошёл до 1.6.0). Per-kickoff refinements теперь — в DEV_JOURNAL DEC-DEV-записях.
+> Историчная строка оставлена для контекста.
+
 | Phase | Kickoff date | Decisions resolved | Ambiguities | Drifts found | Time | Refinements |
 |---|---|---|---|---|---|---|
 | Phase 3 | 2026-04-20 / -27 | 15 (DEC-DEV-0012) | 9 (DEC-DEV-0013) | 4 (A.1-A.4) | ~3h split | (this template extracted from these instances) |
-| Phase 4 | TBD | | | | | |
-| Phase 5 | TBD | | | | | |

@@ -4,7 +4,7 @@
 >
 > **Status:** v1.0 final state (2026-04-28). Stages 1-6 shipped per DEC-DEV-0015..0021. SPEC §6 open questions resolved (8/10 settled v1.0; 2 open kept як ongoing refinement triggers).
 >
-> **Refinement:** triggers и updates documented per-convention. Update via `chore(meta-improvement): D7 refinement post-Phase-<N> closure` commit. Structural growth complete; ongoing changes refine existing mechanisms rather than add new ones.
+> **Refinement:** triggers и updates documented per-convention. Update via `chore(meta-improvement): D7 refinement post-Phase-<N> closure` commit. ~~Structural growth complete; ongoing changes refine existing mechanisms rather than add new ones.~~ **Перекрыто DEC-DEV-0082:** структурный рост возобновлён осознанным решением — добавлены enforcement-механизмы (блокирующий `commit-msg` gate `process-gate.js` + детерминированный `check-counts.js`), что **перевешивает** дефолт §3 «tooling over discipline». Operational SSOT для harness = `CLAUDE.md` «Process triggers — harness contract».
 
 ---
 
@@ -52,31 +52,43 @@ When writing/reading «meta» / «governance» — disambiguate target audience:
 
 **Rationale:** D7 governs ecosystem dev (Level B), не user projects (Level A). Strict separation per SPEC §4.3 keeps architectural cleanliness, avoids self-referential collapse risk (SPEC §5.1).
 
-**Layout (v1.0 final state):**
+**Layout (updated DEC-DEV-0082 — reflects actual tree):**
 
 ```
 dev/meta-improvement/
-├── SPEC.md                      # v1.0 spec (Stage 1 substrate + Stage 6 finalization)
-├── CONVENTIONS.md               # this file (Stage 2 + Stage 6 update)
-│                                # (DESIGN_KICKOFF.md → dev/_archive/meta-improvement/, archived after Stage 6)
+├── SPEC.md                      # v1.0 spec (FROZEN snapshot — см. header caveat)
+├── CONVENTIONS.md               # this file
 ├── checklists/
-│   ├── phase-closure.md         # Stage 2 + Stage 2.5 refinements
-│   ├── phase-kickoff.md         # Stage 2
-│   └── patch-cut.md             # DEC-DEV-0079 follow-up — version cut ritual
-├── patterns/                    # Stage 3 (5 patterns, mostly provisional)
-│   ├── README.md                # index
+│   ├── phase-kickoff.md
+│   ├── phase-closure.md
+│   ├── patch-cut.md             # version cut ritual (DEC-DEV-0079)
+│   ├── audit-smoke-workflow.md  # phase smoke→audit ритуал (Phase 4.1)
+│   └── audit-watch.md           # semi-auto session-audit watcher (Audit v2 Incr.2)
+├── patterns/                    # 6 patterns + index
+│   ├── README.md
 │   ├── spec-drift-sweep.md
 │   ├── readiness-gate.md
-│   ├── b1-frontmatter-convention.md (validated)
+│   ├── b1-frontmatter-convention.md    (validated)
 │   ├── cuttable-scope-discipline.md
-│   └── smoke-test-plan.md
-├── skills/                      # Stage 4
-│   └── memory-sync.md           # formalized phase-closure Step 5
-├── scripts/                     # Stage 4
-│   ├── verify-update.sh         # post-/ecosystem:update verification
-│   └── verify-update.ps1        # Windows version
-└── hooks/                       # Stage 4
-    └── phase-closure-reminder.js  # PostToolUse Bash, registered в .claude/settings.local.json
+│   ├── smoke-test-plan.md
+│   └── da-subagent-type-contract.md    # DEC-DEV-0064
+├── skills/
+│   └── memory-sync.md
+├── scripts/
+│   ├── verify-update.sh / .ps1         # post-/ecosystem:update verification
+│   ├── verify-hooks.js / smoke-hooks.js   # hook syntax + runtime smoke
+│   ├── pre-commit.sh / commit-msg.sh / install-pre-commit.sh   # git-hook gates
+│   ├── check-counts.js                 # canonical-count reconciler (DEC-DEV-0082)
+│   ├── process-gate.js                 # blocking commit-msg gate (DEC-DEV-0082)
+│   └── audit-smoke.js · audit-watch.js · audit-index.js · audit-journal.js · classify.js · effect-probe.js · patch-synth.js   # Session Audit v2
+├── hooks/                       # registered in .claude/settings.local.json
+│   ├── phase-closure-reminder.js       # PostToolUse Bash — warn: phase-completion commit без closure
+│   ├── dev-journal-reminder.js         # PostToolUse Bash — warn: feat/fix commit без DEV_JOURNAL
+│   └── session-audit.js                # SessionEnd marker writer (для pilot projects)
+├── prompts/                     # Session Audit v2 auditor prompts
+├── rubrics/                     # per-zone audit rubrics
+├── audit-reports/               # runtime: per-session audit outputs (data, не process-def)
+└── patch-candidates/            # runtime: synthesizer output + [Y/N/E/D] disposition
 ```
 
 ---
@@ -88,7 +100,7 @@ dev/meta-improvement/
 **Hierarchy (least → most ceremony):**
 
 1. **Checklist (markdown)** — manual, developer runs, ≤60 min. **DEFAULT for Stage 2.**
-2. **Skill** — AI-assisted execution, lazy-loaded. **Promote when:** checklist has 5+ instances + steps too rote to remember.
+2. **Skill** — AI-assisted execution, lazy-loaded. **Promote when:** checklist has 3+ instances + steps too rote to remember. *(Согласовано с «Promotion criteria» ниже — было «5+», DEC-DEV-0082 свёл к одному порогу «3+».)*
 3. **Command** (`/<namespace>:<name>`) — explicit invocation. **Promote when:** skill has 10+ instances + needs argument support.
 4. **Hook** — automatic on event. **Promote when:** command needs to fire on commit/file-change без developer action.
 

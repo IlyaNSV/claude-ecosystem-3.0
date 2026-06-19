@@ -61,7 +61,7 @@ node dev/meta-improvement/scripts/audit-smoke.js --classify --session-id=<uuid> 
 - **routines / `RemoteTrigger`** исполняются в облаке claude.ai → **не видят** локальные транскрипты
   `~/.claude/projects/` и локальный git. Дисквалифицированы для локального аудита.
 - **Windows Task Scheduler → `audit-watch.js`** — единственный по-настоящему автономный путь (когда Claude
-  закрыт). Записан как **upgrade-path**, не подключён сейчас (см. [SESSION_AUDIT_V2_DESIGN §5.1](../../SESSION_AUDIT_V2_DESIGN.md)).
+  закрыт). Записан как **upgrade-path**, не подключён сейчас (см. [SESSION_AUDIT_V2_DESIGN §5.1](../../_archive/session-audit-v2/SESSION_AUDIT_V2_DESIGN.md)).
 
 ---
 
@@ -79,4 +79,4 @@ node dev/meta-improvement/scripts/audit-smoke.js --classify --session-id=<uuid> 
 - [`scripts/audit-watch.js`](../scripts/audit-watch.js) — обёртка · [`scripts/audit-smoke.js`](../scripts/audit-smoke.js) — драйвер
 - [`scripts/classify.js`](../scripts/classify.js) · [`scripts/effect-probe.js`](../scripts/effect-probe.js) · [`rubrics/`](../rubrics/)
 - [`checklists/audit-smoke-workflow.md`](audit-smoke-workflow.md) — ручной smoke-then-audit ритуал (phase-режим)
-- [`SESSION_AUDIT_V2_DESIGN.md`](../../SESSION_AUDIT_V2_DESIGN.md) §5 (триггер + effect-probe) · DEC-DEV-0056/0057
+- [`SESSION_AUDIT_V2_DESIGN.md`](../../_archive/session-audit-v2/SESSION_AUDIT_V2_DESIGN.md) §5 (триггер + effect-probe) · DEC-DEV-0056/0057

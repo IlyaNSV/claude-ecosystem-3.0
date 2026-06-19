@@ -693,6 +693,50 @@ scope-guard hook, and any other ecosystem skill that surfaces a user-only action
 
 Confirm `.claude/pending-actions.md` is **not** added к `.gitignore` (it's committed).
 
+### Step 5c: Re-stamp `ecosystem_version` in `product.yaml` (DEC-DEV-0082)
+
+**Why (D7 audit 2026-06-19):** pre-0082 `update` synced `.claude/CHANGELOG.md` but **never** touched `product.yaml`, so `ecosystem_version` stayed frozen at its bootstrap value while the CHANGELOG advanced — **stale-by-default after every update**, and `/ecosystem:verify`'s version-drift check (Step 5) could not catch it. `ecosystem_version` is an **ecosystem-managed stamp**, not user config — so `update` now re-stamps **only that one line**, preserving every other `product.yaml` field verbatim.
+
+Read the first released version from the just-synced `.claude/CHANGELOG.md` (the first `## [X.Y.Z]` heading, skipping `## [Unreleased]`) and surgically replace the `ecosystem_version:` value.
+
+```bash
+if [ -f .claude/product.yaml ] && [ -f .claude/CHANGELOG.md ]; then
+  NEW_VER=$(grep -oE '^##[[:space:]]+\[[0-9]+\.[0-9]+\.[0-9]+\]' .claude/CHANGELOG.md \
+            | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')
+  if [ -n "$NEW_VER" ]; then
+    if grep -qE '^[[:space:]]*ecosystem_version:' .claude/product.yaml; then
+      sed -i.bak -E "s/^([[:space:]]*ecosystem_version:[[:space:]]*).*/\1${NEW_VER}/" .claude/product.yaml
+      rm -f .claude/product.yaml.bak
+      echo "Re-stamped ecosystem_version → ${NEW_VER}"
+    else
+      printf 'ecosystem_version: %s\n' "$NEW_VER" >> .claude/product.yaml
+      echo "Added ecosystem_version: ${NEW_VER}"
+    fi
+  fi
+fi
+```
+
+**PowerShell equivalent (Windows):**
+
+```powershell
+if ((Test-Path .claude\product.yaml) -and (Test-Path .claude\CHANGELOG.md)) {
+  $verLine = Select-String -Path .claude\CHANGELOG.md -Pattern '^##\s+\[(\d+\.\d+\.\d+)\]' | Select-Object -First 1
+  if ($verLine) {
+    $newVer = $verLine.Matches[0].Groups[1].Value
+    $yaml = Get-Content .claude\product.yaml
+    if ($yaml -match '^\s*ecosystem_version:') {
+      $yaml = $yaml -replace '^(\s*ecosystem_version:\s*).*', "`${1}$newVer"
+    } else {
+      $yaml += "ecosystem_version: $newVer"
+    }
+    Set-Content -Path .claude\product.yaml -Value $yaml -Encoding utf8
+    Write-Host "Re-stamped ecosystem_version -> $newVer"
+  }
+}
+```
+
+**Idempotent** — re-running against the same CHANGELOG produces no change. **Only** the `ecosystem_version` line is ever modified; absence (rare — pre-bootstrap-Step-7 installs) is backfilled. This is the **sole** `product.yaml` write `update` performs; all other fields (project_name, validation_tier, mode defaults, `product_class`, …) are untouched.
+
 ### Step 6: Re-derive `.claude/settings.json` hooks section (pattern-preserving merge)
 
 Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in Step 5). **Semantics: merge-preserve, не REPLACE** (revised в patch 1.3.4 / DEC-DEV-0049 — см. «Why merge, not replace» ниже).
@@ -803,7 +847,7 @@ Obsolete contamination cleaned (DEC-DEV-0042):
 
 Preserved (untouched):
   .claude/settings.local.json (your permissions)
-  .claude/product.yaml (your config)
+  .claude/product.yaml (your config — only ecosystem_version re-stamped, Step 5c / DEC-DEV-0082)
   .claude/design.yaml (per-project Design Module config — preserved if exists; auto-init by /design:start)
   .claude/pending-actions.md (your pending-actions journal — backfilled if pre-1.3.3 install; existing entries intact)
   .claude/integrator/ (Integrator state)
@@ -843,7 +887,7 @@ What's next?
 - DO NOT touch `.product/` (artifacts are user data — entirely outside `.claude/`)
 - DO NOT modify `.env` at project root (secrets)
 - DO NOT overwrite `.claude/settings.local.json` (user permissions)
-- DO NOT overwrite `.claude/product.yaml` (project config)
+- DO NOT overwrite `.claude/product.yaml` user config — **EXCEPT** the ecosystem-managed `ecosystem_version` stamp (surgical single-line re-stamp, Step 5c / DEC-DEV-0082). All other fields stay verbatim.
 - DO NOT touch `.claude/integrator/` contents (Integrator state)
 - DO NOT copy CLAUDE.md (root), DEV_JOURNAL.md, dev/, или INSTALL-HUMAN.md from upstream — these are ecosystem developer artifacts (causes contamination per DEC-DEV-0019 Finding A)
 - DO NOT auto-commit anything to git **except** the scoped level-2 safety commit (Step 5.0, default on). That one stages **only** the integrator-managed tool footprint — **never `git add -f`**, never secrets/gitignored, never the user's unrelated WIP. Everything else: user reviews + commits manually. Disable with `--no-safety-commit`. (Policy revised by DEC-DEV-0061; pre-0061 the rule was a blanket "never auto-commit".)

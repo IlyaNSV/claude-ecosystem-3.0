@@ -39,19 +39,26 @@ Verify each. Report ❌ / 🟡 / ✓ per file.
 
 ### Step 3: Artifact catalog completeness
 
-Count `.claude/docs/pmo/artifacts/*.md` — expect **24 files** (23 type files + README.md).
+Count `.claude/docs/pmo/artifacts/*.md` — expect **25 files** (24 type files + README.md).
 
 If count differs, list missing or unexpected files.
 
 ### Step 4: Commands available
 
 Count per namespace:
-- `.claude/commands/integrator/*.md` — expect 6 (research, map, gaps, status, journal, scan; Phase 1)
-- `.claude/commands/product/*.md` — may be 0 or more (Phase 2+)
-- `.claude/commands/design/*.md` — may be 0 or more (Phase 6)
-- `.claude/commands/ecosystem/*.md` — expect 2 (bootstrap, verify)
+- `.claude/commands/integrator/*.md` — expect 9 (research, map, gaps, status, journal, scan, add, remove, update)
+- `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~19)
+- `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
+- `.claude/commands/orchestrator/*.md` — expect 1+ (run; first increment — P2/P4/P6/P7 processes deferred)
+- `.claude/commands/ecosystem/*.md` — expect 5 (bootstrap, verify, update, pending-actions, enable-d7-audit)
 
 Report counts + note what's expected for current ROADMAP phase.
+
+> **Note (DEC-DEV-0081):** these per-namespace counts are a **baseline snapshot as of the
+> current ecosystem version**, not a hard contract — new commands land between cuts. A mismatch
+> may mean drift in **this list** (it wasn't refreshed when a command was added) as easily as a
+> defective install. Investigate which before raising a ❌; an *extra* command vs. this baseline
+> is almost never a fault.
 
 ### Step 5: Config consistency
 
@@ -131,17 +138,18 @@ SPECS
   ✓ Handoff SPEC              (lines: 945)
 
 ARTIFACTS CATALOG
-  ✓ 23 type files + README    (incl. LESSON-*)
+  ✓ 24 type files + README    (incl. LESSON-*, AM)
 
 LESSON-* GATE (DEC-DEV-0062)
   ✓ lesson-gate.js registered (Stop, strict)
   ✓ lesson-presence-gate.js registered (PreToolUse+UPS, warn)
 
 COMMANDS
-  ✓ integrator/: 6/6           (Phase 1 complete)
-  ⏳ product/:    0/?           (Phase 2 pending)
-  ⏳ design/:     0/?           (Phase 6 pending)
-  ✓ ecosystem/:  2/2           (bootstrap, verify)
+  ✓ integrator/:   9           (research, map, gaps, status, journal, scan, add, remove, update)
+  ✓ product/:      19          (Phase 2+ — init, feature, da-review, validate, ...)
+  ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
+  ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
+  ✓ ecosystem/:    5           (bootstrap, verify, update, pending-actions, enable-d7-audit)
 
 MCP STACK
   ✓ Sequential Thinking   installed
