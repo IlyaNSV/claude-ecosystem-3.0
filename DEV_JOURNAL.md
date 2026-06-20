@@ -5770,6 +5770,35 @@ Gate self-tested: `fix:` без CHANGELOG/journal → BLOCK (exit 1, обе пр
 
 ---
 
+## DEC-DEV-0086 — Канонизация live-run validation как переиспользуемого D7-чеклиста
+
+**Date:** 2026-06-20
+**Trigger:** После постройки orchestrator-инкремента P4+P6 встал вопрос live-прогона. Пользователь заметил: пара «operator brief + reviewer handoff» из S6 полезна не только для P4/P6, а для любой нетривиальной доработки → канонизировать как общий процесс, а не плодить одноразовые брифы.
+**Tag:** #D7 #process #dogfood #live-run #DEC-DEV-0081-followup
+
+### Context
+
+Live-валидация доработок до сих пор делалась ad-hoc одноразовыми документами: RUN 01 (audit-метод, DEC-DEV-0073), S6 (`ORCHESTRATOR_S6_BRIEF.md` + `ORCHESTRATOR_S6_REVIEW_HANDOFF.md`, DEC-DEV-0081). Методзаметка S6 прямо помечала паттерн как кандидата на канонизацию в D7. Статический smoke (regex-инварианты + parse) доказывает, что код собран, но НЕ что поведенческий/функциональный контракт работает на живой среде — этот разрыв и закрывает live-run.
+
+### Decision
+
+Новый D7-чеклист `dev/meta-improvement/checklists/live-run-validation.md` — обобщение S6 brief+handoff в один переиспользуемый протокол. Ядро:
+- **executor/reviewer separation** ([[feedback_separate_task_from_test]]): субъекту — естественная/операционная задача, наблюдателю — рубрика; грейд только пост-фактум по транскрипту.
+- **два класса валидации:** A — поведенческий контракт (спонтанность; КРИТИЧНА не-контаминация prompt'а) vs B — функциональная механика (гейт/детектор; prompt операционный, но детекция грейдится пост-фактум).
+- **двусторонняя валидация для класса B:** sensitivity (не молчит на реальном дефекте) + specificity (не вопит на чистом / verify-before-act отбрасывает ложное) + опц. negative control.
+- встроены уроки S6: anti-phantom-inflation (gate downstream-критерий за upstream), MANUAL deep-dive вместо routine zone-audit, «любой исход валиден».
+- Часть 0 DELIVERY делает явной зависимость: доработка в незапушенной ветке → merge+push+`/ecosystem:update` ПЕРЕД прогоном (wipe-protection DEC-DEV-0065).
+
+Конкретные прогоны инстанцируют из шаблона `<NAME>_BRIEF.md` (+ опц. `_REVIEW_HANDOFF.md`), не переписывая протокол. Зарегистрирован: CLAUDE.md process-spine + CONVENTIONS.md (tree / cadence-table / default-list).
+
+### Lessons
+
+1. **Паттерн, повторённый дважды (RUN 01 + S6), — кандидат в шаблон.** Третий инстанс (P4+P6) — точка, где дешевле канонизировать, чем копировать брифы.
+2. **Static smoke и live-run валидируют РАЗНОЕ.** Первый — «собралось ли»; второй — «работает ли контракт на живой среде». Чеклист удерживает обязательство не путать одно с другим (gate «не снимать pending runtime smoke до live-run»).
+3. **Функциональный гейт надо валидировать в обе стороны.** Только sensitivity (поймал дефект) без specificity (не false-positive) — половина доказательства; verify-before-act (P6) проверяется именно specificity-плечом.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

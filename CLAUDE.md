@@ -48,6 +48,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 | добавил/убрал команду / скилл / хук | обновить `commands/ecosystem/verify.md` (Step 4 + summary) + проверить обзорные шаблоны (`status.md`, `docs/MAP.md`) | cross-component awareness, DEC-DEV-0082 |
 | архитектурный выбор из ≥2 вариантов | DEV_JOURNAL: что выбрал + почему отверг остальные | §1 |
 | собрался резать версию / доставлять в пилот | `checklists/patch-cut.md` | каденс — по событию |
+| собрался прогнать live-доработку в пилоте (dogfood-валидация) | `checklists/live-run-validation.md` | executor/reviewer separation; класс A (спонтанность) / B (механика) |
 | перед фазой / после фазы | `checklists/phase-kickoff.md` / `phase-closure.md` | per-phase |
 | рефактор с риском stale-ссылок | `patterns/spec-drift-sweep.md` (grep после) | — |
 
