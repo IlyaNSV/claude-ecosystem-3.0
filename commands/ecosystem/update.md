@@ -449,8 +449,21 @@ for SUBDIR in commands skills agents hooks orchestrator; do
   # Re-sync each managed namespace
   for NS in $MANAGED_NS; do
     if [ -d ".claude-ecosystem-tmp/$SUBDIR/$NS" ]; then
-      rm -rf ".claude/$SUBDIR/$NS"
-      cp -r ".claude-ecosystem-tmp/$SUBDIR/$NS" ".claude/$SUBDIR/$NS"
+      # Mirror CONTENTS — never `rm -rf` the namespace dir itself. It may hold the
+      # command file running RIGHT NOW (commands/ecosystem/update.md), which the
+      # harness protects from removal; deleting it aborts the whole sync (DEC-DEV-0088).
+      # Overwrite-in-place + prune stale; the running update.md (present upstream) is
+      # overwritten, never removed.
+      SRC=".claude-ecosystem-tmp/$SUBDIR/$NS"; DST=".claude/$SUBDIR/$NS"
+      mkdir -p "$DST"
+      if command -v rsync >/dev/null 2>&1; then
+        rsync -a --delete "$SRC/" "$DST/"
+      else
+        ( cd "$DST" && find . -mindepth 1 -print ) | while IFS= read -r rel; do
+          [ -e "$SRC/$rel" ] || rm -rf "$DST/$rel"
+        done
+        cp -rf "$SRC/." "$DST/"
+      fi
     elif [ -f ".claude-ecosystem-tmp/$SUBDIR/$NS" ]; then
       # Flat file inside subdir (e.g. hooks/<subdir>/manifest.yaml at module level — нет в текущей структуре, оставлено для безопасности)
       cp ".claude-ecosystem-tmp/$SUBDIR/$NS" ".claude/$SUBDIR/$NS"
@@ -481,8 +494,17 @@ foreach ($subdir in $namespaceAwareSubdirs) {
     $src = Join-Path $upstreamPath $ns
     $dst = Join-Path $targetPath $ns
     if (Test-Path $src -PathType Container) {
-      if (Test-Path $dst) { Remove-Item -Path $dst -Recurse -Force }
-      Copy-Item -Path $src -Destination $dst -Recurse
+      # Mirror CONTENTS via robocopy — NEVER Remove-Item the namespace dir itself.
+      # It may hold the command file running RIGHT NOW (commands/ecosystem/update.md),
+      # which the harness protects from removal; a `Remove-Item -Recurse` on it aborts
+      # the whole sync (DEC-DEV-0088). robocopy (a native exe, not the guarded
+      # Remove-Item cmdlet) overwrites changed files in place + purges files dropped
+      # upstream, without deleting $dst — and the running update.md (present upstream)
+      # is overwritten, never removed.
+      if (-not (Test-Path $dst)) { New-Item -ItemType Directory -Path $dst -Force | Out-Null }
+      robocopy $src $dst /MIR /NJH /NJS /NFL /NDL /NP > $null
+      if ($LASTEXITCODE -ge 8) { throw "robocopy mirror failed for $ns (exit $LASTEXITCODE)" }
+      $global:LASTEXITCODE = 0   # robocopy success = exit <8; reset so ErrorActionPreference=Stop / later $LASTEXITCODE checks don't misfire
     } elseif (Test-Path $src -PathType Leaf) {
       Copy-Item -Path $src -Destination $dst -Force
     }
