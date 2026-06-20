@@ -17,9 +17,12 @@ DEC-DEV-0076).
 | `<process>` | What it does | Zone |
 |---|---|---|
 | `batch-features-to-cc-sdd` | Route a batch of `status: ready\|partial` handoffs into cc-sdd specs (P3) | D2-T01/T06 |
+| `audit-spec-fidelity` | Audit generated specs against `.product` for fidelity drift, before impl (P4) | D2-T verify |
 | `feature-to-tdd-impl` | Drive one feature's `tasks.md` to implemented code via native TDD loop (P5) | D3 |
+| `validate-feature-impl` | Feature-level GO/NO-GO gate after impl: full suite+build + 3 validators (RA-8/9/10) + verify-finding (P6) | D3 verify |
 
-Other processes (P2/P4/P6/P7) are deferred.
+P5 delegates its feature-level gate to P6 (`validate-feature-impl`) via `workflow()`; you can
+also run P6 standalone to re-gate an already-implemented feature. Other processes (P2/P7) are deferred.
 
 ## Pre-flight (read-only, before launching)
 
@@ -46,6 +49,19 @@ substitute.
 3. **Env ready?** `feature-to-tdd-impl` implements real code — the env-readiness-probe must
    pass (runtime versions, datastore up if the stack needs it). A missing tool/secret is a
    capability gap → request from Integrator (§6), do not self-equip.
+
+**For `audit-spec-fidelity` (P4):**
+1. The features' specs exist (`.kiro/specs/<feature>/{requirements,design,tasks}.md`) — run P3 first.
+2. `fidelity-oracle` present (`.claude/orchestrator/lib/fidelity-oracle.cjs`).
+3. Resolve `--feature` slug(s) to audit; each needs its `.product` source (handoff + traced
+   FM/SC/BR/IC/NFR artifacts) readable for the deterministic trace-integrity gate.
+
+**For `validate-feature-impl` (P6)** — usually reached via P5's delegation, but runnable standalone:
+1. The feature is implemented (`.kiro/specs/<feature>/tasks.md` tasks mostly `[x]`) — P6 gates
+   the result, it does not implement. Resolve `<feature>` from `--feature` (cc-sdd slug).
+2. `coverage-oracle` present (`.claude/orchestrator/lib/coverage-oracle.cjs`) — the
+   requirements-coverage validator (RA-8) reuses it as the anti-self-report backbone.
+3. The full TEST/BUILD commands are discoverable (manifests/CI) — the mechanical layer runs them.
 
 ## Launch
 
@@ -89,10 +105,44 @@ Workflow({
 })
 ```
 
+**P4 — `audit-spec-fidelity`** (skills: `orchestrator-init`, `audit-spec-fidelity`) — run
+between P3 and P5 (pre-impl fidelity gate):
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/audit-spec-fidelity.mjs',
+  args: {
+    features: [ "<cc-sdd slug>", ... ],   // resolved above
+    specBase: '.kiro/specs',
+    oracle: '.claude/orchestrator/lib/fidelity-oracle.cjs'
+  }
+})
+```
+
+**P6 — `validate-feature-impl`** (skills: `orchestrator-init`) — feature-level GO-gate AFTER
+impl; usually invoked by P5 via `workflow()`, runnable standalone to re-gate a feature:
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/validate-feature-impl.mjs',
+  args: {
+    feature: "<cc-sdd slug, e.g. auth>",
+    specDir: ".kiro/specs/<feature>",
+    oracle: '.claude/orchestrator/lib/coverage-oracle.cjs',
+    source: '.product/handoffs/FM-NNN-handoff.md',   // optional — RA-8 coverage-oracle backbone
+    validationCommands: {},                          // {test, build, smoke} if known; else discovered
+    concerns: [],                                    // forwarded from P5 (deferred-capability flags)
+    degraded: false                                  // true if upstream tasks were blocked → advisory
+  }
+})
+```
+
 The Workflow runs in the background; watch progress with `/workflows`. P3 returns
-features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P5 returns
+features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P4 returns
+audited / faithful / spec_fixed / product_routed / residual / impl_ready; P5 returns
 implemented task ids / blocked / **`concerns`** (deferred-capability / mock-stand-in flags,
-FB-013) / GO-gate result.
+FB-013) / GO-gate result; P6 returns mechanical / validators / confirmed_findings /
+remediated / residual / **`result`** (GO | NO-GO | MANUAL_VERIFY_REQUIRED) / findings.
 
 > **One orchestrator workflow per repo at a time (FB-004).** Two processes that both
 > `git commit` race on the shared git index even when their file zones don't overlap
@@ -128,6 +178,10 @@ FB-013) / GO-gate result.
   surface the route (Product / Integrator) per item. Live caveat: can a Workflow `agent()`
   invoke `kiro-spec-batch` (which self-dispatches)? If not, the Author phase falls back to
   running the kiro-spec-* pipeline per feature itself.
+- **P4:** `impl_ready` lists features safe to route to P5. `spec_fixed` had spec-route drift
+  repaired + re-audited clean. `product_routed` drift went to Product via `pending-actions.md`
+  (OD8) — it is NOT auto-fixed; surface it. `residual` = spec drift unresolved after the
+  re-audit rounds — those features are NOT impl-ready; surface for manual review before P5.
 - **P5:** per-task commits land as the loop runs (selective staging). If `blocked` is
   non-empty → those tasks hit `_Blocked_`; an upstream-ownership block routes back to the
   owning spec (do not patch around it). If the GO-gate is `NO-GO` after 3 remediation
@@ -135,6 +189,16 @@ FB-013) / GO-gate result.
   `concerns` is non-empty → a task met a real seam with a Mock/unwired skeleton because real
   access is deferred (FB-013); those are tracked in `pending-actions.md` and MUST be disclosed
   at GO (above) — a GO over them is GO-with-caveats. Live
-  caveat: the lift reads kiro templates + invokes kiro gates (`kiro-review` /
-  `kiro-verify-completion` / `kiro-validate-impl`) from Workflow agents — confirm nested
-  skill invocation works in the pilot; the templates embed the protocol as a fallback.
+  caveat: the lift reads kiro templates + invokes per-task kiro gates (`kiro-review` /
+  `kiro-verify-completion`) from Workflow agents — confirm nested skill invocation works in
+  the pilot; the templates embed the protocol as a fallback. The feature-level gate is now P6.
+- **P6:** `result` is the feature verdict — `GO` only if the mechanical layer (full suite +
+  build) is green AND no confirmed validator finding remains AND no upstream task was blocked.
+  `confirmed_findings` are the ones that passed verify-finding-before-act (a grep of ground
+  truth) — refuted validator findings are dropped, never remediated (P6's core value: don't
+  chase a hallucinated defect). `residual` = confirmed defects still unresolved after the
+  remediation cap (3 rounds) → not a clean GO; surface them. A high-severity residual forces
+  `NO-GO`, otherwise `MANUAL_VERIFY_REQUIRED`. `concerns` forwarded from P5 are disclosed in
+  `findings` (FB-013) — a GO over a mock-only / unwired real seam is GO-with-caveats. Live
+  caveat: P5 reaches P6 via `workflow()` (one-level nesting); if unavailable P5 falls back to
+  the inline `kiro-validate-impl` lift.

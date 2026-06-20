@@ -4,8 +4,10 @@
 > и проводит его end-to-end, оркеструя role-агентов и инструменты по регламентам.
 > **Спецификация:** [`docs/orchestrator-module/SPEC.md`](../docs/orchestrator-module/SPEC.md).
 > **Эмпирика:** [`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`](../dev/ORCHESTRATOR_DOGFOOD_RUN_01.md) (RUN 01 harvest).
-> **Статус:** первый инкремент — **P3 `batch-features-to-cc-sdd`** (S5a, DEC-DEV-0076) +
-> **P5 `feature-to-tdd-impl`** (S5b, DEC-DEV-0077). Оба построены гибридно (оркеструют cc-sdd).
+> **Статус:** P3 `batch-features-to-cc-sdd` (S5a, DEC-DEV-0076) + P5 `feature-to-tdd-impl`
+> (S5b, DEC-DEV-0077) — гибрид над cc-sdd. Инкремент N+1: P4 `audit-spec-fidelity` (pre-impl
+> fidelity-гейт, DEC-DEV-0084) + full P6 `validate-feature-impl` (feature GO-gate, DEC-DEV-0085;
+> P5 делегирует feature-гейт в P6 через `workflow()`).
 
 ## Принцип: оркеструем, не переписываем (DEC-DEV-0076)
 
@@ -32,9 +34,12 @@ orchestrator/
 ├── README.md                       # этот файл
 ├── processes/                      # Workflow-скелеты (.mjs, in-harness)
 │   ├── batch-features-to-cc-sdd.mjs   # P3
-│   └── feature-to-tdd-impl.mjs        # P5
+│   ├── feature-to-tdd-impl.mjs        # P5 (делегирует feature-гейт в P6)
+│   ├── audit-spec-fidelity.mjs        # P4 — pre-impl fidelity-гейт (spec vs .product)
+│   └── validate-feature-impl.mjs      # P6 — feature GO-gate (suite+build + 3 валидатора)
 └── lib/                            # детерминированные хелперы (.cjs, Node stdlib)
-    ├── coverage-oracle.cjs            # P1-1 независимый ID-coverage оракул (P3)
+    ├── coverage-oracle.cjs            # P1-1 независимый ID-coverage оракул (P3; backbone RA-8)
+    ├── fidelity-oracle.cjs            # P4 trace-integrity (spec-refs ⊆ .product ground-truth)
     └── gate-risk-classifier.cjs       # P0-2 предикат тяжести гейта HIGH/LOW (P5)
 
 skills/orchestrator/                # регламент-методология (lazy-loaded)
