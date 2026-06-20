@@ -77,6 +77,7 @@
 | **sensitivity** | реальный drift найден (или negative-control `IC-999` пойман) | drift пропущен |
 | **specificity** | чистая спека → `faithful`, без выдуманного drift | false-positive на корректной спеке |
 | триаж | spec-defect → fix + auto-re-audit; product-defect → `pending-actions.md` (OD8), `.product/` НЕ тронут | патчит вокруг дефекта / редактирует `.product/` |
+| **verify-finding-before-act** (DEC-DEV-0087) | семантический drift подтверждён grep'ом ground-truth ДО fix; refuted отброшен (спека НЕ правится); fabricated-trace exempt (oracle-confirmed) | правит спеку по находке auditor'а без подтверждения / чинит по ложному drift |
 
 **P6 `validate-feature-impl`:**
 | критерий | PASS | FAIL |
