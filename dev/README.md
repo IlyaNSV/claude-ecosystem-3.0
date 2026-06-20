@@ -22,6 +22,7 @@
 - `ORCHESTRATOR_DOGFOOD_PLAN.md` — эмпирический dogfood-регламент Orchestrator Module (concept v0)
 - `PILOT_RECONCILIATION_PLAN.md` — реконсиляция пилот↔экосистема (DEC-DEV-0065)
 - `TIER_2_DOC_REFORM_PLAN.md` — gated план Tier-2 doc reform (ждёт 1-2 closure)
+- `UBUNTU_PILOT_DEPLOYMENT_PLAN.md` — перенос пилота `my-first-test` на Ubuntu 24.04 (research 2026-06-15)
 
 ## gates/ — **[HARD-PREREQ]** перед стартом следующей фазы
 
