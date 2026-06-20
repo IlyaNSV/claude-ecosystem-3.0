@@ -5737,6 +5737,39 @@ P4 = **два слоя** (детерминизм §2): Layer-3 `fidelity-oracle.
 
 ---
 
+## DEC-DEV-0085 — Orchestrator Phase N+1b: full P6 `validate-feature-impl` (feature GO-gate) построен
+
+**Date:** 2026-06-20
+**Trigger:** Второй сабфазой инкремента N+1 (после P4, DEC-DEV-0084) — kickoff `dev/ORCHESTRATOR_P4_P6_KICKOFF.md` split N+1a→smoke→N+1b. Пользователь выбрал «продолжить P6» после переномеровки P4 (0082→0084, коллизия с D7-хардингом на main).
+**Tag:** #orchestrator #P6 #validation #pipeline #DEC-DEV-0084-followup
+
+### Context
+
+P5 (`feature-to-tdd-impl`) лифтил тонкий `kiro-validate-impl` (один advisory-агент) как feature-level гейт. Этого мало: per-task review (P5) узок и пропускает **cross-task seams** — метод, построенный задачей A, но не подключённый задачей B, проходит оба per-task ревью (RUN 01 P1-5: дефект `/reset` vs `/reset-password` жил на границе двух ЗЕЛЁНЫХ задач; FB-010 orphan-export). Feature-level гейт — единственная проверка достаточно широкая, чтобы увидеть всю фичу. RUN_01 E5 раскрыл форму full P6: механический слой + 3 параллельных валидатора + verify-finding.
+
+### Options considered
+
+1. **P6 — отдельный процесс vs расширить P5 Validate-фазу inline** → **отдельный** `processes/validate-feature-impl.mjs`; P5 **делегирует** через `workflow('validate-feature-impl')`. Re-gate в любой момент, process-catalog модель, чистая граница. Риск: `workflow()`-nesting one-level — если P5 запущен nested, вызов бросит → **fallback** на текущий inline-лифт `kiro-validate-impl` (страховка, поведение не регрессирует).
+2. **GO-вердикт — звать `kiro-validate-impl` vs нативный детерминир. синтез** → **нативный синтез** в скрипте: GO ⟺ (механика зелёная ∧ нет остаточных подтверждённых находок ∧ не degraded). Full P6 ЗАМЕНЯЕТ тонкий лифт, а не оборачивает его (лифт остаётся только в fallback).
+3. **Роли (3 валидатора) — inline vs `agents/orchestrator/`** → **inline-const** (per D.1, как P4/P5; реестр ролей — отдельный backlog).
+4. **Находки валидаторов — чинить по слову валидатора vs verify-finding-before-act** → **verify-before-act**: каждая находка сначала подтверждается grep'ом ground-truth; опровергнутая отбрасывается, не чинится (ядро ценности P6 — не гоняться за галлюцинацией). Ремедиация bounded ≤3 (как cap kiro-validate-impl).
+
+### Decision
+
+P6 = **механический слой** (полный suite + build через agent+Bash — не «все [x]») + **3 параллельных валидатора** (RA-8 `requirements-coverage`, переиспользует `coverage-oracle` как anti-self-report опору; RA-9 `design-alignment`; RA-10 `integration-boundary` — orphan-export/dead-seam/`/reset`) + **verify-finding-before-act** (находка → grep ground-truth → confirmed/refuted; ремедиация только confirmed, bounded ≤3, re-verify после каждого фикса) + **детерминир. синтез GO/NO-GO/MANUAL_VERIFY_REQUIRED**. Concerns (FB-013) из P5 пробрасываются и **дисклоузятся** в findings. P5 Phase 3 Validate **делегирует** в P6 через `workflow()` с fallback на inline `kiro-validate-impl`. FB-010 сохранён: гейт бежит при любой приземлившейся задаче; blocked-задачи → advisory (MANUAL_VERIFY_REQUIRED).
+
+### Outcome
+
+Файлы (ветка `worktree-whimsical-exploring-pie`): `orchestrator/processes/validate-feature-impl.mjs` (новый процесс); `orchestrator/processes/feature-to-tdd-impl.mjs` (Phase 3 перепроведена на `workflow('validate-feature-impl')` + fallback); `commands/orchestrator/run.md` (P6 в таблице/preflight/launch/return-док/after-run; убран `kiro-validate-impl` из списка per-task лифтов P5 — теперь feature-level через P6); `tests/orchestrator/validate-feature-impl-wiring.test.cjs` (13 static-инвариантов, вкл. P5→P6 делегацию); `package.json` (+тест). **`npm run verify` exit 0** (P6-wiring 13/13; workflow-syntax парсит новый `.mjs`; args-parsing подхватил его автоматически — FB-001 идиома + комментарий НАД строкой per P4 Lesson #3). Smoke-гейт N+1b пройден; live-прогон (пилот с реализованной фичей) — отдельный осознанный заход.
+
+### Lessons
+
+1. **Feature-level гейт ловит то, что сумма per-task ревью не ловит.** Cross-task seam (orphan-export, `/reset`↔`/reset-password`) проходит оба зелёных per-task ревью — нужен валидатор с широкой оптикой (RA-10), которого по определению нет на уровне задачи.
+2. **verify-finding-before-act — дешёвая защита от галлюцинаций валидатора.** Валидатор-LLM может выдумать дефект; grep ground-truth перед ремедиацией отбрасывает ложные находки, не давая «чинить» несуществующее. Тот же приём, что adversarial-verify, но применён к находкам гейта.
+3. **Делегация через `workflow()` требует fallback.** Nesting one-level — если процесс-делегатор сам окажется nested, вызов бросит; inline-лифт как `catch`-ветка делает делегацию безопасной (поведение не регрессирует, если nesting недоступен live). Подтвердить nesting — пункт live-прогона.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

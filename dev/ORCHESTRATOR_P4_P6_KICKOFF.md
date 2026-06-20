@@ -78,11 +78,14 @@ durability/multi-feature, полный OD8 reverse-канал, реестр ро
 - ✅ **N+1a — P4 `audit-spec-fidelity` ПОСТРОЕН** (DEC-DEV-0084, 2026-06-20). Файлы: `orchestrator/lib/fidelity-oracle.cjs`
   (+тест 7/7), `orchestrator/processes/audit-spec-fidelity.mjs` (+wiring-тест 7/7), `skills/orchestrator/audit-spec-fidelity.md`,
   `commands/orchestrator/run.md` (P4 вписан), `package.json` (+2). `npm run verify` exit 0. Smoke-гейт N+1a→N+1b пройден.
-- ⬜ **N+1b — full P6 `validate-feature-impl` — СЛЕДУЮЩЕЕ ДЕЙСТВИЕ** (отложено в следующую сессию решением пользователя).
-  Дизайн зафиксирован выше (D3): отдельный процесс `orchestrator/processes/validate-feature-impl.mjs` = механический слой
-  (полный suite + build) + 3 параллельных inline-валидатора (`requirements-coverage` / `design-alignment` / `integration-boundary`)
-  + **verify-finding-before-act** (находка → grep ground-truth → ремедиация только при подтверждении) + bounded ≤3. P5 Validate-фаза
-  **делегирует** через `workflow('validate-feature-impl')` (fallback — текущий inline-лифт `kiro-validate-impl`, если nesting недоступен).
-  Переиспользовать `coverage-oracle` (P1-1) в requirements-coverage-валидаторе. Тест — static-инварианты как `audit-fidelity-wiring`.
-  Closure: DEC-DEV-0085 + CHANGELOG + смок. Read first: этот kickoff §«Что строим»/D3, SPEC §3.3 RA-8/9/10, RUN_01 §1 E5 / §5 P1-5,
-  текущий `feature-to-tdd-impl.mjs` Phase 3 (Validate, лифт kiro-validate-impl — точка делегирования).
+- ✅ **N+1b — full P6 `validate-feature-impl` ПОСТРОЕН** (DEC-DEV-0085, 2026-06-20). Файлы: `orchestrator/processes/validate-feature-impl.mjs`
+  (механический слой suite+build + 3 параллельных inline-валидатора RA-8/9/10 + verify-finding-before-act + bounded ≤3 + детерминир. синтез
+  GO/NO-GO/MANUAL_VERIFY_REQUIRED; concerns FB-013 дисклоузятся), `orchestrator/processes/feature-to-tdd-impl.mjs` (Phase 3 Validate перепроведена
+  на `workflow('validate-feature-impl')` + fallback на inline `kiro-validate-impl`), `commands/orchestrator/run.md` (P6 wiring), `package.json` (+тест),
+  `tests/orchestrator/validate-feature-impl-wiring.test.cjs` (13/13, вкл. P5→P6 делегацию). **`npm run verify` exit 0.** Инкремент N+1 (P4+P6) закрыт.
+- ⬜ **СЛЕДУЮЩЕЕ — live-прогон P4+P6 на пилоте** (отдельный осознанный заход; smoke зелёный только на fixtures, НЕ live). Подтвердить:
+  (1) `workflow()`-nesting P5→P6 работает live (иначе срабатывает fallback); (2) валидаторы RA-8/9/10 ловят реальные cross-task seams;
+  (3) verify-finding-before-act отбрасывает ложные находки. Остальной backlog: S7 detect-leg (#3/#4 DEC-DEV-0081, гейт субстрата),
+  полный OD8 reverse-канал, реестр ролей `agents/orchestrator/`, P7 (нужны D3-runtime), P2 (консилиум), durability/multi-feature.
+  ⚠ **Перед push:** ветка `worktree-whimsical-exploring-pie` behind `main` — смержить main (journal-коллизия 0082/0083 снята переномеровкой
+  P4→0084; при merge вставятся main-записи 0082/0083, далее P4=0084 и P6=0085).

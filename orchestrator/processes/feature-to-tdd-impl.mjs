@@ -316,31 +316,47 @@ for (const task of tasks) {
   log(`task ${task.id} ✓ committed ${(commit && commit.sha) || ''}`)
 }
 
-// ---- Phase 3: feature-level GO/NO-GO (lift kiro-validate-impl) -------------
+// ---- Phase 3: feature-level GO/NO-GO — delegate to full P6 validate-feature-impl ----
+// (DEC-DEV-0085, N+1b): the thin inline kiro-validate-impl lift is replaced by the full P6
+// process (mechanical layer + 3 parallel validators RA-8/9/10 + verify-finding-before-act).
+// P5 DELEGATES via workflow(). FB-010 still holds: the gate runs whenever ANY task landed —
+// a single blocked task must NOT suppress it (the feature-level gate is the only check wide
+// enough to catch a cross-task seam built by task A but never wired by task B); with blocked
+// tasks P6 runs in ADVISORY mode (MANUAL_VERIFY_REQUIRED). FALLBACK: workflow() nesting is
+// one level only — if P5 was itself launched nested, the call throws and we fall back to the
+// inline kiro-validate-impl lift this phase used before.
 phase('Validate')
-// FB-010 (live-run RUN 01): run the feature-level gate whenever ANY task landed — a
-// single blocked task must NOT suppress it. The GO-gate (kiro-validate-impl) is the only
-// check wide enough to catch cross-task integration seams (a method built by task A but
-// never wired by task B passes both per-task reviews). Previously `!blockedTasks.length`
-// skipped it on any block, which masked exactly such a gap. With blocked tasks we run it
-// in ADVISORY mode: surface cross-task findings, do not remediate, never claim GO.
 let go = null
 if (implemented.length) {
   const degraded = blockedTasks.length > 0
-  // FB-013 (DEC-DEV-0081 fix #1): surface propagated CONCERNS to the feature-level gate so a
-  // deferred real seam (e.g. a provider satisfied only by a Mock) is DISCLOSED at GO, not
-  // hidden. A GO over a deferred capability is GO-with-caveats, not a clean production GO.
-  const concernNote = concerns.length
-    ? ` DEFERRED-CAPABILITY CONCERNS surfaced during impl (FB-013): ${concerns.map((c) => `${c.task}: ${c.concern}`).join(' | ')}. Factor these into the verdict and DISCLOSE them in findings — a GO over a deferred real seam (mock-only provider / unwired skeleton) is GO-with-caveats, not a clean production GO.`
-    : ''
-  go = await agent(
-    `Invoke kiro-validate-impl ${FEATURE} as the feature-level GO/NO-GO gate (cross-task consistency, full suite, spec coverage). ` +
-    (degraded
-      ? `ADVISORY MODE — ${blockedTasks.length} task(s) blocked (${blockedTasks.join(', ')}); the feature is NOT complete. Do NOT remediate. Run the cross-task / integration checks anyway and SURFACE any seams (orphan wiring, unhandled events, missing call-sites) as findings. Return MANUAL_VERIFY_REQUIRED + findings (FB-010: a blocked task must not hide a cross-task gap).`
-      : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote,
-    { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
-  )
-  log(`feature GO-gate${degraded ? ' (advisory — blocked tasks present)' : ''}: ${(go && go.result) || 'n/a'}`)
+  try {
+    const p6 = await workflow('validate-feature-impl', {
+      feature: FEATURE,
+      specDir: SPEC_DIR,
+      oracle: '.claude/orchestrator/lib/coverage-oracle.cjs',
+      validationCommands: (plan && plan.validation_commands) || {},
+      concerns,            // FB-013: forward deferred-capability flags so P6 DISCLOSES them at GO
+      degraded,            // FB-010: blocked tasks → P6 advisory mode
+      maxRemediationRounds: 3,
+    })
+    go = { result: (p6 && (p6.result || p6.go_gate)) || 'MANUAL_VERIFY_REQUIRED', findings: (p6 && p6.findings) || [] }
+    log(`feature GO-gate (P6 validate-feature-impl${degraded ? ', advisory' : ''}): ${go.result}`)
+  } catch (e) {
+    // FALLBACK — nested workflow() unavailable (one-level limit): inline kiro-validate-impl lift.
+    log(`P6 delegation unavailable (${(e && e.message) || 'nesting'}) — falling back to inline kiro-validate-impl`)
+    // FB-013: surface propagated CONCERNS so a deferred real seam (mock-only provider) is DISCLOSED at GO, not hidden.
+    const concernNote = concerns.length
+      ? ` DEFERRED-CAPABILITY CONCERNS surfaced during impl (FB-013): ${concerns.map((c) => `${c.task}: ${c.concern}`).join(' | ')}. Factor these into the verdict and DISCLOSE them in findings — a GO over a deferred real seam (mock-only provider / unwired skeleton) is GO-with-caveats, not a clean production GO.`
+      : ''
+    go = await agent(
+      `Invoke kiro-validate-impl ${FEATURE} as the feature-level GO/NO-GO gate (cross-task consistency, full suite, spec coverage). ` +
+      (degraded
+        ? `ADVISORY MODE — ${blockedTasks.length} task(s) blocked (${blockedTasks.join(', ')}); the feature is NOT complete. Do NOT remediate. Run the cross-task / integration checks anyway and SURFACE any seams (orphan wiring, unhandled events, missing call-sites) as findings. Return MANUAL_VERIFY_REQUIRED + findings (FB-010: a blocked task must not hide a cross-task gap).`
+        : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote,
+      { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
+    )
+    log(`feature GO-gate (fallback kiro-validate-impl${degraded ? ' advisory' : ''}): ${(go && go.result) || 'n/a'}`)
+  }
 } else {
   log('skipping GO-gate: no tasks implemented')
 }
