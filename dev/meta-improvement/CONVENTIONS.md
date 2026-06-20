@@ -63,7 +63,8 @@ dev/meta-improvement/
 │   ├── phase-closure.md
 │   ├── patch-cut.md             # version cut ritual (DEC-DEV-0079)
 │   ├── audit-smoke-workflow.md  # phase smoke→audit ритуал (Phase 4.1)
-│   └── audit-watch.md           # semi-auto session-audit watcher (Audit v2 Incr.2)
+│   ├── audit-watch.md           # semi-auto session-audit watcher (Audit v2 Incr.2)
+│   └── live-run-validation.md   # live-прогон (dogfood) validation protocol (DEC-DEV-0086)
 ├── patterns/                    # 6 patterns + index
 │   ├── README.md
 │   ├── spec-drift-sweep.md
@@ -105,7 +106,7 @@ dev/meta-improvement/
 4. **Hook** — automatic on event. **Promote when:** command needs to fire on commit/file-change без developer action.
 
 **v1.0 status (mechanism mix):**
-- **Checklists** (default): phase-closure.md, phase-kickoff.md, audit-smoke-workflow.md (Phase 4.1)
+- **Checklists** (default): phase-closure.md, phase-kickoff.md, audit-smoke-workflow.md (Phase 4.1), live-run-validation.md (dogfood live-run protocol, DEC-DEV-0086)
 - **Patterns** (Stage 3, mostly provisional): 5 в `patterns/`
 - **Skills** (Stage 4): memory-sync.md (formalizes phase-closure Step 5; manual run still default)
 - **Scripts** (Stage 4 + Phase 4.1 + Audit v2): verify-update.sh / .ps1 (post-/ecosystem:update verification); audit-smoke.js + audit-index.js (Phase 4.1 D7 conformance auditor CLI); classify.js + effect-probe.js + audit-watch.js (Session Audit v2 Incr.1-2 — universal session auditor: deterministic classifier, effect-on-product probe, semi-auto watcher; DEC-DEV-0056/0057)
@@ -131,6 +132,7 @@ dev/meta-improvement/
 | `phase-kickoff.md` | Before Phase N implementation | Once per phase | Manual (user types invocation) |
 | `phase-closure.md` | After Phase N implementation, before Phase N+1 readiness gate | Once per phase | Manual (user types invocation) |
 | `patch-cut.md` | Before accumulated `[Unreleased]` must reach pilot (i.e. before `/ecosystem:update` in a product project / live run) | Per delivery event (NOT scheduled / not «N features») | Manual (developer runs) |
+| `live-run-validation.md` | After a non-trivial change is built + static smoke green, before declaring it validated / dropping «pending runtime smoke» | Per non-trivial change (skip tiny edits) | Manual (operator runs; reviewer grades post-hoc — executor/reviewer separation) |
 | `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | Manual (user types invocation) |
 | `scripts/verify-update.sh` | Post-/ecosystem:update | Per update | Manual (user runs externally) |
 | `hooks/phase-closure-reminder.js` | PostToolUse on Bash matching `git commit` с phase-completion pattern | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
