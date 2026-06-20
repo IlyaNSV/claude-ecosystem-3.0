@@ -68,6 +68,19 @@ test('does NOT edit .product/ on a product-route drift', () => {
     'process must explicitly refuse to edit .product/ for product-route drift');
 });
 
+test('verify-finding-before-act: confirms a semantic drift before fixing the spec (parity with P6)', () => {
+  assert(/verifyDrift\b/.test(src), 'no verifyDrift helper');
+  assert(/VERIFY_SCHEMA/.test(src) && /confirmed/.test(src), 'verify schema / confirmed flag missing');
+  assert(/confirmedDrifts/.test(src), 'spec-fix not gated on confirmed drifts');
+  // the deterministic oracle's fabricated-trace finding is exempt — only LLM semantic drifts are re-verified
+  assert(/fabricated-trace/.test(src), 'oracle-confirmed fabricated-trace not exempted from re-verify');
+  // verify must run BEFORE the spec-fix
+  const verifyIdx = src.indexOf('verifyDrift(current.feature');
+  const fixIdx = src.indexOf('spec-fix:');
+  assert(verifyIdx !== -1 && fixIdx !== -1 && verifyIdx < fixIdx, 'verify-drift must run before the spec-fix');
+  assert(/refuted/i.test(src), 'refuted drifts not dropped');
+});
+
 test('returns the P4 contract keys', () => {
   const m = src.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');

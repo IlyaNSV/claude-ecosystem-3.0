@@ -26,7 +26,9 @@ export const meta = {
  *   Layer-2 semantic — the inline fidelity-auditor role: value mismatches, contradicted/
  *     re-scoped rules, stale entities, weakened acceptance — with a route + severity.
  *
- * TRIAGE: spec-defect → fix the spec (own zone) + AUTO-RE-AUDIT (P1-2); product-defect →
+ * TRIAGE: spec-defect → VERIFY each semantic drift against ground truth first (verify-finding-
+ *   before-act, parity with P6 — DEC-DEV-0087; refuted drifts dropped, never fixed) → fix the
+ *   spec (own zone) + AUTO-RE-AUDIT (P1-2); product-defect →
  * record a product-feedback item in pending-actions (route:product — OD8 reverse channel),
  * do NOT edit .product/ or patch the spec around it.
  *
@@ -102,6 +104,15 @@ const FIX_SCHEMA = {
   },
 }
 
+const VERIFY_SCHEMA = {
+  type: 'object',
+  required: ['confirmed'],
+  properties: {
+    confirmed: { type: 'boolean' },                      // grep of ground truth confirms the drift is REAL (not an auditor hallucination)
+    evidence: { type: 'string' },                        // what the inspection actually found (cite spec + .product)
+  },
+}
+
 // ---- audit one feature (deterministic oracle + semantic auditor) -----------
 const auditOne = (feature, extra = '') =>
   agent(
@@ -112,6 +123,24 @@ const auditOne = (feature, extra = '') =>
     `3) SEMANTIC pass: ${FIDELITY_AUDITOR}\n` +
     `faithful = (trace_integrity_passed AND no semantic drifts). Return the audit verdict.${extra}`,
     { schema: AUDIT_SCHEMA, phase: 'Audit', label: `audit:${feature}` },
+  )
+
+// ---- verify-finding-before-act (parity with P6, DEC-DEV-0087) --------------
+// The deterministic oracle's trace-integrity (kind:fabricated-trace = a dangling ref) is already
+// confirmed BY CODE — never re-verified. But a SEMANTIC drift from the LLM fidelity-auditor is
+// judgment, and P4 EDITS + COMMITS the spec on it. So before any spec-fix each semantic drift is
+// CONFIRMED against ground truth (grep the spec + the .product source it cites); a refuted drift is
+// DROPPED, not fixed — P4 must not rewrite a spec around a hallucinated drift (the gap vs P6, closed).
+const verifyDrift = (feature, d) =>
+  agent(
+    `Verify-finding-before-act: the fidelity-auditor flagged a possible SPEC drift in feature "${feature}" — ` +
+    `kind: ${d.kind}; ref: ${d.ref || 'n/a'}; detail: ${d.detail || ''}.\n` +
+    `GREP/INSPECT the actual ground truth — the spec ${SPEC_BASE}/${feature}/{requirements,design,tasks}.md AND the ` +
+    `.product source it cites (handoff + the FM/SC/BR/IC/NFR artifact) — and decide if the drift is REAL: the spec ` +
+    `genuinely misrepresents / contradicts / weakens the product. confirmed = true ONLY with concrete evidence from ` +
+    `both sides; if the spec actually matches or the auditor misread, confirmed = false (drop it — do NOT edit the ` +
+    `spec on a hallucinated drift). Return confirmed + evidence.`,
+    { schema: VERIFY_SCHEMA, phase: 'Triage', label: `verify-drift:${feature}:${d.ref || d.kind}` },
   )
 
 // ---- Phase 1: init ---------------------------------------------------------
@@ -162,9 +191,20 @@ for (const a of drifting) {
       round += 1
       const curSpecDrifts = (current.drifts || []).filter((d) => d.route === 'spec')
       if (!curSpecDrifts.length) { fixedOk = true; break }
+      // verify-finding-before-act (DEC-DEV-0087): fabricated-trace is oracle-confirmed by code;
+      // each SEMANTIC drift is confirmed against ground truth before we edit the spec. Refuted → dropped.
+      const confirmedDrifts = []
+      for (const d of curSpecDrifts) {
+        if (d.kind === 'fabricated-trace') { confirmedDrifts.push(d); continue }   // deterministic oracle — already real
+        const v = await verifyDrift(current.feature, d)
+        if (v && v.confirmed) confirmedDrifts.push({ ...d, evidence: v.evidence })
+        else log(`drift ${d.ref || d.kind} (${current.feature}) refuted by ground-truth check — dropped, NOT fixed`)
+      }
+      if (!confirmedDrifts.length) { fixedOk = true; break }   // all refuted → no real spec drift to fix
       const fix = await agent(
         `Feature ${current.feature}: fix the SPEC so it faithfully matches the .product source (consumer-conforms-to-owner). ` +
-        `Spec-route drifts to resolve: ${curSpecDrifts.map((d) => `${d.ref || d.kind}: ${d.detail || ''}`).join(' | ')}. ` +
+        `Fix ONLY these CONFIRMED spec drifts (each verified against ground truth — touch nothing else): ` +
+        `${confirmedDrifts.map((d) => `${d.ref || d.kind}: ${d.detail || ''}${d.evidence ? ` [evidence: ${d.evidence}]` : ''}`).join(' | ')}. ` +
         `Edit only ${SPEC_BASE}/${current.feature}/{requirements,design,tasks}.md; do NOT touch .product/. Selective commit ` +
         `(fix(specs): ${current.feature} fidelity). Return whether fixed.`,
         { schema: FIX_SCHEMA, phase: 'Triage', label: `spec-fix:${current.feature}:r${round}` },

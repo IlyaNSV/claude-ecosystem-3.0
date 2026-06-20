@@ -5865,6 +5865,31 @@ Live-валидация доработок до сих пор делалась a
 
 ---
 
+## DEC-DEV-0087 — verify-finding-before-act перенесён в P4 (паритет с P6)
+
+**Date:** 2026-06-20
+**Trigger:** При подготовке к live-прогону пользователь спросил, сможет ли P4 при текущей версии запускать исправление и насколько корректно. Рассуждение вскрыло асимметрию: P4 для spec-defect автономно правил + коммитил спеку **по находке `fidelity-auditor` напрямую**, полагаясь на auto-re-audit лишь как пост-фактум проверку — единственный из гейтов оркестратора без up-front подтверждения находки (P6 уже имел verify-finding-before-act). Пользователь заказал перенос.
+**Tag:** #orchestrator #P4 #verify-before-act #DEC-DEV-0085-followup
+
+### Context
+
+P6 (`validate-feature-impl`, DEC-DEV-0085) подтверждает находку валидатора grep'ом ground-truth ДО ремедиации — refuted отбрасывает. P4 этого не делал: семантический drift от LLM-`fidelity-auditor` → сразу spec-fix + commit. Риск: «починить» спеку по галлюцинированному drift'у, или (хуже) подогнать спеку под неверный канон при мис-классификации триажа. auto-re-audit ловит только не-сошедшийся fix, не fix по ложной находке, успешно закрепивший неверное.
+
+### Decision
+
+Перенести verify-finding-before-act в P4 с одним уточнением относительно P6: **детерминированная находка оракула (`fabricated-trace` = dangling ref от `fidelity-oracle`) exempt** — она подтверждена кодом, не суждением, перепроверять незачем. Только **семантические** spec-drifts от LLM-auditor проходят `verifyDrift` (grep спеки + цитируемого `.product`-источника) перед fix; refuted → dropped (спека не правится). Если все spec-drifts фичи refuted → `fixedOk` (реального дефекта нет). Применяется на каждом re-audit раунде (bounded MAX_REAUDIT_ROUNDS сохранён). Новый `VERIFY_SCHEMA` (`confirmed`+`evidence`) + helper `verifyDrift`; fix-агент теперь чинит ТОЛЬКО confirmed drifts (с evidence в промпте).
+
+### Outcome
+
+`orchestrator/processes/audit-spec-fidelity.mjs` (header TRIAGE + VERIFY_SCHEMA + verifyDrift + spec-fix loop gated on confirmedDrifts); `tests/orchestrator/audit-fidelity-wiring.test.cjs` (+инвариант verify-before-act, fabricated-trace exempt, verify-перед-fix порядок); brief P4-рубрика (+строка verify-finding-before-act). CHANGELOG `[Unreleased] ### Changed`. `npm run verify` — ожидается exit0. Live-непроверено (как и сам P4) — войдёт в первый live-прогон.
+
+### Lessons
+
+1. **Источник находки определяет, нужен ли verify.** Детерминированный оракул (код) самоподтверждён — перепроверять = удвоить работу; LLM-суждение нет. Перенос verify-before-act не должен быть слепой копией P6 — exempt'ить code-confirmed находки.
+2. **«Чинит автономно» без подтверждения находки — общий анти-паттерн гейтов.** Выявлен через прямой вопрос пользователя о корректности; стоит проверять каждый авто-ремедиирующий гейт на наличие up-front confirmation, а не только пост-фактум re-check.
+
+---
+
 ## DEC-DEV-0088 — `/ecosystem:update` удалял собственный command-файл на лету (self-deletion abort)
 
 **Date:** 2026-06-20
