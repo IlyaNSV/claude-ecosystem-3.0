@@ -80,7 +80,7 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 - `/product:da-review <FM-id>` — adversarial business review (6 lenses)
 - `/product:drift-check` — structural self-audit against original PS/HYP/MVP
 - `/product:patterns` — meta-linter for recurring anti-patterns
-- `/product:meta-feedback` — propose ecosystem-level tuning
+- `/product:validation-tune` — propose project-local validation tuning
 - `/product:lesson "<...>"` — atomic self-correction: find→fix→record a corrective LESSON-* (use the instant an error is self-detected; non-deferrable)
 
 ### Design (D2-B04, conditional on `has_ui: true`)
@@ -102,6 +102,7 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 
 - `/ecosystem:verify` — installation health check
 - `/ecosystem:update` — sync ecosystem to latest version (preserves `.product/` + config; timestamped backup by default; `--dry-run` to preview)
+- `/ecosystem:meta-feedback` — capture systemic ecosystem defects into the upstream outbox (escalated from `/product:validation-tune`)
 
 ---
 
@@ -111,7 +112,7 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 2. **Tool-agnostic** for D2-Tech and D3-D6 (DEC-A06). External tools replaceable through Integrator.
 3. **Draft → iterate → approve** pattern for all 23 artifact types.
 4. **Tier-aware validation**: in `pilot` tier, only 🔴 Blocking rules run inline. Others queued for `/product:status` and approve gates.
-5. **Drift detection**: `confidence:` in frontmatter, `/product:drift-check`, `/product:patterns`, `/product:meta-feedback` — active protection against AI's tendency to lose coherence over long sessions.
+5. **Drift detection**: `confidence:` in frontmatter, `/product:drift-check`, `/product:patterns`, `/product:validation-tune` — active protection against AI's tendency to lose coherence over long sessions.
 6. **Self-contained handoff**: universal markdown for any external tool, via adapter in Integrator.
 
 ---

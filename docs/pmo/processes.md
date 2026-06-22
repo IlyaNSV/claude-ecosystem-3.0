@@ -916,7 +916,7 @@ Mapping команды → процессы → артефакты:
 | `/product:bg-review` | Manual BG extraction review | Pending BG terms batch |
 | `/product:bg-rename <old> <new>` | BG mass-rename | Bundle of artifact updates |
 | `/product:drift-check` | Structural self-audit (C1) | Direction alignment report (🟢/🟡/🔴) |
-| `/product:meta-feedback` | AI proposes ecosystem-level changes (C3) | Validation overrides / config tweaks с rationale в journal |
+| `/product:validation-tune` | AI proposes project-local validation tuning; systemic defects escalate via /ecosystem:meta-feedback (C3) | Validation overrides / config tweaks с rationale в journal |
 | `/product:patterns` | Meta-linter on `.product/` (C4) | Recurring anti-patterns report |
 | `/product:promote-note <NOTE-id> to <TYPE>` | Convert NOTE-* to structured artifact (D3) | New artifact draft |
 | `/product:lesson "<...>"` | Atomic self-correction find→fix→record (DEC-DEV-0062) | Fixed error + active LESSON-* (ready to use) |
@@ -1190,8 +1190,8 @@ NFR на solo-уровне — **очертания достаточности, 
 Помимо BG/cascade/bi-dir refs, экосистема имеет **активные** механизмы против дрифта при долгих сессиях:
 
 - **C1 `/product:drift-check`** — on-demand или auto перед `/product:handoff`. Skill `drift-detector.md` читает PS + active HYP primary + MVP scope + последние 10 изменённых артефактов, выдаёт direction alignment report.
-- **C2 `confidence:` field в frontmatter** — все 24 типа артефактов имеют `confidence: high | medium | low` + `confidence_notes`. ИИ обязан articulate уверенность при approve. Tied with A1 auto-approve и meta-feedback usage stats.
-- **C3 `/product:meta-feedback`** — ИИ может инициировать ecosystem-level proposals (override rule, refine threshold, suggest skill update). Skill `meta-feedback.md`. Approval — human, запись в `.claude/integrator/decision-journal.md`.
+- **C2 `confidence:` field в frontmatter** — все 24 типа артефактов имеют `confidence: high | medium | low` + `confidence_notes`. ИИ обязан articulate уверенность при approve. Tied with A1 auto-approve и validation-tune usage stats.
+- **C3 `/product:validation-tune`** — ИИ может инициировать project-local tuning proposals (override rule, refine threshold); systemic-дефекты эскалируются через `/ecosystem:meta-feedback`. Skill `validation-tune.md`. Approval — human, запись в `.claude/integrator/decision-journal.md`.
 - **C4 `/product:patterns`** — meta-linter on demand. Skill `pattern-linter.md`. Анализ `.product/` на повторяющиеся anti-patterns:
   - Hard-coded values across multiple BR (suggest extract to shared)
   - Missing actors в SC steps

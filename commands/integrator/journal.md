@@ -30,7 +30,7 @@ Defaults if not specified:
 Recognized filter tags (any combination):
 - `#tool-add`, `#tool-remove`, `#tool-replace`, `#tool-update`
 - `#conflict-resolution`, `#contract-design`, `#drift-fix`, `#error-fix`, `#rollback`
-- `#research`, `#meta-feedback`
+- `#research`, `#validation-tune`
 - Tool name as tag (e.g., `--filter cc-sdd`)
 - PMO zone (e.g., `--filter D2-Tech`)
 

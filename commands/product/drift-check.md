@@ -103,7 +103,7 @@ Anchor: PS + HYP-001 (primary) + MVP scope
 
   Optional:
     → /product:patterns — complementary meta-linter scan
-    → /product:meta-feedback if signals reveal rule-level issues
+    → /product:validation-tune if signals reveal rule-level issues
 ```
 
 ### Step 6: Journal entry (only if significant)

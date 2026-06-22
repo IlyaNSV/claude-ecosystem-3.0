@@ -207,7 +207,7 @@ claude
 - `status.md` — dashboard `.product/` state
 - `config.md` — read/edit product.yaml
 - `drift-check.md` — C1 modification: structural self-audit
-- `meta-feedback.md` — C3 modification: AI proposes ecosystem improvements
+- `validation-tune.md` — C3 modification: project-local validation tuning (systemic defects → /ecosystem:meta-feedback)
 - `patterns.md` — C4 modification: meta-linter for anti-patterns
 - `promote-note.md` — D3 modification: convert NOTE-* to structured artifact
 
@@ -223,7 +223,7 @@ claude
 **skills/product/ (4 drift mechanisms):**
 - `drift-detector.md` — C1 logic
 - `pattern-linter.md` — C4 logic
-- `meta-feedback.md` — C3 logic
+- `validation-tune.md` — C3 logic
 - `note-capture.md` — D3 quick capture flow
 
 **hooks/product/:**
@@ -244,9 +244,9 @@ claude
 
 ### Delivered (20 файлов)
 
-**commands/product/ (7):** init, status, config, drift-check, meta-feedback, patterns, promote-note
+**commands/product/ (7):** init, status, config, drift-check, validation-tune, patterns, promote-note
 **skills/product/ Discovery (7):** discovery-session, problem-discovery, market-research-protocol-quick, competitive-analysis-protocol-quick, segment-discovery, vp-design, hypothesis-formulation
-**skills/product/ drift mechanisms (4):** drift-detector, pattern-linter, meta-feedback, note-capture
+**skills/product/ drift mechanisms (4):** drift-detector, pattern-linter, validation-tune, note-capture
 **hooks/product/ (2):** artifact-validate.js (tier-aware B1 + quiet-draft-mode B2), session-state.js
 
 ### Known limitations / notes для pilot
@@ -339,7 +339,7 @@ Cross-cutting:
 ### Risks
 
 - **Cascade protocol implementation на JS** — графовая операция; mitigation: detection-only scope для v1, V-11 auto-fix только.
-- **Adaptive-depth DA subagent prompt design** — single subagent invocation должен правильно классифицировать magnitude и адаптировать output; risk over/under-triggering. Mitigation: pilot test после Phase 3, refine через `/product:meta-feedback`.
+- **Adaptive-depth DA subagent prompt design** — single subagent invocation должен правильно классифицировать magnitude и адаптировать output; risk over/under-triggering. Mitigation: pilot test после Phase 3, refine через `/product:validation-tune`.
 - **Skill frontmatter drift** — Phase 2 PS skill drift (DEC-DEV-0011) показал что AI rename fields. Mitigation: B.1 convention — explicit frontmatter template обязателен в каждом skill, создающем артефакт.
 
 ---

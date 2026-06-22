@@ -263,7 +263,7 @@ If A1 conditions fail:
 3. **Conditional без BR ref.** «Сan if owner» without BR-NNN — rule invisible. Always reference active BR.
 4. **Forgetting system roles.** Auto-actions (scheduled archive, auto-reject) need actor — typically R-system-<purpose>.
 5. **Role = SEG.** Не always 1:1. SEG = business segment (who they are); Role = system role (what they do). One SEG может have two roles.
-6. **A1 false positive.** If skill self-check passes но V-11 actually fails — skill bug. Surface via /product:meta-feedback.
+6. **A1 false positive.** If skill self-check passes но V-11 actually fails — skill bug (systemic). Surface via /ecosystem:meta-feedback.
 7. **Anti-matrix forgotten.** Explicitly «никогда» entries critical для preventing accidental permission drift. Add при новом role / privacy-sensitive action.
 8. **Variant field names** — use canonical exactly.
 9. **Rebuild RPM from scratch.** RPM is incremental — preserve existing roles/actions/cells; ADD new ones. Не overwrite.

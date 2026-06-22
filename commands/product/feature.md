@@ -182,7 +182,7 @@ When F.10 complete (all blocking conditions met, FM transitioned planned → in-
 - **Mode strictly determined by argument shape.** FM-NNN pattern → enrichment; quoted text → creation; --continue → resume. No ambiguity.
 - **FM.status check strict.** Enrichment only valid для status=planned. shipped/deprecated/in-progress refuse.
 - **Per-FM session state.** Per DEC-DEV-0013 #1 — feature-<FM-id>-progress.yaml per FM, не singleton. Switching между FMs не overwrite.
-- **A1 auto-approve trust skill.** Orchestrator surfaces notification but не second-guesses skill self-check. If A1 misfires — meta-feedback issue, не block immediately.
+- **A1 auto-approve trust skill.** Orchestrator surfaces notification but не second-guesses skill self-check. If A1 misfires — это skill bug (systemic → эскалировать через /ecosystem:meta-feedback), не block immediately.
 - **DA orchestration: Mode: adaptive only.** Hook-triggered DA always adaptive depth (single subagent invocation per DEC-DEV-0013 + refactored devils-advocate.md). Manual full mode reserved для Phase 4 /product:da-review.
 - **F.5a / F.8 / F.9 placeholders.** Phase 4 / Phase 6 work — surface skip notification, не attempt inline implementation. Discipline against scope creep.
 - **Confidence articulation** (C2) — at every non-auto approve gate.

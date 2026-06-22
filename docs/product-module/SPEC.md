@@ -3,7 +3,7 @@
 > **Статус:** v1.0 (2026-04-18)
 > **Роль:** ядро Ecosystem 3.0 — управление D1 (Discovery + Planning) и D2-Behavioral артефактами через унифицированный паттерн «Продуктовый ассистент draft → iterate → approve».
 > **Закрывает:** DEC-A08 (Product Assistant как отдельный agent), DEC-P13 (универсальный паттерн), DEC-ART01..11 (каталог), все итерации 1-9.
-> **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, meta-feedback, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
+> **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, validation-tune, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
 > **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones) · [pmo/processes.md](../pmo/processes.md) (P1-P5 methodology) · [pmo/validation.md](../pmo/validation.md) (V-* rules) · [pmo/artifacts/](../pmo/artifacts/) (24 типа) · [handoff-spec.md](handoff-spec.md) (handoff format) · [integrator-module/SPEC.md](../integrator-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules)
 
 ## 1. Philosophy & Role
@@ -78,7 +78,7 @@
 - Adversarial consciousness: adaptive-depth DA review (см. processes.md §6.2 — refactored DEC-DEV-0012): subagent сам classifies cosmetic vs significant и адаптирует depth в одном invocation
 - Итеративностью: готов к 3-4 раундам обсуждения перед approve, без frustration
 - **Confidence articulation (C2 modification):** перед каждым approve явно сообщает свою уверенность («Confidence: high — derived из 4 SC, transitions clear; единственная неопределённость — recovery path при concurrent edits») — даёт human point of leverage
-- **Self-meta-feedback (C3 modification):** замечает повторяющиеся false positives правил и предлагает downgrade через `/product:meta-feedback`
+- **Self-tuning (C3 modification):** замечает повторяющиеся false positives правил и предлагает project-local downgrade через `/product:validation-tune` (systemic-дефекты эскалируются в экосистему через `/ecosystem:meta-feedback`)
 
 **Что персона избегает:**
 - Sycophancy («отличная идея!» на каждое предложение)
@@ -246,14 +246,14 @@
 - **Использование:** on-demand, OR auto перед `/product:handoff` (non-blocking info), OR auto после каждых 10 новых артефактов
 - **Skill:** `drift-detector.md`
 
-**`/product:meta-feedback`** (C3)
-- **Процесс:** AI инициирует ecosystem-level proposal (override rule, refine threshold, suggest skill update)
+**`/product:validation-tune`** (C3)
+- **Процесс:** AI инициирует project-local tuning proposal (override rule, refine threshold); systemic-дефекты эскалируются через `/ecosystem:meta-feedback`
 - **Триггеры (auto-suggested):**
   - V-* rule с false-positive rate >50% за последние 10 invocations
   - Approve gate с rationale «override» более 3 раз для одного rule
   - User repeated downgrade одного и того же rule
 - **Выходы:** Proposal с rationale → human approves → `validation-config.yaml` updated + journal entry
-- **Skill:** `meta-feedback.md`
+- **Skill:** `validation-tune.md`
 
 **`/product:patterns`** (C4)
 - **Процесс:** Meta-linter on `.product/`
@@ -360,7 +360,7 @@
 ### 4.4a Drift mitigation skills (5 — v1 modifications)
 
 - **`drift-detector.md`** (C1) — reads PS + active HYP primary + MVP scope + recent артефакты; produces direction alignment report; non-blocking
-- **`meta-feedback.md`** (C3) — auto-suggests rule overrides based on usage patterns; presents с rationale; updates validation-config + journal
+- **`validation-tune.md`** (C3) — auto-suggests project-local rule overrides based on usage patterns; presents с rationale; updates validation-config + journal; routes systemic defects to /ecosystem:meta-feedback
 - **`pattern-linter.md`** (C4) — analyzes `.product/` for anti-patterns; pattern dictionary expandable
 - **`note-capture.md`** (D3) — quick capture flow для NOTE-* (≤30 sec from idea to saved file)
 - **`note-promote.md`** (D3) — converts NOTE-* to structured artifact, copies content, updates references

@@ -121,7 +121,7 @@ Sync ecosystem zone (commands, skills, agents, hooks, docs, templates) к latest
 3. **Self-contained handoff**. Универсальный markdown-snapshot для передачи фичи в любой реализатор.
 4. **Continuous consistency**. BG extraction, cascade protocol, bi-dir refs работают в фоне.
 5. **Adversarial validation**. Product DA review, adaptive-depth триггеры (refactored DEC-DEV-0012 — single subagent invocation, self-classification), 6 lenses.
-6. **Drift detection**. `confidence:` поле, `/product:drift-check`, `/product:patterns`, `/product:meta-feedback` — против дрифта при долгих сессиях.
+6. **Drift detection**. `confidence:` поле, `/product:drift-check`, `/product:patterns`, `/product:validation-tune` — против дрифта при долгих сессиях.
 
 ## Документация
 

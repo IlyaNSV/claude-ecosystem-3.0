@@ -269,7 +269,7 @@ If A1 conditions fail (any):
 3. **Inline guards без BR ref.** «If X > 5» в transitions table without BR-NNN — rule invisible, не reusable. Always reference BR.
 4. **Multiple initial states.** LC must have one initial. Если две сущности с different initials — это два LC.
 5. **No final states.** Entities обычно reach terminal state. «archived», «completed», «deleted» — final. Без final state → entity «вечная», обычно bug.
-6. **A1 false positive.** If skill self-checks pass но logic actually flawed — это skill bug. Surface via /product:meta-feedback. **Never bypass A1 conditions to ускорить flow.**
+6. **A1 false positive.** If skill self-checks pass но logic actually flawed — это skill bug (systemic). Surface via /ecosystem:meta-feedback. **Never bypass A1 conditions to ускорить flow.**
 7. **Skip Mermaid diagram.** Diagram — visual reviewer aid; required per LC.md body structure.
 8. **Variant field names** — use canonical exactly.
 

@@ -50,7 +50,7 @@ Count per namespace:
 - `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~19)
 - `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
 - `.claude/commands/orchestrator/*.md` — expect 1+ (run; first increment — P2/P4/P6/P7 processes deferred)
-- `.claude/commands/ecosystem/*.md` — expect 5 (bootstrap, verify, update, pending-actions, enable-d7-audit)
+- `.claude/commands/ecosystem/*.md` — expect 6 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
 
 Report counts + note what's expected for current ROADMAP phase.
 
@@ -149,7 +149,7 @@ COMMANDS
   ✓ product/:      19          (Phase 2+ — init, feature, da-review, validate, ...)
   ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
   ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
-  ✓ ecosystem/:    5           (bootstrap, verify, update, pending-actions, enable-d7-audit)
+  ✓ ecosystem/:    6           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
 
 MCP STACK
   ✓ Sequential Thinking   installed
