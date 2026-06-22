@@ -3,7 +3,7 @@
 > **Версия:** 1.0 (2026-04-18)
 > **Объём:** 44 активных правила (V-*: 16, V-H-*: 11, V-MK-*: 8, V-LE-*: 5, V-AM-*: 4) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
 > **Назначение:** единый каталог валидационных правил для артефактов D1-D2, handoff и Design Module.
-> **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:meta-feedback` workflow), D2 (`approve_overrides` per artifact).
+> **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:validation-tune` workflow), D2 (`approve_overrides` per artifact).
 > **Читать вместе с:** [pmo-map.md](pmo-map.md) (functional zones), [processes.md](processes.md) (P1-P5 methodology), [artifacts/](artifacts/) (24 типа артефактов), [../product-module/handoff-spec.md](../product-module/handoff-spec.md) (V-H-* handoff rules).
 
 ## 0. Critical Review Summary
@@ -805,9 +805,9 @@ global_overrides:
 - **Downgrade (→ warning)** — требует rationale в YAML
 - **Disabled** — требует approved_by + approved_at + rationale; запись в decision journal
 
-### 9.2a `/product:meta-feedback` workflow (C3 modification)
+### 9.2a `/product:validation-tune` workflow (C3 modification)
 
-Если ассистент видит, что правило систематически создаёт false positives или больше не подходит проекту — он может **инициировать** обсуждение ecosystem-level change через `/product:meta-feedback`:
+Если ассистент видит, что правило систематически создаёт false positives или больше не подходит проекту — он может **инициировать** project-local tuning через `/product:validation-tune` (а если дефект systemic — эскалировать в экосистему через `/ecosystem:meta-feedback`):
 
 ```
 [Assistant]
@@ -832,7 +832,7 @@ Apply override?
 
 При Y → ассистент сам обновляет `validation-config.yaml` с rationale + добавляет entry в decision journal. Human может revert через git.
 
-**Это feedback loop AI → ecosystem.** Защита от ситуации «правило неудобно, но никто не предлагает изменить — все молча страдают/игнорируют».
+**Это feedback loop AI → project config (local), с эскалацией AI → ecosystem для systemic-дефектов.** Защита от ситуации «правило неудобно, но никто не предлагает изменить — все молча страдают/игнорируют».
 
 ### 9.3 Per-artifact override
 

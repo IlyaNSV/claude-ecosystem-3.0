@@ -5926,6 +5926,53 @@ Chicken-egg при доставке: у пилота установлен ещё
 
 ---
 
+## DEC-DEV-0090 — Feedback contour split: local `validation-tune` + upstream `ecosystem:meta-feedback`
+
+**Date:** 2026-06-22
+**Trigger:** Owner, изучая продуктовый пилот, заметил: имя `/product:meta-feedback` обещает upstream-фидбэк (в репозиторий экосистемы), а команда делает локальную подстройку валидации. «Название неудачное, и мне нужен настоящий upstream». Разговор-исследование развернул двусмысленность.
+**Tag:** #product #ecosystem #feedback #rename #architecture #naming
+
+### Context
+
+`/product:meta-feedback` семантически склеивал **две разные задачи**, а имя обещало **третью**:
+- *делал* — project-local подстройку правил валидации (пишет локальный `validation-config.yaml`);
+- *имя обещало* — фидбэк наверх, в дизайн самой экосистемы;
+- *путался* — с Orchestrator `FEEDBACK-JOURNAL.md` (тоже «feedback», но это outbox dogfood-находок).
+
+Upstream-канал «пилот → экосистема» при этом частично уже существовал, но фрагментированно и без имени feedback: `FEEDBACK-JOURNAL` (ручной перенос в DEC-DEV), Session Audit v2 (локально читает транскрипты+git пилота → patch-candidates), ручная реконсиляция (DEC-DEV-0065). То есть «построить upstream» = скорее консолидация существующего, а не стройка с нуля.
+
+### Options considered
+
+**Развилка 1 — что чинить.** (a) только переименовать (убрать ложное обещание, оставить локальным); (b) сделать сам meta-feedback upstream'ом (реализовать обещание); (c) единый upstream-канал + переименование локального. Owner выбрал **гибрид (c)**: два контура.
+
+**Развилка 2 — интеграция upstream.** I) файлы на одной машине (прецедент Session Audit `audit-watch.js` — локальная модель, cloud-routines дисквалифицированы); II) git/GitHub (для удалённого/Ubuntu-пилота, но сеть + церемония); III) **гибрид** — захват = git-артефакт в пилоте, перенос читает либо локальные файлы (co-located), либо git (remote). Owner выбрал **гибрид**.
+
+**Развилка 3 — объём v1.** Канал + переименование сейчас; консолидация FEEDBACK-JOURNAL + Session Audit под единый контракт находки — **фаза 2** (меньше риска, быстрее доставка).
+
+### Decision
+
+Два контура, соединённых **классификатором-мостом**:
+
+- **Локальный** `/product:validation-tune` (+ `skills/product/validation-tune.md`) — переименован из meta-feedback, upstream-язык вычищен, journal-тег `DEC-TUNE-*`. Скоуп строго проектный: пишет только локальный `validation-config.yaml`.
+- **Upstream** `/ecosystem:meta-feedback` (+ `skills/ecosystem/meta-feedback.md`) — новый. «Capture, don't fix»: пишет коммитируемый outbox `.product/.upstream/feedback-outbox.md` (`UF-NNN`, один счётчик = SSOT). Гибрид-доставка: local-pickup по умолчанию (как `audit-watch.js`), `--push`/`--issue` для remote. Приёмка/фикс (→ `DEC-DEV-*`) — в репо экосистемы.
+- **Мост (оракул-вопрос):** «Сработало бы это правило/процесс так же ложно в *другом* проекте?» Нет → project-local (tune локально). Да → systemic (эскалировать наверх). `validation-tune` при классе SYSTEMIC маршрутизирует находку в `/ecosystem:meta-feedback`, а не глушит её локальным override.
+
+Sweep ссылок по семантике: обычные `product:meta-feedback` → `validation-tune`; места «skill bug / A1 misfire» → `/ecosystem:meta-feedback` (дефект skill — ecosystem-owned артефакт = systemic, ровно демонстрирует новую модель).
+
+**Нумерация:** `0089` зарезервирован за PA-дедуп-находкой live-run (ещё не записана, см. [[project_orchestrator_live_run_p4p6]]); эта работа взяла `0090`. Дырка 0089 закроется записью PA-дедупа.
+
+### Outcome
+
+Патч v1 (репо экосистемы, не закоммичен — pending owner): proposal `dev/FEEDBACK_CONTOUR_SPLIT_PLAN.md`; созданы `commands/product/validation-tune.md`, `skills/product/validation-tune.md`, `commands/ecosystem/meta-feedback.md`, `skills/ecosystem/meta-feedback.md`; удалены старые product-файлы; sweep ~16 живых ссылок (README/ROADMAP/product+integrator SPEC/pmo validation+processes/templates/integrator journal+map/product skills); `verify.md` ecosystem count `5 → 6`; CHANGELOG `[Unreleased] ### Added`. Count-sweep не требовался (артефакт-типы / validation-правила не менялись). **Доставка в пилот + миграция данных (`.product/.pending/meta-feedback.yaml` → `validation-tune.yaml`, soft) — после live-run прогонов B/C, чтобы не загрязнить грейд.**
+
+### Lessons
+
+1. **Имя — это контракт.** Команда, чьё имя обещает X, а делает Y, копит путаницу годами и провоцирует неверные ментальные модели у пользователя. Дешевле развести имена честно, чем документировать оговорку.
+2. **«Один feedback» был ложной экономией.** project-local override и upstream-эскалация — разные действия с разным скоупом; их слияние прятало системные дефекты экосистемы за per-project патчами. Оракул-вопрос (воспроизводится ли в другом проекте) — дешёвая и точная граница.
+3. **Upstream уже существовал по кускам.** Прежде чем «строить», стоило найти, что Session Audit / FEEDBACK-JOURNAL / reconciliation уже несут upstream — задача свелась к консолидации (фаза 2), а v1 — лишь честный канал + переименование.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

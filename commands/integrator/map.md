@@ -100,7 +100,7 @@ Coverage summary:
 ```
 Recent issues (from journal):
   D3-01 (beads): 3 debug sessions в last 14 days — rule of thumb, confidence may be too high
-    → Consider /product:meta-feedback propose downgrade, OR /integrator:debug <tool> если issue systematic
+    → Consider /product:validation-tune propose downgrade, OR /integrator:debug <tool> если issue systematic
 ```
 
 Это **human-discovered** feedback loop (не автоматический tracking). Journal — source of truth.

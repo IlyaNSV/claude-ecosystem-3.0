@@ -4,7 +4,7 @@
 > **Роль:** «Сисадмин» экосистемы — устанавливает, настраивает, соединяет и поддерживает внешние инструменты под PMO-картой. Сам работу не выполняет.
 > **Не путать с:** Orchestrator Module (будущий модуль, который запускает инструменты и координирует их работу — проектируется позже).
 > **v1 modifications:**
-> - C3 (`/product:meta-feedback`) — Integrator владеет `validation-config.yaml`. Когда Product Module accept-ит meta-feedback proposal, Integrator updates config + journal entry.
+> - C3 (`/product:validation-tune`) — Integrator владеет `validation-config.yaml`. Когда Product Module accept-ит tuning proposal, Integrator updates config + journal entry.
 > - D2 (`approve_overrides`) — Integrator validates contracts с учётом overrides (если handoff содержит `dor_overrides[]`, Integrator адаптер отображает их receiver-у).
 > - B1 (validation_tier) — Integrator при `/integrator:add <tool>` генерирует V-I-* per current tier (pilot tier = меньше cross-boundary правил).
 >
@@ -313,14 +313,14 @@ Generic-паттерн для инструментов, которые **не у
 
 ### 4.2. Confidence levels для PMO coverage
 
-Single-layer declared confidence. Integrator не делает continuous tracking или smoke tests в v1 — его роль «сисадмин», не «observer». Empirical feedback приходит через human discovery (debug session после fail, `/product:meta-feedback` при наблюдаемых проблемах).
+Single-layer declared confidence. Integrator не делает continuous tracking или smoke tests в v1 — его роль «сисадмин», не «observer». Empirical feedback приходит через human discovery (debug session после fail, `/product:validation-tune` при наблюдаемых проблемах).
 
 - **high** — явно задокументировано в tool docs + есть рабочие примеры на подобном стеке
 - **medium** — задокументировано, но неясна проверенность на нашем контексте
 - **low** — выведено по косвенным признакам (issue tracker, community posts)
 - **none** — явно не покрывает или не заявляет
 
-**Confidence refinement после опыта:** если при использовании tool обнаруживаются регулярные failures, human через `/integrator:debug` fix-ит причину, и в journal фиксируются уроки. Systematic issues → через `/product:meta-feedback` пользователь может propose downgrade declared confidence. Нет автоматической downgrade без явного human action.
+**Confidence refinement после опыта:** если при использовании tool обнаруживаются регулярные failures, human через `/integrator:debug` fix-ит причину, и в journal фиксируются уроки. Systematic issues → через `/product:validation-tune` пользователь может propose downgrade declared confidence. Нет автоматической downgrade без явного human action.
 
 ### 4.2.1. Environment tiers (DEC-DEV-0047 / patch 1.3.3)
 
@@ -458,7 +458,7 @@ meta:
 |---|---|---|
 | `/integrator:add <tool>` | Profile создан, confidence выставлен per evidence из docs + profile review | Integrator + human approve |
 | `/integrator:update <tool>` | Re-verify что docs не изменились кардинально; confidence update если applicable | Integrator + human approve |
-| Observed failures / issues | Human runs `/integrator:debug` → journal entry; если systematic → `/product:meta-feedback` propose downgrade | Human-initiated |
+| Observed failures / issues | Human runs `/integrator:debug` → journal entry; если systematic → `/product:validation-tune` propose downgrade | Human-initiated |
 | Tool deprecated / replaced | `/integrator:remove` или `/integrator:replace` → coverage entry removed | Human-initiated |
 | `/integrator:verify` (manual) | Проверка: tool ещё установлен? контракты валидны? confidence adequate? | Human review |
 

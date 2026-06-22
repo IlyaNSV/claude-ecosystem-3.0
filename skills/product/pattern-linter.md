@@ -158,7 +158,7 @@ If 5+ total findings OR any ⚠ asymmetries — journal summary. Otherwise don't
 
 **How patterns are added:**
 - Manual edit of this skill file (common anti-patterns observed)
-- OR via `/product:meta-feedback` proposal — «I notice pattern X — add to dictionary?»
+- OR via `/product:validation-tune` proposal — «I notice pattern X — add to dictionary?»
 
 **Removal:**
 - If pattern generates >70% false positives — deprecate или refine heuristic

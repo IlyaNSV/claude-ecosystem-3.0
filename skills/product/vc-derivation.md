@@ -292,7 +292,7 @@ If A1 conditions fail:
 3. **«Система работает» VC.** Not falsifiable. Concrete predicates always.
 4. **VC только для main.** Alt and error flows тоже need VC (V-07 enforces). Less detail OK для error flows but presence required.
 5. **VC без BR/LC refs.** «Что-то должно случиться» не grounded. Always cite BR (rules verified) and LC (transitions verified).
-6. **A1 false positive.** If A1 self-check passes но coverage actually missing — skill bug. Surface via /product:meta-feedback.
+6. **A1 false positive.** If A1 self-check passes но coverage actually missing — skill bug (systemic). Surface via /ecosystem:meta-feedback.
 7. **Skip Gherkin format.** Required по spec — uniform format enables auto-test generation в future.
 8. **Variant field names** — use canonical exactly.
 

@@ -45,7 +45,7 @@ Pattern dictionary lives в skill file. v1 includes these patterns:
 | **LC-unreachable-states** | LC-* | State listed but no transitions lead to it (complements V-05 but finds design-level issues) |
 | **inconsistent-BR-categories** | BR-* | Similar BR имеют different `category:` (one `validation`, another `calculation` — same actual logic) |
 
-Pattern dictionary expandable per future findings через `/product:meta-feedback` (C3).
+Pattern dictionary expandable per future findings через `/product:validation-tune` (C3).
 
 ### Step 3: Scan artifacts
 
@@ -166,7 +166,7 @@ If user says "fix pattern X" — ассистент can apply automatic fixes wh
 
 - **Non-blocking, informational.** Никогда не blocks workflow.
 - **Honest false-positive rates.** Each pattern has accuracy characteristic — state it.
-- **Pattern dictionary expandable.** When new antipatterns emerge in pilot, add to `pattern-linter.md` skill (via `/product:meta-feedback` proposal or manual edit).
+- **Pattern dictionary expandable.** When new antipatterns emerge in pilot, add to `pattern-linter.md` skill (via `/product:validation-tune` proposal or manual edit).
 - **Don't overwhelm.** If >20 findings, truncate to top 10 with "N more..."
 - **Confidence per finding** (C2) — не всё equally reliable.
 
@@ -174,4 +174,4 @@ If user says "fix pattern X" — ассистент can apply automatic fixes wh
 
 - Skill: `.claude/skills/product/pattern-linter.md` — full pattern dictionary + heuristics
 - Complementary: `/product:drift-check` (C1) — direction vs this (consistency)
-- Feedback loop: если pattern generates many false positives → `/product:meta-feedback` propose refining
+- Feedback loop: если pattern generates many false positives → `/product:validation-tune` propose refining

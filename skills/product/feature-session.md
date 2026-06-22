@@ -602,7 +602,7 @@ Resolve findings before approve.
 
 1. **Skipping F.0a в creation mode.** D1-alignment critical — feature без SEG link создаёт orphan FM. Always run F.0a, even если seems obvious.
 2. **Bundle approve для critical artifacts.** Per-BR / per-IC approve mandatory (Critical level decisions). Не bundle.
-3. **Auto-approve без A1 conditions check.** A1 — skill self-check responsibility, не orchestrator. Если skill says «approved high confidence», orchestrator trusts but verifies через journal entry. If conditions actually fail — это skill bug, escalate via meta-feedback.
+3. **Auto-approve без A1 conditions check.** A1 — skill self-check responsibility, не orchestrator. Если skill says «approved high confidence», orchestrator trusts but verifies через journal entry. If conditions actually fail — это skill bug (systemic) — escalate via /ecosystem:meta-feedback.
 4. **DA findings dismiss без journal entry.** Anti-sycophancy mechanism per devils-advocate.md — dismissed findings всегда recorded с rationale.
 5. **Touching FM.status manually.** Status transitions должны быть orchestrator-driven (planned → in-progress только в F.10 после all conditions met). Не allow user to skip ahead.
 6. **F.5a / F.8 / F.9 implementing inline.** Phase 4 / Phase 6 work — surface placeholder, не attempt inline. Discipline.
