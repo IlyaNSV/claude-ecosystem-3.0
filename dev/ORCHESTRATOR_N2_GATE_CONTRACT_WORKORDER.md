@@ -1,12 +1,19 @@
 # Orchestrator N+2 — "Trustworthy gate outcomes" (work-order)
 
-> **Status:** 🅀 QUEUED — ready to build. Decision + rationale: **[DEC-DEV-0091](../DEV_JOURNAL.md)**.
+> **Status:** ✅ INCREMENT BODY (T1) BUILT — **[DEC-DEV-0092](../DEV_JOURNAL.md)**; queue items P2–P6 below
+> remain. Decision + rationale: **[DEC-DEV-0091](../DEV_JOURNAL.md)**.
 > Findings: **[ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md)**. Validated by the
 > A+B+C live-run audit + a 4-lens council (architect / pragmatist / risk / maintainer → synthesis).
 >
-> **Done already (this session, DEC-DEV-0091):** T3 — P5→P6 delegation by `{scriptPath}` (the spine the
-> whole contract rides on), wiring-test pins the scriptPath form, degradation surfaced in findings.
-> `npm run verify` green.
+> **Done (DEC-DEV-0091):** T3 — P5→P6 delegation by `{scriptPath}` (the spine the whole contract rides on),
+> wiring-test pins the scriptPath form, degradation surfaced in findings. `npm run verify` green.
+>
+> **Done (DEC-DEV-0092):** T1 — the `verdict × readiness` contract + shared `env-readiness.cjs` probe
+> (probe + substrate-error-allowlist classifier), P6 `readiness` axis with the `ENV_NOT_READY ⇒ MANUAL_VERIFY`
+> code-invariant (decided before the `!mechPassed` NO-GO branch), P5 pre-flight probe + forwarding,
+> run.md downstream readers, tests (env-readiness 8/8, P6 wiring 13→17). `npm run verify` green; counts
+> unchanged (additive field). **Remaining for full closure:** step 8 pilot re-validation (re-run C nested +
+> re-run B with Docker down) — a separate live session.
 
 ## The increment body — T1 gate-outcome contract (env half)
 

@@ -6024,6 +6024,36 @@ A = `audit-spec-fidelity --feature localization` (P4, ×2). B = `validate-featur
 3. **«Детерминизм» бывает иллюзорным.** GO-синтез P6 детерминирован относительно своих входов, но мех-вход недетерминирован относительно готовности субстрата — тот же код: RED (Docker down) vs GREEN (Docker up). Гейт обязан уметь сказать «я не смог судить».
 4. **Замыкать контур — предшаг.** Находки, живущие только в пилотном git, переоткрываются каждую сессию; их маршрутизация в эко-ledger первой (дёшево) — предпосылка, не afterthought.
 
+## DEC-DEV-0092 — Orchestrator N+2: ось `readiness` + общий env-readiness probe (тело gate-contract)
+
+**Date:** 2026-06-23
+**Trigger:** Тело инкремента N+2 по work-order [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md); решение о двух осях принято в [[DEC-DEV-0091]] (T1). Закрывает FB-LR-02/04/09 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md) — headline-баг B: выключенная БД → ложный NO-GO.
+
+**Tag:** #orchestrator #gate-contract #p5 #p6 #readiness #false-no-go #soft-migration
+
+### Context
+Live-run B (DEC-DEV-0091): build GREEN, но 181 `PrismaClientInitializationError` (Docker/БД down) → `!mechPassed → NO-GO` (`validate-feature-impl.mjs:246`). Это **ложный NO-GO** — гейт не дошёл до суждения о коде. Сходящаяся тема B+C: гейты путали «субстрат не готов / гейт не отработал» с «код упал». Решение 0091 — моделировать исход на **двух ортогональных осях** `verdict × readiness`, additive optional (absent == READY == старое поведение 1:1).
+
+### Decision
+Построено тело T1:
+1. **`orchestrator/lib/env-readiness.cjs`** — детерминированный shared helper (паттерн coverage/fidelity-oracle: запускается агентом через Bash, релеит JSON; DEC-DEV-0073 §D.1 — FS/child_process только в либе, не в Workflow-скрипте). Два режима: **probe** (docker info / pg_isready / redis ping / `prisma migrate status` — миграционная история закрывает FB-LR-09) и **classify-failures** (substrate-error allowlist: `PrismaClientInitializationError` / `ECONNREFUSED :5432|:6379` / `Cannot connect to the Docker daemon` / `npipe` / `Can't reach database`). Консервативен: неиспользуемый субстрат = `skipped` (не fail); неопределённость = `unknown` (не деградирует); **никогда не апгрейдит verdict к GO** — только блокирует ложный NO-GO. Dual-use (`require` для чистых классификаторов / CLI для probe).
+2. **P6 (`validate-feature-impl.mjs`)** — `readiness` в `MECH_SCHEMA` + return; мех-агент гоняет probe **ДО** suite и классифицирует падения через allowlist; синтез — code-инвариант `readiness === 'ENV_NOT_READY' ⇒ MANUAL_VERIFY_REQUIRED`, поставлен **перед** веткой `!mechPassed → NO-GO` (иначе down-субстрат проваливается в NO-GO). DEGRADED (blocked tasks) свёрнут на ось readiness (`worstReadiness`). Инвариант: только READY|DEGRADED парятся с GO.
+3. **P5 (`feature-to-tdd-impl.mjs`)** — pre-flight probe (advisory, не абортит impl), проброс `readiness` хинта в P6 (P6 берёт worst-of со своим probe), `degraded → DEGRADED`, propagation P6-readiness в return. Fallback-ветка тоже чинит инвариант (ENV_NOT_READY не NO-GO).
+4. **Downstream readers (тот же инкремент)** — `run.md`: preflight, launch-args (`envProbe`/`readiness`), список return-ключей, «After the run» гайд `readiness × verdict`.
+
+### Options considered
+- **Доносить readiness вычислением в Workflow-скрипте** — отвергнуто: §D.1 запрещает FS/child_process в скрипте; детерминизм допроса субстрата обязан жить в либе.
+- **Делать substrate-классификацию инициативой LLM-агента в промпте** — отвергнуто: «codify it as a gate, not LLM initiative» (work-order). Allowlist — единый SSOT в либе, агент только релеит.
+- **probe как часть mech-агента vs отдельный шаг** — выбран probe-первым-внутри-mech (P6) + отдельный pre-flight (P5): ось readiness засевается из одного источника на обеих сторонах.
+
+### Outcome
+`npm run verify` зелёный: P6 wiring 13→**17** (новые: two-axis contract / probe-before-suite / ENV_NOT_READY⇒MANUAL_VERIFY-инвариант перед NO-GO / P5-проброс), новый **env-readiness 8/8** (чистые классификаторы — allowlist + readiness), smoke парсит все 4 .mjs. **check-counts зелёный (24/44 без изменений)** — `readiness` additive return-field, не новый artifact-type/rule → count-sweep не требуется (work-order это и предписывал). **Pilot-валидация (шаг 8 work-order) — отдельная live-сессия:** re-run C (вложенный P6 ВОЗВРАЩАЕТ реальный verdict) + re-run B с Docker down (ENV_NOT_READY, не ложный NO-GO).
+
+### Lessons
+1. **Детерминизм гейта ≠ детерминизм входа.** GO-синтез P6 детерминирован относительно `mech`, но `mech` недетерминирован относительно готовности субстрата (тот же код: RED при Docker down / GREEN при up). Ось readiness даёт гейту язык сказать «я не смог судить» — без неё «детерминированный» вердикт лжёт.
+2. **Порядок веток синтеза — это и есть инвариант.** Фикс ложного NO-GO держится только если `ENV_NOT_READY` обработан ДО `!mechPassed`; wiring-тест пинит этот порядок через `indexOf`, иначе будущий рефактор тихо вернёт регрессию.
+3. **Soft-migration по умолчанию.** Отсутствующий `readiness` == READY == точное старое поведение; пилотное состояние и любой `result`-keyed reader не тронуты (backwards-compat-narrow, принцип 6).
+
 ---
 
 ## Шаблон новой записи

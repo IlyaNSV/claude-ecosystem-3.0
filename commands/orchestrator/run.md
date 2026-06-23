@@ -46,9 +46,11 @@ substitute.
 2. **Spec authored?** `.kiro/specs/<feature>/{spec.json,requirements.md,design.md,tasks.md}`
    must exist and tasks be approved (run P3 / `kiro-spec-*` first). Resolve `<feature>` from
    `--feature` (cc-sdd slug, e.g. `auth`).
-3. **Env ready?** `feature-to-tdd-impl` implements real code — the env-readiness-probe must
-   pass (runtime versions, datastore up if the stack needs it). A missing tool/secret is a
-   capability gap → request from Integrator (§6), do not self-equip.
+3. **Env ready?** `feature-to-tdd-impl` implements real code — it runs the shared
+   env-readiness probe (`.claude/orchestrator/lib/env-readiness.cjs`) as a pre-flight and
+   forwards the verdict to P6 (DEC-DEV-0092). A down substrate does NOT abort impl (a task may
+   bring it up) but is carried on the `readiness` axis so the gate is never a false NO-GO. A
+   missing tool/secret is a capability gap → request from Integrator (§6), do not self-equip.
 
 **For `audit-spec-fidelity` (P4):**
 1. The features' specs exist (`.kiro/specs/<feature>/{requirements,design,tasks}.md`) — run P3 first.
@@ -61,7 +63,10 @@ substitute.
    the result, it does not implement. Resolve `<feature>` from `--feature` (cc-sdd slug).
 2. `coverage-oracle` present (`.claude/orchestrator/lib/coverage-oracle.cjs`) — the
    requirements-coverage validator (RA-8) reuses it as the anti-self-report backbone.
-3. The full TEST/BUILD commands are discoverable (manifests/CI) — the mechanical layer runs them.
+3. `env-readiness` present (`.claude/orchestrator/lib/env-readiness.cjs`) — the mechanical
+   layer probes it BEFORE the suite so a down substrate is `readiness=ENV_NOT_READY`
+   (MANUAL_VERIFY), not a false NO-GO (DEC-DEV-0092).
+4. The full TEST/BUILD commands are discoverable (manifests/CI) — the mechanical layer runs them.
 
 ## Launch
 
@@ -99,6 +104,7 @@ Workflow({
     feature: "<cc-sdd slug, e.g. auth>",
     specDir: ".kiro/specs/<feature>",
     classifier: '.claude/orchestrator/lib/gate-risk-classifier.cjs',
+    envProbe: '.claude/orchestrator/lib/env-readiness.cjs',   // DEC-DEV-0092: pre-flight readiness probe (forwarded to P6)
     kiroTemplates: '.claude/skills/kiro-impl/templates',
     registry: ''   // optional .claude/orchestrator/registries/load-bearing.<FM>.yaml
   }
@@ -129,10 +135,12 @@ Workflow({
     feature: "<cc-sdd slug, e.g. auth>",
     specDir: ".kiro/specs/<feature>",
     oracle: '.claude/orchestrator/lib/coverage-oracle.cjs',
+    envProbe: '.claude/orchestrator/lib/env-readiness.cjs',   // DEC-DEV-0092: readiness probe (run before the suite)
     source: '.product/handoffs/FM-NNN-handoff.md',   // optional — RA-8 coverage-oracle backbone
     validationCommands: {},                          // {test, build, smoke} if known; else discovered
     concerns: [],                                    // forwarded from P5 (deferred-capability flags)
-    degraded: false                                  // true if upstream tasks were blocked → advisory
+    degraded: false,                                 // true if upstream tasks were blocked → advisory
+    readiness: 'READY'                               // optional pre-flight hint; P6 takes worst-of with its own probe
   }
 })
 ```
@@ -141,8 +149,9 @@ The Workflow runs in the background; watch progress with `/workflows`. P3 return
 features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P4 returns
 audited / faithful / spec_fixed / product_routed / residual / impl_ready; P5 returns
 implemented task ids / blocked / **`concerns`** (deferred-capability / mock-stand-in flags,
-FB-013) / GO-gate result; P6 returns mechanical / validators / confirmed_findings /
-remediated / residual / **`result`** (GO | NO-GO | MANUAL_VERIFY_REQUIRED) / findings.
+FB-013) / GO-gate result / **`readiness`**; P6 returns mechanical / **`readiness`** (READY |
+DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / remediated / residual /
+**`result`** (GO | NO-GO | MANUAL_VERIFY_REQUIRED) / findings.
 
 > **One orchestrator workflow per repo at a time (FB-004).** Two processes that both
 > `git commit` race on the shared git index even when their file zones don't overlap
@@ -185,7 +194,10 @@ remediated / residual / **`result`** (GO | NO-GO | MANUAL_VERIFY_REQUIRED) / fin
 - **P5:** per-task commits land as the loop runs (selective staging). If `blocked` is
   non-empty → those tasks hit `_Blocked_`; an upstream-ownership block routes back to the
   owning spec (do not patch around it). If the GO-gate is `NO-GO` after 3 remediation
-  rounds, or `MANUAL_VERIFY_REQUIRED` → surface the findings; the feature is not done. If
+  rounds, or `MANUAL_VERIFY_REQUIRED` → surface the findings; the feature is not done. P5 also
+  returns `readiness` (forwarded from its pre-flight probe + P6) — a `MANUAL_VERIFY_REQUIRED`
+  with `readiness=ENV_NOT_READY` means the substrate was down, not that the code failed (re-run
+  once it is up; DEC-DEV-0092 — see P6 below). If
   `concerns` is non-empty → a task met a real seam with a Mock/unwired skeleton because real
   access is deferred (FB-013); those are tracked in `pending-actions.md` and MUST be disclosed
   at GO (above) — a GO over them is GO-with-caveats. Live
@@ -198,7 +210,14 @@ remediated / residual / **`result`** (GO | NO-GO | MANUAL_VERIFY_REQUIRED) / fin
   truth) — refuted validator findings are dropped, never remediated (P6's core value: don't
   chase a hallucinated defect). `residual` = confirmed defects still unresolved after the
   remediation cap (3 rounds) → not a clean GO; surface them. A high-severity residual forces
-  `NO-GO`, otherwise `MANUAL_VERIFY_REQUIRED`. `concerns` forwarded from P5 are disclosed in
+  `NO-GO`, otherwise `MANUAL_VERIFY_REQUIRED`. **Read `readiness` alongside `result`
+  (DEC-DEV-0092):** `result` answers "is the code good?", `readiness` answers "did the gate get
+  to judge?". `ENV_NOT_READY` (substrate down — Docker/DB/Redis off, or a RED suite whose
+  failures are *all* substrate errors per the allowlist) is reported as
+  `MANUAL_VERIFY_REQUIRED`, **never** `NO-GO` — bring the substrate up and re-run; do not read
+  it as "the code failed" (the run-B false-NO-GO this contract fixes). `DEGRADED` (upstream
+  blocked tasks) is likewise advisory; only `READY`/`DEGRADED` can pair with a `GO`.
+  `concerns` forwarded from P5 are disclosed in
   `findings` (FB-013) — a GO over a mock-only / unwired real seam is GO-with-caveats. Live
   caveat: P5 reaches P6 via `workflow()` (one-level nesting); if unavailable P5 falls back to
   the inline `kiro-validate-impl` lift.
