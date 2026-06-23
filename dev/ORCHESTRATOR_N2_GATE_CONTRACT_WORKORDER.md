@@ -71,7 +71,7 @@ of three patches.
 | ~~**P2**~~ ✅ | **T2 order-aware `verify-finding-before-act` — DONE (DEC-DEV-0093):** pre-gate baseline sha (agent-captured) + 3-way `disposition` (present / already-resolved / refuted) in **both** P4 + P6; an already-fixed real finding is `already-resolved` (surfaced, not "hallucination"), a masked defect is surfaced not dropped. Remediation acts only on `present`. P6 wiring 17→18, P4 8→9; verify green. **Still open → T5 (P5):** full single-writer serialization of concurrent committers (the baseline anchor is robust to churn but does not *prevent* a racing writer). | Worst failure **class** (silent wrong verdict) — had its own adversarial-repro + test cycle. |
 | ~~**P3**~~ ✅ | **FB-028 real fix — DONE (DEC-DEV-0094):** `VALIDATOR_SCHEMA.kind` → defect enum (positive-confirmation unrepresentable; covered = `clean:true`) + `verifyFinding` polarity-gate (a positive assertion → `refuted`). P6 wiring 18→19; verify green. | Same verify-layer surface as T2 — done right after. NOT the phantom FSM-kind the pilot mis-diagnosed. |
 | ~~**P4**~~ ✅ | **T4 — DONE (DEC-DEV-0095):** `design-coverage-oracle.cjs` (deterministic extract + basename-scan) + T4-lite forward-ref linter, run by P4 as a hybrid layer (oracle candidates → semantic-confirm); a confirmed gap excludes the feature from `impl_ready` + routes spec-completion (surface, not auto-add). run.md enforces "P4 between P3 and P5". New oracle 6/6 + wiring 9→10; verify green. **Surface-not-auto-fix** (a missing task is the spec author's). | Heavier oracle work — done. |
-| **P5** | **T5 remediation discretion** (FB-LR-07/08): single-writer for remediation (extend FB-004), forbid unilateral design decisions, escalate upstream cross-spec conflicts to CONCERN, bounded auto-retry for transient impl-blocks. | Broadest/riskiest (agent concurrency); least validated. |
+| ~~**P5**~~ ✅ | **T5 remediation discretion — DONE (DEC-DEV-0096, PR #46):** new `remediation-guard.cjs` (classifyBlock — conflict outranks transient, worst-of; detectsUnilateralResolution anti-mask). P6: single-writer documented+asserted (extends FB-004 within-run) + escalate cross-spec/design conflict to a `pending-actions` CONCERN (`escalateConflict`) + `conflicts` return field degrades GO→MANUAL_VERIFY + `resolved-by-concurrent-commit` no-double-commit. P5: classify a BLOCK before a debug round → `transient` bounded auto-retry (no debug round) / cross-spec/design → escalate (route + `conflicts`, counts as blocked → advisory) / implementer forbidden to self-resolve. Tests: `remediation-guard` 12/12 (adversarial) + new `feature-to-tdd-impl-wiring` 8/8 + `validate-feature-impl-wiring` 19→24; verify green; counts 24/44. | Broadest/riskiest (agent concurrency); least validated — adversarial-repro lives in the lib unit test (a live concurrency repro is unreachable). |
 | **P6** | **DEC-DEV-0090 phase-2** receiving-side: auto-pickup of the `/ecosystem:meta-feedback` outbox + dedupe + unified finding contract across FEEDBACK-JOURNAL / Session Audit / UF-ledger. | The 14-FB load is its first real test. |
 
 ## Cheap riders (do when the relevant file is already open)
@@ -79,9 +79,12 @@ of three patches.
 - **DEC-DEV-0089** PA-dedup pre-filter in `audit-spec-fidelity` (FB-LR-10).
 - Rename `kind:fabricated-trace` misnomer (FB-LR-12).
 
-## Open pilot risk (track until T2/T5 land)
+## Open pilot risk (T2 + T5 have landed — masking mechanism fixed; the PRODUCT decision is still open)
 **FM-001↔FM-005 `had_trial` ownership conflict** (FB-LR-07): auth writes `had_trial=true` before emitting
 `account.confirmed`, so `TrialService.activateIfEligible` may silently no-op. Specs contradict (billing
-req 1.1 vs req 12.6 vs auth design.md:489). Masked by a remediation race in B; **not** in `residual`.
-Needs an upstream product decision (Path A: auth stops flipping `had_trial`; Path B: re-key billing
-idempotency off Subscription existence). Keep OPEN in the pilot.
+req 1.1 vs req 12.6 vs auth design.md:489). It was masked by a remediation race in B; **not** in `residual`.
+T5 (DEC-DEV-0096) now makes a remediation that hits this **ESCALATE** it to a `conflicts`/`pending-actions`
+CONCERN (GO→MANUAL_VERIFY) instead of letting a committer resolve it unilaterally — so it would no longer be
+masked. But the conflict itself still needs an upstream **product** decision (Path A: auth stops flipping
+`had_trial`; Path B: re-key billing idempotency off Subscription existence). Keep OPEN in the pilot until that
+decision lands; verify the escalation fires on the pilot re-run.
