@@ -55,6 +55,15 @@ test('triages drift to BOTH routes: spec-fix and product (OD8)', () => {
   assert(/pending-actions\.md/.test(src) && /route: ?product/i.test(src), 'product-feedback not written to pending-actions (OD8)');
 });
 
+test('PA emission is dedup-aware on repeated runs (FB-LR-10, DEC-DEV-0089)', () => {
+  // a repeated P4 run over the same un-reconciled feature must UPDATE the existing open PA,
+  // not append a near-duplicate (PA-013/014/015 in live-run A). Both PA-writing prompts carry it.
+  assert(/FB-LR-10/.test(src), 'PA-dedup (FB-LR-10) not referenced');
+  assert(/UPDATE it in place/.test(src), 'PA-writing prompts lack the update-in-place dedup instruction');
+  const dedups = (src.match(/DEDUP \(FB-LR-10/g) || []).length;
+  assert(dedups >= 2, `both PA-emitting prompts (product-route + coverage-route) must carry the dedup pre-filter (found ${dedups})`);
+});
+
 test('auto-re-audits after a spec-fix (P1-2), bounded', () => {
   assert(/MAX_REAUDIT_ROUNDS/.test(src), 'no bounded re-audit rounds');
   // auditOne must be called more than once (initial audit + re-audit after fix)
@@ -72,8 +81,8 @@ test('verify-finding-before-act: confirms a semantic drift before fixing the spe
   assert(/verifyDrift\b/.test(src), 'no verifyDrift helper');
   assert(/VERIFY_SCHEMA/.test(src) && /confirmed/.test(src), 'verify schema / confirmed flag missing');
   assert(/presentDrifts/.test(src), 'spec-fix not gated on confirmed-present drifts');
-  // the deterministic oracle's fabricated-trace finding is exempt — only LLM semantic drifts are re-verified
-  assert(/fabricated-trace/.test(src), 'oracle-confirmed fabricated-trace not exempted from re-verify');
+  // the deterministic oracle's missing-trace-source finding is exempt — only LLM semantic drifts are re-verified
+  assert(/missing-trace-source/.test(src), 'oracle-confirmed missing-trace-source not exempted from re-verify');
   // verify must run BEFORE the spec-fix
   const verifyIdx = src.indexOf('verifyDrift(current.feature');
   const fixIdx = src.indexOf('spec-fix:');

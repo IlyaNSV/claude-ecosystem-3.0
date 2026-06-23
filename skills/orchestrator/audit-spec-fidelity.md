@@ -9,7 +9,9 @@ P4 runs **between P3 (specs authored) and P5 (impl)**. It asks one question per 
 the `.product` intent it was generated from?** A spec can be fully *present* (coverage-oracle
 green) and internally *consistent* (cc-sdd cross-spec review green) yet still **distort** the
 product — RUN 01 found NFR backoff values contradicting BR-040, stale event names, and a
-**fabricated trace** (a spec citing IC-013 that no product artifact defines). Those are fidelity
+**missing-trace-source** (a spec citing IC-013 that no product artifact defines — FB-LR-12: the
+kind names the *missing source*, not an accusation the id was fabricated; it also fires on a real
+owned contract whose source lives outside this feature's resolved `.product`). Those are fidelity
 drifts; catching them before impl is cheaper than after.
 
 ## What P4 is NOT (don't duplicate)
@@ -24,7 +26,7 @@ P4 is **spec-vs-`.product` semantic faithfulness** — a different axis from all
 
 1. **Deterministic — trace-integrity (`fidelity-oracle.cjs`).** Every id the spec REFERENCES
    (`FM/SC/BR/IC/NFR-\d+`) must EXIST in the `.product` ground truth (handoff + the feature's
-   `.product` artifacts). A dangling ref = fabrication/drift, caught by CODE, not judgment. Run it,
+   `.product` artifacts). A dangling ref = a missing trace source (`kind:missing-trace-source`), caught by CODE, not judgment. Run it,
    relay its JSON — do NOT eyeball trace refs. (This is the half that must never trust a subagent.)
 2. **Semantic — the `fidelity-auditor` role (LLM).** Reads the spec + its `.product` source and
    reports drifts the oracle can't: value mismatches (a spec NFR backoff ≠ the BR it cites), a rule
