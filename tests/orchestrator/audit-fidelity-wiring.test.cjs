@@ -92,10 +92,23 @@ test('order-aware verifyDrift: pre-gate baseline sha + 3-way disposition (FB-LR-
   assert(baseIdx !== -1 && fixIdx !== -1 && baseIdx < fixIdx, 'baseline must be captured before the spec-fix');
 });
 
+test('design→tasks structural coverage (T4 / FB-LR-05, DEC-DEV-0095)', () => {
+  assert(/design-coverage-oracle\.cjs/.test(src), 'process does not drive the design-coverage-oracle');
+  assert(/coverageAudit\b/.test(src), 'no coverageAudit helper');
+  assert(/COVERAGE_SCHEMA/.test(src) && /uncovered-design-file/.test(src), 'coverage schema / uncovered-design-file kind missing');
+  // hybrid: deterministic oracle candidates + a semantic confirm (naming/path variance)
+  assert(/oracle_uncovered/.test(src) && /naming\/path variance/i.test(src), 'coverage layer is not hybrid (oracle + semantic confirm)');
+  // a confirmed coverage gap routes spec-completion and must NOT auto-edit tasks.md
+  assert(/coverage-route:/.test(src), 'coverage gap not routed (pending-action)');
+  assert(/do NOT (edit|auto-add|commit)/i.test(src) || /NOT auto-add the task/i.test(src), 'coverage layer must not auto-add tasks');
+  // a feature with a confirmed gap is excluded from impl_ready
+  assert(/gapFeatures/.test(src) && /!gapFeatures\.has\(f\)/.test(src), 'impl_ready does not exclude features with coverage gaps');
+});
+
 test('returns the P4 contract keys', () => {
   const m = src.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['audited', 'faithful', 'spec_fixed', 'product_routed', 'residual', 'impl_ready']) {
+  for (const key of ['audited', 'faithful', 'spec_fixed', 'product_routed', 'residual', 'coverage_gaps', 'impl_ready']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
 });

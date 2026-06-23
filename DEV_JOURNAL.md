@@ -6109,6 +6109,33 @@ P6 `validate-feature-impl`: `DEFECT_KINDS` enum (uncovered-requirement / missing
 1. **Свободный enum-слот — это дыра полярности.** Если «finding» по контракту = дефект, то `kind` обязан быть enum дефектов: позитив должен быть *непредставим*, а не «отлавливаться промптом». Схема — первый барьер, verify — второй.
 2. **Мис-диагноз пилота — ровно то, что ловит пост-фактум аудит.** Пилот целил в фантомную константу; форензика DEC-DEV-0091 вскрыла настоящую причину (free-string kind). Чинить надо корень, а не симптом, который назвал исполнитель ([[feedback_separate_task_from_test]]).
 
+## DEC-DEV-0095 — T4: design→tasks structural-coverage gate (P4) — ловит несмонтированный модуль до impl
+
+**Date:** 2026-06-23
+**Trigger:** P4 очереди N+2 ([[project_orchestrator_next_queue]]) — T4 / FB-LR-05 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md).
+
+**Tag:** #orchestrator #p4 #coverage #design-to-tasks #fb-lr-05 #pre-impl-gate
+
+### Context
+Live-run C: design.md перечислял модуль (`admin.module.ts`), но **ни одна задача его не строила** → API уехал полностью несмонтированным, все гейты зелёные. `design.FileStructure ⊆ ⋃tasks.boundary` — слепое пятно ВСЕХ оракулов: coverage-oracle = requirement→presence, fidelity-oracle = spec→.product, RA-10 = cross-task seams **post-impl по коду**. Ни один не проверяет **до impl**, что каждый файл из дизайна принадлежит какой-то задаче.
+
+### Options considered
+- **Чистый детерминир. string-match (basename в tasks.md)** — дёшево, но шумно: форматы design File Structure и `_Boundary_` сильно варьируются → ложные «uncovered».
+- **Чистый LLM-аудит** — мягкий, но нет anti-self-report backbone (та же дыра, что coverage-oracle закрывал в P1-1).
+- **Гибрид (выбрано):** детерминир. оракул `design-coverage-oracle.cjs` даёт КАНДИДАТОВ из ground-truth текста (extract design files + scan tasks.md по basename; lenient — флагует только файл, не упомянутый НИГДЕ) → semantic-checker агент фильтрует naming/path-variance → только подтверждённые gaps. Backbone из кода, суждение поверх.
+- **Auto-fix (добавить задачу) vs surface** — выбрано **surface + route spec-completion**, НЕ авто-добавление задач: недостающая задача — дело автора спеки / re-run P3, авто-генерация задач = риск scope-creep. Фича с подтверждённым gap **исключается из `impl_ready`** (вот ценность гейта).
+
+### Decision
+Новая либа `orchestrator/lib/design-coverage-oracle.cjs` (dual-use, Node-stdlib): `extractDesignFiles` (файлы под File-Structure-заголовком), `computeCoverage` (basename-scan tasks.md → uncovered; ≤3-симв. basename пропускается как слишком общий), `extractForwardRefs` (**T4-lite** dangling-forward-ref линтер — флагует «wired later» как кандидата, PARTIAL). P4 `audit-spec-fidelity`: `coverageAudit(feature)` параллельно с fidelity-аудитом — оракул→semantic-confirm→`gaps`; surface + pending-action (route spec); `coverage_gaps` в return; `impl_ready` исключает фичи с gap. run.md: preflight/launch/`coverage_gaps`/After-the-run + «P4 между P3 и P5».
+
+### Outcome
+`npm run verify` зелёный; новый `design-coverage-oracle` 6/6 + `audit-fidelity-wiring` 9→10. Counts 24/44 (additive return-field — не новый artifact-type/rule). Консервативно: lenient-toward-covered + semantic-confirm + surface-not-auto-fix → низкий false-positive риск, и худшее — кандидат на ручной просмотр, не авто-правка.
+
+### Lessons
+1. **«Faithful» ≠ «buildable».** Спека может быть на 100% верна .product (P4 fidelity-ось) и всё равно оставить модуль непостроенным. Структурная coverage — ортогональная ось; её отсутствие = тихий несмонтированный API. Гейт обязан проверять обе.
+2. **Гибрид бьёт обе крайности на варьирующемся формате.** Детерминир. backbone (anti-self-report) + semantic-checker (naming-variance) — тот же паттерн, что coverage-oracle/P1-1; чистый код шумит, чистый LLM не имеет якоря.
+3. **Surface, не авто-чини, когда фикс = новый scope.** Добавить недостающую задачу — это решение автора спеки; гейт исключает фичу из impl_ready и маршрутизирует, но не генерит задачи (граница против scope-creep, [[feedback_orchestrate_not_duplicate]]).
+
 ---
 
 ## Шаблон новой записи

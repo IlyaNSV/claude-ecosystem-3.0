@@ -52,10 +52,13 @@ substitute.
    bring it up) but is carried on the `readiness` axis so the gate is never a false NO-GO. A
    missing tool/secret is a capability gap → request from Integrator (§6), do not self-equip.
 
-**For `audit-spec-fidelity` (P4):**
+**For `audit-spec-fidelity` (P4)** — run BETWEEN P3 and P5 (the pre-impl gate):
 1. The features' specs exist (`.kiro/specs/<feature>/{requirements,design,tasks}.md`) — run P3 first.
 2. `fidelity-oracle` present (`.claude/orchestrator/lib/fidelity-oracle.cjs`).
-3. Resolve `--feature` slug(s) to audit; each needs its `.product` source (handoff + traced
+3. `design-coverage-oracle` present (`.claude/orchestrator/lib/design-coverage-oracle.cjs`) — the
+   design→tasks structural-coverage layer (T4, DEC-DEV-0095) catches a design module no task builds
+   (the unmounted-API gap), pre-impl.
+4. Resolve `--feature` slug(s) to audit; each needs its `.product` source (handoff + traced
    FM/SC/BR/IC/NFR artifacts) readable for the deterministic trace-integrity gate.
 
 **For `validate-feature-impl` (P6)** — usually reached via P5's delegation, but runnable standalone:
@@ -120,7 +123,8 @@ Workflow({
   args: {
     features: [ "<cc-sdd slug>", ... ],   // resolved above
     specBase: '.kiro/specs',
-    oracle: '.claude/orchestrator/lib/fidelity-oracle.cjs'
+    oracle: '.claude/orchestrator/lib/fidelity-oracle.cjs',
+    coverageOracle: '.claude/orchestrator/lib/design-coverage-oracle.cjs'   // DEC-DEV-0095: design→tasks structural coverage (T4)
   }
 })
 ```
@@ -147,7 +151,8 @@ Workflow({
 
 The Workflow runs in the background; watch progress with `/workflows`. P3 returns
 features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P4 returns
-audited / faithful / spec_fixed / product_routed / residual / impl_ready; P5 returns
+audited / faithful / spec_fixed / product_routed / residual / **`coverage_gaps`** (design→tasks
+structural gaps, DEC-DEV-0095) / impl_ready; P5 returns
 implemented task ids / blocked / **`concerns`** (deferred-capability / mock-stand-in flags,
 FB-013) / GO-gate result / **`readiness`**; P6 returns mechanical / **`readiness`** (READY |
 DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolved`**
@@ -192,6 +197,13 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
   repaired + re-audited clean. `product_routed` drift went to Product via `pending-actions.md`
   (OD8) — it is NOT auto-fixed; surface it. `residual` = spec drift unresolved after the
   re-audit rounds — those features are NOT impl-ready; surface for manual review before P5.
+  **`coverage_gaps` (DEC-DEV-0095, T4 / FB-LR-05):** a design File-Structure file/module that NO
+  task builds (e.g. a missing assembly module → an API that mounts nothing) — a blind spot of the
+  fidelity/coverage/RA-10 oracles. A feature with a confirmed gap is **excluded from `impl_ready`**;
+  the gap is routed `spec` (a spec-completion pending-action recommending the missing assembly/wiring
+  task) and is **not auto-fixed** here (a missing task is for the spec author / a P3 re-run). Add the
+  task, then re-run P4. (The T4-lite forward-ref check is partial — it flags vague "wired later"
+  deferrals as candidates; it does not by itself prove the wiring task is absent.)
 - **P5:** per-task commits land as the loop runs (selective staging). If `blocked` is
   non-empty → those tasks hit `_Blocked_`; an upstream-ownership block routes back to the
   owning spec (do not patch around it). If the GO-gate is `NO-GO` after 3 remediation
