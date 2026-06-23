@@ -106,10 +106,15 @@ const FIX_SCHEMA = {
 
 const VERIFY_SCHEMA = {
   type: 'object',
-  required: ['confirmed'],
+  required: ['disposition'],
   properties: {
-    confirmed: { type: 'boolean' },                      // grep of ground truth confirms the drift is REAL (not an auditor hallucination)
-    evidence: { type: 'string' },                        // what the inspection actually found (cite spec + .product)
+    // DEC-DEV-0093 (FB-LR-03/13): ORDER-AWARE verify — classify against BOTH the current
+    // spec AND the pre-gate baseline sha, so a drift the auditor flagged but that the spec
+    // already matches (a prior round / racing committer fixed it) is not mislabelled a
+    // "hallucination" and re-fixed, and a genuinely-resolved drift is surfaced not dropped.
+    disposition: { type: 'string', enum: ['present', 'already-resolved', 'refuted'] },
+    confirmed: { type: 'boolean' },                      // present || already-resolved (the drift WAS/IS real)
+    evidence: { type: 'string' },                        // what the inspection found in current spec vs baseline + the .product source
   },
 }
 
@@ -133,13 +138,17 @@ const auditOne = (feature, extra = '') =>
 // DROPPED, not fixed — P4 must not rewrite a spec around a hallucinated drift (the gap vs P6, closed).
 const verifyDrift = (feature, d) =>
   agent(
-    `Verify-finding-before-act: the fidelity-auditor flagged a possible SPEC drift in feature "${feature}" — ` +
+    `Verify-finding-before-act (ORDER-AWARE, DEC-DEV-0093): the fidelity-auditor flagged a possible SPEC drift in feature "${feature}" — ` +
     `kind: ${d.kind}; ref: ${d.ref || 'n/a'}; detail: ${d.detail || ''}.\n` +
-    `GREP/INSPECT the actual ground truth — the spec ${SPEC_BASE}/${feature}/{requirements,design,tasks}.md AND the ` +
-    `.product source it cites (handoff + the FM/SC/BR/IC/NFR artifact) — and decide if the drift is REAL: the spec ` +
-    `genuinely misrepresents / contradicts / weakens the product. confirmed = true ONLY with concrete evidence from ` +
-    `both sides; if the spec actually matches or the auditor misread, confirmed = false (drop it — do NOT edit the ` +
-    `spec on a hallucinated drift). Return confirmed + evidence.`,
+    `Inspect the .product source it cites (handoff + the FM/SC/BR/IC/NFR artifact) against TWO spec states: (1) the CURRENT ` +
+    `spec ${SPEC_BASE}/${feature}/{requirements,design,tasks}.md, and (2) the pre-gate BASELINE ` +
+    `${BASELINE ? `commit ${BASELINE} — use \`git show ${BASELINE}:${SPEC_BASE}/${feature}/<file>\` to read it` : '(baseline sha unavailable → inspect the current spec only)'}.\n` +
+    `Classify the disposition:\n` +
+    `  • present          — the CURRENT spec genuinely misrepresents / contradicts / weakens the product (concrete evidence both sides) → real & needs a spec-fix.\n` +
+    `  • already-resolved — the current spec MATCHES the product, but the baseline spec had the drift → it WAS real and the spec has already been fixed since the gate started; do NOT re-fix, surface it.\n` +
+    `  • refuted          — the spec matches the product in BOTH current and baseline → the auditor misread; a hallucination → drop.\n` +
+    `${BASELINE ? '' : 'With no baseline, use present (current spec drifts) or refuted (matches) only.\n'}` +
+    `confirmed = (disposition !== 'refuted'). Return disposition + confirmed + evidence (cite current spec vs baseline vs product).`,
     { schema: VERIFY_SCHEMA, phase: 'Triage', label: `verify-drift:${feature}:${d.ref || d.kind}` },
   )
 
@@ -152,6 +161,18 @@ await agent(
   `If a spec is missing, note it — do NOT improvise. One-paragraph readiness summary.`,
   { phase: 'Init', label: 'init' },
 )
+
+// pre-gate baseline (DEC-DEV-0093, FB-LR-03): the spec snapshot for ORDER-AWARE verifyDrift —
+// captured BEFORE any spec-fix so a confirmer can tell "refuted (spec never drifted)" from
+// "already-resolved (spec drifted at baseline, fixed since)". No FS in the script (D.1) → agent.
+const BASELINE_SCHEMA = { type: 'object', required: ['sha'], properties: { sha: { type: 'string' } } }
+const base = await agent(
+  `Capture the pre-gate baseline: run \`git rev-parse HEAD\` via Bash and return its sha. ` +
+  `This is the spec snapshot before any fidelity spec-fix — do NOT commit or change anything.`,
+  { schema: BASELINE_SCHEMA, phase: 'Init', label: 'baseline' },
+)
+const BASELINE = (base && base.sha) || ''
+log(`baseline sha for order-aware verify: ${BASELINE || '(unavailable — verify falls back to current-spec-only)'}`)
 
 // ---- Phase 2: audit (parallel per feature) ---------------------------------
 phase('Audit')
@@ -191,20 +212,24 @@ for (const a of drifting) {
       round += 1
       const curSpecDrifts = (current.drifts || []).filter((d) => d.route === 'spec')
       if (!curSpecDrifts.length) { fixedOk = true; break }
-      // verify-finding-before-act (DEC-DEV-0087): fabricated-trace is oracle-confirmed by code;
-      // each SEMANTIC drift is confirmed against ground truth before we edit the spec. Refuted → dropped.
-      const confirmedDrifts = []
+      // ORDER-AWARE verify-finding-before-act (DEC-DEV-0087 + DEC-DEV-0093): fabricated-trace is
+      // oracle-confirmed by code (present); each SEMANTIC drift is classified against the current
+      // spec AND the pre-gate baseline. present → fix; already-resolved → spec already matches
+      // product (don't re-fix, surface); refuted → auditor hallucination → dropped.
+      const presentDrifts = []
       for (const d of curSpecDrifts) {
-        if (d.kind === 'fabricated-trace') { confirmedDrifts.push(d); continue }   // deterministic oracle — already real
+        if (d.kind === 'fabricated-trace') { presentDrifts.push(d); continue }   // deterministic oracle — already real & present
         const v = await verifyDrift(current.feature, d)
-        if (v && v.confirmed) confirmedDrifts.push({ ...d, evidence: v.evidence })
+        if (!v) continue
+        if (v.disposition === 'present') presentDrifts.push({ ...d, evidence: v.evidence })
+        else if (v.disposition === 'already-resolved') log(`drift ${d.ref || d.kind} (${current.feature}) already-resolved vs baseline — current spec matches product; NOT re-fixed (DEC-DEV-0093)`)
         else log(`drift ${d.ref || d.kind} (${current.feature}) refuted by ground-truth check — dropped, NOT fixed`)
       }
-      if (!confirmedDrifts.length) { fixedOk = true; break }   // all refuted → no real spec drift to fix
+      if (!presentDrifts.length) { fixedOk = true; break }   // nothing real & present → no spec drift to fix
       const fix = await agent(
         `Feature ${current.feature}: fix the SPEC so it faithfully matches the .product source (consumer-conforms-to-owner). ` +
-        `Fix ONLY these CONFIRMED spec drifts (each verified against ground truth — touch nothing else): ` +
-        `${confirmedDrifts.map((d) => `${d.ref || d.kind}: ${d.detail || ''}${d.evidence ? ` [evidence: ${d.evidence}]` : ''}`).join(' | ')}. ` +
+        `Fix ONLY these CONFIRMED-PRESENT spec drifts (each verified against ground truth — touch nothing else): ` +
+        `${presentDrifts.map((d) => `${d.ref || d.kind}: ${d.detail || ''}${d.evidence ? ` [evidence: ${d.evidence}]` : ''}`).join(' | ')}. ` +
         `Edit only ${SPEC_BASE}/${current.feature}/{requirements,design,tasks}.md; do NOT touch .product/. Selective commit ` +
         `(fix(specs): ${current.feature} fidelity). Return whether fixed.`,
         { schema: FIX_SCHEMA, phase: 'Triage', label: `spec-fix:${current.feature}:r${round}` },

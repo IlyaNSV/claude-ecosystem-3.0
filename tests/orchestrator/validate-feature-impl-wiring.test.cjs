@@ -76,9 +76,23 @@ test('verify-finding-before-act: confirms a finding against ground truth before 
     'verify-finding must be defined/used before remediation');
 });
 
-test('refuted findings are dropped (not remediated)', () => {
-  assert(/v && v\.confirmed/.test(SRC) || /v\.confirmed \?/.test(SRC), 'confirmed findings not filtered from refuted');
-  assert(/refuted/i.test(SRC) || /drop/i.test(SRC), 'no refuted/drop semantics documented');
+test('refuted findings dropped; present/already-resolved/refuted bucketed (DEC-DEV-0093)', () => {
+  assert(/disposition === 'present'/.test(SRC), 'findings not bucketed by the present disposition');
+  assert(/disposition === 'already-resolved'/.test(SRC), 'already-resolved bucket missing');
+  assert(/refuted/i.test(SRC) && /drop/i.test(SRC), 'no refuted/drop semantics documented');
+});
+
+test('order-aware verify: pre-gate baseline sha + 3-way disposition (FB-LR-03/13, DEC-DEV-0093)', () => {
+  assert(/git rev-parse HEAD/.test(SRC), 'no baseline sha capture (git rev-parse HEAD)');
+  assert(/BASELINE\b/.test(SRC), 'BASELINE not threaded into verifyFinding');
+  assert(/already-resolved/.test(SRC), 'already-resolved disposition missing — a fixed REAL finding would be mislabelled a hallucination');
+  assert(/let remaining = present/.test(SRC), 'remediation not seeded from PRESENT findings');
+  // baseline must be captured BEFORE verify is defined/used
+  const baseIdx = SRC.indexOf('git rev-parse HEAD');
+  const verifyIdx = SRC.indexOf('const verifyFinding');
+  assert(baseIdx !== -1 && verifyIdx !== -1 && baseIdx < verifyIdx, 'baseline must be captured before verify');
+  // the post-fix recheck must key on disposition, not the old confirmed flag
+  assert(/recheck\.disposition === 'present'/.test(SRC), 'post-fix recheck not order-aware (still keyed on confirmed)');
 });
 
 test('remediation is bounded', () => {

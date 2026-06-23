@@ -6054,6 +6054,36 @@ Live-run B (DEC-DEV-0091): build GREEN, но 181 `PrismaClientInitializationErro
 2. **Порядок веток синтеза — это и есть инвариант.** Фикс ложного NO-GO держится только если `ENV_NOT_READY` обработан ДО `!mechPassed`; wiring-тест пинит этот порядок через `indexOf`, иначе будущий рефактор тихо вернёт регрессию.
 3. **Soft-migration по умолчанию.** Отсутствующий `readiness` == READY == точное старое поведение; пилотное состояние и любой `result`-keyed reader не тронуты (backwards-compat-narrow, принцип 6).
 
+## DEC-DEV-0093 — Order-aware verify-finding-before-act (TOCTOU): pre-gate baseline + 3-way disposition
+
+**Date:** 2026-06-23
+**Trigger:** P2 очереди N+2 ([[project_orchestrator_next_queue]]) — **T2**, худший failure-класс из live-run аудита: FB-LR-03/13 в [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Решение о двух осях/контракте — [[DEC-DEV-0091]]; тело readiness — [[DEC-DEV-0092]].
+
+**Tag:** #orchestrator #verify-finding #toctou #p4 #p6 #order-aware #silent-wrong-verdict
+
+### Context
+`verifyFinding` (P6) и `verifyDrift` (P4) грепали **только текущее** дерево. Это TOCTOU: между detection (валидатор/аудитор) и confirmation (verify) дерево могло измениться — предыдущий последовательный фикс, или **гонка коммита**. Два провала: (1) confirmer, читающий уже-починенное дерево, видит дефект отсутствующим → клеймит реальную находку «галлюцинацией» и дропает (FB-LR-13); (2) гонка коммита **маскирует unresolved дефект** → он не доходит до `residual`/`concerns` (в live-run B так был скрыт реальный cross-spec дефект FM-001↔FM-005). Худший класс — **тихий неверный вердикт**.
+
+### Options considered
+- **Сериализовать всю ремедиацию (single-writer) первой** (T5) — отвергнуто как primary: решает гонку committers, но НЕ решает «читаю уже-починенное дерево» внутри собственного последовательного цикла; и шире/рискованнее (concurrency). T5 остаётся follow-up.
+- **Снимок рабочего дерева в FS** — нельзя: Workflow-скрипт не трогает FS (DEC-DEV-0073 §D.1).
+- **Якорь на фиксированный git-sha, снятый агентом** — **выбрано**: дёшево, детерминированно, устойчиво к churn дерева. Агент делает `git rev-parse HEAD` до любой ремедиации; verify сравнивает worktree vs baseline.
+
+### Decision
+Один дизайн на оба гейта («design once»): захват **pre-gate baseline-sha** (агентом, до ремедиации) + трёх-исходный **`disposition`** в `VERIFY_SCHEMA`:
+- `present` — есть в worktree → реален и unresolved → ремедиировать/чинить спеку;
+- `already-resolved` — нет в worktree, но был в baseline → **был реален**, починен с момента старта гейта (возможно гонкой) → НЕ ре-фиксить, НЕ звать галлюцинацией; **surface** (P6: новое поле `already_resolved` + findings) с пометкой «проверь, что это genuine fix, а не маск»;
+- `refuted` — нет ни там, ни там → настоящая галлюцинация → drop.
+P6: ремедиация сидится из `present`; post-fix recheck кейится на `disposition === 'present'`. P4: spec-fix только по `present`; `fabricated-trace` остаётся oracle-confirmed (present по коду). `confirmed = (disposition !== 'refuted')` сохранён для совместимости.
+
+### Outcome
+`npm run verify` зелёный; P6 wiring 17→**18**, P4 wiring 8→**9** (baseline capture + 3-way disposition + порядок «baseline до verify»). `run.md` «After the run» обновлён (order-aware + `already_resolved` дисклоуз). Counts не менялись (additive поле/disposition — не новый artifact-type/rule). **Граница честно зафиксирована:** baseline-якорь устойчив к churn, но полная сериализация одновременных committers — это **T5** (P5 очереди), не закрыто здесь.
+
+### Lessons
+1. **Verify без temporal-якоря лжёт под гонкой.** «Грепнуть текущее дерево» неявно предполагает, что между detection и confirmation ничего не менялось — на 88-агентном прогоне это неверно. Фиксированный baseline-sha делает verify order-aware за один дешёвый агентский вызов.
+2. **«Already-resolved» ≠ «refuted» — и это критично.** Схлопывание этих двух в один «not confirmed» и порождало тихий неверный вердикт (реальное → «галлюцинация»). Разнесение исходов само по себе — фикс, даже до T5.
+3. **Surface, не drop.** Уже-решённую находку нельзя молча убирать: разрешение могло быть маском. Дисклоуз + пометка на ручную проверку — правильный минимум, пока T5 не сериализует writers.
+
 ---
 
 ## Шаблон новой записи
