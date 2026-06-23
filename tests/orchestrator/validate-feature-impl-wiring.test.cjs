@@ -95,6 +95,16 @@ test('order-aware verify: pre-gate baseline sha + 3-way disposition (FB-LR-03/13
   assert(/recheck\.disposition === 'present'/.test(SRC), 'post-fix recheck not order-aware (still keyed on confirmed)');
 });
 
+test('FB-028: validator `kind` constrained to a DEFECT enum + polarity-gated verify (DEC-DEV-0094)', () => {
+  // a positive confirmation must be UNREPRESENTABLE as a finding (kind is a defect enum)
+  assert(/DEFECT_KINDS\s*=/.test(SRC), 'no DEFECT_KINDS enum');
+  assert(/kind:\s*\{\s*type:\s*'string',\s*enum:\s*DEFECT_KINDS\s*\}/.test(SRC), 'VALIDATOR_SCHEMA.kind not constrained to the defect enum');
+  assert(/'uncovered-requirement'/.test(SRC) && /'other-defect'/.test(SRC), 'defect-kind enum incomplete');
+  // verify must refuse a positive (non-defect) assertion before classifying disposition
+  assert(/POLARITY GATE/.test(SRC), 'verifyFinding lacks the FB-028 polarity gate');
+  assert(/FB-028/.test(SRC), 'FB-028 rationale not referenced');
+});
+
 test('remediation is bounded', () => {
   assert(/MAX_REMEDIATION_ROUNDS/.test(SRC), 'no bounded remediation rounds');
   assert(/round < MAX_REMEDIATION_ROUNDS/.test(SRC), 'remediation loop not bounded by the cap');
