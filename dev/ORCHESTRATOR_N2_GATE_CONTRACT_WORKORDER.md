@@ -76,8 +76,8 @@ of three patches.
 
 ## Cheap riders (do when the relevant file is already open)
 - ~~**T4-lite**~~ ✅ dangling-forward-reference linter — DONE (DEC-DEV-0095), folded into `design-coverage-oracle.cjs` as `extractForwardRefs`; still PARTIAL (flags candidates, does not prove the wiring task is absent — the semantic-checker decides).
-- **DEC-DEV-0089** PA-dedup pre-filter in `audit-spec-fidelity` (FB-LR-10).
-- Rename `kind:fabricated-trace` misnomer (FB-LR-12).
+- ~~**DEC-DEV-0089** PA-dedup pre-filter in `audit-spec-fidelity` (FB-LR-10).~~ ✅ DONE (PR #50): both PA-emitting prompts scan open PAs + update-in-place on a matching `(feature, route, ids/paths)` signature (prompt pre-filter, not a lib).
+- ~~Rename `kind:fabricated-trace` misnomer (FB-LR-12).~~ ✅ DONE (PR #50): → `missing-trace-source` (emit ↔ guard ↔ test renamed together).
 
 ## Open pilot risk (T2 + T5 have landed — masking mechanism fixed; the PRODUCT decision is still open)
 **FM-001↔FM-005 `had_trial` ownership conflict** (FB-LR-07): auth writes `had_trial=true` before emitting

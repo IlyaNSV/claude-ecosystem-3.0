@@ -28,22 +28,27 @@ PR → merged → main re-synced:
 
 ## What's LEFT — planned work, in priority
 
-> **The whole N+2 content queue (T1/T2/P3/T4/T5 + P6 feedback phase-2) is MERGED.** What remains is
-> the cheap riders, the (owner-driven) pilot re-validation, and the bookkeeping tail.
+> **The whole N+2 content queue (T1/T2/P3/T4/T5 + P6 feedback phase-2) is MERGED, and the cheap
+> riders are DONE.** What remains is the (owner-driven) pilot re-validation + the pilot-side
+> bookkeeping (which folds into that session).
 
-1. **Cheap riders** (do when the file is already open): **DEC-DEV-0089** PA-dedup pre-filter in
-   `audit-spec-fidelity` (FB-LR-10) — the only one with a reserved number; rename the
-   `kind:fabricated-trace` misnomer (FB-LR-12).
-4. **Pilot re-validation of the whole N+2 contract** — a **separate LIVE session the owner drives**
-   (I cannot run it): `/ecosystem:update` in `my-first-test`, then re-run A (P4 localization) / B
-   (P6 billing with Docker **down** → expect `ENV_NOT_READY`, not a false NO-GO) / C
-   (`feature-to-tdd-impl --feature admin` → expect the nested P6 to RETURN a real verdict, not the
-   advisory fallback). Grade post-hoc. This is the empirical proof the 4 merged increments work end
-   to end — none has been live-run yet.
-5. **Bookkeeping tail (FB-LR-14):** tag a clean pilot baseline before the next run; rename the
-   "S7" name-collision (the admin live-run was journaled as "S7" but canonical S7 = the §6 detect-leg)
-   → RUN-C; correct/​delete the pilot-repo `project_orchestrator_p6_delegation_unresolvable` memory
-   (it mis-attributed the delegation failure to a nesting wall — disproved in DEC-DEV-0091).
+1. ~~**Cheap riders**~~ ✅ **DONE (PR #50, DEC-DEV-0089):** PA-dedup pre-filter in `audit-spec-fidelity`
+   (FB-LR-10 — both PA prompts scan-and-update-in-place) + rename `fabricated-trace` →
+   `missing-trace-source` (FB-LR-12). verify + counts green.
+2. **Pilot re-validation of the whole N+2 contract** — a **separate LIVE session the owner drives**
+   (I cannot run it). Full hand-off: **`dev/ORCHESTRATOR_N2_PILOT_REVALIDATION_BRIEF.md`** —
+   `/ecosystem:update` in `my-first-test`, then Run A (P4 localization ×2 → T4 gap + PA-dedup
+   idempotency + `missing-trace-source`) / Run B (P6 billing, Docker **down** → `ENV_NOT_READY` not a
+   false NO-GO) / Run C (`feature-to-tdd-impl --feature admin` → nested P6 RETURNS a real verdict +
+   T5 conflict-escalation). Grade post-hoc (executor/reviewer separation). The empirical proof — none
+   of the 6 increments is live-run yet.
+3. **Bookkeeping tail (FB-LR-14) — pilot-side, folds into the re-validation session:** the S7→RUN-C
+   rename target is **in the pilot repo**, not the ecosystem repo (every in-repo `S7` is a legit
+   other meaning — confirmed by sweep). Rename `my-first-test/.claude/orchestrator/runs/S7-FEEDBACK-JOURNAL.md`
+   → `RUN-C-FEEDBACK-JOURNAL.md` + reconcile `ORCHESTRATOR_S7_BRIEF.md:118`'s journal-path; tag a clean
+   pilot baseline (brief §0.4). The pilot memory `project_orchestrator_p6_delegation_unresolvable`
+   is **already corrected** (superseded note added — the delegation failure was scriptPath/by-name,
+   fixed in T3, NOT a nesting wall; disproved in DEC-DEV-0091).
 6. **OPEN pilot risk (T5 landed — masking mechanism fixed; the product decision is still open):**
    FM-001↔FM-005 `had_trial` silent no-op — auth writes `had_trial=true` before emitting
    `account.confirmed`, so `TrialService.activateIfEligible` may silently no-op; billing specs
