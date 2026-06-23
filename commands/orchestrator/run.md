@@ -150,7 +150,8 @@ features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P4 r
 audited / faithful / spec_fixed / product_routed / residual / impl_ready; P5 returns
 implemented task ids / blocked / **`concerns`** (deferred-capability / mock-stand-in flags,
 FB-013) / GO-gate result / **`readiness`**; P6 returns mechanical / **`readiness`** (READY |
-DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / remediated / residual /
+DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolved`**
+(real-but-fixed-since-baseline, DEC-DEV-0093) / remediated / residual /
 **`result`** (GO | NO-GO | MANUAL_VERIFY_REQUIRED) / findings.
 
 > **One orchestrator workflow per repo at a time (FB-004).** Two processes that both
@@ -206,11 +207,17 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / remediated / resid
   the pilot; the templates embed the protocol as a fallback. The feature-level gate is now P6.
 - **P6:** `result` is the feature verdict — `GO` only if the mechanical layer (full suite +
   build) is green AND no confirmed validator finding remains AND no upstream task was blocked.
-  `confirmed_findings` are the ones that passed verify-finding-before-act (a grep of ground
-  truth) — refuted validator findings are dropped, never remediated (P6's core value: don't
-  chase a hallucinated defect). `residual` = confirmed defects still unresolved after the
-  remediation cap (3 rounds) → not a clean GO; surface them. A high-severity residual forces
-  `NO-GO`, otherwise `MANUAL_VERIFY_REQUIRED`. **Read `readiness` alongside `result`
+  `confirmed_findings` are the ones that passed verify-finding-before-act — now **order-aware**
+  (DEC-DEV-0093): each finding is classified against BOTH the current worktree AND a pre-gate
+  baseline sha into `present` (real & unresolved → remediated), `already-resolved` (real at the
+  baseline, fixed since the gate started — surfaced in `already_resolved`/`findings`, NOT
+  re-fixed and NOT mislabelled a hallucination), or `refuted` (absent in both → dropped). This
+  closes the TOCTOU where a confirmer reading an already-remediated tree called a REAL finding a
+  "hallucination", or a racing commit masked an unresolved defect (FB-LR-03/13). An
+  `already_resolved` item must still be **verified as a genuine fix, not a mask** (full
+  single-writer serialization is the T5 follow-up). `residual` = `present` defects still
+  unresolved after the remediation cap (3 rounds) → not a clean GO; surface them. A
+  high-severity residual forces `NO-GO`, otherwise `MANUAL_VERIFY_REQUIRED`. **Read `readiness` alongside `result`
   (DEC-DEV-0092):** `result` answers "is the code good?", `readiness` answers "did the gate get
   to judge?". `ENV_NOT_READY` (substrate down — Docker/DB/Redis off, or a RED suite whose
   failures are *all* substrate errors per the allowlist) is reported as

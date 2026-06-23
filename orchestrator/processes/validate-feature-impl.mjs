@@ -152,10 +152,15 @@ const VALIDATOR_SCHEMA = {
 
 const VERIFY_SCHEMA = {
   type: 'object',
-  required: ['confirmed'],
+  required: ['disposition'],
   properties: {
-    confirmed: { type: 'boolean' },                    // grep of ground truth confirms the defect is REAL (not a validator hallucination)
-    evidence: { type: 'string' },                      // what the inspection actually found
+    // DEC-DEV-0093 (FB-LR-03/13): ORDER-AWARE verify — classify against BOTH the current
+    // worktree AND the pre-gate baseline sha, so a confirmer reading an already-remediated
+    // tree does not mislabel a REAL finding a "hallucination", and a defect masked by a
+    // racing commit is surfaced rather than silently dropped.
+    disposition: { type: 'string', enum: ['present', 'already-resolved', 'refuted'] },
+    confirmed: { type: 'boolean' },                    // present || already-resolved (the defect WAS/IS real, not a hallucination)
+    evidence: { type: 'string' },                      // what the inspection found in worktree vs baseline
   },
 }
 
@@ -197,6 +202,21 @@ const mech = await agent(
 )
 log(`mechanical: ${mech && mech.passed ? 'GREEN' : 'RED'}${mech && mech.failures && mech.failures.length ? ` — ${mech.failures.length} failure(s)` : ''}; readiness=${(mech && mech.readiness) || 'READY'}`)
 
+// ---- pre-gate baseline (DEC-DEV-0093, FB-LR-03): the ground-truth snapshot for
+// ORDER-AWARE verify-finding-before-act. Captured BEFORE any remediation so a confirmer
+// can tell "refuted (never real)" from "already-resolved (real at baseline, fixed since —
+// possibly by a racing committer)". Validators read the same tree this sha points at (P6
+// makes no commit before Phase 3), so a detected defect IS in the baseline. No FS in the
+// script (DEC-DEV-0073 §D.1) → an agent captures the sha.
+const BASELINE_SCHEMA = { type: 'object', required: ['sha'], properties: { sha: { type: 'string' } } }
+const base = await agent(
+  `Capture the pre-gate baseline: run \`git rev-parse HEAD\` via Bash and return its sha. ` +
+  `This is the ground-truth snapshot the feature was handed to the gate at — do NOT commit or change anything.`,
+  { schema: BASELINE_SCHEMA, phase: 'Mechanical', label: 'baseline' },
+)
+const BASELINE = (base && base.sha) || ''
+log(`baseline sha for order-aware verify: ${BASELINE || '(unavailable — verify falls back to worktree-only)'}`)
+
 // ---- Phase 2: three validators in parallel (RA-8/9/10) ---------------------
 phase('Validate')
 const validateOne = (v) =>
@@ -216,33 +236,43 @@ log(`validators: ${results.filter((r) => r.clean).map((r) => r.key).join(',') ||
 // ---- Phase 3: verify-finding-before-act → bounded remediation → synthesize -
 phase('Synthesize')
 
-// verify-finding-before-act: confirm each finding against GROUND TRUTH (grep the code/tests),
-// never remediate on the validator's word — a refuted finding is dropped (P6 core value).
+// ORDER-AWARE verify-finding-before-act (DEC-DEV-0093, FB-LR-03/13): confirm each finding
+// against BOTH the current worktree AND the pre-gate BASELINE — never remediate on the
+// validator's word, and never mislabel an already-fixed real finding a "hallucination".
 const verifyFinding = (f) =>
   agent(
-    `Verify-finding-before-act: a ${f.validator} validator reported a possible defect in feature ${FEATURE} — ` +
+    `Verify-finding-before-act (ORDER-AWARE): a ${f.validator} validator reported a possible defect in feature ${FEATURE} — ` +
     `kind: ${f.kind}; ref: ${f.ref || 'n/a'}; detail: ${f.detail}. Where to look: ${f.where_to_verify || 'derive from the detail'}.\n` +
-    `GREP/INSPECT the actual ground truth (code, tests, ${SPEC_DIR}/{requirements,design}.md) and decide if the defect is REAL. ` +
-    `confirmed = true only if you can point to concrete evidence it exists; if the code already handles it / the validator ` +
-    `misread, confirmed = false (drop it — do NOT remediate on a hallucinated finding). Return confirmed + evidence.`,
+    `Inspect TWO trees: (1) the CURRENT worktree (code, tests, ${SPEC_DIR}/{requirements,design}.md), and (2) the pre-gate BASELINE ` +
+    `${BASELINE ? `commit ${BASELINE} — use \`git show ${BASELINE}:<file>\` / \`git grep <pattern> ${BASELINE}\` to read it` : '(baseline sha unavailable → inspect the current worktree only)'}.\n` +
+    `Classify the disposition:\n` +
+    `  • present          — the defect EXISTS in the current worktree (concrete evidence) → real & unresolved.\n` +
+    `  • already-resolved — NOT in the worktree but present at the baseline → it WAS real and has been fixed since the gate started ` +
+    `(possibly by a racing commit). Do NOT call this a hallucination; it must be surfaced (the resolution might be a mask).\n` +
+    `  • refuted          — absent in BOTH worktree and baseline → the validator misread; a true hallucination → drop.\n` +
+    `${BASELINE ? '' : 'With no baseline, use present (defect in worktree) or refuted (absent) only.\n'}` +
+    `confirmed = (disposition !== 'refuted'). Return disposition + confirmed + evidence (cite what you found in EACH tree).`,
     { schema: VERIFY_SCHEMA, phase: 'Synthesize', label: `verify:${f.validator}:${f.ref || f.kind}` },
   )
 
-// verify all raw findings in parallel (read-only), keep the confirmed ones
-const verified = (await parallel(rawFindings.map((f) => () => verifyFinding(f).then((v) => (v && v.confirmed ? { ...f, evidence: v.evidence } : null))))).filter(Boolean)
-log(`verify-finding-before-act: ${verified.length}/${rawFindings.length} finding(s) confirmed against ground truth (refuted ones dropped)`)
+// verify all raw findings in parallel (read-only); bucket by disposition (DEC-DEV-0093).
+const checked = (await parallel(rawFindings.map((f) => () => verifyFinding(f).then((v) => (v ? { ...f, disposition: v.disposition, evidence: v.evidence } : null))))).filter(Boolean)
+const present = checked.filter((f) => f.disposition === 'present')                       // real & unresolved → remediate
+const alreadyResolved = checked.filter((f) => f.disposition === 'already-resolved')       // real, fixed since baseline → surface (don't re-fix, don't drop)
+const refuted = checked.filter((f) => f.disposition === 'refuted')                        // hallucination → drop
+log(`verify-finding-before-act (order-aware): ${present.length} present, ${alreadyResolved.length} already-resolved (real, fixed since baseline), ${refuted.length} refuted/dropped`)
 
-// bounded remediation of CONFIRMED findings only; re-verify after each fix (a fix can be partial)
-let remaining = verified
+// bounded remediation of PRESENT findings only; re-verify after each fix (a fix can be partial)
+let remaining = present
 let round = 0
 const remediated = []
 while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
   round += 1
-  log(`remediation round ${round}/${MAX_REMEDIATION_ROUNDS} — ${remaining.length} confirmed finding(s)`)
+  log(`remediation round ${round}/${MAX_REMEDIATION_ROUNDS} — ${remaining.length} present finding(s)`)
   const next = []
   for (const f of remaining) {
     const fix = await agent(
-      `Remediate a CONFIRMED ${f.validator} defect in feature ${FEATURE} (verified evidence: ${f.evidence || f.detail}). ` +
+      `Remediate a CONFIRMED-PRESENT ${f.validator} defect in feature ${FEATURE} (verified evidence: ${f.evidence || f.detail}). ` +
       `kind: ${f.kind}; ref: ${f.ref || 'n/a'}. Fix the concrete defect ONLY (no scope creep), add/repair the covering test if the lens is requirements-coverage, ` +
       `then selective-commit (NEVER git add -A — explicit paths) with message: fix(${FEATURE}): ${f.kind} ${f.ref || ''}. ` +
       `If the fix needs a capability you lack (tool/secret/upstream decision), do NOT fake it — return remediated:false and say what is needed.`,
@@ -250,8 +280,8 @@ while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
     )
     if (fix && fix.remediated) {
       const recheck = await verifyFinding(f)
-      if (recheck && recheck.confirmed) next.push({ ...f, evidence: recheck.evidence })   // still real → another round
-      else remediated.push(f)
+      if (recheck && recheck.disposition === 'present') next.push({ ...f, evidence: recheck.evidence })   // still present → another round
+      else remediated.push(f)                                                                            // gone vs worktree → fixed
     } else {
       next.push(f)                                  // could not remediate (e.g. capability gap) → carries to residual
     }
@@ -299,7 +329,8 @@ const findings = [
        (readinessReasons.length ? ` Reasons: ${readinessReasons.join('; ')}.` : '')]
     : []),
   ...((mech && mech.failures) || []).map((x) => `mechanical: ${x}`),
-  ...unresolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (confirmed; unresolved after ${MAX_REMEDIATION_ROUNDS} round(s))`),
+  ...unresolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (confirmed-present; unresolved after ${MAX_REMEDIATION_ROUNDS} round(s))`),
+  ...alreadyResolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (already-resolved since baseline, DEC-DEV-0093 — was REAL, fixed by a commit during/before the gate; NOT a hallucination. VERIFY the resolution is genuine, not a mask — full single-writer serialization is T5.)`),
   ...CONCERNS.map((c) => `deferred-capability (FB-013): ${typeof c === 'string' ? c : `${c.task || ''}: ${c.concern || ''}`} — disclose at GO; a GO over a mock-only/unwired real seam is GO-with-caveats`),
 ]
 log(`feature GO-gate: ${result} [readiness=${readiness}]${readiness !== 'READY' ? ' (advisory — gate could not fully judge)' : ''}; ${findings.length} finding(s) surfaced`)
@@ -310,7 +341,8 @@ return {
   readiness,                                          // DEC-DEV-0092: READY | DEGRADED | ENV_NOT_READY — orthogonal to result
   readiness_reasons: readinessReasons,
   validators: results.map((r) => ({ validator: r.key, clean: !!r.clean, findings: (r.findings || []).length })),
-  confirmed_findings: verified.length,
+  confirmed_findings: present.length + alreadyResolved.length,   // DEC-DEV-0093: real findings (present + already-resolved); refuted dropped
+  already_resolved: alreadyResolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),   // real, fixed since baseline — surfaced for genuineness check (FB-LR-03)
   remediated: remediated.length,
   residual: unresolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),
   concerns: CONCERNS,                                 // FB-013: deferred-capability flags, disclosed not dropped

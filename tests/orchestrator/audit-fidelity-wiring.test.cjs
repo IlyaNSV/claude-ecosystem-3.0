@@ -71,7 +71,7 @@ test('does NOT edit .product/ on a product-route drift', () => {
 test('verify-finding-before-act: confirms a semantic drift before fixing the spec (parity with P6)', () => {
   assert(/verifyDrift\b/.test(src), 'no verifyDrift helper');
   assert(/VERIFY_SCHEMA/.test(src) && /confirmed/.test(src), 'verify schema / confirmed flag missing');
-  assert(/confirmedDrifts/.test(src), 'spec-fix not gated on confirmed drifts');
+  assert(/presentDrifts/.test(src), 'spec-fix not gated on confirmed-present drifts');
   // the deterministic oracle's fabricated-trace finding is exempt — only LLM semantic drifts are re-verified
   assert(/fabricated-trace/.test(src), 'oracle-confirmed fabricated-trace not exempted from re-verify');
   // verify must run BEFORE the spec-fix
@@ -79,6 +79,17 @@ test('verify-finding-before-act: confirms a semantic drift before fixing the spe
   const fixIdx = src.indexOf('spec-fix:');
   assert(verifyIdx !== -1 && fixIdx !== -1 && verifyIdx < fixIdx, 'verify-drift must run before the spec-fix');
   assert(/refuted/i.test(src), 'refuted drifts not dropped');
+});
+
+test('order-aware verifyDrift: pre-gate baseline sha + 3-way disposition (FB-LR-03/13, DEC-DEV-0093)', () => {
+  assert(/git rev-parse HEAD/.test(src), 'no baseline sha capture (git rev-parse HEAD)');
+  assert(/BASELINE\b/.test(src), 'BASELINE not threaded into verifyDrift');
+  assert(/disposition === 'present'/.test(src), 'spec-fix not bucketed by the present disposition');
+  assert(/already-resolved/.test(src), 'already-resolved disposition missing — a fixed real drift would be mislabelled a hallucination + re-fixed');
+  // baseline captured at Init, before the Triage spec-fix
+  const baseIdx = src.indexOf('git rev-parse HEAD');
+  const fixIdx = src.indexOf('spec-fix:');
+  assert(baseIdx !== -1 && fixIdx !== -1 && baseIdx < fixIdx, 'baseline must be captured before the spec-fix');
 });
 
 test('returns the P4 contract keys', () => {
