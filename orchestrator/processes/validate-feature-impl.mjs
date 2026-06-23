@@ -78,8 +78,9 @@ const REQUIREMENTS_COVERAGE = [
   '(when a .product source is available) and relay its JSON, then for each requirement id grep',
   'the codebase + test files to confirm a real implementation and a covering test exist. A',
   'requirement with a passing-by-absence test (asserts nothing) or with no production call-site',
-  'is NOT covered. Report each gap as a finding (ref = requirement id; where_to_verify = the',
-  'file/symbol to grep). Do NOT trust tasks.md [x] marks — re-derive from code+tests.',
+  'is NOT covered. Report ONLY a GAP as a finding (kind: uncovered-requirement | missing-test | no-call-site;',
+  'ref = requirement id; where_to_verify = the file/symbol to grep). A requirement that IS covered is NOT a finding —',
+  'it contributes to clean:true; never emit a "coverage confirmed" / positive finding (FB-028). Do NOT trust tasks.md [x] marks — re-derive from code+tests.',
 ].join(' ')
 
 const DESIGN_ALIGNMENT = [
@@ -127,6 +128,22 @@ const MECH_SCHEMA = {
   },
 }
 
+// DEC-DEV-0094 (FB-028 / FB-LR-06): a validator FINDING is, by definition, a DEFECT — a gap /
+// violation / missing wiring the lens detected. `kind` was a FREE STRING, so a validator could
+// emit a POSITIVE assertion (e.g. "coverage_confirmation: requirement X IS covered") as a
+// "finding"; verifyFinding then confirmed the positive ("yes, coverage is real" → confirmed) and
+// it survived to residual, forcing MANUAL_VERIFY over a clean GO (the pilot mis-diagnosed this as
+// a phantom `kind:coverage_confirmation` constant — the real cause is the free-string kind).
+// Constraining `kind` to a defect enum makes a positive-confirmation kind UNREPRESENTABLE — a
+// covered requirement is reported via `clean:true`, never as a finding. `other-defect` is the
+// escape hatch for a genuine novel defect (still a DEFECT — verify-finding-before-act confirms it).
+const DEFECT_KINDS = [
+  'uncovered-requirement', 'missing-test', 'no-call-site',          // RA-8 requirements-coverage — GAPS only
+  'design-divergence',                                             // RA-9 design-alignment
+  'orphan-export', 'dead-seam', 'unhandled-event', 'dangling-import', // RA-10 integration-boundary
+  'other-defect',                                                 // genuine novel defect (NOT a positive)
+]
+
 const VALIDATOR_SCHEMA = {
   type: 'object',
   required: ['clean', 'findings'],
@@ -140,7 +157,7 @@ const VALIDATOR_SCHEMA = {
         required: ['kind', 'detail', 'severity'],
         properties: {
           ref: { type: 'string' },                     // requirement id / design decision / seam
-          kind: { type: 'string' },                    // uncovered-requirement | design-divergence | orphan-export | dead-seam | ...
+          kind: { type: 'string', enum: DEFECT_KINDS }, // DEC-DEV-0094: a DEFECT kind only — a positive confirmation is not representable
           detail: { type: 'string' },
           where_to_verify: { type: 'string' },         // file/symbol to grep when confirming (verify-finding-before-act)
           severity: { type: 'string', enum: ['high', 'medium', 'low'] },
@@ -224,7 +241,11 @@ const validateOne = (v) =>
     `${v.role}\n` +
     `Feature: ${FEATURE}. Spec: ${SPEC_DIR}/{requirements,design,tasks}.md. Inspect the actual implemented code + tests ` +
     `(git log/diff for this feature's commits, the source tree, the test files). ` +
-    `clean = true ONLY if you find NO finding for your lens. For every finding include where_to_verify so it can be ` +
+    `clean = true ONLY if you find NO finding for your lens. ` +
+    `FB-028: every finding MUST be a DEFECT (a gap / violation / missing wiring) with a \`kind\` from the allowed defect set ` +
+    `(${DEFECT_KINDS.join(', ')}) — NEVER a positive confirmation that something IS present/covered/correct. A satisfied ` +
+    `requirement or a clean seam is reported via clean:true, it is NOT a finding (do not emit a "coverage confirmed" finding). ` +
+    `For every finding include where_to_verify so it can be ` +
     `independently confirmed against ground truth before anyone acts on it. Return your verdict (validator: ${v.key}).`,
     { schema: VALIDATOR_SCHEMA, phase: 'Validate', label: `validate:${v.key}` },
   )
@@ -243,7 +264,10 @@ const verifyFinding = (f) =>
   agent(
     `Verify-finding-before-act (ORDER-AWARE): a ${f.validator} validator reported a possible defect in feature ${FEATURE} — ` +
     `kind: ${f.kind}; ref: ${f.ref || 'n/a'}; detail: ${f.detail}. Where to look: ${f.where_to_verify || 'derive from the detail'}.\n` +
-    `Inspect TWO trees: (1) the CURRENT worktree (code, tests, ${SPEC_DIR}/{requirements,design}.md), and (2) the pre-gate BASELINE ` +
+    `POLARITY GATE FIRST (FB-028): a finding must describe a DEFECT — something missing / broken / violated. If the "finding" instead ` +
+    `asserts that something IS present / covered / correct (a positive confirmation, NOT a defect), it is malformed → disposition:refuted ` +
+    `(a positive is not a defect; clean coverage is the validator's clean:true, never a confirmed finding). Do NOT confirm a positive.\n` +
+    `Otherwise classify the DEFECT against TWO trees: (1) the CURRENT worktree (code, tests, ${SPEC_DIR}/{requirements,design}.md), and (2) the pre-gate BASELINE ` +
     `${BASELINE ? `commit ${BASELINE} — use \`git show ${BASELINE}:<file>\` / \`git grep <pattern> ${BASELINE}\` to read it` : '(baseline sha unavailable → inspect the current worktree only)'}.\n` +
     `Classify the disposition:\n` +
     `  • present          — the defect EXISTS in the current worktree (concrete evidence) → real & unresolved.\n` +
