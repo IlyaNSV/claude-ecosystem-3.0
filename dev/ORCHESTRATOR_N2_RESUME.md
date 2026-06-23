@@ -19,26 +19,21 @@ PR → merged → main re-synced:
 | P3 (FB-028) | 0094 | #43 | `b077ad5` | P6 `VALIDATOR_SCHEMA.kind` → defect enum + `verifyFinding` polarity-gate — a positive "coverage confirmed" can't masquerade as a finding |
 | P4 / T4 (design→tasks coverage) | 0095 | #44 | `19e70b0` | `design-coverage-oracle.cjs` + P4 hybrid layer — catches a design module no task builds; confirmed gap excludes the feature from `impl_ready` |
 | P5 / T5 (remediation discretion) | 0096 | #46 | `8c415a5` | `remediation-guard.cjs` (classifyBlock + detectsUnilateralResolution); P6 single-writer + escalate cross-spec/design conflict (`conflicts` degrades GO→MANUAL_VERIFY); P5 transient bounded auto-retry + escalate-don't-self-resolve |
+| P6 (feedback phase-2) | 0097 | #48 | `70acf5f` | `feedback-intake.js` (dev-only): pickup of the `/ecosystem:meta-feedback` UF-outbox + FB-ledger + Session Audit journal → unified finding contract + dedupe vs `DEV_JOURNAL` (open / likely-ported / ported). Capture-don't-fix |
 
 **Ledger findings closed:** FB-LR-02 / 03 / 04 / 05 / 06 / 07 / 08 / 09 / 13.
 **Repo state:** on `main`, synced with `origin/main`. The only uncommitted file is
 `dev/meta-improvement/audit-index.md` — **session-audit hook noise; exclude it from every commit**.
-**Next free DEC-DEV number = `0097`.**
+**Next free DEC-DEV number = `0098`.**
 
 ## What's LEFT — planned work, in priority
 
-1. **P6 — DEC-DEV-0090 phase-2** (receiving side): auto-pickup of the `/ecosystem:meta-feedback`
-   outbox + dedupe + a unified finding contract across FEEDBACK-JOURNAL / Session Audit / UF-ledger.
-   (This is the next NEW increment — T1/T2/P3/T4/T5 are all merged.)
-2. **Cheap riders** (do when the file is already open): **DEC-DEV-0089** PA-dedup pre-filter in
-   `audit-spec-fidelity` (FB-LR-10); rename the `kind:fabricated-trace` misnomer (FB-LR-12).
+> **The whole N+2 content queue (T1/T2/P3/T4/T5 + P6 feedback phase-2) is MERGED.** What remains is
+> the cheap riders, the (owner-driven) pilot re-validation, and the bookkeeping tail.
 
-   _Done since the last checkpoint:_ **P5 / T5 remediation guardrails** (FB-LR-07/08) — DEC-DEV-0096,
-   PR #46, merge `8c415a5`. Single-writer remediation + escalate-don't-self-resolve cross-spec/design
-   conflicts (the unclosed remainder of T2 — a baseline anchor detects but does not *prevent* a racing
-   committer; T5 forbids the unilateral resolution and escalates) + bounded transient auto-retry
-   (FB-022). The adversarial-repro lives in the `remediation-guard` unit test (a live concurrency repro
-   is unreachable — the `.mjs` can't run standalone).
+1. **Cheap riders** (do when the file is already open): **DEC-DEV-0089** PA-dedup pre-filter in
+   `audit-spec-fidelity` (FB-LR-10) — the only one with a reserved number; rename the
+   `kind:fabricated-trace` misnomer (FB-LR-12).
 4. **Pilot re-validation of the whole N+2 contract** — a **separate LIVE session the owner drives**
    (I cannot run it): `/ecosystem:update` in `my-first-test`, then re-run A (P4 localization) / B
    (P6 billing with Docker **down** → expect `ENV_NOT_READY`, not a false NO-GO) / C
@@ -61,21 +56,22 @@ PR → merged → main re-synced:
 ## Next-session kickoff prompt (paste verbatim)
 
 ```
-Продолжаем доводить очередь Orchestrator N+2 (план: dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md,
-находки: dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md, чекпоинт: dev/ORCHESTRATOR_N2_RESUME.md).
+Очередь Orchestrator N+2 — ВЕСЬ content слит в main (план/находки/чекпоинт:
+dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md / dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md /
+dev/ORCHESTRATOR_N2_RESUME.md).
 
-Уже слито в main (verify-зелёное): T1 verdict×readiness (0092,#41), T2 order-aware verify
-(0093,#42), P3 FB-028 defect-enum (0094,#43), P4/T4 design→tasks coverage (0095,#44),
-P5/T5 remediation-discretion guardrails (0096,#46).
+Слито (verify-зелёное): T1 verdict×readiness (0092,#41), T2 order-aware verify (0093,#42),
+P3 FB-028 defect-enum (0094,#43), P4/T4 design→tasks coverage (0095,#44), P5/T5
+remediation-discretion guardrails (0096,#46), P6 feedback phase-2 receiving side (0097,#48).
 
-Следующий = P6 — DEC-DEV-0090 phase-2 (receiving side): авто-pickup outbox'а
-/ecosystem:meta-feedback + dedupe + единый finding-контракт через FEEDBACK-JOURNAL / Session
-Audit / UF-ledger. Дешёвые riders: 0089 PA-dedup в audit-spec-fidelity (FB-LR-10), rename
-kind:fabricated-trace (FB-LR-12).
+Осталось (не content-инкременты): (1) дешёвые riders — 0089 PA-dedup в audit-spec-fidelity
+(FB-LR-10, номер зарезервирован), rename kind:fabricated-trace (FB-LR-12); (2) pilot
+ре-валидация всего N+2 (отдельная LIVE-сессия владельца — `/ecosystem:update` в my-first-test,
+прогоны A/B/C, грейд пост-фактум); (3) bookkeeping-хвост (FB-LR-14: чистый pilot-baseline tag,
+S7→RUN-C rename, коррекция пилотной nesting-памяти).
 
-Сначала верифицируй фактическое состояние (git log на main + что 0097 свободен), заведи ветку,
-держи цикл: build → npm run verify зелёный → push → PR → merge (я делегировал мёрж тебе) → sync
-main. audit-index.md = шум хука, в коммиты не тащить. Следующий DEC-DEV = 0097.
+Цикл: build → npm run verify зелёный → push → PR → merge (мёрж делегирован) → sync main.
+audit-index.md = шум хука, в коммиты не тащить. Следующий DEC-DEV = 0098.
 ```
 
 ## Key facts / gotchas / cadence for whoever resumes
