@@ -6264,6 +6264,38 @@ Committed-target = Step 0 → A2; **B1 = stretch** (чистый стоп пос
 
 ---
 
+## DEC-DEV-0099 — Dogfood Epic A+B на пилоте: completeness-oracle чинит 2 допущения о форме VC↔SC
+
+**Date:** 2026-06-24
+**Trigger:** Dogfood Increment 1 (Epic A+B) против реального `.product/` пилота `my-first-test` — валидация перед стройкой F1 (выбор владельца; CLAUDE.md §2/§3 «pilot после инкремента / риск самореференц-коллапса»). Прогон libs (oracle + zone-router) solo против живых артефактов.
+
+**Tag:** #vision #epic-b #completeness-oracle #dogfood #spec-vs-reality #DEC-DEV-0098-followup
+
+### Context
+`completeness-oracle.cjs` (DEC-DEV-0098, B1) собирался spec-first по каталогу `docs/pmo/artifacts/VC.md`, где связь VC→SC задана как `scenario: SC-<NNN>` (скаляр). Прогон oracle против 7 реальных фич пилота дал подозрительно однородный результат: **все 7 = score 0.8, B4 fail** («active SC have no active VC») — хотя фичи `gate_passed: F.10-complete` и несут `verification: [VC-...]`. Роутер (A2) против тех же реальных путей — **чистый pass** (все зоны корректны, segments/glossary не фейрят).
+
+### Options considered
+- **«Это реальный gap пилота»** — отвергнуто после проверки: VC существуют и active, ссылаются на SC. Ложь была в oracle, не в данных ([[feedback_drift_verify_timeline_first]] — сверяй факт прежде чем верить отчёту).
+- **Чинить только массивную форму** — недостаточно: вскрылась вторая форма (см. ниже).
+- **Чинить пилотные VC под каталог** — отвергнуто: это правка чужого pilot-состояния без мандата (принцип 6 — бережём состояние пилота); правильно — сделать oracle толерантным, а несогласованность данных пилота записать как отдельную pilot-side находку.
+
+### Decision
+Две правки `B4` в `completeness-oracle.cjs` (+ толерантность к реальной форме данных):
+1. **`scenario` может быть списком.** Реальные VC несут `scenario: [SC-001, SC-001a, ...]` (один VC покрывает семью SC), а oracle сравнивал строку со скаляром (`vc.fm.scenario === sc.id`) → никогда не матчил. Фикс: `vcCoversScenario` принимает массив (`includes`) И скаляр (`===`).
+2. **Имя поля варьируется: `scenario` (ед.ч.) И `scenarios` (мн.ч.).** VC-001..023 используют `scenario:`, billing VC-024+ — `scenarios:`. Фикс: `vcScenarioField(fm) = fm.scenario ?? fm.scenarios`.
+
+После фикса все 7 фич пилота → **score 1.0, met=true** (корректно — это зрелые handoff-ready фичи). Тесты: `completeness-oracle` 7→9 (добавлены list-form + plural-field кейсы, оба пинят реальную форму пилота). `npm run verify` + `check-counts` зелёные; counts 24/44 (правка логики, без нового типа/правила).
+
+### Outcome
+Oracle теперь устойчив к реальной форме VC-связи. Роутер и персоны (A2/A1) — без находок против реальных данных. **Pilot-side находка (НЕ чиню здесь):** пилот сам непоследователен в имени поля VC→SC (`scenario` vs `scenarios`) — кандидат на `/product:validate` или LESSON в пилоте; вынесено в unified pilot-план как pilot-side cleanup-пункт.
+
+### Lessons
+1. **Каталог — не гарантия реальной формы; dogfood обязателен перед стройкой поверх.** Spec-first oracle разошёлся с живыми данными в первый же прогон (скаляр vs список, ед.ч. vs мн.ч.). Unit-тесты на фикстурах были зелёные — потому что фикстуры повторяли мои допущения. Только прогон против настоящего `.product/` вскрыл дрейф ([[feedback_substrate_premise_verification]]). Ровно риск, о котором предупреждает CLAUDE.md §3.
+2. **Детерминированный oracle обязан быть либеральным на входе, строгим на выходе.** Принимать обе формы поля/типа (Postel) — иначе ложный gap там, где покрытие есть. Ложно-«не покрыто» подрывает доверие к стоп-сигналу loop сильнее, чем пропуск.
+3. **Пилотный дрейф формы — сам по себе сигнал.** Несогласованность `scenario`/`scenarios` в пилоте — это то, что должен ловить `/product:validate` (B6-зона). Oracle обошёл, но находку сохранил, не замолчал ([[feedback_orchestrate_not_duplicate]] — не дублировать валидатор, но и не терять сигнал).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
