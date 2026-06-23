@@ -1,5 +1,11 @@
 # Orchestrator N+2 — pilot re-validation brief (owner-driven)
 
+> **⚠ WRAPPED (2026-06-24):** this brief is now **Track O** of the single-delivery, single-run
+> **`dev/UNIFIED_PILOT_VALIDATION_PLAN.md`** — run it from there (one `/ecosystem:update` that also
+> ships the Vision Epic A+B dogfood = Track V). This file remains the **source of the per-run PASS
+> criteria** (§1 below); the unified plan references it rather than duplicating. Next free `DEC-DEV`
+> is now **0100** (the "0098" below is stale — 0098/0099 were taken by the Vision increment).
+
 > **What:** the empirical proof that the six merged N+2 increments work end-to-end in the
 > pilot. The code is verify-green but **none of it has been live-run yet** — this brief is the
 > hand-off for the **owner-driven** session that runs it. I (the harness) cannot run it: it
