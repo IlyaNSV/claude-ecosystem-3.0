@@ -6247,10 +6247,20 @@ Committed-target = Step 0 → A2; **B1 = stretch** (чистый стоп пос
 **Kickoff-проверка (phase-kickoff §1-2):** архитектурные развилки персон/роутинга/oracle разрешены выше; ambiguities (naming/state/firing-порог/контракт hook→процесс) сняты в A1/A2 спеках по факту реализации. Полноценный fresh-session kickoff не запускался — увеличение инкрементальное (клон существующих паттернов DA-агента + DA-хука + оракулов), не новая фаза с green-field архитектурой.
 
 ### Outcome
-_(in-progress)_ Step 0 — DEC-DEV + ROADMAP-секция + memory. Далее B4 → A1+A3 → A2 (committed), B1 (stretch). Покоммитное дробление per-пункт (recovery ≤1 пункт). Доставка (push/PR/merge) — по явному ОК владельца.
+**Весь батч выполнен на ветке `feat/vision-increment-1-epic-a` (6 коммитов, всё verify-зелёное), committed-target + stretch:**
+- **Step 0** (`9d6a4f3`) — DEC-DEV-0098 + ROADMAP-секция «Autonomous Pipeline Vision (epics A-F)» + memory.
+- **B4** (`6ae413a`) — `dev/LOOP_READINESS_AUDIT.md`: разметка всех шагов P1/P2/P2.5 (loop-safe/idempotency-critical/gate); BG (D1.5z) + DA-findings (F.9) = idempotency-ловушки; **F.10 DoR-check = встроенный стоп-оракул** (якорь τ для B1).
+- **A1+A3** (`25ab576`) — 3 гетерогенные персоны (`architect/qa/ux-advisor`) с distinct priors; clean-only finding-enum; идемпотентный вывод (keyed on persona+artifact); subagent-type-contract (canonical always, no silent fallback).
+- **A2** (`f13f243`) — детерминированный zone→persona роутер: манифест `zone-routing.yaml` + чистый `zone-router.cjs` (matchZone/classifyMagnitude/route, dual-use CLI) + PostToolUse хук `zone-change-trigger.js` (firing = код: зона ∧ magnitude≥порог; dedup по id; flat-entries обходят whitespace-ladder 0023). Тесты: zone-router 17/17 + 2 smoke.
+- **B1 (stretch)** (`0bffdf3`) — `completeness-oracle.cjs` (DoR-anchored score+gaps, честно помечает delegated B5/B6/B8, никогда false-1.0) + skill `completeness-loop.md` (bounded waves, external stop, decisions escalate, no silent truncation) + `/product:complete` (20-я product-команда). Тест oracle 7/7.
+
+`npm run verify` + `check-counts` зелёные на каждом шаге; counts 24/44 без изменений (всё additive). Граница соблюдена: ни один файл `orchestrator/` не тронут. **Доставка (push/PR/merge) — pending явный ОК владельца** (сборка на ветке, не в main). Следующий свободный DEC-DEV = 0099.
 
 ### Lessons
-_(заполнить по завершении инкремента; кандидаты: ROI клонирования DA-паттерна для персон; держится ли bounded-loop дисциплина на первом oracle; не всплыла ли коллизия контракта гейтов с оркестратор-треком при A2.)_
+1. **ROI клонирования DA-паттерна высок, но конвенция несёт и устаревшие факты.** Персоны собрались быстро из шаблона DA, НО я по инерции записал `.product/navigation/` для NM — а NM живёт в `.product/mockups/`; поймал при заземлении A2-манифеста (grep пути). Урок: клонируя конвенцию, верифицируй фактические пути эмпирически, не по памяти ([[feedback_substrate_premise_verification]]).
+2. **Process-gate матчит `DEC-DEV-NNNN` где угодно в сообщении коммита.** Дважды блокнул per-item коммиты (B4 и A1) — один раз за токен в subject, второй за `DEC-DEV-0094` в теле (ссылка на урок). Паттерн «одна DEC-DEV-запись на инкремент + per-item коммиты без токена в сообщении, цитаты в CHANGELOG» — правильный и честный (рациональ в журнале со Step 0), не bypass.
+3. **B4-аудит окупился сразу в A1/A2/B1.** Idempotency-разметка (§5.3) напрямую дала дизайн: keyed-not-timestamped вывод персон, dedup-by-id в advisor-pending, update-in-place в loop. DoR-якорь (F.10) стал τ oracle. Аудит-первым перед стройкой — реальный рычаг, не церемония.
+4. **Коллизии контракта гейтов с оркестратор-треком при A2 НЕ возникло** — A2 routing живёт в product-зоне (`.product/` зоны → персоны), оркестраторный gate-contract (verdict×readiness) ортогонален. F1 (autonomy resolver) — там сверка ещё предстоит, но это вне этого инкремента.
 
 ---
 
