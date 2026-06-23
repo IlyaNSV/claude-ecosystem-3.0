@@ -85,7 +85,7 @@ const AUDIT_SCHEMA = {
         required: ['kind', 'route', 'severity'],
         properties: {
           ref: { type: 'string' },                       // cited id, if any
-          kind: { type: 'string' },                      // value-mismatch | contradiction | stale-entity | weakened-acceptance | fabricated-trace
+          kind: { type: 'string' },                      // value-mismatch | contradiction | stale-entity | weakened-acceptance | missing-trace-source
           detail: { type: 'string' },
           route: { type: 'string', enum: ['spec', 'product'] },
           severity: { type: 'string', enum: ['high', 'medium', 'low'] },
@@ -149,7 +149,7 @@ const auditOne = (feature, extra = '') =>
     `Fidelity-audit the cc-sdd spec for feature "${feature}" against its .product source.\n` +
     `1) Resolve the .product ground-truth files for ${feature}: its handoff (.product/handoffs/) + the FM/SC/BR/IC/NFR artifacts it traces.\n` +
     `2) DETERMINISTIC trace-integrity (do NOT eyeball): node ${ORACLE} --source <each resolved source> --spec ${SPEC_BASE}/${feature}/requirements.md --spec ${SPEC_BASE}/${feature}/design.md --spec ${SPEC_BASE}/${feature}/tasks.md. ` +
-    `Relay trace_integrity.passed + every dangling ref (a dangling ref is a fabricated/drifted trace — kind:fabricated-trace, route:spec unless the id SHOULD exist in product, then route:product).\n` +
+    `Relay trace_integrity.passed + every dangling ref (the cited id has NO source in .product — kind:missing-trace-source [FB-LR-12: the id may be a real owned contract, the source is what's missing — NOT an accusation it was fabricated], route:spec unless the id SHOULD exist in product, then route:product).\n` +
     `3) SEMANTIC pass: ${FIDELITY_AUDITOR}\n` +
     `faithful = (trace_integrity_passed AND no semantic drifts). Return the audit verdict.${extra}`,
     { schema: AUDIT_SCHEMA, phase: 'Audit', label: `audit:${feature}` },
@@ -175,7 +175,7 @@ const coverageAudit = (feature) =>
   )
 
 // ---- verify-finding-before-act (parity with P6, DEC-DEV-0087) --------------
-// The deterministic oracle's trace-integrity (kind:fabricated-trace = a dangling ref) is already
+// The deterministic oracle's trace-integrity (kind:missing-trace-source = a dangling ref) is already
 // confirmed BY CODE — never re-verified. But a SEMANTIC drift from the LLM fidelity-auditor is
 // judgment, and P4 EDITS + COMMITS the spec on it. So before any spec-fix each semantic drift is
 // CONFIRMED against ground truth (grep the spec + the .product source it cites); a refuted drift is
@@ -247,8 +247,10 @@ for (const a of drifting) {
     await agent(
       `Feature ${a.feature}: ${productDrifts.length} fidelity drift(s) routed to PRODUCT (the .product canon ` +
       `itself is wrong / under-specified / needs a business decision): ${productDrifts.map((d) => `${d.ref || d.kind}: ${d.detail || ''}`).join(' | ')}.\n` +
-      `Append a product-feedback entry to .claude/pending-actions.md (create if absent) with route: product, ` +
-      `the affected ids, and the rationale. Do NOT edit .product/ and do NOT patch the spec around it (OD8 reverse channel). Do NOT commit code.`,
+      `Write a product-feedback entry to .claude/pending-actions.md (create if absent) with route: product, the affected ids, and the rationale. ` +
+      `DEDUP (FB-LR-10, repeated-run idempotency): FIRST scan the file for an OPEN pending-action that already routes feature ${a.feature} + the same affected ids to product. ` +
+      `If one exists, UPDATE it in place (refresh detail/severity; do not duplicate) instead of appending — only APPEND when no open PA matches that (feature, route:product, ids) signature. Match on (feature, route, ids), NOT the drift wording (it varies run-to-run). ` +
+      `Do NOT edit .product/ and do NOT patch the spec around it (OD8 reverse channel). Do NOT commit code.`,
       { phase: 'Triage', label: `product-route:${a.feature}` },
     )
     productRouted.push({ feature: a.feature, drifts: productDrifts.length })
@@ -263,13 +265,13 @@ for (const a of drifting) {
       round += 1
       const curSpecDrifts = (current.drifts || []).filter((d) => d.route === 'spec')
       if (!curSpecDrifts.length) { fixedOk = true; break }
-      // ORDER-AWARE verify-finding-before-act (DEC-DEV-0087 + DEC-DEV-0093): fabricated-trace is
+      // ORDER-AWARE verify-finding-before-act (DEC-DEV-0087 + DEC-DEV-0093): missing-trace-source is
       // oracle-confirmed by code (present); each SEMANTIC drift is classified against the current
       // spec AND the pre-gate baseline. present → fix; already-resolved → spec already matches
       // product (don't re-fix, surface); refuted → auditor hallucination → dropped.
       const presentDrifts = []
       for (const d of curSpecDrifts) {
-        if (d.kind === 'fabricated-trace') { presentDrifts.push(d); continue }   // deterministic oracle — already real & present
+        if (d.kind === 'missing-trace-source') { presentDrifts.push(d); continue }   // deterministic oracle — already real & present
         const v = await verifyDrift(current.feature, d)
         if (!v) continue
         if (v.disposition === 'present') presentDrifts.push({ ...d, evidence: v.evidence })
@@ -303,8 +305,9 @@ for (const c of coveredFeatures) {
   await agent(
     `Feature ${c.feature}: ${c.gaps.length} design→tasks COVERAGE GAP(s) (FB-LR-05) — design files/modules that NO task builds: ` +
     `${c.gaps.map((g) => `${g.path || g.kind}: ${g.detail || ''}`).join(' | ')}.\n` +
-    `Append a spec-completion entry to .claude/pending-actions.md (create if absent) with route: spec, the feature, the unbuilt ` +
+    `Write a spec-completion entry to .claude/pending-actions.md (create if absent) with route: spec, the feature, the unbuilt ` +
     `file(s), and the recommendation to ADD the missing assembly/wiring task(s) to ${SPEC_BASE}/${c.feature}/tasks.md before impl. ` +
+    `DEDUP (FB-LR-10, repeated-run idempotency): if an OPEN pending-action already routes feature ${c.feature} + the same unbuilt file(s) as a spec-completion, UPDATE it in place instead of appending a duplicate (match on (feature, route:spec, paths)). ` +
     `Do NOT edit tasks.md yourself in this gate (a missing task is for the spec author / P3 re-run, not an auto-fix). Do NOT commit code.`,
     { phase: 'Triage', label: `coverage-route:${c.feature}` },
   )
