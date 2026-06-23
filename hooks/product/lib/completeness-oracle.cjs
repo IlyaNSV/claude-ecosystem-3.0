@@ -166,13 +166,24 @@ function scoreFeature(fmId, productRoot) {
     if (brInactive.length) gaps.push(`B3: BR not active: ${brInactive.join(', ')}`);
   }
 
-  // B4 — every active SC has >=1 active VC (VC.scenario reverse-ref)
+  // B4 — every active SC has >=1 active VC (VC.scenario reverse-ref).
+  // VC.scenario is EITHER a scalar (`scenario: SC-001`, per the catalog) OR a list
+  // (`scenario: [SC-001, SC-001a, ...]`, as real pilot VCs use — one VC covering an SC
+  // family). Handle both (dogfood finding: array form was the live reality). DEC-DEV-0099.
+  // The link field name itself varies in real data: `scenario:` (catalog) AND `scenarios:`
+  // (some pilot VCs) both occur — accept either (dogfood finding #2; DEC-DEV-0099). The
+  // field-name inconsistency in the pilot is a separate data-quality finding, not fixed here.
+  const vcScenarioField = (fm) => (fm.scenario != null ? fm.scenario : fm.scenarios);
   const vcs = [];
   for (const [, e] of index) {
-    if (e.type && /verification|VC/i.test(e.type) && e.fm && e.fm.scenario) vcs.push(e);
+    if (e.type && /verification|VC/i.test(e.type) && e.fm && vcScenarioField(e.fm) != null) vcs.push(e);
   }
+  const vcCoversScenario = (vc, scId) => {
+    const field = vcScenarioField(vc.fm);
+    return Array.isArray(field) ? field.includes(scId) : field === scId;
+  };
   const uncoveredScs = activeScs.filter((sc) => {
-    const cover = vcs.filter((vc) => vc.fm.scenario === sc.id && isActive(vc));
+    const cover = vcs.filter((vc) => vcCoversScenario(vc, sc.id) && isActive(vc));
     return cover.length === 0;
   });
   if (activeScs.length === 0) {

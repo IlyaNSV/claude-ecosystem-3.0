@@ -56,6 +56,32 @@ test('a fully-ready non-UI feature scores 1.0 and met=true', () => {
   assert(/confirm delegated/.test(r.note), 'note warns about delegated checks even when met');
 });
 
+test('B4 accepts a LIST-form VC scenario (scenario: [SC-x, SC-y]) — real pilot shape, DEC-DEV-0099', () => {
+  const product = mkFixture((w) => {
+    w('features', 'FM-100', { type: 'feature-map-entry', status: 'in-progress', has_ui: 'false', scenarios: ['SC-100', 'SC-101'], verification: ['VC-100'] });
+    w('scenarios', 'SC-100', { type: 'scenario', status: 'active', feature: 'FM-100' });
+    w('scenarios', 'SC-101', { type: 'scenario', status: 'active', feature: 'FM-100' });
+    // ONE VC covering a family of SCs via a list — the form real pilot VCs use
+    w('verification', 'VC-100', { type: 'verification-criteria', status: 'active', scenario: ['SC-100', 'SC-101'] });
+  });
+  const r = oracle.scoreFeature('FM-100', product);
+  const b4 = r.blockers.find((b) => b.id === 'B4');
+  eq(b4.status, 'pass', 'B4 should pass with a list-form VC covering both SC');
+  eq(r.met, true, 'feature met with list-form coverage');
+});
+
+test('B4 accepts the `scenarios:` (plural) field name too — real pilot uses both, DEC-DEV-0099', () => {
+  const product = mkFixture((w) => {
+    w('features', 'FM-110', { type: 'feature-map-entry', status: 'in-progress', has_ui: 'false', scenarios: ['SC-110'], verification: ['VC-110'] });
+    w('scenarios', 'SC-110', { type: 'scenario', status: 'active', feature: 'FM-110' });
+    // VC links via `scenarios:` (plural) — the billing-VC form in the pilot
+    w('verification', 'VC-110', { type: 'verification-criteria', status: 'active', scenarios: ['SC-110'] });
+  });
+  const r = oracle.scoreFeature('FM-110', product);
+  eq(r.blockers.find((b) => b.id === 'B4').status, 'pass', 'B4 should accept plural scenarios field');
+  eq(r.met, true, 'feature met via plural-field VC');
+});
+
 test('B1 fails when FM is planned (not in-progress)', () => {
   const product = mkFixture((w) => {
     w('features', 'FM-002', { type: 'feature-map-entry', status: 'planned', has_ui: 'false', scenarios: ['SC-002'], verification: ['VC-002'] });
