@@ -98,6 +98,33 @@ test('GO synthesized deterministically (mechanical green AND no residual AND not
     'three-way verdict not present');
 });
 
+test('two-axis readiness contract: MECH_SCHEMA carries readiness + ENV_PROBE wired (DEC-DEV-0092)', () => {
+  assert(/MECH_SCHEMA[\s\S]*readiness/.test(SRC), 'MECH_SCHEMA does not declare a readiness field');
+  assert(/ENV_PROBE\b/.test(SRC) && /env-readiness\.cjs/.test(SRC), 'env-readiness probe path not wired');
+  assert(/'READY'[\s\S]*'DEGRADED'[\s\S]*'ENV_NOT_READY'/.test(SRC), 'readiness enum not present');
+});
+
+test('mechanical layer runs the env-readiness probe BEFORE the suite + classifies failures', () => {
+  // the probe must run first (so a down substrate is known up front) and failures get
+  // classified against the substrate-error allowlist (the run-B false-NO-GO root cause).
+  assert(/PROBE FIRST/i.test(SRC) || /probe[\s\S]{0,80}before/i.test(SRC), 'probe is not run before the suite');
+  const probeIdx = SRC.indexOf('node ${ENV_PROBE}');
+  const suiteIdx = SRC.indexOf('validation suite');
+  assert(probeIdx !== -1 && suiteIdx !== -1 && probeIdx < suiteIdx, 'probe instruction must precede the suite instruction');
+  assert(/--failures/.test(SRC) && /all_substrate/.test(SRC), 'suite failures are not classified via the allowlist');
+});
+
+test('INVARIANT in code: ENV_NOT_READY ⇒ MANUAL_VERIFY, decided BEFORE the !mechPassed NO-GO branch', () => {
+  assert(/readiness === 'ENV_NOT_READY'/.test(SRC), 'no ENV_NOT_READY branch in the synthesis');
+  const envIdx = SRC.indexOf("readiness === 'ENV_NOT_READY'");
+  const noGoIdx = SRC.indexOf("!mechPassed");
+  assert(envIdx !== -1 && noGoIdx !== -1 && envIdx < noGoIdx,
+    'ENV_NOT_READY must be handled before !mechPassed, else a down substrate falls through to NO-GO (the run-B false-NO-GO)');
+  // and the ENV_NOT_READY arm must resolve to MANUAL_VERIFY, never NO-GO
+  const arm = SRC.slice(envIdx, envIdx + 200);
+  assert(/MANUAL_VERIFY_REQUIRED/.test(arm) && !/'NO-GO'/.test(arm), 'ENV_NOT_READY must map to MANUAL_VERIFY_REQUIRED, not NO-GO');
+});
+
 test('discloses forwarded deferred-capability CONCERNS (FB-013)', () => {
   assert(/CONCERNS\b/.test(SRC), 'no CONCERNS arg');
   assert(/FB-013/.test(SRC), 'FB-013 disclosure not referenced');
@@ -111,15 +138,23 @@ test('keeps FB-001 (stringified args) + FB-002 (empty target) guards', () => {
 test('returns the P6 contract keys', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'mechanical', 'validators', 'confirmed_findings', 'remediated', 'residual', 'result', 'findings', 'go_gate']) {
+  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'confirmed_findings', 'remediated', 'residual', 'result', 'findings', 'go_gate']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
 });
 
 test('P5 delegates its feature-level gate to P6 via workflow(), with a fallback', () => {
-  assert(/workflow\('validate-feature-impl'/.test(P5), 'P5 does not delegate to P6 via workflow()');
+  assert(/workflow\(\s*\{\s*scriptPath:\s*['"][^'"]*validate-feature-impl\.mjs['"]/.test(P5),
+    'P5 must delegate to P6 by scriptPath (orchestrator processes are not registered named-workflows; DEC-DEV-0091 — by-name workflow() silently fell back to advisory every run)');
   assert(/catch\b/.test(P5) && /kiro-validate-impl/.test(P5), 'P5 lacks the inline kiro-validate-impl fallback');
   assert(/concerns/.test(P5), 'P5 does not forward concerns to P6 (FB-013)');
+});
+
+test('P5 forwards the readiness axis to P6 + carries it in its return (DEC-DEV-0092)', () => {
+  assert(/env-readiness\.cjs/.test(P5), 'P5 does not wire the shared env-readiness probe');
+  assert(/envReadiness\b/.test(P5), 'P5 has no pre-flight readiness value');
+  assert(/readiness:\s*fwdReadiness/.test(P5), 'P5 does not forward the readiness hint into the P6 workflow() call');
+  assert(/go_gate:[^\n]*\n\s*readiness\s*:/.test(P5), 'P5 return object does not carry readiness alongside go_gate');
 });
 
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);

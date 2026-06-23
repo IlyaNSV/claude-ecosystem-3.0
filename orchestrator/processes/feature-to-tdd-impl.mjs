@@ -46,6 +46,7 @@ const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const FEATURE = A.feature || ''                                  // cc-sdd feature slug (e.g. "auth")
 const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const CLASSIFIER = A.classifier || '.claude/orchestrator/lib/gate-risk-classifier.cjs'
+const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs'   // DEC-DEV-0092: shared readiness probe (pre-flight)
 const KIRO_TPL = A.kiroTemplates || '.claude/skills/kiro-impl/templates'
 const REGISTRY = A.registry || ''                                // optional load-bearing.<FM>.yaml/json
 const MAX_REVIEW_ROUNDS = A.maxReviewRounds || 2
@@ -160,6 +161,33 @@ const plan = await agent(
 )
 const tasks = ((plan && plan.tasks) || []).filter((t) => !t.done && !t.blocked)
 log(`plan: ${tasks.length} actionable task(s); HIGH=${tasks.filter((t) => t.tier === 'HIGH').map((t) => t.id).join(',') || '∅'}; LOW=${tasks.filter((t) => t.tier === 'LOW').map((t) => t.id).join(',') || '∅'}`)
+
+// ---- pre-flight env-readiness probe (DEC-DEV-0092, FB-LR-02) ----------------
+// P5 implements REAL code. If the substrate the project uses (Docker/Postgres/
+// Redis/migrations) is down, the downstream P6 gate would otherwise read a RED
+// suite as a NO-GO instead of "the gate could not judge". Run the SHARED probe up
+// front (CODE, not LLM initiative), log it, and forward it to P6 so the readiness
+// axis is seeded from the same source on both sides. Advisory here — we do NOT
+// abort impl on a down substrate (a task may legitimately bring it up), but the
+// signal is carried, never silently dropped (the FB-LR-02 root cause).
+const ENV_READINESS_SCHEMA = {
+  type: 'object',
+  required: ['readiness'],
+  properties: {
+    readiness: { type: 'string', enum: ['READY', 'DEGRADED', 'ENV_NOT_READY'] },
+    reasons: { type: 'array', items: { type: 'string' } },
+  },
+}
+let envReadiness = 'READY'
+if (tasks.length) {
+  const probe = await agent(
+    `Run the env-readiness probe: \`node ${ENV_PROBE}\` via Bash and relay its JSON verbatim (readiness + checks + reasons). ` +
+    `Do NOT start any substrate yourself — just report whether what the project uses (per the probe's own detection) is up.`,
+    { schema: ENV_READINESS_SCHEMA, phase: 'Plan', label: 'env-readiness' },
+  )
+  envReadiness = (probe && probe.readiness) || 'READY'
+  log(`pre-flight env-readiness: ${envReadiness}${probe && probe.reasons && probe.reasons.length ? ` — ${probe.reasons.join('; ')}` : ''}`)
+}
 
 // ---- lifted-prompt dispatch helpers ---------------------------------------
 const implement = (task, extra = '') =>
@@ -327,23 +355,40 @@ for (const task of tasks) {
 // inline kiro-validate-impl lift this phase used before.
 phase('Validate')
 let go = null
+// DEC-DEV-0092: fold the pre-flight readiness + the blocked-tasks DEGRADED state
+// into one readiness value (worst-of). P6 returns the AUTHORITATIVE readiness
+// (its own mechanical probe ⊕ this hint); the fallback path has no P6 probe, so it
+// uses this as the readiness of record.
+const RANK = { READY: 0, DEGRADED: 1, ENV_NOT_READY: 2 }
+const worstReadiness = (a, b) => (RANK[a] >= RANK[b] ? a : b)
 if (implemented.length) {
   const degraded = blockedTasks.length > 0
+  const fwdReadiness = degraded ? worstReadiness(envReadiness, 'DEGRADED') : envReadiness
   try {
-    const p6 = await workflow('validate-feature-impl', {
+    const p6 = await workflow({ scriptPath: '.claude/orchestrator/processes/validate-feature-impl.mjs' }, {
       feature: FEATURE,
       specDir: SPEC_DIR,
       oracle: '.claude/orchestrator/lib/coverage-oracle.cjs',
+      envProbe: ENV_PROBE,                            // DEC-DEV-0092: shared readiness probe
+      readiness: fwdReadiness,                         // DEC-DEV-0092: pre-flight hint (P6 takes worst-of with its own probe)
       validationCommands: (plan && plan.validation_commands) || {},
       concerns,            // FB-013: forward deferred-capability flags so P6 DISCLOSES them at GO
       degraded,            // FB-010: blocked tasks → P6 advisory mode
       maxRemediationRounds: 3,
     })
-    go = { result: (p6 && (p6.result || p6.go_gate)) || 'MANUAL_VERIFY_REQUIRED', findings: (p6 && p6.findings) || [] }
-    log(`feature GO-gate (P6 validate-feature-impl${degraded ? ', advisory' : ''}): ${go.result}`)
+    go = {
+      result: (p6 && (p6.result || p6.go_gate)) || 'MANUAL_VERIFY_REQUIRED',
+      readiness: (p6 && p6.readiness) || fwdReadiness, // authoritative readiness from P6
+      findings: (p6 && p6.findings) || [],
+    }
+    log(`feature GO-gate (P6 validate-feature-impl${degraded ? ', advisory' : ''}): ${go.result} [readiness=${go.readiness}]`)
   } catch (e) {
-    // FALLBACK — nested workflow() unavailable (one-level limit): inline kiro-validate-impl lift.
-    log(`P6 delegation unavailable (${(e && e.message) || 'nesting'}) — falling back to inline kiro-validate-impl`)
+    // FALLBACK — P6 delegation unavailable: inline kiro-validate-impl lift (advisory, NOT the full P6 gate).
+    // NB (DEC-DEV-0091, live-run audit): one-level nesting from this tool-launched P5 IS permitted (validated:
+    // docs + 2 empirical nesting tests). The prior by-name call failed ONLY because orchestrator processes are
+    // not registered named-workflows; it is now invoked by scriptPath. This catch fires only on a genuinely
+    // unresolvable scriptPath — a real degradation, surfaced (not silent) in the returned findings below.
+    log(`P6 delegation unavailable (${(e && e.message) || 'scriptPath unresolvable'}) — falling back to inline kiro-validate-impl (advisory)`)
     // FB-013: surface propagated CONCERNS so a deferred real seam (mock-only provider) is DISCLOSED at GO, not hidden.
     const concernNote = concerns.length
       ? ` DEFERRED-CAPABILITY CONCERNS surfaced during impl (FB-013): ${concerns.map((c) => `${c.task}: ${c.concern}`).join(' | ')}. Factor these into the verdict and DISCLOSE them in findings — a GO over a deferred real seam (mock-only provider / unwired skeleton) is GO-with-caveats, not a clean production GO.`
@@ -355,7 +400,15 @@ if (implemented.length) {
         : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote,
       { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
     )
-    log(`feature GO-gate (fallback kiro-validate-impl${degraded ? ' advisory' : ''}): ${(go && go.result) || 'n/a'}`)
+    // Visibility (DEC-DEV-0091): a degraded gate must never read as a clean GO — surface it in findings.
+    if (go) {
+      // DEC-DEV-0092: the fallback has no P6 mechanical probe → readiness of record is the pre-flight hint.
+      // Enforce the same invariant: ENV_NOT_READY must never be a NO-GO (substrate down ≠ code bad).
+      go.readiness = fwdReadiness
+      if (fwdReadiness === 'ENV_NOT_READY' && go.result === 'NO-GO') go.result = 'MANUAL_VERIFY_REQUIRED'
+      go.findings = [`GATE DEGRADED: P6 delegation failed (${(e && e.message) || 'scriptPath unresolvable'}); used advisory inline kiro-validate-impl, NOT the full P6 gate (mechanical + RA-8/9/10 + verify-finding-before-act). Treat as advisory / GO-with-caveats; re-run \`/orchestrator:run validate-feature-impl --feature ${FEATURE}\` for a ground-truth gate.`].concat(go.findings || [])
+    }
+    log(`feature GO-gate (fallback kiro-validate-impl${degraded ? ' advisory' : ''}): ${(go && go.result) || 'n/a'} [readiness=${(go && go.readiness) || fwdReadiness}]`)
   }
 } else {
   log('skipping GO-gate: no tasks implemented')
@@ -367,4 +420,5 @@ return {
   blocked: blockedTasks,
   concerns,                       // FB-013 (DEC-DEV-0081 fix #1): deferred-capability flags, propagated not dropped
   go_gate: go && go.result,
+  readiness: (go && go.readiness) || envReadiness,   // DEC-DEV-0092: READY | DEGRADED | ENV_NOT_READY (orthogonal to go_gate)
 }

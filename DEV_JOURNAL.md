@@ -5973,6 +5973,89 @@ Sweep ссылок по семантике: обычные `product:meta-feedbac
 
 ---
 
+## DEC-DEV-0089 — P4 live-run: нет PA-дедупа (near-duplicate pending-actions при повторных аудитах)
+
+**Date:** 2026-06-23
+**Trigger:** Live-run A (`audit-spec-fidelity --feature localization`, ×2) — earmark, зарезервированный в DEC-DEV-0090 («дырка 0089 закроется записью PA-дедупа»).
+**Tag:** #orchestrator #p4 #idempotency #live-run
+
+### Context
+Три подряд P4-прогона над одной нереконсилированной спекой `localization` породили три почти-дубликата pending-actions (PA-013/014/015): процесс слепо аппендит + коммитит новую PA вместо «уже-роутнуто → обнови существующую». Счётчик дрейфов недетерминирован (5→4→3) из-за LLM-группировки; severity NFR прыгнул medium→high между прогонами. Контроллер во 2-й сессии честно диагностировал «PA-016 будет шум» — т.е. человек поймал то, что процесс не поймал.
+
+### Decision
+Записать как earmark, закрывающий дырку 0089 из DEC-DEV-0090. Фикс: dedup pre-filter в `audit-spec-fidelity` — перед эмитом PA проверить, есть ли открытая PA, роутящая тот же `(zone, artifact, signature)`, и обновить её вместо аппенда. Деталь = FB-LR-10 в [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md); фикс — дешёвый rider в N+2 work-order. Не построен в этой сессии (приоритет был на live-run аудите + решении о gate-contract, DEC-DEV-0091).
+
+### Lessons
+- Идемпотентность повторного прогона — first-class свойство любого аудита/гейта, вызываемого более одного раза над той же целью; её отсутствие проявляется как закоммиченный шум, а не как ошибка.
+
+---
+
+## DEC-DEV-0091 — Orchestrator P4/P6 live-run аудит (A+B+C) + решение о gate-outcome контракте
+
+**Date:** 2026-06-23
+**Trigger:** Первый live-run инкремента P4/P6 (DEC-DEV-0084/0085/0087) в пилоте `my-first-test`, грейд пост-фактум. Owner попросил тщательный мульти-агентный аудит большого (~11ч) прогона C, затем доаудировать B, и сделать следующий шаг **агрегированным** решением по A+B+C.
+**Tag:** #orchestrator #live-run #audit #gate-contract #architecture #p5 #p6
+
+### Context
+A = `audit-spec-fidelity --feature localization` (P4, ×2). B = `validate-feature-impl --feature billing` (P6 standalone). C = `feature-to-tdd-impl --feature admin` (P5→P6 nesting, ~11ч / 88+ агентов / 4 воркфлоу). Грейд: 3 мульти-агентных форензик-воркфлоу (extract → ground-truth code-verify → rubric grade → adversarial refute), 2 эмпирич. nesting-теста, консилиум из 4 ленз. **Контур обратной связи был разомкнут** — все ~14 находок жили только в пилотном git (`grep FB-028` по эко = 0). Дискретные находки: [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Следующий инкремент: [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
+
+### Verdict
+- **P6 как standalone-гейт = live-validated** (B + C): мех-слой реально гонял suite+build через Bash (реальный RED в B/C = доказательство исполнения, не штамповки), 3 валидатора RA-8/9/10 parallel, verify-finding-before-act дропает реальные false-positive, GO-синтез детерминир., FB-013 concerns дисклоузнуты. **Ключевая ценность доказана:** C P6#1 (NO-GO) поймал реальную cross-feature регрессию, которую advisory-fallback GO'нул над тем же деревом (коммит `e02200a`: «Surfaced by P6 mechanical gate … NO-GO»).
+- **P5→P6 делегация = структурно сломана, но дёшево чинится** (см. decision).
+- **P4 = PASS** (A, ×2).
+
+### Корректировки само-отчёта пилота (независимая форензика поймала)
+1. **Nesting НЕ двойно-блокирован.** Пилот (FB-020 + пилотная память) приписал провал делегации one-level nesting-стене и предложил частично-моотные фиксы. **Опровергнуто** (доки + 2 эмпирич.теста + дословный текст ошибки harness): один уровень вложенности из tool-launched P5 РАЗРЕШЁН; единственный блокер — **вызов по имени** (orchestrator `.mjs` не зарегистрированы как named-workflows). Мой собственный первый проход аудита (codeVerdict «двойной блокер») переоценил; adversarial-агент это флагнул; эмпирич.тест разрешил. Фикс = `{scriptPath}`, валидирован.
+2. **FB-028 мис-диагностирован.** Константы `kind:coverage_confirmation` не существует; `kind` — свободная строка. Реальная причина: RA-8 эмитнул *положительный* finding вопреки роли + `verifyFinding` его ложно confirmed. Фикс пилота «исключить kind» = no-op против фантома.
+3. **verify-finding-before-act имеет TOCTOU-гонку** (видна в B **и** C): confirmer, читающий уже-починенное дерево, клеймит реальную находку «галлюцинацией»; гонка коммита замаскировала реальный cross-spec дефект в B.
+4. Merge MANUAL_VERIFY-фичи в пилотный main оставил открытым реально только **PA-019** (PA-017/018 закрыты кодом) — не более широкий долг, как заявлялось.
+
+### Options considered (gate-outcome контракт — решение ≥2 вариантов)
+Сходящаяся тема B+C: гейты путают «субстрат не готов / гейт не отработал» с «код упал» (ложный NO-GO в B от выключенной БД; advisory MANUAL_VERIFY в C). **(a)** Расширить единый enum `MANUAL_VERIFY` новыми значениями (GATE_DEGRADED, ENV_NOT_READY) — отвергнуто: ось verdict остаётся перегруженной, каждый reader учит новые коды, склонно к противоречиям. **(b)** Две ортогональные оси `verdict × readiness` — **выбрано**: `verdict`∈{GO,NO-GO,MANUAL_VERIFY} («код хорош?») × `readiness`∈{READY,DEGRADED,ENV_NOT_READY} («гейт вообще смог судить?»), additive optional поля (absent readiness == READY == старое поведение → soft-migration, backwards-compat-narrow), с code-инвариантом `ENV_NOT_READY ⇒ verdict=MANUAL_VERIFY`. Объединяет scriptPath-делегацию, DEGRADED и ENV_NOT_READY в одну модель вместо трёх заплаток.
+
+### Decision
+Следующий инкремент = **N+2 «Trustworthy gate outcomes, spine first»** (work-order выше): отгрузить **T6** (эта запись — контур замкнут), **T3** (scriptPath-фикс делегации — СДЕЛАНО в этой сессии), и **T1** (ось readiness + общий env-readiness probe). **Сознательно НЕ бандлим:** T2 (verify-finding TOCTOU — худший failure *class*, свой цикл), FB-028 real fix, T4-full (design→tasks оракул), T5 (remediation guardrails) — очередь P2–P5 по cuttable-scope / incremental-pilot.
+
+**Сделано в этой сессии:** T3 применён + верифицирован (P5 делегирует P6 по `{scriptPath}`; fallback сохранён; wiring-тест пинит scriptPath-форму; деградация surface'ится в findings; `npm run verify` зелёный). Count не менялся (T3 = смена формы вызова; очередное поле `readiness` тоже additive — нет нового artifact-type/rule).
+
+### Lessons
+1. **Эмпирика бьёт аналитику на harness-контрактах.** codeVerdict «двойной блокер» моего же аудита И dev-коммент оба *утверждали* nesting-стену; 2-минутная проба её фальсифицировала и превратила «архитектурную переделку» в однострочный фикс. Adversarial-верификация + дешёвый эксперимент поймали уверенно-неверный вывод.
+2. **Само-отчёт исполнителя — не грейд.** FB-журнал C-сессии силён на sensitivity, но мис-диагностировал FB-020 и FB-028 и не делал adversarial-прохода — ровно для этого и нужен пост-фактум мульти-агентный аудит ([[feedback_separate_task_from_test]]).
+3. **«Детерминизм» бывает иллюзорным.** GO-синтез P6 детерминирован относительно своих входов, но мех-вход недетерминирован относительно готовности субстрата — тот же код: RED (Docker down) vs GREEN (Docker up). Гейт обязан уметь сказать «я не смог судить».
+4. **Замыкать контур — предшаг.** Находки, живущие только в пилотном git, переоткрываются каждую сессию; их маршрутизация в эко-ledger первой (дёшево) — предпосылка, не afterthought.
+
+## DEC-DEV-0092 — Orchestrator N+2: ось `readiness` + общий env-readiness probe (тело gate-contract)
+
+**Date:** 2026-06-23
+**Trigger:** Тело инкремента N+2 по work-order [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md); решение о двух осях принято в [[DEC-DEV-0091]] (T1). Закрывает FB-LR-02/04/09 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md) — headline-баг B: выключенная БД → ложный NO-GO.
+
+**Tag:** #orchestrator #gate-contract #p5 #p6 #readiness #false-no-go #soft-migration
+
+### Context
+Live-run B (DEC-DEV-0091): build GREEN, но 181 `PrismaClientInitializationError` (Docker/БД down) → `!mechPassed → NO-GO` (`validate-feature-impl.mjs:246`). Это **ложный NO-GO** — гейт не дошёл до суждения о коде. Сходящаяся тема B+C: гейты путали «субстрат не готов / гейт не отработал» с «код упал». Решение 0091 — моделировать исход на **двух ортогональных осях** `verdict × readiness`, additive optional (absent == READY == старое поведение 1:1).
+
+### Decision
+Построено тело T1:
+1. **`orchestrator/lib/env-readiness.cjs`** — детерминированный shared helper (паттерн coverage/fidelity-oracle: запускается агентом через Bash, релеит JSON; DEC-DEV-0073 §D.1 — FS/child_process только в либе, не в Workflow-скрипте). Два режима: **probe** (docker info / pg_isready / redis ping / `prisma migrate status` — миграционная история закрывает FB-LR-09) и **classify-failures** (substrate-error allowlist: `PrismaClientInitializationError` / `ECONNREFUSED :5432|:6379` / `Cannot connect to the Docker daemon` / `npipe` / `Can't reach database`). Консервативен: неиспользуемый субстрат = `skipped` (не fail); неопределённость = `unknown` (не деградирует); **никогда не апгрейдит verdict к GO** — только блокирует ложный NO-GO. Dual-use (`require` для чистых классификаторов / CLI для probe).
+2. **P6 (`validate-feature-impl.mjs`)** — `readiness` в `MECH_SCHEMA` + return; мех-агент гоняет probe **ДО** suite и классифицирует падения через allowlist; синтез — code-инвариант `readiness === 'ENV_NOT_READY' ⇒ MANUAL_VERIFY_REQUIRED`, поставлен **перед** веткой `!mechPassed → NO-GO` (иначе down-субстрат проваливается в NO-GO). DEGRADED (blocked tasks) свёрнут на ось readiness (`worstReadiness`). Инвариант: только READY|DEGRADED парятся с GO.
+3. **P5 (`feature-to-tdd-impl.mjs`)** — pre-flight probe (advisory, не абортит impl), проброс `readiness` хинта в P6 (P6 берёт worst-of со своим probe), `degraded → DEGRADED`, propagation P6-readiness в return. Fallback-ветка тоже чинит инвариант (ENV_NOT_READY не NO-GO).
+4. **Downstream readers (тот же инкремент)** — `run.md`: preflight, launch-args (`envProbe`/`readiness`), список return-ключей, «After the run» гайд `readiness × verdict`.
+
+### Options considered
+- **Доносить readiness вычислением в Workflow-скрипте** — отвергнуто: §D.1 запрещает FS/child_process в скрипте; детерминизм допроса субстрата обязан жить в либе.
+- **Делать substrate-классификацию инициативой LLM-агента в промпте** — отвергнуто: «codify it as a gate, not LLM initiative» (work-order). Allowlist — единый SSOT в либе, агент только релеит.
+- **probe как часть mech-агента vs отдельный шаг** — выбран probe-первым-внутри-mech (P6) + отдельный pre-flight (P5): ось readiness засевается из одного источника на обеих сторонах.
+
+### Outcome
+`npm run verify` зелёный: P6 wiring 13→**17** (новые: two-axis contract / probe-before-suite / ENV_NOT_READY⇒MANUAL_VERIFY-инвариант перед NO-GO / P5-проброс), новый **env-readiness 8/8** (чистые классификаторы — allowlist + readiness), smoke парсит все 4 .mjs. **check-counts зелёный (24/44 без изменений)** — `readiness` additive return-field, не новый artifact-type/rule → count-sweep не требуется (work-order это и предписывал). **Pilot-валидация (шаг 8 work-order) — отдельная live-сессия:** re-run C (вложенный P6 ВОЗВРАЩАЕТ реальный verdict) + re-run B с Docker down (ENV_NOT_READY, не ложный NO-GO).
+
+### Lessons
+1. **Детерминизм гейта ≠ детерминизм входа.** GO-синтез P6 детерминирован относительно `mech`, но `mech` недетерминирован относительно готовности субстрата (тот же код: RED при Docker down / GREEN при up). Ось readiness даёт гейту язык сказать «я не смог судить» — без неё «детерминированный» вердикт лжёт.
+2. **Порядок веток синтеза — это и есть инвариант.** Фикс ложного NO-GO держится только если `ENV_NOT_READY` обработан ДО `!mechPassed`; wiring-тест пинит этот порядок через `indexOf`, иначе будущий рефактор тихо вернёт регрессию.
+3. **Soft-migration по умолчанию.** Отсутствующий `readiness` == READY == точное старое поведение; пилотное состояние и любой `result`-keyed reader не тронуты (backwards-compat-narrow, принцип 6).
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
