@@ -2,7 +2,7 @@
 
 > **Назначение:** единый source of truth для implementation plan. Каждая фаза имеет deliverables, acceptance criteria, dependencies, risks.
 > **Статус:** активный документ. Обновляется после каждой завершённой phase + при изменении приоритетов.
-> **Последнее обновление:** 2026-06-18 (Релиз **1.6.0** cut — minor, бандл с 1.5.0; тег `v1.6.0`. Главное: **Orchestrator Module — первый инкремент P3+P5 ПОСТРОЕН** (DEC-DEV-0073/0076/0077, PR #33) + deployment-wiring (0078, PR #34) + **первый живой прогон RUN 01** (FB-001…011, PR #37, billing 19/19 GO; критический FB-001 args-string→billing-under-auth починен). Также: **App Map** 24-й артефакт (DEC-DEV-0066, PR #30); **`product_class`** D1-классификация (DEC-DEV-0079, PR #35); **open-design generator** dual-role (DEC-DEV-0067, PR #31); **worktree pre-flight** (DEC-DEV-0065, PR #29); реконсиляция пилот→экосистема — handoff §10 fidelity (0074), V-18 + DA-контракт (0064, PR #28), cascade SC↔MK (0080, PR #37). Session Audit v2 — два полных цикла find→synth→verify→accept→patch (0064/0080). Счётчики: артефактов 23→24, правил валидации 40→44. **Deferred к next pilot** (без изменений): §6 capability-канал + процессы Orchestrator P2/P4/P6/P7; runtime smoke S-LE (LESSON-gate) + Phase 6 S1-S7. Предыдущий релиз: **1.5.0** (2026-06-11, DEC-DEV-0055/0061/0062/0063, тег `v1.5.0`). Граница Integrator↔Orchestrator — role A (DEC-DEV-0060).
+> **Последнее обновление:** 2026-06-24 — **Autonomous Pipeline Vision** (эпики A-F) принят как направление (DEC-DEV-0098; концепт `dev/ECOSYSTEM_VISION.md`, PR #52); добавлена cross-module секция «Autonomous Pipeline Vision» ниже, Increment 1 (Epic A + B4 + B1-core) in-progress. Предыдущее обновление 2026-06-18 (Релиз **1.6.0** cut — minor, бандл с 1.5.0; тег `v1.6.0`. Главное: **Orchestrator Module — первый инкремент P3+P5 ПОСТРОЕН** (DEC-DEV-0073/0076/0077, PR #33) + deployment-wiring (0078, PR #34) + **первый живой прогон RUN 01** (FB-001…011, PR #37, billing 19/19 GO; критический FB-001 args-string→billing-under-auth починен). Также: **App Map** 24-й артефакт (DEC-DEV-0066, PR #30); **`product_class`** D1-классификация (DEC-DEV-0079, PR #35); **open-design generator** dual-role (DEC-DEV-0067, PR #31); **worktree pre-flight** (DEC-DEV-0065, PR #29); реконсиляция пилот→экосистема — handoff §10 fidelity (0074), V-18 + DA-контракт (0064, PR #28), cascade SC↔MK (0080, PR #37). Session Audit v2 — два полных цикла find→synth→verify→accept→patch (0064/0080). Счётчики: артефактов 23→24, правил валидации 40→44. **Deferred к next pilot** (без изменений): §6 capability-канал + процессы Orchestrator P2/P4/P6/P7; runtime smoke S-LE (LESSON-gate) + Phase 6 S1-S7. Предыдущий релиз: **1.5.0** (2026-06-11, DEC-DEV-0055/0061/0062/0063, тег `v1.5.0`). Граница Integrator↔Orchestrator — role A (DEC-DEV-0060).
 
 ## Где мы сейчас
 
@@ -118,6 +118,7 @@
 
 ──────────── Не отгружено (next → deferred → future) ────────────
 
+🌅 Autonomous Pipeline Vision (epics A-F) — cross-module, принят (DEC-DEV-0098); Increment 1 (Epic A персоны+zone-routing + B4 loop-readiness + B1-core completeness) IN-PROGRESS. Не Phase-N. См. секцию «Autonomous Pipeline Vision» ниже + `dev/ECOSYSTEM_VISION.md`
 ⏳ Phase 7 — Integrator maintenance (verify/debug/docs; full drift-detection algorithm) — СЛЕДУЮЩАЯ фаза
 ⏳ 🎯 PILOT POINT — requires Orchestrator Module (out of Phase 5; reframed per DEC-DEV-0040 Q3). Первый инкремент P3+P5 построен + RUN 01 (1.6.0); остаётся полный pipeline (P2/P4/P6/P7) + §6 capability-канал
 ⏸ Phase D — Wiki initiative — DEFERRED to v1.1+ (DEC-DEV-0046, 2026-05-27, phantom-audience guard)
@@ -127,6 +128,29 @@
 📦 Post-MVP (v1.1+): Phase D Wiki initiative (deferred), Deep mode subagents (D1.2/D1.3), atomic mass-rename, full BFS cascade auto-fix, bundle approve UX, D.7 aspirational layer (recursive auto drill-down + FM.depends_on graph), /product:clarify receiver channel, /ecosystem:upgrade. Context: dev/v1_1_backlog.md
 📦 v2: P3 Feedback, P5 Actuality Refresh, multi-tool zones, etc.
 ```
+
+---
+
+## Autonomous Pipeline Vision (epics A-F)
+
+> **Cross-module инициатива, не Phase-N.** Превращает три «вектор-идеи» владельца (охват до прода / качество входа / автономия) в эпики A-F. Принята как направление 2026-06-24 (DEC-DEV-0098). Концепт-SSOT: [`dev/ECOSYSTEM_VISION.md`](dev/ECOSYSTEM_VISION.md) (`accepted`, §7 10/10); work-order первого инкремента: [`dev/ECOSYSTEM_VISION_BATCH_1.md`](dev/ECOSYSTEM_VISION_BATCH_1.md).
+>
+> **Цель (переформулирована из «100% результата»):** «**100% покрытия пути + gated-автономия**», не «человек ни разу не нужен». Три research-«тормоза» зашиты в дизайн: completeness-loop только bounded+anchored; консилиум = жюри/гетерогенность, не консенсус-дебаты; полностью автономный идея→прод нереалистичен (METR 0.9⁷≈48%).
+
+**Эпики:**
+
+| Эпик | Что | Зона | Статус |
+|---|---|---|---|
+| **A** | Реестр гетерогенных профильных персон (architect/qa/ux-advisor) + детерминированный zone→agent роутер | Product/Design (owned) | 🔨 Increment 1 |
+| **B** | Bounded completeness-loop для D1-D2B; граница «достаточности» = handoff DoR; стоп = cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0) | Product (owned) | 🔨 B4 + B1-core в Increment 1; полная волна позже |
+| **C** | Крупные автономные шаги (макро `batch-enrich-feature-set`, 5-8 шагов = границы фаз с гейтами) + branch-anticipation | Product macro (Workflow) | 📋 после B |
+| **D** | Консилиум-примитив как жюри (`parallel()` фан-аут гетерогенных персон → synthesis → в гейт, не вместо) | cross-cutting | 📋 с/после A |
+| **E** | Сегмент до прода (CI/build, provisioning, deploy/rollback, QA-инфра, monitoring) | Orchestrator+Integrator | 🔗 **coordinate-only** (зона оркестратор-трека; предусловие = §6-канал + D3/D4/D5-инструменты) |
+| **F** | Autonomy configuration layer: enum L0/L1/L2/L3, детерминированный resolver (`lib/autonomy-policy.cjs`), floor необратимости non-crossable, hard-config дефолт + override | cross-cutting | 📋 F1 рядом с A (контракт гейтов — сверить с оркестратор-сессией); F2 после D; F3 с E |
+
+**Порядок:** (A ∥ F1) → B → (C ∥ D) → F2 → E(+F3). Фронт пайплайна (качество входа) — первым: ошибки спеки компаундируются вниз по конвейеру, чинить дешевле всего у источника.
+
+**Increment 1 (in-progress):** Epic A целиком (3 персоны + zone-routing) + B4 (loop-readiness аудит) + B1-core (completeness-oracle + bounded-loop скелет). Committed-target = персоны + роутинг; B1 = stretch. Граница соблюдена: ни один файл `orchestrator/` не тронут.
 
 ---
 

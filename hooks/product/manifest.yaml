@@ -94,6 +94,13 @@ hooks:
         matcher: ""
     description: "LESSON-* non-deferrability backstop (PRONG B). Per DEC-DEV-0062. Closes the «session never ends → Stop never fires» hole. SHIPS DEFAULTED TO WARN per «Strict Stop, warn PreToolUse» decision: UserPromptSubmit re-surfaces open lessons every turn via hookSpecificOutput.additionalContext (never blocks a prompt); PreToolUse in warn mode = stderr nag only. Only when LESSON_GATE_MODE=strict does PreToolUse deny a mutating tool call via hookSpecificOutput.permissionDecision=deny (contract per code.claude.com/docs/en/hooks), WITH marker-exemption: a fresh .product/.sessions/lesson-in-progress.<id> marker means the /product:lesson protocol is actively resolving → not denied (avoids self-deadlock). strict mode pending S-LE live smoke. Fail-open on any error; no-op if no .product/ dir."
 
+  - id: zone-change-trigger
+    file: zone-change-trigger.js
+    events:
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Zone→profile-persona router for the Autonomous Pipeline completeness-loop (DEC-DEV-0098, Epic A / A2). Filters internally to .product/ artifacts; matches the changed file to a zone via zone-router.cjs + zone-routing.yaml; computes git diff against HEAD (best-effort) → deterministic magnitude (cosmetic vs significant). When a persona fires (zone matched AND magnitude >= threshold) → appends/updates .product/.pending/advisor-pending.yaml (dedup by artifact id — idempotent re-run per LOOP_READINESS_AUDIT §5.3) + stderr signal so the orchestrating skill spawns each heterogeneous persona (architect-advisor/qa-advisor/ux-advisor) as its canonical subagent_type (not-found = STOP, never general-purpose fallback). Magnitude gate keeps the panel off trivial edits (Epic A anti-token-burn rail). Hook does not spawn a subagent itself — only signals (same contract as br/ic-change-trigger). Non-blocking, exit 0 always; fail-open if the router is unavailable."
+
   - id: worktree-enter-guard
     file: worktree-enter-guard.js
     events:
