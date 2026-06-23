@@ -113,8 +113,11 @@ This skill never edits ecosystem artifacts and never auto-applies anything. Mark
 
 - Invoked by `/ecosystem:meta-feedback` (primarily) and by `/product:validation-tune` (escalation)
 - Produces / appends `.product/.upstream/feedback-outbox.md` (committed)
-- Receiving side: Session Audit v2 (`dev/meta-improvement/scripts/audit-watch.js`) + reconciliation
-  in the ecosystem repo — **phase-2** consolidation will unify the finding contract.
+- Receiving side: Session Audit v2 (`dev/meta-improvement/scripts/audit-watch.js`) + the **phase-2
+  consolidator `dev/meta-improvement/scripts/feedback-intake.js`** (DEC-DEV-0097, ecosystem-repo /
+  dev-only): it picks this outbox up, maps `UF-*` / `FB-*` / Session-Audit findings onto one finding
+  contract, and dedupes each against `DEV_JOURNAL.md` (open | likely-ported | ported). Capture here;
+  the consolidator reads + reports there (it never edits the outbox or auto-applies a fix).
 
 ## Related
 
