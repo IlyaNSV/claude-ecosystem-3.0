@@ -70,13 +70,12 @@ of three patches.
 |---|---|---|
 | ~~**P2**~~ ✅ | **T2 order-aware `verify-finding-before-act` — DONE (DEC-DEV-0093):** pre-gate baseline sha (agent-captured) + 3-way `disposition` (present / already-resolved / refuted) in **both** P4 + P6; an already-fixed real finding is `already-resolved` (surfaced, not "hallucination"), a masked defect is surfaced not dropped. Remediation acts only on `present`. P6 wiring 17→18, P4 8→9; verify green. **Still open → T5 (P5):** full single-writer serialization of concurrent committers (the baseline anchor is robust to churn but does not *prevent* a racing writer). | Worst failure **class** (silent wrong verdict) — had its own adversarial-repro + test cycle. |
 | ~~**P3**~~ ✅ | **FB-028 real fix — DONE (DEC-DEV-0094):** `VALIDATOR_SCHEMA.kind` → defect enum (positive-confirmation unrepresentable; covered = `clean:true`) + `verifyFinding` polarity-gate (a positive assertion → `refuted`). P6 wiring 18→19; verify green. | Same verify-layer surface as T2 — done right after. NOT the phantom FSM-kind the pilot mis-diagnosed. |
-| **P4** | **T4-full** (FB-LR-05): `design.FileStructure → tasks.boundary` hybrid coverage oracle (deterministic extract + semantic checker) + enforce **P4 between P3 and P5** in run.md. Ships after the cheap **T4-lite** dangling-forward-ref linter proves the win. | Heavier oracle work. |
+| ~~**P4**~~ ✅ | **T4 — DONE (DEC-DEV-0095):** `design-coverage-oracle.cjs` (deterministic extract + basename-scan) + T4-lite forward-ref linter, run by P4 as a hybrid layer (oracle candidates → semantic-confirm); a confirmed gap excludes the feature from `impl_ready` + routes spec-completion (surface, not auto-add). run.md enforces "P4 between P3 and P5". New oracle 6/6 + wiring 9→10; verify green. **Surface-not-auto-fix** (a missing task is the spec author's). | Heavier oracle work — done. |
 | **P5** | **T5 remediation discretion** (FB-LR-07/08): single-writer for remediation (extend FB-004), forbid unilateral design decisions, escalate upstream cross-spec conflicts to CONCERN, bounded auto-retry for transient impl-blocks. | Broadest/riskiest (agent concurrency); least validated. |
 | **P6** | **DEC-DEV-0090 phase-2** receiving-side: auto-pickup of the `/ecosystem:meta-feedback` outbox + dedupe + unified finding contract across FEEDBACK-JOURNAL / Session Audit / UF-ledger. | The 14-FB load is its first real test. |
 
 ## Cheap riders (do when the relevant file is already open)
-- **T4-lite** dangling-forward-reference linter (text check for `(a later task)` / forward refs with no
-  emitting task) — PARTIAL mitigation of FB-LR-05; label it partial, do NOT mark design→tasks "handled".
+- ~~**T4-lite**~~ ✅ dangling-forward-reference linter — DONE (DEC-DEV-0095), folded into `design-coverage-oracle.cjs` as `extractForwardRefs`; still PARTIAL (flags candidates, does not prove the wiring task is absent — the semantic-checker decides).
 - **DEC-DEV-0089** PA-dedup pre-filter in `audit-spec-fidelity` (FB-LR-10).
 - Rename `kind:fabricated-trace` misnomer (FB-LR-12).
 

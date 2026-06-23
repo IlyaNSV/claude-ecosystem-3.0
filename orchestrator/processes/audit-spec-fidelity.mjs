@@ -46,6 +46,7 @@ const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const FEATURES = A.features || []                                        // [cc-sdd slugs] to audit
 const SPEC_BASE = A.specBase || '.kiro/specs'
 const ORACLE = A.oracle || '.claude/orchestrator/lib/fidelity-oracle.cjs'
+const COVERAGE_ORACLE = A.coverageOracle || '.claude/orchestrator/lib/design-coverage-oracle.cjs' // DEC-DEV-0095: design→tasks structural coverage (FB-LR-05)
 const MAX_REAUDIT_ROUNDS = A.maxReauditRounds || 2
 
 // FB-002: refuse to run with no target rather than scanning .kiro/specs/ and picking one.
@@ -104,6 +105,30 @@ const FIX_SCHEMA = {
   },
 }
 
+// DEC-DEV-0095 (FB-LR-05): design→tasks structural-coverage result. Deterministic candidates
+// from design-coverage-oracle.cjs + a semantic confirm (naming/path variance) → CONFIRMED gaps.
+const COVERAGE_SCHEMA = {
+  type: 'object',
+  required: ['feature', 'gaps'],
+  properties: {
+    feature: { type: 'string' },
+    oracle_uncovered: { type: 'array', items: { type: 'string' } },   // raw deterministic candidates (basename in no task)
+    gaps: {                                                            // confirmed after semantic check
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['kind', 'detail', 'severity'],
+        properties: {
+          path: { type: 'string' },                                   // design file/module no task builds
+          kind: { type: 'string', enum: ['uncovered-design-file', 'dangling-forward-ref'] },
+          detail: { type: 'string' },
+          severity: { type: 'string', enum: ['high', 'medium', 'low'] },
+        },
+      },
+    },
+  },
+}
+
 const VERIFY_SCHEMA = {
   type: 'object',
   required: ['disposition'],
@@ -128,6 +153,25 @@ const auditOne = (feature, extra = '') =>
     `3) SEMANTIC pass: ${FIDELITY_AUDITOR}\n` +
     `faithful = (trace_integrity_passed AND no semantic drifts). Return the audit verdict.${extra}`,
     { schema: AUDIT_SCHEMA, phase: 'Audit', label: `audit:${feature}` },
+  )
+
+// ---- design→tasks structural coverage (DEC-DEV-0095, FB-LR-05) — HYBRID: deterministic oracle
+// candidate list + semantic confirm (naming/path variance). Surfaces a design file/module the
+// design says to build that NO task owns (the unmounted-API gap none of the other oracles see —
+// coverage-oracle=requirement→presence, fidelity-oracle=spec→.product, RA-10=cross-task seams
+// POST-impl). Conservative: returns only CONFIRMED gaps; this layer SURFACES + routes
+// (spec-completion), it does NOT auto-add tasks (a missing task is for the spec author / P3).
+const coverageAudit = (feature) =>
+  agent(
+    `Structural design→tasks coverage check for feature "${feature}" (FB-LR-05).\n` +
+    `1) DETERMINISTIC candidates (do NOT eyeball): node ${COVERAGE_ORACLE} --design ${SPEC_BASE}/${feature}/design.md --tasks ${SPEC_BASE}/${feature}/tasks.md. ` +
+    `Relay oracle_uncovered (each design File-Structure file whose basename appears in NO task) + forward_refs (T4-lite dangling deferrals).\n` +
+    `2) SEMANTIC confirm each candidate against ground truth (read design.md + tasks.md): is the file/module genuinely OWNED BY NO task, ` +
+    `allowing for naming/path variance (a task _Boundary_ "src/admin/" owns "src/admin/admin.module.ts"; a renamed/merged/inlined file IS covered)? ` +
+    `Keep ONLY real gaps — a file some task plausibly builds is NOT a gap (drop it). For a forward_ref, confirm NO concrete task does the deferred wiring.\n` +
+    `Return gaps[] (kind: uncovered-design-file | dangling-forward-ref; path; detail = why it stays unbuilt + the impact, e.g. "assembly module no task creates → routes/providers mount nothing"; ` +
+    `severity — an unmounted entrypoint/module/router is high). gaps:[] if every design file is owned by some task.`,
+    { schema: COVERAGE_SCHEMA, phase: 'Audit', label: `coverage:${feature}` },
   )
 
 // ---- verify-finding-before-act (parity with P6, DEC-DEV-0087) --------------
@@ -174,18 +218,25 @@ const base = await agent(
 const BASELINE = (base && base.sha) || ''
 log(`baseline sha for order-aware verify: ${BASELINE || '(unavailable — verify falls back to current-spec-only)'}`)
 
-// ---- Phase 2: audit (parallel per feature) ---------------------------------
+// ---- Phase 2: audit (parallel per feature) — fidelity (RA-5) + structural coverage (T4) ----
 phase('Audit')
 const audits = (await parallel(FEATURES.map((f) => () => auditOne(f)))).filter(Boolean)
 const faithful = audits.filter((a) => a.faithful).map((a) => a.feature)
 const drifting = audits.filter((a) => a && !a.faithful)
 log(`audit: ${faithful.length}/${audits.length} faithful; drifting: ${drifting.map((a) => a.feature).join(', ') || '∅'}`)
 
+// DEC-DEV-0095 (FB-LR-05): design→tasks structural coverage — orthogonal to fidelity (a spec can
+// be 100% faithful to .product yet still leave a design module unbuilt). Run per feature in parallel.
+const coverage = (await parallel(FEATURES.map((f) => () => coverageAudit(f)))).filter(Boolean)
+const coveredFeatures = coverage.filter((c) => c && c.gaps && c.gaps.length)
+log(`coverage: ${coveredFeatures.length}/${coverage.length} feature(s) with design→tasks gap(s): ${coveredFeatures.map((c) => c.feature).join(', ') || '∅'}`)
+
 // ---- Phase 3: triage + fix (spec) / route (product) + auto-re-audit --------
 phase('Triage')
 const productRouted = []
 const specFixed = []
 const residual = []
+const coverageGaps = []
 
 for (const a of drifting) {
   const productDrifts = (a.drifts || []).filter((d) => d.route === 'product')
@@ -243,16 +294,36 @@ for (const a of drifting) {
   }
 }
 
-log(`triage: spec_fixed=${specFixed.join(',') || '∅'}; product_routed=${productRouted.map((p) => p.feature).join(',') || '∅'}; residual=${residual.map((r) => r.feature).join(',') || '∅'}`)
+// design→tasks COVERAGE GAPS (DEC-DEV-0095, FB-LR-05): a confirmed gap (a design module no task
+// builds) means the feature is NOT impl-ready — otherwise an unmounted API ships green. Conservative:
+// SURFACE + route a spec-completion pending-action (add the missing assembly/wiring task); do NOT
+// auto-add the task here (a missing task is for the spec author / a P3 re-run, not this gate).
+for (const c of coveredFeatures) {
+  coverageGaps.push({ feature: c.feature, gaps: c.gaps })
+  await agent(
+    `Feature ${c.feature}: ${c.gaps.length} design→tasks COVERAGE GAP(s) (FB-LR-05) — design files/modules that NO task builds: ` +
+    `${c.gaps.map((g) => `${g.path || g.kind}: ${g.detail || ''}`).join(' | ')}.\n` +
+    `Append a spec-completion entry to .claude/pending-actions.md (create if absent) with route: spec, the feature, the unbuilt ` +
+    `file(s), and the recommendation to ADD the missing assembly/wiring task(s) to ${SPEC_BASE}/${c.feature}/tasks.md before impl. ` +
+    `Do NOT edit tasks.md yourself in this gate (a missing task is for the spec author / P3 re-run, not an auto-fix). Do NOT commit code.`,
+    { phase: 'Triage', label: `coverage-route:${c.feature}` },
+  )
+  log(`coverage gap (${c.feature}): ${c.gaps.length} unbuilt design file(s) → routed spec-completion (feature NOT impl-ready)`)
+}
 
+log(`triage: spec_fixed=${specFixed.join(',') || '∅'}; product_routed=${productRouted.map((p) => p.feature).join(',') || '∅'}; residual=${residual.map((r) => r.feature).join(',') || '∅'}; coverage_gaps=${coverageGaps.map((c) => c.feature).join(',') || '∅'}`)
+
+const gapFeatures = new Set(coverageGaps.map((c) => c.feature))
 return {
   audited: audits.map((a) => a.feature),
   faithful,
   spec_fixed: specFixed,
   product_routed: productRouted,
   residual,
+  coverage_gaps: coverageGaps,    // DEC-DEV-0095 (FB-LR-05): design files no task builds — feature not impl-ready until a task owns them
   // a feature is impl-ready iff it is faithful or its spec-route drift was fixed and re-audited clean,
-  // and it has no unresolved (residual) spec drift. product-routed drifts do not by themselves block,
-  // but high-severity ones should be surfaced to the user before route-to-impl.
-  impl_ready: [...faithful, ...specFixed].filter((f) => !residual.some((r) => r.feature === f)),
+  // it has no unresolved (residual) spec drift, AND no unresolved structural coverage gap (an unbuilt
+  // design module). product-routed drifts do not by themselves block, but high-severity ones should
+  // be surfaced to the user before route-to-impl.
+  impl_ready: [...faithful, ...specFixed].filter((f) => !residual.some((r) => r.feature === f) && !gapFeatures.has(f)),
 }
