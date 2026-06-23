@@ -18,24 +18,27 @@ PR → merged → main re-synced:
 | T2 (order-aware verify) | 0093 | #42 | `439970c` | pre-gate baseline sha + 3-way `disposition` (present / already-resolved / refuted) in P4 + P6 — fixes the TOCTOU "already-fixed → called a hallucination" + masked-defect |
 | P3 (FB-028) | 0094 | #43 | `b077ad5` | P6 `VALIDATOR_SCHEMA.kind` → defect enum + `verifyFinding` polarity-gate — a positive "coverage confirmed" can't masquerade as a finding |
 | P4 / T4 (design→tasks coverage) | 0095 | #44 | `19e70b0` | `design-coverage-oracle.cjs` + P4 hybrid layer — catches a design module no task builds; confirmed gap excludes the feature from `impl_ready` |
+| P5 / T5 (remediation discretion) | 0096 | #46 | `8c415a5` | `remediation-guard.cjs` (classifyBlock + detectsUnilateralResolution); P6 single-writer + escalate cross-spec/design conflict (`conflicts` degrades GO→MANUAL_VERIFY); P5 transient bounded auto-retry + escalate-don't-self-resolve |
 
-**Ledger findings closed:** FB-LR-02 / 03 / 04 / 05 / 06 / 09 / 13.
+**Ledger findings closed:** FB-LR-02 / 03 / 04 / 05 / 06 / 07 / 08 / 09 / 13.
 **Repo state:** on `main`, synced with `origin/main`. The only uncommitted file is
 `dev/meta-improvement/audit-index.md` — **session-audit hook noise; exclude it from every commit**.
-**Next free DEC-DEV number = `0096`.**
+**Next free DEC-DEV number = `0097`.**
 
 ## What's LEFT — planned work, in priority
 
-1. **P5 — T5 remediation guardrails** (FB-LR-07/08; the queue's broadest/riskiest item — agent
-   concurrency, least-validated). Single-writer for remediation (extend FB-004 — this is also the
-   **unclosed remainder of T2**: the baseline anchor is robust to churn but does not *prevent* a
-   racing committer); forbid unilateral design decisions; escalate upstream cross-spec conflicts to
-   CONCERN instead of self-resolving; bounded auto-retry for a *transient* impl-block (FB-022).
-   Harder to lock with static wiring-tests than the prior gates — plan an adversarial-repro angle.
-2. **P6 — DEC-DEV-0090 phase-2** (receiving side): auto-pickup of the `/ecosystem:meta-feedback`
+1. **P6 — DEC-DEV-0090 phase-2** (receiving side): auto-pickup of the `/ecosystem:meta-feedback`
    outbox + dedupe + a unified finding contract across FEEDBACK-JOURNAL / Session Audit / UF-ledger.
-3. **Cheap riders** (do when the file is already open): **DEC-DEV-0089** PA-dedup pre-filter in
+   (This is the next NEW increment — T1/T2/P3/T4/T5 are all merged.)
+2. **Cheap riders** (do when the file is already open): **DEC-DEV-0089** PA-dedup pre-filter in
    `audit-spec-fidelity` (FB-LR-10); rename the `kind:fabricated-trace` misnomer (FB-LR-12).
+
+   _Done since the last checkpoint:_ **P5 / T5 remediation guardrails** (FB-LR-07/08) — DEC-DEV-0096,
+   PR #46, merge `8c415a5`. Single-writer remediation + escalate-don't-self-resolve cross-spec/design
+   conflicts (the unclosed remainder of T2 — a baseline anchor detects but does not *prevent* a racing
+   committer; T5 forbids the unilateral resolution and escalates) + bounded transient auto-retry
+   (FB-022). The adversarial-repro lives in the `remediation-guard` unit test (a live concurrency repro
+   is unreachable — the `.mjs` can't run standalone).
 4. **Pilot re-validation of the whole N+2 contract** — a **separate LIVE session the owner drives**
    (I cannot run it): `/ecosystem:update` in `my-first-test`, then re-run A (P4 localization) / B
    (P6 billing with Docker **down** → expect `ENV_NOT_READY`, not a false NO-GO) / C
@@ -46,11 +49,14 @@ PR → merged → main re-synced:
    "S7" name-collision (the admin live-run was journaled as "S7" but canonical S7 = the §6 detect-leg)
    → RUN-C; correct/​delete the pilot-repo `project_orchestrator_p6_delegation_unresolvable` memory
    (it mis-attributed the delegation failure to a nesting wall — disproved in DEC-DEV-0091).
-6. **OPEN pilot risk (keep open until T5 lands):** FM-001↔FM-005 `had_trial` silent no-op — auth
-   writes `had_trial=true` before emitting `account.confirmed`, so `TrialService.activateIfEligible`
-   may silently no-op; billing specs contradict (req 1.1 vs 12.6 vs auth design.md:489). Needs an
-   upstream **product** decision (Path A: auth stops flipping `had_trial`; Path B: re-key billing
-   idempotency off Subscription existence) — not an orchestrator code fix.
+6. **OPEN pilot risk (T5 landed — masking mechanism fixed; the product decision is still open):**
+   FM-001↔FM-005 `had_trial` silent no-op — auth writes `had_trial=true` before emitting
+   `account.confirmed`, so `TrialService.activateIfEligible` may silently no-op; billing specs
+   contradict (req 1.1 vs 12.6 vs auth design.md:489). T5 (DEC-DEV-0096) now makes a remediation
+   hitting this **escalate** it (GO→MANUAL_VERIFY) rather than mask it, but the conflict still needs
+   an upstream **product** decision (Path A: auth stops flipping `had_trial`; Path B: re-key billing
+   idempotency off Subscription existence) — not an orchestrator code fix. Verify the escalation
+   fires on the pilot re-run.
 
 ## Next-session kickoff prompt (paste verbatim)
 
@@ -59,16 +65,17 @@ PR → merged → main re-synced:
 находки: dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md, чекпоинт: dev/ORCHESTRATOR_N2_RESUME.md).
 
 Уже слито в main (verify-зелёное): T1 verdict×readiness (0092,#41), T2 order-aware verify
-(0093,#42), P3 FB-028 defect-enum (0094,#43), P4/T4 design→tasks coverage (0095,#44).
+(0093,#42), P3 FB-028 defect-enum (0094,#43), P4/T4 design→tasks coverage (0095,#44),
+P5/T5 remediation-discretion guardrails (0096,#46).
 
-Следующий = P5 / T5 — remediation guardrails (single-writer для ремедиации = остаток T2 против
-гонки committers; запрет односторонних design-решений; escalate-не-self-resolve cross-spec
-конфликтов; bounded auto-retry transient impl-block, FB-022). Это самый рискованный пункт
-(agent concurrency) — спланируй adversarial-repro, не только статические wiring-тесты.
+Следующий = P6 — DEC-DEV-0090 phase-2 (receiving side): авто-pickup outbox'а
+/ecosystem:meta-feedback + dedupe + единый finding-контракт через FEEDBACK-JOURNAL / Session
+Audit / UF-ledger. Дешёвые riders: 0089 PA-dedup в audit-spec-fidelity (FB-LR-10), rename
+kind:fabricated-trace (FB-LR-12).
 
-Сначала верифицируй фактическое состояние (git log на main + что 0096 свободен), заведи ветку,
+Сначала верифицируй фактическое состояние (git log на main + что 0097 свободен), заведи ветку,
 держи цикл: build → npm run verify зелёный → push → PR → merge (я делегировал мёрж тебе) → sync
-main. audit-index.md = шум хука, в коммиты не тащить. Следующий DEC-DEV = 0096.
+main. audit-index.md = шум хука, в коммиты не тащить. Следующий DEC-DEV = 0097.
 ```
 
 ## Key facts / gotchas / cadence for whoever resumes
