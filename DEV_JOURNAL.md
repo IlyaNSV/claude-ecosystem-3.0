@@ -6214,6 +6214,46 @@ DEC-DEV-0090 разнёс фидбэк на локальный (`/product:valida
 
 ---
 
+## DEC-DEV-0098 — Autonomous Pipeline Vision принят + kickoff Increment 1 (Epic A + B4 + B1-core)
+
+**Date:** 2026-06-24
+**Trigger:** Старт Epic A по принятому концепту [ECOSYSTEM_VISION.md](dev/ECOSYSTEM_VISION.md) (`accepted`, §7 10/10, PR #52). Формализация была сознательно отложена (vision §8, вариант I) «в пакете с kickoff Epic A» — этот kickoff и есть триггер. Work-order: [ECOSYSTEM_VISION_BATCH_1.md](dev/ECOSYSTEM_VISION_BATCH_1.md) Step 0.
+
+**Tag:** #vision #autonomous-pipeline #epic-a #completeness-loop #personas #kickoff #roadmap
+
+### Context
+Три «вектор-идеи» владельца (Step -0.9 охват до прода / -0.8 качество входа / 0 автономия) переведены в концепт-документ с эпиками A-F, заземлённым в фактическом состоянии кода и внешнем ресёрче (§4 vision). Все 10 развилок §7 решены, док принят. Нужно (а) формально зафиксировать направление (DEC-DEV + ROADMAP-секция), не жертвуя continuity, и (б) открыть первый инкремент — фронт пайплайна, независимый от параллельного оркестратор-трека (owned Product/Design + cross-cutting).
+
+Граница с оркестратор-сессией: этот трек **не трогает** `orchestrator/`, `docs/orchestrator-module/`, `skills/orchestrator/`. Epic E (до прода) — coordinate-only, отдан оркестратор-треку (vision #6a).
+
+### Options considered
+1. **Открытый completeness-loop «до идеала»** — отвергнут (vision §4 кластер 1; Huang et al. 2310.01798): само-критика выходит на плато к раунду 2-3 и может деградировать. Принято: bounded + externally-anchored (cap ∧ judge-τ ∧ Δ<ε), граница «достаточности» = handoff DoR, не «идеал».
+2. **Консилиум как замена человека для оптимальных решений** — отвергнут (vision §4 кластер 2; 2502.08788): MAD не бьёт single-CoT на связанном решении, ~15× токенов, groupthink. Принято: консилиум = жюри/гетерогенность, готовит решение в гейт, не вместо него (Epic D, позже).
+3. **End-to-end автономный идея→прод** — отвергнут (vision §4 кластер 3; METR: 0.9⁷≈48%). Цель переформулирована: «100% покрытия пути + gated-автономия», а не «человек не нужен».
+4. **Формализовать сразу при принятии концепта (преждевременно)** — отвергнут: риск коллизии DEC-DEV-номера с активной оркестратор-сессией (прецедент двойного 0082). Принято (vision §8 вариант I): формализация в пакете с kickoff, номер сверен live по `git log` обеих веток.
+5. **Спекулятивный зоопарк персон** — отвергнут (vision §4 кластер 2): токены + groupthink при гомогенности. Принято: старт с 3 гетерогенных персон, расширять по факту пробелов.
+
+### Decision
+**Vision принят как направление; эпики A-F занесены в ROADMAP новой cross-module секцией «Autonomous Pipeline Vision (epics A-F)» (не Phase-N).** Порядок: (A ∥ F1) → B → (C ∥ D) → F2 → E(+F3).
+
+**Increment 1 (этот батч) = Epic A целиком + B4 + ядро B1:**
+- **A1+A3** — 3 гетерогенные персоны-агента (клон конвенции `agents/product/devils-advocate.md`): `architect-advisor` (prior: feasibility/декомпозиция/тех-риск), `qa-advisor` (тестируемость/acceptance/edge-cases), `ux-advisor` (usability/flows/состояния). Каждая — canonical `subagent_type` (контракт `da-subagent-type-contract`: всегда canonical, «не найден» = loud error, no silent fallback), structured-verdict schema, adaptive-depth (cosmetic/significant), anti-pattern список, отличный prior.
+- **A2** — манифест `zone → agent(s)` (agent-side) + детерминированный `.cjs` роутер (зона + magnitude → персоны, не суждение) + хук по паттерну `hooks/product/{br,ic}-change-trigger.js` (PostToolUse на `.product/`-зонах → `*-pending.yaml` + stderr-signal). Firing **только** при затронутой зоне И magnitude ≥ порога (anti-token-burn).
+- **B4** — аудит P1/P2/P2.5 на loop-readiness → `dev/LOOP_READINESS_AUDIT.md` (шаг → loop-safe?/идемпотентность/гейт → предохранитель); учитывает idempotency-дыру оркестратора (крэш между write и commit).
+- **B1 (stretch)** — `completeness-oracle.cjs` (покрытие `validation.md` + DoR → score + gaps; τ привязан к DoR) + bounded-loop скелет + `/product:complete` stub. Стоп = max-waves cap И (score≥τ ∨ Δ<ε ∨ info-gain→0); никогда не само-оценка генератора как единственный стоп; no silent truncation.
+
+Committed-target = Step 0 → A2; **B1 = stretch** (чистый стоп после A2, если не влезает). Вне инкремента: F1-core (нужна сверка gate-контракта с оркестратор-сессией), мин. B-пилот на `my-first-test`, C/D/F2/E.
+
+**Kickoff-проверка (phase-kickoff §1-2):** архитектурные развилки персон/роутинга/oracle разрешены выше; ambiguities (naming/state/firing-порог/контракт hook→процесс) сняты в A1/A2 спеках по факту реализации. Полноценный fresh-session kickoff не запускался — увеличение инкрементальное (клон существующих паттернов DA-агента + DA-хука + оракулов), не новая фаза с green-field архитектурой.
+
+### Outcome
+_(in-progress)_ Step 0 — DEC-DEV + ROADMAP-секция + memory. Далее B4 → A1+A3 → A2 (committed), B1 (stretch). Покоммитное дробление per-пункт (recovery ≤1 пункт). Доставка (push/PR/merge) — по явному ОК владельца.
+
+### Lessons
+_(заполнить по завершении инкремента; кандидаты: ROI клонирования DA-паттерна для персон; держится ли bounded-loop дисциплина на первом oracle; не всплыла ли коллизия контракта гейтов с оркестратор-треком при A2.)_
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
