@@ -110,6 +110,41 @@ test('remediation is bounded', () => {
   assert(/round < MAX_REMEDIATION_ROUNDS/.test(SRC), 'remediation loop not bounded by the cap');
 });
 
+test('T5: remediation discretion — block_class + conflict_detail + unilateral self-check (DEC-DEV-0096)', () => {
+  assert(/REMEDIATE_SCHEMA[\s\S]*block_class/.test(SRC), 'REMEDIATE_SCHEMA does not carry block_class');
+  assert(/conflict_detail/.test(SRC), 'no conflict_detail field for an escalated contradiction');
+  assert(/unilateral/.test(SRC), 'no unilateral self-check field (FB-LR-07 anti-mask)');
+  assert(/REMEDIATION_GUARD\b/.test(SRC) && /remediation-guard\.cjs/.test(SRC), 'remediation-guard backbone not wired');
+  // the remediation prompt must run the guard for the block-classify + the fix-note self-check
+  assert(/--reason/.test(SRC) && /--fix-note/.test(SRC), 'remediation does not invoke the guard (--reason / --fix-note)');
+});
+
+test('T5: a cross-spec/design conflict ESCALATES, never self-resolved (FB-LR-07)', () => {
+  assert(/const escalateConflict\b/.test(SRC), 'no escalateConflict helper');
+  assert(/'cross-spec-conflict'/.test(SRC) && /'design-contradiction'/.test(SRC), 'escalation classes not present');
+  assert(/const conflicts = \[\]/.test(SRC), 'no conflicts accumulator');
+  assert(/conflicts\.push/.test(SRC), 'escalated conflicts are not tracked');
+  assert(/FB-LR-07/.test(SRC), 'FB-LR-07 (no unilateral resolution) not referenced');
+  // an escalated conflict must NOT be pushed back into the remediation set (no retry)
+  assert(/escalateConflict\(f, fix\)\s*continue/.test(SRC), 'an escalated conflict must skip remediation (continue after escalateConflict), not retry');
+});
+
+test('T5: single-writer — sequential remediation + resolved-by-concurrent-commit guard (extends FB-004)', () => {
+  // remediation must be a sequential for…of, never fanned out via parallel() (which would race the index)
+  assert(/for \(const f of remaining\)/.test(SRC), 'remediation not iterated sequentially');
+  assert(!/parallel\(\s*remaining\.map/.test(SRC) && !/parallel\(\s*present\.map/.test(SRC),
+    'remediation must not be dispatched via parallel() — single-writer (FB-004/T5)');
+  assert(/SINGLE-WRITER/.test(SRC), 'single-writer invariant not documented in code');
+  assert(/resolved-by-concurrent-commit/.test(SRC), 'no concurrent-commit guard (a sibling fix must not be double-committed)');
+});
+
+test('T5: an escalated conflict degrades a would-be GO to MANUAL_VERIFY (never a clean GO)', () => {
+  assert(/conflicts\.length && result === 'GO'/.test(SRC), 'a non-empty conflicts set does not degrade GO');
+  const degradeIdx = SRC.indexOf("conflicts.length && result === 'GO'");
+  const returnIdx = SRC.indexOf('go_gate:');
+  assert(degradeIdx !== -1 && returnIdx !== -1 && degradeIdx < returnIdx, 'the GO-degrade must run before the return');
+});
+
 test('integration-boundary lens covers cross-task seams (orphan export FB-010, /reset)', () => {
   assert(/FB-010/.test(SRC), 'FB-010 orphan-export not referenced');
   assert(/orphan|call-site|seam/i.test(SRC), 'no cross-task seam language in RA-10 lens');
@@ -162,7 +197,7 @@ test('keeps FB-001 (stringified args) + FB-002 (empty target) guards', () => {
 test('returns the P6 contract keys', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'confirmed_findings', 'remediated', 'residual', 'result', 'findings', 'go_gate']) {
+  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'confirmed_findings', 'remediated', 'residual', 'conflicts', 'result', 'findings', 'go_gate']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
 });

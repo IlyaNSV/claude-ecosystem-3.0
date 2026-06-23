@@ -29,6 +29,14 @@ export const meta = {
  * (lifted kiro prompts). Layer-3 GATES = gate-risk-classifier (deterministic .cjs, run
  * via an agent) + kiro-verify-completion + kiro-validate-impl.
  *
+ * BLOCK DISCRETION (DEC-DEV-0096, T5): a BLOCK is classified before a debug round is spent
+ * (remediation-guard.cjs is the deterministic backbone, run by an agent). A TRANSIENT block
+ * (locked index / flaky install / momentarily-down substrate, FB-LR-08) gets a bounded
+ * auto-retry — re-probe env, retry, NO debug round consumed. A cross-spec/requirement
+ * contradiction or a design self-contradiction (FB-LR-07) is ESCALATED, never self-resolved:
+ * the implementer must not pick a side, the task records the block with the upstream route
+ * and is tracked in `conflicts`. Tasks still run SEQUENTIALLY (single-writer git safety).
+ *
  * HARNESS CONSTRAINT (DEC-DEV-0073 §D.1): no FS / Node API / Date.now() in the script.
  * Every file read / classifier run / kiro template read / kiro skill invocation / git
  * commit happens INSIDE an agent(). Tasks run SEQUENTIALLY (one at a time) even for (P)
@@ -47,10 +55,12 @@ const FEATURE = A.feature || ''                                  // cc-sdd featu
 const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const CLASSIFIER = A.classifier || '.claude/orchestrator/lib/gate-risk-classifier.cjs'
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs'   // DEC-DEV-0092: shared readiness probe (pre-flight)
+const REMEDIATION_GUARD = A.remediationGuard || '.claude/orchestrator/lib/remediation-guard.cjs'  // DEC-DEV-0096: block-discretion backbone (T5)
 const KIRO_TPL = A.kiroTemplates || '.claude/skills/kiro-impl/templates'
 const REGISTRY = A.registry || ''                                // optional load-bearing.<FM>.yaml/json
 const MAX_REVIEW_ROUNDS = A.maxReviewRounds || 2
 const MAX_DEBUG_ROUNDS = A.maxDebugRounds || 2
+const MAX_TRANSIENT_RETRIES = A.maxTransientRetries || 2          // DEC-DEV-0096 (T5, FB-LR-08): bounded auto-retry for a TRANSIENT impl-block (no debug round consumed)
 
 // FB-002 (live-run RUN 01): deterministic guard — refuse to run feature-less. With an
 // empty FEATURE the Plan agent previously scanned .kiro/specs/ and silently picked a
@@ -101,6 +111,7 @@ const IMPL_SCHEMA = {
     requirements_checked: { type: 'string' },
     concerns: { type: 'string' },                              // FB-013: deferred-capability / mock-stand-in flags — read + propagated, not dropped
     blocker: { type: 'string' },
+    block_class: { type: 'string', enum: ['transient', 'content', 'capability', 'cross-spec-conflict', 'design-contradiction'] }, // DEC-DEV-0096 (T5): implementer's self-classification of a BLOCK (the classify-block agent + remediation-guard are the authoritative backbone)
     missing: { type: 'string' },
   },
 }
@@ -197,6 +208,7 @@ const implement = (task, extra = '') =>
     `Validation commands: ${JSON.stringify((plan && plan.validation_commands) || {})}. ${task.behavioral ? 'BEHAVIORAL — apply the Feature Flag Protocol.' : 'Non-behavioral.'}\n` +
     `FB-006: do NOT make project-global changes outside your _Boundary_ — never alter git core.hooksPath, root package.json lifecycle scripts (prepare/postinstall), or install hook-managing tooling (e.g. husky) that hijacks git hooks (the pilot's beads owns core.hooksPath). If the task seems to require it, return BLOCKED and surface it rather than silently doing it.\n` +
     `FB-013: if you satisfy a real external/provider/secret/adapter seam with a Mock or unwired skeleton because real access is DEFERRED (not out of scope), state that explicitly in the CONCERNS field of your Status Report — it is propagated downstream, not dropped.\n` +
+    `FB-LR-07 (T5): NEVER resolve a cross-spec/requirement contradiction or a design self-contradiction yourself. If this task requires picking a side of such a conflict, return BLOCKED, set block_class:'cross-spec-conflict' or 'design-contradiction', and state the contradiction explicitly in the blocker — do NOT commit a unilateral choice.\n` +
     `Do NOT commit, do NOT edit tasks.md. End with the exact ## Status Report block.${extra}`,
     { schema: IMPL_SCHEMA, phase: 'Implement', label: `impl:${task.id}` },
   )
@@ -208,6 +220,28 @@ const debug = (task, reason) =>
     `Return NEXT_ACTION (RETRY_TASK | BLOCK_TASK | STOP_FOR_HUMAN) + ROOT_CAUSE + FIX_PLAN.`,
     { schema: DEBUG_SCHEMA, phase: 'Implement', label: `debug:${task.id}` },
   )
+
+// DEC-DEV-0096 (T5, FB-LR-08 / FB-LR-07): classify a BLOCK before deciding what to do with it.
+// transient → a bounded auto-retry clears it (no debug round burned); cross-spec/design
+// contradiction → ESCALATE, never self-resolve or retry; capability/content → the debug path.
+// The remediation-guard.cjs lib is the deterministic backbone (run by the agent via Bash);
+// the agent escalates if EITHER the lib or its own reading sees a contradiction (conservative).
+const BLOCK_CLASS_SCHEMA = {
+  type: 'object',
+  required: ['class'],
+  properties: {
+    class: { type: 'string', enum: ['transient', 'content', 'capability', 'cross-spec-conflict', 'design-contradiction'] },
+    detail: { type: 'string' },
+  },
+}
+const classifyBlock = (task, reason) =>
+  agent(
+    `Task ${task.id} is BLOCKED: "${reason}". Classify the blocker for the FSM's discretion (T5).\n` +
+    `Run the deterministic backbone: \`node ${REMEDIATION_GUARD} --reason "<the blocker text>"\` via Bash and read its \`class\`. ` +
+    `Then return the class, ESCALATING (cross-spec-conflict | design-contradiction) if EITHER the lib OR your own reading sees a contradiction BETWEEN requirements/specs or a design self-contradiction — conservative toward escalation: a contradiction must NOT be auto-retried or self-resolved (FB-LR-07).\n` +
+    `class ∈ {transient (a flaky/locked/timed-out hiccup a retry would clear), capability (missing tool/secret/access/upstream decision), cross-spec-conflict, design-contradiction, content (a genuine code/logic gap)}.`,
+    { schema: BLOCK_CLASS_SCHEMA, phase: 'Implement', label: `classify-block:${task.id}` },
+  ).then((r) => (r && r.class) || 'content')
 
 const gate = (task, impl) => {
   if (task.tier === 'HIGH') {
@@ -272,6 +306,7 @@ phase('Implement')
 const implemented = []
 const blockedTasks = []
 const concerns = []   // FB-013 (DEC-DEV-0081 fix #1): non-blocking implementer CONCERNS, propagated not dropped
+const conflicts = []  // DEC-DEV-0096 (T5, FB-LR-07): cross-spec/design contradictions escalated at impl time — surfaced, never self-resolved
 
 for (const task of tasks) {
   log(`task ${task.id} [${task.tier}${task.tier === 'LOW' ? `:${task.profile || '?'}` : ''}] — implementing`)
@@ -280,7 +315,43 @@ for (const task of tasks) {
   let impl = await implement(task)
   if (impl && impl.status === 'NEEDS_CONTEXT') impl = await implement(task, ` Additional context requested: ${impl.missing || ''}.`)
 
-  // BLOCKED → debug escalation
+  // DEC-DEV-0096 (T5) — discretion on a BLOCK, BEFORE burning a debug round:
+  //  • transient (locked index / flaky install / momentarily-down substrate, FB-LR-08) →
+  //    bounded auto-retry, NO debug round consumed (re-probe env first — it may have come up);
+  //  • cross-spec-conflict / design-contradiction (FB-LR-07) → ESCALATE, do NOT self-resolve:
+  //    record the block with the upstream route + track it; skip the task (no debug, no retry);
+  //  • capability / content → fall through to the existing debug→block path.
+  let transientRetries = 0
+  let escalatedConflict = false
+  while (impl && impl.status === 'BLOCKED') {
+    const cls = (impl.block_class === 'cross-spec-conflict' || impl.block_class === 'design-contradiction')
+      ? impl.block_class                                    // implementer already self-escalated → trust it (conservative)
+      : await classifyBlock(task, impl.blocker || 'implementer BLOCKED')
+    if (cls === 'cross-spec-conflict' || cls === 'design-contradiction') {
+      log(`task ${task.id} → ESCALATED (${cls}) — upstream decision, not self-resolved (FB-LR-07)`)
+      conflicts.push({ task: task.id, conflict_class: cls, detail: impl.blocker || '' })
+      await recordBlock(task.id, `${cls} — escalate, do NOT self-resolve (FB-LR-07): ${impl.blocker || ''}. Route: Product (cross-spec/requirement contradiction or provider/design choice) or the owning spec's author (design self-contradiction).`)
+      escalatedConflict = true
+      break
+    }
+    if (cls === 'transient' && transientRetries < MAX_TRANSIENT_RETRIES) {
+      transientRetries += 1
+      log(`task ${task.id} transient block (retry ${transientRetries}/${MAX_TRANSIENT_RETRIES}) — re-probing env + retrying, no debug round`)
+      await agent(
+        `Re-run the env-readiness probe: \`node ${ENV_PROBE}\` via Bash and relay its JSON. Do NOT start any substrate yourself — just report whether it is now up.`,
+        { schema: ENV_READINESS_SCHEMA, phase: 'Implement', label: `env-recheck:${task.id}` },
+      )
+      impl = await implement(task, ` Previous attempt hit a TRANSIENT block (${impl.blocker || ''}); retry ${transientRetries}/${MAX_TRANSIENT_RETRIES}.`)
+      continue
+    }
+    break   // capability / content / transient budget exhausted → existing debug path below
+  }
+  if (escalatedConflict) {
+    blockedTasks.push(task.id)
+    continue
+  }
+
+  // BLOCKED → debug escalation (capability / content, or transient retries exhausted)
   let debugRounds = 0
   while (impl && impl.status === 'BLOCKED' && debugRounds < MAX_DEBUG_ROUNDS) {
     debugRounds += 1
@@ -419,6 +490,7 @@ return {
   implemented: implemented.map((t) => t.id),
   blocked: blockedTasks,
   concerns,                       // FB-013 (DEC-DEV-0081 fix #1): deferred-capability flags, propagated not dropped
+  conflicts,                      // DEC-DEV-0096 (T5, FB-LR-07): cross-spec/design contradictions escalated at impl time (route Product / owning spec); each is also in `blocked` → degraded → gate never a clean GO
   go_gate: go && go.result,
   readiness: (go && go.readiness) || envReadiness,   // DEC-DEV-0092: READY | DEGRADED | ENV_NOT_READY (orthogonal to go_gate)
 }

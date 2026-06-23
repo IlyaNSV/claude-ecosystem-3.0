@@ -69,7 +69,10 @@ substitute.
 3. `env-readiness` present (`.claude/orchestrator/lib/env-readiness.cjs`) — the mechanical
    layer probes it BEFORE the suite so a down substrate is `readiness=ENV_NOT_READY`
    (MANUAL_VERIFY), not a false NO-GO (DEC-DEV-0092).
-4. The full TEST/BUILD commands are discoverable (manifests/CI) — the mechanical layer runs them.
+4. `remediation-guard` present (`.claude/orchestrator/lib/remediation-guard.cjs`) — the
+   remediation loop's discretion backbone (DEC-DEV-0096 / T5): classifies a block and
+   self-checks a fix note so a cross-spec/design contradiction escalates, never self-resolves.
+5. The full TEST/BUILD commands are discoverable (manifests/CI) — the mechanical layer runs them.
 
 ## Launch
 
@@ -108,6 +111,7 @@ Workflow({
     specDir: ".kiro/specs/<feature>",
     classifier: '.claude/orchestrator/lib/gate-risk-classifier.cjs',
     envProbe: '.claude/orchestrator/lib/env-readiness.cjs',   // DEC-DEV-0092: pre-flight readiness probe (forwarded to P6)
+    remediationGuard: '.claude/orchestrator/lib/remediation-guard.cjs',   // DEC-DEV-0096 / T5: block-discretion backbone (transient-retry vs escalate)
     kiroTemplates: '.claude/skills/kiro-impl/templates',
     registry: ''   // optional .claude/orchestrator/registries/load-bearing.<FM>.yaml
   }
@@ -140,6 +144,7 @@ Workflow({
     specDir: ".kiro/specs/<feature>",
     oracle: '.claude/orchestrator/lib/coverage-oracle.cjs',
     envProbe: '.claude/orchestrator/lib/env-readiness.cjs',   // DEC-DEV-0092: readiness probe (run before the suite)
+    remediationGuard: '.claude/orchestrator/lib/remediation-guard.cjs',   // DEC-DEV-0096 / T5: remediation-discretion backbone (escalate cross-spec/design conflicts)
     source: '.product/handoffs/FM-NNN-handoff.md',   // optional — RA-8 coverage-oracle backbone
     validationCommands: {},                          // {test, build, smoke} if known; else discovered
     concerns: [],                                    // forwarded from P5 (deferred-capability flags)
@@ -154,14 +159,19 @@ features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P4 r
 audited / faithful / spec_fixed / product_routed / residual / **`coverage_gaps`** (design→tasks
 structural gaps, DEC-DEV-0095) / impl_ready; P5 returns
 implemented task ids / blocked / **`concerns`** (deferred-capability / mock-stand-in flags,
-FB-013) / GO-gate result / **`readiness`**; P6 returns mechanical / **`readiness`** (READY |
+FB-013) / **`conflicts`** (cross-spec/design contradictions escalated at impl, DEC-DEV-0096 / T5) /
+GO-gate result / **`readiness`**; P6 returns mechanical / **`readiness`** (READY |
 DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolved`**
-(real-but-fixed-since-baseline, DEC-DEV-0093) / remediated / residual /
+(real-but-fixed-since-baseline, DEC-DEV-0093) / remediated / residual / **`conflicts`**
+(escalated cross-spec/design contradictions, DEC-DEV-0096 / T5) /
 **`result`** (GO | NO-GO | MANUAL_VERIFY_REQUIRED) / findings.
 
 > **One orchestrator workflow per repo at a time (FB-004).** Two processes that both
 > `git commit` race on the shared git index even when their file zones don't overlap
-> (corrupt index / failed commit). Run P3 and P5 sequentially, not concurrently.
+> (corrupt index / failed commit). Run P3 and P5 sequentially, not concurrently. **In-run
+> single-writer (DEC-DEV-0096 / T5):** within a process, remediation and impl are strictly
+> sequential — one commit at a time, never fanned out — so committers never race inside a run;
+> a fix that finds the defect already resolved by a sibling commit does not double-commit.
 
 > **Run records (FB-003).** The source of truth for a run is the harness transcript-dir
 > (`/workflows`, `…/subagents/workflows/wf_*`) plus the Workflow return value above.
@@ -206,7 +216,17 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
   deferrals as candidates; it does not by itself prove the wiring task is absent.)
 - **P5:** per-task commits land as the loop runs (selective staging). If `blocked` is
   non-empty → those tasks hit `_Blocked_`; an upstream-ownership block routes back to the
-  owning spec (do not patch around it). If the GO-gate is `NO-GO` after 3 remediation
+  owning spec (do not patch around it). **Block discretion (DEC-DEV-0096 / T5):** a BLOCK is
+  classified before a debug round is spent — a *transient* hiccup (locked git index / flaky
+  install / a momentarily-down substrate, FB-LR-08) gets a **bounded auto-retry** (re-probe env,
+  retry, no debug round), so a flake no longer needs a manual re-drive. **`conflicts` (FB-LR-07):**
+  a task that requires resolving a contradiction BETWEEN specs/requirements or a design
+  self-contradiction is **ESCALATED, not self-resolved** — it is recorded with the upstream route
+  (Product for a cross-spec/requirement contradiction or a provider/design choice; the owning
+  spec's author for a design self-contradiction) and listed in `conflicts`; it also counts as
+  `blocked`, so the feature gate runs advisory (never a clean GO). Surface each `conflicts[]` item
+  for the owner — a remediation must never pick a side of a contradiction. If the GO-gate is
+  `NO-GO` after 3 remediation
   rounds, or `MANUAL_VERIFY_REQUIRED` → surface the findings; the feature is not done. P5 also
   returns `readiness` (forwarded from its pre-flight probe + P6) — a `MANUAL_VERIFY_REQUIRED`
   with `readiness=ENV_NOT_READY` means the substrate was down, not that the code failed (re-run
@@ -226,10 +246,18 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
   re-fixed and NOT mislabelled a hallucination), or `refuted` (absent in both → dropped). This
   closes the TOCTOU where a confirmer reading an already-remediated tree called a REAL finding a
   "hallucination", or a racing commit masked an unresolved defect (FB-LR-03/13). An
-  `already_resolved` item must still be **verified as a genuine fix, not a mask** (full
-  single-writer serialization is the T5 follow-up). `residual` = `present` defects still
+  `already_resolved` item must still be **verified as a genuine fix, not a mask** (remediation
+  is now single-writer — DEC-DEV-0096 / T5 — but a fix landed *before* the gate by another path
+  still warrants the check). `residual` = `present` defects still
   unresolved after the remediation cap (3 rounds) → not a clean GO; surface them. A
-  high-severity residual forces `NO-GO`, otherwise `MANUAL_VERIFY_REQUIRED`. **Read `readiness` alongside `result`
+  high-severity residual forces `NO-GO`, otherwise `MANUAL_VERIFY_REQUIRED`.
+  **`conflicts` (DEC-DEV-0096 / T5, FB-LR-07):** if remediation hit a cross-spec/requirement
+  contradiction or a design self-contradiction, it is **ESCALATED — surfaced as a CONCERN/upstream
+  decision, never self-resolved**; a non-empty `conflicts` **degrades a would-be GO to
+  `MANUAL_VERIFY_REQUIRED`** (the feature's correctness is undecided until the owner resolves it).
+  A `conflicts` entry flagged `masked:true` means a remediation reported a *unilateral* resolution
+  — verify it did not bury the conflict. Route each to Product (cross-spec / provider / design
+  choice) or the owning spec's author (design self-contradiction). **Read `readiness` alongside `result`
   (DEC-DEV-0092):** `result` answers "is the code good?", `readiness` answers "did the gate get
   to judge?". `ENV_NOT_READY` (substrate down — Docker/DB/Redis off, or a RED suite whose
   failures are *all* substrate errors per the allowlist) is reported as
