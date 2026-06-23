@@ -47,7 +47,7 @@ If count differs, list missing or unexpected files.
 
 Count per namespace:
 - `.claude/commands/integrator/*.md` — expect 9 (research, map, gaps, status, journal, scan, add, remove, update)
-- `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~19)
+- `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~20)
 - `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
 - `.claude/commands/orchestrator/*.md` — expect 1+ (run; first increment — P2/P4/P6/P7 processes deferred)
 - `.claude/commands/ecosystem/*.md` — expect 6 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
@@ -146,7 +146,7 @@ LESSON-* GATE (DEC-DEV-0062)
 
 COMMANDS
   ✓ integrator/:   9           (research, map, gaps, status, journal, scan, add, remove, update)
-  ✓ product/:      19          (Phase 2+ — init, feature, da-review, validate, ...)
+  ✓ product/:      20          (Phase 2+ — init, feature, da-review, validate, complete, ...)
   ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
   ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
   ✓ ecosystem/:    6           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
