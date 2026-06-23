@@ -117,7 +117,8 @@ test('returns the P6 contract keys', () => {
 });
 
 test('P5 delegates its feature-level gate to P6 via workflow(), with a fallback', () => {
-  assert(/workflow\('validate-feature-impl'/.test(P5), 'P5 does not delegate to P6 via workflow()');
+  assert(/workflow\(\s*\{\s*scriptPath:\s*['"][^'"]*validate-feature-impl\.mjs['"]/.test(P5),
+    'P5 must delegate to P6 by scriptPath (orchestrator processes are not registered named-workflows; DEC-DEV-0091 — by-name workflow() silently fell back to advisory every run)');
   assert(/catch\b/.test(P5) && /kiro-validate-impl/.test(P5), 'P5 lacks the inline kiro-validate-impl fallback');
   assert(/concerns/.test(P5), 'P5 does not forward concerns to P6 (FB-013)');
 });

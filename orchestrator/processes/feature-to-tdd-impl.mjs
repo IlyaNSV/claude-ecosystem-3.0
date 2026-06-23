@@ -330,7 +330,7 @@ let go = null
 if (implemented.length) {
   const degraded = blockedTasks.length > 0
   try {
-    const p6 = await workflow('validate-feature-impl', {
+    const p6 = await workflow({ scriptPath: '.claude/orchestrator/processes/validate-feature-impl.mjs' }, {
       feature: FEATURE,
       specDir: SPEC_DIR,
       oracle: '.claude/orchestrator/lib/coverage-oracle.cjs',
@@ -342,8 +342,12 @@ if (implemented.length) {
     go = { result: (p6 && (p6.result || p6.go_gate)) || 'MANUAL_VERIFY_REQUIRED', findings: (p6 && p6.findings) || [] }
     log(`feature GO-gate (P6 validate-feature-impl${degraded ? ', advisory' : ''}): ${go.result}`)
   } catch (e) {
-    // FALLBACK — nested workflow() unavailable (one-level limit): inline kiro-validate-impl lift.
-    log(`P6 delegation unavailable (${(e && e.message) || 'nesting'}) — falling back to inline kiro-validate-impl`)
+    // FALLBACK — P6 delegation unavailable: inline kiro-validate-impl lift (advisory, NOT the full P6 gate).
+    // NB (DEC-DEV-0091, live-run audit): one-level nesting from this tool-launched P5 IS permitted (validated:
+    // docs + 2 empirical nesting tests). The prior by-name call failed ONLY because orchestrator processes are
+    // not registered named-workflows; it is now invoked by scriptPath. This catch fires only on a genuinely
+    // unresolvable scriptPath — a real degradation, surfaced (not silent) in the returned findings below.
+    log(`P6 delegation unavailable (${(e && e.message) || 'scriptPath unresolvable'}) — falling back to inline kiro-validate-impl (advisory)`)
     // FB-013: surface propagated CONCERNS so a deferred real seam (mock-only provider) is DISCLOSED at GO, not hidden.
     const concernNote = concerns.length
       ? ` DEFERRED-CAPABILITY CONCERNS surfaced during impl (FB-013): ${concerns.map((c) => `${c.task}: ${c.concern}`).join(' | ')}. Factor these into the verdict and DISCLOSE them in findings — a GO over a deferred real seam (mock-only provider / unwired skeleton) is GO-with-caveats, not a clean production GO.`
@@ -355,6 +359,10 @@ if (implemented.length) {
         : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote,
       { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
     )
+    // Visibility (DEC-DEV-0091): a degraded gate must never read as a clean GO — surface it in findings.
+    if (go) {
+      go.findings = [`GATE DEGRADED: P6 delegation failed (${(e && e.message) || 'scriptPath unresolvable'}); used advisory inline kiro-validate-impl, NOT the full P6 gate (mechanical + RA-8/9/10 + verify-finding-before-act). Treat as advisory / GO-with-caveats; re-run \`/orchestrator:run validate-feature-impl --feature ${FEATURE}\` for a ground-truth gate.`].concat(go.findings || [])
+    }
     log(`feature GO-gate (fallback kiro-validate-impl${degraded ? ' advisory' : ''}): ${(go && go.result) || 'n/a'}`)
   }
 } else {
