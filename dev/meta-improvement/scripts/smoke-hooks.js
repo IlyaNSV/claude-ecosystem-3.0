@@ -134,6 +134,35 @@ const TEST_CASES = [
     expectStderrIncludes: /V-11 auto-fixed/,
   },
   { hook: 'hooks/product/br-change-trigger.js',     filePath: path.join(TMP_PRODUCT, 'business-rules', 'BR-001-test.md') },
+  // zone-change-trigger (DEC-DEV-0098, Epic A / A2): a significant change in a routed
+  // zone must emit the advisor signal naming the heterogeneous personas.
+  {
+    hook: 'hooks/product/zone-change-trigger.js',
+    label: 'fires-on-significant-feature-change',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-050-test.md'),
+    setup: (ctx) => {
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'features', 'FM-050-test.md'),
+        '---\nid: FM-050\ntype: feature-map-entry\nstatus: in-progress\nhas_ui: true\n---\n\n# FM-050\n\nA new behavioral clause that constitutes a real body change.\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /Advisor review pending for FM-050.*architect-advisor/s,
+  },
+  {
+    hook: 'hooks/product/zone-change-trigger.js',
+    label: 'silent-on-non-zone-path',
+    filePath: path.join(TMP_PRODUCT, 'segments', 'SEG-001-test.md'),
+    setup: (ctx) => {
+      fs.mkdirSync(path.join(ctx.tmpProduct, 'segments'), { recursive: true });
+      fs.writeFileSync(
+        path.join(ctx.tmpProduct, 'segments', 'SEG-001-test.md'),
+        '---\nid: SEG-001\ntype: segment\nstatus: active\n---\n\n# SEG-001\n',
+        'utf-8'
+      );
+    },
+    expectStderrAbsent: /Advisor review pending/,
+  },
   { hook: 'hooks/product/ic-change-trigger.js',     filePath: path.join(TMP_PRODUCT, 'invariants', 'IC-001-test.md') },
   { hook: 'hooks/product/session-state.js',         filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md') },
   { hook: 'hooks/product/product-handoff-gate.js',  filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'), label: 'no-handoff' },

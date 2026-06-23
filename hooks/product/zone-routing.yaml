@@ -1,0 +1,68 @@
+# Zone → profile-persona routing manifest (Autonomous Pipeline Vision, Epic A / A2).
+#
+# SSOT for which completeness-loop persona(s) fire when a .product/ zone is touched.
+# Read at runtime by zone-router.cjs (parseManifest). Agent-side analog of
+# pmo-mapping.yaml — but maps a PMO zone to the critic *personas*, not to tools.
+#
+# Firing contract (deterministic, enforced by the router — NOT LLM judgment):
+#   a persona fires for a change iff BOTH
+#     (1) the changed file matches a zone's path_glob, AND
+#     (2) the change magnitude >= the zone's min_magnitude  (cosmetic < significant)
+#   The magnitude gate keeps the panel from burning tokens on trivial edits
+#   (Epic A anti-over-engineering rail; vision §4 / LOOP_READINESS_AUDIT §0).
+#
+# Heterogeneity (vision §4 cluster 2): each zone routes to the persona(s) whose
+# DISTINCT prior adds value there — never the whole panel by default.
+#   architect-advisor — feasibility / decomposition / tech-risk / data-state
+#   qa-advisor        — testability / acceptance-coverage / edge-cases
+#   ux-advisor        — usability / flows / UI state coverage (UI-bearing only)
+#
+# `personas` MUST be canonical subagent_type names (agents/**/<name>.md `name:`).
+# The business lens (product-devils-advocate) is already wired via br/ic-change-trigger
+# and is intentionally NOT duplicated here.
+#
+# Note: NM (navigation maps) live under .product/mockups/ (NM-*.md), so the `mockups`
+# zone covers both MK and NM → ux-advisor. ux on scenarios/features is deferred until a
+# has_ui-aware check exists (avoid firing the UI lens on non-UI scope).
+
+version: 1
+zones:
+  - id: business-rules
+    path_glob: .product/business-rules/*.md
+    personas: [architect-advisor, qa-advisor]
+    min_magnitude: significant
+
+  - id: invariants
+    path_glob: .product/invariants/*.md
+    personas: [qa-advisor, architect-advisor]
+    min_magnitude: significant
+
+  - id: scenarios
+    path_glob: .product/scenarios/*.md
+    personas: [qa-advisor]
+    min_magnitude: significant
+
+  - id: features
+    path_glob: .product/features/*.md
+    personas: [architect-advisor, qa-advisor]
+    min_magnitude: significant
+
+  - id: nfr
+    path_glob: .product/nfr/*.md
+    personas: [qa-advisor, architect-advisor]
+    min_magnitude: significant
+
+  - id: verification
+    path_glob: .product/verification/*.md
+    personas: [qa-advisor]
+    min_magnitude: significant
+
+  - id: lifecycles
+    path_glob: .product/lifecycles/*.md
+    personas: [architect-advisor]
+    min_magnitude: significant
+
+  - id: mockups
+    path_glob: .product/mockups/*.md
+    personas: [ux-advisor]
+    min_magnitude: significant
