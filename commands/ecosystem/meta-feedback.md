@@ -120,12 +120,15 @@ Acceptance happens in claude-ecosystem-3.0 (Session Audit / reconciliation).
 ## Out of scope (v1 — DEC-DEV-0090)
 
 - **Receiving-side automation** (auto-pickup of the outbox, dedupe against existing DEC-DEV,
-  unified finding contract with `FEEDBACK-JOURNAL` + Session Audit) — **phase 2**.
-- Cross-pilot aggregation of multiple outboxes.
+  unified finding contract with `FEEDBACK-JOURNAL` + Session Audit) — **built in phase 2**
+  (DEC-DEV-0097): the ecosystem-repo / dev-only consolidator
+  `dev/meta-improvement/scripts/feedback-intake.js`. It reads this outbox; it does not run in the pilot.
+- Cross-pilot aggregation of multiple outboxes — still deferred.
 
 ## Related
 
 - Skill: `.claude/skills/ecosystem/meta-feedback.md` — systemic-classification + outbox methodology
 - Local sibling: `/product:validation-tune` — project-local tuning (downstream contour)
-- Receiving side (ecosystem repo): Session Audit v2 (`audit-watch.js`) + reconciliation
+- Receiving side (ecosystem repo, dev-only): Session Audit v2 (`audit-watch.js`) + the phase-2
+  consolidator `dev/meta-improvement/scripts/feedback-intake.js` (DEC-DEV-0097)
 - DEC-DEV-0090 — design rationale (`dev/FEEDBACK_CONTOUR_SPLIT_PLAN.md`)
