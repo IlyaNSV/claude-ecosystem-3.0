@@ -35,9 +35,19 @@ export const meta = {
  * same cap kiro-validate-impl used) and re-validates the affected lens.
  *
  * GO is SYNTHESIZED deterministically here (not a kiro-validate-impl verdict): GO iff the
- * mechanical layer is green AND no confirmed finding remains unremediated AND the run is not
- * degraded (blocked tasks upstream). Deferred-capability CONCERNS forwarded from P5 (FB-013)
- * are DISCLOSED in the verdict — a GO over a mock-only seam is GO-with-caveats, not clean.
+ * mechanical layer is green AND no confirmed finding remains unremediated AND no escalated
+ * cross-spec/design conflict (T5) AND the run is not degraded (blocked tasks upstream).
+ * Deferred-capability CONCERNS forwarded from P5 (FB-013) are DISCLOSED in the verdict — a GO
+ * over a mock-only seam is GO-with-caveats, not clean.
+ *
+ * REMEDIATION DISCRETION (DEC-DEV-0096, T5 — FB-LR-07): remediation is SINGLE-WRITER (strictly
+ * sequential, one commit at a time; cross-run single-writer is FB-004's "one workflow per
+ * repo"). A remediation MAY NOT resolve a cross-spec/requirement contradiction or a design
+ * self-contradiction by picking a side and committing — that masks an upstream conflict (the
+ * run-B trial-seam: one committer "won" over two that correctly blocked). Such a finding
+ * ESCALATES to a CONCERN/product decision (never self-resolved), and a fix that admits a
+ * unilateral resolution is surfaced. The remediation-guard.cjs lib is the deterministic
+ * discretion backbone (classify a block / self-check a fix note), run by the agent via Bash.
  *
  * HARNESS CONSTRAINT (DEC-DEV-0073 §D.1): no FS / Node API / Date.now() in the script. Every
  * suite run / oracle run / grep / file read / fix / commit happens INSIDE an agent(); inputs
@@ -56,6 +66,7 @@ const FEATURE = A.feature || ''                                  // cc-sdd featu
 const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const ORACLE = A.oracle || '.claude/orchestrator/lib/coverage-oracle.cjs'
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs' // DEC-DEV-0092: readiness-axis backbone
+const REMEDIATION_GUARD = A.remediationGuard || '.claude/orchestrator/lib/remediation-guard.cjs' // DEC-DEV-0096: remediation-discretion backbone (T5)
 const VALIDATION = A.validationCommands || {}                    // {test, build, smoke} discovered by P5/preflight
 const SOURCE = A.source || ''                                    // optional .product handoff for the coverage-oracle backbone
 const CONCERNS = A.concerns || []                                // FB-013: deferred-capability flags forwarded from P5
@@ -181,11 +192,21 @@ const VERIFY_SCHEMA = {
   },
 }
 
+// DEC-DEV-0096 (T5, FB-LR-07): a remediation must declare its DISCRETION outcome, not just
+// fixed/not. block_class (when remediated:false) routes the FSM — a cross-spec/design
+// contradiction is NOT a code defect to fix here, it ESCALATES (never self-resolved); a
+// transient hiccup is distinct from a content gap; `resolved-by-concurrent-commit` is the
+// single-writer safety (a sibling commit already fixed it → do NOT double-commit). When
+// remediated:true, `unilateral` is the agent's self-check (it ran remediation-guard
+// --fix-note): did the fix require picking a side of a contradiction? (the anti-mask flag).
 const REMEDIATE_SCHEMA = {
   type: 'object',
   required: ['remediated'],
   properties: {
     remediated: { type: 'boolean' },                   // the confirmed defect was fixed + committed
+    block_class: { type: 'string', enum: ['fixed', 'content', 'capability', 'cross-spec-conflict', 'design-contradiction', 'transient', 'resolved-by-concurrent-commit'] },
+    conflict_detail: { type: 'string' },               // for a cross-spec/design conflict: which specs/requirements/design decisions disagree + the route
+    unilateral: { type: 'boolean' },                   // remediated:true self-check — did the fix resolve a contradiction by picking a side? (FB-LR-07 anti-mask)
     note: { type: 'string' },
   },
 }
@@ -286,10 +307,31 @@ const alreadyResolved = checked.filter((f) => f.disposition === 'already-resolve
 const refuted = checked.filter((f) => f.disposition === 'refuted')                        // hallucination → drop
 log(`verify-finding-before-act (order-aware): ${present.length} present, ${alreadyResolved.length} already-resolved (real, fixed since baseline), ${refuted.length} refuted/dropped`)
 
-// bounded remediation of PRESENT findings only; re-verify after each fix (a fix can be partial)
+// DEC-DEV-0096 (T5, FB-LR-07): escalate a cross-spec / design contradiction surfaced during
+// remediation — do NOT let a remediation pick a side and commit a unilateral resolution
+// (which masks an upstream conflict, as a racing committer did in live-run B). This records
+// a NON-BLOCKING escalation to pending-actions and never commits code — the conflict is an
+// upstream PRODUCT / spec-author decision, surfaced (never self-resolved).
+const escalateConflict = (f, fix) =>
+  agent(
+    `A remediation for a ${f.validator} finding in feature ${FEATURE} hit a ${(fix && fix.block_class) || 'cross-spec'} that MUST NOT be resolved unilaterally (FB-LR-07): ` +
+    `${(fix && fix.conflict_detail) || f.detail}.\n` +
+    `Do NOT pick a side and do NOT commit a resolution. Append a NON-BLOCKING escalation entry to .claude/pending-actions.md (create if absent): ` +
+    `the contradiction (which specs/requirements/design decisions disagree), the feature, and the route — Product for a cross-spec/requirement contradiction or a provider/design CHOICE, ` +
+    `the owning spec's author for a design self-contradiction. Mark it a cross-spec-conflict escalation requiring an upstream decision. Never commit code.`,
+    { phase: 'Synthesize', label: `escalate-conflict:${f.validator}:${f.ref || f.kind}` },
+  )
+
+// bounded remediation of PRESENT findings only; re-verify after each fix (a fix can be partial).
+// SINGLE-WRITER (T5, extends FB-004): remediation is STRICTLY SEQUENTIAL — one finding fixed +
+// committed at a time, never in parallel(), so two writers never race the git index within a
+// run (cross-run single-writer is FB-004's "one orchestrator workflow per repo"). Each fix is
+// re-verified against the worktree after committing; a fix that reports it was already resolved
+// by a concurrent commit does NOT double-commit.
 let remaining = present
 let round = 0
 const remediated = []
+const conflicts = []   // DEC-DEV-0096 (T5, FB-LR-07): escalated cross-spec/design contradictions — surfaced, never self-resolved
 while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
   round += 1
   log(`remediation round ${round}/${MAX_REMEDIATION_ROUNDS} — ${remaining.length} present finding(s)`)
@@ -297,17 +339,39 @@ while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
   for (const f of remaining) {
     const fix = await agent(
       `Remediate a CONFIRMED-PRESENT ${f.validator} defect in feature ${FEATURE} (verified evidence: ${f.evidence || f.detail}). ` +
-      `kind: ${f.kind}; ref: ${f.ref || 'n/a'}. Fix the concrete defect ONLY (no scope creep), add/repair the covering test if the lens is requirements-coverage, ` +
-      `then selective-commit (NEVER git add -A — explicit paths) with message: fix(${FEATURE}): ${f.kind} ${f.ref || ''}. ` +
-      `If the fix needs a capability you lack (tool/secret/upstream decision), do NOT fake it — return remediated:false and say what is needed.`,
+      `kind: ${f.kind}; ref: ${f.ref || 'n/a'}.\n` +
+      `DISCRETION (T5, FB-LR-07) — FORBIDDEN to resolve unilaterally:\n` +
+      `  • If fixing this requires resolving a contradiction BETWEEN specs/requirements (e.g. requirement A says X, requirement B says Y), ` +
+      `return remediated:false, block_class:'cross-spec-conflict', and conflict_detail (which two disagree + the route). Do NOT pick a side, do NOT commit.\n` +
+      `  • If it requires choosing between contradictory decisions in design.md (the design self-contradicts), ` +
+      `return remediated:false, block_class:'design-contradiction' + conflict_detail. Do NOT pick a path, do NOT commit.\n` +
+      `  • If it needs a capability you lack (tool/secret/access/upstream decision), return remediated:false, block_class:'capability' + what is needed — do NOT fake it.\n` +
+      `  • To classify the block, run \`node ${REMEDIATION_GUARD} --reason "<your one-line blocker>"\` via Bash and use its class as the deterministic backbone (escalate if EITHER it or your judgment says a conflict — conservative toward escalation).\n` +
+      `SINGLE-WRITER SAFETY (T5): before committing, re-confirm the defect is STILL present in the CURRENT tree — a concurrent commit may have resolved it since you started. If already resolved, return remediated:false, block_class:'resolved-by-concurrent-commit' (do NOT double-commit).\n` +
+      `Otherwise fix the concrete defect ONLY (no scope creep), add/repair the covering test if the lens is requirements-coverage, then selective-commit (NEVER git add -A — explicit paths) with message: fix(${FEATURE}): ${f.kind} ${f.ref || ''}; return remediated:true, block_class:'fixed'. ` +
+      `THEN self-check your fix: run \`node ${REMEDIATION_GUARD} --fix-note "<your one-line note of what you did>"\` and set unilateral to its result — if your fix actually resolved a contradiction by picking a side, set unilateral:true so it is surfaced (it should normally be false).`,
       { schema: REMEDIATE_SCHEMA, phase: 'Synthesize', label: `remediate:${f.validator}:${f.ref || f.kind}` },
     )
+    const cls = (fix && fix.block_class) || ''
+    const isEscalate = cls === 'cross-spec-conflict' || cls === 'design-contradiction'
+    if (isEscalate || (fix && fix.remediated && fix.unilateral)) {
+      // ESCALATE, don't self-resolve (FB-LR-07): a contradiction is an upstream decision, not a
+      // code defect to fix here. A fix that admitted a unilateral resolution is ALSO surfaced —
+      // it may have masked the conflict. Remove from the remediation set (no retry); it lives in
+      // conflicts[] and forces the verdict away from a clean GO in synthesis below.
+      conflicts.push({ ...f, conflict_class: cls || 'unilateral-resolution', conflict_detail: (fix && fix.conflict_detail) || f.detail, masked: !!(fix && fix.remediated && fix.unilateral) })
+      log(`finding ${f.validator}/${f.ref || f.kind} → ESCALATED (${cls || 'unilateral-resolution'}) — upstream decision, not self-resolved`)
+      await escalateConflict(f, fix)
+      continue
+    }
     if (fix && fix.remediated) {
       const recheck = await verifyFinding(f)
       if (recheck && recheck.disposition === 'present') next.push({ ...f, evidence: recheck.evidence })   // still present → another round
       else remediated.push(f)                                                                            // gone vs worktree → fixed
+    } else if (cls === 'resolved-by-concurrent-commit') {
+      remediated.push(f)                            // single-writer safety: a sibling commit fixed it → not a residual, not a double-commit
     } else {
-      next.push(f)                                  // could not remediate (e.g. capability gap) → carries to residual
+      next.push(f)                                  // could not remediate (capability/content gap) → carries to residual
     }
   }
   remaining = next
@@ -341,6 +405,11 @@ if (readiness === 'ENV_NOT_READY') {
 } else {
   result = unresolved.some((f) => f.severity === 'high') ? 'NO-GO' : 'MANUAL_VERIFY_REQUIRED'
 }
+// DEC-DEV-0096 (T5, FB-LR-07): an escalated cross-spec / design conflict is an UPSTREAM
+// decision, not a code defect — the feature's correctness is undecided until it is resolved,
+// so it must NEVER read as a clean GO. Degrade a would-be GO to MANUAL_VERIFY (not NO-GO — the
+// code may be fine pending the decision); surfaced for the owner. Conservative toward surfacing.
+if (conflicts.length && result === 'GO') result = 'MANUAL_VERIFY_REQUIRED'
 
 // findings to surface: unresolved confirmed defects + mechanical failures + forwarded deferred-capability CONCERNS (FB-013 disclosure)
 const readinessReasons = (mech && mech.readiness_reasons) || []
@@ -354,7 +423,8 @@ const findings = [
     : []),
   ...((mech && mech.failures) || []).map((x) => `mechanical: ${x}`),
   ...unresolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (confirmed-present; unresolved after ${MAX_REMEDIATION_ROUNDS} round(s))`),
-  ...alreadyResolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (already-resolved since baseline, DEC-DEV-0093 — was REAL, fixed by a commit during/before the gate; NOT a hallucination. VERIFY the resolution is genuine, not a mask — full single-writer serialization is T5.)`),
+  ...alreadyResolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (already-resolved since baseline, DEC-DEV-0093 — was REAL, fixed by a commit during/before the gate; NOT a hallucination. VERIFY the resolution is genuine, not a mask — single-writer remediation is now DEC-DEV-0096/T5.)`),
+  ...conflicts.map((c) => `cross-spec/design conflict (FB-LR-07, T5/DEC-DEV-0096): ${c.validator}/${c.kind} ${c.ref || ''}: ${c.conflict_detail} — ESCALATED, not self-resolved; needs an upstream decision (Product for a cross-spec/requirement contradiction or a provider/design choice; the owning spec's author for a design self-contradiction).${c.masked ? ' A remediation reported a UNILATERAL resolution — VERIFY it did not mask the conflict.' : ''}`),
   ...CONCERNS.map((c) => `deferred-capability (FB-013): ${typeof c === 'string' ? c : `${c.task || ''}: ${c.concern || ''}`} — disclose at GO; a GO over a mock-only/unwired real seam is GO-with-caveats`),
 ]
 log(`feature GO-gate: ${result} [readiness=${readiness}]${readiness !== 'READY' ? ' (advisory — gate could not fully judge)' : ''}; ${findings.length} finding(s) surfaced`)
@@ -369,6 +439,7 @@ return {
   already_resolved: alreadyResolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),   // real, fixed since baseline — surfaced for genuineness check (FB-LR-03)
   remediated: remediated.length,
   residual: unresolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),
+  conflicts: conflicts.map((c) => ({ validator: c.validator, ref: c.ref || null, kind: c.kind, conflict_class: c.conflict_class, masked: !!c.masked })),   // DEC-DEV-0096 (T5, FB-LR-07): escalated cross-spec/design contradictions — surfaced, never self-resolved; forces ≥ MANUAL_VERIFY
   concerns: CONCERNS,                                 // FB-013: deferred-capability flags, disclosed not dropped
   result,                                             // GO | NO-GO | MANUAL_VERIFY_REQUIRED
   findings,
