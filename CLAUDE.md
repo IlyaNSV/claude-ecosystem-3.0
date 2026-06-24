@@ -21,7 +21,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 **Единственный источник статуса** — [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) (verify против `git log`). Снапшот здесь намеренно **не дублируется**: pointer-collapse против triple-declaration drift (Tier-1 doc reform; ранее README/CLAUDE/ROADMAP держали три расходящиеся копии).
 
-`last memory-sync: 2026-06-18` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
+`last memory-sync: 2026-06-24` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
 - `dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
@@ -52,7 +52,38 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 | перед фазой / после фазы | `checklists/phase-kickoff.md` / `phase-closure.md` | per-phase |
 | рефактор с риском stale-ссылок | `patterns/spec-drift-sweep.md` (grep после) | — |
 
-🔒 = hard-enforced. Остальное — дисциплина (+ warn-only PostToolUse напоминалки `dev-journal-reminder.js` / `phase-closure-reminder.js`).
+🔒 = hard-enforced. Остальное — дисциплина (+ warn-only PostToolUse напоминалки `dev-journal-reminder.js` / `phase-closure-reminder.js` / `memory-drift-reminder.js`).
+
+## Autoflow — git / память / sync без отдельных команд (DEC-DEV-0100)
+
+> **Дефолт операционного потока: я гоню git-цикл и memory-sync сам, не дожидаясь
+> отдельных команд «закоммить / запушь / создай PR / синхронизируй память».**
+> Граница: **merge в `main` — всегда владелец.** Я довожу до готового PR и
+> останавливаюсь. Это **поведенческий контракт** (исполняю я), НЕ детерминированная
+> гарантия — enforcement держат `process-gate` / `pre-commit`, подстраховка —
+> warn-хуки. Подавляется фразами «локально только» / «не пушь пока» / «без PR».
+
+**Триггер единицы синхронизации** — завершённая *логическая единица* (фича/фикс
+доведён, `npm run verify` / релевантный smoke зелёный), НЕ каждый файл и НЕ конец
+сессии. Гранулярность = то, что я и так оформил бы одним PR.
+
+**Git-цикл (на завершении единицы):**
+1. На `main` (не на feature-ветке) → завожу `<type>/<scope>-<slug>` ПЕРЕД правками.
+2. Обновляю DEV_JOURNAL / CHANGELOG по таблице «Process triggers» **ДО** коммита
+   (иначе `process-gate` отобьёт коммит — гейт это подстраховка, не препятствие).
+3. `git fetch` + merge `origin/main` в ветку. Конфликт на `DEV_JOURNAL` /
+   `CHANGELOG [Unreleased]` (ожидаем — accumulation-контракт) → склейка обеих
+   сторон; нетривиальный конфликт → стоп + спрашиваю.
+4. Scoped conventional commit — **только свои файлы** (чужой WIP / `audit-index.md`
+   не стейджу).
+5. `git push` + `gh pr create` — **с `dangerouslyDisableSandbox: true`** (git/gh
+   network иначе таймаутит на порту 443, [[env_git_network_needs_sandbox_off]]).
+6. **СТОП перед merge.** Сообщаю «PR #N готов к merge» — merge выполняет владелец.
+
+**Реалистичность (без иллюзий):** шаги 1-6 — поведенческие; если я их пропущу,
+ничто их не выполнит за меня (кроме warn-напоминаний). Это сдвиг дефолта «молчу
+пока не попросят» → «делаю пока не остановишь», а не автономный демон. Необратимое
+(merge в `main`) сознательно оставлено вне автоматизации.
 
 ## Принципы работы над экосистемой
 
@@ -232,3 +263,18 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 - DEV journal reference
 
 Memory может устаревать. Всегда верифицируй по git log / DEV_JOURNAL / CHANGELOG перед actионом.
+
+### Auto memory-sync (DEC-DEV-0100)
+
+**Не жду команды «прогони memory-sync».** В конце сессии / на «готово» —
+**если за сессию коммичены статус-несущие файлы** (`DEV_JOURNAL` / `ROADMAP` /
+`CHANGELOG`) — сам обновляю затронутые записи памяти + индекс `MEMORY.md` +
+выравниваю `last memory-sync` (CLAUDE.md) с ROADMAP «Последнее обновление». Если
+статус за сессию не сдвинулся — пропускаю (sync вхолостую не нужен).
+
+Подсказку «пора» даёт warn-хук `memory-drift-reminder.js` (PostToolUse:Bash,
+event-gated на status-файлы; **detect-only** — сам память не пишет, чтобы не
+рекурсировать Write→hook→Write). Полная процедура —
+[`dev/meta-improvement/skills/memory-sync.md`](dev/meta-improvement/skills/memory-sync.md).
+Держи записи tight (~5-10 предложений; раздутую запись разгружай в архивную, не
+храни историю в активной — прецедент `project_ecosystem_status`).
