@@ -229,7 +229,7 @@ Continue to F.5 IC identification? [Y/N]
    # P5 сам делегирует P6 (validate-feature-impl) и возвращает вердикт
 ```
 
-На выходе — вердикт гейта: **GO** / **NO-GO** / **MANUAL_VERIFY** (+ оси `readiness` и `conflicts`). Что они значат для тебя — будущий [`05-implementation.md`](README.md).
+На выходе — вердикт гейта: **GO** / **NO-GO** / **MANUAL_VERIFY** (+ оси `readiness` и `conflicts`). Как их читать и что делать — [`05-implementation.md`](05-implementation.md).
 
 > ⚠️ **Предусловие:** `/orchestrator:run` требует **активного cc-sdd** — сначала `/integrator:add cc-sdd`, иначе процесс остановится на pre-flight.
 
