@@ -1209,19 +1209,22 @@ NFR на solo-уровне — **очертания достаточности, 
 
 ---
 
-## 15. Следующие шаги
+## 15. Статус реализации
 
-- [ ] Реализовать `/product:init` команду (P1.A)
-- [ ] Реализовать `/product:plan` (P1.B)
-- [ ] Реализовать `/product:feature` (P2.A/B)
-- [ ] Реализовать `/product:handoff`
-- [ ] Skill `bg-extraction.md` с Phase 1-5 algorithm
-- [ ] Hook `bg-extractor.js`
-- [ ] При OQ-03 закрытии — добавить F.5a NFR step
-- [ ] При D5 tools appearance — активировать P3 Feedback Integration
+Методология консолидирована и **зашиплена** (Discovery / Planning / Feature / Handoff — рабочие):
+
+- [x] `/product:init` (P1.A Discovery)
+- [x] `/product:plan` (P1.B Planning)
+- [x] `/product:feature` (P2.A/B)
+- [x] `/product:handoff`
+- [x] Skill `bg-extraction.md` + hook `bg-extractor.js`
+- [x] F.5a NFR step (OQ-03 закрыт)
+- [ ] P3 Feedback Integration — отложено (активируется при появлении D5 tools)
+
+Живой статус реализации — [ROADMAP «Где мы сейчас»](../../ROADMAP.md#где-мы-сейчас).
 
 ---
 
 **Конец processes.md.**
 
-Статус: **методология консолидирована. Закрывает OQ-01 (BG extraction algorithm). Готово к сборке Product Module SPEC.**
+Статус: **методология консолидирована и зашиплена** — Discovery / Planning / Feature / Handoff рабочие (P3 Feedback отложено). Закрывает OQ-01 (BG extraction algorithm). Живой статус — [ROADMAP «Где мы сейчас»](../../ROADMAP.md#где-мы-сейчас).

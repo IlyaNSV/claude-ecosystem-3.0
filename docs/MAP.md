@@ -42,7 +42,7 @@ flowchart LR
     end
     HO --> D2T
 
-    ORC["Orchestrator Module<br/>планируется — запуск D3-D6"]:::planned
+    ORC["Orchestrator Module<br/>P3-P6 built · запуск D3-D6"]
     ORC -. оркеструет .-> EXT
     D6["D6 · Meta: Ecosystem Governance<br/>Integrator Module + человек"]
     EXT --- D6
@@ -69,7 +69,7 @@ flowchart TB
     subgraph PROJ["User project"]
         CLAUDE[".claude/ · deployed ecosystem zone<br/>commands·skills·agents·hooks·docs"]
         PROD[".product/ · артефакт-store<br/>source of truth проекта"]
-        PMODS["Модули: Product · Design · Integrator · Orchestrator 🔜"]
+        PMODS["Модули: Product · Design · Integrator · Orchestrator"]
     end
 
     EXTOOLS["Внешние инструменты<br/>cc-sdd / kiro и др."]
