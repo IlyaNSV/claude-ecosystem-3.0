@@ -8,6 +8,8 @@
     "smoke:hooks:verbose": "node dev/meta-improvement/scripts/smoke-hooks.js --verbose",
     "lint:hooks": "eslint hooks/",
     "verify:hooks": "node dev/meta-improvement/scripts/verify-hooks.js",
+    "gen:catalog": "node dev/meta-improvement/scripts/gen-command-catalog.cjs",
+    "gen:catalog:check": "node dev/meta-improvement/scripts/gen-command-catalog.cjs --check",
     "test:adapters": "node tests/adapters/handoff-ccsdd.contract.test.cjs",
     "test:orchestrator": "node tests/orchestrator/coverage-oracle.test.cjs && node tests/orchestrator/gate-risk-classifier.test.cjs && node tests/orchestrator/args-parsing.test.cjs && node tests/orchestrator/concerns-propagation.test.cjs && node tests/orchestrator/fidelity-oracle.test.cjs && node tests/orchestrator/audit-fidelity-wiring.test.cjs && node tests/orchestrator/validate-feature-impl-wiring.test.cjs && node tests/orchestrator/feature-to-tdd-impl-wiring.test.cjs && node tests/orchestrator/env-readiness.test.cjs && node tests/orchestrator/remediation-guard.test.cjs && node tests/orchestrator/design-coverage-oracle.test.cjs",
     "smoke:orchestrator": "node tests/orchestrator/workflow-syntax.smoke.cjs",

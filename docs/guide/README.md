@@ -10,7 +10,8 @@
 | **[01-first-session.md](01-first-session.md)** | **Первая продуктовая сессия** — нарратив от свежего bootstrap через `init → plan → feature → handoff` на сквозном примере, с реальными approve-гейтами | ✅ v1 |
 | **[00-concepts.md](00-concepts.md)** | **Мысленная модель** D1–D6 + цикл draft→approve + уровни ревью + граф артефактов + глоссарий — прочитать первым | ✅ v1 |
 | **[05-implementation.md](05-implementation.md)** | **От handoff к коду** — Integrator + Orchestrator (P3→P6), как читать вердикт `GO/NO-GO × readiness × conflicts` | ✅ v1 |
-| `04-ui-design.md` | Design Module (`has_ui`): когда и как | 🔜 план |
+| **[02-commands.md](02-commands.md)** | **Каталог всех команд** «когда что» — сгенерирован из frontmatter (`gen:catalog`), не дрейфует | ✅ gen |
+| **[04-ui-design.md](04-ui-design.md)** | **Дизайн интерфейса** — Design Module (`has_ui`): когда включается, поток D.1→D.6, что производит | ✅ v1 |
 
 ## Как пользоваться картой
 
@@ -23,4 +24,4 @@
 
 ## Провенанс
 
-Статусы и описания зафиксированы вручную из спеков на дату в шапке карты (v1). Авто-генерация каталога из frontmatter команд — план Tier-2 (анти-дрейф, согласуется с решением `docs/MAP.md` не вести cross-ref-таблицу руками). Канонический статус «где мы сейчас» — всегда [ROADMAP.md](../../ROADMAP.md#где-мы-сейчас).
+Статусы и описания в карте (`ecosystem-map.html`) зафиксированы вручную из спеков (v1). Текстовый каталог [`02-commands.md`](02-commands.md) **генерируется** из frontmatter команд (`npm run gen:catalog` / `node dev/meta-improvement/scripts/gen-command-catalog.cjs`) — анти-дрейф, согласуется с решением `docs/MAP.md` не вести cross-ref-таблицу руками; `--check` валит при рассинхроне. Канонический статус «где мы сейчас» — всегда [ROADMAP.md](../../ROADMAP.md#где-мы-сейчас).
