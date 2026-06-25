@@ -104,8 +104,11 @@ function render(modules) {
 const out = render(collect());
 const check = process.argv.includes('--check');
 const current = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
+// EOL-agnostic: git autocrlf (Windows) checks the file out with CRLF on disk
+// while the generator emits LF — compare content, not line endings.
+const eol = (s) => s.replace(/\r\n/g, '\n');
 if (check) {
-  if (current !== out) {
+  if (eol(current) !== eol(out)) {
     console.error(`gen-command-catalog: STALE — ${OUT} differs from frontmatter. Run the generator.`);
     process.exit(1);
   }
