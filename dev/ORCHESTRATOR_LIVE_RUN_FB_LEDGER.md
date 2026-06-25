@@ -88,3 +88,50 @@
 ### Positive confirmations (Track V — live-validated, no action)
 - **V-1 zone-hook — PASS:** a significant `.product/` edit fires with the correct zone+personas (BR-005→`architect-advisor, qa-advisor`; MK-001→`ux-advisor`); a cosmetic edit (BR-006 `updated`/`version` only) stays **silent** (magnitude gate); a 2nd significant edit **updates the entry in place** (dedup by id), no duplicate.
 - **V-3 oracle + bounded loop — PASS:** FM-001 `met:true` fast-stop (no waves, no edits); an injected gap (VC-018→draft) → `met:false`, `B4 fail (SC-013 uncovered)`, `delegated_unverified` (B5/B6/B8) intact (no silent truncation); the loop is **bounded** (1 wave) and **fail-loud** (stopped at SURFACE on the unresolved persona, applied no edits, escalated nothing) — the stop contract held even through the FB-LR-17 failure.
+
+---
+
+## Track O — Run C re-run on the un-done feature (glossary) — 2026-06-25
+
+> The Block-1 / Track-O **Run C** the N+2 section above flagged as still-needed: the admin re-val
+> (`336a2973`) was a **no-op** (admin already 17/17 `[x]`), so the **P5→P6 nesting (T3) was never
+> exercised**. This run finally exercises it — `/orchestrator:run feature-to-tdd-impl --feature glossary`
+> on an **un-done** feature. Pilot session `1ff7e2d8` (worktree `tdd-impl-glossary`, HEAD `5a7412d`),
+> workflow `wf_777d4af2-08f` (`status=completed`, 99 agents, ~5.47 h, ~8.28M tokens, 2305 tool calls;
+> `result`: `go_gate:NO-GO`, `readiness:READY`, `conflicts:[]`, `blocked:[]`, 13 tasks implemented,
+> 12 concerns). Graded post-hoc by the layered evidence model ([[feedback_audit_evidence_layers]]) +
+> **executor/reviewer separation** ([[feedback_separate_task_from_test]]): the pilot ran clean, then **2
+> blind subagent auditors (V1 ≈ V2)** graded independently and a **neutral 3rd-agent adjudication**
+> verified the decision-bearing claim line-by-line against the real `.mjs`.
+>
+> **Headline: T3 + T5 are LIVE-VALIDATED** — one MEDIUM observability edge (FB-LR-19). Findings continue
+> from FB-LR-18; next-free DEC-DEV = **0104** (0101/0102 reserved for FB-LR-15/16; 0103 = Track V).
+
+### Verdict per criterion (rubric 1–9; V1 ≈ V2, adjudicator-confirmed)
+
+| # | criterion | verdict | evidence (ground-truth) |
+|---|---|---|---|
+| 1 | **T3 — P5→P6 delegation (headline)** | ✅ **PASS** | `logs`: `▸ running dynamic workflow validate-feature-impl` → real P6 via `{scriptPath}`; mechanical agent ran real `pnpm -r build` (exit 0) + `pnpm -r test` (exit 1) + docker up; `verify-finding` + 2 remediation rounds + verdict. **No `GATE DEGRADED`/advisory fallback anywhere.** Conclusively refutes the pilot memory `p6_delegation_unresolvable` (that was by-name, fixed by T3). |
+| 2 | **T5 — conflict escalation** | ⚠️ **PARTIAL** (MEDIUM) | Mechanism faithful: 2 cross-spec conflicts ESCALATED (`Requirement 7 / BR-028 reproducibility`; FM-003 sync in-process build), `unilateral:false`, routed to PA-024, gate held NO-GO; **no run-B `had_trial`-style masking**. BUT `result.conflicts:[]` → escalations invisible in the machine-readable envelope → **FB-LR-19**. |
+| 3 | **T5 — transient retry** | **N-A (not exercised)** | The lone transient (`localhost:5432` pool-exhaustion during a 500-term seed) self-healed inside the impl agent (sequential reseed); never surfaced as `BLOCKED` → `blocked:[]`, FSM transient branch never entered. Sub-path still 0 live runs. |
+| 4 | **T1 — verdict×readiness** | ✅ PASS | `readiness:READY` orthogonal to `go_gate:NO-GO`; substrate independently re-probed up; false-NO-GO guard correctly NOT triggered. |
+| 5 | **T2 — order-aware verify** | ✅ PASS | baseline sha `2ccf2a9` captured; `5 present, 0 already-resolved, 0 refuted`; real baseline diffing; no finding mislabeled a hallucination. |
+| 6 | **FB-LR-15 — validator drop** | ✅ PASS (no recurrence) | All 3 validators RA-8/9/10 ran to completion; **0/99 agent files contain `state:error`**. The B-run silent-drop defect did not recur. |
+| 7 | **NO-GO soundness / fidelity** | ✅ verdict sound / ⚠️ fidelity PARTIAL | NO-GO correct over READY substrate (RED = an out-of-glossary bcrypt host-speed flake + 2 genuine unresolved conflicts; glossary code clean). Fidelity loss = same root as #2: P6's 16 findings → 0 in the P5 envelope. |
+| 8 | **PA-dedup (FB-LR-10) + args-string (FB-LR-11)** | ✅ PASS | In-run dedup held (escalate agent deduped onto existing PA-024); post-run `5a7412d` folded 8→5 (IDs retained). args passed as a JSON **string** — defensive parse held. **Caveat:** the PA *commits* (`da791c2`/`5a7412d`) are **operator-driven post-run**, not workflow-internal — FB-LR-10's "consolidate-don't-append" holds as behavior but autonomy is only half-demonstrated here. |
+
+### Ledger (new findings — continue from FB-LR-18)
+
+| id | sev | finding | corrected root-cause | route / status |
+|---|---|---|---|---|
+| FB-LR-19 | 🟠 | C (glossary) — P5 **drops the nested P6 gate's `conflicts[]` and `findings[]` from its own return envelope**: `result.conflicts:[]` and no `findings` key, despite the gate escalating 2 cross-spec conflicts and surfacing 16 findings. A tool reading the structured result sees zero escalations / zero findings. | P5 reads only 3 P6 keys (`feature-to-tdd-impl.mjs:450-454`: `result`/`readiness`/`findings`) — **never `p6.conflicts`** — and its return object (`:488-496`) omits `findings` (captured at `:453`, discarded at the boundary) and emits only its own impl-phase `conflicts` (declared `[]` at `:309`). P6 *does* surface both richly (`validate-feature-impl.mjs:442`/`:445`). Trace survives only in `pending-actions.md` + transient `log()`. | **OPEN — candidate DEC-DEV-0104.** Fold `p6.conflicts` into the envelope `conflicts[]` + add `findings` to the P5 return (`:488-496`). The headline fix; the increment *works*, its escalation trace just isn't durably machine-observable at the P5 envelope. |
+| FB-LR-20 | 🟡 | C (glossary) — one cross-FM seam was **split**: a consumer-side remediation (`345336e`) reshaped FM-002-owned files (`glossary-snapshot.port.ts`, `job-status.service.ts`) as "conform-to-owner", while the SAME seam's wiring/ownership was escalated as forbidden-to-resolve (PA-024). | `git show 345336e` confirms a **faithful** conform-to-owner edit (design.md genuinely names FM-003 authoritative — not a mask), but `remediation-guard`'s owner-vs-conflict test does not flag a consumer edit to **another FM's owned file** while that seam is under an active escalation. Under-specified, not a defect here. | **OPEN (LOW-MED) — ecosystem/Product.** Tighten the owner-vs-conflict heuristic, or codify the "shape=conform / wiring=escalate" seam-split as an accepted pattern. |
+| FB-LR-21 | 🟢 | C (glossary) — RA-10 (integration-boundary / orphan-export lens) returned `clean:true`, classifying the FM-003 `GlossarySnapshotService.buildSnapshot` no-call-site as "deferred-by-design", while RA-8 + RA-9 + the escalation chain treated the **same** seam as a cross-spec conflict (PA-024). | Verified in RA-10 transcript (`agent-a0b94edb03b6eb437`): the lens whose job is orphan exports waved through an orphan two other lenses flagged. No defect leaked (caught by RA-8/9 redundancy), but the lens is too lenient on spec-sanctioned orphans. | **OPEN (LOW) — ecosystem.** RA-10 prompt: a deferred/spec-sanctioned orphan should still **surface** as a finding, not be silently cleared. |
+| FB-LR-22 | 🟢 | C (glossary) — `remediation-guard.cjs` keys only on transient/infra signal-words; it returned `class:content` for **all 3** cross-spec escalations (agents 89/95/98). Escalation worked entirely on **LLM judgment**; the deterministic backbone carried 0 load on the T5-critical semantic-conflict path. | The guard is effectively a transient/infra classifier; the "EITHER lib OR own reading" contract meant the lib never contributed to the cross-spec decisions. A less-careful agent could miss the escalation. | **OPEN (LOW) — ecosystem.** Either document `remediation-guard` as a transient/infra-only classifier, or add a cross-spec-conflict heuristic so the deterministic layer shares the load. |
+
+### Positive confirmations (Run C glossary — live-validated, no action)
+- **T3 delegation works end-to-end** — first genuine P5→P6 `workflow({scriptPath})` nesting on an un-done feature; the full real gate executed (mechanical full-suite + build + RA-8/9/10 + order-aware verify-finding + remediation) and the advisory/`GATE DEGRADED` fallback **never fired**. This is the increment the whole glossary re-run existed to prove.
+- **T5 escalation fires live without masking** — 2 real contradictions escalated, no unilateral commit overrode them, gate stayed off a clean GO. The run-B masking pattern did not recur.
+- **Order-aware verify (T2) + readiness axis (T1) both intact** under a READY substrate; the false-NO-GO guard correctly did not engage.
+- **Durable skeleton held** — 99 agents / ~5.47 h / ~8.28M tokens with **clean cross-session recovery** across 2 interruptions (an earlier `wf_c76e052c` resumed into `wf_777d4af2`), zero duplicate task commits (`!t.done` filter).
+- **FB-006 boundary guard held live** — task 4.4 was REJECTED for an out-of-boundary `.claude/pending-actions.md` edit and the implementer reverted it.
