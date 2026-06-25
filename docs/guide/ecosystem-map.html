@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ecosystem 3.0 — интерактивная карта</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330; --line:#30363d;
+    --tx:#c9d1d9; --tx2:#8b949e; --tx3:#6e7681;
+    --product:#3fb950; --design:#bc8cff; --integrator:#58a6ff;
+    --orchestrator:#f0883e; --ecosystem:#8b949e; --pmo:#e3b341;
+    --shipped:#3fb950; --partial:#d29922; --conditional:#58a6ff; --planned:#6e7681;
+    --crit:#f85149; --strat:#f0883e; --std:#e3b341; --conf:#3fb950;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--tx);line-height:1.5;font-size:14px}
+  code,.mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",monospace}
+  a{color:#58a6ff;text-decoration:none}a:hover{text-decoration:underline}
+  header{padding:22px 26px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:20}
+  h1{margin:0 0 4px;font-size:21px}
+  .sub{color:var(--tx2);font-size:13px;margin:0 0 14px}
+  .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .controls input[type=search]{flex:1;min-width:220px;background:var(--bg3);border:1px solid var(--line);
+    color:var(--tx);border-radius:7px;padding:8px 12px;font-size:14px}
+  .controls label{display:inline-flex;gap:6px;align-items:center;color:var(--tx2);cursor:pointer;
+    background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:7px 11px;font-size:13px}
+  .btn{background:var(--bg3);border:1px solid var(--line);color:var(--tx);border-radius:7px;
+    padding:7px 12px;cursor:pointer;font-size:13px}
+  .btn:hover{border-color:#58a6ff}
+  main{max-width:1180px;margin:0 auto;padding:18px 26px 80px}
+  .section-title{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);
+    margin:30px 0 12px;border-bottom:1px solid var(--line);padding-bottom:6px}
+
+  /* happy path */
+  .happy{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:14px;
+    font-size:13px;color:var(--tx2)}
+  .happy b{color:var(--tx)}
+  .happy .mono{color:var(--tx);background:var(--bg3);padding:1px 6px;border-radius:5px;white-space:nowrap}
+
+  /* pipeline */
+  .pipeline{display:flex;gap:0;flex-wrap:wrap;align-items:stretch;margin-top:6px}
+  .stage{flex:1;min-width:120px;background:var(--bg2);border:1px solid var(--line);border-radius:9px;
+    padding:11px 12px;margin:4px;cursor:pointer;transition:.12s;position:relative}
+  .stage:hover{border-color:#58a6ff;transform:translateY(-2px)}
+  .stage.active{border-color:#58a6ff;box-shadow:0 0 0 1px #58a6ff inset}
+  .stage .sid{font-weight:700;font-size:13px}
+  .stage .snote{color:var(--tx2);font-size:11.5px;margin-top:3px}
+  .stage .arrow{position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:var(--tx3);font-size:15px;z-index:2}
+  .stage.cond{border-style:dashed}
+  .stage.deleg{opacity:.92}
+
+  /* legend */
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--tx2)}
+  .legend .it{display:inline-flex;gap:6px;align-items:center}
+  .dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+  .badge{font-size:10.5px;padding:1px 7px;border-radius:20px;font-weight:600;white-space:nowrap;
+    border:1px solid transparent}
+  .b-shipped{background:rgba(63,185,80,.15);color:var(--shipped);border-color:rgba(63,185,80,.35)}
+  .b-partial{background:rgba(210,153,34,.15);color:var(--partial);border-color:rgba(210,153,34,.35)}
+  .b-conditional{background:rgba(88,166,255,.15);color:var(--conditional);border-color:rgba(88,166,255,.35)}
+  .b-planned{background:rgba(110,118,129,.18);color:var(--planned);border-color:rgba(110,118,129,.4)}
+
+  /* modules */
+  details.mod{background:var(--bg2);border:1px solid var(--line);border-left-width:4px;border-radius:10px;
+    margin:10px 0;overflow:hidden}
+  details.mod>summary{cursor:pointer;padding:13px 16px;list-style:none;display:flex;align-items:center;gap:10px;
+    font-size:15px;font-weight:600}
+  details.mod>summary::-webkit-details-marker{display:none}
+  details.mod>summary .chev{color:var(--tx3);transition:.15s;font-size:12px}
+  details.mod[open]>summary .chev{transform:rotate(90deg)}
+  details.mod .mblurb{color:var(--tx2);font-weight:400;font-size:12.5px;margin-left:auto;max-width:54%;text-align:right}
+  .mdom{font-size:11px;color:var(--tx3);font-weight:400;border:1px solid var(--line);border-radius:5px;padding:1px 6px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;padding:4px 14px 16px}
+  .card{background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:11px 12px}
+  .card .top{display:flex;align-items:center;gap:8px;justify-content:space-between}
+  .card .cmd{font-size:13.5px;font-weight:700}
+  .card .when{color:var(--tx);font-size:12.5px;margin:7px 0 8px}
+  .card .arg{color:var(--tx2);font-size:11px;margin-bottom:7px;word-break:break-word}
+  .card .prod{display:flex;gap:4px;flex-wrap:wrap}
+  .chip{font-size:10px;padding:1px 6px;border-radius:5px;background:var(--bg);border:1px solid var(--line);
+    color:var(--tx2);cursor:pointer}
+  .chip:hover{border-color:var(--pmo);color:var(--pmo)}
+  .ro{font-size:10px;color:var(--tx3);border:1px solid var(--line);border-radius:4px;padding:0 5px}
+
+  /* artifacts */
+  .agroup{margin:6px 0 14px}
+  .agroup h3{font-size:12.5px;color:var(--tx2);margin:12px 0 8px;font-weight:600}
+  .arts{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+  .art{background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .art .aid{font-weight:700;font-size:13px}
+  .art .aname{color:var(--tx2);font-size:11.5px}
+  .art .ameta{color:var(--tx3);font-size:10.5px;margin-top:4px}
+  .rl{font-size:11px}
+
+  /* glossary */
+  .gloss{columns:2;column-gap:24px}
+  @media(max-width:720px){.gloss{columns:1}}
+  .gloss .g{break-inside:avoid;padding:4px 0;font-size:12.5px;border-bottom:1px solid var(--bg3)}
+  .gloss .g b{color:var(--tx)}
+  .gloss .g span{color:var(--tx2)}
+
+  footer{max-width:1180px;margin:0 auto;padding:18px 26px 50px;color:var(--tx3);font-size:12px;border-top:1px solid var(--line)}
+  footer a{margin-right:14px}
+  .hidden{display:none!important}
+  .note{background:rgba(240,136,62,.08);border:1px solid rgba(240,136,62,.3);border-radius:8px;
+    padding:9px 13px;font-size:12px;color:var(--tx);margin-top:10px}
+  .empty{color:var(--tx3);padding:14px;text-align:center;display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>Ecosystem 3.0 — карта</h1>
+  <p class="sub">PMO-слой над Claude Code. Всё в одном месте: пайплайн D1–D6, команды («когда что»), артефакты, статус «работает сегодня». <span class="mono" style="color:var(--tx3)">v1 · вручную из спеков · <span id="meta-date"></span></span></p>
+  <div class="controls">
+    <input id="q" type="search" placeholder="Поиск: команда, артефакт, действие… (напр. handoff, BR, drift)">
+    <label><input type="checkbox" id="onlyShipped"> Только то, что работает сегодня</label>
+    <button class="btn" id="expandAll">Развернуть всё</button>
+    <button class="btn" id="reset">Сброс</button>
+  </div>
+</header>
+
+<main>
+  <div class="happy" id="happy"></div>
+
+  <div class="section-title">Пайплайн D1–D6 · клик по стадии — фильтр команд</div>
+  <div class="pipeline" id="pipeline"></div>
+  <div class="legend" id="legend"></div>
+  <div class="note">🟢 контролируется экосистемой детально (D1 + D2-Behavioral, и D2-UI при <span class="mono">has_ui</span>). 🔵 делегируется наружу через <span class="mono">handoff.md</span> (D2-Tech, D3–D6) — Orchestrator запускает, Integrator подключает инструменты (cc-sdd и др.).</div>
+
+  <div class="section-title">Модули и команды</div>
+  <div id="modules"></div>
+  <div class="empty" id="emptyCmd">Ничего не найдено по запросу.</div>
+
+  <div class="section-title">Артефакты (24 типа) · что создаётся</div>
+  <div id="artifacts"></div>
+
+  <div class="section-title">Глоссарий</div>
+  <div class="gloss" id="glossary"></div>
+</main>
+
+<footer>
+  <div style="margin-bottom:8px">
+    <a href="../../README.md">README</a>
+    <a href="../MAP.md">docs/MAP (диаграммы)</a>
+    <a href="../pmo/pmo-map.md">PMO-карта D1–D6</a>
+    <a href="../pmo/processes.md">Процессы P1–P5</a>
+    <a href="../pmo/artifacts/README.md">Каталог артефактов</a>
+    <a href="../../ROADMAP.md#где-мы-сейчас">Статус (SSOT)</a>
+  </div>
+  <div>Эта карта — навигационный обзор для оператора, не источник истины. Канонические авторитеты — по ссылкам выше; «где мы сейчас» всегда в ROADMAP. Статусы здесь зафиксированы вручную (v1); авто-генерация из frontmatter — план Tier-2.</div>
+</footer>
+
+<script>
+const META_DATE = "2026-06-25";
+
+// ── Пайплайн ──────────────────────────────────────────────────────────────
+const PIPELINE = [
+  {id:"D1",   label:"D1 · Discovery",   note:"проблема, рынок, сегменты, гипотезы", mods:["product"]},
+  {id:"D2B",  label:"D2-B · Behavioral", note:"поведенческая спецификация фич", mods:["product"]},
+  {id:"D2UI", label:"D2-UI · Design",    note:"UI, условно при has_ui", mods:["design"], cond:true},
+  {id:"HO",   label:"handoff.md",        note:"boundary object — снимок фичи", mods:["product"]},
+  {id:"D2T",  label:"D2-T · Tech",       note:"архитектура и стек — делегируется", mods:["integrator","orchestrator"], deleg:true},
+  {id:"D3",   label:"D3–D6 · Build→Ops", note:"имплементация, QA — через инструменты", mods:["orchestrator","integrator"], deleg:true},
+];
+
+// ── Модули и команды ──────────────────────────────────────────────────────
+const MODULES = [
+  { id:"product", name:"Product", color:"var(--product)", dom:"D1 + D2-Behavioral",
+    blurb:"Discovery → Planning → спецификация фич → handoff. Ядро ежедневной работы.",
+    commands:[
+      {cmd:"/product:init", st:"D1", status:"shipped", produces:["PS","MR","CA","SEG","VP","HYP"],
+        when:"Начать Discovery нового продукта: из идеи → проблема, рынок, сегменты, гипотезы.",
+        arg:"<idea> | --continue | --deep | --pivot", tags:"discovery старт идея quick deep"},
+      {cmd:"/product:plan", st:"D1", status:"shipped", produces:["MVP","RM","RL","FM"],
+        when:"Планирование после Discovery: MVP-scope, Roadmap, RL-001 и скелеты фич (FM).",
+        arg:"[--continue]", tags:"планирование roadmap mvp релиз"},
+      {cmd:"/product:feature", st:"D2B", status:"shipped", produces:["SC","BR","LC","VC","IC","RPM"],
+        when:"Спецификация фичи: сценарии, правила, инварианты. Enrichment FM-id или создание из идеи.",
+        arg:'<FM-id> | "<idea>" | --continue', tags:"фича спецификация enrich SC BR"},
+      {cmd:"/product:handoff", st:"HO", status:"shipped", produces:["handoff"],
+        when:"Сгенерировать универсальный handoff для FM: 13 секций + хэши для drift-detection.",
+        arg:"<FM-id> [--mode draft|production] [--regenerate] [--with-da-review]", tags:"handoff передача dor draft production"},
+      {cmd:"/product:da-review", st:"D2B", status:"shipped", produces:[],
+        when:"Ручное adversarial DA-ревью: FM → feature-scope, RL → release-scope (cross-FM).",
+        arg:"<FM-NNN | RL-NNN>", tags:"devils advocate ревью критика"},
+      {cmd:"/product:nfr-review", st:"D2B", status:"shipped", produces:["NFR"],
+        when:"NFR-ревью фичи: Ask + Define, sanity-диапазоны по tier.",
+        arg:"<FM-id> | --continue", tags:"nfr нефункциональные требования"},
+      {cmd:"/product:nfr-upgrade-tier", st:"D2B", status:"shipped", produces:["NFR"],
+        when:"Пересмотр активных NFR при смене product tier (MVP→MMP→Growth…).",
+        arg:"<new-tier> [--dry-run]", tags:"nfr tier апгрейд"},
+      {cmd:"/product:complete", st:"D2B", status:"partial", produces:[],
+        when:"Bounded completeness-loop: довести фичу до готовности волнами (v1-скелет, Epic B).",
+        arg:"<FM-NNN> [--max-waves N] [--dry-run]", tags:"completeness loop готовность"},
+      {cmd:"/product:promote-note", st:"maint", status:"shipped", produces:["FM","SC","BR","IC","NFR","HYP"],
+        when:"Превратить свободную заметку NOTE-* в структурный артефакт.",
+        arg:"<NOTE-id> to <TYPE>", tags:"note промоут заметка"},
+      {cmd:"/product:bg-review", st:"maint", status:"shipped", produces:["BG"],
+        when:"Ревью pending BG-кандидатов (классификация / синонимы / одобрение).",
+        arg:"[--all | --new-terms-only | --synonyms-only]", tags:"глоссарий bg термины"},
+      {cmd:"/product:bg-rename", st:"maint", status:"partial", produces:["BG"],
+        when:"Mass-rename термина BG по всем артефактам (v1 — ручной preview; atomic apply — v1.1).",
+        arg:"<old> <new> | --commit <old> <new>", tags:"глоссарий переименование rename"},
+      {cmd:"/product:cascade", st:"maint", status:"shipped", produces:[],
+        when:"Навигация каскада: разрешить pending-каскад (V-11 авто-фикс идёт хуком сам).",
+        arg:"<artifact-id> | --pending [...]", tags:"каскад cascade pending"},
+      {cmd:"/product:validate", st:"maint", status:"shipped", produces:[],
+        when:"Проверка .product/: правила V-01..V-16 + V-H-* по tier. Фильтры, --deep.",
+        arg:"[--rule] [--scope] [--tier] [--deep]", tags:"валидация правила check"},
+      {cmd:"/product:drift-check", st:"maint", status:"shipped", produces:[],
+        when:"Само-аудит: артефакты ещё согласованы с PS / primary HYP / MVP-scope?",
+        arg:"[--scope <last-N> | --since <date>]", tags:"дрифт drift аудит согласованность"},
+      {cmd:"/product:cleanup", st:"maint", status:"shipped", produces:[],
+        when:"Поиск сирот (V-15) + опц. гигиена pending-очередей.",
+        arg:"[--dry-run] [--pending-hygiene | --full]", tags:"очистка сироты orphan"},
+      {cmd:"/product:patterns", st:"maint", status:"shipped", produces:[],
+        when:"Мета-линтер: повторяющиеся анти-паттерны в .product/. Информационно.",
+        arg:"[--scope <type> | --pattern <name>]", tags:"паттерны анти-паттерн линтер"},
+      {cmd:"/product:status", st:"maint", status:"shipped", produces:[],
+        when:"Дашборд .product/: счётчики артефактов, pending, статус handoff, недавние сессии.",
+        arg:"", tags:"статус дашборд обзор"},
+      {cmd:"/product:lesson", st:"maint", status:"shipped", produces:["LESSON"],
+        when:"Атомарно зафиксировать corrective LESSON (fix применён и проверён) в момент ошибки.",
+        arg:'"<что пошло не так>" | --resume <id> | --withdraw <id>', tags:"урок lesson ошибка fix"},
+      {cmd:"/product:validation-tune", st:"maint", status:"shipped", produces:[],
+        when:"Локальная подстройка валидации под этот проект; системное → upstream meta-feedback.",
+        arg:"[--review-suggestions]", tags:"настройка валидации severity tune"},
+      {cmd:"/product:config", st:"maint", status:"shipped", produces:[],
+        when:"Чтение/правка конфигурации Product Module (product.yaml).",
+        arg:"[--show | --edit <key> <value>]", tags:"конфиг настройки yaml"},
+    ]
+  },
+  { id:"design", name:"Design", color:"var(--design)", dom:"D2-B04 · условно has_ui",
+    blurb:"Итеративная генерация UI (Stitch/HTML). Включается, когда у фичи has_ui=true.",
+    commands:[
+      {cmd:"/design:start", st:"D2UI", status:"conditional", produces:["MK","DS","NM"],
+        when:"Начать Design-сессию для FM с has_ui: Brief→Screens→Iterate→States→Artifacts→Export.",
+        arg:"<FM-id> [--continue] [--abandon]", tags:"дизайн ui mockup старт"},
+      {cmd:"/design:iterate", st:"D2UI", status:"conditional", produces:["MK"],
+        when:"Продолжить итерацию на активном макете (MK).",
+        arg:"<MK-id> [--from-feedback \"<text>\"]", tags:"итерация макет"},
+      {cmd:"/design:system", st:"D2UI", status:"conditional", produces:["DS"],
+        when:"Управление Design System: ревью DS-предложений или ре-экстракт из MK.",
+        arg:"[--review] [--update-from <MK-id>]", tags:"design system токены"},
+      {cmd:"/design:map", st:"D2UI", status:"conditional", produces:["AM"],
+        when:"Собрать/обновить App Map (AM): модули × кейсы × пути + CJM-слой.",
+        arg:"[--write] [--html] [--facet …]", tags:"app map карта приложения cjm"},
+      {cmd:"/design:export", st:"D2UI", status:"conditional", produces:[],
+        when:"Сборка UI-contract из MK/DS/NM для handoff §10 (sanity-check).",
+        arg:"<FM-id>", tags:"экспорт ui contract"},
+      {cmd:"/design:status", st:"D2UI", status:"conditional", produces:[],
+        when:"Дашборд Design: счётчики MK/DS/NM, итерации, Stitch-квота.",
+        arg:"[--fm <FM-id>] [--verbose]", tags:"статус дизайн"},
+      {cmd:"/design:migrate", st:"D2UI", status:"conditional", produces:["MK"],
+        when:"Миграция макета между Stitch ↔ HTML ↔ open-design (с rollback).",
+        arg:"<MK-id|--all> --to <stitch|html|open-design>", tags:"миграция stitch html"},
+    ]
+  },
+  { id:"integrator", name:"Integrator", color:"var(--integrator)", dom:"D2-Tech · «сисадмин»",
+    blurb:"Подключает/заменяет внешние инструменты под PMO-карту. Большинство команд — read-only.",
+    commands:[
+      {cmd:"/integrator:add", st:"D2T", status:"shipped", produces:[],
+        when:"Подключить внешний инструмент (npm/MCP/git/binary/docker) под управление PMO. Approve-gate.",
+        arg:"<tool>[@version] [--source …]", tags:"подключить инструмент cc-sdd mcp"},
+      {cmd:"/integrator:remove", st:"D2T", status:"shipped", produces:[],
+        when:"Убрать инструмент: impact-анализ + backup + uninstall. Destructive — требует подтверждения.",
+        arg:"<tool> [--confirm]", tags:"удалить инструмент"},
+      {cmd:"/integrator:update", st:"D2T", status:"shipped", produces:[],
+        when:"Обновить инструмент: backup→install→drift-detection→contract-repair→verify.",
+        arg:"<tool> [<version>] [--check-only] [--repair]", tags:"обновить инструмент версия"},
+      {cmd:"/integrator:scan", st:"D2T", status:"shipped", ro:true, produces:[],
+        when:"Сканировать окружение: существующие кастомизации/конфликты перед изменениями.",
+        arg:"", tags:"скан окружение конфликты"},
+      {cmd:"/integrator:status", st:"D2T", status:"shipped", ro:true, produces:[],
+        when:"Полный обзор состояния Integrator.",
+        arg:"", tags:"статус обзор"},
+      {cmd:"/integrator:map", st:"D2T", status:"shipped", ro:true, produces:[],
+        when:"Покрытие PMO-зон активными инструментами.",
+        arg:"", tags:"карта покрытие pmo"},
+      {cmd:"/integrator:gaps", st:"D2T", status:"shipped", ro:true, produces:[],
+        when:"Непокрытые PMO-зоны с оценкой критичности.",
+        arg:"", tags:"пробелы gaps непокрытые"},
+      {cmd:"/integrator:research", st:"D2T", status:"shipped", ro:true, produces:[],
+        when:"Подобрать инструменты под PMO-need: 2–5 вариантов с сравнением, без установки.",
+        arg:"<need-description>", tags:"ресёрч подбор инструментов"},
+      {cmd:"/integrator:journal", st:"D2T", status:"shipped", ro:true, produces:[],
+        when:"Журнал решений Integrator с фильтрами.",
+        arg:"[--filter <tag>] [--limit <N>] [--scope global|project]", tags:"журнал решения"},
+    ]
+  },
+  { id:"orchestrator", name:"Orchestrator", color:"var(--orchestrator)", dom:"D2-Tech + D3+ · runtime",
+    blurb:"Проводит PMO-процессы end-to-end как in-harness Workflow силами role-агентов. Требует активный cc-sdd.",
+    commands:[
+      {cmd:"/orchestrator:run", st:"D3", status:"shipped", produces:[],
+        when:"Прогнать PMO-процесс end-to-end. Построены и live-validated: P3 (handoffs → cc-sdd specs) → P4 (audit-spec-fidelity) → P5 (feature-to-tdd-impl) → P6 (validate-feature-impl). Возвращает GO / NO-GO / MANUAL_VERIFY. Предусловие: активный cc-sdd (сначала /integrator:add cc-sdd).",
+        arg:"<process> [--feature FM-NNN ...] [--all] [--no-stack-gate]", tags:"оркестратор run P3 P4 P5 P6 cc-sdd impl tdd"},
+    ]
+  },
+  { id:"ecosystem", name:"Ecosystem", color:"var(--ecosystem)", dom:"установка и обслуживание",
+    blurb:"Команды над самой экосистемой: установка, проверка, обновление, фидбэк.",
+    commands:[
+      {cmd:"/ecosystem:bootstrap", st:"setup", status:"shipped", produces:[],
+        when:"Установить экосистему в проект: .claude/ + .product/ + CLAUDE.md + MCP-стек.",
+        arg:"[--offline] [--no-mcp] [--force]", tags:"установка bootstrap старт"},
+      {cmd:"/ecosystem:verify", st:"setup", status:"shipped", produces:[],
+        when:"Health-check установки экосистемы. Non-destructive.",
+        arg:"", tags:"проверка verify health"},
+      {cmd:"/ecosystem:update", st:"setup", status:"shipped", produces:[],
+        when:"Синхронизировать экосистему к latest upstream; сохраняет user-zone и состояние пилота.",
+        arg:"[--dry-run] [--force] [--offline] …", tags:"обновление update upstream sync"},
+      {cmd:"/ecosystem:meta-feedback", st:"setup", status:"shipped", produces:[],
+        when:"Зафиксировать СИСТЕМНЫЙ фидбэк об экосистеме в upstream-outbox (для доставки в репо).",
+        arg:"[--review] [--push] [--issue] [--from …]", tags:"фидбэк meta feedback upstream"},
+      {cmd:"/ecosystem:pending-actions", st:"setup", status:"shipped", ro:true, produces:[],
+        when:"Список pending действий пользователя (PA-NNN).",
+        arg:"[--status …] [--source …] [--limit N]", tags:"pending действия"},
+      {cmd:"/ecosystem:enable-d7-audit", st:"setup", status:"shipped", produces:[],
+        when:"Однократно включить D7 session-audit hook в этом проекте.",
+        arg:"[--ecosystem-root=<path>]", tags:"d7 аудит сессий hook"},
+    ]
+  },
+];
+
+// ── Артефакты (24) ────────────────────────────────────────────────────────
+const ARTIFACTS = [
+  {g:"D1 · Discovery & Strategy",items:[
+    ["PS","Problem Statement","🟠","Singleton"],
+    ["MR","Market Research","🟡","Singleton"],
+    ["CA","Competitive Analysis","🟡","Singleton"],
+    ["SEG","Segment & JTBD","🟠","2–4"],
+    ["VP","Value Proposition","🟠","1 / SEG"],
+    ["HYP","Hypothesis","🟠","3–5"],
+    ["MVP","MVP Scope","🟠","Singleton"],
+    ["RM","Product Roadmap","🟡","Singleton"],
+    ["RL","Release Plan","🟡","Per release"],
+  ]},
+  {g:"Мост D1↔D2",items:[
+    ["FM","Feature Map Entry","🟠","Per feature"],
+  ]},
+  {g:"D2-Behavioral",items:[
+    ["SC","User Scenario","🟠","Per scenario"],
+    ["BR","Business Rule","🔴","Per rule"],
+    ["LC","Entity Lifecycle","🟢","Per entity"],
+    ["RPM","Role & Permission Model","🟢","Singleton"],
+    ["VC","Verification Criteria","🟢","Per scenario"],
+    ["IC","Invariant Check","🔴","Per invariant"],
+    ["NFR","Non-Functional Requirement","🟠","Per NFR"],
+  ]},
+  {g:"D2-B04 · Design (has_ui)",items:[
+    ["MK","Mockup Package","🟠","Per screen/flow"],
+    ["DS","Design System","🟡","Singleton"],
+    ["NM","Navigation Map","🟢","Per flow"],
+    ["AM","App Map (+ CJM)","🟢","Singleton"],
+  ]},
+  {g:"Cross-cutting",items:[
+    ["BG","Business Glossary","🟡","Singleton"],
+    ["NOTE","Unstructured Note","🟡","Per note"],
+    ["LESSON","Corrective Lesson","🟡","Per lesson"],
+  ]},
+];
+
+// ── Глоссарий ─────────────────────────────────────────────────────────────
+const GLOSSARY = [
+  ["D1–D6","Шесть управленческих доменов PMO: Discovery → Behavioral → Tech → Build → QA → Ops/Meta."],
+  ["handoff.md","Универсальный 13-секционный snapshot фичи — самодостаточная передача в любой реализатор."],
+  ["DoR","Definition of Ready — критерий готовности handoff (draft = 3 блокера, production = 8)."],
+  ["DA","Devil's Advocate — adversarial-ревью в изолированном контексте перед вложением в имплементацию."],
+  ["BG","Business Glossary — сквозной словарь; пополняется из любого артефакта, каскадный rename."],
+  ["cc-sdd","Внешний spec-driven инструмент-реализатор; подключается через /integrator:add."],
+  ["GO / NO-GO","Вердикт Orchestrator-гейта; третий исход — MANUAL_VERIFY (нужна ручная проверка)."],
+  ["has_ui","Флаг фичи: есть ли интерфейс. true → включается Design Module."],
+  ["confidence","Поле уверенности ассистента в артефакте (high/medium/low) — основа авто-approve и анти-дрифта."],
+  ["tier / review","Уровни ревью: 🔴 Critical, 🟠 Strategic, 🟡 Standard, 🟢 Confirmation — определяют, когда нужен approve."],
+  ["P1–P5","Процессы Product Module: Discovery, Planning, Feature, Handoff, Maintenance."],
+  ["P3–P6 (orch.)","Процессы Orchestrator: batch→specs, audit-fidelity, tdd-impl, validate-impl."],
+];
+
+// ── Render ────────────────────────────────────────────────────────────────
+const MODBY = Object.fromEntries(MODULES.map(m=>[m.id,m]));
+const STATUS_LABEL = {shipped:"работает", partial:"v1 / частично", conditional:"условно (has_ui)", planned:"план"};
+let activeStage = null;
+
+function badge(status){return `<span class="badge b-${status}">${STATUS_LABEL[status]||status}</span>`;}
+
+function renderMetaDate(){document.getElementById("meta-date").textContent = META_DATE;}
+
+function renderHappy(){
+  document.getElementById("happy").innerHTML =
+    `<b>Happy-path от нуля до кода:</b> `+
+    `<span class="mono">/ecosystem:bootstrap</span> → <span class="mono">/product:init</span> → `+
+    `<span class="mono">/product:plan</span> → <span class="mono">/product:feature</span> → `+
+    `<span class="mono">[/design:start]</span> → <span class="mono">/product:handoff</span> → `+
+    `<span class="mono">/integrator:add cc-sdd</span> → <span class="mono">/orchestrator:run</span> → GO/NO-GO. `+
+    `Порядок мягко принуждается prereq-гейтами (напр. <span class="mono">handoff</span> требует готовый FM).`;
+}
+
+function renderPipeline(){
+  const el = document.getElementById("pipeline");
+  el.innerHTML = PIPELINE.map((s,i)=>{
+    const cls = ["stage", s.cond?"cond":"", s.deleg?"deleg":""].join(" ");
+    const ar = i<PIPELINE.length-1 ? `<span class="arrow">▶</span>`:"";
+    const bar = s.mods.map(m=>`<span class="dot" style="background:${MODBY[m].color}"></span>`).join("");
+    return `<div class="${cls}" data-stage="${s.id}">
+      <div class="sid">${s.label} ${bar}</div>
+      <div class="snote">${s.note}</div>${ar}</div>`;
+  }).join("");
+  el.querySelectorAll(".stage").forEach(n=>n.addEventListener("click",()=>toggleStage(n.dataset.stage)));
+}
+
+function renderLegend(){
+  const mods = MODULES.map(m=>`<span class="it"><span class="dot" style="background:${m.color}"></span>${m.name}</span>`).join("");
+  const sts = Object.keys(STATUS_LABEL).map(s=>`<span class="it">${badge(s)}</span>`).join("");
+  document.getElementById("legend").innerHTML = mods + `<span class="it" style="color:var(--tx3)">│</span>` + sts;
+}
+
+const stageCmdMap = {D1:["D1"],D2B:["D2B"],D2UI:["D2UI"],HO:["HO"],D2T:["D2T"],D3:["D3"]};
+function toggleStage(id){
+  activeStage = (activeStage===id)?null:id;
+  document.querySelectorAll(".stage").forEach(n=>n.classList.toggle("active", n.dataset.stage===activeStage));
+  applyFilters();
+  if(activeStage) document.querySelectorAll("details.mod").forEach(d=>d.open=true);
+}
+
+function renderModules(){
+  const wrap = document.getElementById("modules");
+  wrap.innerHTML = MODULES.map(m=>{
+    const cards = m.commands.map(c=>{
+      const prod = (c.produces&&c.produces.length)
+        ? `<div class="prod">→ ${c.produces.map(p=>`<span class="chip" data-art="${p}">${p}</span>`).join("")}</div>`:"";
+      const ro = c.ro?`<span class="ro">read-only</span>`:"";
+      const hay = (c.cmd+" "+c.when+" "+(c.arg||"")+" "+(c.tags||"")+" "+(c.produces||[]).join(" ")).toLowerCase();
+      return `<div class="card" data-status="${c.status}" data-stage="${c.st}" data-hay="${hay.replace(/"/g,'')}">
+        <div class="top"><span class="cmd mono" style="color:${m.color}">${c.cmd}</span> <span style="display:flex;gap:6px">${ro}${badge(c.status)}</span></div>
+        <div class="when">${c.when}</div>
+        ${c.arg?`<div class="arg mono">${c.arg.replace(/</g,"&lt;")}</div>`:""}
+        ${prod}
+      </div>`;
+    }).join("");
+    return `<details class="mod" open style="border-left-color:${m.color}" data-mod="${m.id}">
+      <summary><span class="chev">▶</span>
+        <span style="color:${m.color}">${m.name}</span>
+        <span class="mdom">${m.dom}</span>
+        <span class="mblurb">${m.blurb}</span>
+      </summary>
+      <div class="cards">${cards}</div>
+    </details>`;
+  }).join("");
+  wrap.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",e=>{
+    e.preventDefault();
+    document.getElementById("q").value = ch.dataset.art;
+    applyFilters();
+    document.querySelector(".section-title").scrollIntoView({behavior:"smooth",block:"start"});
+  }));
+}
+
+function renderArtifacts(){
+  document.getElementById("artifacts").innerHTML = ARTIFACTS.map(g=>{
+    const items = g.items.map(([id,name,rl,card])=>
+      `<div class="art" data-hay="${(id+" "+name).toLowerCase()}">
+        <div class="aid">${id} <span class="rl">${rl}</span></div>
+        <div class="aname">${name}</div>
+        <div class="ameta">${card}</div>
+      </div>`).join("");
+    return `<div class="agroup"><h3>${g.g}</h3><div class="arts">${items}</div></div>`;
+  }).join("");
+}
+
+function renderGlossary(){
+  document.getElementById("glossary").innerHTML = GLOSSARY.map(([t,d])=>
+    `<div class="g" data-hay="${(t+" "+d).toLowerCase()}"><b>${t}</b> — <span>${d}</span></div>`).join("");
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────
+function applyFilters(){
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const onlyShipped = document.getElementById("onlyShipped").checked;
+
+  // command cards
+  document.querySelectorAll("details.mod").forEach(mod=>{
+    let visible = 0;
+    mod.querySelectorAll(".card").forEach(card=>{
+      const hay = card.dataset.hay;
+      const okQ = !q || hay.includes(q);
+      const okShip = !onlyShipped || card.dataset.status==="shipped";
+      const okStage = !activeStage || card.dataset.stage===activeStage;
+      const show = okQ && okShip && okStage;
+      card.classList.toggle("hidden", !show);
+      if(show) visible++;
+    });
+    mod.classList.toggle("hidden", visible===0);
+  });
+  const anyCmd = document.querySelectorAll("details.mod:not(.hidden)").length>0;
+  document.getElementById("emptyCmd").style.display = anyCmd?"none":"block";
+
+  // artifacts + glossary react to text query only
+  document.querySelectorAll(".art").forEach(a=>a.classList.toggle("hidden", q && !a.dataset.hay.includes(q)));
+  document.querySelectorAll(".gloss .g").forEach(g=>g.classList.toggle("hidden", q && !g.dataset.hay.includes(q)));
+  document.querySelectorAll(".agroup").forEach(g=>{
+    const any=[...g.querySelectorAll(".art")].some(a=>!a.classList.contains("hidden"));
+    g.classList.toggle("hidden", !any);
+  });
+}
+
+function reset(){
+  document.getElementById("q").value="";
+  document.getElementById("onlyShipped").checked=false;
+  activeStage=null;
+  document.querySelectorAll(".stage").forEach(n=>n.classList.remove("active"));
+  applyFilters();
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+renderMetaDate(); renderHappy(); renderPipeline(); renderLegend();
+renderModules(); renderArtifacts(); renderGlossary();
+document.getElementById("q").addEventListener("input", applyFilters);
+document.getElementById("onlyShipped").addEventListener("change", applyFilters);
+document.getElementById("reset").addEventListener("click", reset);
+document.getElementById("expandAll").addEventListener("click", ()=>{
+  const any=[...document.querySelectorAll("details.mod")].some(d=>!d.open);
+  document.querySelectorAll("details.mod").forEach(d=>d.open=any);
+});
+</script>
+</body>
+</html>
