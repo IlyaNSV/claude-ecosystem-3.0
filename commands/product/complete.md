@@ -29,7 +29,7 @@ the skill — load and follow it.
 
 Load `skills/product/completeness-loop.md` and execute its wave until the stop contract fires:
 
-1. **SCORE** — `node hooks/product/lib/completeness-oracle.cjs --feature <FM> --root .` → relay the
+1. **SCORE** — `node .claude/hooks/product/lib/completeness-oracle.cjs --feature <FM> --root .` → relay the
    JSON ({score, tau, met, gaps[], ambiguities[], delegated_unverified[]}). This is the external,
    deterministic stop-signal — never grade completeness by self-judgment.
 2. **SURFACE** — for each gap/ambiguity, spawn the zone's persona(s) as their **canonical

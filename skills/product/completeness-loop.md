@@ -43,7 +43,7 @@ For `scope = <FM-id>` (or a release's FM set), repeat until the stop contract fi
 ```
 wave N:
   1. SCORE      — run the oracle (external stop-signal):
-                    node hooks/product/lib/completeness-oracle.cjs --feature <FM> --root .
+                    node .claude/hooks/product/lib/completeness-oracle.cjs --feature <FM> --root .
                   → { score, tau, met, gaps[], ambiguities[], delegated_unverified[] }
                   If met AND no new info this wave → STOP (success).
 
@@ -102,8 +102,8 @@ round a partial spec up to "done" (no silent truncation, rail 5).
 - The loop **never** edits `.product/` outside the normal authoring path (so hooks + validation fire).
 
 ## Related
-- Oracle: `hooks/product/lib/completeness-oracle.cjs` (the external stop-signal)
-- Personas + routing: `agents/{product,design}/*-advisor.md`, `hooks/product/zone-router.cjs`
+- Oracle: `.claude/hooks/product/lib/completeness-oracle.cjs` (the external stop-signal)
+- Personas + routing: `.claude/agents/{product,design}/*-advisor.md`, `.claude/hooks/product/zone-router.cjs`
 - Loop-readiness disposition per step: `dev/LOOP_READINESS_AUDIT.md`
 - Concept: `dev/ECOSYSTEM_VISION.md` (Epic B); kickoff: DEC-DEV-0098
 - Command: `/product:complete`

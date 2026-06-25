@@ -67,3 +67,24 @@
 - **FB-013 concerns plumbing** (DEC-DEV-0081 #1) works live — 15 concerns reached the controller in C RUN01.
 - **Durable skeleton** held: 88 agents / ~7h17m / ~7.6M tokens single C RUN01, no lost work.
 - **Spec-amend (+task 7.1)** in C was a **legitimate** design-backed unblock (every line traces to `design.md`), not scope-creep.
+
+---
+
+## Track V (Block 2 — Vision Epic A+B) re-validation findings (2026-06-25)
+
+> From the **Block-2 / Track-V** live-run ([UNIFIED_PILOT_VALIDATION_PLAN.md](UNIFIED_PILOT_VALIDATION_PLAN.md) §3,
+> runbook [PILOT_SESSION_RUNBOOK_BLOCK2.md](PILOT_SESSION_RUNBOOK_BLOCK2.md)), pilot session `6ada7ef9`,
+> graded post-hoc on ground-truth (transcript + oracle re-run + pilot git-diff + a real `js-yaml` parse of
+> the agent frontmatter). Both rows are **real defects** (not observability edges) — **fixed in DEC-DEV-0103**.
+
+| id | sev | check | finding | corrected root-cause | route / status |
+|---|---|---|---|---|---|
+| FB-LR-17 | 🔴 | V-2 (persona spawn) | All 3 canonical advisor `subagent_type`s (`architect-advisor`/`qa-advisor`/`ux-advisor`) + `product-devils-advocate` return «Agent type not found» — the whole `agents/{product,design}/` layer is unspawnable in the pilot, blocking Epic A live. | NOT nesting (CC scans `.claude/agents/` **recursively** — integrator agents register; docs + claude-code-guide confirm) and NOT staleness (all agents delivered 2026-06-24, a day before the session). **Invalid YAML frontmatter:** the 4 broken agents have an unquoted `description:` plain scalar containing `": "` (`"…handoff: can…"`, `"…0012): self-…"`) → `js-yaml` errors `bad indentation of a mapping entry`; the 3 integrator agents (no colon-space) parse clean — **perfect 4/4 vs 3/3 correlation**. The CC frontmatter parser drops the whole file. Safety-rail held: the failure was **loud** (no silent `general-purpose` fallback). | **FIXED — DEC-DEV-0103.** Double-quoted `description:` in all 4 agents; `js-yaml` now parses all. Re-validate V-2 after `/ecosystem:update` re-delivers to the pilot. |
+| FB-LR-18 | 🟡 | V-3 (completeness-loop) | `/product:complete` first SCORE call threw `MODULE_NOT_FOUND` on the oracle; the loop self-corrected to the `.claude/` path and completed. | `commands/product/complete.md` + `skills/product/completeness-loop.md` hard-coded the **repo-relative** `node hooks/product/lib/completeness-oracle.cjs`, absent in an installed project (lib is at `.claude/hooks/product/lib/…`). Sibling commands all use `.claude/hooks/…`; completeness-loop fell out of the convention. | **FIXED — DEC-DEV-0103.** Both files use the installed `.claude/hooks/…` path. |
+
+### Housekeeping (not a Block-2 defect)
+- **Mockup edit cascades into scenario files:** the V-1.4 edit to MK-001 fired `cascade-check.js` (PostToolUse, by-design DEC-DEV-0080), which backfilled `mockup: MK-001` into the 6 SCs in MK-001's `scenario_steps`. The runbook cleanup reverted only the 4 named files → the pilot tree was left with 6 dirty SCs. **Restored** (`git checkout`); runbook cleanup step augmented to cover the cascade.
+
+### Positive confirmations (Track V — live-validated, no action)
+- **V-1 zone-hook — PASS:** a significant `.product/` edit fires with the correct zone+personas (BR-005→`architect-advisor, qa-advisor`; MK-001→`ux-advisor`); a cosmetic edit (BR-006 `updated`/`version` only) stays **silent** (magnitude gate); a 2nd significant edit **updates the entry in place** (dedup by id), no duplicate.
+- **V-3 oracle + bounded loop — PASS:** FM-001 `met:true` fast-stop (no waves, no edits); an injected gap (VC-018→draft) → `met:false`, `B4 fail (SC-013 uncovered)`, `delegated_unverified` (B5/B6/B8) intact (no silent truncation); the loop is **bounded** (1 wave) and **fail-loud** (stopped at SURFACE on the unresolved persona, applied no edits, escalated nothing) — the stop contract held even through the FB-LR-17 failure.

@@ -1,5 +1,5 @@
 ---
-description: Generate universal handoff для FM-NNN — 13-section markdown с embedded artifact excerpts + SHA-256 hashes для drift detection. Two modes — --mode draft (3-blocker DoR, status partial) и --mode production (8-blocker DoR, status ready). --regenerate force version++. --with-da-review invokes pre-gen DA. Output: .product/handoffs/FM-NNN-handoff.md.
+description: "Generate universal handoff для FM-NNN — 13-section markdown с embedded artifact excerpts + SHA-256 hashes для drift detection. Two modes — --mode draft (3-blocker DoR, status partial) и --mode production (8-blocker DoR, status ready). --regenerate force version++. --with-da-review invokes pre-gen DA. Output: .product/handoffs/FM-NNN-handoff.md."
 argument-hint: "<FM-id> [--mode draft|production] [--regenerate] [--with-da-review]"
 allowed-tools: Read, Glob, Grep, Edit, Write, SlashCommand, Bash(node:*), Bash(mkdir:*), Bash(date:*)
 ---
