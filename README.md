@@ -15,7 +15,7 @@
 | 🤔 **Первый раз — что это и зачем** | [Концепция в одной строке](#концепция-в-одной-строке) + [Четыре модуля](#четыре-модуля) ниже → потом [ROADMAP.md «Где мы сейчас»](ROADMAP.md) |
 | 🔧 **Установить и запустить** | [BOOTSTRAP.md](BOOTSTRAP.md) → [INSTALL-HUMAN.md](INSTALL-HUMAN.md) → [Quick Start](#quick-start--двухфазная-установка) ниже |
 | 📖 **Развиваю саму экосистему** | [CLAUDE.md](CLAUDE.md) (repo conventions) → [DEV_JOURNAL.md](DEV_JOURNAL.md) последние 5 entries → [ROADMAP.md](ROADMAP.md) |
-| 🧠 **Понять прошлые decisions** | [DEV_JOURNAL.md](DEV_JOURNAL.md) (DEC-DEV-XXXX entries — 62 на 2026-06-06) |
+| 🧠 **Понять прошлые decisions** | [DEV_JOURNAL.md](DEV_JOURNAL.md) (DEC-DEV-* entries — rationale за каждым решением; счётчик не дублируем, бери из хвоста журнала) |
 | 📚 **API / module reference** | [docs/README.md](docs/README.md) → конкретный module SPEC |
 | 🗺️ **PMO карта (D1-D6)** | [docs/pmo/pmo-map.md](docs/pmo/pmo-map.md) |
 
@@ -32,7 +32,7 @@
 | **Product Module** | D1 + D2-Behavioral: 24 типа артефактов, процессы P1-P5, handoff-генерация | ✅ SPEC v1.0 |
 | **Design Module** | D2-B04 UI Design: итеративная генерация через Stitch/HTML, conditional на `has_ui=true` | ✅ SPEC v1.0 |
 | **Integrator Module** | Подключение/замена внешних инструментов под PMO-карту («сисадмин») | ✅ SPEC v1.0 |
-| **Orchestrator Module** | Runtime-владелец D2-Technical + D3+: проводит PMO-процессы end-to-end силами role-агентов по регламентам | 🚧 первый инкремент P3+P5 + RUN 01 (1.6.0; DEC-DEV-0073/0076/0077; §6-канал + P2/P4/P6/P7 pending) |
+| **Orchestrator Module** | Runtime-владелец D2-Technical + D3+: проводит PMO-процессы end-to-end силами role-агентов по регламентам | 🚧 процессы P3–P6 построены + live-validated (DEC-DEV-0073…0104); P2/P7 + §6-канал отложены — живой статус в [ROADMAP](ROADMAP.md#где-мы-сейчас) |
 
 ## Что входит в репозиторий
 
@@ -50,7 +50,7 @@ claude-ecosystem-3.0/
 │       └── artifacts/                      # 24 типа артефактов
 ├── commands/                               # slash-команды → .claude/commands/
 │   ├── ecosystem/                          # /ecosystem:bootstrap, /ecosystem:verify
-│   └── integrator/                         # /integrator:* (6 read-only)
+│   └── integrator/                         # /integrator:* (9 команд)
 ├── skills/                                 # methodology → .claude/skills/
 ├── agents/                                 # subagents → .claude/agents/
 ├── hooks/                                  # automation → .claude/hooks/

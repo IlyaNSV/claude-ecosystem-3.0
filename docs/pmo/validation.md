@@ -203,8 +203,8 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 ┌────────────────────────────────────────────────────────────────────┐
 │  PRODUCT LAYER VALIDATION                                           │
 │                                                                     │
-│  V-* (14)           : интегральность артефактов .product/          │
-│  V-H-* (10)         : структура handoff.md                         │
+│  V-* (16)           : интегральность артефактов .product/          │
+│  V-H-* (11)         : структура handoff.md                         │
 │  V-MK-* (8)         : UI completeness (conditional has_ui)         │
 │  P-RULE-* (2)       : process rules для non-automatable            │
 ├────────────────────────────────────────────────────────────────────┤
