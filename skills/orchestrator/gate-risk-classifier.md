@@ -1,5 +1,5 @@
 ---
-description: Orchestrator P5 gate — deterministically decide each task's verify-gate severity (HIGH → independent adversarial reviewer / LOW → profiled inline-verify) instead of eyeballing it. Backed by orchestrator/lib/gate-risk-classifier.cjs. The key rule: enforcement decides, not "touches an invariant" — declarative (UNIQUE/CHECK) is LOW, imperative (transaction/timing/row-lock) is HIGH. Load during /orchestrator:run feature-to-tdd-impl planning.
+description: "Orchestrator P5 gate — deterministically decide each task's verify-gate severity (HIGH → independent adversarial reviewer / LOW → profiled inline-verify) instead of eyeballing it. Backed by orchestrator/lib/gate-risk-classifier.cjs. The key rule: enforcement decides, not \"touches an invariant\" — declarative (UNIQUE/CHECK) is LOW, imperative (transaction/timing/row-lock) is HIGH. Load during /orchestrator:run feature-to-tdd-impl planning."
 ---
 
 # gate-risk-classifier — verify-gate severity as a predicate (P0-2)
