@@ -97,7 +97,7 @@
 
 | Примитив | Роль | Локация |
 |---|---|---|
-| **Slash-commands** | 15 команд UX для пользователя | `.claude/commands/product/` |
+| **Slash-commands** | 20 команд UX для пользователя | `.claude/commands/product/` |
 | **Skills** | ~20 methodology files, lazy-loaded per процесс | `.claude/skills/product/` |
 | **Subagents** | 3 research-heavy / isolated агента | `.claude/agents/product/` |
 | **Hooks** | 8 hooks для automation и enforcement | `.claude/hooks/product-*.js` |
@@ -149,7 +149,7 @@
 
 ## 3. Commands Catalog
 
-19 команд, сгруппированных по функциональным блокам (15 baseline + 4 v1 drift-mitigation).
+20 команд, сгруппированных по функциональным блокам.
 
 ### 3.1 Главные процессы (5)
 
@@ -199,7 +199,7 @@
   - `--scope FM-003` — проверить только один артефакт и его dependencies
   - `--fix` — auto-fix где возможно (V-11 bi-dir)
 
-### 3.2 Поддерживающие операции (5)
+### 3.2 Поддерживающие операции (6)
 
 **`/product:status`**
 - Dashboard текущего `.product/` состояния
@@ -230,9 +230,17 @@
 - Showing: все dependents, validation status, required updates
 - Полезно после ручного editor артефакта вне processes
 
-**`/product:clarify <FM-id>`**
-- Для receiver: «у меня есть вопрос по handoff»
-- Ассистент предлагает варианты: update artifact, add to Dependencies section, out-of-scope override
+**`/product:complete <FM-NNN>`** (Epic B, DEC-DEV-0098)
+- **Процесс:** Bounded completeness-loop — довести спеку фичи до handoff-DoR-достаточности (внешний стоп-сигнал: `completeness-oracle` + cap волн, не самооценка генератора)
+- **Входы:** FM-NNN + её `.product/` зависимости
+- **Выходы:** доведённая спека (SC/BR/VC…) при `score≥τ` ИЛИ эскалация пробелов; per-wave идемпотентно
+- **Статус:** v1 core/skeleton (auto-fix консервативный — surface + escalate по умолчанию)
+
+**`/product:lesson "<...>" | --resume <id> | --withdraw <id>`** (DEC-DEV-0062)
+- **Процесс:** Атомарный find→fix→record corrective LESSON-* (фикс применён и проверен до записи)
+- **Использование:** в момент самодетекции ошибки; inverse отложенной `.pending`-очереди
+- **Выходы:** исправленная ошибка + active LESSON-*
+- **Skill:** `lesson-capture.md`
 
 ### 3.2a Drift mitigation (4 — v1 modifications C1-C4)
 

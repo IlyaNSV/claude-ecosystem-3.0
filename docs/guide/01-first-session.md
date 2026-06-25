@@ -194,7 +194,7 @@ Continue to F.5 IC identification? [Y/N]
 
 Поток `Brief → Screens → Iterate → States → Artifacts → Export` даёт макеты (`MK`), Design System (`DS`) и навигацию (`NM`). Эти артефакты потом сами встроятся в handoff (секция §10). Если UI нет — пропусти шаг целиком.
 
-> Деталь — будущий [`04-ui-design.md`](README.md) и [`docs/design-module/SPEC.md`](../design-module/SPEC.md).
+> Деталь — [`04-ui-design.md`](04-ui-design.md) и [`docs/design-module/SPEC.md`](../design-module/SPEC.md).
 
 ---
 
