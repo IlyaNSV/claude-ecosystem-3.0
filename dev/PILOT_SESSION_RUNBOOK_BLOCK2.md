@@ -121,6 +121,11 @@ V-2 в pending были все 3 персоны.
 Тестовые правки `.product/` (BR-005, BR-006, MK-001) делались только чтобы дёрнуть хук — можешь
 откатить их: `git checkout -- .product/business-rules/BR-005-*.md .product/business-rules/BR-006-*.md .product/mockups/MK-001-*.md` (и VC-018, если ещё не откатил).
 
+> ⚠️ **Каскад MK→SC (live-run находка, FB-LR-17 housekeeping):** правка `MK-001` дёргает хук
+> `cascade-check.js` (by-design, DEC-DEV-0080), который дописывает `mockup: MK-001` во **все SC** из
+> `scenario_steps` мокапа. Поэтому после V-1.4 в рабочем дереве окажутся ещё и эти SC-файлы — откати и их:
+> `git checkout -- .product/scenarios/` (или проверь `git status --short .product/` → должно быть чисто).
+
 ---
 
 ### Карта целевых файлов (всё сверено на ground-truth)

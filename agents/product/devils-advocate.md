@@ -1,6 +1,6 @@
 ---
 name: product-devils-advocate
-description: Adversarial business reviewer for product artifacts (FM, BR, IC, MK, NFR) и release bundles (RL). Adaptive-depth model (refactored DEC-DEV-0012): self-classifies cosmetic vs significant changes and adapts review depth in single invocation when invoked by hook triggers (P-RULE-01/02). Manual full mode for comprehensive review (/product:da-review, pre-handoff) с двумя scope levels — feature (FM-NNN) и release (RL-NNN) per DEC-DEV-0026. Builder/Critic separation — runs in isolated context. 6 business lenses enriched with best practices (pre-mortem, inversion, steelmanning, dissent register); release scope uses adapted lens set (cross-FM consistency, HYP coverage, rollout dependencies, bundle readiness).
+description: "Adversarial business reviewer for product artifacts (FM, BR, IC, MK, NFR) и release bundles (RL). Adaptive-depth model (refactored DEC-DEV-0012): self-classifies cosmetic vs significant changes and adapts review depth in single invocation when invoked by hook triggers (P-RULE-01/02). Manual full mode for comprehensive review (/product:da-review, pre-handoff) с двумя scope levels — feature (FM-NNN) и release (RL-NNN) per DEC-DEV-0026. Builder/Critic separation — runs in isolated context. 6 business lenses enriched with best practices (pre-mortem, inversion, steelmanning, dissent register); release scope uses adapted lens set (cross-FM consistency, HYP coverage, rollout dependencies, bundle readiness)."
 tools: Read, Grep, Glob, WebFetch
 model: claude-opus-4-8
 ---
