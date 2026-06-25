@@ -848,8 +848,7 @@ Dead Ends & Error Flows]
 
 ## 11. Non-Functional Requirements
 
-(NFR artifact not yet introduced in v1; receiver should clarify 
-specific NFR via /product:clarify if needed.)
+(Этот пример — из раннего черновика. В v1 NFR **введён**: реальные NFR встраиваются в handoff §11 автоматически per `handoff-generator.md` — три кейса (active / declined / pending). Пример ниже оставлен как иллюстрация implicit-NFR.)
 
 Known implicit NFR for this feature:
 - **Performance:** Inbox list load <500ms for up to 100 revisions

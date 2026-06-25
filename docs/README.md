@@ -17,7 +17,7 @@
 | **Product Module** | [product-module/SPEC.md](product-module/SPEC.md) | D1 (Discovery + Planning) + D2-Behavioral; 24 артефакта; handoff generation |
 | **Integrator Module** | [integrator-module/SPEC.md](integrator-module/SPEC.md) | «Сисадмин» экосистемы — install/configure/connect внешние инструменты под PMO-карту |
 | **Design Module** | [design-module/SPEC.md](design-module/SPEC.md) | Условный sub-module: D2-B04 UI Design когда `FM.has_ui=true` |
-| **Orchestrator Module** | _(planned, post-pilot)_ | Запуск инструментов и оркестрация сценариев D3-D6 |
+| **Orchestrator Module** | [orchestrator-module/SPEC.md](orchestrator-module/SPEC.md) _(P3–P6 построены + live-validated; P2/P7 отложены)_ | Запуск инструментов и оркестрация сценариев D3-D6 |
 
 ---
 

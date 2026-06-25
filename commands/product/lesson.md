@@ -9,7 +9,7 @@ User invoked: `/product:lesson $ARGUMENTS`
 
 Когда стало понятно, что задача / артефакт / решение сделаны **некорректно** и это **исправимо сейчас** — поймать ошибку, **применить фикс**, проверить и записать переиспользуемый урок. Одна неоткладываемая операция. Inverse of `.product/.pending/` (там — отложенная работа; здесь фикс уже применён к моменту `status: active`).
 
-> Если исправить сейчас **нельзя** — это `NOTE-*`, не LESSON. Запускай `/product:note` (capture), а не эту команду.
+> Если исправить сейчас **нельзя** — это `NOTE-*`, не LESSON. Зафиксируй как `NOTE` (свободным текстом; структурировать позже — `/product:promote-note`), а не этой командой.
 
 Load skill `.claude/skills/product/lesson-capture.md` as the transactional protocol (7 phases + sub-commands).
 
