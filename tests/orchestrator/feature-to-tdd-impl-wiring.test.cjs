@@ -88,12 +88,27 @@ test('the classifier is conservative: an unmatched class defaults to content (no
   assert(/\|\|\s*'content'\)/.test(SRC), 'classifyBlock does not default to content (conservative)');
 });
 
-test('returns the P5 contract keys incl. the new conflicts', () => {
+test('returns the P5 contract keys incl. conflicts + findings', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'implemented', 'blocked', 'concerns', 'conflicts', 'go_gate', 'readiness']) {
+  for (const key of ['feature', 'implemented', 'blocked', 'concerns', 'conflicts', 'findings', 'go_gate', 'readiness']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
+});
+
+test('the envelope surfaces the P6 gate conflicts + findings, not just impl-time ones (DEC-DEV-0104, FB-LR-19)', () => {
+  // P5 must CAPTURE p6.conflicts off the gate result (was: only result/readiness/findings read → escalations invisible)
+  assert(/conflicts:\s*\(p6 && p6\.conflicts\)\s*\|\|\s*\[\]/.test(SRC),
+    'P5 does not capture p6.conflicts from the gate result');
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m, 'could not locate the process return object');
+  // the return MERGES impl-time conflicts with the gate's (concat), not impl-time only
+  assert(/conflicts:\s*conflicts\.concat\(\s*\(go && go\.conflicts\)/.test(m[0]),
+    'P5 return does not merge the gate conflicts into the envelope (FB-LR-19)');
+  // and surfaces the gate findings in the envelope (was captured in `go` but dropped at return)
+  assert(/findings:\s*\(go && go\.findings\)\s*\|\|\s*\[\]/.test(m[0]),
+    'P5 return does not surface the gate findings in the envelope (FB-LR-19)');
+  assert(/FB-LR-19/.test(SRC), 'DEC-DEV-0104 / FB-LR-19 not referenced in the source');
 });
 
 test('keeps the prior P5 guards (FB-001 args, FB-002 empty feature, P6 delegation by scriptPath)', () => {

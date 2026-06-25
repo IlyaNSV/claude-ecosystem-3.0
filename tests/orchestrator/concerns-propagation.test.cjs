@@ -60,9 +60,11 @@ test('concerns are accumulated', () => {
 
 test('the FSM return value carries concerns (not dropped at the boundary)', () => {
   // the process result object lists `concerns` near `go_gate` — assert that adjacency
-  // directly (avoids matching the early FB-002 guard return). DEC-DEV-0096 (T5) inserts a
-  // `conflicts` sibling between them, so allow that optional line.
-  assert(/concerns\s*,[^\n]*\n(\s*conflicts\s*,[^\n]*\n)?\s*go_gate\s*:/.test(src),
+  // directly (avoids matching the early FB-002 guard return, which has no `concerns`).
+  // DEC-DEV-0096 (T5) inserted a `conflicts` sibling; DEC-DEV-0104 (FB-LR-19) made it a
+  // `conflicts.concat(...)` expression and added a `findings` sibling — so tolerate any
+  // number of `key: value` sibling lines between `concerns,` and `go_gate:`.
+  assert(/concerns\s*,[^\n]*\n(\s*\w+\s*:[^\n]*\n)*\s*go_gate\s*:/.test(src),
     'the process return object does not list `concerns` alongside `go_gate`');
 });
 

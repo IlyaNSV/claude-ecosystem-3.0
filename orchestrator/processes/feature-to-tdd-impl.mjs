@@ -451,6 +451,7 @@ if (implemented.length) {
       result: (p6 && (p6.result || p6.go_gate)) || 'MANUAL_VERIFY_REQUIRED',
       readiness: (p6 && p6.readiness) || fwdReadiness, // authoritative readiness from P6
       findings: (p6 && p6.findings) || [],
+      conflicts: (p6 && p6.conflicts) || [],           // DEC-DEV-0104 (FB-LR-19): carry the gate's escalated conflicts so the P5 envelope can surface them (was dropped — gate escalations were invisible to a machine reading result.conflicts)
     }
     log(`feature GO-gate (P6 validate-feature-impl${degraded ? ', advisory' : ''}): ${go.result} [readiness=${go.readiness}]`)
   } catch (e) {
@@ -490,7 +491,8 @@ return {
   implemented: implemented.map((t) => t.id),
   blocked: blockedTasks,
   concerns,                       // FB-013 (DEC-DEV-0081 fix #1): deferred-capability flags, propagated not dropped
-  conflicts,                      // DEC-DEV-0096 (T5, FB-LR-07): cross-spec/design contradictions escalated at impl time (route Product / owning spec); each is also in `blocked` → degraded → gate never a clean GO
+  conflicts: conflicts.concat((go && go.conflicts) || []),   // DEC-DEV-0096 (T5, FB-LR-07) impl-time escalations ⊕ DEC-DEV-0104 (FB-LR-19) the P6 gate's escalated conflicts. impl-time entries {task, conflict_class, detail}; gate entries {validator, ref, kind, conflict_class, masked}. (Was impl-time only → e.g. Run C glossary returned conflicts:[] despite the gate escalating 2 cross-spec conflicts.)
+  findings: (go && go.findings) || [],               // DEC-DEV-0104 (FB-LR-19): surface the gate's findings in the envelope (was captured in `go` but dropped at return → a NO-GO carried no machine-readable reason)
   go_gate: go && go.result,
   readiness: (go && go.readiness) || envReadiness,   // DEC-DEV-0092: READY | DEGRADED | ENV_NOT_READY (orthogonal to go_gate)
 }
