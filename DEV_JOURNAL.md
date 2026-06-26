@@ -6604,6 +6604,35 @@ Cut-2 проектор `dev/meta-improvement/scripts/rails-build.js`: детер
 
 ---
 
+## DEC-DEV-0110 — Work-rails session-wiring: авто-регенерация + инжект на SessionStart, регистрация в INFORMATION-MAP (ревертируемо)
+
+**Date:** 2026-06-26
+**Trigger:** Владелец: «в новых сессиях уже должно работать?» → нет (cut-2 проектор 0108 — ручной инструмент: нет триггера, `RAILS.md` gitignored и не подгружается). Просьба: «вотну wiring, чтобы можно было откатить». Параллельно в main приехал `#72` (INFORMATION-MAP, 0109) — каталог топологии информации + §0-указатель; wiring должен встроиться в него, не дублировать.
+**Tag:** #tooling #observability #architecture
+
+### Context
+work-rails (0108) ретроактивно полезен, но не «живёт» в свежей сессии: ничто не зовёт проектор, дайджест gitignored (регенерируемая проекция), в контекст старта не попадает. `#72` дал ровно тот слой, в который надо встроиться: `INFORMATION-MAP.yaml` (класс информации → SSOT → authority → verify) + ритуал §0 в CLAUDE.md.
+
+### Options considered
+1. **Только конвенция** (строка в CLAUDE.md «прочитай RAILS.md»). Поведенческое, но не авто; дайджест gitignored → всё равно надо регенерировать вручную; «видно» только если я следую ритуалу.
+2. **SessionStart-хук: regenerate + inject через `additionalContext` (ВЫБРАНО).** Реально «работает в новых сессиях» — сводка инжектится в контекст старта без действий. Регистрация локально в `.claude/settings.local.json` (gitignored) → ревертируемо; рантайм-тумблер `RAILS_AUTOGEN=0`; exit-0/no-op-safe.
+3. **Бесповоротная фича в bootstrap.** Преждевременно (ecosystem-first; генерализация в пилот — отдельный шаг).
+
+Под-решения: (а) **register в INFORMATION-MAP как класс `work-history`** (SSOT=вычисление, по образцу `canonical-counts`) вместо отдельного «где история» канала — orchestrate-don't-duplicate. (б) §0-шаг ритуала — нудж + указатель на тумблер. (в) хук — в `dev/meta-improvement/hooks/` (dev-only, как `session-audit.js`), НЕ в shipped `hooks/` → не уезжает в пилот раньше времени, verify.md shipped-hook счёт не трогает.
+
+### Decision
+SessionStart-хук `rails-session-start.js` (regenerate `RAILS.md` + inject компактную сводку) + класс `work-history` в `INFORMATION-MAP.yaml` + §0-шаг в CLAUDE.md. Коммитятся хук-файл + каталог + CLAUDE.md + README + журнал; **регистрация хука — локально** (`settings.local.json` gitignored), как и существующие D7-reminder-хуки. Отдельный ревертируемый PR (не вложен в проектор-PR #71).
+
+### Outcome
+Хук протестирован: валидный JSON `hookSpecificOutput.additionalContext` (1021 char), regenerate отрабатывает (249 commits → 18 areas в сводке), тумблер `RAILS_AUTOGEN=0` → exit 0 без вывода. Контракт SessionStart подтверждён (claude-code-guide: `additionalContext`; `hookEventName` input-only; exit 0; лимит 10k). Не consumer-zone (CLAUDE/dev/INFORMATION-MAP/settings) → CHANGELOG не нужен; counts 24/44 без изменений. `npm run verify` зелёный.
+
+### Lessons
+1. **«Работает в новых сессиях» = триггер + доставка в контекст, не «инструмент существует».** Регенерация без инжекта всё равно требует ручного чтения; SessionStart-хук с `additionalContext` закрывает обе половины.
+2. **Встраивайся в свежий смежный механизм, а не рядом с ним.** INFORMATION-MAP появился параллельно — work-rails зарегистрирован классом ТАМ, а не отдельным каналом «где история» (orchestrate-don't-duplicate; тот же урок, что Orchestrator поверх cc-sdd).
+3. **Ревертируемость дёшева, если заложена слоями:** рантайм-тумблер (env) + локальная gitignored-регистрация + отдельный PR = три независимых уровня отката без хирургии.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
