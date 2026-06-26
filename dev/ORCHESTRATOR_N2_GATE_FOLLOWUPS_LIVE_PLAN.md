@@ -13,11 +13,11 @@
 > what is being checked** (the rubric in §6 stays with the reviewer); grade by transcript + the
 > structured `result` envelope afterwards.
 >
-> **Relationship to siblings:** this **continues** `dev/UNIFIED_PILOT_VALIDATION_PLAN.md` (which
+> **Relationship to siblings:** this **continues** `dev/_archive/orchestrator/UNIFIED_PILOT_VALIDATION_PLAN.md` (which
 > covered the first N+2 wave + Vision A/B) and `dev/ORCHESTRATOR_N2_PILOT_REVALIDATION_BRIEF.md`
 > (detailed per-run criteria — referenced, not duplicated). Findings land in the shared ledger
-> `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`. Status: `ready-to-run` (2026-06-26). Next free
-> `DEC-DEV` = **0107** (0101/0102/0106 consumed by this increment; 0103/0104/0105 already in the journal).
+> `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`. Status: `ready-to-run` (2026-06-26; delivery already landed in the
+> pilot — see runbook STATE SNAPSHOT). Next free `DEC-DEV` = **0111** (0107-0110 consumed since; the journal tail is the source of truth).
 
 ---
 
@@ -103,10 +103,10 @@ pilot, then close the conflict.
 ```
 /ecosystem:update  (§1.1) → wipe-protection HARD gate + verify delivery (§1.2-1.3) ── STOP if pilot state at risk
   → baseline tag (§1.4)
-  → [session(s)] Track G: G-1 (P6 up) → G-2 (P6 Docker down) → G-3 (P5→P6 nesting)
-  → [session(s)] Track R: R-1 (V-2 personas); R-2/R-3 fall out of G-3
+  → [session(s)] Track G: G-1 (P6 up) → G-2 (P6 Docker down) → [G-3 (P5→P6 nesting) ⏸ DEFERRED — Fork C, 2026-06-26]
+  → [session(s)] Track R: R-1 (V-2 personas); R-2/R-3 deferred with G-3 (delivery already landed — see runbook snapshot)
   → collect transcripts + every run's `result` envelope
-  → ONE grading sweep (§6) → ledger rows → green ⇒ live-validated; new defect ⇒ DEC-DEV (next free 0107)
+  → ONE grading sweep (§6) → ledger rows → green ⇒ live-validated; new defect ⇒ DEC-DEV (next free 0111)
 ```
 
 Sessions can be split any way; the only ordering constraint is `/ecosystem:update` first and the grading
@@ -132,13 +132,13 @@ sweep last. Do **not** coach the executor mid-run.
 | **`had_trial`** (§4) | billing/auth run | The remediation hitting the `had_trial` contradiction **escalates** (`conflicts[]` + a `pending-actions` CONCERN, gate ≥ MANUAL_VERIFY), not a unilateral commit. | A committer resolves it unilaterally (the run-B mask) — should be impossible post-T5; flag if seen. |
 
 **Disposition of the sweep:** every green ref → mark the increment **live-validated** in the ledger +
-ROADMAP. Any genuine new defect → a `DEC-DEV-*` (next free **0107**) + a new ledger row. Opportunistic
+ROADMAP. Any genuine new defect → a `DEC-DEV-*` (next free **0111**) + a new ledger row. Opportunistic
 refs that did not trip (FB-LR-15 positive, T5 transient) stay **"not-exercised"** — not a pass, not a fail;
 note them so they are not mistaken for validated.
 
 ## Related
 - Increment + rationale: `DEV_JOURNAL.md` DEC-DEV-0101 / 0102 / 0106; work-order
   `dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md` §"N+2 re-validation follow-ups".
-- Ledger: `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`. Prior wave: `dev/UNIFIED_PILOT_VALIDATION_PLAN.md`;
+- Ledger: `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`. Prior wave: `dev/_archive/orchestrator/UNIFIED_PILOT_VALIDATION_PLAN.md`;
   per-run detail: `dev/ORCHESTRATOR_N2_PILOT_REVALIDATION_BRIEF.md`.
 - Checklist: `dev/meta-improvement/checklists/live-run-validation.md` (executor/reviewer separation).
