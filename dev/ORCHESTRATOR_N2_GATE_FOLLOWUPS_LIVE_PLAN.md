@@ -13,7 +13,7 @@
 > what is being checked** (the rubric in §6 stays with the reviewer); grade by transcript + the
 > structured `result` envelope afterwards.
 >
-> **Relationship to siblings:** this **continues** `dev/UNIFIED_PILOT_VALIDATION_PLAN.md` (which
+> **Relationship to siblings:** this **continues** `dev/_archive/orchestrator/UNIFIED_PILOT_VALIDATION_PLAN.md` (which
 > covered the first N+2 wave + Vision A/B) and `dev/ORCHESTRATOR_N2_PILOT_REVALIDATION_BRIEF.md`
 > (detailed per-run criteria — referenced, not duplicated). Findings land in the shared ledger
 > `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`. Status: `ready-to-run` (2026-06-26; delivery already landed in the
@@ -139,6 +139,6 @@ note them so they are not mistaken for validated.
 ## Related
 - Increment + rationale: `DEV_JOURNAL.md` DEC-DEV-0101 / 0102 / 0106; work-order
   `dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md` §"N+2 re-validation follow-ups".
-- Ledger: `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`. Prior wave: `dev/UNIFIED_PILOT_VALIDATION_PLAN.md`;
+- Ledger: `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`. Prior wave: `dev/_archive/orchestrator/UNIFIED_PILOT_VALIDATION_PLAN.md`;
   per-run detail: `dev/ORCHESTRATOR_N2_PILOT_REVALIDATION_BRIEF.md`.
 - Checklist: `dev/meta-improvement/checklists/live-run-validation.md` (executor/reviewer separation).
