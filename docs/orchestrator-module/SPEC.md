@@ -99,7 +99,7 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 
 **Что прогон добавил к каждому процессу (vs концепт v0.1):**
 - **P3:** волновой барьер (`[GATE]` между волнами зависимостей), **content-level adapter-verify** (P0-1: семантика маппинга, не наличие секций — урок silent fidelity-loss), петля cross-spec с критерием выхода (`all RESOLVED`), `coverage-oracle` (не доверяя self-report).
-- **P5:** `gate-risk-classifier` (router тяжести гейта inline-vs-independent — детерминированный предикат, **design: [`dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`](../../dev/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md)**, DEC-DEV-0073 P0-2; валидирован 16/17 против RUN 01), persistent inter-task **Notes-ledger** (forward-deps), per-step mini-orient + idempotent selective-commit, **нативная реализация** (не обёртка `/kiro-impl`).
+- **P5:** `gate-risk-classifier` (router тяжести гейта inline-vs-independent — детерминированный предикат, **design: [`dev/_archive/orchestrator/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md`](../../dev/_archive/orchestrator/ORCHESTRATOR_GATE_RISK_CLASSIFIER.md)**, DEC-DEV-0073 P0-2; валидирован 16/17 против RUN 01), persistent inter-task **Notes-ledger** (forward-deps), per-step mini-orient + idempotent selective-commit, **нативная реализация** (не обёртка `/kiro-impl`).
 - **P6:** механический слой + 3 параллельных валидатора + `verify-finding-before-act` (находка валидатора → grep ground-truth → только тогда remediation).
 
 > **[S5a build — DEC-DEV-0076] P3 реализован ГИБРИДНО (оркеструем, не переписываем).**

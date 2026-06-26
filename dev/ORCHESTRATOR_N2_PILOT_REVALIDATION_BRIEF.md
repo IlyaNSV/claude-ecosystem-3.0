@@ -1,7 +1,7 @@
 # Orchestrator N+2 — pilot re-validation brief (owner-driven)
 
 > **⚠ WRAPPED (2026-06-24):** this brief is now **Track O** of the single-delivery, single-run
-> **`dev/UNIFIED_PILOT_VALIDATION_PLAN.md`** — run it from there (one `/ecosystem:update` that also
+> **`dev/_archive/orchestrator/UNIFIED_PILOT_VALIDATION_PLAN.md`** (archived — wave done) — run it from there (one `/ecosystem:update` that also
 > ships the Vision Epic A+B dogfood = Track V). This file remains the **source of the per-run PASS
 > criteria** (§1 below); the unified plan references it rather than duplicating. Next free `DEC-DEV`
 > is now **0100** (the "0098" below is stale — 0098/0099 were taken by the Vision increment).
@@ -98,5 +98,5 @@ re-validation, keep OPEN.
 ## Related
 - Plan / queue: `dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md`
 - Findings ledger: `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`
-- Resume checkpoint: `dev/ORCHESTRATOR_N2_RESUME.md`
-- N+1 precedent brief (structure): `dev/ORCHESTRATOR_P4_P6_LIVE_BRIEF.md`
+- Resume checkpoint: `dev/_archive/orchestrator/ORCHESTRATOR_N2_RESUME.md` (archived)
+- N+1 precedent brief (structure): `dev/_archive/orchestrator/ORCHESTRATOR_P4_P6_LIVE_BRIEF.md` (archived)

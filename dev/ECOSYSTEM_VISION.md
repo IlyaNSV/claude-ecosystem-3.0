@@ -367,7 +367,7 @@ autonomy:                      # .claude/product.yaml — применяется
 
 1. ✅ Ревью пройдено, §7 (10/10) решены — направление принято (2026-06-23).
 2. ⏸ **Формализация ОТЛОЖЕНА до старта Epic A (решение владельца, вариант I, 2026-06-23):** DEC-DEV-запись (rationale + отвергнутые альтернативы) + перенос эпиков A-F в [ROADMAP.md](../ROADMAP.md) **новой секцией «Autonomous Pipeline Vision (epics A-F)»** (не Phase-N — cross-module) делаются **в пакете с kickoff Epic A**, чтобы (a) не жечь DEC-DEV-номер преждевременно при активной оркестратор-сессии (риск коллизии, прецедент 0082) — номер согласовать по `git log` обеих веток ПЕРЕД записью; (b) этот док уже служит accepted-SSOT до того момента.
-3. При старте Epic A — D7 `phase-kickoff.md` + первый инкремент. **Execution-batch для следующей сессии готов:** [ECOSYSTEM_VISION_BATCH_1.md](ECOSYSTEM_VISION_BATCH_1.md) (Step0 kickoff+формализация → B4 → A1 → A2 → B1-stretch; F1-core и B-пилот вне батча).
+3. При старте Epic A — D7 `phase-kickoff.md` + первый инкремент. **Execution-batch (Increment 1 — done, archived):** [_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md](_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md) (Step0 kickoff+формализация → B4 → A1 → A2 → B1-stretch; F1-core и B-пилот вне батча).
 4. **Граница соблюдена:** ни один файл `orchestrator/` не тронут; этот док — только `dev/`. PAUSED до момента старта Epic A.
 
 ---

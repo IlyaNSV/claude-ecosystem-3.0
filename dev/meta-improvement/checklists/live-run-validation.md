@@ -117,8 +117,8 @@ QUALITY. PASS = спонтанно и полно; FAIL = поглотил гра
 
 - **RUN 01** (DEC-DEV-0073) — первый dogfood-харвест; audit `c4546225` (deep-dive
   `audit-reports/c4546225-orchestrator-deep-dive.md`). Урок: routine-аудит прячет критические находки.
-- **S6** (DEC-DEV-0081) — класс A, §6 capability-канал. Brief `ORCHESTRATOR_S6_BRIEF.md` + handoff
-  `ORCHESTRATOR_S6_REVIEW_HANDOFF.md`. Урок: anti-contamination + anti-phantom-inflation.
+- **S6** (DEC-DEV-0081) — класс A, §6 capability-канал. Brief `dev/_archive/orchestrator/ORCHESTRATOR_S6_BRIEF.md` + handoff
+  `dev/_archive/orchestrator/ORCHESTRATOR_S6_REVIEW_HANDOFF.md`. Урок: anti-contamination + anti-phantom-inflation.
 - **P4+P6 live** (next) — класс B, fidelity-гейт (P4) + feature GO-gate (P6); двусторонняя
   sensitivity/specificity валидация + проверка `workflow()`-nesting P5→P6.
 
