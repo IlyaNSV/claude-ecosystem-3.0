@@ -140,7 +140,7 @@
 
 ## Autonomous Pipeline Vision (epics A-F)
 
-> **Cross-module инициатива, не Phase-N.** Превращает три «вектор-идеи» владельца (охват до прода / качество входа / автономия) в эпики A-F. Принята как направление 2026-06-24 (DEC-DEV-0098). Концепт-SSOT: [`dev/ECOSYSTEM_VISION.md`](dev/ECOSYSTEM_VISION.md) (`accepted`, §7 10/10); work-order первого инкремента: [`dev/ECOSYSTEM_VISION_BATCH_1.md`](dev/ECOSYSTEM_VISION_BATCH_1.md).
+> **Cross-module инициатива, не Phase-N.** Превращает три «вектор-идеи» владельца (охват до прода / качество входа / автономия) в эпики A-F. Принята как направление 2026-06-24 (DEC-DEV-0098). Концепт-SSOT: [`dev/ECOSYSTEM_VISION.md`](dev/ECOSYSTEM_VISION.md) (`accepted`, §7 10/10); work-order первого инкремента: [`dev/_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md`](dev/_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md) (archived — Increment 1 done).
 >
 > **Цель (переформулирована из «100% результата»):** «**100% покрытия пути + gated-автономия**», не «человек ни разу не нужен». Три research-«тормоза» зашиты в дизайн: completeness-loop только bounded+anchored; консилиум = жюри/гетерогенность, не консенсус-дебаты; полностью автономный идея→прод нереалистичен (METR 0.9⁷≈48%).
 

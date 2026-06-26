@@ -44,7 +44,7 @@
 
 ## N+2 re-validation findings (2026-06-25)
 
-> From the **owner-driven N+2 re-validation** runs ([UNIFIED_PILOT_VALIDATION_PLAN.md](UNIFIED_PILOT_VALIDATION_PLAN.md)),
+> From the **owner-driven N+2 re-validation** runs ([UNIFIED_PILOT_VALIDATION_PLAN.md](_archive/orchestrator/UNIFIED_PILOT_VALIDATION_PLAN.md)),
 > graded post-hoc against the layered evidence model ([[feedback_audit_evidence_layers]]) + an independent
 > **blind subagent audit** + a neutral **3rd-agent adjudication** (V1 ≈ V2, agreed on every rubric item).
 > Re-val sessions: A `1d4c7e81`/`7c894805` (P4 localization ×2); B `bcf29996` (P6 billing, Docker down→up);
@@ -72,8 +72,8 @@
 
 ## Track V (Block 2 — Vision Epic A+B) re-validation findings (2026-06-25)
 
-> From the **Block-2 / Track-V** live-run ([UNIFIED_PILOT_VALIDATION_PLAN.md](UNIFIED_PILOT_VALIDATION_PLAN.md) §3,
-> runbook [PILOT_SESSION_RUNBOOK_BLOCK2.md](PILOT_SESSION_RUNBOOK_BLOCK2.md)), pilot session `6ada7ef9`,
+> From the **Block-2 / Track-V** live-run ([UNIFIED_PILOT_VALIDATION_PLAN.md](_archive/orchestrator/UNIFIED_PILOT_VALIDATION_PLAN.md) §3,
+> runbook [PILOT_SESSION_RUNBOOK_BLOCK2.md](_archive/orchestrator/PILOT_SESSION_RUNBOOK_BLOCK2.md)), pilot session `6ada7ef9`,
 > graded post-hoc on ground-truth (transcript + oracle re-run + pilot git-diff + a real `js-yaml` parse of
 > the agent frontmatter). Both rows are **real defects** (not observability edges) — **fixed in DEC-DEV-0103**.
 
