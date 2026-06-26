@@ -1,155 +1,190 @@
-# Pilot runbook — N+2 gate-followups batch (executor-facing)
+# Ранбук пилота — батч N+2 gate-followups (для исполнителя)
 
-> **What this is:** the step-by-step you (owner) follow IN THE PILOT (`my-first-test`) to exercise the
-> N+2 gate-followups + the carried-over backlog. It is the **executor** half. The **grading rubric**
-> lives separately in [`ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md`](ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6
-> and stays with the reviewer (me) — **do not read the rubric to the pilot session.**
+> **Что это:** пошаговый план, который ты (владелец) выполняешь В ПИЛОТЕ (`my-first-test`), чтобы
+> отработать N+2 gate-followups + перенесённый бэклог. Это **исполнительская** половина. **Рубрика
+> грейдинга** живёт отдельно в [`ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md`](ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6
+> и остаётся у ревьюера (меня) — **не зачитывай рубрику пилотной сессии.**
 >
-> **The one rule — executor/reviewer separation** ([[feedback_separate_task_from_test]]): paste ONLY
-> the command blocks below into a FRESH pilot session. **Never tell the session what is being checked**
-> (no "we're testing FB-LR-15", no hints). Answer factual clarifying questions, but do not coach
-> mid-run. After each run, hand me the result; I grade in one sweep.
+> **Единственное правило — разделение исполнитель/ревьюер** ([[feedback_separate_task_from_test]]):
+> вставляй в СВЕЖУЮ пилотную сессию ТОЛЬКО командные блоки ниже. **Никогда не говори сессии, что
+> именно проверяется** (никаких «мы тестируем FB-LR-15», никаких подсказок). Отвечай на фактические
+> уточняющие вопросы, но не коучь по ходу. После каждого прогона отдай мне результат; граю одним проходом.
 >
-> Increment under test: DEC-DEV-0101/0102/0106 (merged, PR #67) + carried-over 0096-T5-transient /
+> Инкремент под тестом: DEC-DEV-0101/0102/0106 (смержено, PR #67) + перенесённые 0096-T5-transient /
 > 0103-V2 / 0104-FB-LR-19.
 
 ---
 
-> **STATE SNAPSHOT — pilot `my-first-test`, verified 2026-06-26 (read-only sweep). Pin these so the
-> runs use real targets, not placeholders:**
-> - **Delivery already landed.** `.claude/` is synced to upstream `37ec14e` (pilot commit `3489e34`),
->   which is *after* PR #67 — the gate-followups are already installed. Verified in the INSTALLED copies:
->   `validate-feature-impl.mjs` carries `validators_incomplete` (×2) + `committed_under_non_ready` (0101/0102);
->   the 3 advisor agents are present (0103); `feature-to-tdd-impl.mjs:494-495` carries `conflicts.concat` +
->   `findings` (0104). A fresh `.claude-backup-20260626-144807/` confirms an `/ecosystem:update` ran today.
->   **→ Step 0's update is OPTIONAL for this batch** — re-run it only to pull ecosystem past `37ec14e`
->   (0107 verify Step 4.5 / 0108-0110 work-rails — none of which this batch needs).
-> - **Feature slug ≠ FM-id.** For P5/P6, `--feature` takes the **cc-sdd slug** (the `.kiro/specs/<slug>/` dir
->   name): `admin` · `auth` · `billing` · `glossary` · `localization`. (`--feature FM-NNN` is P3-only, for handoffs.)
-> - **Every feature is fully `[x]`-done** (admin 17/17 · auth 26/26 · billing 19/19 · glossary 20/20 ·
->   localization 26/26). P6 (G-1/G-2) gating a *done* feature is its normal mode (it validates the result).
->   **P5 (G-3) on a done feature is a no-op** (0 actionable tasks, the Run-C-admin lesson) → see the G-3 fork in Step 1.
-> - **Orphan carrier (FB-LR-21) = `glossary`.** `design.md` exposes `GlossarySnapshotService.buildSnapshot` as a
->   *synchronous in-process* call from FM-002 with **no worker hook** (deliberate, spec-sanctioned) — exactly the
->   deferred seam RA-10 wrongly returned `clean:true` over in Run C.
-> - **`advisor-pending.yaml` is empty** (`entries: []`, cleared 2026-06-26 per DEC-PLAN-037) → R-1 needs a fresh
->   significant `.product/` edit to repopulate it before the personas fire.
+> **СНИМОК СОСТОЯНИЯ — пилот `my-first-test`, выверено 2026-06-26 (read-only обход). Зафиксируй это,
+> чтобы прогоны использовали реальные цели, а не плейсхолдеры:**
+> - **Доставка уже доехала.** `.claude/` синкнут к upstream `37ec14e` (коммит пилота `3489e34`),
+>   который *после* PR #67 — gate-followups уже установлены. Проверено в УСТАНОВЛЕННЫХ копиях:
+>   `validate-feature-impl.mjs` несёт `validators_incomplete` (×2) + `committed_under_non_ready` (0101/0102);
+>   3 advisor-агента на месте (0103); `feature-to-tdd-impl.mjs:494-495` несёт `conflicts.concat` +
+>   `findings` (0104). Свежий `.claude-backup-20260626-144807/` подтверждает, что `/ecosystem:update` гонялся сегодня.
+>   **→ Step 0's update для этого батча ОПЦИОНАЛЕН** — перезапускай только чтобы подтянуть ecosystem за `37ec14e`
+>   (0107 verify Step 4.5 / 0108-0110 work-rails — ничего из этого батчу не нужно).
+> - **Slug фичи ≠ FM-id.** Для P5/P6 `--feature` принимает **cc-sdd slug** (имя папки `.kiro/specs/<slug>/`):
+>   `admin` · `auth` · `billing` · `glossary` · `localization`. (`--feature FM-NNN` — только для P3, для handoff'ов.)
+> - **Все фичи полностью `[x]`-done** (admin 17/17 · auth 26/26 · billing 19/19 · glossary 20/20 ·
+>   localization 26/26). P6 (G-1/G-2), гейтящий *завершённую* фичу, — это его нормальный режим (он валидирует результат).
+>   **P5 (G-3) на завершённой фиче — no-op** (0 actionable-тасков, урок Run-C-admin) → см. форк G-3 в Step 1.
+> - **Носитель orphan'а (FB-LR-21) = `glossary`.** `design.md` экспонирует `GlossarySnapshotService.buildSnapshot` как
+>   *синхронный in-process* вызов из FM-002 **без worker-хука** (намеренно, spec-санкционировано) — ровно тот
+>   отложенный seam, по которому RA-10 ошибочно вернул `clean:true` в Run C.
+> - **`advisor-pending.yaml` пуст** (`entries: []`, очищен 2026-06-26 per DEC-PLAN-037) → R-1 нужна свежая
+>   значимая правка `.product/`, чтобы наполнить его до того, как сработают персоны.
 
-## Step 0 — deliver once (then never again this batch)
+## Step 0 — доставить один раз (потом за этот батч больше никогда)
 
-> **For THIS batch, delivery is already done (see snapshot). Run Step 0 only if you also want
-> ecosystem ≥ 0107.** Otherwise skip to the verification sub-steps (4) and the baseline tag (5).
+> **Для ЭТОГО батча доставка уже сделана (см. снимок). Запускай Step 0 только если хочешь ещё и
+> ecosystem ≥ 0107.** Иначе переходи к под-шагам верификации (4) и бейзлайн-тегу (5).
 
-In the pilot repo:
+В репозитории пилота:
 
-1. **`/ecosystem:update`** *(optional — only to go past `37ec14e`)* — pulls the merged ecosystem into `.claude/`.
-2. **HARD STOP** if the update would delete `.product/`, `.claude/orchestrator/runs/`, or
-   `.product/.upstream/feedback-outbox.md`. Wipe-protection (DEC-DEV-0061/0088) must hold — if anything
-   pilot-local is at risk, **stop and tell me**.
-3. **`/ecosystem:verify`** — health check.
-4. **Confirm the delivery landed** (run these checks yourself, not via the pilot session). **All three were
-   already verified ✅ on 2026-06-26** — re-run only if you push another update:
-   - installed gate carries the new fields ✅: `grep -E "validators_incomplete|committed_under_non_ready" .claude/orchestrator/processes/validate-feature-impl.mjs`
-     → both present (×2 / ×1). Also `feature-to-tdd-impl.mjs:494-495` carries `conflicts.concat` + `findings` (0104). ✅
-   - the 3 advisor agents register ✅ (pre-req for R-1): `.claude/agents/product/architect-advisor.md`,
-     `.claude/agents/product/qa-advisor.md`, `.claude/agents/design/ux-advisor.md` all present.
-   - `ecosystem_version` re-stamped — ⚠️ **note:** in THIS pilot `product.yaml` is NOT under `.product/`
-     (only backup copies exist under `.claude-backup-*/`); locate the live one (`find . -iname product.yaml -not -path '*/.claude-backup-*/*'`)
-     before grepping its `ecosystem_version`. Non-blocking for the runs.
-5. **Tag a clean baseline** so I have a fixed grade reference:
-   `git -C <pilot> tag pre-n2-followups-baseline` (or just note the HEAD sha and send it to me).
-
----
-
-## Step 1 — pick the features (pinned from the snapshot; one fork to decide)
-
-- **P6 runs (G-1, G-2) — use a DONE feature; that is P6's normal mode** (it gates an implemented result):
-  - **G-1 → `glossary`** — the orphan carrier. Exercises **FB-LR-21** (RA-10 over `buildSnapshot`) + the
-    FB-LR-15/16 negatives on a clean run.
-  - **G-2 → `billing`** — the original B-run; carries the `had_trial` seam → a good T1 / FB-LR-16 carrier with
-    the substrate DOWN.
-- **P5 run (G-3) — BLOCKED as-is: no un-done feature exists.** P5 implements unchecked `[ ]` tasks; with
-  everything `[x]` it's a no-op (the Run-C-admin lesson).
-  > **DECISION 2026-06-26 — Fork C selected.** This pass = **G-1 + G-2 + R-1 only**. G-3 (and with it the
-  > *live* re-confirmation of FB-LR-19 / T5-transient) is deferred to the next real P5 feature — both are already
-  > verify-green + code-confirmed (`feature-to-tdd-impl.mjs:494-495`), so this defers only their live re-run, not the fix.
-
-  The forks (kept for when G-3 is taken up later):
-  - **Fork A (cleanest, costliest) — author a new small feature** (fresh handoff → P3 → un-done `tasks.md`),
-    then P5 it. A real new pilot increment (what `glossary` itself was in Run C). G-3 slug = the new spec.
-  - **Fork B (cheapest live G-3) — roll back the tail of `glossary`**: `git revert` the last few impl commits
-    (branch `tdd-impl-glossary`) AND flip those `[x]`→`[ ]` in `glossary/tasks.md`, so P5 re-implements them and
-    the nested P6 fires on the orphan carrier → **FB-LR-19 (P5 envelope) + FB-LR-21 + T5-transient in one run**.
-    Tag a baseline first (it's git-reversible). **Do G-1 on done-`glossary` BEFORE the rollback** so the clean
-    orphan baseline isn't lost. G-3 slug = `glossary`.
-  - **Fork C (defer) — skip G-3 this pass.** Run G-1+G-2 now (FB-LR-21 + the FB-LR-15/16 negatives + T1); mark
-    FB-LR-19 / T5-transient **"not-exercised — awaits the next real P5 feature"** (FB-LR-19 is already verify-green
-    + code-confirmed at `feature-to-tdd-impl.mjs:494-495`, so this defers only its *live* re-confirmation).
+1. **`/ecosystem:update`** *(опционально — только чтобы уйти за `37ec14e`)* — подтягивает смерженную ecosystem в `.claude/`.
+2. **HARD STOP**, если update собирается удалить `.product/`, `.claude/orchestrator/runs/` или
+   `.product/.upstream/feedback-outbox.md`. Wipe-protection (DEC-DEV-0061/0088) обязан удержать — если что-то
+   pilot-local под угрозой, **остановись и скажи мне**.
+3. **`/ecosystem:verify`** — health-check.
+4. **Подтверди, что доставка доехала** (эти проверки делай сам, не через пилотную сессию). **Все три уже
+   были проверены ✅ 2026-06-26** — перепроверяй только если запушишь ещё один update:
+   - установленный гейт несёт новые поля ✅: `grep -E "validators_incomplete|committed_under_non_ready" .claude/orchestrator/processes/validate-feature-impl.mjs`
+     → оба присутствуют (×2 / ×1). Также `feature-to-tdd-impl.mjs:494-495` несёт `conflicts.concat` + `findings` (0104). ✅
+   - 3 advisor-агента регистрируются ✅ (предусловие для R-1): `.claude/agents/product/architect-advisor.md`,
+     `.claude/agents/product/qa-advisor.md`, `.claude/agents/design/ux-advisor.md` — все на месте.
+   - `ecosystem_version` перештампован — ⚠️ **примечание:** в ЭТОМ пилоте `product.yaml` НЕ под `.product/`
+     (там только бэкап-копии в `.claude-backup-*/`); найди живой (`find . -iname product.yaml -not -path '*/.claude-backup-*/*'`)
+     прежде чем грепать его `ecosystem_version`. Для прогонов не блокирует.
+5. **Поставь чистый бейзлайн** как фиксированную точку отсчёта для грейда:
+   `git -C <pilot> tag pre-n2-followups-baseline` (или просто запиши HEAD sha и пришли мне).
 
 ---
 
-## Step 2 — the runs (paste each block CLEAN into a fresh session; capture the result)
+## Step 1 — выбрать фичи (зафиксировано из снимка; один форк на решение)
 
-> After each run, copy back to me: the **session id**, the workflow's **`result: { ... }` JSON**
-> (the final return envelope), and confirm the transcript is saved. Nothing else needed.
+- **P6-прогоны (G-1, G-2) — используй ЗАВЕРШЁННУЮ фичу; это нормальный режим P6** (он гейтит реализованный результат):
+  - **G-1 → `glossary`** — носитель orphan'а. Упражняет **FB-LR-21** (RA-10 по `buildSnapshot`) + негативы
+    FB-LR-15/16 на чистом прогоне.
+  - **G-2 → `billing`** — исходный B-прогон; несёт seam `had_trial` → хороший носитель T1 / FB-LR-16 с
+    субстратом DOWN.
+- **P5-прогон (G-3) — ЗАБЛОКИРОВАН как есть: незавершённой фичи нет.** P5 реализует непоставленные `[ ]`-таски; при
+  всех `[x]` это no-op (урок Run-C-admin).
+  > **РЕШЕНИЕ 2026-06-26 — выбран Fork C.** Этот проход = **только G-1 + G-2 + R-1**. G-3 (а с ним
+  > *живая* ре-проверка FB-LR-19 / T5-transient) отложен до следующей реальной P5-фичи — оба уже
+  > verify-green + подтверждены в коде (`feature-to-tdd-impl.mjs:494-495`), так что откладывается только их живой ре-ран, не фикс.
 
-**G-1 — P6 gate, substrate UP** (orphan carrier + FB-LR-15/16 negatives):
+  Форки (сохранены на случай, когда G-3 возьмут позже):
+  - **Fork A (самый чистый, самый дорогой) — завести новую маленькую фичу** (свежий handoff → P3 → незавершённый `tasks.md`),
+    затем прогнать P5. Реальный новый инкремент пилота (то, чем `glossary` и была в Run C). Slug G-3 = новая спека.
+  - **Fork B (самый дешёвый живой G-3) — откатить хвост `glossary`**: `git revert` последних нескольких impl-коммитов
+    (ветка `tdd-impl-glossary`) И флипнуть те `[x]`→`[ ]` в `glossary/tasks.md`, чтобы P5 их до-реализовал, а
+    вложенный P6 сработал на носителе orphan'а → **FB-LR-19 (конверт P5) + FB-LR-21 + T5-transient в одном прогоне**.
+    Сначала поставь бейзлайн (это git-обратимо). **Прогони G-1 на done-`glossary` ДО отката**, чтобы не потерять чистый
+    orphan-бейзлайн. Slug G-3 = `glossary`.
+  - **Fork C (отложить) — пропустить G-3 в этот проход.** Прогнать G-1+G-2 сейчас (FB-LR-21 + негативы FB-LR-15/16 + T1); пометить
+    FB-LR-19 / T5-transient **«not-exercised — ждёт следующей реальной P5-фичи»** (FB-LR-19 уже verify-green
+    + подтверждён в коде на `feature-to-tdd-impl.mjs:494-495`, так что откладывается только его *живая* ре-проверка).
+
+---
+
+## Step 2 — прогоны (вставляй каждый блок ЧИСТО в свежую сессию; захвати результат)
+
+> После каждого прогона скопируй мне обратно: **session id**, **`result: { ... }` JSON** воркфлоу
+> (финальный return-конверт) и подтверди, что транскрипт сохранён. Больше ничего не нужно.
+
+> **Параллелизация (опционально) — только G-1 ∥ R-1, и только в РАЗДЕЛЬНЫХ git worktree.** G-1 и R-1
+> трогают непересекающиеся зоны (G-1 → `.kiro/specs/glossary` + `src`; R-1 → `.product/` + completeness-loop) и
+> R-1 не нуждается в субстрате, так что они МОГУТ идти одновременно — **но две сессии в одном checkout делят один
+> `.git/index`, и оба процесса коммитят → одновременный коммит портит индекс** (FB-004 + урок
+> parallel-checkout: две сессии в одном рабочем дереве также затирают ветку/HEAD друг друга). Дай каждому
+> свой worktree (изолированные index + рабочие файлы):
+> ```
+> git worktree add ../mft-g1 -b run/g1-glossary   # дерево G-1 (full-fidelity: нужны node_modules/deps для suite)
+> git worktree add ../mft-r1 -b run/r1-personas    # дерево R-1
+> ```
+> затем открой СВЕЖУЮ пилотную сессию **внутри каждой worktree-папки** (скилл пилота `worktree-bootstrap` делает
+> full-fidelity сетап). Два правила при параллелизации: **(a)** R-1 обязан править BR из фичи, ОТЛИЧНОЙ от
+> `glossary` (правка glossary-BR двигает спеку под гейтом G-1 — см. R-1 ниже); **(b)** **G-2 НЕ параллелизуем** —
+> ему нужен субстрат DOWN, пока G-1 нужен UP (общий Docker/DB), так что прогоняй G-2 последовательно со своим
+> down→up. **Нет worktree? Прогоняй все три последовательно.**
+
+**G-1 — P6-гейт, субстрат UP** (носитель orphan'а + негативы FB-LR-15/16):
 ```
 /orchestrator:run validate-feature-impl --feature glossary
 ```
 
-**G-2 — P6 gate, substrate DOWN** (the FB-LR-16 / T1 carrier):
-1. Bring the substrate down first: `docker compose down` (or stop the Docker daemon / the DB).
-2. Then:
+**G-2 — P6-гейт, субстрат DOWN** (носитель FB-LR-16 / T1):
+> ⚠️ **ПРОТОКОЛ (после прогона 2026-06-27, FB-LR-26 / DEC-DEV-0111): субстрат ОБЯЗАН лежать, пока гейт
+> работает — в этом весь смысл прогона.** На прогоне 2026-06-27 исполнитель поднял субстрат ДО запуска
+> гейта, чтобы получить «настоящий вердикт» → гейт отработал под `readiness:READY`, и FB-LR-16 (раскрытие
+> коммита под non-ready) + T1 (классификация лежащего субстрата) прогнались **вхолостую**. НЕ поднимай
+> субстрат до гейта и НЕ устраняй «не-готовность» заранее: гейт должен сам вернуть `readiness=ENV_NOT_READY`
+> — это и есть предмет проверки. Субстрат поднимаешь обратно UP **только после** того, как гейт завершился.
+1. Сначала погаси субстрат: `docker compose down` (или останови Docker-демон / БД).
+2. Затем:
 ```
 /orchestrator:run validate-feature-impl --feature billing
 ```
-3. Bring the substrate back **up** afterwards.
-> If no real defect surfaces to remediate, G-2 still exercises T1 (down substrate → `MANUAL_VERIFY`,
-> not NO-GO) and the FB-LR-16 negative — that's a valid result, don't force a defect.
+3. После — подними субстрат обратно **UP**.
+> Если реального дефекта для ремедиации не всплывёт, G-2 всё равно упражняет T1 (лежащий субстрат → `MANUAL_VERIFY`,
+> не NO-GO) и негатив FB-LR-16 — это валидный результат, дефект форсировать не надо.
 
-**G-3 — P5→P6 nesting** (FB-LR-19 + T5-transient) — ⏸ **DEFERRED this pass (Fork C, Step 1).** Run only when
-a real un-done feature exists (Fork A new spec, or Fork B `glossary`-tail rollback):
+**G-3 — вложенность P5→P6** (FB-LR-19 + T5-transient) — ⏸ **ОТЛОЖЕН в этот проход (Fork C, Step 1).** Прогоняй только когда
+существует реальная незавершённая фича (новая спека Fork A, либо откат хвоста `glossary` Fork B):
 ```
-/orchestrator:run feature-to-tdd-impl --feature <un-done slug — a new Fork-A spec, or `glossary` after a Fork-B rollback>
+/orchestrator:run feature-to-tdd-impl --feature <незавершённый slug — новая спека Fork A, либо `glossary` после отката Fork B>
 ```
-> Do NOT run this against a fully-`[x]` slug — it's a no-op (0 actionable tasks). Resolve the slug from
-> whichever G-3 fork you pick when you take it up.
+> НЕ прогоняй это на полностью-`[x]` slug'е — это no-op (0 actionable-тасков). Разрешай slug из того
+> форка G-3, который выберешь, когда возьмёшься.
 
-**R-1 — V-2 personas** (the 0103 frontmatter fix — already delivered ✅):
-1. Make a **significant** edit to a real `.product/` artifact (a BR or IC **body** change — not just a
-   `version:`/`updated:` bump) to repopulate the now-empty `.product/.pending/advisor-pending.yaml`.
-   Concrete pick: change the logic in a BR body, e.g. **`BR-051` (glossary-snapshot-construction-mechanics)** →
-   drives FM-003, or **`BR-068` (checkout-idempotency)** → drives FM-005. Both are reviewed by architect+qa personas.
-2. Drive the completeness loop on that BR's feature, which fires the personas:
+**R-1 — V-2 персоны** (фикс frontmatter 0103 — уже доставлен ✅):
+> ⚠️ **ИСПРАВЛЕНО (после прогона 2026-06-27, FB-LR-26 / DEC-DEV-0111): премиса ниже была механически
+> неверна.** Значимая правка `.product/` наполняет `advisor-pending.yaml`, но это **routing-таблица**, а
+> НЕ очередь-на-спавн — `/product:complete` спавнит персоны ТОЛЬКО по гэпам оракула (`gaps>0`). На полной
+> фиче (на прогоне 2026-06-27 FM-001 = `met:true, gaps:[]`) персоны не спавнятся вообще, и V-2 остаётся
+> непроверенным. **Чтобы реально упражнить резолв персон:** прогоняй `/product:complete` на фиче, которую
+> оракул скорит **< 1.0** (под-специфицированной), либо `/product:complete <feature> --dry-run`
+> (SCORE+SURFACE без авто-фикса). Правка BR-013 ниже всё ещё полезна как наполнитель `advisor-pending`, но
+> сама по себе персон не запускает.
+> **Если гонишь параллельно с G-1** (Параллелизация выше): делай это в своём worktree И бери BR из фичи,
+> ОТЛИЧНОЙ от `glossary`/`billing` — правка glossary-BR (BR-051) пока G-1 валидирует `glossary`
+> двигает спеку под гейтом. Parallel-safe дефолт ниже = **`BR-013` → FM-001 (auth)**.
+1. Сделай **значимую** правку реального артефакта `.product/` (изменение **тела** BR или IC — не просто
+   bump `version:`/`updated:`), чтобы наполнить теперь-пустой `.product/.pending/advisor-pending.yaml`.
+   Конкретные варианты (все ревьюятся персонами architect+qa):
+   - **`BR-013` (session-token-ttl) → FM-001 (auth)** — **parallel-safe** (не пересекается с glossary/billing).
+   - `BR-051` (glossary-snapshot-construction) → FM-003 — **только последовательно** (конфликтует с G-1).
+   - `BR-068` (checkout-idempotency) → FM-005 — конфликтует с G-2.
+2. Прогони completeness-loop на фиче этой BR, что триггерит персоны:
 ```
-/product:complete FM-003      # if you edited a glossary BR (BR-051); use FM-005 for a billing BR (BR-068)
+/product:complete FM-001      # auth-BR (BR-013) — parallel-safe; FM-003 (glossary)/FM-005 (billing) — ТОЛЬКО при последовательном прогоне
 ```
-> What I check: the personas resolve to their registered agents (no «Agent type not found»). If you
-> see that error — **stop and tell me** (the frontmatter fix did not land); never let it fall back to a
-> generic agent.
+> Что я проверяю: персоны резолвятся в зарегистрированных агентов (нет «Agent type not found»); пасс прогона —
+> это резолв персон, а не score loop'а. Если видишь «Agent type not found» — **стоп, скажи мне** (фикс
+> frontmatter не доехал); никогда не давай свалиться в generic-агента.
 
 ---
 
-## Step 3 — hand back
+## Step 3 — вернуть мне
 
-Give me, per run: session id + the `result` JSON + "transcript saved". I grade all of them in **one
-sweep** against the rubric (§6 of the live-plan) with a blind second auditor + a neutral adjudicator
-for the headline runs, and write the ledger rows. Green ⇒ that increment is live-validated; a genuine
-new defect ⇒ a new `DEC-DEV` (next free **0111** — 0107-0110 are consumed; the journal tail is the source of truth).
+Дай мне, per прогон: session id + `result` JSON + «транскрипт сохранён». Граю все одним **проходом**
+против рубрики (§6 live-plan) со слепым вторым аудитором + нейтральным судьёй для головных прогонов,
+и пишу строки в ledger. Зелёный ⇒ инкремент live-validated; настоящий новый дефект ⇒ новый `DEC-DEV`
+(следующий свободный **0111** — 0107-0110 заняты; хвост журнала — источник истины).
 
 ---
 
-## Don'ts (the contamination guards)
+## Чего НЕ делать (гарды против контаминации)
 
-- ❌ Don't tell the pilot session what's being tested (no FB-LR ids, no "watch for X").
-- ❌ Don't coach mid-run or fix things for it — let it run; the transcript is the evidence.
-- ❌ Don't manufacture a validator crash (FB-LR-15) or a transient block (T5) — those are
-  **opportunistic**; assert the negative on clean runs, capture the positive only if it happens naturally.
-- ❌ Don't skip the wipe-protection check in Step 0.
+- ❌ Не говори пилотной сессии, что тестируется (никаких FB-LR-id, никаких «следи за X»).
+- ❌ Не коучь по ходу и не чини за неё — пусть прогон идёт; транскрипт = доказательство.
+- ❌ Не подстраивай искусственно падение валидатора (FB-LR-15) или transient-блок (T5) — они
+  **opportunistic**; на чистых прогонах фиксируй негатив, позитив лови только если случится сам.
+- ❌ Не пропускай проверку wipe-protection в Step 0.
 
-## Related
-- Plan + grading rubric (reviewer): `dev/ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md`
-- Ledger (where findings land): `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`
-- Increment: `DEV_JOURNAL.md` DEC-DEV-0101 / 0102 / 0106
-- Separation principle: `dev/meta-improvement/checklists/live-run-validation.md`
+## Связанное
+- План + рубрика грейдинга (ревьюер): `dev/ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md`
+- Ledger (куда падают находки): `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md`
+- Инкремент: `DEV_JOURNAL.md` DEC-DEV-0101 / 0102 / 0106
+- Принцип разделения: `dev/meta-improvement/checklists/live-run-validation.md`

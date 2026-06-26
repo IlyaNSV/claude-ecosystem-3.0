@@ -6633,6 +6633,35 @@ SessionStart-хук `rails-session-start.js` (regenerate `RAILS.md` + inject к�
 
 ---
 
+## DEC-DEV-0111 — N+2 gate-followups batch live-run grading sweep (Fork C: G-1/R-1/G-2) + parallel-worktree shared-checkout hazard
+
+**Date:** 2026-06-27
+**Trigger:** Owner-driven live-run of the N+2 gate-followups (0101/0102/0106) + carried backlog, executed in the pilot across 3 sessions (G-1 glossary P6 `188e4bfa`; R-1 personas `3769169b`; G-2 billing P6 `f52a73f6`) and handed back for the one-pass grading sweep promised by `ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md` §6.
+**Tag:** #orchestrator #live-validation #methodology #observability
+
+### Context
+The gate-followups were verify-green but never live-run. Fork C ran G-1 + R-1 + G-2 (G-3/P5→P6 deferred to a real un-done feature). Graded post-hoc by the layered evidence model + executor/reviewer separation: 3 independent forensic auditors (one per run) + the reviewer's own corroboration of every outcome-flipping claim (R-1's "no fallback", G-2's "substrate neutralized"). Full per-ref disposition + new findings: `dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md` (Fork C section, FB-LR-23..26).
+
+### Decision (sweep disposition)
+- **LIVE-VALIDATED → lifted out of verify-green-only:** FB-LR-21/**0106** (RA-10 surfaces the spec-sanctioned orphan as a finding, not `clean:true`); FB-LR-15/**0101** *negative* (no silent validator drop, 3 lenses ran on G-1+G-2); T5/**0096** *escalate-don't-mask* (G-2 escalated 2 real cross-spec conflicts, no unilateral mask — 2nd independent confirmation after Run-C glossary).
+- **OWED (not exercised — run-design, not code):** V-2/**0103** (personas never spawned — spawn is gap-gated, FM-001 scored perfect; `advisor-pending` is a routing table, not a spawn queue); FB-LR-16/**0102** disclosure + **T1** lying-substrate (G-2 ran under READY because the executor restored the substrate before the gate).
+- **OPEN (product):** `had_trial` FM-001↔FM-005 — not touched by the run; owner Path A/B still pending.
+- **NEW DEFECT → this entry:** FB-LR-23 parallel-worktree shared-checkout hazard (below). FB-LR-24 (readiness probe inferential) QUEUED into env-readiness hardening; FB-LR-25 (envelope observability) ledger-only candidate.
+
+### The new defect (FB-LR-23)
+Parallel pilot worktrees share one `.git` checkout/index, and the gate's escalation + remediation write-path assumes a private tree. G-1: escalate-agents allocated PA-ids from a counter scanned across **two** files (main vs work-4) → `PA-027` denoted two different escalations. G-2: a remediation agent's Edit briefly hit the **main** checkout (reverted via `git checkout --`); the session flagged the `git commit` race on the shared index even with non-overlapping file zones. Exactly [[env_parallel_sessions_share_checkout]] surfacing inside the orchestrator. Single-writer held (no content lost, main code untouched) — so it is a robustness defect, not a data-loss one. **Guard proposed** (PA-id allocation keyed to a single canonical pending-actions file regardless of checkout; commit-zone advisory re-check) = OPEN follow-up, NOT fixed here.
+
+### Outcome
+Ledger updated (Fork C section + FB-LR-23..26 + positive confirmations); runbook corrected (R-1 premise + G-2 substrate-DOWN protocol); ROADMAP «Где мы сейчас» + memory synced. No ecosystem code touched this unit (audit + docs only) → no CHANGELOG entry, counts 24/44 unchanged.
+
+### Lessons
+1. **A populated queue is not a fired trigger.** R-1 assumed `advisor-pending.yaml` (written by the zone hook) would *cause* persona spawns; it is only a routing table consulted *when the oracle finds a gap*. Spawn is gap-gated. To live-test persona resolution you need a feature the oracle scores <1 (or `--dry-run` = SCORE+SURFACE). Verify the *firing condition*, not just the *side-effect that looks like firing*.
+2. **Executor/reviewer separation collides with adverse-condition contracts.** A contract whose whole point is "degrade gracefully under non-ready" cannot be live-tested by an uncoached executor — the executor will *rationally* fix the adversity first to get a real verdict (G-2 brought the substrate up before the gate). Such contracts need an operational reason the adversity persists that the executor can't simply remove, or instrumentation that runs the gate under the adverse state without the executor's ability to restore it.
+3. **`committed_under_non_ready:0` is ambiguous** — it means the same on a clean READY run, on a fully-deferred non-ready run, AND on a neutralized run that was *supposed* to be non-ready. The field can't tell you the disclosure path actually engaged; only the readiness state + the run's intent can. Grade the *condition the run actually met*, not the field in isolation.
+4. **Parallel worktrees re-introduce the shared-checkout hazard at the tool layer** — the same lesson that bit two sessions manually now bites the orchestrator's autonomous write-path. Worktree isolation protects *files*, not the shared `.git` index / cross-checkout id counters.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
