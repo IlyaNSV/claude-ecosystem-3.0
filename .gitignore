@@ -46,6 +46,12 @@ WORK-IN-PROGRESS.md
 .test-output/
 fixtures/local/
 
+# === Work-rails generated index (regenerable projection — run rails-build.js) ===
+# Outputs are derived from git log; committing them across many branches/worktrees
+# = merge churn. Tracked: rail-areas.json + README.md. Regenerate on demand.
+dev/meta-improvement/rails/RAILS.md
+dev/meta-improvement/rails/rails-rollup.ndjson
+
 # === Claude Code state (anywhere inside ecosystem repo) ===
 # Ecosystem repo itself does NOT use .claude/ — its content lives in
 # commands/, skills/, etc. at root (they get COPIED to user's .claude/
