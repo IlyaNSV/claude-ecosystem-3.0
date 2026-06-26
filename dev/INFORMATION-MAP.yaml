@@ -1,0 +1,193 @@
+# INFORMATION-MAP — information-topology resolver (dev-контур)
+#
+# ЧТО ЭТО. Единственный каталог топологии данных репозитория: для каждого КЛАССА
+# информации — где её SSOT, кто authoritative при конфликте источников, как
+# верифицировать. Отвечает на вопрос «где ПРАВДА про X и кому верить, если копии
+# разошлись», которого нет ни в docs/MAP.md (визуальный pipeline + C4), ни в
+# HOME.md (vault-навигация «куда пойти»), ни в CLAUDE.md §«Repository structure»
+# (физическое дерево папок). Это — логическое дерево + иерархия приоритета.
+#
+# ЗАЧЕМ. Карта полок была размазана по всем потребителям (CLAUDE.md, 7 субагентов,
+# 172 cross-ref пути) и держалась «в голове» (правило «бери из хвоста журнала,
+# память/ROADMAP отстают» нигде не кодифицировано). Это уровень-1 «библиотекаря»:
+# каталог полок + приоритет. Уровень-2 (retrieval-агент) при появлении читает
+# ИМЕННО этот файл; пока его нет — потребитель (Claude) читает каталог напрямую,
+# когда не уверен, где истина.
+#
+# ДИЗАЙН-ПРИНЦИПЫ (почему этот файл сам не дрейфует):
+#   P1  Картографируй AUTHORITY, не VALUES. Authority-топология (статус→ROADMAP,
+#       решения→журнал) стабильна. Волатильные значения (counts, списки команд)
+#       НЕ копируются сюда — только указатель на верификатор/генератор. Поэтому в
+#       этом файле сознательно НЕТ ни «24», ни «44», ни списка команд.
+#   P2  Дефолт разрешения конфликта: `git log` + хвост DEV_JOURNAL.md бьют
+#       ROADMAP и memory. ROADMAP/память отстают by design (и иногда ОПЕРЕЖАЮТ
+#       журнал несмёрженной работой из параллельного worktree — см. memory-location).
+#   P3  Каталог verifiable: каждый `ssot:`-путь обязан существовать. Дешёвый
+#       будущий guard — скрипт, проверяющий резолвимость путей.
+#   P4  dev-only. НЕ шипится в пилот при bootstrap (ссылается на dev/, DEV_JOURNAL,
+#       memory — артефакты контура разработки, которых в .product/ нет).
+#
+# Формат записи класса:
+#   id     — стабильный slug
+#   asks   — вопрос(ы) потребителя, на которые класс отвечает
+#   ssot   — единственный источник истины (путь)
+#   mirrors— зеркала/указатели (НЕ источники; перечислены, чтобы их не путали с SSOT)
+#   authority_on_conflict — кому верить, если источники разошлись
+#   verify — как проверить факт эмпирически
+#   note   — staleness/подводные камни
+
+version: 1
+
+# ═══════════════════════════════════════════════════════════════════════════
+# A. СТАТУС И РЕШЕНИЯ — самое частое и самое волатильное; здесь дрейф рекуррентен
+# ═══════════════════════════════════════════════════════════════════════════
+
+classes:
+
+  - id: project-status
+    asks: "Где мы сейчас? Какая фаза/итерация? Что недавно мёржилось?"
+    ssot: "ROADMAP.md#где-мы-сейчас"
+    mirrors:
+      - "CLAUDE.md §«Где мы сейчас» — pointer на ROADMAP, не копия (pointer-collapse)"
+      - "memory: project_ecosystem_status.md — тонкий pointer, ОТСТАЁТ"
+    authority_on_conflict: "git log  >  DEV_JOURNAL.md (хвост)  >  ROADMAP  >  memory"
+    verify: "сверить ROADMAP §«Где мы сейчас» против `git log --oneline -15`"
+    note: >-
+      ROADMAP и память отстают by design. При ЛЮБОМ конфликте истина — git + хвост
+      журнала. Бывший triple-declaration drift (README/CLAUDE/ROADMAP держали 3
+      расходящиеся копии) схлопнут в этот единственный SSOT.
+
+  - id: decisions-rationale
+    asks: "Почему так сделали? Какой последний DEC-DEV? Что отвергли и почему?"
+    ssot: "DEV_JOURNAL.md (append-only; хвост = самое свежее)"
+    mirrors:
+      - "memory: project_ecosystem_status.md хранит «последний DEC-DEV» — но это ЭХО, не источник"
+    authority_on_conflict: "DEV_JOURNAL.md > memory"
+    verify: "`grep -oE 'DEC-DEV-[0-9]{4}' DEV_JOURNAL.md | sort -u | tail`"
+    note: >-
+      ВАЖНО: max-номер в журнале ≠ следующий свободный. Параллельная работа в другом
+      worktree может застолбить номер в памяти/на своей ветке РАНЬШЕ, чем он попадёт в
+      журнал main (наблюдалось: память=0108, журнал этого дерева=0107). Перед присвоением
+      нового DEC-DEV — cross-check памяти И веток, иначе collision при merge (прецедент:
+      двойной 0082). Файл 803 KB — читать ХВОСТ, не целиком.
+
+  - id: changelog-consumer
+    asks: "Что доставлено/обещано пользователю-потребителю? Что в незарезанном релизе?"
+    ssot: "CHANGELOG.md ([Unreleased] = накопление до cut)"
+    authority_on_conflict: "CHANGELOG.md"
+    verify: "раздел [Unreleased]; cut-процедура — dev/meta-improvement/checklists/patch-cut.md"
+    note: >-
+      НЕ путать с DEV_JOURNAL: CHANGELOG = consumer-facing «что изменилось»,
+      журнал = «почему» (rationale/root-cause). Разводка — CLAUDE.md таблица.
+
+# ═══════════════════════════════════════════════════════════════════════════
+# B. КАНОН ПРОДУКТА (WHAT-слой) — стабильный; docs/ побеждает skills/commands
+# ═══════════════════════════════════════════════════════════════════════════
+
+  - id: artifact-formats
+    asks: "Какой формат/поля артефакта <TYPE>? Граф зависимостей артефактов?"
+    ssot: "docs/pmo/artifacts/<TYPE>.md (+ docs/pmo/artifacts/README.md — dependency graph)"
+    authority_on_conflict: "docs/pmo/artifacts/ > skill inline-шаблон (skill обязан зеркалить канон, DEC-DEV-0012)"
+    verify: "прочитать конкретный <TYPE>.md; число типов — НЕ отсюда, см. canonical-counts"
+
+  - id: validation-rules
+    asks: "Какие правила валидации? Что проверяет правило V-NN?"
+    ssot: "docs/pmo/validation.md"
+    authority_on_conflict: "docs/pmo/validation.md"
+    verify: "прочитать validation.md; число правил — см. canonical-counts (вычисляется)"
+
+  - id: processes
+    asks: "Как устроен процесс D1-D7 / P1-P5? Кто owns, что delegated?"
+    ssot: "docs/pmo/processes.md (процессы) + docs/pmo/pmo-map.md (pipeline ownership D1-D6)"
+    verify: "прочитать; визуальная карта pipeline — docs/MAP.md §1"
+
+  - id: module-contracts
+    asks: "Контракт модуля Product/Design/Integrator?"
+    ssot: "docs/<module>-module/SPEC.md"
+    verify: "product-module/SPEC.md · design-module/SPEC.md · integrator-module/SPEC.md"
+
+  - id: handoff-format
+    asks: "Что входит в handoff.md? Как делегируется D2-Tech во внешний инструмент?"
+    ssot: "docs/product-module/handoff-spec.md"
+    verify: "13 обязательных секций + P1 self-contained / P4 receiver-agnostic / AP-2 (no-references)"
+    note: "handoff = эталонный self-contained retrieval (zero shelf-tax). Концептуально — уровень-2 «библиотекарь» для внешних инструментов, уже работающий."
+
+# ═══════════════════════════════════════════════════════════════════════════
+# C. ЧИСЛА И СПИСКИ — волатильны; SSOT = ВЫЧИСЛЕНИЕ, а не копия (P1)
+# ═══════════════════════════════════════════════════════════════════════════
+
+  - id: canonical-counts
+    asks: "Сколько типов артефактов? Сколько правил валидации?"
+    ssot: "ВЫЧИСЛЯЕТСЯ: `node dev/meta-improvement/scripts/check-counts.js`"
+    mirrors:
+      - "~10 обзорных доков цитируют числа (artifacts/README, docs/README, verify.md, status.md, MAP…) — это КОПИИ, не источники"
+    authority_on_conflict: "check-counts.js (ground-truth из docs/pmo/artifacts/ + validation.md) > любая цитата в доке"
+    verify: "`node dev/meta-improvement/scripts/check-counts.js` (blocking commit-gate)"
+    note: >-
+      Числа сюда НЕ копируются сознательно (P1) — иначе каталог стал бы 11-м
+      рассинхронным count-доком. check-counts вычисляет ground-truth; цитаты-копии
+      дрейфуют (прецедент «23 vs 24», DEC-DEV-0083).
+
+  - id: command-catalog
+    asks: "Какие команды/скиллы существуют? Их назначение?"
+    ssot: "ГЕНЕРИРУЕТСЯ: gen-command-catalog.cjs → docs/guide/02-commands.md (из frontmatter, DEC-DEV-0105)"
+    authority_on_conflict: "frontmatter команд (источник) > сгенерированный каталог > ручные упоминания"
+    verify: "`node ...gen-command-catalog.cjs --check`; реальный список — `ls commands/*/`"
+    note: "НЕ править 02-commands.md руками — регенерировать. Карта artifact→skill→command сознательно НЕ ведётся (MAP.md §3: высокий sync-cost)."
+
+# ═══════════════════════════════════════════════════════════════════════════
+# D. ПРОЦЕСС РАЗРАБОТКИ (dev-only) — что я обязан делать и где это записано
+# ═══════════════════════════════════════════════════════════════════════════
+
+  - id: process-triggers
+    asks: "Что я обязан сделать при fix/feat/spec-change? Какой ритуал перед/после фазы?"
+    ssot: "CLAUDE.md §«Process triggers» (таблица) + dev/meta-improvement/checklists/*"
+    authority_on_conflict: "enforced-строки (🔒) принуждаются process-gate.js; остальное — дисциплина + warn-хуки"
+    verify: "таблица в CLAUDE.md; gate — dev/meta-improvement/scripts/process-gate.js"
+
+  - id: dev-conventions
+    asks: "Конвенции коммитов/именования/записи? Когда CHANGELOG vs DEV_JOURNAL?"
+    ssot: "CLAUDE.md §«Конвенции репозитория» + dev/meta-improvement/CONVENTIONS.md"
+    verify: "обе секции; D6/D7 disambiguation — CONVENTIONS.md §1.3"
+
+  - id: phase-gates
+    asks: "Готовность фазы N? Smoke-план? Что блокирует следующий шаг?"
+    ssot: "dev/gates/*.md (readiness + smoke-планы)"
+    mirrors:
+      - "CLAUDE.md §«Где мы сейчас» перечисляет активные gates с указателями"
+    verify: "`ls dev/gates/`; статус прохождения — в DEV_JOURNAL/ROADMAP"
+
+  - id: deferred-work
+    asks: "Что отложено/в tech-debt/в бэклоге?"
+    ssot: "dev/deferred/*  +  dev/tech-debt/*  +  dev/v1_1_backlog.md"
+    verify: "`ls dev/deferred/ dev/tech-debt/`"
+
+  - id: active-tracks
+    asks: "Что в активной разработке прямо сейчас (Orchestrator, Vision, Feedback)?"
+    ssot: "dev/ORCHESTRATOR_*.md, dev/ECOSYSTEM_VISION.md (планы) + хвост DEV_JOURNAL"
+    mirrors:
+      - "memory: project_orchestrator_*, project_ecosystem_vision_* — навигационные эхо, ОТСТАЮТ"
+    authority_on_conflict: "dev/ планы + журнал > memory"
+    verify: "`ls dev/*.md`; свежесть — git log по dev/"
+
+# ═══════════════════════════════════════════════════════════════════════════
+# E. ПАМЯТЬ И НАВИГАЦИЯ — где лежат сами «полки» и точки входа
+# ═══════════════════════════════════════════════════════════════════════════
+
+  - id: memory-location
+    asks: "Где persistent memory Claude? Можно ли ей верить?"
+    ssot: "out-of-repo: ~/.claude/projects/C--Users-pw201-WebstormProjects-claude-ecosystem-3-0/memory/ (индекс — MEMORY.md)"
+    authority_on_conflict: "ВСЕГДА ниже git + DEV_JOURNAL. Память detect-only, отстаёт; иногда ОПЕРЕЖАЕТ журнал несмёрженной работой параллельной сессии"
+    verify: "сравнить запись памяти с хвостом DEV_JOURNAL + git log ПЕРЕД использованием как факт"
+    note: >-
+      Память вне репозитория — недостижима для tooling (warn-хуки её не видят).
+      Синхронизация ручная (memory-sync skill) / поведенческая (autoflow DEC-DEV-0100).
+      Параллельные сессии делят checkout — ветка соседа может утащить HEAD.
+
+  - id: navigation-entry
+    asks: "С чего начать сессию? Куда пойти за обзором?"
+    ssot: "docs/MAP.md (визуальный entry-point) + CLAUDE.md §«Что делать в этой сессии» (ритуал)"
+    mirrors:
+      - "HOME.md — Obsidian-vault точка входа («куда пойти читать»)"
+    verify: "docs/MAP.md; этот каталог (INFORMATION-MAP) — спутник MAP для вопроса «где правда/кто прав»"
+    note: "Разделение: MAP.md = ЧТО где (визуал/архитектура); HOME.md = КУДА пойти; INFORMATION-MAP = ГДЕ ПРАВДА + кто authoritative при конфликте."
