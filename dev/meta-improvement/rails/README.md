@@ -44,6 +44,20 @@ content — so granularity stays high while the index stays compact.
   are empty on this (append-only, DRY) repo by design; the pilot (`my-first-test`)
   is where they earn their keep.
 
+## Session wiring (DEC-DEV-0110)
+
+A **SessionStart hook** (`dev/meta-improvement/hooks/rails-session-start.js`) regenerates
+this digest and injects a compact summary into every new session — so work-history is
+available without being asked to run anything. work-rails is registered as the
+`work-history` class in `dev/INFORMATION-MAP.yaml` (discoverable via the topology catalog),
+and the session ritual (`CLAUDE.md §«Что делать в этой сессии»`) points at it.
+
+**Rollback (three levels):**
+- instant OFF, no code change: env `RAILS_AUTOGEN=0`;
+- disable the hook: remove the `SessionStart` entry from `.claude/settings.local.json`
+  (local — gitignored in the ecosystem repo);
+- remove the feature: revert the wiring PR.
+
 ## Planned next
 
 - generalize to the pilot (`--repo`) with a pilot-specific `rail-areas.json`;

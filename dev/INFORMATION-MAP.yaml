@@ -170,6 +170,20 @@ classes:
     authority_on_conflict: "dev/ планы + журнал > memory"
     verify: "`ls dev/*.md`; свежесть — git log по dev/"
 
+  - id: work-history
+    asks: "Сколько раз / с каким намерением / каким исходом трогали область X? Где паттерны — кандидаты в скилл, «делали-не-помогло»? Какие коммиты откатить?"
+    ssot: "ВЫЧИСЛЯЕТСЯ: `node dev/meta-improvement/scripts/rails-build.js` → dev/meta-improvement/rails/RAILS.md (проекция git log + DEV_JOURNAL; gitignored, регенерируется)"
+    mirrors:
+      - "dev/meta-improvement/rails/rail-areas.json — таксономия path→area (вход проектора, НЕ источник истории)"
+    authority_on_conflict: "git log (ground-truth) > RAILS.md (его проекция; устаревает → регенерировать)"
+    verify: "`node dev/meta-improvement/scripts/rails-build.js`, затем читать RAILS.md (area-фасеты + artifact-ID + DEC-DEV-каталог + clone/churn)"
+    note: >-
+      Индекс — ПРОЕКЦИЯ, не второй источник: регенерируем из git → не дрейфует (тот же
+      паттерн, что canonical-counts). Авто-регенерация на SessionStart
+      (dev/meta-improvement/hooks/rails-session-start.js; тумблер env RAILS_AUTOGEN=0;
+      регистрация в .claude/settings.local.json — gitignored, локально). DEC-DEV-0108
+      (проектор) + 0110 (wiring).
+
 # ═══════════════════════════════════════════════════════════════════════════
 # E. ПАМЯТЬ И НАВИГАЦИЯ — где лежат сами «полки» и точки входа
 # ═══════════════════════════════════════════════════════════════════════════
