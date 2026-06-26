@@ -239,7 +239,7 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 ## Что делать в этой сессии (Claude)
 
 При запуске сессии в этом репо:
-0. **Сориентируйся по карте** — [docs/MAP.md](docs/MAP.md) (визуальный entry-point: pipeline D1-D6 + C4 container)
+0. **Сориентируйся по карте** — [docs/MAP.md](docs/MAP.md) (визуальный entry-point: pipeline D1-D6 + C4 container). Когда нужно «где ПРАВДА про класс информации X / кто authoritative при конфликте источников / как верифицировать» — [`dev/INFORMATION-MAP.yaml`](dev/INFORMATION-MAP.yaml) (information-topology resolver; кодифицирует «при конфликте верь `git log` + хвосту журнала, ROADMAP/память отстают»)
 1. **Прочитай этот файл** (CLAUDE.md — auto-loaded)
 2. **Загляни в [DEV_JOURNAL.md](DEV_JOURNAL.md)** — последние 3-5 entries, чтобы знать недавний контекст decisions
 3. **Проверь [ROADMAP.md](ROADMAP.md) секцию "Где мы сейчас"** — может быть устарела относительно git log
