@@ -6432,6 +6432,91 @@ P5 (`feature-to-tdd-impl`) делегирует фичевый гейт P6 (`val
 
 ---
 
+## DEC-DEV-0101 — P6 validator-drop: упавшую линзу не теряем тихо, а degrade'им громко (FB-LR-15)
+
+**Date:** 2026-06-26
+**Trigger:** N+2 ре-валидация, Run B re-val (`bcf29996`) — находка FB-LR-15: валидатор RA-10 умер на terminal API error («Connection closed mid-response»), `result.validators[]` его просто опустил, вердикт синтезировался на 2 из 3 линз без дисклоза. Владелец согласился чинить.
+**Tag:** #orchestrator #p6 #validators #observability #FB-LR-15 #gate-contract
+
+> **Нумерация:** закрывает зарезервированный разрыв 0101 (резерв заявлен в DEC-DEV-0103 numbering-note). 0102 — следом, тем же инкрементом. Запись добавлена после 0105 (append-конвенция); номер взят из резерва, не из хвоста.
+
+### Context
+P6 запускает 3 линзы (RA-8/9/10) через `parallel(VALIDATORS.map(...))`. Workflow-семантика: агент, умерший на терминальной API-ошибке (в отличие от stall, который harness ретраит bounded ≤5), возвращает `null`. Прежний `.filter(Boolean)` (validate-feature-impl.mjs:274) **молча выбрасывал** null-слот → `results` содержал < 3 линз, и пропавшая ось была выводима только из per-agent ledger (`state:error`), но **никогда не surface'илась в конверте вердикта**. Здесь вердикт не флипнулся (run#1 и так был MANUAL_VERIFY), но в другом прогоне выпавший RA-10 мог пропустить реальный интеграционный дефект под чистым GO. Асимметрия: stall → авто-ретрай; hard API error → 0 ретраев.
+
+### Options considered
+1. **Bounded re-spawn + флаг, понижающий GO (выбрано).** Детектить null-слот → re-spawn ≤2; всё ещё пусто → `incompleteValidators` → понижает чистый GO до MANUAL_VERIFY (никогда NO-GO — линза UNKNOWN, не failed). Минимально, additive, консервативно (то же поведение, что `readiness`-ось T1, но на уровне линзы).
+2. Только флаг без re-spawn. Отвергнуто: транзиентный обрыв API часто лечится одним ретраем; терять линзу сразу — расточительно.
+3. Падать всем гейтом при выпавшей линзе. Отвергнуто: слишком резко; неполная линза = «не судил эту ось», а не «код плохой».
+
+### Decision
+В `validate-feature-impl.mjs`: helper `runValidatorSlot` (re-spawn ≤ `MAX_VALIDATOR_RESPAWN`, default 2); `incompleteValidators` собирает не-вернувшиеся; в синтезе `if (incompleteValidators.length && result === 'GO') result = 'MANUAL_VERIFY_REQUIRED'`; новое return-поле `validators_incomplete` + disclosure-finding. Wiring-тест P6 24→26 (re-spawn bounded + GO-degrade + новый ключ).
+
+### Outcome
+`npm run verify` зелёный (exit0; 28 hooks; P6 wiring 26/26). **Additive** — `validators_incomplete` новое опц. поле (absent/empty == прежнее поведение), без artifact-type/rule → counts 24/44. Ре-валидация — на P6-прогоне, где валидатор реально умрёт (трудно подгадать; флаг проверяется и косвенно — на чистом прогоне `validators_incomplete:[]`). FB-LR-15 → FIXED в ledger.
+
+### Lessons
+1. **Наблюдаемость гейта = его return-конверт, не per-agent логи** (тот же класс, что FB-LR-02/19). Пропавшая линза, выводимая только из `state:error` субагента, для машинного читателя невидима — она обязана быть в `result`.
+2. **`.filter(Boolean)` над агент-результатами — тихий потеритель сигнала.** Там, где `null` означает «не отработало», фильтр прячет деградацию. Нужен явный учёт пропавших слотов.
+3. **Деградируй на уровне той же оси, что и субстрат.** «Линза не судила» ≈ «субстрат не дал судить» (T1) — обе → MANUAL_VERIFY, не NO-GO; UNKNOWN ≠ FAILED.
+
+---
+
+## DEC-DEV-0102 — P6 коммитит при non-READY: не запрещаем, а помечаем и дисклозим (FB-LR-16)
+
+**Date:** 2026-06-26
+**Trigger:** N+2 ре-валидация, Run B re-val (`bcf29996`) — FB-LR-16: P6 вернул `MANUAL_VERIFY [readiness=ENV_NOT_READY]`, но всё равно заремедиировал и закоммитил подтверждённый design-divergence (`b67798c`). Поднято адъюдикатором как единственная decision-relevant асимметрия двух аудитов. Владелец выбрал политику.
+**Tag:** #orchestrator #p6 #readiness #remediation #policy #FB-LR-16
+
+### Context
+P6 ремедиирует+коммитит в Phase 3 (verify-finding-before-act → bounded fix → commit) **до** синтеза вердикта. Если гейт уже non-READY (субстрат лежит / upstream degraded), фикс коммитится **без зелёного suite как страховки**. Defensible (divergence подтверждён против ground-truth независимо от БД; `unilateral:false`) — но **политический** вопрос: должен ли гейт, вернувший ENV_NOT_READY, вообще мутировать дерево, или держать все коммиты до READY-ре-рана. Severity LOW: вердикт корректен, вопрос — автономия мутации вслепую к части suite.
+
+### Options considered
+1. **(a) Keep + disclosure (выбрано владельцем).** Substrate-независимый подтверждённый фикс (verify-finding-before-act уже доказал его реальность против ground-truth) остаётся коммитибельным, НО коммит **помечается** (` [readiness=…: re-verify on a READY re-run]`) и **дисклозится** (`committed_under_non_ready` + finding). Минимально, сохраняет авто-ремедиацию.
+2. **(b) Gate-behind-READY** — при `readiness != READY` гейт surface-only, все коммиты ремедиации до READY-ре-рана. Отвергнуто: запрещать = выбрасывать реальную верифицированную работу; настоящий риск был *тихая* мутация, а не сам факт коммита.
+
+### Decision
+В `validate-feature-impl.mjs`: предвычисление `remediationReadiness`/`nonReadyRemediation` до ремедиации (RANK/worstReadiness подняты, дубликат в синтезе убран); в remediation-промпт — условная READINESS DISCLOSURE clause (помечай commit message + не чини то, чья корректность опирается на зелёный suite → `transient`, ждёт READY); в findings — disclosure-строка; новое return-поле `committed_under_non_ready`. Scoped **только к P6-ремедиации** (где наблюдалось и где живёт policy-вопрос); P5-impl коммитит под degraded субстратом штатно (таска может его поднять). Wiring P6 включает FB-LR-16-ассерты.
+
+### Outcome
+`npm run verify` зелёный; P6 wiring 26/26. **Additive** — `committed_under_non_ready` новое опц. поле; absent == прежнее поведение → counts 24/44. Ре-валидация — на P6-прогоне с лежащим субстратом + подтверждённым фиксом (помечен ли коммит). FB-LR-16 → FIXED (policy a) в ledger.
+
+### Lessons
+1. **«Запретить мутацию вслепую» vs «пометить мутацию вслепую» — выбирай по тому, теряешь ли реальную работу.** Verify-before-act уже отделяет подтверждённый-против-ground-truth фикс от спекулятивного; первый безопасно коммитить даже без suite, второй — нет. Риск был не в коммите, а в его невидимости.
+2. **Policy-развилку решает владелец, механику — код.** Я дал (a)/(b) с рекомендацией; зафиксировал выбор в коде + дисклозе, не в прозе.
+
+---
+
+## DEC-DEV-0106 — N+2 riders: RA-10 surface-orphan (FB-LR-21) + guard-граница (FB-LR-22) + seam-split паттерн (FB-LR-20)
+
+**Date:** 2026-06-26
+**Trigger:** N+2 ре-валидация, Run C glossary (`1ff7e2d8`) — три LOW-находки наблюдаемости/робастности. Закрыты тем же gate-contract-инкрементом, что 0101/0102. Владелец согласился с рекомендациями (21 починить / 22 задокументировать границу / 20 узаконить паттерн).
+**Tag:** #orchestrator #p6 #remediation-guard #ra-10 #FB-LR-20 #FB-LR-21 #FB-LR-22
+
+### Context
+- **FB-LR-21:** RA-10 (integration-boundary) вернула `clean:true` на FM-003 `GlossarySnapshotService.buildSnapshot` no-call-site, классифицировав orphan как «deferred-by-design», тогда как RA-8/9 + цепочка эскалации трактовали тот же seam как cross-spec-конфликт (PA-024). Дефект не утёк (поймала избыточность линз), но линза слишком лояльна к spec-санкционированным orphan'ам.
+- **FB-LR-22:** `remediation-guard.cjs` вернул `class:content` на **все 3** cross-spec-эскалации (агенты 89/95/98) — эскалация прошла целиком на LLM-суждении, детерминированный backbone нёс 0 нагрузки на T5-критическом пути.
+- **FB-LR-20:** consumer-правка (`345336e`) переформировала FM-002-owned файлы как «conform-to-owner», пока тот же seam эскалирован как forbidden-to-resolve (PA-024). `git show` подтвердил **честную** правку (design.md называет FM-003 авторитетным — не маскировка), но owner-vs-conflict тест guard'а не флагает consumer-правку чужого owned-файла под активной эскалацией.
+
+### Options considered
+- **FB-LR-21:** починить промпт (orphan → finding) vs оставить. → починить (дёшево; «тихо clear» — антипаттерн polarity-gate 0094).
+- **FB-LR-22:** задокументировать границу vs добавить cross-spec-эвристику сейчас. → задокументировать сейчас (честно назвать «lib OR own reading»-контракт), эвристику — отдельным follow-up (риск false-positive на семантике высок).
+- **FB-LR-20:** затянуть owner-vs-conflict эвристику vs узаконить seam-split. → узаконить (паттерн «shape=conform / wiring=escalate» валиден; false-positives дороже редкого over-step).
+
+### Decision
+- **FB-LR-21:** RA-10-промпт (`INTEGRATION_BOUNDARY`): deferred/spec-sanctioned orphan ОБЯЗАН surface как `kind:orphan-export` (severity low, помечен spec-sanctioned), не тихо `clean:true`. Wiring-ассерт.
+- **FB-LR-22:** `SCOPE / KNOWN BOUNDARY`-блок в заголовке `remediation-guard.cjs` — lib де-факто transient/infra/capability классификатор; cross-spec/design детект best-effort, держится на «escalate on your own reading» (BY CONTRACT — FSM эскалирует на EITHER lib OR agent). Tighten = OPEN follow-up.
+- **FB-LR-20:** «shape=conform / wiring=escalate» зафиксирован как accepted pattern в work-order; guard сознательно НЕ затянут.
+
+### Outcome
+`npm run verify` зелёный; P6 wiring 26/26. FB-LR-21 — правка промпта (Layer-2), FB-LR-22/20 — документация → без artifact-type/rule, counts 24/44. Все три в ledger переведены в FIXED/DOCUMENTED/ACCEPTED. Ре-валидация FB-LR-21 — на P6-прогоне со spec-санкционированным orphan.
+
+### Lessons
+1. **«Тихо clean» — антипаттерн на любой линзе, не только в polarity-gate (0094).** Удовлетворённость репортится через `clean:true` на агрегате, но spec-санкционированный orphan — это всё ещё находка для адъюдикации, не молчание.
+2. **Детерминированный backbone, не несущий нагрузки на критическом пути, должен честно назвать свою границу.** «lib OR own reading»-контракт держит корректность, но полагаться на lib как на единственный детектор cross-spec нельзя — это надо написать в либе, а не подразумевать.
+3. **Не каждую находку чинят кодом — часть узаконивают.** Seam-split (conform vs escalate) — валидный паттерн; затягивать эвристику под него = плодить false-positives. Документировать как accepted дешевле и честнее.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

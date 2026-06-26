@@ -194,10 +194,39 @@ test('keeps FB-001 (stringified args) + FB-002 (empty target) guards', () => {
   assert(/!FEATURE/.test(SRC) && /FB-002/.test(SRC), 'FB-002 empty-feature guard missing');
 });
 
+test('FB-LR-15: a dropped validator slot is bounded re-spawned, then recorded incomplete (DEC-DEV-0101)', () => {
+  assert(/MAX_VALIDATOR_RESPAWN\b/.test(SRC), 'no MAX_VALIDATOR_RESPAWN bound for the re-spawn');
+  assert(/runValidatorSlot\b/.test(SRC), 'no runValidatorSlot re-spawn helper');
+  assert(/incompleteValidators\b/.test(SRC), 'dropped lenses are not tracked as incompleteValidators');
+  assert(/FB-LR-15/.test(SRC), 'FB-LR-15 rationale not referenced');
+  // a never-run lens must degrade a would-be GO to MANUAL_VERIFY (never a silent reduced-lens GO)
+  assert(/incompleteValidators\.length && result === 'GO'/.test(SRC),
+    'an incomplete validator set does not degrade a clean GO');
+  // re-spawn loop must be bounded by the cap
+  assert(/attempt <= MAX_VALIDATOR_RESPAWN/.test(SRC), 're-spawn not bounded by MAX_VALIDATOR_RESPAWN');
+});
+
+test('FB-LR-16: a non-READY remediation discloses + marks its commits (DEC-DEV-0102)', () => {
+  assert(/nonReadyRemediation\b/.test(SRC), 'no nonReadyRemediation flag computed before remediation');
+  assert(/remediationReadiness\b/.test(SRC), 'no remediationReadiness pre-compute');
+  assert(/READINESS DISCLOSURE/.test(SRC), 'remediation prompt lacks the FB-LR-16 readiness-disclosure clause');
+  assert(/re-verify on a READY re-run/.test(SRC), 'commit-message disclosure marker missing');
+  assert(/FB-LR-16/.test(SRC), 'FB-LR-16 rationale not referenced');
+  // RANK/worstReadiness must be declared ONCE (pre-remediation), not redeclared in synthesis
+  assert((SRC.match(/const RANK = \{ READY: 0/g) || []).length === 1,
+    'RANK must be declared exactly once (pre-remediation), not duplicated in synthesis');
+});
+
+test('FB-LR-21: RA-10 surfaces a deferred/spec-sanctioned orphan, not a silent clear', () => {
+  assert(/FB-LR-21/.test(SRC), 'FB-LR-21 not referenced in the RA-10 lens');
+  assert(/deferred-by-design or spec-sanctioned orphan/.test(SRC),
+    'RA-10 does not instruct surfacing a spec-sanctioned/deferred orphan as a finding');
+});
+
 test('returns the P6 contract keys', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'confirmed_findings', 'remediated', 'residual', 'conflicts', 'result', 'findings', 'go_gate']) {
+  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'validators_incomplete', 'confirmed_findings', 'remediated', 'committed_under_non_ready', 'residual', 'conflicts', 'result', 'findings', 'go_gate']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
 });
