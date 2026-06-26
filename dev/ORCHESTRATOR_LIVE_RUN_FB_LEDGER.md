@@ -135,3 +135,45 @@
 - **Order-aware verify (T2) + readiness axis (T1) both intact** under a READY substrate; the false-NO-GO guard correctly did not engage.
 - **Durable skeleton held** — 99 agents / ~5.47 h / ~8.28M tokens with **clean cross-session recovery** across 2 interruptions (an earlier `wf_c76e052c` resumed into `wf_777d4af2`), zero duplicate task commits (`!t.done` filter).
 - **FB-006 boundary guard held live** — task 4.4 was REJECTED for an out-of-boundary `.claude/pending-actions.md` edit and the implementer reverted it.
+
+---
+
+## N+2 gate-followups batch live-run (Fork C: G-1 / R-1 / G-2) — 2026-06-27
+
+> The owner-driven live-sweep of the N+2 **gate-followups** (DEC-DEV-0101/0102/0106) + the carried-over
+> backlog, per executor-runbook [PILOT_RUNBOOK_N2_GATE_FOLLOWUPS.md](PILOT_RUNBOOK_N2_GATE_FOLLOWUPS.md) +
+> reviewer-rubric [ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md](ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6.
+> **Fork C** = G-1 + R-1 + G-2 (G-3 / P5→P6 deferred to a real un-done feature). Graded post-hoc by the
+> layered evidence model ([[feedback_audit_evidence_layers]]) + **executor/reviewer separation**
+> ([[feedback_separate_task_from_test]]): 3 independent forensic auditors (one per run) + the reviewer's own
+> corroboration of each outcome-flipping claim. Pilot sessions: **G-1** `188e4bfa` (wf `b0857359`, worktree
+> work-4); **R-1** `3769169b` (worktree work-5); **G-2** `f52a73f6` (wf `29425d82`, main checkout).
+> Next-free DEC-DEV at write time = **0111** (assign live; guard the 0082-style collision).
+
+### Verdict per ref (the sweep)
+
+| ref | run | verdict | one-line |
+|---|---|---|---|
+| **FB-LR-21 / 0106** (RA-10 orphan) | G-1 | ✅ **LIVE-VALIDATED** | RA-10 (integration-boundary) surfaced the spec-sanctioned `buildSnapshot` orphan as `kind:orphan-export` (sev low), **not** `clean:true` — closes the FB-LR-21 re-val owed since 0106. |
+| **FB-LR-15 / 0101** (negative) | G-1, G-2 | ✅ **LIVE-VALIDATED (neg)** | `validators_incomplete:[]` + all 3 RA lenses ran on both runs; no silent drop. Positive side (a validator actually dying) still opportunistic / not-exercised. |
+| **T5 / 0096** (escalate-don't-mask) | G-2 | ✅ **LIVE-VALIDATED** | 2 real cross-spec conflicts (dunning EmailPort FM-005↔FM-001; Stripe orphan/prod-boot) **ESCALATED, not self-resolved** (`conflicts[]` + PA-029/030, gate held MANUAL_VERIFY); guard classified the adjacent doc-sync `content`/`unilateral:false` — no run-B mask. |
+| **FB-LR-16 / 0102** (non-ready disclosure) | G-2 | ⛔ **OWED (not exercised)** | The executor brought the substrate **UP before launching the gate** (#92→#135: "Подниму субстрат заранее"), so the gate ran under `readiness:READY`. `committed_under_non_ready:0` is *trivially* correct — the disclosure path never engaged. |
+| **T1** (lying-substrate × verdict) | G-2 | ⛔ **OWED (not exercised)** | Same neutralization — suite GREEN, zero substrate failures to classify; the lying-substrate→MANUAL_VERIFY path was not triggered. |
+| **V-2 / 0103** (persona resolution) | R-1 | ⛔ **OWED (not exercised)** | Personas never spawned: `/product:complete FM-001` stopped at Wave-1 on a perfect oracle score (`met:true, gaps:[]`); persona spawn is **gap-gated**, and `advisor-pending.yaml` is a **routing table**, not a spawn queue. **No** `Agent type not found` and **no** silent general-purpose fallback occurred (the feared FB-LR-17 regression did *not* recur) — but resolution was never put to the test. |
+| **FB-LR-19 / 0104**, **T5-transient / 0096** | (G-3) | ⏸ **DEFERRED** | Fork C deferred the P5→P6 run; both stay verify-green + code-confirmed, awaiting a real un-done P5 feature. |
+| **had_trial** (§4) | G-2 | ⏳ **OPEN (product)** | The idempotency contradiction was **not touched** by the run (the edited trial-seam line was the adjacent `account.confirmed` arity, guard-classified `unilateral:false`); stays OPEN for the owner Path A/B decision. |
+
+### Ledger (new findings — continue from FB-LR-22)
+
+| id | sev | run | finding | corrected root-cause | route / status |
+|---|---|---|---|---|---|
+| FB-LR-23 | 🟠 | G-1, G-2 | **Parallel git-worktrees share one checkout/index → the gate's escalation + remediation write-path races/collides.** G-1: PA-numbering collision (escalate-agents counted pending-actions across **two** files, main vs work-4, so `PA-027` denoted two different escalations). G-2: a remediation agent's Edit briefly **hit the MAIN checkout path** (reverted via `git checkout --`), and the session explicitly noted the `git commit` race on the shared git index even when file zones don't overlap. | Exactly [[env_parallel_sessions_share_checkout]] manifesting inside the orchestrator: PA-id allocation + commit/index writes assume a private working tree, but parallel pilot sessions/worktrees share `.git`. Single-writer held in the end (no content lost; main code untouched), but the hazard is real in the write path. | **DOCUMENTED — DEC-DEV-0111.** Guard proposed (PA-id allocation keyed to a single canonical pending-actions file regardless of checkout; commit-zone advisory re-check) = **OPEN follow-up**; not fixed in this unit. |
+| FB-LR-24 | 🟡 | G-2 | **Readiness probe is partly inferential** — 2 of 3 substrate checks were SKIPPED (`postgres: skipped (pg_isready not installed)`, `redis: skipped (redis-cli not installed)`), so `readiness:READY` rested on docker-daemon-up + suite-GREEN, not a direct DB/Redis probe. | `env-readiness.cjs` degrades a missing probe binary to "skipped" rather than "unknown"; benign when the suite is GREEN, but a host lacking pg_isready/redis-cli could be declared READY without ever directly confirming Postgres/Redis. | **QUEUED** — fold into the env-readiness probe hardening (with FB-LR-09 migration-history check); ledger-only until then. |
+| FB-LR-25 | 🟡 | G-2, R-1 | **Envelope observability — escalations/queues live in a field a scanning reader won't check.** G-2: `concerns:[]` is empty while `conflicts[]` carries 2 escalations (T5 contract met via `conflicts`+PA+`findings`, but a reader scanning only `concerns[]` sees zero). R-1: `advisor-pending.yaml` carries 5 `status:active` entries that no `/product:complete` path drains and nothing flags at loop completion. | Disclosure is split across multiple fields with no single "anything-needs-attention" surface; a populated-but-unconsumed queue has no completion flag. | **DEC-DEV candidate (pending owner decision)** — fold escalations + un-drained queues into one surfaced disclosure field. |
+| FB-LR-26 | ℹ️ | R-1, G-2 | **Test-design / methodology (process, not ecosystem code).** R-1's runbook premise ("significant `.product/` edit → advisor-pending → `/product:complete` fires personas") is mechanically wrong — spawn is gap-gated, advisor-pending is routing-only. G-2's intent **self-neutralized** — the uncoached executor rationally brought the substrate UP first to "get a real verdict", vacating the substrate-DOWN contract under test. | A deep tension: **executor/reviewer separation collides with contracts whose whole point is observed behaviour under adverse conditions** — an uncoached executor will fix the adversity before the gate. | **FIXED in runbook (this unit):** R-1 premise corrected (use a feature the oracle scores <1, or `--dry-run`); G-2 substrate-DOWN protocol now forbids restoring the substrate before the gate. Lesson recorded in DEC-DEV-0111. |
+
+### Positive confirmations (Fork C — live-validated, no action)
+- **RA-10 orphan-disclosure (0106) works live** — the exact Run-C-glossary FB-LR-21 bug (orphan waved through as `clean:true`) does **not** recur; the orphan now escalates as a finding.
+- **T5 escalate-don't-mask (0096) fires live on real cross-spec conflicts** — second independent confirmation after Run-C glossary; the run-B unilateral-resolution mask did not recur.
+- **No persona→general-purpose fallback** — R-1 confirms the FB-LR-17 safety-rail: the only `general-purpose` spawn was the by-design `/product:validate` runner; persona resolution fails loud (0 `Agent type not found`), never silently downgrades.
+- **Single-writer / boundary isolation held under parallel worktrees** — despite FB-LR-23, main code (`08a946c` on `pre-cc-sdd-pilot`) was never mutated by the worktree runs; an out-of-worktree Edit was caught and reverted.
