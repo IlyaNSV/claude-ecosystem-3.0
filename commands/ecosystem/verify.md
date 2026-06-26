@@ -60,6 +60,33 @@ Report counts + note what's expected for current ROADMAP phase.
 > defective install. Investigate which before raising a ❌; an *extra* command vs. this baseline
 > is almost never a fault.
 
+### Step 4.5: Orchestrator gate-contract freshness (delivery spot-check)
+
+Step 5 (version drift) catches *"you never updated"*. This catches the subtler *"the update ran
+but a file didn't actually land"* — a **partial / aborted sync** (the DEC-DEV-0088 class, where an
+aborted `/ecosystem:update` left later namespaces stale even though `ecosystem_version` re-stamped).
+Counting command *files* (Step 4) can't see it; the file is present but its **contents** are old.
+
+Spot-check that the installed Orchestrator gate carries its current **return-contract markers** —
+search each installed `.mjs` for the marker string (e.g. `grep -F`):
+
+| Marker (string in the installed file) | File (`.claude/orchestrator/processes/`) | Proves landed | Since |
+|---|---|---|---|
+| `validators_incomplete` | `validate-feature-impl.mjs` | FB-LR-15 loud validator-drop degrade | DEC-DEV-0101 |
+| `committed_under_non_ready` | `validate-feature-impl.mjs` | FB-LR-16 non-READY commit disclosure | DEC-DEV-0102 |
+| `conflicts.concat` | `feature-to-tdd-impl.mjs` | FB-LR-19 P5 surfaces the nested P6 conflicts | DEC-DEV-0104 |
+
+Report ✓ present / ❌ absent per marker.
+
+> **Caveat (same discipline as Step 4, DEC-DEV-0082):** this marker list is a **baseline snapshot of
+> the current gate contract**, not a hard schema. An **absent** marker most likely means a stale or
+> **partial** `/ecosystem:update` → re-run it (and check the update didn't abort midway). But if the
+> gate contract legitimately evolved and **this list** wasn't refreshed, that's list-drift, not a bad
+> install — investigate which before raising ❌. This is a **delivery presence** check, NOT a
+> behavioral one: that the gate *behaves* correctly is validated by a **live Orchestrator run** graded
+> post-hoc, never here. (The non-drifting version — markers generated from the `.mjs` return objects
+> rather than hand-listed — is a deferred follow-up.)
+
 ### Step 5: Config consistency
 
 Read `.claude/product.yaml` and check:
@@ -150,6 +177,10 @@ COMMANDS
   ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
   ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
   ✓ ecosystem/:    6           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
+
+ORCHESTRATOR CONTRACT (delivery spot-check — DEC-DEV-0101/0102/0104)
+  ✓ validators_incomplete + committed_under_non_ready   (validate-feature-impl.mjs)
+  ✓ conflicts.concat                                    (feature-to-tdd-impl.mjs)
 
 MCP STACK
   ✓ Sequential Thinking   installed
