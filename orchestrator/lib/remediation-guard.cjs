@@ -37,6 +37,21 @@
  *     review (it does not unwind the commit) — surface-not-block, matching the gate's
  *     "surface, don't auto-fix" philosophy (DEC-DEV-0095 lesson 3).
  *
+ * SCOPE / KNOWN BOUNDARY (FB-LR-22, Run C glossary live-run — documented, not yet tightened):
+ *   In practice this lib is a TRANSIENT / INFRA / CAPABILITY classifier. Its cross-spec /
+ *   design-contradiction signatures match an EXPLICITLY-WORDED contradiction ("specs
+ *   contradict", "req 1.1 vs 12.6", "design says both"), but a freshly-worded SEMANTIC conflict
+ *   often matches NO signature → classifyBlock returns `content`, and the ESCALATION is then
+ *   carried entirely by the agent's own reading. This is BY CONTRACT: the FSM escalates if
+ *   EITHER the lib OR the agent sees a contradiction (conservative — a missed lib match does not
+ *   lose an escalation as long as the agent reads carefully), so the deterministic layer must
+ *   NOT be relied on as the SOLE conflict detector. Evidence: in Run C glossary all 3 real
+ *   cross-spec escalations classified `content` and rode the agent's judgment — the lib carried
+ *   0 load on the T5-critical semantic-conflict path. Tightening the cross-spec heuristic so the
+ *   deterministic backbone shares that load is an OPEN follow-up (FB-LR-22); until then treat
+ *   this as a transient/infra/capability classifier with best-effort conflict detection, and keep
+ *   the agent-side "escalate on your own reading" instruction load-bearing (it is, in run.md / P5 / P6).
+ *
  * EXIT CODES: 0 ran ok (verdict in JSON) · 2 usage/internal error.
  * Dual-use: `require()` it for the pure classifiers (unit-tested, no child_process);
  * run it as a CLI to classify a single blocker / fix-note.

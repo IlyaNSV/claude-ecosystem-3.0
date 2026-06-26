@@ -88,3 +88,23 @@ CONCERN (GO→MANUAL_VERIFY) instead of letting a committer resolve it unilatera
 masked. But the conflict itself still needs an upstream **product** decision (Path A: auth stops flipping
 `had_trial`; Path B: re-key billing idempotency off Subscription existence). Keep OPEN in the pilot until that
 decision lands; verify the escalation fires on the pilot re-run.
+
+## N+2 re-validation follow-ups (FB-LR-15/16/20/21/22 — DEC-DEV-0101/0102/0106)
+
+> From the owner-driven N+2 re-validation (Run B re-val + Run C glossary). Ledger:
+> [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md) §"N+2 re-validation findings"
+> + §"Run C glossary". All are **observability / robustness edges — NOT incorrect verdicts** (the gate's
+> decisions were sound). Closed in ONE gate-contract increment (branch `feat/orchestrator-n2-gate-followups`).
+> Both axes touched are **additive** (a new return field / a prompt clause) → counts unchanged (24/44).
+
+| id | sev | disposition | what |
+|---|---|---|---|
+| FB-LR-15 | 🟠 | **FIXED — DEC-DEV-0101** | A P6 validator dropped on a **terminal API error** is bounded RE-SPAWNed (`MAX_VALIDATOR_RESPAWN`, default 2); a still-empty slot → `incompleteValidators`, which **degrades a clean GO to MANUAL_VERIFY** (never NO-GO — the lens is UNKNOWN, not failed) + a `validators_incomplete` return field + a disclosure finding. The prior `.filter(Boolean)` silently dropped the lens. |
+| FB-LR-16 | 🟡 | **FIXED (policy a + disclosure) — DEC-DEV-0102** | A P6 remediation under a **non-READY** gate STILL commits a substrate-independent confirmed fix (verify-finding-before-act already proved it real vs ground truth), but **marks** the commit (` [readiness=…: re-verify on a READY re-run]`) and **discloses** it (`committed_under_non_ready` + a finding). Chose **(a) keep-but-disclose** over (b) gate-behind-READY: forbidding discards real verified work; the real risk was *silent* mutation, which the mark + disclosure closes. |
+| FB-LR-21 | 🟢 | **FIXED — DEC-DEV-0106** | RA-10 prompt: a **deferred / spec-sanctioned orphan** is STILL a finding (`kind:orphan-export`, severity low) — surfaced for owner adjudication, not silently `clean:true`. |
+| FB-LR-22 | 🟢 | **DOCUMENTED (boundary) — DEC-DEV-0106** | `remediation-guard.cjs` is, in practice, a **transient/infra/capability** classifier; its cross-spec/design signatures match only EXPLICITLY-worded contradictions, so a freshly-worded semantic conflict rides the agent's reading. This is **BY CONTRACT** (the FSM escalates on EITHER lib OR agent — a missed lib match loses no escalation if the agent reads carefully). Recorded as a `SCOPE / KNOWN BOUNDARY` note in the lib header; tightening the cross-spec heuristic so the deterministic layer shares the load is an OPEN follow-up. |
+| FB-LR-20 | 🟡 | **ACCEPTED PATTERN — DEC-DEV-0106** | **"shape = conform / wiring = escalate" seam-split:** a consumer-side edit that CONFORMS to an owner's design (design.md names the owner authoritative) is **legitimate** even while the seam's wiring/ownership is separately escalated as forbidden-to-resolve. This is **not a mask** — the conform edit is design-backed; the ownership question is escalated on its own channel. Codified as an accepted pattern; `remediation-guard`'s owner-vs-conflict heuristic is intentionally **not** tightened to flag it (false-positives would cost more than the rare genuine over-step). |
+
+**Still open after this increment:** the cross-spec heuristic for `remediation-guard` (FB-LR-22 tighten) — deferred,
+the agent-side "escalate on your own reading" instruction carries the load meanwhile. Live re-validation of all
+five lands in the same batch as T5-transient / V-2 / FB-LR-19 (see `dev/ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md`).

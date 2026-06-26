@@ -73,6 +73,7 @@ const CONCERNS = A.concerns || []                                // FB-013: defe
 const DEGRADED = !!A.degraded                                    // P5 had blocked tasks → feature NOT complete → advisory
 const FWD_READINESS = A.readiness || ''                          // DEC-DEV-0092: optional readiness hint forwarded from P5 pre-flight
 const MAX_REMEDIATION_ROUNDS = A.maxRemediationRounds || 3
+const MAX_VALIDATOR_RESPAWN = A.maxValidatorRespawn || 2          // FB-LR-15 (DEC-DEV-0101): bounded re-spawn of a validator slot dropped on a terminal API error
 
 // FB-002: refuse to run with no target rather than scanning .kiro/specs/ and picking one.
 if (!FEATURE) {
@@ -112,7 +113,13 @@ const INTEGRATION_BOUNDARY = [
   'references a name the producer actually exposes (RUN 01: `/reset` vs `/reset-password` — a caller',
   'using a route the producer never registered; both tasks green, the seam dead); (c) no dangling',
   'import / dead feature-flag / half-wired adapter. For each: ref = the seam (producer↔consumer);',
-  'where_to_verify = both ends to grep. This lens is where cross-task integration gaps surface.',
+  'where_to_verify = both ends to grep.',
+  'FB-LR-21: a deferred-by-design or spec-sanctioned orphan (an exported symbol intentionally not yet',
+  'wired — e.g. design.md says it is consumed by a later feature) is STILL a finding — report it as',
+  'kind: orphan-export, severity: low, and note in detail that it looks spec-sanctioned/deferred. Do NOT',
+  'silently clear it as clean: whether the deferral is acceptable is the owner\'s call, not this lens\'s —',
+  'surface it so another lens or the owner can adjudicate; clean:true means you found NO orphan at all.',
+  'This lens is where cross-task integration gaps surface.',
 ].join(' ')
 
 const VALIDATORS = [
@@ -271,9 +278,26 @@ const validateOne = (v) =>
     { schema: VALIDATOR_SCHEMA, phase: 'Validate', label: `validate:${v.key}` },
   )
 
-const results = (await parallel(VALIDATORS.map((v) => () => validateOne(v).then((r) => (r ? { ...r, key: v.key } : null))))).filter(Boolean)
+// FB-LR-15 (DEC-DEV-0101): a validator that dies on a TERMINAL API error ("Connection closed
+// mid-response") yields null from agent() — the prior `.filter(Boolean)` silently DROPPED that
+// lens and synthesised a verdict on a reduced validator set with NO disclosure (the harness
+// auto-retries STALLS, but a hard API error gets 0 retries → terminal null). A dropped RA-10
+// could let a real integration defect through under a clean GO. So a dropped slot is bounded
+// RE-SPAWNed; if it STILL never returns it is recorded as an INCOMPLETE lens (the gate did not
+// fully judge that axis) — which degrades a clean GO below, never a silent reduced-lens GO.
+const runValidatorSlot = async (v) => {
+  let r = await validateOne(v)
+  for (let attempt = 1; !r && attempt <= MAX_VALIDATOR_RESPAWN; attempt += 1) {
+    log(`validator ${v.key} dropped (terminal error / empty) — re-spawn ${attempt}/${MAX_VALIDATOR_RESPAWN}`)
+    r = await validateOne(v)
+  }
+  return r ? { ...r, key: v.key } : null
+}
+const slots = await parallel(VALIDATORS.map((v) => () => runValidatorSlot(v)))
+const results = slots.filter(Boolean)
+const incompleteValidators = VALIDATORS.filter((_, i) => !slots[i]).map((v) => v.key)   // FB-LR-15: lenses that never ran (terminal error after re-spawn)
 const rawFindings = results.flatMap((r) => (r.findings || []).map((f) => ({ ...f, validator: r.key })))
-log(`validators: ${results.filter((r) => r.clean).map((r) => r.key).join(',') || '∅'} clean; ${rawFindings.length} raw finding(s)`)
+log(`validators: ${results.filter((r) => r.clean).map((r) => r.key).join(',') || '∅'} clean; ${rawFindings.length} raw finding(s)${incompleteValidators.length ? `; INCOMPLETE (did not run): ${incompleteValidators.join(',')}` : ''}`)
 
 // ---- Phase 3: verify-finding-before-act → bounded remediation → synthesize -
 phase('Synthesize')
@@ -322,6 +346,19 @@ const escalateConflict = (f, fix) =>
     { phase: 'Synthesize', label: `escalate-conflict:${f.validator}:${f.ref || f.kind}` },
   )
 
+// FB-LR-16 (DEC-DEV-0102): the gate may remediate + COMMIT here, BEFORE the verdict is
+// synthesised. If the gate is already known non-READY (substrate down / upstream degraded), a
+// fix committed now is made WITHOUT a full green suite as a safety net. Policy (a)+disclosure:
+// we STILL commit a substrate-INDEPENDENT confirmed fix (verify-finding-before-act already
+// proved it real vs ground truth, independent of the DB — forbidding it would discard real
+// work), but the commit is MARKED and the run DISCLOSES it so a READY re-run re-checks it; we do
+// NOT silently mutate the tree under ENV_NOT_READY. (RANK/worstReadiness defined here, reused in
+// the synthesis below.)
+const RANK = { READY: 0, DEGRADED: 1, ENV_NOT_READY: 2 }
+const worstReadiness = (a, b) => (RANK[a] >= RANK[b] ? a : b)
+const remediationReadiness = worstReadiness((mech && mech.readiness) || 'READY', FWD_READINESS || 'READY')
+const nonReadyRemediation = remediationReadiness !== 'READY'
+
 // bounded remediation of PRESENT findings only; re-verify after each fix (a fix can be partial).
 // SINGLE-WRITER (T5, extends FB-004): remediation is STRICTLY SEQUENTIAL — one finding fixed +
 // committed at a time, never in parallel(), so two writers never race the git index within a
@@ -348,6 +385,9 @@ while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
       `  • If it needs a capability you lack (tool/secret/access/upstream decision), return remediated:false, block_class:'capability' + what is needed — do NOT fake it.\n` +
       `  • To classify the block, run \`node ${REMEDIATION_GUARD} --reason "<your one-line blocker>"\` via Bash and use its class as the deterministic backbone (escalate if EITHER it or your judgment says a conflict — conservative toward escalation).\n` +
       `SINGLE-WRITER SAFETY (T5): before committing, re-confirm the defect is STILL present in the CURRENT tree — a concurrent commit may have resolved it since you started. If already resolved, return remediated:false, block_class:'resolved-by-concurrent-commit' (do NOT double-commit).\n` +
+      (nonReadyRemediation
+        ? `READINESS DISCLOSURE (FB-LR-16, DEC-DEV-0102): the gate is currently readiness=${remediationReadiness} — the full suite is NOT a green safety net right now. You MAY fix a defect confirmed against ground truth INDEPENDENT of the substrate, but (1) APPEND " [readiness=${remediationReadiness}: re-verify on a READY re-run]" to the commit message, and (2) do NOT fix anything whose correctness can only be confirmed by a green suite — return remediated:false, block_class:'transient' for that (it waits for a READY re-run).\n`
+        : '') +
       `Otherwise fix the concrete defect ONLY (no scope creep), add/repair the covering test if the lens is requirements-coverage, then selective-commit (NEVER git add -A — explicit paths) with message: fix(${FEATURE}): ${f.kind} ${f.ref || ''}; return remediated:true, block_class:'fixed'. ` +
       `THEN self-check your fix: run \`node ${REMEDIATION_GUARD} --fix-note "<your one-line note of what you did>"\` and set unilateral to its result — if your fix actually resolved a contradiction by picking a side, set unilateral:true so it is surfaced (it should normally be false).`,
       { schema: REMEDIATE_SCHEMA, phase: 'Synthesize', label: `remediate:${f.validator}:${f.ref || f.kind}` },
@@ -386,8 +426,6 @@ while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
 // MANUAL_VERIFY_REQUIRED; only READY|DEGRADED may pair with GO. This is the
 // run-B false-NO-GO guard: a down substrate (build GREEN, suite RED on env errors)
 // must NOT synthesise NO-GO. Conservative — readiness never upgrades toward GO.
-const RANK = { READY: 0, DEGRADED: 1, ENV_NOT_READY: 2 }
-const worstReadiness = (a, b) => (RANK[a] >= RANK[b] ? a : b)
 const mechPassed = !!(mech && mech.passed)
 const unresolved = remaining
 let readiness = worstReadiness((mech && mech.readiness) || 'READY', FWD_READINESS || 'READY')
@@ -410,6 +448,11 @@ if (readiness === 'ENV_NOT_READY') {
 // so it must NEVER read as a clean GO. Degrade a would-be GO to MANUAL_VERIFY (not NO-GO — the
 // code may be fine pending the decision); surfaced for the owner. Conservative toward surfacing.
 if (conflicts.length && result === 'GO') result = 'MANUAL_VERIFY_REQUIRED'
+// FB-LR-15 (DEC-DEV-0101): a validator lens that never ran (terminal error after bounded
+// re-spawn) means the gate did NOT judge that axis — a clean GO would hide an unjudged lens
+// (a dropped RA-10 could let a real integration defect through under a GO). Degrade a would-be
+// GO to MANUAL_VERIFY (never NO-GO — the lens is UNKNOWN, not failed). Conservative toward surfacing.
+if (incompleteValidators.length && result === 'GO') result = 'MANUAL_VERIFY_REQUIRED'
 
 // findings to surface: unresolved confirmed defects + mechanical failures + forwarded deferred-capability CONCERNS (FB-013 disclosure)
 const readinessReasons = (mech && mech.readiness_reasons) || []
@@ -420,6 +463,12 @@ const findings = [
          ? `substrate not ready, so this is MANUAL_VERIFY_REQUIRED, NOT a NO-GO; bring the substrate up and re-run \`/orchestrator:run validate-feature-impl --feature ${FEATURE}\`.`
          : `upstream tasks were blocked (feature incomplete); advisory.`) +
        (readinessReasons.length ? ` Reasons: ${readinessReasons.join('; ')}.` : '')]
+    : []),
+  ...(incompleteValidators.length
+    ? [`validators_incomplete (FB-LR-15/DEC-DEV-0101): ${incompleteValidators.join(', ')} did NOT run (terminal error after ${MAX_VALIDATOR_RESPAWN} re-spawn(s)) — that lens did not judge; a clean GO is degraded to MANUAL_VERIFY. Re-run \`/orchestrator:run validate-feature-impl --feature ${FEATURE}\` for a full-lens gate.`]
+    : []),
+  ...(nonReadyRemediation && remediated.length
+    ? [`readiness-gated commits (FB-LR-16/DEC-DEV-0102): ${remediated.length} fix(es) were committed during a readiness=${remediationReadiness} run (the full suite was not a green safety net) — each is marked in its commit message; re-verify them on a READY re-run before treating this gate as ground truth.`]
     : []),
   ...((mech && mech.failures) || []).map((x) => `mechanical: ${x}`),
   ...unresolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (confirmed-present; unresolved after ${MAX_REMEDIATION_ROUNDS} round(s))`),
@@ -435,9 +484,11 @@ return {
   readiness,                                          // DEC-DEV-0092: READY | DEGRADED | ENV_NOT_READY — orthogonal to result
   readiness_reasons: readinessReasons,
   validators: results.map((r) => ({ validator: r.key, clean: !!r.clean, findings: (r.findings || []).length })),
+  validators_incomplete: incompleteValidators,        // FB-LR-15 (DEC-DEV-0101): lenses that never ran (dropped after bounded re-spawn); non-empty degrades a clean GO → MANUAL_VERIFY
   confirmed_findings: present.length + alreadyResolved.length,   // DEC-DEV-0093: real findings (present + already-resolved); refuted dropped
   already_resolved: alreadyResolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),   // real, fixed since baseline — surfaced for genuineness check (FB-LR-03)
   remediated: remediated.length,
+  committed_under_non_ready: nonReadyRemediation ? remediated.length : 0,   // FB-LR-16 (DEC-DEV-0102): fixes committed during a non-READY run — disclosed for a READY re-check
   residual: unresolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),
   conflicts: conflicts.map((c) => ({ validator: c.validator, ref: c.ref || null, kind: c.kind, conflict_class: c.conflict_class, masked: !!c.masked })),   // DEC-DEV-0096 (T5, FB-LR-07): escalated cross-spec/design contradictions — surfaced, never self-resolved; forces ≥ MANUAL_VERIFY
   concerns: CONCERNS,                                 // FB-013: deferred-capability flags, disclosed not dropped
