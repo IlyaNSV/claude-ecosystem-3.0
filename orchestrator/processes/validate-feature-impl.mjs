@@ -331,6 +331,20 @@ const alreadyResolved = checked.filter((f) => f.disposition === 'already-resolve
 const refuted = checked.filter((f) => f.disposition === 'refuted')                        // hallucination → drop
 log(`verify-finding-before-act (order-aware): ${present.length} present, ${alreadyResolved.length} already-resolved (real, fixed since baseline), ${refuted.length} refuted/dropped`)
 
+// FB-LR-23 (parallel-worktree PA-id safety): shared instruction so the escalation PA-write below
+// targets the SINGLE canonical pending-actions file (the main checkout) + allocates its id from it —
+// a worktree-local copy let two parallel runs mint the same `PA-027` (G-1). Duplicated verbatim across
+// the three PA-emitting processes (PA-writes live inside agent prompts — no shared lib).
+const PA_CANON = 'CANONICAL pending-actions (FB-LR-23, parallel-worktree safety): parallel git worktrees SHARE '
+  + 'one .git but have SEPARATE working trees, so a worktree-local `.claude/pending-actions.md` lets PA-ids collide '
+  + 'across concurrent runs (two trees each mint the same PA-NNN). Resolve the SINGLE canonical file ONCE: run '
+  + '`git worktree list --porcelain` and take the FIRST `worktree <path>` line (the main checkout, shared by every '
+  + 'worktree) → `<that-path>/.claude/pending-actions.md`; if not inside a git worktree, fall back to '
+  + '`.claude/pending-actions.md`. READ / SCAN / allocate the next PA-NNN (highest existing id + 1) / APPEND against '
+  + 'THAT canonical file — never a worktree-local copy. Do NOT `git add` or commit the pending-actions file (it may '
+  + 'live in another checkout; committing it from this worktree would write into a foreign tree) — leave it as '
+  + 'working-tree state. '
+
 // DEC-DEV-0096 (T5, FB-LR-07): escalate a cross-spec / design contradiction surfaced during
 // remediation — do NOT let a remediation pick a side and commit a unilateral resolution
 // (which masks an upstream conflict, as a racing committer did in live-run B). This records
@@ -342,6 +356,7 @@ const escalateConflict = (f, fix) =>
     `${(fix && fix.conflict_detail) || f.detail}.\n` +
     `Do NOT pick a side and do NOT commit a resolution. Append a NON-BLOCKING escalation entry to .claude/pending-actions.md (create if absent): ` +
     `the contradiction (which specs/requirements/design decisions disagree), the feature, and the route — Product for a cross-spec/requirement contradiction or a provider/design CHOICE, ` +
+    PA_CANON +
     `the owning spec's author for a design self-contradiction. Mark it a cross-spec-conflict escalation requiring an upstream decision. Never commit code.`,
     { phase: 'Synthesize', label: `escalate-conflict:${f.validator}:${f.ref || f.kind}` },
   )

@@ -6688,6 +6688,32 @@ Ledger updated (Fork C section + FB-LR-23..26 + positive confirmations); runbook
 
 ---
 
+## DEC-DEV-0113 — Parallel-worktree PA-id safety: PA-writes к единому каноническому pending-actions (FB-LR-23)
+
+**Date:** 2026-06-29
+**Trigger:** Ф1/1B плана «A+B complete» — второй код-долг N+2 gate-followups. FB-LR-23 (DEC-DEV-0111, Fork C live-run): параллельные git-worktree делят один `.git`/checkout, а write-path гейта (PA-id allocation + remediation-commit) предполагал приватное дерево. G-1: escalate-агенты считали PA-id из счётчика, сканированного по ДВУМ файлам (main vs work-4) → `PA-027` обозначил две разные эскалации. G-2: remediation-агент кратко задел main checkout (откатан `git checkout --`).
+**Tag:** #orchestrator #parallel-worktree #pending-actions #fix
+
+### Context
+PA-записи происходят ВНУТРИ агентских промптов (harness no-FS-in-script, DEC-DEV-0073 §D.1: Workflow-скрипт не трогает FS — только агент через Bash). 5 PA-промптов в 3 процессах (P4 `audit-spec-fidelity` product/coverage-route, P5 `feature-to-tdd-impl` block/concern, P6 `validate-feature-impl` escalate-conflict) указывали относительный `.claude/pending-actions.md`, резолвящийся в текущий worktree. При параллельных worktree (изоляция файлов, но shared `.git`) два дерева имеют разные `.claude/pending-actions.md` → независимая нумерация → коллизия PA-id. Это [[env_parallel_sessions_share_checkout]], всплывший в автономном write-path оркестратора: worktree-изоляция защищает ФАЙЛЫ, не shared `.git` index / cross-checkout счётчики.
+
+### Options considered
+1. **Промпт-guard: канонический PA-файл + commit-zone advisory** (выбрано). Общая константа `PA_CANON` в 3 процессах: резолв единого канонического `pending-actions.md` (main checkout через `git worktree list --porcelain` → первая запись), аллокация PA-id из него, запрет коммитить PA-файл (живёт в чужом checkout). Плюс commit-zone advisory в block-commit. В духе FB-LR-10 dedup (промпт-pre-filter, не либа — PA-writes внутри агентов).
+2. **Детерминированная либа `pa-allocator.cjs` с файловым локом.** Отвергнуто для v1: надёжнее, но дороже и противоречит «PA-writes живут внутри агентов» (no-FS-in-script → либу всё равно вызывает агент). Помечено как возможный upgrade, если промпт-guard окажется хрупким.
+3. **Полная cross-process commit-сериализация (lock на shared index).** Отвергнуто: нельзя промпт-слоем (нет cross-process lock); single-writer (T5) + explicit-path commit уже держат «no content lost». Остаётся OPEN-remaining (low — robustness, не data-loss).
+
+### Decision
+Вариант 1. `PA_CANON` (идентичный текст, намеренный дубль в 3 `.mjs` — PA-writes внутри агентов, импорта между harness-скриптами нет; как coverage-oracle↔adapter дубль DEC-DEV-0073) подставлен в 5 PA-промптов. Резолв канонического файла: `git worktree list --porcelain` → FIRST `worktree <path>` = main checkout (shared всеми worktree); fallback `.claude/pending-actions.md` вне git. Backward-compatible: в одиночном checkout main worktree = repo root → путь идентичен прежнему относительному. Commit-zone advisory в `recordBlock` (shared-worktree `.git` → explicit-path commit своей зоны = изоляция; никогда `git add -A`). Test-lock: +1 wiring-тест в каждый из 3 наборов (PA_CANON present + `git worktree list` + счётчик использований).
+
+### Outcome
+3 процесса + 3 wiring-теста: `npm run verify` EXIT=0 (.mjs парсятся в харнесс-диалекте; 3 FB-LR-23 теста зелёные). Additive: промпт-инструкции + 1 commit-advisory, без новых artifact-type/validation-rule → counts 24/44. Consumer-zone (orchestrator) → CHANGELOG `[Unreleased] ### Fixed`. **OPEN-remaining (low):** полная cross-process commit-lock на shared `.git` index — вне промпт-слоя; single-writer + explicit-path держат «no content lost».
+
+### Lessons
+1. **Worktree-изоляция защищает файлы, не `.git`.** Параллельные worktree делят index + ref-store + любые cross-checkout счётчики (PA-id). Любой автономный write-path, который «нумерует из файла» или «коммитит в дерево», должен резолвить КАНОНИЧЕСКОЕ расположение явно, а не доверять CWD-относительному пути.
+2. **Тот же урок дважды: руками ([[env_parallel_sessions_share_checkout]]) → теперь в автономном гейте.** Прецедент сессий, чей коммит сел на чужую ветку, повторился на tool-слое оркестратора. Якорить shared-state (id-счётчики, commit-зоны) к single canonical, а не к per-checkout виду.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

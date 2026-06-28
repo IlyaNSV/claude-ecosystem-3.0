@@ -122,5 +122,16 @@ test('returns the P4 contract keys', () => {
   }
 });
 
+test('PA-writes target the canonical worktree-shared file (FB-LR-23, parallel-worktree PA-id safety)', () => {
+  // parallel git worktrees share one .git → a worktree-local pending-actions.md lets PA-ids collide
+  // (G-1 minted PA-027 twice). Both PA-emitting prompts must carry the canonical-file resolver.
+  assert(/FB-LR-23/.test(src), 'FB-LR-23 parallel-worktree guard not referenced');
+  assert(/const PA_CANON\b/.test(src), 'no PA_CANON canonical-pending-actions instruction');
+  assert(/git worktree list --porcelain/.test(src), 'PA_CANON does not resolve the canonical file via git worktree list');
+  // 1 declaration + 2 uses (product-route + coverage-route) = 3 occurrences
+  const uses = (src.match(/\bPA_CANON\b/g) || []).length;
+  assert(uses >= 3, `both PA-emitting prompts must include PA_CANON (decl + 2 uses; found ${uses})`);
+});
+
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);

@@ -238,6 +238,22 @@ const specFixed = []
 const residual = []
 const coverageGaps = []
 
+// FB-LR-23 (parallel-worktree PA-id safety): parallel git worktrees SHARE one .git but have
+// SEPARATE working trees, so a worktree-local `.claude/pending-actions.md` lets PA-ids collide
+// across concurrent runs (G-1: two trees each minted `PA-027`). This shared instruction makes every
+// PA-write target the SINGLE canonical file (the main checkout) + allocate ids from it. (Duplicated
+// verbatim in feature-to-tdd-impl.mjs / validate-feature-impl.mjs — PA-writes live inside agent
+// prompts per the no-FS-in-script constraint, so this is a prompt pre-filter, not a shared lib.)
+const PA_CANON = 'CANONICAL pending-actions (FB-LR-23, parallel-worktree safety): parallel git worktrees SHARE '
+  + 'one .git but have SEPARATE working trees, so a worktree-local `.claude/pending-actions.md` lets PA-ids collide '
+  + 'across concurrent runs (two trees each mint the same PA-NNN). Resolve the SINGLE canonical file ONCE: run '
+  + '`git worktree list --porcelain` and take the FIRST `worktree <path>` line (the main checkout, shared by every '
+  + 'worktree) → `<that-path>/.claude/pending-actions.md`; if not inside a git worktree, fall back to '
+  + '`.claude/pending-actions.md`. READ / SCAN / allocate the next PA-NNN (highest existing id + 1) / APPEND against '
+  + 'THAT canonical file — never a worktree-local copy. Do NOT `git add` or commit the pending-actions file (it may '
+  + 'live in another checkout; committing it from this worktree would write into a foreign tree) — leave it as '
+  + 'working-tree state. '
+
 for (const a of drifting) {
   const productDrifts = (a.drifts || []).filter((d) => d.route === 'product')
   const specDrifts = (a.drifts || []).filter((d) => d.route === 'spec')
@@ -250,6 +266,7 @@ for (const a of drifting) {
       `Write a product-feedback entry to .claude/pending-actions.md (create if absent) with route: product, the affected ids, and the rationale. ` +
       `DEDUP (FB-LR-10, repeated-run idempotency): FIRST scan the file for an OPEN pending-action that already routes feature ${a.feature} + the same affected ids to product. ` +
       `If one exists, UPDATE it in place (refresh detail/severity; do not duplicate) instead of appending — only APPEND when no open PA matches that (feature, route:product, ids) signature. Match on (feature, route, ids), NOT the drift wording (it varies run-to-run). ` +
+      PA_CANON +
       `Do NOT edit .product/ and do NOT patch the spec around it (OD8 reverse channel). Do NOT commit code.`,
       { phase: 'Triage', label: `product-route:${a.feature}` },
     )
@@ -308,6 +325,7 @@ for (const c of coveredFeatures) {
     `Write a spec-completion entry to .claude/pending-actions.md (create if absent) with route: spec, the feature, the unbuilt ` +
     `file(s), and the recommendation to ADD the missing assembly/wiring task(s) to ${SPEC_BASE}/${c.feature}/tasks.md before impl. ` +
     `DEDUP (FB-LR-10, repeated-run idempotency): if an OPEN pending-action already routes feature ${c.feature} + the same unbuilt file(s) as a spec-completion, UPDATE it in place instead of appending a duplicate (match on (feature, route:spec, paths)). ` +
+    PA_CANON +
     `Do NOT edit tasks.md yourself in this gate (a missing task is for the spec author / P3 re-run, not an auto-fix). Do NOT commit code.`,
     { phase: 'Triage', label: `coverage-route:${c.feature}` },
   )

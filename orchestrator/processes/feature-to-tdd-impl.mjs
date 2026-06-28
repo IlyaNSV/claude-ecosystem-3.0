@@ -263,6 +263,20 @@ const gate = (task, impl) => {
   )
 }
 
+// FB-LR-23 (parallel-worktree PA-id safety): shared instruction so every PA-write below targets the
+// SINGLE canonical pending-actions file (the main checkout) + allocates ids from it — a worktree-local
+// copy lets parallel runs collide PA-ids (G-1: two trees minted `PA-027`). Duplicated verbatim across
+// the three PA-emitting processes (PA-writes live inside agent prompts — no shared lib).
+const PA_CANON = 'CANONICAL pending-actions (FB-LR-23, parallel-worktree safety): parallel git worktrees SHARE '
+  + 'one .git but have SEPARATE working trees, so a worktree-local `.claude/pending-actions.md` lets PA-ids collide '
+  + 'across concurrent runs (two trees each mint the same PA-NNN). Resolve the SINGLE canonical file ONCE: run '
+  + '`git worktree list --porcelain` and take the FIRST `worktree <path>` line (the main checkout, shared by every '
+  + 'worktree) → `<that-path>/.claude/pending-actions.md`; if not inside a git worktree, fall back to '
+  + '`.claude/pending-actions.md`. READ / SCAN / allocate the next PA-NNN (highest existing id + 1) / APPEND against '
+  + 'THAT canonical file — never a worktree-local copy. Do NOT `git add` or commit the pending-actions file (it may '
+  + 'live in another checkout; committing it from this worktree would write into a foreign tree) — leave it as '
+  + 'working-tree state. '
+
 // FB-007: on BLOCK, don't leave the _Blocked_ annotation uncommitted and route nowhere.
 // Commit the annotation (so the tree stays clean for the next task) AND record a
 // pending-action with the route, so the operator sees what's blocked and where it goes.
@@ -270,10 +284,14 @@ const recordBlock = (taskId, reason) =>
   agent(
     `Task ${taskId} is BLOCKED: ${reason}.\n` +
     `1) Append "_Blocked: ${reason}_" under task ${taskId} in ${SPEC_DIR}/tasks.md.\n` +
-    `2) Commit ONLY that tasks.md change — explicit path, NEVER git add -A — message: ` +
+    `2) Commit ONLY that tasks.md change — explicit path, NEVER git add -A (FB-LR-23: with a shared-worktree .git, ` +
+    `an explicit-path commit of ONLY your feature-zone file is the isolation — a wildcard add could stage a parallel ` +
+    `worktree's changes via the shared index) — message: ` +
     `chore(${FEATURE}): block ${taskId} (surface blocker). This keeps the tree clean for the next task (FB-007).\n` +
-    `3) Append an entry to .claude/pending-actions.md (create if absent) with the blocker text and the route it needs ` +
-    `(Product | Integrator | manual-staging | human) so it isn't silently lost. Do NOT commit code.`,
+    `3) Append an entry to the canonical pending-actions file with the blocker text and the route it needs ` +
+    `(Product | Integrator | manual-staging | human) so it isn't silently lost. ` +
+    PA_CANON +
+    `Do NOT commit code.`,
     { phase: 'Implement', label: `block:${taskId}` },
   )
 
@@ -297,6 +315,7 @@ const surfaceConcern = (taskId, concern) =>
     `and provisioning-tier (staging/prod). Mark it tracking/disclosure, NOT a blocking request now ` +
     `(real access is a future deliverable, not something to provision today).\n` +
     `If the concern is a routine note (refactor/cleanup/style), do NOTHING. ` +
+    PA_CANON +
     `Never block the task, never commit code.`,
     { phase: 'Implement', label: `concern:${taskId}` },
   )
