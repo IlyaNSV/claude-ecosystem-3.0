@@ -21,10 +21,14 @@
  *   like this may).
  *
  * CONSERVATIVE BY DESIGN: a substrate the project does NOT use is `skipped`, never
- *   a readiness failure; readiness only drops to ENV_NOT_READY when a substrate the
- *   project clearly USES is DOWN (or its migration history is inconsistent —
- *   FB-LR-09). Probe uncertainty is `unknown`, which does NOT degrade readiness.
- *   The lib NEVER upgrades a verdict toward GO — it only blocks a false NO-GO.
+ *   a readiness failure. A substrate the project USES but we could not directly probe
+ *   — probe binary absent or an inconclusive result — is `unknown` → DEGRADED
+ *   (FB-LR-24): disclosed on the readiness axis with an advisory GO still possible,
+ *   but never a silent full READY (a host merely lacking pg_isready/redis-cli must not
+ *   pass as fully ready). Readiness drops to ENV_NOT_READY only when a USED substrate is
+ *   clearly DOWN (or its migration history is inconsistent — FB-LR-09). The lib NEVER
+ *   upgrades a verdict toward GO — it blocks a false NO-GO (ENV_NOT_READY) and a false
+ *   READY (DEGRADED), never the reverse.
  *
  * EXIT CODES: 0 ran ok (readiness/classification in JSON) · 2 usage/internal error.
  * Dual-use: `require()` it for the pure classifiers (unit-tested, no child_process);
@@ -85,17 +89,35 @@ function classifyFailures(failures) {
 }
 
 /**
- * Derive the readiness verdict from a set of substrate checks. ENV_NOT_READY if
- * any USED substrate is down or its migration history is inconsistent (FB-LR-09);
- * else READY. DEGRADED is NOT decided here — it is the caller's axis (P5 upstream
- * blocked tasks), folded in by the consumer.
+ * Derive the readiness verdict from a set of substrate checks.
+ *   • any USED substrate DOWN or its migration history inconsistent (FB-LR-09)
+ *       ⇒ ENV_NOT_READY (the gate could not judge — forces MANUAL_VERIFY upstream).
+ *   • any USED substrate we could not directly confirm (`unknown` — probe binary
+ *       absent or inconclusive, FB-LR-24) ⇒ DEGRADED (advisory; the gate judged but a
+ *       relied-on substrate was never directly probed). DOWN dominates unknown.
+ *   • else ⇒ READY.
+ * The consumer may also fold in its own DEGRADED (P5 upstream blocked tasks) via
+ * worstReadiness; this lib now additionally raises DEGRADED from probe uncertainty.
  */
 function classifyReadiness(checks) {
-  const notReady = (checks || []).filter((c) => c.status === 'down' || c.status === 'inconsistent');
+  const list = checks || [];
+  const notReady = list.filter((c) => c.status === 'down' || c.status === 'inconsistent');
   if (notReady.length) {
     return {
       readiness: READINESS.ENV_NOT_READY,
       reasons: notReady.map((c) => `${c.name}: ${c.detail || c.status}`),
+    };
+  }
+  // FB-LR-24: a USED substrate left `unknown` (we could not directly probe it) must
+  // NOT pass as a silent full READY — surface it as DEGRADED so the gate discloses the
+  // unconfirmed substrate. DEGRADED, not ENV_NOT_READY: we have not proven it is down
+  // (a GREEN suite is strong indirect evidence it is up), so an advisory GO stays
+  // possible and we never manufacture a false block.
+  const uncertain = list.filter((c) => c.status === 'unknown');
+  if (uncertain.length) {
+    return {
+      readiness: READINESS.DEGRADED,
+      reasons: uncertain.map((c) => `${c.name}: ${c.detail || 'substrate not directly probed'}`),
     };
   }
   return { readiness: READINESS.READY, reasons: [] };
@@ -132,7 +154,7 @@ function probe(opts) {
   ]);
   if (opts.docker !== false && compose) {
     const di = tryRun('docker', ['info', '--format', '{{.ServerVersion}}']);
-    if (!di.ran) checks.push({ name: 'docker-daemon', status: 'skipped', detail: di.detail });
+    if (!di.ran) checks.push({ name: 'docker-daemon', status: 'unknown', detail: `Docker daemon not directly probed — ${di.detail || 'docker CLI unavailable'} (FB-LR-24)` });
     else checks.push({ name: 'docker-daemon', status: di.ok ? 'up' : 'down', detail: di.ok ? `server ${di.detail}` : (di.detail || 'docker info failed') });
   } else {
     checks.push({ name: 'docker-daemon', status: 'skipped', detail: 'no compose file detected' });
@@ -143,7 +165,7 @@ function probe(opts) {
   const usesDb = !!opts.dbPort || !!prismaSchema || !!compose;
   if (opts.db !== false && usesDb) {
     const pg = tryRun('pg_isready', ['-h', opts.dbHost || '127.0.0.1', '-p', String(opts.dbPort || 5432)]);
-    if (!pg.ran) checks.push({ name: 'postgres', status: 'skipped', detail: 'pg_isready not installed' });
+    if (!pg.ran) checks.push({ name: 'postgres', status: 'unknown', detail: 'Postgres not directly probed — pg_isready not installed (FB-LR-24)' });
     else checks.push({ name: 'postgres', status: pg.ok ? 'up' : 'down', detail: pg.detail || `pg_isready :${opts.dbPort || 5432}` });
   }
 
@@ -151,7 +173,7 @@ function probe(opts) {
   const usesRedis = !!opts.redisPort || (compose && /redis/i.test((() => { try { return fs.readFileSync(compose, 'utf8'); } catch (_e) { return ''; } })()));
   if (opts.redis !== false && usesRedis) {
     const rc = tryRun('redis-cli', ['-p', String(opts.redisPort || 6379), 'ping']);
-    if (!rc.ran) checks.push({ name: 'redis', status: 'skipped', detail: 'redis-cli not installed' });
+    if (!rc.ran) checks.push({ name: 'redis', status: 'unknown', detail: 'Redis not directly probed — redis-cli not installed (FB-LR-24)' });
     else checks.push({ name: 'redis', status: rc.ok && /PONG/i.test(rc.detail) ? 'up' : 'down', detail: rc.detail || `ping :${opts.redisPort || 6379}` });
   }
 
@@ -160,7 +182,7 @@ function probe(opts) {
   //    `prisma migrate resolve` inside an impl task. Codify it as a readiness gate.
   if (opts.migrations !== false && prismaSchema) {
     const ms = tryRun('npx', ['--no-install', 'prisma', 'migrate', 'status', '--schema', prismaSchema]);
-    if (!ms.ran) checks.push({ name: 'migrations', status: 'skipped', detail: 'prisma not runnable (--no-install)' });
+    if (!ms.ran) checks.push({ name: 'migrations', status: 'skipped', detail: 'prisma CLI unavailable — history check skipped (the DB itself is probed separately; not a substrate-confirmation gap, so NOT unknown/FB-LR-24)' });
     else if (ms.ok) checks.push({ name: 'migrations', status: 'up', detail: 'history consistent' });
     else if (/P1001|Can't reach database|ECONNREFUSED/i.test(ms.detail)) checks.push({ name: 'migrations', status: 'down', detail: 'cannot reach DB for migrate status' });
     else if (/not yet been applied|drift|not in sync|pending migration/i.test(ms.detail)) checks.push({ name: 'migrations', status: 'inconsistent', detail: 'migration history not in sync (FB-LR-09)' });
