@@ -6662,6 +6662,32 @@ Ledger updated (Fork C section + FB-LR-23..26 + positive confirmations); runbook
 
 ---
 
+## DEC-DEV-0112 — env-readiness: used-but-unprobed substrate ⇒ DEGRADED, не молчаливый READY (FB-LR-24)
+
+**Date:** 2026-06-29
+**Trigger:** Ф1/1A плана «A+B complete» — первый код-долг N+2 gate-followups. FB-LR-24 (ledger, Fork C / G-2 grade): readiness probe частично инференциален — на пилот-хосте 2 из 3 substrate-проверок были SKIPPED (`pg_isready`/`redis-cli` не установлены), так что `readiness:READY` держался на docker-up + suite-GREEN, без прямого зонда Postgres/Redis.
+**Tag:** #orchestrator #gate-contract #readiness #fix
+
+### Context
+`env-readiness.cjs` (DEC-DEV-0092) моделирует readiness-ось двумя путями: probe (жив ли субстрат, который проект использует) + classify-failures (RED-suite = env-артефакт или код). Дефект: used-субстрат, который НЕ удалось прозондировать (бинарь зонда отсутствует), помечался `'skipped'` — статусом, неотличимым от «субстрат не используется». `classifyReadiness` пропускал и `'skipped'`, и `'unknown'` как READY (явная 0092-формулировка «uncertainty never degrades»). Итог: хост без `pg_isready`/`redis-cli` объявлялся полностью READY, ни разу не подтвердив Postgres/Redis напрямую — «врущий» READY.
+
+### Options considered
+1. **used+unprobed → `unknown` → DEGRADED** (выбрано). Probe помечает used-но-непрозондированный субстрат `'unknown'`; `classifyReadiness` поднимает `'unknown'` до DEGRADED (down/inconsistent по-прежнему ENV_NOT_READY и доминируют). DEGRADED уже поддержан P6 (`RANK`/`worstReadiness`): допускает advisory-GO + дисклоз, но не молчаливый полный READY.
+2. **used+unprobed → ENV_NOT_READY → MANUAL_VERIFY** (буква исходного плана 1A). Отвергнуто: мы НЕ доказали, что субстрат DOWN — зелёный suite на used-DB — сильная косвенная улика, что он up (его бы повалили PrismaInitError, что ловит classify-failures). Форсить MANUAL_VERIFY на каждом хосте без `pg_isready` = false-block, против инварианта либы «never a false NO-GO» и против DX (dev-машины часто полагаются на Docker без локальных CLI-зондов).
+3. **Дисклоз-флаг без degrade.** Отвергнуто: слабее — план явно хочет, чтобы неопределённость двигала readiness-ось, а не пряталась в примечании.
+
+### Decision
+Вариант 1. Probe: `postgres`/`redis`/`docker-daemon` на used-субстрате при отсутствующем зонде → `'unknown'` (было `'skipped'`). `classifyReadiness`: любой `'unknown'` → DEGRADED (когда нет down/inconsistent). Граница: migration-history check (`!ms.ran`, нет prisma CLI) остаётся `'skipped'` — это доп. проверка целостности поверх уже-прозондированного DB, не пробел подтверждения субстрата (задокументировано inline). FB-LR-09 (migration-history → inconsistent → ENV_NOT_READY) уже был реализован в 0092 — 1A его не трогает.
+
+### Outcome
+`orchestrator/lib/env-readiness.cjs` + тест: `npm run test:orchestrator` зелёный (10 env-readiness кейсов, +2 новых: `unknown⇒DEGRADED`, `down доминирует unknown`; P6 wiring 9/9 без регрессий — смена detail-строк ничего не сломала). Additive: counts 24/44 без изменений (поведенческий fix probe, не новое validation-правило). Consumer-zone (orchestrator) → CHANGELOG `[Unreleased] ### Fixed`. Пересматривает 0092-формулировку «uncertainty never degrades» → «uncertainty on a USED substrate degrades to DEGRADED».
+
+### Lessons
+1. **`skipped` и `unknown` — разные сорта «не проверили».** `skipped` = «не наше» (не влияет); `unknown` = «наше, но не подтвердили» (обязано влиять). Сворачивать их в один молчаливый READY = readiness-ось врёт ровно там, где зонд слеп.
+2. **Honest-uncertainty ≠ block.** Правильная реакция на «не смогли подтвердить used-субстрат» — промежуточная ступень (DEGRADED: дисклоз + advisory-GO), а не крайность (ENV_NOT_READY/блок). Косвенная улика (зелёный suite) сохраняет GO достижимым; мы помечаем, а не запрещаем.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

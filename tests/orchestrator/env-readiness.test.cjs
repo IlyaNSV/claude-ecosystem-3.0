@@ -8,7 +8,8 @@
  * they are deterministic and are the part the gate's correctness rides on:
  *   - classifyFailures(): the substrate-error allowlist — does a RED suite mean the
  *     code failed, or just that the substrate was down? (the run-B false-NO-GO).
- *   - classifyReadiness(): down / inconsistent substrate ⇒ ENV_NOT_READY.
+ *   - classifyReadiness(): down / inconsistent substrate ⇒ ENV_NOT_READY; a used-but-
+ *     unprobed substrate (unknown) ⇒ DEGRADED (FB-LR-24, never a silent READY).
  *
  * Node stdlib only; run with `node tests/orchestrator/env-readiness.test.cjs`.
  */
@@ -96,13 +97,29 @@ test('classifyReadiness: an inconsistent migration history ⇒ ENV_NOT_READY (FB
   assert.strictEqual(r.readiness, 'ENV_NOT_READY');
 });
 
-test('classifyReadiness: up/skipped/unknown only ⇒ READY (uncertainty never degrades)', () => {
+test('classifyReadiness: up/skipped only ⇒ READY', () => {
   assert.strictEqual(classifyReadiness([]).readiness, 'READY');
   assert.strictEqual(classifyReadiness([
     { name: 'docker-daemon', status: 'up' },
     { name: 'postgres', status: 'skipped' },
-    { name: 'migrations', status: 'unknown' },
   ]).readiness, 'READY');
+});
+
+test('classifyReadiness: a USED-but-unprobed substrate (unknown) ⇒ DEGRADED, not silent READY (FB-LR-24)', () => {
+  const r = classifyReadiness([
+    { name: 'docker-daemon', status: 'up' },
+    { name: 'postgres', status: 'unknown', detail: 'pg_isready not installed' },
+  ]);
+  assert.strictEqual(r.readiness, 'DEGRADED', 'an unprobed used substrate must degrade readiness');
+  assert.ok(r.reasons.some((s) => /postgres/i.test(s)), 'the unprobed substrate must be surfaced in reasons');
+});
+
+test('classifyReadiness: DOWN dominates unknown (worst-axis) ⇒ ENV_NOT_READY (FB-LR-24)', () => {
+  const r = classifyReadiness([
+    { name: 'postgres', status: 'down', detail: 'refused' },
+    { name: 'redis', status: 'unknown', detail: 'redis-cli not installed' },
+  ]);
+  assert.strictEqual(r.readiness, 'ENV_NOT_READY', 'a down substrate must dominate an unknown one');
 });
 
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
