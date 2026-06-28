@@ -111,6 +111,18 @@ test('the envelope surfaces the P6 gate conflicts + findings, not just impl-time
   assert(/FB-LR-19/.test(SRC), 'DEC-DEV-0104 / FB-LR-19 not referenced in the source');
 });
 
+test('PA-writes target the canonical worktree-shared file + commit-zone advisory (FB-LR-23)', () => {
+  // parallel git worktrees share one .git → a worktree-local pending-actions.md lets PA-ids collide.
+  assert(/FB-LR-23/.test(SRC), 'FB-LR-23 parallel-worktree guard not referenced');
+  assert(/const PA_CANON\b/.test(SRC), 'no PA_CANON canonical-pending-actions instruction');
+  assert(/git worktree list --porcelain/.test(SRC), 'PA_CANON does not resolve the canonical file via git worktree list');
+  // 1 declaration + 2 uses (block + concern) = 3 occurrences
+  const uses = (SRC.match(/\bPA_CANON\b/g) || []).length;
+  assert(uses >= 3, `both PA-emitting prompts (block + concern) must include PA_CANON (decl + 2 uses; found ${uses})`);
+  // the block-commit carries the commit-zone advisory (shared-worktree .git → explicit-path is the isolation)
+  assert(/shared-worktree \.git/.test(SRC), 'recordBlock lacks the FB-LR-23 commit-zone advisory');
+});
+
 test('keeps the prior P5 guards (FB-001 args, FB-002 empty feature, P6 delegation by scriptPath)', () => {
   assert(/typeof args === 'string' \? JSON\.parse\(args\)/.test(SRC), 'FB-001 args guard missing');
   assert(/!FEATURE/.test(SRC) && /FB-002/.test(SRC), 'FB-002 empty-feature guard missing');

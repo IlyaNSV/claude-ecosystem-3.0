@@ -163,6 +163,16 @@ test('two-axis readiness contract: MECH_SCHEMA carries readiness + ENV_PROBE wir
   assert(/'READY'[\s\S]*'DEGRADED'[\s\S]*'ENV_NOT_READY'/.test(SRC), 'readiness enum not present');
 });
 
+test('the escalation PA-write targets the canonical worktree-shared file (FB-LR-23)', () => {
+  // G-1: parallel worktrees minted the same PA-027 because each scanned its own worktree-local file.
+  assert(/FB-LR-23/.test(SRC), 'FB-LR-23 parallel-worktree guard not referenced');
+  assert(/const PA_CANON\b/.test(SRC), 'no PA_CANON canonical-pending-actions instruction');
+  assert(/git worktree list --porcelain/.test(SRC), 'PA_CANON does not resolve the canonical file via git worktree list');
+  // 1 declaration + 1 use (escalateConflict) = 2 occurrences
+  const uses = (SRC.match(/\bPA_CANON\b/g) || []).length;
+  assert(uses >= 2, `the escalate-conflict PA-write must include PA_CANON (decl + 1 use; found ${uses})`);
+});
+
 test('mechanical layer runs the env-readiness probe BEFORE the suite + classifies failures', () => {
   // the probe must run first (so a down substrate is known up front) and failures get
   // classified against the substrate-error allowlist (the run-B false-NO-GO root cause).
