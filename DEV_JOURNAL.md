@@ -6787,6 +6787,28 @@ N+2 блок A ЗАКРЫТ. Ledger: V-2 row ⛔→✅; FB-LR-28/29 заведе
 
 ---
 
+## DEC-DEV-0116 — Ф4 owner-развилки закрыты: `had_trial`→Path A, FB-LR-25→wontfix
+
+**Date:** 2026-06-29
+**Trigger:** План «A+B complete» Ф4 (owner-развилки) — после закрытия блока A (DEC-DEV-0115) владелец выбрал «закрыть owner-развилки» следующим фронтом; два решения вынесены через AskUserQuestion.
+**Tag:** #orchestrator #pilot #product-decision #process
+
+### Context
+Два OPEN-форка тянулись с live-run батчей: (1) продуктовый `had_trial` FM-001↔FM-005 (FB-LR-07 gate-starvation: если auth пишет sticky-флаг раньше billing-check-and-set — trial никогда не активируется); (2) FB-LR-25 envelope-observability (свернуть недослитые очереди в поле конверта) — «ledger-only candidate».
+
+### Decision
+- **`had_trial` → Path A** (владелец): **billing (FM-005) — единственный writer** через SC-020 atomic check-and-set; auth (FM-001) эмитит только идемпотентный `account.confirmed`, не пишет `had_trial`. Отвергнут Path B (re-key idempotency на существование `Subscription`) — больше работы + расходится со спекой. Спека уже Path-A-консистентна (IC-027 v2 §usage, DA-batch APPROVE). Ратифицировано в пилоте: **DEC-PLAN-038** (`.product/.decisions/journal.md`, uncommitted — коммит пилот-канона за владельцем). Висящего had_trial-PA в пилоте нет → закрытие = ратификация + флип ledger-статуса.
+- **FB-LR-25 → WONTFIX/backlog** (владелец): основная дыра наблюдаемости уже закрыта FB-LR-19/0104 (P5 сворачивает `p6.conflicts`+`findings` в конверт); маргинальная ценность «недослитых очередей» низкая — не PR.
+
+### Outcome
+Ф4 закрыта. Ledger: обе had_trial-строки ⏳OPEN→✅RESOLVED(Path A); backlog-disposition FB-LR-25 wontfix + FB-LR-28/29 LOW. Counts 24/44 (no artifact/rule change). Пилот-канон: DEC-PLAN-038 дописан (owner commits). **Следующий фронт = Ф5** (достройка модуля §6 detect-leg → P7 → P2 = модуль полный, снимает PILOT POINT). Append-only в ветку PR #79.
+
+### Lessons
+1. **Граница «пилот-канон = владелец» соблюдена** — продуктовое решение записал в пилотный decisions-journal, но коммит оставил владельцу (как merge в main). Спека была уже Path-A-консистентна (IC-027 v2) → ратификация = явный owner-sign-off, а не правка артефактов.
+2. **Не каждый ledger-candidate стоит PR** — FB-LR-25 перекрыт более ранним фиксом (0104); честная wontfix-диспозиция дешевле, чем инкрементальный PR ради полноты.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown
