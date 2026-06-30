@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- GENERATED — DO NOT EDIT. Source: docs/guide/ecosystem-processes.template.html + docs/guide/process-graph.overlay.json
      Regenerate: node dev/meta-improvement/scripts/gen-process-map.cjs
-     Vendored libs in docs/guide/vendor/ (cytoscape, dagre, cytoscape-dagre, cytoscape-expand-collapse) — fully offline. -->
+     Vendored libs in docs/guide/vendor/ (cytoscape, cytoscape-expand-collapse, fcose: layout-base + cose-base + cytoscape-fcose) — fully offline. -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -167,7 +167,7 @@
 <script id="proc-data" type="application/json">{
   "_build": {
     "date": "2026-06-30",
-    "sha": "f75b2d6",
+    "sha": "cf1301c",
     "lanes": 5,
     "processes": 20,
     "steps": 108,
@@ -6052,18 +6052,19 @@
 }</script>
 
 <script src="vendor/cytoscape.min.js"></script>
-<script src="vendor/dagre.min.js"></script>
-<script src="vendor/cytoscape-dagre.js"></script>
 <script src="vendor/cytoscape-expand-collapse.js"></script>
+<script src="vendor/layout-base.js"></script>
+<script src="vendor/cose-base.js"></script>
+<script src="vendor/cytoscape-fcose.js"></script>
 <script>
 "use strict";
 (function(){
   var DATA = JSON.parse(document.getElementById('proc-data').textContent);
 
-  // register extensions defensively (UMDs may auto-register).
-  [window.cytoscapeDagre, window.cytoscapeExpandCollapse].forEach(function(ext){
-    if (ext) { try { cytoscape.use(ext); } catch(e){} }
-  });
+  // fcose is a layout extension → needs explicit registration. expand-collapse auto-registers
+  // its UMD on load (re-registering it logs a harmless "already exists" warning), so register
+  // ONLY fcose here. (The load-order guarantees expand-collapse self-registered before this runs.)
+  if (window.cytoscapeFcose) { try { cytoscape.use(window.cytoscapeFcose); } catch(e){} }
 
   var laneColor = {};
   DATA.lanes.forEach(function(l){ laneColor[l.id] = l.color; });
@@ -6072,7 +6073,19 @@
     return null;
   }
 
-  var DAGRE = { name:'dagre', rankDir:'LR', nodeSep:24, rankSep:55, edgeSep:10, animate:false, fit:false };
+  // fcose — compound-aware force layout. dagre ignored parent nesting (lanes overlapped,
+  // children spilled, artifacts pool sparse); fcose packs compounds tightly. FULL (randomize)
+  // for initial / explicit relayout / grouping; INC (incremental, from current positions) for
+  // the expand-collapse drill so opening a process refines rather than reshuffling the whole map.
+  var FCOSE_BASE = {
+    name:'fcose', quality:'proof', animate:false, fit:false,
+    packComponents:true, nodeDimensionsIncludeLabels:true, uniformNodeDimensions:false,
+    nodeSeparation:82, idealEdgeLength:95, nodeRepulsion:6500,
+    gravity:0.25, gravityCompound:1.3, gravityRangeCompound:1.6, nestingFactor:0.12,
+    numIter:2500, tile:true, tilingPaddingVertical:14, tilingPaddingHorizontal:14
+  };
+  var LAYOUT_FULL = Object.assign({}, FCOSE_BASE, { randomize:true });
+  var LAYOUT_INC  = Object.assign({}, FCOSE_BASE, { randomize:false, quality:'default', numIter:1200 });
 
   var cy = cytoscape({
     container: document.getElementById('cy'),
@@ -6146,7 +6159,7 @@
         'curve-style':'bezier','width':1.4,'line-color':'#8b949e','target-arrow-color':'#8b949e',
         'target-arrow-shape':'triangle','arrow-scale':0.85,'opacity':0.85,
         'label':'data(label)','font-size':9,'color':'#6e7681','text-rotation':'autorotate','text-background-color':'#0d1117','text-background-opacity':0.85,'text-background-padding':2 } },
-      { selector: 'edge[type="sequence"]', style: { 'line-color':'var(--seq)','target-arrow-color':'#8b949e','width':1.6 } },
+      { selector: 'edge[type="sequence"]', style: { 'line-color':'#8b949e','target-arrow-color':'#8b949e','width':1.6 } },
       { selector: 'edge[type="delegate"]', style: { 'line-color':'#f0883e','target-arrow-color':'#f0883e','line-style':'dashed','width':1.8 } },
       { selector: 'edge[type="produces"]', style: { 'line-color':'#3fb950','target-arrow-color':'#3fb950','width':1.2 } },
       { selector: 'edge[type="consumes"]', style: { 'line-color':'#58a6ff','target-arrow-color':'#58a6ff','width':1.1,'opacity':0.6 } },
@@ -6156,14 +6169,14 @@
       { selector: 'edge.off', style: { 'display':'none' } },
       { selector: 'edge.ehl', style: { 'width':3,'opacity':1,'z-index':99 } }
     ],
-    layout: DAGRE
+    layout: LAYOUT_FULL
   });
 
   // ── expand/collapse ──
   var api = null;
   try {
     cy.expandCollapse({
-      layoutBy: DAGRE, fisheye:false, animate:false, undoable:false,
+      layoutBy: LAYOUT_INC, fisheye:false, animate:false, undoable:false,
       cueEnabled:true, expandCollapseCueSize:13, expandCollapseCueLineSize:9,
       expandCueImage:undefined, collapseCueImage:undefined
     });
@@ -6172,13 +6185,13 @@
 
   // default layered view: collapse everything, then open the 5 module lanes (processes stay collapsed).
   function defaultView(){
-    if (!api){ cy.layout(DAGRE).run(); cy.fit(null,40); return; }
+    if (!api){ cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); return; }
     try {
       api.collapseAll();
       var lanes = cy.nodes('[kind="lane"]').filter(function(n){ return n.id() !== 'lane:artifacts'; });
       api.expand(lanes);
     } catch(e){ console.warn(e); }
-    cy.layout(DAGRE).run();
+    cy.layout(LAYOUT_FULL).run();
     cy.fit(null, 45);
   }
 
@@ -6207,9 +6220,9 @@
   });
 
   // ── toolbar ──
-  document.getElementById('expandAll').addEventListener('click', function(){ if(api){ try{api.expandAll();}catch(e){} } cy.layout(DAGRE).run(); cy.fit(null,40); });
-  document.getElementById('collapseAll').addEventListener('click', function(){ if(api){ try{api.collapseAll();}catch(e){} } cy.layout(DAGRE).run(); cy.fit(null,40); });
-  document.getElementById('relayout').addEventListener('click', function(){ cy.layout(DAGRE).run(); });
+  document.getElementById('expandAll').addEventListener('click', function(){ if(api){ try{api.expandAll();}catch(e){} } cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); });
+  document.getElementById('collapseAll').addEventListener('click', function(){ if(api){ try{api.collapseAll();}catch(e){} } cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); });
+  document.getElementById('relayout').addEventListener('click', function(){ cy.layout(LAYOUT_FULL).run(); });
   document.getElementById('fitBtn').addEventListener('click', function(){ cy.fit(null,40); });
   document.getElementById('resetBtn').addEventListener('click', function(){ clearSearch(); ungroupAll(); defaultView(); });
   document.getElementById('zin').addEventListener('click', function(){ cy.zoom({ level: cy.zoom()*1.3, renderedPosition:{ x: cy.width()/2, y: cy.height()/2 } }); });
@@ -6217,7 +6230,7 @@
 
   // ── ad-hoc grouping («группировка в моменте»: session-only, НЕ из SSOT, НЕ persisted) ──
   // Single place that runs the active layout — Task-2 fcose swap touches only LAYOUT/this fn.
-  function runLayout(){ cy.layout(DAGRE).run(); }
+  function runLayout(){ cy.layout(LAYOUT_FULL).run(); }
   var _toastT = null;
   function flash(msg){
     var t = document.getElementById('toast'); if (!t) return;
