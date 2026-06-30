@@ -40,6 +40,19 @@ nfr_reviewed_at: YYYY-MM-DD               # дата проведения F.5a
 nfr_decline_reason: "string"              # если status=declined, optional
 requires_nfr: true | false                # high-risk indicator (defaults false)
 
+# External capabilities manifest (opt-in, DEC-DEV-0117) — declares the feature's
+# external/provider/secret dependencies so the Orchestrator §6 detect-leg can
+# enumerate them at pre-flight and disposition the absent ones DETERMINISTICALLY
+# (block vs deferred follows from tier + dev_stand_in, not a heuristic).
+# ABSENT == [] == old behaviour 1:1 (backward-compat). Items are YAML flow-mappings:
+external_capabilities:                     # optional; omit if the feature has no external deps
+  - { capability: machine-translation, secret_env: DEEPL_API_KEY, provider: DeepL, tier: prod, dev_stand_in: Mock }
+  # capability   — short name of the external capability (machine-translation, text-to-speech, payments…)
+  # secret_env   — the env var that grants access (DEEPL_API_KEY); omit for a tool/binary dep
+  # provider     — chosen vendor, or TBD if the provider CHOICE is still a Product decision (→ OD8)
+  # tier         — provisioning tier by which REAL access must exist (dev | staging | prod)
+  # dev_stand_in — how it is satisfied in dev (Mock | stub | unwired | ""); "" == no stand-in ⇒ a BLOCK
+
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
 created: YYYY-MM-DD
