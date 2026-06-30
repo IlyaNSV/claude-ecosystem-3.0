@@ -132,11 +132,17 @@ try {
       e.source().parent().id() === 'proc:P1A' && e.target().parent().id() === 'proc:P1A');
     let fwd = 0;
     seq.forEach((e) => { if (e.source().position('x') <= e.target().position('x')) fwd++; });
-    return { total: seq.length, forward: fwd };
+    // tidiness: a mostly-linear process must lay its steps out in FEW rows (a clean flat flow),
+    // not a diagonal staircase (the produces/consumes pull bug → 8-12 rows). Count distinct y-bands.
+    const kids = cy.getElementById('proc:P1A').children();
+    const rows = {};
+    kids.forEach((n) => { rows[Math.round(n.position('y') / 25)] = 1; });
+    return { total: seq.length, forward: fwd, rows: Object.keys(rows).length, steps: kids.length };
   });
   const travRatio = trav.total ? trav.forward / trav.total : 1;
-  console.log(`  P1A traversal: ${trav.forward}/${trav.total} sequence edges flow forward (x↑)`);
+  console.log(`  P1A traversal: ${trav.forward}/${trav.total} sequence edges forward (x↑); steps in ${trav.rows} row(s)`);
   ok(travRatio >= 0.8, `expanded process steps flow in traversal order (${trav.forward}/${trav.total} forward ≥80%)`);
+  ok(trav.rows <= 3, `expanded process steps stay tidy/flat (${trav.steps} steps in ${trav.rows} rows ≤3, no staircase)`);
 
   // ── structural invariants: expand everything, count vs the data island ──
   const struct = await page.evaluate(() => {

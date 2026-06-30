@@ -167,7 +167,7 @@
 <script id="proc-data" type="application/json">{
   "_build": {
     "date": "2026-06-30",
-    "sha": "830304d",
+    "sha": "814bc2a",
     "lanes": 5,
     "processes": 20,
     "steps": 108,
@@ -6085,17 +6085,23 @@
       'elk.direction':'RIGHT',
       'elk.hierarchyHandling':'INCLUDE_CHILDREN',
       'elk.layered.considerModelOrder.strategy':'NODES_AND_EDGES',
-      'elk.layered.crossingMinimization.semiInteractive':true,
-      'elk.layered.nodePlacement.strategy':'NETWORK_SIMPLEX',
-      'elk.layered.spacing.nodeNodeBetweenLayers':62,
-      'elk.spacing.nodeNode':30,
-      'elk.spacing.edgeNode':20,
+      'elk.layered.crossingMinimization.strategy':'LAYER_SWEEP',
+      // BRANDES_KOEPF aligns nodes into STRAIGHT horizontal lines (a clean left→right flow);
+      // NETWORK_SIMPLEX tended to fan steps into a diagonal staircase.
+      'elk.layered.nodePlacement.strategy':'BRANDES_KOEPF',
+      'elk.layered.nodePlacement.bk.fixedAlignment':'BALANCED',
+      'elk.layered.spacing.nodeNodeBetweenLayers':55,
+      'elk.spacing.nodeNode':24,
+      'elk.spacing.edgeNode':18,
       'elk.padding':'[top=30,left=16,bottom=16,right=16]'
     }
   };
-  // single deterministic engine → one config for initial / relayout / drill / grouping.
+  // Lay out using only PROCESS-FLOW edges (sequence/delegate) + meta-edges — NOT the data-overlay
+  // edges (produces/consumes/cascade/lineage). Those are hidden by default yet were still pulling
+  // steps into a vertical staircase; excluding them keeps an expanded process a clean left→right flow.
+  var OVERLAY_EDGES = 'edge[type="produces"], edge[type="consumes"], edge[type="cascade"], edge[type="lineage"]';
   function runLayout(after){
-    var l = cy.layout(ELK_LAYOUT);
+    var l = cy.elements().not(OVERLAY_EDGES).layout(ELK_LAYOUT);
     if (after) l.one('layoutstop', after);
     l.run();
   }
@@ -6189,7 +6195,8 @@
   var api = null;
   try {
     cy.expandCollapse({
-      layoutBy: ELK_LAYOUT, fisheye:false, animate:false, undoable:false,
+      layoutBy: function(){ runLayout(); },   // filtered ELK (flow edges only) — clean expanded flow
+      fisheye:false, animate:false, undoable:false,
       cueEnabled:true, expandCollapseCueSize:13, expandCollapseCueLineSize:9,
       expandCueImage:undefined, collapseCueImage:undefined
     });
