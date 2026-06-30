@@ -20,9 +20,13 @@ DEC-DEV-0076).
 | `audit-spec-fidelity` | Audit generated specs against `.product` for fidelity drift, before impl (P4) | D2-T verify |
 | `feature-to-tdd-impl` | Drive one feature's `tasks.md` to implemented code via native TDD loop (P5) | D3 |
 | `validate-feature-impl` | Feature-level GO/NO-GO gate after impl: full suite+build + 3 validators (RA-8/9/10) + verify-finding (P6) | D3 verify |
+| `runtime-smoke-readiness` | Runtime-smoke gate after P6 GO: is a boot ATTEMPTABLE (run-target + §6 boot-caps + env)? boot the dev server + diagnose a failed start (P7) | D3+ runtime |
 
 P5 delegates its feature-level gate to P6 (`validate-feature-impl`) via `workflow()`; you can
-also run P6 standalone to re-gate an already-implemented feature. Other processes (P2/P7) are deferred.
+also run P6 standalone to re-gate an already-implemented feature. P7 (`runtime-smoke-readiness`)
+runs after a P6 GO — its **readiness leg** (the deterministic verdict) is built; the **live boot**
+is substrate-gated (needs a pilot dev env), and the full Epic E deploy chain awaits Integrator
+D3-runtime. P2 (`decide-architecture-foundation`) is still deferred.
 
 ## Pre-flight (read-only, before launching)
 
@@ -73,6 +77,17 @@ substitute.
    remediation loop's discretion backbone (DEC-DEV-0096 / T5): classifies a block and
    self-checks a fix note so a cross-spec/design contradiction escalates, never self-resolves.
 5. The full TEST/BUILD commands are discoverable (manifests/CI) — the mechanical layer runs them.
+
+**For `runtime-smoke-readiness` (P7)** — run AFTER a P6 GO (the runtime gate):
+1. `runtime-readiness` present (`.claude/orchestrator/lib/runtime-readiness.cjs`) — the deterministic
+   readiness core (run-target detection + §6 boot-capability disposition + verdict). `env-readiness`
+   and `capability-probe` (`.claude/orchestrator/lib/`) are its inputs (env axis + §6 disposition).
+2. A **run target** is declared (`package.json` scripts.dev|start|serve, or a runtime command) — without
+   one the verdict is `NOT_STARTABLE` (a scaffold/spec gap routed to Product, not a P7 failure).
+3. **Substrate-gated:** the live boot needs a working dev env (Docker/DB/etc up). Pass `bootSmoke:false`
+   to run the **readiness leg only** (assess + disclose, no boot) — the explicit knob while the
+   execution leg is substrate-gated. A boot-required capability that is `BLOCK` emits a §6
+   capability-request (Integrator/Product, OD7 await) — do NOT self-equip or mock it.
 
 ## Launch
 
@@ -150,6 +165,23 @@ Workflow({
     concerns: [],                                    // forwarded from P5 (deferred-capability flags)
     degraded: false,                                 // true if upstream tasks were blocked → advisory
     readiness: 'READY'                               // optional pre-flight hint; P6 takes worst-of with its own probe
+  }
+})
+```
+
+**P7 — `runtime-smoke-readiness`** (skills: `orchestrator-init`) — runtime-smoke gate AFTER a
+P6 GO. The readiness leg is deterministic; the live boot is substrate-gated (`bootSmoke:false` =
+readiness only):
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/runtime-smoke-readiness.mjs',
+  args: {
+    feature: "<cc-sdd slug, e.g. auth>",   // optional lens: which feature's §6 boot caps to check
+    runtimeProbe: '.claude/orchestrator/lib/runtime-readiness.cjs',   // DEC-DEV-0120: readiness core
+    envProbe: '.claude/orchestrator/lib/env-readiness.cjs',           // DEC-DEV-0092: shared readiness probe
+    p6Verdict: 'GO',                        // optional: the prior P6 result (a non-GO smoke is informational, disclosed)
+    bootSmoke: true                         // false = readiness leg only (no boot; the substrate-gated execution knob)
   }
 })
 ```
@@ -268,3 +300,15 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
   `findings` (FB-013) — a GO over a mock-only / unwired real seam is GO-with-caveats. Live
   caveat: P5 reaches P6 via `workflow()` (one-level nesting); if unavailable P5 falls back to
   the inline `kiro-validate-impl` lift.
+- **P7 (DEC-DEV-0120):** `verdict` is the readiness gate — `READY_TO_SMOKE` (boot attemptable),
+  `BLOCKED_ON_CAPABILITY` (a boot-required external capability is `BLOCK` — a §6 request was emitted
+  to `pending-actions.md`, route Integrator/Product, OD7 await; **the boot was NOT run** and nothing
+  was mocked), `ENV_NOT_READY` (substrate down — transient, bring it up and re-run), or
+  `NOT_STARTABLE` (no run target declared — route Product). `p7_result` adds the live outcome when a
+  boot ran: `STARTS` / `FAILS_TO_START` (with a `failure_class`, e.g. env-not-loaded 500) /
+  `INCONCLUSIVE`, or `READY_NOT_RUN` when `bootSmoke:false`. **`disclosures` ride with the result and
+  must be surfaced** — a green boot over a dev stand-in (mock-only), a non-GO P6, or a `DEGRADED` env
+  is "indicative, not proof" (the RUN 01 lesson: 223 tests green ≠ app starts; a green boot on mocks
+  ≠ prod-ready). P7 is **capture-don't-fix**: a failed start is surfaced for a P5/P6 re-run, never
+  auto-remediated. The live boot is **substrate-gated** (needs a pilot dev env); the full Epic E
+  deploy/rollback chain awaits Integrator D3-runtime tooling.

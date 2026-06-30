@@ -7,7 +7,9 @@
 > **Статус:** P3 `batch-features-to-cc-sdd` (S5a, DEC-DEV-0076) + P5 `feature-to-tdd-impl`
 > (S5b, DEC-DEV-0077) — гибрид над cc-sdd. Инкремент N+1: P4 `audit-spec-fidelity` (pre-impl
 > fidelity-гейт, DEC-DEV-0084) + full P6 `validate-feature-impl` (feature GO-gate, DEC-DEV-0085;
-> P5 делегирует feature-гейт в P6 через `workflow()`).
+> P5 делегирует feature-гейт в P6 через `workflow()`). §6 capability detect-leg (DEC-DEV-0117) +
+> P7 `runtime-smoke-readiness` readiness-leg (DEC-DEV-0120) — «тесты зелёные ≠ приложение
+> стартует»; живой boot + полный Epic E (deploy) — substrate-gated (нужен Integrator D3-runtime).
 
 ## Принцип: оркеструем, не переписываем (DEC-DEV-0076)
 
@@ -34,13 +36,16 @@ orchestrator/
 ├── README.md                       # этот файл
 ├── processes/                      # Workflow-скелеты (.mjs, in-harness)
 │   ├── batch-features-to-cc-sdd.mjs   # P3
-│   ├── feature-to-tdd-impl.mjs        # P5 (делегирует feature-гейт в P6)
+│   ├── feature-to-tdd-impl.mjs        # P5 (делегирует feature-гейт в P6; §6 detect-leg pre-flight)
 │   ├── audit-spec-fidelity.mjs        # P4 — pre-impl fidelity-гейт (spec vs .product)
-│   └── validate-feature-impl.mjs      # P6 — feature GO-gate (suite+build + 3 валидатора)
+│   ├── validate-feature-impl.mjs      # P6 — feature GO-gate (suite+build + 3 валидатора)
+│   └── runtime-smoke-readiness.mjs    # P7 — «стартует ли dev?» readiness-гейт (boot=substrate-gated)
 └── lib/                            # детерминированные хелперы (.cjs, Node stdlib)
     ├── coverage-oracle.cjs            # P1-1 независимый ID-coverage оракул (P3; backbone RA-8)
     ├── fidelity-oracle.cjs            # P4 trace-integrity (spec-refs ⊆ .product ground-truth)
-    └── gate-risk-classifier.cjs       # P0-2 предикат тяжести гейта HIGH/LOW (P5)
+    ├── gate-risk-classifier.cjs       # P0-2 предикат тяжести гейта HIGH/LOW (P5)
+    ├── capability-probe.cjs           # §6 detect-leg: disposition external_capabilities (P5; DEC-DEV-0117)
+    └── runtime-readiness.cjs          # P7 readiness-ядро: run-target + §6 boot-caps + env → verdict (DEC-DEV-0120)
 
 skills/orchestrator/                # регламент-методология (lazy-loaded)
 ├── orchestrator-init.md            # P1 — сбор контекста + resume после /compact
@@ -99,6 +104,35 @@ Net-new vs `kiro-impl`: **gate-risk-classifier** (он всегда гоняет
 рационируем HIGH/LOW) + durable Workflow-скелет. Лифт = агент **читает kiro-шаблоны прямо
 из пилотного `.claude/skills/kiro-impl/templates/`** в прогоне — kiro в наш репо не копируем
 (иначе tri-location sync-долг, DEC-DEV-0040). Шаблоны самодостаточны (встраивают протокол).
+
+## P7 `runtime-smoke-readiness` — поток (DEC-DEV-0120)
+
+P6 отвечает «тесты зелёные + билдится?» — необходимо, но **не достаточно**. RUN 01 загрузил
+dev-сервер при 223 зелёных тестах и получил 500: процесс не прочитал `.env` (+5 инфра-пробелов).
+Урок P2-1: **«223 теста зелёные ≠ приложение стартует»**. P7 — гейт, закрывающий этот разрыв,
+последний перед сегментом «до прода» (Vision Epic E).
+
+```
+Assess    env-readiness probe → runtime-readiness.cjs: run-target? §6 boot-caps? env up?       [наш гейт]
+            verdict ∈ READY_TO_SMOKE | BLOCKED_ON_CAPABILITY | ENV_NOT_READY | NOT_STARTABLE
+            (§6 boot-caps переиспользуют capability-probe — не новая эвристика, DEC-DEV-0117)
+Smoke     branch на verdict:                                                                    [наш FSM]
+            BLOCKED_ON_CAPABILITY → §6 capability-request в canonical PA (Integrator/Product,
+              OD7 await) — НЕ мокаем, НЕ оснащаем; boot не запускаем
+            NOT_STARTABLE → tracking-PA, route Product (нет run-target); boot не запускаем
+            ENV_NOT_READY → транзиент, поднять env и перезапустить; boot не запускаем
+            READY_TO_SMOKE → живой boot + диагностика провала стартапа (capture-don't-fix)       [substrate-gated]
+Report    disclose: mock-only boot / non-GO P6 / DEGRADED env — «зелёный boot ≠ доказательство»  [наш]
+```
+
+**Две ноги (зеркалит 5A §6-split):** READINESS-нога (`runtime-readiness.cjs` — детерминир.
+verdict из run-target + §6 boot-caps + env) построена и юнит-тестирована; EXECUTION-нога
+(живой boot+диагностика) **substrate-gated** — реальный грейд требует пилотного dev-env +
+GO'нутой фичи, а полный Epic E (deploy/provisioning) ждёт D3-runtime инструментов Интегратора
+(их пока нет). Тумблер `A.bootSmoke=false` гоняет только readiness-ногу (assess+disclose, без
+boot) — явная ручка для пока-substrate-gated исполнения. Boot — **capture-don't-fix**:
+SURFACE провал старта (диагностика по таксономии RUN 01: env-not-loaded 500, missing migration,
+port-in-use, missing runtime secret, dependency-down), чинить — на ре-ране P5/P6.
 
 ## Sync-обязательства
 

@@ -92,10 +92,10 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 | **P4** | `audit-spec-fidelity` | D2-T verify | перед route-to-impl | fidelity-auditor ×N | ✅ |
 | **P5** | `feature-to-tdd-impl` | D3 | spec готов, depth=до-кода | tdd-implementer, adversarial-reviewer | ⚠ нужен env-стек (Docker/PG/Redis); реализуется нативно (§2-bis) |
 | **P6** | `validate-feature-impl` (GO-gate) | D3 verify | последняя задача `[x]` | 3 валидатора | ✅ |
-| **P7** | `runtime-smoke-readiness` | D3+ runtime | «стартует ли dev?» | — (+capability→Integrator) | ❌ нужны D3-runtime инструменты |
+| **P7** | `runtime-smoke-readiness` | D3+ runtime | «стартует ли dev?» | — (+capability→Integrator) | ⚠ readiness-нога построена (DEC-DEV-0120); живой boot substrate-gated (нужен D3-runtime) |
 | — | `deploy-to-stage` / `rollback-release` | D3-05/06 | выкатка/откат | — | ❌ нужны D3-инструменты (не достигнуты в RUN 01) |
 
-`P2` опционален (нужен при нерешённой архитектурной развилке); `P7` раскрыт, но **не оснащён**. Детерминированные shape-скелеты P3 и P5 (с разметкой `[S]`/`agent()`/`[GATE]`/`[AUTONOMY]`) — в harvest-логе §3 / `out-dim-1`.
+`P2` опционален (нужен при нерешённой архитектурной развилке); `P7` — **readiness-нога построена** (DEC-DEV-0120: детерминир. `runtime-readiness.cjs` — run-target + §6 boot-caps + env → verdict; §6 boot-caps переиспользуют capability-probe), но **EXECUTION-нога не оснащена** (живой boot + полный Epic E deploy ждут D3-runtime инструментов Интегратора). Детерминированные shape-скелеты P3 и P5 (с разметкой `[S]`/`agent()`/`[GATE]`/`[AUTONOMY]`) — в harvest-логе §3 / `out-dim-1`.
 
 **Что прогон добавил к каждому процессу (vs концепт v0.1):**
 - **P3:** волновой барьер (`[GATE]` между волнами зависимостей), **content-level adapter-verify** (P0-1: семантика маппинга, не наличие секций — урок silent fidelity-loss), петля cross-spec с критерием выхода (`all RESOLVED`), `coverage-oracle` (не доверяя self-report).
