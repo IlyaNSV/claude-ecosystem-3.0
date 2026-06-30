@@ -1,0 +1,6403 @@
+<!DOCTYPE html>
+<!-- GENERATED — DO NOT EDIT. Source: docs/guide/ecosystem-processes.template.html + docs/guide/process-graph.overlay.json
+     Regenerate: node dev/meta-improvement/scripts/gen-process-map.cjs
+     Vendored libs in docs/guide/vendor/ (cytoscape, cytoscape-expand-collapse, fcose: layout-base + cose-base + cytoscape-fcose) — fully offline. -->
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ecosystem 3.0 — карта процессов (BPMN)</title>
+<style>
+  :root{
+    --bg:#0d1117; --bg2:#161b22; --bg3:#1c2330; --line:#30363d;
+    --tx:#c9d1d9; --tx2:#8b949e; --tx3:#6e7681;
+    --product:#3fb950; --design:#bc8cff; --integrator:#58a6ff; --orchestrator:#f0883e; --ecosystem:#8b949e; --pmo:#e3b341;
+    --shipped:#3fb950; --partial:#d29922; --conditional:#58a6ff; --planned:#6e7681;
+    --seq:#8b949e; --deleg:#f0883e; --prod:#3fb950; --cons:#58a6ff; --casc:#f85149; --lin:#6e7681;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--tx);font-size:14px;overflow:hidden}
+  code,.mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,monospace}
+  a{color:#58a6ff;text-decoration:none}a:hover{text-decoration:underline}
+  header{padding:12px 18px;border-bottom:1px solid var(--line);background:var(--bg);z-index:30}
+  h1{margin:0;font-size:18px;display:inline-block}
+  .sub{color:var(--tx2);font-size:12px;margin-left:10px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:9px}
+  .controls input[type=search]{flex:1;min-width:200px;max-width:360px;background:var(--bg3);border:1px solid var(--line);
+    color:var(--tx);border-radius:7px;padding:7px 11px;font-size:13px}
+  .btn{background:var(--bg3);border:1px solid var(--line);color:var(--tx);border-radius:7px;padding:6px 11px;cursor:pointer;font-size:12.5px}
+  .btn:hover{border-color:#58a6ff}
+  .layers{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:8px}
+  .flabel{font-size:10.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
+  .lchip{font-size:12px;padding:4px 9px;border-radius:20px;background:var(--bg3);border:1px solid var(--line);
+    color:var(--tx2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none}
+  .lchip[aria-pressed="true"]{color:var(--tx);border-color:currentColor;background:var(--bg)}
+  .lchip .ldot{width:18px;height:0;border-top-width:2px;border-top-style:solid;display:inline-block}
+  .lchip[data-layer="produces"]{--c:var(--prod)} .lchip[data-layer="consumes"]{--c:var(--cons)}
+  .lchip[data-layer="sequence"]{--c:var(--seq)} .lchip[data-layer="delegate"]{--c:var(--deleg)}
+  .lchip[data-layer="cascade"]{--c:var(--casc)} .lchip[data-layer="lineage"]{--c:var(--lin)}
+  .lchip .ldot{border-top-color:var(--c)}
+  .lchip[aria-pressed="true"]{color:var(--c)}
+
+  #stage{position:absolute;top:0;left:0;right:0;bottom:0}
+  #cy{position:absolute;top:0;left:0;right:0;bottom:0}
+  #wrap{position:relative;flex:1;min-height:0}
+  body{display:flex;flex-direction:column}
+
+  /* zoom controls */
+  .zoomctl{position:absolute;left:14px;bottom:14px;display:flex;flex-direction:column;gap:6px;z-index:10}
+  .zoomctl .btn{width:34px;height:34px;font-size:16px;display:flex;align-items:center;justify-content:center;padding:0}
+
+  /* legend */
+  .legend{position:absolute;left:14px;top:14px;background:rgba(22,27,34,.92);border:1px solid var(--line);
+    border-radius:9px;padding:9px 11px;font-size:11px;color:var(--tx2);z-index:10;max-width:230px}
+  .legend h4{margin:0 0 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--tx3)}
+  .legend .row{display:flex;align-items:center;gap:7px;margin:3px 0}
+  .legend .gl{width:16px;height:13px;flex:none;border:1px solid var(--tx3);display:inline-block}
+  .legend .gl.task{border-radius:3px;background:#243049}
+  .legend .gl.gateway{transform:rotate(45deg);width:11px;height:11px;background:#3a2d12;border-color:var(--pmo)}
+  .legend .gl.startend{border-radius:50%;background:#13311c;border-color:var(--product)}
+  .legend .gl.artifact{border-radius:4px;background:#3a2f0c;border-color:var(--pmo)}
+  .legend.collapsed .lbody{display:none}
+  .legend .tgl{float:right;cursor:pointer;color:var(--tx3)}
+
+  /* side panel */
+  #panel{position:absolute;right:0;top:0;bottom:0;width:340px;background:var(--bg2);border-left:1px solid var(--line);
+    z-index:20;transform:translateX(100%);transition:transform .16s;overflow-y:auto;padding:16px 16px 40px}
+  #panel.open{transform:translateX(0)}
+  #panel .px{position:absolute;right:12px;top:10px;cursor:pointer;color:var(--tx2);font-size:18px;border:none;background:none}
+  #panel h3{margin:2px 40px 4px 0;font-size:15px}
+  #panel .kindbadge{font-size:10.5px;padding:1px 8px;border-radius:20px;border:1px solid var(--line);color:var(--tx2);display:inline-block;margin-bottom:8px}
+  #panel .what{font-size:12.5px;color:var(--tx);line-height:1.5;margin:6px 0 12px}
+  #panel .sec{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--tx3);margin:13px 0 5px;border-top:1px solid var(--line);padding-top:9px}
+  #panel .kv{font-size:12px;color:var(--tx2);margin:3px 0}
+  #panel .kv b{color:var(--tx);font-weight:600}
+  #panel .pill{display:inline-block;font-size:11px;padding:2px 7px;border-radius:5px;background:var(--bg3);border:1px solid var(--line);margin:2px 4px 2px 0;cursor:pointer}
+  #panel .pill:hover{border-color:#58a6ff}
+  #panel .hk{background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:8px 10px;margin:6px 0;font-size:11.5px}
+  #panel .hk .hkid{font-weight:600;color:var(--tx)}
+  #panel .hk .hkmeta{color:var(--tx3);font-size:10.5px;margin:2px 0 4px}
+  #panel .hk.blocking{border-left:3px solid var(--casc)}
+  #panel .hk.warn{border-left:3px solid var(--partial)}
+  #panel .rl{background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:7px 10px;margin:5px 0;font-size:11.5px}
+  #panel .rl .rlid{font-weight:600;color:var(--tx)}
+  #panel a.src{font-size:11px;color:var(--tx3)}
+
+  .hint{position:absolute;right:14px;bottom:14px;background:rgba(22,27,34,.9);border:1px solid var(--line);
+    border-radius:8px;padding:7px 11px;font-size:11px;color:var(--tx3);z-index:10;max-width:280px}
+  .sep{width:1px;height:20px;background:var(--line);display:inline-block}
+  .toast{position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-8px);opacity:0;pointer-events:none;
+    background:rgba(28,35,48,.97);border:1px solid #2f81f7;border-radius:8px;padding:8px 14px;font-size:12px;color:var(--tx);
+    z-index:40;transition:opacity .18s,transform .18s;max-width:72vw;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  footer{padding:7px 18px;border-top:1px solid var(--line);font-size:11px;color:var(--tx3);background:var(--bg);z-index:30}
+  footer a{margin-right:12px}
+  .stamp{color:var(--tx3)}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Ecosystem 3.0 — карта процессов</h1>
+    <span class="sub">BPMN-граф всех процессов: lane → процесс → шаг. Колесо — зум · клик ⊕/⊖ или по процессу — свернуть/развернуть · клик по узлу — детали.</span>
+  </div>
+  <div class="controls">
+    <input id="q" type="search" placeholder="Поиск: шаг, процесс, артефакт… (D1.1, handoff, BR, cascade)">
+    <button class="btn" id="expandAll">Развернуть всё</button>
+    <button class="btn" id="collapseAll">Свернуть всё</button>
+    <button class="btn" id="relayout">Перераскладка</button>
+    <button class="btn" id="fitBtn">В экран</button>
+    <button class="btn" id="resetBtn">Сброс</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="btn" id="groupBtn" title="Обернуть выделенные узлы в свёртываемую группу (G)">⊞ Сгруппировать</button>
+    <button class="btn" id="ungroupBtn" title="Разгруппировать выделенную ad-hoc группу (U)">⊟ Разгруппировать</button>
+  </div>
+  <div class="layers">
+    <span class="flabel">слои связей</span>
+    <button class="lchip" data-layer="sequence" aria-pressed="true"><span class="ldot"></span>поток</button>
+    <button class="lchip" data-layer="delegate" aria-pressed="true"><span class="ldot"></span>делегация</button>
+    <button class="lchip" data-layer="produces" aria-pressed="false"><span class="ldot"></span>produces</button>
+    <button class="lchip" data-layer="consumes" aria-pressed="false"><span class="ldot"></span>consumes</button>
+    <button class="lchip" data-layer="cascade" aria-pressed="false"><span class="ldot"></span>каскад</button>
+    <button class="lchip" data-layer="lineage" aria-pressed="false"><span class="ldot"></span>lineage</button>
+    <span class="flabel" style="margin-left:8px">статус</span>
+    <button class="lchip" id="dimNonShipped" data-c="var(--shipped)" aria-pressed="false">только shipped</button>
+  </div>
+</header>
+
+<div id="wrap">
+  <div id="stage"><div id="cy"></div></div>
+
+  <div class="legend" id="legend">
+    <h4>Легенда <span class="tgl" id="legtgl">▾</span></h4>
+    <div class="lbody">
+      <div class="row"><span class="gl startend"></span> start / end</div>
+      <div class="row"><span class="gl task"></span> шаг (task)</div>
+      <div class="row"><span class="gl gateway"></span> gateway / checkpoint (решение)</div>
+      <div class="row"><span class="gl artifact"></span> артефакт (data object)</div>
+      <div class="row" style="margin-top:6px;color:var(--tx3)">рёбра: <b style="color:var(--seq)">поток</b> · <b style="color:var(--deleg)">делегация</b> · <b style="color:var(--prod)">produces</b> · <b style="color:var(--cons)">consumes</b> · <b style="color:var(--casc)">каскад</b> · <b style="color:var(--lin)">lineage</b></div>
+    </div>
+  </div>
+
+  <div class="zoomctl">
+    <button class="btn" id="zin" title="Приблизить">+</button>
+    <button class="btn" id="zout" title="Отдалить">−</button>
+  </div>
+
+  <div class="hint" id="hint">Совет: <b>Shift+рамка</b> или <b>Shift+клик</b> — выделить узлы, затем <b>G</b> — сгруппировать «в моменте» (<b>U</b> — разгруппировать). Клик по процессу (⊕) раскрывает шаги.</div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <aside id="panel">
+    <button class="px" id="panelClose" aria-label="Закрыть">✕</button>
+    <div id="panelBody"></div>
+  </aside>
+</div>
+
+<footer>
+  <a href="ecosystem-map.html">← Карта команд/артефактов</a>
+  <a href="../MAP.md">docs/MAP (обзор)</a>
+  <a href="../pmo/processes.md">processes.md</a>
+  <a href="../pmo/validation.md">validation.md</a>
+  <span class="stamp" id="stamp"></span>
+</footer>
+
+<!-- Data island: generator replaces the single token below with JSON.stringify(DATA). -->
+<script id="proc-data" type="application/json">{
+  "_build": {
+    "date": "2026-06-30",
+    "sha": "cf1301c",
+    "lanes": 5,
+    "processes": 20,
+    "steps": 108,
+    "artifacts": 24,
+    "hooks": 13,
+    "rules": 28
+  },
+  "lanes": [
+    {
+      "id": "product",
+      "label": "Product",
+      "color": "#3fb950",
+      "what": "D1 + D2-Behavioral — ядро ежедневной работы: Discovery -> Planning -> спецификация фич -> handoff + поддержка."
+    },
+    {
+      "id": "design",
+      "label": "Design",
+      "color": "#bc8cff",
+      "what": "D2-UI, условно при has_ui — итеративная генерация UI (Stitch/HTML)."
+    },
+    {
+      "id": "integrator",
+      "label": "Integrator",
+      "color": "#58a6ff",
+      "what": "D2-Tech «сисадмин» — подключает/обновляет внешние инструменты-реализаторы под PMO-карту."
+    },
+    {
+      "id": "orchestrator",
+      "label": "Orchestrator",
+      "color": "#f0883e",
+      "what": "D2-Tech + D3+ runtime — гонит PMO-процессы end-to-end как in-harness Workflow; требует активный cc-sdd."
+    },
+    {
+      "id": "ecosystem",
+      "label": "Ecosystem",
+      "color": "#8b949e",
+      "what": "Установка и обслуживание самой экосистемы: bootstrap / update / verify / feedback."
+    }
+  ],
+  "nodes": [
+    {
+      "data": {
+        "id": "lane:product",
+        "label": "Product",
+        "kind": "lane",
+        "color": "#3fb950",
+        "what": "D1 + D2-Behavioral — ядро ежедневной работы: Discovery -> Planning -> спецификация фич -> handoff + поддержка."
+      }
+    },
+    {
+      "data": {
+        "id": "lane:design",
+        "label": "Design",
+        "kind": "lane",
+        "color": "#bc8cff",
+        "what": "D2-UI, условно при has_ui — итеративная генерация UI (Stitch/HTML)."
+      }
+    },
+    {
+      "data": {
+        "id": "lane:integrator",
+        "label": "Integrator",
+        "kind": "lane",
+        "color": "#58a6ff",
+        "what": "D2-Tech «сисадмин» — подключает/обновляет внешние инструменты-реализаторы под PMO-карту."
+      }
+    },
+    {
+      "data": {
+        "id": "lane:orchestrator",
+        "label": "Orchestrator",
+        "kind": "lane",
+        "color": "#f0883e",
+        "what": "D2-Tech + D3+ runtime — гонит PMO-процессы end-to-end как in-harness Workflow; требует активный cc-sdd."
+      }
+    },
+    {
+      "data": {
+        "id": "lane:ecosystem",
+        "label": "Ecosystem",
+        "kind": "lane",
+        "color": "#8b949e",
+        "what": "Установка и обслуживание самой экосистемы: bootstrap / update / verify / feedback."
+      }
+    },
+    {
+      "data": {
+        "id": "lane:artifacts",
+        "label": "Артефакты · data objects",
+        "kind": "lane",
+        "color": "#e3b341",
+        "what": "24 типа артефактов D1–D2 + boundary objects. Слои рёбер: produces / consumes / lineage / cascade."
+      }
+    },
+    {
+      "data": {
+        "id": "grp:D1",
+        "parent": "lane:artifacts",
+        "label": "D1 · Discovery & Strategy",
+        "kind": "artgroup"
+      }
+    },
+    {
+      "data": {
+        "id": "grp:bridge",
+        "parent": "lane:artifacts",
+        "label": "Мост D1↔D2",
+        "kind": "artgroup"
+      }
+    },
+    {
+      "data": {
+        "id": "grp:D2B",
+        "parent": "lane:artifacts",
+        "label": "D2-Behavioral",
+        "kind": "artgroup"
+      }
+    },
+    {
+      "data": {
+        "id": "grp:D2UI",
+        "parent": "lane:artifacts",
+        "label": "D2-UI · Design (has_ui)",
+        "kind": "artgroup"
+      }
+    },
+    {
+      "data": {
+        "id": "grp:cross",
+        "parent": "lane:artifacts",
+        "label": "Cross-cutting",
+        "kind": "artgroup"
+      }
+    },
+    {
+      "data": {
+        "id": "grp:boundary",
+        "parent": "lane:artifacts",
+        "label": "Boundary objects",
+        "kind": "artgroup"
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS",
+        "parent": "grp:D1",
+        "label": "PS",
+        "kind": "artifact",
+        "name": "Problem Statement",
+        "tier": "🟠",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:MR",
+        "parent": "grp:D1",
+        "label": "MR",
+        "kind": "artifact",
+        "name": "Market Research",
+        "tier": "🟡",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:CA",
+        "parent": "grp:D1",
+        "label": "CA",
+        "kind": "artifact",
+        "name": "Competitive Analysis",
+        "tier": "🟡",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG",
+        "parent": "grp:D1",
+        "label": "SEG",
+        "kind": "artifact",
+        "name": "Segment & JTBD",
+        "tier": "🟠",
+        "cardinality": "2–4"
+      }
+    },
+    {
+      "data": {
+        "id": "art:VP",
+        "parent": "grp:D1",
+        "label": "VP",
+        "kind": "artifact",
+        "name": "Value Proposition",
+        "tier": "🟠",
+        "cardinality": "1 / SEG"
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP",
+        "parent": "grp:D1",
+        "label": "HYP",
+        "kind": "artifact",
+        "name": "Hypothesis",
+        "tier": "🟠",
+        "cardinality": "3–5"
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP",
+        "parent": "grp:D1",
+        "label": "MVP",
+        "kind": "artifact",
+        "name": "MVP Scope",
+        "tier": "🟠",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:RM",
+        "parent": "grp:D1",
+        "label": "RM",
+        "kind": "artifact",
+        "name": "Product Roadmap",
+        "tier": "🟡",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:RL",
+        "parent": "grp:D1",
+        "label": "RL",
+        "kind": "artifact",
+        "name": "Release Plan",
+        "tier": "🟡",
+        "cardinality": "Per release"
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM",
+        "parent": "grp:bridge",
+        "label": "FM",
+        "kind": "artifact",
+        "name": "Feature Map Entry",
+        "tier": "🟠",
+        "cardinality": "Per feature"
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC",
+        "parent": "grp:D2B",
+        "label": "SC",
+        "kind": "artifact",
+        "name": "User Scenario",
+        "tier": "🟠",
+        "cardinality": "Per scenario"
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR",
+        "parent": "grp:D2B",
+        "label": "BR",
+        "kind": "artifact",
+        "name": "Business Rule",
+        "tier": "🔴",
+        "cardinality": "Per rule"
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC",
+        "parent": "grp:D2B",
+        "label": "LC",
+        "kind": "artifact",
+        "name": "Entity Lifecycle Model",
+        "tier": "🟢",
+        "cardinality": "Per entity"
+      }
+    },
+    {
+      "data": {
+        "id": "art:RPM",
+        "parent": "grp:D2B",
+        "label": "RPM",
+        "kind": "artifact",
+        "name": "Role & Permission Model",
+        "tier": "🟢",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:VC",
+        "parent": "grp:D2B",
+        "label": "VC",
+        "kind": "artifact",
+        "name": "Verification Criteria",
+        "tier": "🟢",
+        "cardinality": "Per scenario"
+      }
+    },
+    {
+      "data": {
+        "id": "art:IC",
+        "parent": "grp:D2B",
+        "label": "IC",
+        "kind": "artifact",
+        "name": "Invariant Check",
+        "tier": "🔴",
+        "cardinality": "Per invariant"
+      }
+    },
+    {
+      "data": {
+        "id": "art:NFR",
+        "parent": "grp:D2B",
+        "label": "NFR",
+        "kind": "artifact",
+        "name": "Non-Functional Requirement",
+        "tier": "🟠",
+        "cardinality": "Per NFR"
+      }
+    },
+    {
+      "data": {
+        "id": "art:MK",
+        "parent": "grp:D2UI",
+        "label": "MK",
+        "kind": "artifact",
+        "name": "Mockup Package",
+        "tier": "🟠",
+        "cardinality": "Per screen/flow"
+      }
+    },
+    {
+      "data": {
+        "id": "art:DS",
+        "parent": "grp:D2UI",
+        "label": "DS",
+        "kind": "artifact",
+        "name": "Design System",
+        "tier": "🟡",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:NM",
+        "parent": "grp:D2UI",
+        "label": "NM",
+        "kind": "artifact",
+        "name": "Navigation Map",
+        "tier": "🟢",
+        "cardinality": "Per flow"
+      }
+    },
+    {
+      "data": {
+        "id": "art:AM",
+        "parent": "grp:D2UI",
+        "label": "AM",
+        "kind": "artifact",
+        "name": "App Map (карта приложения + CJM-слой)",
+        "tier": "🟢",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:BG",
+        "parent": "grp:cross",
+        "label": "BG",
+        "kind": "artifact",
+        "name": "Business Glossary",
+        "tier": "🟡",
+        "cardinality": "Singleton"
+      }
+    },
+    {
+      "data": {
+        "id": "art:NOTE",
+        "parent": "grp:cross",
+        "label": "NOTE",
+        "kind": "artifact",
+        "name": "Unstructured Note",
+        "tier": "🟡",
+        "cardinality": "Per note"
+      }
+    },
+    {
+      "data": {
+        "id": "art:LESSON",
+        "parent": "grp:cross",
+        "label": "LESSON",
+        "kind": "artifact",
+        "name": "Corrective Lesson",
+        "tier": "🟡",
+        "cardinality": "Per lesson"
+      }
+    },
+    {
+      "data": {
+        "id": "art:handoff",
+        "parent": "grp:boundary",
+        "label": "handoff",
+        "kind": "artifact",
+        "boundary": true,
+        "name": "Universal handoff (13 секций)"
+      }
+    },
+    {
+      "data": {
+        "id": "art:spec",
+        "parent": "grp:boundary",
+        "label": "spec",
+        "kind": "artifact",
+        "boundary": true,
+        "name": "External spec (cc-sdd)"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P1A",
+        "parent": "lane:product",
+        "label": "P1.A · Discovery Session",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D1",
+        "command": "product:init",
+        "doc": "docs/pmo/processes.md",
+        "what": "От идеи продукта до Discovery-базы (PS/MR/CA/SEG/VP/HYP). Quick (30-60м) или Deep (2-4ч). Паттерн draft->iterate->approve на каждом шаге."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:P1A.start",
+        "parent": "proc:P1A",
+        "label": "Идея продукта",
+        "kind": "start",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "Текстовое описание идеи + опц. контекст (отрасль, аудитория). Выбор режима Quick/Deep.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.1",
+        "parent": "proc:P1A",
+        "label": "D1.1 Problem Discovery",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "5-8 уточняющих вопросов -> draft PS, iterate до approve.",
+        "review": "",
+        "hooks": [
+          "bg-extractor",
+          "session-state",
+          "artifact-validate"
+        ],
+        "rules": [],
+        "produces": [
+          "PS"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G1",
+        "parent": "proc:P1A",
+        "label": "G1 · approve PS",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "🟠 Strategic per-item approve. Разблокирует параллельный MR+CA.",
+        "review": "strategic",
+        "hooks": [
+          "cascade-check"
+        ],
+        "rules": [
+          "V-11"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.2",
+        "parent": "proc:P1A",
+        "label": "D1.2 Market Research",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "Quick: 5-8 web searches + scrapes c пометками [оценочно]. Deep: subagent market-researcher (8-фаз). MR -> queued для DRC.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "MR"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.3",
+        "parent": "proc:P1A",
+        "label": "D1.3 Competitive Analysis",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "Discovery конкурентов (Exa+Brave+Firecrawl), feature-matrix. Deep: subagent competitor-analyst. CA -> queued для DRC.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "CA"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.4",
+        "parent": "proc:P1A",
+        "label": "D1.4 Segment & JTBD",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "Синтез PS+MR+CA -> 2-4 сегмента x 2-4 JTBD. Приоритеты primary/secondary/exploratory.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "SEG"
+        ],
+        "consumes": [
+          "PS",
+          "MR",
+          "CA"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G4",
+        "parent": "proc:P1A",
+        "label": "G4 · approve SEG",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "🟠 Strategic per-SEG approve. Разблокирует VP.",
+        "review": "strategic",
+        "hooks": [
+          "cascade-check"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:DRC",
+        "parent": "proc:P1A",
+        "label": "🔁 Discovery Review Checkpoint",
+        "kind": "checkpoint",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "Batch-approve research-снимка (MR+CA) после сегментации, когда контекст ясен. Bundle / per-item / reject.",
+        "review": "standard",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "MR",
+          "CA"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.4a",
+        "parent": "proc:P1A",
+        "label": "D1.4a Value Proposition",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "Per active SEG -> VP-* (1:1), использует CA для дифференциации.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "VP"
+        ],
+        "consumes": [
+          "SEG",
+          "CA"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G4a",
+        "parent": "proc:P1A",
+        "label": "G4a · approve VP",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "🟠 Strategic per-VP approve.",
+        "review": "strategic",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.5",
+        "parent": "proc:P1A",
+        "label": "D1.5 Hypothesis Formulation",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "SEG+VP+MR -> 3-5 HYP. Human утверждает метрики и пороги (success/invalidation/deferred).",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "HYP"
+        ],
+        "consumes": [
+          "SEG",
+          "VP",
+          "MR"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G5",
+        "parent": "proc:P1A",
+        "label": "G5 · approve HYP",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "🟠 Strategic per-HYP -> status=testing. Discovery завершена.",
+        "review": "strategic",
+        "hooks": [
+          "cascade-check"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.5z",
+        "parent": "proc:P1A",
+        "label": "D1.5z BG extraction (финальный проход)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "Полный BG-extraction по всем артефактам, batch-presentation, human approves BG.",
+        "review": "",
+        "hooks": [
+          "bg-extractor"
+        ],
+        "rules": [
+          "V-08"
+        ],
+        "produces": [
+          "BG"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:P1A.end",
+        "parent": "proc:P1A",
+        "label": "Discovery complete",
+        "kind": "end",
+        "status": "shipped",
+        "process": "P1A",
+        "what": "PS/MR/CA/SEG/VP/HYP в active + glossary. -> P1.B Planning.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P1B",
+        "parent": "lane:product",
+        "label": "P1.B · Planning Session",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D1",
+        "command": "product:plan",
+        "doc": "docs/pmo/processes.md",
+        "what": "От Discovery-базы до MVP scope + Roadmap + RL-001 + FM-скелеты. Per-artifact approve (без нумерованных гейтов)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.6",
+        "parent": "proc:P1B",
+        "label": "D1.6 MVP Scope",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1B",
+        "what": "primary HYP + набор фич для валидации, MoSCoW priorities. MVP approve -> RM разблокирован.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "MVP"
+        ],
+        "consumes": [
+          "HYP",
+          "PS"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.7",
+        "parent": "proc:P1B",
+        "label": "D1.7 Product Roadmap",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1B",
+        "what": "Из MVP+HYP -> draft RM (3-6 мес горизонт, направления). RM approve -> RL могут создаваться.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "RM"
+        ],
+        "consumes": [
+          "MVP",
+          "HYP"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.8",
+        "parent": "proc:P1B",
+        "label": "D1.8 Release Planning",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1B",
+        "what": "RL-001 (= MVP) детальнее: target_date, features, rollout. Per-FM skeleton approve (has_ui? priority? HYP?).",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "RL",
+          "FM"
+        ],
+        "consumes": [
+          "MVP",
+          "RM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.9",
+        "parent": "proc:P1B",
+        "label": "D1.9 Feature Prioritization (continuous)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P1B",
+        "what": "Не отдельный процесс — непрерывный диалог через /product:status, не периодический ритм.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:P1B.end",
+        "parent": "proc:P1B",
+        "label": "Planning complete",
+        "kind": "end",
+        "status": "shipped",
+        "process": "P1B",
+        "what": "MVP/RM/RL active + FM-скелеты в planned. -> P2 Feature Definition.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2A",
+        "parent": "lane:product",
+        "label": "P2.A · Feature Definition (Enrichment)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2B",
+        "command": "product:feature",
+        "doc": "docs/pmo/processes.md",
+        "what": "Обогащение FM-скелета до полной поведенческой спецификации, готовой к handoff. Per-artifact approve; adaptive-depth DA через хуки."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.1",
+        "parent": "proc:P2A",
+        "label": "F.1 Load FM context",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Читает FM-скелет + связанные SEG/VP/HYP, показывает контекст человеку.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "FM",
+          "SEG",
+          "VP",
+          "HYP"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.2",
+        "parent": "proc:P2A",
+        "label": "F.2 Scenario Authoring",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "2-4 SC на фичу: actors, preconditions, trigger, steps, postconditions. Alt/error flows = отдельные SC. Per-SC approve.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-01",
+          "V-02",
+          "V-04"
+        ],
+        "produces": [
+          "SC"
+        ],
+        "consumes": [
+          "FM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.3",
+        "parent": "proc:P2A",
+        "label": "F.3 Business Rule Extraction",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Из шагов active SC -> implicit правила BR (category, parameters, rationale, scenarios[] bi-dir). Per-BR approve. Триггерит DA (P-RULE-02).",
+        "review": "",
+        "hooks": [
+          "br-change-trigger"
+        ],
+        "rules": [
+          "V-03",
+          "V-14a",
+          "P-RULE-02"
+        ],
+        "produces": [
+          "BR"
+        ],
+        "consumes": [
+          "SC"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.4",
+        "parent": "proc:P2A",
+        "label": "F.4 Entity Lifecycle Derivation",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Per сущность -> LC (states + transitions из SC steps + BR guards). 🟢 Confirmation: auto-approve если confidence high.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-05",
+          "V-06"
+        ],
+        "produces": [
+          "LC"
+        ],
+        "consumes": [
+          "SC",
+          "BR"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5",
+        "parent": "proc:P2A",
+        "label": "F.5 Invariant Check Identification",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Кандидаты IC из BR+LC. Триггерит P-RULE-01 (DA review) per IC. Human явно подтверждает абсолютность правила.",
+        "review": "",
+        "hooks": [
+          "ic-change-trigger"
+        ],
+        "rules": [
+          "V-11",
+          "P-RULE-01"
+        ],
+        "produces": [
+          "IC"
+        ],
+        "consumes": [
+          "BR",
+          "LC"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5a.0",
+        "parent": "proc:P2A",
+        "label": "F.5a.0 NFR Ask",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Анализ FM (has_ui/PII/платежи/real-time) -> MVP implied defaults. Выбор: [Y] обсудим / [D] defaults (declined) / [L] отложить (pending).",
+        "review": "strategic",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "FM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5a.1",
+        "parent": "proc:P2A",
+        "label": "F.5a.1 NFR Define",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Только при [Y]: NFR-* с realistic defaults по sanity-ranges. Guardrail: target вне диапазона -> warning + override rationale.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-16"
+        ],
+        "produces": [
+          "NFR"
+        ],
+        "consumes": [
+          "FM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.6",
+        "parent": "proc:P2A",
+        "label": "F.6 Verification Criteria",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Из SC+BR+LC+NFR -> VC (Given/When/Then). Покрытие main+alt+error. NFR -> доп. VC (perf assertions).",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-07"
+        ],
+        "produces": [
+          "VC"
+        ],
+        "consumes": [
+          "SC",
+          "BR",
+          "LC",
+          "NFR"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.7",
+        "parent": "proc:P2A",
+        "label": "F.7 Role & Permission Model",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Новые роли из SC.actors -> RPM; actions из SC steps -> matrix; conditional permissions -> ссылки на BR. Human confirm.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "RPM"
+        ],
+        "consumes": [
+          "SC"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.8",
+        "parent": "proc:P2A",
+        "label": "F.8 Design Module? (has_ui)",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Если has_ui=true -> параллельно запускается P2.5 Design Module.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "FM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.9",
+        "parent": "proc:P2A",
+        "label": "F.9 Product DA Review (optional)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Adversarial 6-линз перед handoff для complex фич. Findings 3-tier (🔴/🟡/🔵). См. под-процесс DA.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "FM",
+          "SC",
+          "BR",
+          "IC"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.10",
+        "parent": "proc:P2A",
+        "label": "F.10 FM transition",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "Все SC/BR/LC/VC/IC/NFR active + RPM + MK(если has_ui) -> FM planned->in-progress. Проверка DoR. Разблокирует /product:handoff.",
+        "review": "strategic",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "FM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:P2A.end",
+        "parent": "proc:P2A",
+        "label": "Feature ready for handoff",
+        "kind": "end",
+        "status": "shipped",
+        "process": "P2A",
+        "what": "FM in-progress, embedded артефакты в active. -> Handoff.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2B",
+        "parent": "lane:product",
+        "label": "P2.B · Feature Creation (новая фича «снизу»)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2B",
+        "command": "product:feature",
+        "doc": "docs/pmo/processes.md",
+        "what": "Создание фичи из свободного описания (не из скелета): добавляет F.0-F.0b перед общим F.1-F.10."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:F.0",
+        "parent": "proc:P2B",
+        "label": "F.0 Idea parsing",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2B",
+        "what": "Парсит описание: для какого SEG, JTBD, гипотеза (если явно).",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:F.0a",
+        "parent": "proc:P2B",
+        "label": "F.0a D1-alignment check",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P2B",
+        "what": "Есть ли подходящий SEG/HYP/VP? Если нет — 🟡 warning (не блок): (a) новый SEG mini-D1.4, (b) best-fit existing, (c) exploratory.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "SEG",
+          "HYP",
+          "VP"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:F.0b",
+        "parent": "proc:P2B",
+        "label": "F.0b FM skeleton creation",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2B",
+        "what": "Формирует FM-скелет, human approves -> FM planned.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "FM"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:P2B.join",
+        "parent": "proc:P2B",
+        "label": "→ F.1…F.10 (как enrichment)",
+        "kind": "end",
+        "status": "shipped",
+        "process": "P2B",
+        "what": "Дальше как P2.A.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:DA",
+        "parent": "lane:product",
+        "label": "Product DA Review (adaptive-depth)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2B",
+        "command": "product:da-review",
+        "doc": "docs/pmo/processes.md",
+        "what": "Adversarial review бизнес-артефактов в изолированном контексте (builder/critic separation). Триггерится на каждое изменение active BR/IC; subagent сам выбирает глубину."
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.classify",
+        "parent": "proc:DA",
+        "label": "Классификация диффа",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "DA",
+        "what": "Subagent анализирует git diff -> cosmetic | significant + rationale.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.cosmetic",
+        "parent": "proc:DA",
+        "label": "Quick consistency (~5м)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "DA",
+        "what": "Cosmetic: не сломал ли refs/supporting rules/lifecycle guards. Один блок findings, без 6 линз.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.full",
+        "parent": "proc:DA",
+        "label": "Full 6-lens review (~20-30м)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "DA",
+        "what": "Significant: Scalability / Reliability / Edge cases / Security / Alternatives / User assumptions.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.findings",
+        "parent": "proc:DA",
+        "label": "Findings 3-tier",
+        "kind": "task",
+        "status": "shipped",
+        "process": "DA",
+        "what": "🔴 Critical / 🟡 Important / 🔵 Discussion -> .product/.da-findings/.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.reception",
+        "parent": "proc:DA",
+        "label": "Reception",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "DA",
+        "what": "Per finding: Act on / Defer (known limitation) / Dismiss (обязателен rationale в journal — anti-sycophancy). Не блокирует автоматически.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:APPROVE",
+        "parent": "lane:product",
+        "label": "Approve Gate (механика)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2B",
+        "command": "product:validate",
+        "doc": "docs/pmo/processes.md",
+        "what": "Что происходит на любом approve. Два пути: стандартный (Critical/Strategic/Standard) и auto-approve (🟢 Confirmation)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.req",
+        "parent": "proc:APPROVE",
+        "label": "Human: approve",
+        "kind": "start",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "Запрос на перевод draft->active.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.branch",
+        "parent": "proc:APPROVE",
+        "label": "Tier review?",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "🟢 Confirmation (LC/VC/RPM/NM) + confidence high + чистая валидация -> auto-approve. Иначе стандартный путь.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.validate",
+        "parent": "proc:APPROVE",
+        "label": "1. Inline validation",
+        "kind": "task",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "Applicable V-* per tier. Blocking failed -> stop, статус остаётся draft.",
+        "review": "",
+        "hooks": [
+          "artifact-validate"
+        ],
+        "rules": [
+          "V-01",
+          "V-03",
+          "V-11"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.transition",
+        "parent": "proc:APPROVE",
+        "label": "2. Status transition + version++",
+        "kind": "task",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "draft -> active; version++ в frontmatter; updated timestamp.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.bg",
+        "parent": "proc:APPROVE",
+        "label": "3. BG extraction",
+        "kind": "task",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "Запуск BG-extraction (Phase 1-4).",
+        "review": "",
+        "hooks": [
+          "bg-extractor"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.cascade",
+        "parent": "proc:APPROVE",
+        "label": "4. Cascade check",
+        "kind": "task",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "Identifies dependents, предлагает bundle.",
+        "review": "",
+        "hooks": [
+          "cascade-check"
+        ],
+        "rules": [
+          "V-11"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.journal",
+        "parent": "proc:APPROVE",
+        "label": "5. Decision journal",
+        "kind": "task",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "Запись для Strategic/Critical уровней.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.auto",
+        "parent": "proc:APPROVE",
+        "label": "Auto-approve (🟢)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "Confirmation-артефакт + confidence high + чистая валидация -> auto-transition без явного approve; «revert \u003cid>» откатывает.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.end",
+        "parent": "proc:APPROVE",
+        "label": "active",
+        "kind": "end",
+        "status": "shipped",
+        "process": "APPROVE",
+        "what": "Артефакт active.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:BG",
+        "parent": "lane:product",
+        "label": "BG Extraction (continuous)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "maint",
+        "command": "product:bg-review",
+        "doc": "docs/pmo/processes.md",
+        "what": "Непрерывное извлечение бизнес-терминов из артефактов. 4 фазы + mass-rename + orphan detection."
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p1",
+        "parent": "proc:BG",
+        "label": "Phase 1 · Candidate Extraction (hook)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "BG",
+        "what": "bg-extractor.js на PostToolUse: bold-термины + capitalized phrases - стоплист - тех-термины - дубли -> кандидаты в .pending/bg-candidates.yaml.",
+        "review": "",
+        "hooks": [
+          "bg-extractor"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p2",
+        "parent": "proc:BG",
+        "label": "Phase 2 · Classification",
+        "kind": "task",
+        "status": "shipped",
+        "process": "BG",
+        "what": "new-term / existing-term (add ref) / possible-synonym (Levenshtein\u003c3) / abandoned-candidate.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p3",
+        "parent": "proc:BG",
+        "label": "Phase 3 · Presentation (batched)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "BG",
+        "what": "Накапливает, presents при approve / в /product:status / на старте следующей сессии — не прерывает flow.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p4",
+        "parent": "proc:BG",
+        "label": "Phase 4 · Human Approval",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "BG",
+        "what": "Per-term: [Y] accept / [edit] / [reject] / [M] merge / [keep].",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "BG"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.rename",
+        "parent": "proc:BG",
+        "label": "Mass-rename workflow",
+        "kind": "subprocess",
+        "status": "shipped",
+        "process": "BG",
+        "what": "/product:bg-rename: identify affected (used_in) -> patch preview -> approve bundle/per-artifact -> atomic apply + BG version++ + single commit -> cascade.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-08",
+          "V-11"
+        ],
+        "produces": [
+          "BG"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.orphan",
+        "parent": "proc:BG",
+        "label": "Orphan term detection",
+        "kind": "task",
+        "status": "shipped",
+        "process": "BG",
+        "what": "Термины с пустым used_in -> deprecate/delete (через /product:cleanup --dry-run, V-15).",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-15"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P4",
+        "parent": "lane:product",
+        "label": "P4 · Cascade Consistency (continuous)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "maint",
+        "command": "product:cascade",
+        "doc": "docs/pmo/validation.md",
+        "what": "Каскадная согласованность — интегрирована в каждый approve gate. V-11 (bi-dir) авто-фиксится хуком; остальное -> pending на ручной разбор."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.trigger",
+        "parent": "proc:P4",
+        "label": "Trigger: active артефакт изменён",
+        "kind": "start",
+        "status": "shipped",
+        "process": "P4",
+        "what": "Approve новой версии / change parameters.",
+        "review": "",
+        "hooks": [
+          "cascade-check"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.identify",
+        "parent": "proc:P4",
+        "label": "Identify dependents",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P4",
+        "what": "Через bi-dir refs (V-11 гарантирует consistency).",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-11"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.bfs",
+        "parent": "proc:P4",
+        "label": "BFS traversal",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P4",
+        "what": "В порядке priority: Critical -> Strategic -> Standard -> Confirmation.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.reval",
+        "parent": "proc:P4",
+        "label": "Per-dependent re-validation",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P4",
+        "what": "Applicable rules per тип зависимого.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.collect",
+        "parent": "proc:P4",
+        "label": "Collect changes",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P4",
+        "what": "Status transitions, re-approve needed, requires_review flags.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.present",
+        "parent": "proc:P4",
+        "label": "Present bundle + human approve",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P4",
+        "what": "[Y]es all / [P]er-item / [N]o (rollback). DA review при IC/BR в каскаде.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.apply",
+        "parent": "proc:P4",
+        "label": "Apply atomic",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P4",
+        "what": "Всё или ничего; rollback при failure.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P5",
+        "parent": "lane:product",
+        "label": "P5 · Periodic Review (partial)",
+        "kind": "process",
+        "status": "partial",
+        "domain": "maint",
+        "command": "product:drift-check",
+        "doc": "docs/pmo/processes.md",
+        "what": "Само-аудит согласованности + мета-линтер. P5.A покрыт P4 (continuous); P5.B Actuality Refresh не проектируется в v1 (нет триггера)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5:P5.drift",
+        "parent": "proc:P5",
+        "label": "Drift-check (C1)",
+        "kind": "task",
+        "status": "partial",
+        "process": "P5",
+        "what": "Артефакты ещё согласованы с PS / primary HYP / MVP-scope? Direction alignment report 🟢/🟡/🔴.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-12"
+        ],
+        "produces": [],
+        "consumes": [
+          "PS",
+          "HYP",
+          "MVP"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5:P5.patterns",
+        "parent": "proc:P5",
+        "label": "Patterns meta-linter (C4)",
+        "kind": "task",
+        "status": "partial",
+        "process": "P5",
+        "what": "Повторяющиеся анти-паттерны в .product/ (hard-coded values, missing actors, asymmetric deps, stale drafts). Информационно.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5:P5.cleanup",
+        "parent": "proc:P5",
+        "label": "Cleanup (V-15 orphans)",
+        "kind": "task",
+        "status": "partial",
+        "process": "P5",
+        "what": "Поиск сирот + опц. гигиена pending-очередей.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-15"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P3p",
+        "parent": "lane:product",
+        "label": "P3 · Feedback Integration (STUB v1)",
+        "kind": "process",
+        "status": "partial",
+        "domain": "maint",
+        "command": "product:validation-tune",
+        "doc": "docs/pmo/processes.md",
+        "what": "Out-of-scope v1 (D5 на ~5% покрытии). Вместо pipeline: manual дописывание + локальная подстройка валидации; системные дефекты -> upstream."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3p:P3.tune",
+        "parent": "proc:P3p",
+        "label": "Validation-tune (C3)",
+        "kind": "task",
+        "status": "partial",
+        "process": "P3p",
+        "what": "AI предлагает project-local подстройку (severity/threshold). Approval — human, запись в journal.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3p:P3.escalate",
+        "parent": "proc:P3p",
+        "label": "Системный дефект?",
+        "kind": "gateway",
+        "status": "partial",
+        "process": "P3p",
+        "what": "Системное -> /ecosystem:meta-feedback (upstream outbox).",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2.5",
+        "parent": "lane:design",
+        "label": "P2.5 · Design Module (has_ui)",
+        "kind": "process",
+        "status": "conditional",
+        "domain": "D2UI",
+        "command": "design:start",
+        "doc": "docs/pmo/processes.md",
+        "what": "Условный под-модуль (has_ui=true). Создаёт Design Package (MK), обновляет DS, строит NM, обновляет AM. 6 шагов Brief->Export."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.1",
+        "parent": "proc:P2.5",
+        "label": "D.1 Design Brief (🟡)",
+        "kind": "task",
+        "status": "conditional",
+        "process": "P2.5",
+        "what": "Из SC+BR+LC+BG+RPM -> design brief. Редактируемый документ, не финальный артефакт.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "SC",
+          "BR",
+          "LC",
+          "BG",
+          "RPM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.2",
+        "parent": "proc:P2.5",
+        "label": "D.2 Screen Generation (🟠)",
+        "kind": "task",
+        "status": "conditional",
+        "process": "P2.5",
+        "what": "subagent screen-generator через Stitch MCP (или HTML fallback). Первый variant экранов per SC-шаг с UI.",
+        "review": "",
+        "hooks": [
+          "design-artifact-validate"
+        ],
+        "rules": [
+          "V-MK-01"
+        ],
+        "produces": [],
+        "consumes": [
+          "SC"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.3",
+        "parent": "proc:P2.5",
+        "label": "D.3 Iterative Refinement (🟠)",
+        "kind": "task",
+        "status": "conditional",
+        "process": "P2.5",
+        "what": "Цикл feedback->правки. Мелкие — Stitch один вызов; крупные — subagent. До approve. (/design:iterate)",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "MK"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.4",
+        "parent": "proc:P2.5",
+        "label": "D.4 Component State Matrix (🟢)",
+        "kind": "task",
+        "status": "conditional",
+        "process": "P2.5",
+        "what": "Checklist состояний per компонент (default/hover/focus/error/disabled/loading/empty/overflow). Дорисовка missing.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-MK-02",
+          "V-MK-03"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.5",
+        "parent": "proc:P2.5",
+        "label": "D.5 Artifact Generation (🟠)",
+        "kind": "task",
+        "status": "conditional",
+        "process": "P2.5",
+        "what": "MK как Design Package; DS обновляется (auto-extract tokens, human confirm); NM из MK+LC; AM обновляется (/design:map).",
+        "review": "",
+        "hooks": [
+          "app-map-cascade"
+        ],
+        "rules": [
+          "V-MK-08",
+          "V-AM-frontmatter"
+        ],
+        "produces": [
+          "MK",
+          "DS",
+          "NM",
+          "AM"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.6",
+        "parent": "proc:P2.5",
+        "label": "D.6 Export for handoff",
+        "kind": "task",
+        "status": "conditional",
+        "process": "P2.5",
+        "what": "MK/DS snapshot/NM готовы для embed в handoff §10 (/design:export).",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-MK-05"
+        ],
+        "produces": [],
+        "consumes": [
+          "MK",
+          "DS",
+          "NM"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:P2.5.end",
+        "parent": "proc:P2.5",
+        "label": "UI-contract ready",
+        "kind": "end",
+        "status": "conditional",
+        "process": "P2.5",
+        "what": "-> handoff §10.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:HO",
+        "parent": "lane:product",
+        "label": "Handoff Generation (boundary object)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "HO",
+        "command": "product:handoff",
+        "doc": "docs/product-module/handoff-spec.md",
+        "what": "Генерация универсального 13-секционного handoff для FM с embedded excerpts + SHA-256 хэшами для drift-detection. Два режима DoR: draft (3 блокера) / production (8 блокеров)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.dor",
+        "parent": "proc:HO",
+        "label": "DoR gate",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "HO",
+        "what": "draft (status partial, 3 блокера) или production (status ready, 8 блокеров). --with-da-review запускает pre-gen DA.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-H-01",
+          "V-H-06"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.assemble",
+        "parent": "proc:HO",
+        "label": "Assemble 13 sections",
+        "kind": "task",
+        "status": "shipped",
+        "process": "HO",
+        "what": "Embedded excerpts FM/SC/BR/LC/VC/IC/NFR + §10 UI (MK/DS/NM если has_ui) + BG excerpt.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-H-02",
+          "V-H-05",
+          "V-H-08",
+          "V-H-11"
+        ],
+        "produces": [],
+        "consumes": [
+          "FM",
+          "SC",
+          "BR",
+          "LC",
+          "VC",
+          "IC",
+          "NFR",
+          "MK",
+          "DS",
+          "NM",
+          "BG"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.hash",
+        "parent": "proc:HO",
+        "label": "SHA-256 hashing",
+        "kind": "task",
+        "status": "shipped",
+        "process": "HO",
+        "what": "Хэш body (без frontmatter, LF) каждого артефакта -> artifact_hashes. Drift-detection хук пересчитывает на каждое сохранение.",
+        "review": "",
+        "hooks": [
+          "product-handoff-gate"
+        ],
+        "rules": [
+          "V-H-04"
+        ],
+        "produces": [
+          "handoff"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.end",
+        "parent": "proc:HO",
+        "label": "handoff.md готов",
+        "kind": "end",
+        "status": "shipped",
+        "process": "HO",
+        "what": "Самодостаточная передача -> любой реализатор / Orchestrator.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P3o",
+        "parent": "lane:orchestrator",
+        "label": "P3 · batch-features-to-cc-sdd",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2T",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Маршрутизация Product-handoffs в cc-sdd specs. Preflight content-fidelity + независимый coverage-oracle. Предусловие: активный cc-sdd."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.read",
+        "parent": "proc:P3o",
+        "label": "Read handoffs + tool-docs",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P3o",
+        "what": "Читает handoff(ы) + документацию cc-sdd.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "handoff"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.preflight",
+        "parent": "proc:P3o",
+        "label": "Content-fidelity preflight",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P3o",
+        "what": "Проверка полноты handoff перед делегацией.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.delegate",
+        "parent": "proc:P3o",
+        "label": "Delegate to kiro-spec-batch",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P3o",
+        "what": "Генерация spec делегируется cc-sdd (по scriptPath, вложенный Workflow).",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "spec"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.oracle",
+        "parent": "proc:P3o",
+        "label": "Coverage oracle",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P3o",
+        "what": "Независимый оракул покрытия handoff -> spec.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P4o",
+        "parent": "lane:orchestrator",
+        "label": "P4 · audit-spec-fidelity",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2T",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Аудит соответствия сгенерированного spec исходному handoff: семантический auditor + ground-truth confirm перед фиксом (verify-finding-before-act)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4o:P4o.audit",
+        "parent": "proc:P4o",
+        "label": "Semantic auditor",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P4o",
+        "what": "Сверяет spec vs handoff на семантический дрейф.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "spec",
+          "handoff"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4o:P4o.confirm",
+        "parent": "proc:P4o",
+        "label": "Ground-truth confirm",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P4o",
+        "what": "Подтверждение находки против кода/спека ДО фикса; refuted -> отброшено. Fabricated-trace exempt.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4o:P4o.fix",
+        "parent": "proc:P4o",
+        "label": "Spec-completion route",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P4o",
+        "what": "Order-aware verify (baseline-sha + 3-way disposition); gap исключает из impl_ready.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P5o",
+        "parent": "lane:orchestrator",
+        "label": "P5 · feature-to-tdd-impl",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D3",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Имплементация фичи в TDD-цикле. Bounded auto-retry на transient; эскалация конфликтов (не self-resolve, single-writer)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5o:P5o.tdd",
+        "parent": "proc:P5o",
+        "label": "TDD implementation",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P5o",
+        "what": "Делегирует cc-sdd impl в TDD-цикле.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "spec"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5o:P5o.retry",
+        "parent": "proc:P5o",
+        "label": "Transient? bounded retry",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P5o",
+        "what": "remediation-guard: transient -> bounded auto-retry; conflict>transient (worst-of) -> escalate.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5o:P5o.escalate",
+        "parent": "proc:P5o",
+        "label": "Escalate (не self-resolve)",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P5o",
+        "what": "Cross-spec/design конфликт -> conflicts понижает GO->MANUAL_VERIFY; P5 не маскирует.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P6o",
+        "parent": "lane:orchestrator",
+        "label": "P6 · validate-feature-impl",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D3",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Валидация имплементации против spec/design: 3 валидатора + verify-finding-before-act. Итог GO / NO-GO / MANUAL_VERIFY."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P6o:P6o.validators",
+        "parent": "proc:P6o",
+        "label": "3 validators (RA-8/9/10)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P6o",
+        "what": "Mechanical + 3 валидатора по spec/design.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "spec"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:P6o:P6o.verify",
+        "parent": "proc:P6o",
+        "label": "verify-finding-before-act",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P6o",
+        "what": "Семантический аудитор сверяется с ground-truth до фикса.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P6o:P6o.verdict",
+        "parent": "proc:P6o",
+        "label": "GO / NO-GO / MANUAL_VERIFY",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P6o",
+        "what": "Verdict x readiness (env-readiness.cjs). conflicts -> понижение GO->MANUAL_VERIFY.",
+        "review": "critical",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P6o:P7o.readiness",
+        "parent": "proc:P6o",
+        "label": "P7 runtime-smoke-readiness (deterministic leg)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P6o",
+        "what": "Детерминированная нога готовности (DEC-DEV-0120) перед вердиктом.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:INT-add",
+        "parent": "lane:integrator",
+        "label": "integrator:add (подключение инструмента)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2T",
+        "command": "integrator:add",
+        "doc": "commands/integrator/add.md",
+        "what": "Подключение внешнего инструмента (npm/MCP/git/docker) под управление PMO. 6-стадийный flow с approve-gate перед install. Идемпотентный re-run."
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.scan",
+        "parent": "proc:INT-add",
+        "label": "1. Scan env",
+        "kind": "task",
+        "status": "shipped",
+        "process": "INT-add",
+        "what": "Существующие кастомизации/конфликты (scan-guard scope-guard).",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.research",
+        "parent": "proc:INT-add",
+        "label": "2. Research/select",
+        "kind": "task",
+        "status": "shipped",
+        "process": "INT-add",
+        "what": "Подбор инструмента под PMO-need.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.gate",
+        "parent": "proc:INT-add",
+        "label": "3. Approve gate (перед install)",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "INT-add",
+        "what": "Human approve до любой установки.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.install",
+        "parent": "proc:INT-add",
+        "label": "4. Install",
+        "kind": "task",
+        "status": "shipped",
+        "process": "INT-add",
+        "what": "Установка + регистрация в pmo-mapping.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.contract",
+        "parent": "proc:INT-add",
+        "label": "5. Contract wiring",
+        "kind": "task",
+        "status": "shipped",
+        "process": "INT-add",
+        "what": "Адаптер handoff->tool (tri-location pattern); copy в .claude/integrator/adapters/.",
+        "review": "",
+        "hooks": [
+          "journal-hook"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.verify",
+        "parent": "proc:INT-add",
+        "label": "6. Verify + journal",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "INT-add",
+        "what": "Проверка + запись в decision-journal.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:INT-maint",
+        "parent": "lane:integrator",
+        "label": "Integrator: maintenance + read-only",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2T",
+        "command": "integrator:status",
+        "doc": "docs/integrator-module/SPEC.md",
+        "what": "Сопровождение инструментов (update/remove) + read-only обзор покрытия PMO-зон."
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-maint:INT.update",
+        "parent": "proc:INT-maint",
+        "label": "update",
+        "kind": "task",
+        "status": "shipped",
+        "process": "INT-maint",
+        "what": "backup -> install new -> drift-detection -> contract-repair -> verify.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-maint:INT.remove",
+        "parent": "proc:INT-maint",
+        "label": "remove (destructive)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "INT-maint",
+        "what": "Impact-анализ + backup + uninstall + cleanup contracts. Требует подтверждения.",
+        "review": "",
+        "hooks": [
+          "scope-guard"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-maint:INT.ro",
+        "parent": "proc:INT-maint",
+        "label": "read-only: status/map/gaps/research/journal/scan",
+        "kind": "task",
+        "status": "shipped",
+        "process": "INT-maint",
+        "what": "Обзор состояния, покрытия PMO, непокрытых зон, журнала решений.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:ECO-setup",
+        "parent": "lane:ecosystem",
+        "label": "Setup: bootstrap / update / verify",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "setup",
+        "command": "ecosystem:bootstrap",
+        "doc": "commands/ecosystem/bootstrap.md",
+        "what": "Установка и синхронизация самой экосистемы в проект. update сохраняет user-zone и состояние пилота (2-level wipe-protection)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-setup:ECO.bootstrap",
+        "parent": "proc:ECO-setup",
+        "label": "bootstrap",
+        "kind": "task",
+        "status": "shipped",
+        "process": "ECO-setup",
+        "what": "Clone .claude/ + init .product/ + CLAUDE.md + env/settings + MCP-стек.",
+        "review": "",
+        "hooks": [
+          "rails-session-start"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-setup:ECO.update",
+        "parent": "proc:ECO-setup",
+        "label": "update",
+        "kind": "task",
+        "status": "shipped",
+        "process": "ECO-setup",
+        "what": "Sync к latest upstream; overwrites ecosystem-zone, preserves user-zone + Orchestrator project-state. 2-level wipe-protection.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-setup:ECO.verify",
+        "parent": "proc:ECO-setup",
+        "label": "verify",
+        "kind": "task",
+        "status": "shipped",
+        "process": "ECO-setup",
+        "what": "Non-destructive health-check установки.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:ECO-feedback",
+        "parent": "lane:ecosystem",
+        "label": "Meta-feedback + governance",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "setup",
+        "command": "ecosystem:meta-feedback",
+        "doc": "commands/ecosystem/meta-feedback.md",
+        "what": "Системный фидбэк об экосистеме (upstream outbox, гибрид-доставка) + pending-actions + D7 session-audit."
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-feedback:ECO.feedback",
+        "parent": "proc:ECO-feedback",
+        "label": "meta-feedback (upstream)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "ECO-feedback",
+        "what": "СИСТЕМНЫЙ фидбэк -> committable outbox -> local pickup / git-issue.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-feedback:ECO.pa",
+        "parent": "proc:ECO-feedback",
+        "label": "pending-actions (PA-NNN)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "ECO-feedback",
+        "what": "Список pending действий пользователя (read-only).",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-feedback:ECO.audit",
+        "parent": "proc:ECO-feedback",
+        "label": "enable-d7-audit",
+        "kind": "task",
+        "status": "shipped",
+        "process": "ECO-feedback",
+        "what": "Регистрирует SessionEnd hook для batch-аудита сессий.",
+        "review": "",
+        "hooks": [
+          "session-audit"
+        ],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "data": {
+        "id": "s:P1A:D1.1__art:PS__produces",
+        "source": "s:P1A:D1.1",
+        "target": "art:PS",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.2__art:MR__produces",
+        "source": "s:P1A:D1.2",
+        "target": "art:MR",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.3__art:CA__produces",
+        "source": "s:P1A:D1.3",
+        "target": "art:CA",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.4__art:SEG__produces",
+        "source": "s:P1A:D1.4",
+        "target": "art:SEG",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__s:P1A:D1.4__consumes",
+        "source": "art:PS",
+        "target": "s:P1A:D1.4",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MR__s:P1A:D1.4__consumes",
+        "source": "art:MR",
+        "target": "s:P1A:D1.4",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:CA__s:P1A:D1.4__consumes",
+        "source": "art:CA",
+        "target": "s:P1A:D1.4",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MR__s:P1A:DRC__consumes",
+        "source": "art:MR",
+        "target": "s:P1A:DRC",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:CA__s:P1A:DRC__consumes",
+        "source": "art:CA",
+        "target": "s:P1A:DRC",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.4a__art:VP__produces",
+        "source": "s:P1A:D1.4a",
+        "target": "art:VP",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__s:P1A:D1.4a__consumes",
+        "source": "art:SEG",
+        "target": "s:P1A:D1.4a",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:CA__s:P1A:D1.4a__consumes",
+        "source": "art:CA",
+        "target": "s:P1A:D1.4a",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.5__art:HYP__produces",
+        "source": "s:P1A:D1.5",
+        "target": "art:HYP",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__s:P1A:D1.5__consumes",
+        "source": "art:SEG",
+        "target": "s:P1A:D1.5",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:VP__s:P1A:D1.5__consumes",
+        "source": "art:VP",
+        "target": "s:P1A:D1.5",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MR__s:P1A:D1.5__consumes",
+        "source": "art:MR",
+        "target": "s:P1A:D1.5",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.5z__art:BG__produces",
+        "source": "s:P1A:D1.5z",
+        "target": "art:BG",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.6__art:MVP__produces",
+        "source": "s:P1B:D1.6",
+        "target": "art:MVP",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__s:P1B:D1.6__consumes",
+        "source": "art:HYP",
+        "target": "s:P1B:D1.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__s:P1B:D1.6__consumes",
+        "source": "art:PS",
+        "target": "s:P1B:D1.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.7__art:RM__produces",
+        "source": "s:P1B:D1.7",
+        "target": "art:RM",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP__s:P1B:D1.7__consumes",
+        "source": "art:MVP",
+        "target": "s:P1B:D1.7",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__s:P1B:D1.7__consumes",
+        "source": "art:HYP",
+        "target": "s:P1B:D1.7",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.8__art:RL__produces",
+        "source": "s:P1B:D1.8",
+        "target": "art:RL",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.8__art:FM__produces",
+        "source": "s:P1B:D1.8",
+        "target": "art:FM",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP__s:P1B:D1.8__consumes",
+        "source": "art:MVP",
+        "target": "s:P1B:D1.8",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:RM__s:P1B:D1.8__consumes",
+        "source": "art:RM",
+        "target": "s:P1B:D1.8",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:P2A:F.1__consumes",
+        "source": "art:FM",
+        "target": "s:P2A:F.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__s:P2A:F.1__consumes",
+        "source": "art:SEG",
+        "target": "s:P2A:F.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:VP__s:P2A:F.1__consumes",
+        "source": "art:VP",
+        "target": "s:P2A:F.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__s:P2A:F.1__consumes",
+        "source": "art:HYP",
+        "target": "s:P2A:F.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.2__art:SC__produces",
+        "source": "s:P2A:F.2",
+        "target": "art:SC",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:P2A:F.2__consumes",
+        "source": "art:FM",
+        "target": "s:P2A:F.2",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.3__art:BR__produces",
+        "source": "s:P2A:F.3",
+        "target": "art:BR",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:P2A:F.3__consumes",
+        "source": "art:SC",
+        "target": "s:P2A:F.3",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.4__art:LC__produces",
+        "source": "s:P2A:F.4",
+        "target": "art:LC",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:P2A:F.4__consumes",
+        "source": "art:SC",
+        "target": "s:P2A:F.4",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__s:P2A:F.4__consumes",
+        "source": "art:BR",
+        "target": "s:P2A:F.4",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5__art:IC__produces",
+        "source": "s:P2A:F.5",
+        "target": "art:IC",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__s:P2A:F.5__consumes",
+        "source": "art:BR",
+        "target": "s:P2A:F.5",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC__s:P2A:F.5__consumes",
+        "source": "art:LC",
+        "target": "s:P2A:F.5",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:P2A:F.5a.0__consumes",
+        "source": "art:FM",
+        "target": "s:P2A:F.5a.0",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5a.1__art:NFR__produces",
+        "source": "s:P2A:F.5a.1",
+        "target": "art:NFR",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:P2A:F.5a.1__consumes",
+        "source": "art:FM",
+        "target": "s:P2A:F.5a.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.6__art:VC__produces",
+        "source": "s:P2A:F.6",
+        "target": "art:VC",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:P2A:F.6__consumes",
+        "source": "art:SC",
+        "target": "s:P2A:F.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__s:P2A:F.6__consumes",
+        "source": "art:BR",
+        "target": "s:P2A:F.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC__s:P2A:F.6__consumes",
+        "source": "art:LC",
+        "target": "s:P2A:F.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NFR__s:P2A:F.6__consumes",
+        "source": "art:NFR",
+        "target": "s:P2A:F.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.7__art:RPM__produces",
+        "source": "s:P2A:F.7",
+        "target": "art:RPM",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:P2A:F.7__consumes",
+        "source": "art:SC",
+        "target": "s:P2A:F.7",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:P2A:F.8__consumes",
+        "source": "art:FM",
+        "target": "s:P2A:F.8",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:P2A:F.9__consumes",
+        "source": "art:FM",
+        "target": "s:P2A:F.9",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:P2A:F.9__consumes",
+        "source": "art:SC",
+        "target": "s:P2A:F.9",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__s:P2A:F.9__consumes",
+        "source": "art:BR",
+        "target": "s:P2A:F.9",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:IC__s:P2A:F.9__consumes",
+        "source": "art:IC",
+        "target": "s:P2A:F.9",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:P2A:F.10__consumes",
+        "source": "art:FM",
+        "target": "s:P2A:F.10",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__s:P2B:F.0a__consumes",
+        "source": "art:SEG",
+        "target": "s:P2B:F.0a",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__s:P2B:F.0a__consumes",
+        "source": "art:HYP",
+        "target": "s:P2B:F.0a",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:VP__s:P2B:F.0a__consumes",
+        "source": "art:VP",
+        "target": "s:P2B:F.0a",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:F.0b__art:FM__produces",
+        "source": "s:P2B:F.0b",
+        "target": "art:FM",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p4__art:BG__produces",
+        "source": "s:BG:BG.p4",
+        "target": "art:BG",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.rename__art:BG__produces",
+        "source": "s:BG:BG.rename",
+        "target": "art:BG",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__s:P5:P5.drift__consumes",
+        "source": "art:PS",
+        "target": "s:P5:P5.drift",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__s:P5:P5.drift__consumes",
+        "source": "art:HYP",
+        "target": "s:P5:P5.drift",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP__s:P5:P5.drift__consumes",
+        "source": "art:MVP",
+        "target": "s:P5:P5.drift",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:P2.5:D.1__consumes",
+        "source": "art:SC",
+        "target": "s:P2.5:D.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__s:P2.5:D.1__consumes",
+        "source": "art:BR",
+        "target": "s:P2.5:D.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC__s:P2.5:D.1__consumes",
+        "source": "art:LC",
+        "target": "s:P2.5:D.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BG__s:P2.5:D.1__consumes",
+        "source": "art:BG",
+        "target": "s:P2.5:D.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:RPM__s:P2.5:D.1__consumes",
+        "source": "art:RPM",
+        "target": "s:P2.5:D.1",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:P2.5:D.2__consumes",
+        "source": "art:SC",
+        "target": "s:P2.5:D.2",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.3__art:MK__produces",
+        "source": "s:P2.5:D.3",
+        "target": "art:MK",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.5__art:MK__produces",
+        "source": "s:P2.5:D.5",
+        "target": "art:MK",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.5__art:DS__produces",
+        "source": "s:P2.5:D.5",
+        "target": "art:DS",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.5__art:NM__produces",
+        "source": "s:P2.5:D.5",
+        "target": "art:NM",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.5__art:AM__produces",
+        "source": "s:P2.5:D.5",
+        "target": "art:AM",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MK__s:P2.5:D.6__consumes",
+        "source": "art:MK",
+        "target": "s:P2.5:D.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:DS__s:P2.5:D.6__consumes",
+        "source": "art:DS",
+        "target": "s:P2.5:D.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NM__s:P2.5:D.6__consumes",
+        "source": "art:NM",
+        "target": "s:P2.5:D.6",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__s:HO:HO.assemble__consumes",
+        "source": "art:FM",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__s:HO:HO.assemble__consumes",
+        "source": "art:SC",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__s:HO:HO.assemble__consumes",
+        "source": "art:BR",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC__s:HO:HO.assemble__consumes",
+        "source": "art:LC",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:VC__s:HO:HO.assemble__consumes",
+        "source": "art:VC",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:IC__s:HO:HO.assemble__consumes",
+        "source": "art:IC",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NFR__s:HO:HO.assemble__consumes",
+        "source": "art:NFR",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MK__s:HO:HO.assemble__consumes",
+        "source": "art:MK",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:DS__s:HO:HO.assemble__consumes",
+        "source": "art:DS",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NM__s:HO:HO.assemble__consumes",
+        "source": "art:NM",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BG__s:HO:HO.assemble__consumes",
+        "source": "art:BG",
+        "target": "s:HO:HO.assemble",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.hash__art:handoff__produces",
+        "source": "s:HO:HO.hash",
+        "target": "art:handoff",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:handoff__s:P3o:P3o.read__consumes",
+        "source": "art:handoff",
+        "target": "s:P3o:P3o.read",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.delegate__art:spec__produces",
+        "source": "s:P3o:P3o.delegate",
+        "target": "art:spec",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:spec__s:P4o:P4o.audit__consumes",
+        "source": "art:spec",
+        "target": "s:P4o:P4o.audit",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:handoff__s:P4o:P4o.audit__consumes",
+        "source": "art:handoff",
+        "target": "s:P4o:P4o.audit",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:spec__s:P5o:P5o.tdd__consumes",
+        "source": "art:spec",
+        "target": "s:P5o:P5o.tdd",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:spec__s:P6o:P6o.validators__consumes",
+        "source": "art:spec",
+        "target": "s:P6o:P6o.validators",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:P1A.start__s:P1A:D1.1__sequence",
+        "source": "s:P1A:P1A.start",
+        "target": "s:P1A:D1.1",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.1__s:P1A:G1__sequence",
+        "source": "s:P1A:D1.1",
+        "target": "s:P1A:G1",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G1__s:P1A:D1.2__sequence",
+        "source": "s:P1A:G1",
+        "target": "s:P1A:D1.2",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.2__s:P1A:D1.3__sequence",
+        "source": "s:P1A:D1.2",
+        "target": "s:P1A:D1.3",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.3__s:P1A:D1.4__sequence",
+        "source": "s:P1A:D1.3",
+        "target": "s:P1A:D1.4",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.4__s:P1A:G4__sequence",
+        "source": "s:P1A:D1.4",
+        "target": "s:P1A:G4",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G4__s:P1A:DRC__sequence",
+        "source": "s:P1A:G4",
+        "target": "s:P1A:DRC",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:DRC__s:P1A:D1.4a__sequence",
+        "source": "s:P1A:DRC",
+        "target": "s:P1A:D1.4a",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.4a__s:P1A:G4a__sequence",
+        "source": "s:P1A:D1.4a",
+        "target": "s:P1A:G4a",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G4a__s:P1A:D1.5__sequence",
+        "source": "s:P1A:G4a",
+        "target": "s:P1A:D1.5",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.5__s:P1A:G5__sequence",
+        "source": "s:P1A:D1.5",
+        "target": "s:P1A:G5",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:G5__s:P1A:D1.5z__sequence",
+        "source": "s:P1A:G5",
+        "target": "s:P1A:D1.5z",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1A:D1.5z__s:P1A:P1A.end__sequence",
+        "source": "s:P1A:D1.5z",
+        "target": "s:P1A:P1A.end",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.6__s:P1B:D1.7__sequence",
+        "source": "s:P1B:D1.6",
+        "target": "s:P1B:D1.7",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.7__s:P1B:D1.8__sequence",
+        "source": "s:P1B:D1.7",
+        "target": "s:P1B:D1.8",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.8__s:P1B:D1.9__sequence",
+        "source": "s:P1B:D1.8",
+        "target": "s:P1B:D1.9",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P1B:D1.9__s:P1B:P1B.end__sequence",
+        "source": "s:P1B:D1.9",
+        "target": "s:P1B:P1B.end",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.1__s:P2A:F.2__sequence",
+        "source": "s:P2A:F.1",
+        "target": "s:P2A:F.2",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.2__s:P2A:F.3__sequence",
+        "source": "s:P2A:F.2",
+        "target": "s:P2A:F.3",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.3__s:P2A:F.4__sequence",
+        "source": "s:P2A:F.3",
+        "target": "s:P2A:F.4",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.4__s:P2A:F.5__sequence",
+        "source": "s:P2A:F.4",
+        "target": "s:P2A:F.5",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5__s:P2A:F.5a.0__sequence",
+        "source": "s:P2A:F.5",
+        "target": "s:P2A:F.5a.0",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5a.0__s:P2A:F.5a.1__sequence",
+        "source": "s:P2A:F.5a.0",
+        "target": "s:P2A:F.5a.1",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5a.0__s:P2A:F.6__sequence",
+        "source": "s:P2A:F.5a.0",
+        "target": "s:P2A:F.6",
+        "type": "sequence",
+        "label": "[D]/[L] skip"
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.5a.1__s:P2A:F.6__sequence",
+        "source": "s:P2A:F.5a.1",
+        "target": "s:P2A:F.6",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.6__s:P2A:F.7__sequence",
+        "source": "s:P2A:F.6",
+        "target": "s:P2A:F.7",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.7__s:P2A:F.8__sequence",
+        "source": "s:P2A:F.7",
+        "target": "s:P2A:F.8",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.8__s:P2A:F.9__sequence",
+        "source": "s:P2A:F.8",
+        "target": "s:P2A:F.9",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.8__proc:P2.5__delegate",
+        "source": "s:P2A:F.8",
+        "target": "proc:P2.5",
+        "type": "delegate",
+        "label": "has_ui=true → параллельно"
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.9__s:P2A:F.10__sequence",
+        "source": "s:P2A:F.9",
+        "target": "s:P2A:F.10",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.9__proc:DA__delegate",
+        "source": "s:P2A:F.9",
+        "target": "proc:DA",
+        "type": "delegate",
+        "label": "запускает"
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2A:F.10__s:P2A:P2A.end__sequence",
+        "source": "s:P2A:F.10",
+        "target": "s:P2A:P2A.end",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:F.0__s:P2B:F.0a__sequence",
+        "source": "s:P2B:F.0",
+        "target": "s:P2B:F.0a",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:F.0a__s:P2B:F.0b__sequence",
+        "source": "s:P2B:F.0a",
+        "target": "s:P2B:F.0b",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:F.0b__s:P2B:P2B.join__sequence",
+        "source": "s:P2B:F.0b",
+        "target": "s:P2B:P2B.join",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2B:P2B.join__proc:P2A__delegate",
+        "source": "s:P2B:P2B.join",
+        "target": "proc:P2A",
+        "type": "delegate",
+        "label": "продолжает как enrichment"
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.classify__s:DA:DA.cosmetic__sequence",
+        "source": "s:DA:DA.classify",
+        "target": "s:DA:DA.cosmetic",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.classify__s:DA:DA.full__sequence",
+        "source": "s:DA:DA.classify",
+        "target": "s:DA:DA.full",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.cosmetic__s:DA:DA.findings__sequence",
+        "source": "s:DA:DA.cosmetic",
+        "target": "s:DA:DA.findings",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.full__s:DA:DA.findings__sequence",
+        "source": "s:DA:DA.full",
+        "target": "s:DA:DA.findings",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:DA:DA.findings__s:DA:DA.reception__sequence",
+        "source": "s:DA:DA.findings",
+        "target": "s:DA:DA.reception",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.req__s:APPROVE:AP.branch__sequence",
+        "source": "s:APPROVE:AP.req",
+        "target": "s:APPROVE:AP.branch",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.branch__s:APPROVE:AP.validate__sequence",
+        "source": "s:APPROVE:AP.branch",
+        "target": "s:APPROVE:AP.validate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.branch__s:APPROVE:AP.auto__sequence",
+        "source": "s:APPROVE:AP.branch",
+        "target": "s:APPROVE:AP.auto",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.validate__s:APPROVE:AP.transition__sequence",
+        "source": "s:APPROVE:AP.validate",
+        "target": "s:APPROVE:AP.transition",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.transition__s:APPROVE:AP.bg__sequence",
+        "source": "s:APPROVE:AP.transition",
+        "target": "s:APPROVE:AP.bg",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.bg__s:APPROVE:AP.cascade__sequence",
+        "source": "s:APPROVE:AP.bg",
+        "target": "s:APPROVE:AP.cascade",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.bg__proc:BG__delegate",
+        "source": "s:APPROVE:AP.bg",
+        "target": "proc:BG",
+        "type": "delegate",
+        "label": "запускает"
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.cascade__s:APPROVE:AP.journal__sequence",
+        "source": "s:APPROVE:AP.cascade",
+        "target": "s:APPROVE:AP.journal",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.cascade__proc:P4__delegate",
+        "source": "s:APPROVE:AP.cascade",
+        "target": "proc:P4",
+        "type": "delegate",
+        "label": "запускает"
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.journal__s:APPROVE:AP.end__sequence",
+        "source": "s:APPROVE:AP.journal",
+        "target": "s:APPROVE:AP.end",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:APPROVE:AP.auto__s:APPROVE:AP.end__sequence",
+        "source": "s:APPROVE:AP.auto",
+        "target": "s:APPROVE:AP.end",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p1__s:BG:BG.p2__sequence",
+        "source": "s:BG:BG.p1",
+        "target": "s:BG:BG.p2",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p2__s:BG:BG.p3__sequence",
+        "source": "s:BG:BG.p2",
+        "target": "s:BG:BG.p3",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p3__s:BG:BG.p4__sequence",
+        "source": "s:BG:BG.p3",
+        "target": "s:BG:BG.p4",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.p4__s:BG:BG.rename__sequence",
+        "source": "s:BG:BG.p4",
+        "target": "s:BG:BG.rename",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:BG:BG.rename__s:BG:BG.orphan__sequence",
+        "source": "s:BG:BG.rename",
+        "target": "s:BG:BG.orphan",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.trigger__s:P4:P4.identify__sequence",
+        "source": "s:P4:P4.trigger",
+        "target": "s:P4:P4.identify",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.identify__s:P4:P4.bfs__sequence",
+        "source": "s:P4:P4.identify",
+        "target": "s:P4:P4.bfs",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.bfs__s:P4:P4.reval__sequence",
+        "source": "s:P4:P4.bfs",
+        "target": "s:P4:P4.reval",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.reval__s:P4:P4.collect__sequence",
+        "source": "s:P4:P4.reval",
+        "target": "s:P4:P4.collect",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.collect__s:P4:P4.present__sequence",
+        "source": "s:P4:P4.collect",
+        "target": "s:P4:P4.present",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4:P4.present__s:P4:P4.apply__sequence",
+        "source": "s:P4:P4.present",
+        "target": "s:P4:P4.apply",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5:P5.drift__s:P5:P5.patterns__sequence",
+        "source": "s:P5:P5.drift",
+        "target": "s:P5:P5.patterns",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5:P5.patterns__s:P5:P5.cleanup__sequence",
+        "source": "s:P5:P5.patterns",
+        "target": "s:P5:P5.cleanup",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3p:P3.tune__s:P3p:P3.escalate__sequence",
+        "source": "s:P3p:P3.tune",
+        "target": "s:P3p:P3.escalate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3p:P3.escalate__proc:ECO-feedback__delegate",
+        "source": "s:P3p:P3.escalate",
+        "target": "proc:ECO-feedback",
+        "type": "delegate",
+        "label": "upstream"
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.1__s:P2.5:D.2__sequence",
+        "source": "s:P2.5:D.1",
+        "target": "s:P2.5:D.2",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.2__s:P2.5:D.3__sequence",
+        "source": "s:P2.5:D.2",
+        "target": "s:P2.5:D.3",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.3__s:P2.5:D.4__sequence",
+        "source": "s:P2.5:D.3",
+        "target": "s:P2.5:D.4",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.4__s:P2.5:D.5__sequence",
+        "source": "s:P2.5:D.4",
+        "target": "s:P2.5:D.5",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.5__s:P2.5:D.6__sequence",
+        "source": "s:P2.5:D.5",
+        "target": "s:P2.5:D.6",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:D.6__s:P2.5:P2.5.end__sequence",
+        "source": "s:P2.5:D.6",
+        "target": "s:P2.5:P2.5.end",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2.5:P2.5.end__proc:HO__delegate",
+        "source": "s:P2.5:P2.5.end",
+        "target": "proc:HO",
+        "type": "delegate",
+        "label": "assets → handoff"
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.dor__s:HO:HO.assemble__sequence",
+        "source": "s:HO:HO.dor",
+        "target": "s:HO:HO.assemble",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.assemble__s:HO:HO.hash__sequence",
+        "source": "s:HO:HO.assemble",
+        "target": "s:HO:HO.hash",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.hash__s:HO:HO.end__sequence",
+        "source": "s:HO:HO.hash",
+        "target": "s:HO:HO.end",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:HO:HO.end__proc:P3o__delegate",
+        "source": "s:HO:HO.end",
+        "target": "proc:P3o",
+        "type": "delegate",
+        "label": "→ Orchestrator"
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.read__s:P3o:P3o.preflight__sequence",
+        "source": "s:P3o:P3o.read",
+        "target": "s:P3o:P3o.preflight",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.preflight__s:P3o:P3o.delegate__sequence",
+        "source": "s:P3o:P3o.preflight",
+        "target": "s:P3o:P3o.delegate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.delegate__s:P3o:P3o.oracle__sequence",
+        "source": "s:P3o:P3o.delegate",
+        "target": "s:P3o:P3o.oracle",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P3o:P3o.oracle__proc:P4o__delegate",
+        "source": "s:P3o:P3o.oracle",
+        "target": "proc:P4o",
+        "type": "delegate",
+        "label": "→ audit"
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4o:P4o.audit__s:P4o:P4o.confirm__sequence",
+        "source": "s:P4o:P4o.audit",
+        "target": "s:P4o:P4o.confirm",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P4o:P4o.confirm__s:P4o:P4o.fix__sequence",
+        "source": "s:P4o:P4o.confirm",
+        "target": "s:P4o:P4o.fix",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5o:P5o.tdd__s:P5o:P5o.retry__sequence",
+        "source": "s:P5o:P5o.tdd",
+        "target": "s:P5o:P5o.retry",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P5o:P5o.retry__s:P5o:P5o.escalate__sequence",
+        "source": "s:P5o:P5o.retry",
+        "target": "s:P5o:P5o.escalate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P6o:P6o.validators__s:P6o:P6o.verify__sequence",
+        "source": "s:P6o:P6o.validators",
+        "target": "s:P6o:P6o.verify",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P6o:P6o.verify__s:P6o:P6o.verdict__sequence",
+        "source": "s:P6o:P6o.verify",
+        "target": "s:P6o:P6o.verdict",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P6o:P6o.verdict__s:P6o:P7o.readiness__sequence",
+        "source": "s:P6o:P6o.verdict",
+        "target": "s:P6o:P7o.readiness",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.scan__s:INT-add:INT.research__sequence",
+        "source": "s:INT-add:INT.scan",
+        "target": "s:INT-add:INT.research",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.research__s:INT-add:INT.gate__sequence",
+        "source": "s:INT-add:INT.research",
+        "target": "s:INT-add:INT.gate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.gate__s:INT-add:INT.install__sequence",
+        "source": "s:INT-add:INT.gate",
+        "target": "s:INT-add:INT.install",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.install__s:INT-add:INT.contract__sequence",
+        "source": "s:INT-add:INT.install",
+        "target": "s:INT-add:INT.contract",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.contract__s:INT-add:INT.verify__sequence",
+        "source": "s:INT-add:INT.contract",
+        "target": "s:INT-add:INT.verify",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-add:INT.verify__proc:P3o__delegate",
+        "source": "s:INT-add:INT.verify",
+        "target": "proc:P3o",
+        "type": "delegate",
+        "label": "enables Orchestrator"
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-maint:INT.update__s:INT-maint:INT.remove__sequence",
+        "source": "s:INT-maint:INT.update",
+        "target": "s:INT-maint:INT.remove",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:INT-maint:INT.remove__s:INT-maint:INT.ro__sequence",
+        "source": "s:INT-maint:INT.remove",
+        "target": "s:INT-maint:INT.ro",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-setup:ECO.bootstrap__s:ECO-setup:ECO.update__sequence",
+        "source": "s:ECO-setup:ECO.bootstrap",
+        "target": "s:ECO-setup:ECO.update",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-setup:ECO.update__s:ECO-setup:ECO.verify__sequence",
+        "source": "s:ECO-setup:ECO.update",
+        "target": "s:ECO-setup:ECO.verify",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-feedback:ECO.feedback__s:ECO-feedback:ECO.pa__sequence",
+        "source": "s:ECO-feedback:ECO.feedback",
+        "target": "s:ECO-feedback:ECO.pa",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:ECO-feedback:ECO.pa__s:ECO-feedback:ECO.audit__sequence",
+        "source": "s:ECO-feedback:ECO.pa",
+        "target": "s:ECO-feedback:ECO.audit",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P1A__proc:P1B__sequence",
+        "source": "proc:P1A",
+        "target": "proc:P1B",
+        "type": "sequence",
+        "label": "Discovery complete"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P1B__proc:P2A__sequence",
+        "source": "proc:P1B",
+        "target": "proc:P2A",
+        "type": "sequence",
+        "label": "FM skeleton → enrichment"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2B__proc:P2A__sequence",
+        "source": "proc:P2B",
+        "target": "proc:P2A",
+        "type": "sequence",
+        "label": "creation → enrichment"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2A__proc:P2.5__sequence",
+        "source": "proc:P2A",
+        "target": "proc:P2.5",
+        "type": "sequence",
+        "label": "F.8 has_ui (parallel)"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2A__proc:DA__sequence",
+        "source": "proc:P2A",
+        "target": "proc:DA",
+        "type": "sequence",
+        "label": "F.9 DA review"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2A__proc:HO__sequence",
+        "source": "proc:P2A",
+        "target": "proc:HO",
+        "type": "sequence",
+        "label": "F.10 → handoff"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2.5__proc:HO__produces",
+        "source": "proc:P2.5",
+        "target": "proc:HO",
+        "type": "produces",
+        "label": "UI assets → §10"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P3p__proc:ECO-feedback__delegate",
+        "source": "proc:P3p",
+        "target": "proc:ECO-feedback",
+        "type": "delegate",
+        "label": "systemic → upstream"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:HO__proc:P3o__delegate",
+        "source": "proc:HO",
+        "target": "proc:P3o",
+        "type": "delegate",
+        "label": "handoff → specs"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P3o__proc:P4o__sequence",
+        "source": "proc:P3o",
+        "target": "proc:P4o",
+        "type": "sequence",
+        "label": "spec → audit"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P4o__proc:P5o__sequence",
+        "source": "proc:P4o",
+        "target": "proc:P5o",
+        "type": "sequence",
+        "label": "impl_ready → tdd"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P5o__proc:P6o__sequence",
+        "source": "proc:P5o",
+        "target": "proc:P6o",
+        "type": "sequence",
+        "label": "impl → validate"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:INT-add__proc:P3o__delegate",
+        "source": "proc:INT-add",
+        "target": "proc:P3o",
+        "type": "delegate",
+        "label": "cc-sdd enables Orchestrator"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:ECO-setup__proc:P1A__delegate",
+        "source": "proc:ECO-setup",
+        "target": "proc:P1A",
+        "type": "delegate",
+        "label": "bootstrap enables Product"
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:MR__cascade",
+        "source": "art:PS",
+        "target": "art:MR",
+        "type": "cascade",
+        "label": "pivot → all"
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:SEG__cascade",
+        "source": "art:PS",
+        "target": "art:SEG",
+        "type": "cascade",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__art:VP__cascade",
+        "source": "art:SEG",
+        "target": "art:VP",
+        "type": "cascade",
+        "label": "1:1"
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__art:FM__cascade",
+        "source": "art:SEG",
+        "target": "art:FM",
+        "type": "cascade",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:VP__art:HYP__cascade",
+        "source": "art:VP",
+        "target": "art:HYP",
+        "type": "cascade",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__art:FM__cascade",
+        "source": "art:HYP",
+        "target": "art:FM",
+        "type": "cascade",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__art:MVP__cascade",
+        "source": "art:HYP",
+        "target": "art:MVP",
+        "type": "cascade",
+        "label": "primary_hypothesis"
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP__art:RM__cascade",
+        "source": "art:MVP",
+        "target": "art:RM",
+        "type": "cascade",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:SC__cascade",
+        "source": "art:FM",
+        "target": "art:SC",
+        "type": "cascade",
+        "label": "embedded"
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__art:BR__cascade",
+        "source": "art:SC",
+        "target": "art:BR",
+        "type": "cascade",
+        "label": "bi-dir"
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__art:LC__cascade",
+        "source": "art:BR",
+        "target": "art:LC",
+        "type": "cascade",
+        "label": "guards"
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__art:IC__cascade",
+        "source": "art:BR",
+        "target": "art:IC",
+        "type": "cascade",
+        "label": "P-RULE DA"
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC__art:VC__cascade",
+        "source": "art:LC",
+        "target": "art:VC",
+        "type": "cascade",
+        "label": "transitions"
+      }
+    },
+    {
+      "data": {
+        "id": "art:IC__art:BR__cascade",
+        "source": "art:IC",
+        "target": "art:BR",
+        "type": "cascade",
+        "label": "support"
+      }
+    },
+    {
+      "data": {
+        "id": "art:MK__art:DS__cascade",
+        "source": "art:MK",
+        "target": "art:DS",
+        "type": "cascade",
+        "label": "tokens"
+      }
+    },
+    {
+      "data": {
+        "id": "art:DS__art:MK__cascade",
+        "source": "art:DS",
+        "target": "art:MK",
+        "type": "cascade",
+        "label": "all MK using token"
+      }
+    },
+    {
+      "data": {
+        "id": "art:BG__art:FM__cascade",
+        "source": "art:BG",
+        "target": "art:FM",
+        "type": "cascade",
+        "label": "mass-rename"
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:MR__lineage",
+        "source": "art:PS",
+        "target": "art:MR",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:CA__lineage",
+        "source": "art:PS",
+        "target": "art:CA",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:SEG__lineage",
+        "source": "art:PS",
+        "target": "art:SEG",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:VP__lineage",
+        "source": "art:PS",
+        "target": "art:VP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:HYP__lineage",
+        "source": "art:PS",
+        "target": "art:HYP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:PS__art:MVP__lineage",
+        "source": "art:PS",
+        "target": "art:MVP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MR__art:SEG__lineage",
+        "source": "art:MR",
+        "target": "art:SEG",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MR__art:VP__lineage",
+        "source": "art:MR",
+        "target": "art:VP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:CA__art:VP__lineage",
+        "source": "art:CA",
+        "target": "art:VP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__art:VP__lineage",
+        "source": "art:SEG",
+        "target": "art:VP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__art:FM__lineage",
+        "source": "art:SEG",
+        "target": "art:FM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SEG__art:RPM__lineage",
+        "source": "art:SEG",
+        "target": "art:RPM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:VP__art:HYP__lineage",
+        "source": "art:VP",
+        "target": "art:HYP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:VP__art:FM__lineage",
+        "source": "art:VP",
+        "target": "art:FM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__art:MVP__lineage",
+        "source": "art:HYP",
+        "target": "art:MVP",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:HYP__art:FM__lineage",
+        "source": "art:HYP",
+        "target": "art:FM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP__art:RM__lineage",
+        "source": "art:MVP",
+        "target": "art:RM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP__art:RL__lineage",
+        "source": "art:MVP",
+        "target": "art:RL",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MVP__art:FM__lineage",
+        "source": "art:MVP",
+        "target": "art:FM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:RM__art:RL__lineage",
+        "source": "art:RM",
+        "target": "art:RL",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:RL__art:FM__lineage",
+        "source": "art:RL",
+        "target": "art:FM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:SC__lineage",
+        "source": "art:FM",
+        "target": "art:SC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:BR__lineage",
+        "source": "art:FM",
+        "target": "art:BR",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:LC__lineage",
+        "source": "art:FM",
+        "target": "art:LC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:VC__lineage",
+        "source": "art:FM",
+        "target": "art:VC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:IC__lineage",
+        "source": "art:FM",
+        "target": "art:IC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:RPM__lineage",
+        "source": "art:FM",
+        "target": "art:RPM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:FM__art:MK__lineage",
+        "source": "art:FM",
+        "target": "art:MK",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__art:BR__lineage",
+        "source": "art:SC",
+        "target": "art:BR",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__art:LC__lineage",
+        "source": "art:SC",
+        "target": "art:LC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__art:VC__lineage",
+        "source": "art:SC",
+        "target": "art:VC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:SC__art:AM__lineage",
+        "source": "art:SC",
+        "target": "art:AM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__art:LC__lineage",
+        "source": "art:BR",
+        "target": "art:LC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__art:VC__lineage",
+        "source": "art:BR",
+        "target": "art:VC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:BR__art:IC__lineage",
+        "source": "art:BR",
+        "target": "art:IC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC__art:VC__lineage",
+        "source": "art:LC",
+        "target": "art:VC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:LC__art:IC__lineage",
+        "source": "art:LC",
+        "target": "art:IC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MK__art:DS__lineage",
+        "source": "art:MK",
+        "target": "art:DS",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MK__art:NM__lineage",
+        "source": "art:MK",
+        "target": "art:NM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:MK__art:AM__lineage",
+        "source": "art:MK",
+        "target": "art:AM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NM__art:AM__lineage",
+        "source": "art:NM",
+        "target": "art:AM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NOTE__art:FM__lineage",
+        "source": "art:NOTE",
+        "target": "art:FM",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NOTE__art:SC__lineage",
+        "source": "art:NOTE",
+        "target": "art:SC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NOTE__art:BR__lineage",
+        "source": "art:NOTE",
+        "target": "art:BR",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NOTE__art:IC__lineage",
+        "source": "art:NOTE",
+        "target": "art:IC",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NOTE__art:NFR__lineage",
+        "source": "art:NOTE",
+        "target": "art:NFR",
+        "type": "lineage",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:NOTE__art:HYP__lineage",
+        "source": "art:NOTE",
+        "target": "art:HYP",
+        "type": "lineage",
+        "label": ""
+      }
+    }
+  ],
+  "meta": {
+    "gates": {
+      "process-gate": {
+        "event": "commit-msg",
+        "blocking": true,
+        "module": "ecosystem",
+        "what": "Блокирует коммит (exit 1) при COUNT DRIFT (несовместимость counts в доках), CHANGELOG MISSING (feat/fix в consumer-zone без CHANGELOG) или DEV_JOURNAL MISSING (fix:/DEC-DEV-N без записи в журнал).",
+        "bypass": "Добавить [skip-process-gate] в сообщение коммита.",
+        "source": "dev/meta-improvement/scripts/process-gate.js"
+      },
+      "lesson-gate": {
+        "event": "Stop",
+        "blocking": true,
+        "module": "product",
+        "what": "Блокирует закрытие сессии при открытых/обрезанных LESSON-*.md — критические уроки требуют разрешения перед выходом.",
+        "bypass": "env LESSON_GATE_MODE=warn|off; авто-override после 8 подряд блоков.",
+        "source": "hooks/product/lesson-gate.js"
+      },
+      "lesson-presence-gate": {
+        "event": "PreToolUse",
+        "blocking": true,
+        "module": "product",
+        "what": "В strict-режиме отказывает мутирующим инструментам (Write|Edit|Bash|NotebookEdit) при открытых LESSON-*.md; в warn (дефолт) — только предупреждает.",
+        "bypass": "env LESSON_GATE_MODE=warn (дефолт) | off; маркер lesson-in-progress пропускает /product:lesson.",
+        "source": "hooks/product/lesson-presence-gate.js"
+      },
+      "artifact-validate": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "Инлайн-валидация .product/ по правилам V-* (tier-aware: pilot=только Blocking, mvp=+Warning; quiet-draft на draft).",
+        "bypass": "validation_overrides[] (постоянно) или approve_overrides[] (временно, expires_at).",
+        "source": "hooks/product/artifact-validate.js"
+      },
+      "cascade-check": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "Детекция каскадов + V-11 (двусторонние рефы) auto-fix; авто-чинит V-11 если зависимый активен, остальное кладёт в .pending/cascade-pending.yaml на ручной разбор.",
+        "bypass": "draft статус пропускает каскад (quiet-draft).",
+        "source": "hooks/product/cascade-check.js"
+      },
+      "br-change-trigger": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "P-RULE-02: на изменение business-rules/ снимает git diff, кладёт запись в da-pending.yaml и сигналит оркестратору спавнить product-devils-advocate (adaptive-depth).",
+        "bypass": "draft статус пропускает триггер.",
+        "source": "hooks/product/br-change-trigger.js"
+      },
+      "ic-change-trigger": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "P-RULE-01: симметрия br-change-trigger для invariants/; на изменение IC кладёт severity в pending и сигналит DA.",
+        "bypass": "draft статус пропускает триггер.",
+        "source": "hooks/product/ic-change-trigger.js"
+      },
+      "product-handoff-gate": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "V-H-04 drift: на сохранение .product/ артефакта пересчитывает SHA-256 (body без frontmatter, LF) против хешей в handoffs/; mismatch → warn про /product:handoff --regenerate.",
+        "bypass": "—",
+        "source": "hooks/product/product-handoff-gate.js"
+      },
+      "zone-change-trigger": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "Маршрутизатор zone→persona для completeness-loop (Epic A): сопоставляет файл зоне, считает magnitude, спавнит персоны (architect/qa/ux-advisor) при magnitude≥threshold.",
+        "bypass": "draft статус; magnitude \u003c min_magnitude зоны.",
+        "source": "hooks/product/zone-change-trigger.js"
+      },
+      "bg-extractor": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "Фаза 1 BG-извлечения: сканирует bold-термины в .product/, фильтрует стоплистом, дедуплицирует против glossary.md, добавляет кандидатов в .pending/bg-candidates.yaml.",
+        "bypass": "—",
+        "source": "hooks/product/bg-extractor.js"
+      },
+      "session-state": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "Снимает снапшот .product/.sessions/current.yaml при изменениях артефактов — для восстановления после перерыва сессии.",
+        "bypass": "—",
+        "source": "hooks/product/session-state.js"
+      },
+      "worktree-enter-guard": {
+        "event": "PreToolUse",
+        "blocking": false,
+        "module": "product",
+        "what": "Предполётная проверка перед входом в git worktree: выводит опасности (non-empty .pending/, свежие .sessions/, beads in_progress, shared gitignored) в stderr/additionalContext, но не блокирует.",
+        "bypass": "—",
+        "source": "hooks/product/worktree-enter-guard.js"
+      },
+      "design-artifact-validate": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "design",
+        "what": "Инлайн-валидация MK/NM/DS/AM: YAML frontmatter, 5 обязательных полей MK, ref-существование, V-MK-08 token coverage, AM-проверки; quiet-draft на draft.",
+        "bypass": "validation_overrides[] в артефакте.",
+        "source": "hooks/design/design-artifact-validate.js"
+      },
+      "app-map-cascade": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "design",
+        "what": "App Map каскад: на изменение FM/NM/SC пересканирует механический слой AM (FM-set + NM coverage) против persisted; на дрейф → app-map-pending.yaml + сигнал 'run /design:map --write'.",
+        "bypass": "draft статус артефакта пропускает триггер.",
+        "source": "hooks/design/app-map-cascade.js"
+      },
+      "journal-hook": {
+        "event": "PostToolUse",
+        "blocking": false,
+        "module": "integrator",
+        "what": "Авто-журнал каждого мутирующего действия Integrator в project-journal.md (Bash|Write|Edit|NotebookEdit на integrator-paths) с дедупом; архивирует половину при >500 entries.",
+        "bypass": "—",
+        "source": "hooks/integrator/journal-hook.js"
+      },
+      "scope-guard": {
+        "event": "PreToolUse",
+        "blocking": false,
+        "module": "integrator",
+        "what": "Охранник границы Integrator scope: при активной Integrator-команде ловит writes на запрещённые paths (.product/, .kiro/, docs/pmo/) → stderr warn + PA-entry, но не блокирует (warn-only).",
+        "bypass": "FORBIDDEN_PATH_EXCEPTIONS в скрипте; снять маркер .session-context.json.",
+        "source": "hooks/integrator/scope-guard.js"
+      },
+      "rails-session-start": {
+        "event": "SessionStart",
+        "blocking": false,
+        "module": "ecosystem",
+        "what": "Регенерирует work-rails digest (RAILS.md) на старте сессии и инъектит компактный summary через additionalContext — новая сессия входит в курс работ без явного вызова.",
+        "bypass": "env RAILS_AUTOGEN=0; снять SessionStart entry из settings.local.json.",
+        "source": "dev/meta-improvement/hooks/rails-session-start.js"
+      },
+      "session-audit": {
+        "event": "SessionEnd",
+        "blocking": false,
+        "module": "ecosystem",
+        "what": "Писатель маркера (Phase 4.1): добавляет Pending-строку в audit-index.md при завершении сессии (id, timestamp, project, transcript) для последующего batch-аудита /meta:audit-smoke.",
+        "bypass": "—",
+        "source": "dev/meta-improvement/hooks/session-audit.js"
+      }
+    },
+    "rules": {
+      "V-01": {
+        "scope": "FM, SC",
+        "severity": "blocking",
+        "what": "FM в in-progress/shipped имеет ≥1 активный SC.",
+        "group": "Artifact Validation"
+      },
+      "V-02": {
+        "scope": "SC, BR",
+        "severity": "warning",
+        "what": "Активный SC ссылается на ≥1 BR (чистая навигация разрешена).",
+        "group": "Artifact Validation"
+      },
+      "V-03": {
+        "scope": "SC, BR",
+        "severity": "blocking",
+        "what": "Все BR, на которые ссылается активный SC, в статусе active.",
+        "group": "Artifact Validation"
+      },
+      "V-04": {
+        "scope": "SC, FM",
+        "severity": "blocking",
+        "what": "Активный SC ссылается на FM в in-progress/shipped.",
+        "group": "Artifact Validation"
+      },
+      "V-05": {
+        "scope": "LC",
+        "severity": "blocking",
+        "what": "Каждое состояние LC достижимо из initial_state.",
+        "group": "Artifact Validation"
+      },
+      "V-06": {
+        "scope": "LC, SC, BR",
+        "severity": "warning",
+        "what": "Каждый transition LC имеет trigger (SC) или guard (BR).",
+        "group": "Artifact Validation"
+      },
+      "V-07": {
+        "scope": "SC, VC",
+        "severity": "warning",
+        "what": "Альт/ошибочные потоки SC покрыты VC.",
+        "group": "Artifact Validation"
+      },
+      "V-08": {
+        "scope": "SC/BR/LC, BG",
+        "severity": "warning",
+        "what": "Bold-термины в SC/BR/LC определены в BG.",
+        "group": "Artifact Validation"
+      },
+      "V-09": {
+        "scope": "SEG, VP",
+        "severity": "blocking",
+        "what": "Активный SEG имеет ровно один VP.",
+        "group": "Artifact Validation"
+      },
+      "V-10": {
+        "scope": "FM",
+        "severity": "blocking",
+        "what": "FM имеет segment и ≥1 JTBD из него.",
+        "group": "Artifact Validation"
+      },
+      "V-11": {
+        "scope": "кросс-ссылки",
+        "severity": "blocking",
+        "what": "Двусторонние ссылки консистентны (auto-fix).",
+        "group": "Artifact Validation"
+      },
+      "V-12": {
+        "scope": "все",
+        "severity": "warning",
+        "what": "Draft не обновлялся >14 дней → stale.",
+        "group": "Artifact Validation"
+      },
+      "V-14a": {
+        "scope": "BR",
+        "severity": "warning",
+        "what": "Два BR с перекрытием scope и конфликтом параметров.",
+        "group": "Artifact Validation"
+      },
+      "V-15": {
+        "scope": "много типов",
+        "severity": "warning",
+        "what": "Артефакт без FM-использования → orphan.",
+        "group": "Artifact Validation"
+      },
+      "V-16": {
+        "scope": "FM, NFR",
+        "severity": "условно",
+        "what": "FM прошла NFR Review (active/declined/pending по tier).",
+        "group": "Artifact Validation"
+      },
+      "V-18": {
+        "scope": "IC/BR/SC",
+        "severity": "warning",
+        "what": "Frontmatter типа соответствует канону.",
+        "group": "Artifact Validation"
+      },
+      "V-H-01": {
+        "scope": "Handoff",
+        "severity": "blocking",
+        "what": "13 обязательных секций в правильном порядке.",
+        "group": "Handoff Validation"
+      },
+      "V-H-02": {
+        "scope": "Handoff",
+        "severity": "blocking",
+        "what": "Каждый встроенный артефакт имеет artifact_hashes c валидным sha256.",
+        "group": "Handoff Validation"
+      },
+      "V-H-03": {
+        "scope": "Handoff",
+        "severity": "blocking",
+        "what": "Список встроенных артефактов в frontmatter и теле совпадает.",
+        "group": "Handoff Validation"
+      },
+      "V-H-04": {
+        "scope": "Handoff",
+        "severity": "warning",
+        "what": "SHA-256 хеши совпадают с текущим .product/ (drift detection).",
+        "group": "Handoff Validation"
+      },
+      "V-H-05": {
+        "scope": "Handoff",
+        "severity": "blocking",
+        "what": "Внутренние ссылки резолвятся в встроенные артефакты (self-contained).",
+        "group": "Handoff Validation"
+      },
+      "V-H-06": {
+        "scope": "Handoff",
+        "severity": "blocking",
+        "what": "Валидный YAML с обязательными полями.",
+        "group": "Handoff Validation"
+      },
+      "V-H-07": {
+        "scope": "Handoff, BG",
+        "severity": "warning",
+        "what": "Bold-термины во встроенных артефактах есть в BG excerpt.",
+        "group": "Handoff Validation"
+      },
+      "V-H-08": {
+        "scope": "Handoff, MK",
+        "severity": "blocking",
+        "what": "Если has_ui=true — §10 содержит MK/DS snapshot/NM.",
+        "group": "Handoff Validation"
+      },
+      "V-H-09": {
+        "scope": "Handoff, FM",
+        "severity": "warning",
+        "what": "Dependencies перечисляет все FM-зависимости из тела FM.",
+        "group": "Handoff Validation"
+      },
+      "V-H-10": {
+        "scope": "Handoff",
+        "severity": "warning",
+        "what": "Out of Scope содержит явный список исключений.",
+        "group": "Handoff Validation"
+      },
+      "V-H-11": {
+        "scope": "Handoff, NFR",
+        "severity": "условно",
+        "what": "NFR-секция соответствует FM.nfr_status и embedded.",
+        "group": "Handoff Validation"
+      },
+      "V-MK-01": {
+        "scope": "SC, MK",
+        "severity": "blocking",
+        "what": "Каждый UI-шаг SC покрыт экраном в MK.",
+        "group": "Design Validation"
+      },
+      "V-MK-02": {
+        "scope": "BR, MK",
+        "severity": "warning",
+        "what": "Validation/auth BR → error/disabled состояния компонентов.",
+        "group": "Design Validation"
+      },
+      "V-MK-03": {
+        "scope": "LC, MK",
+        "severity": "warning",
+        "what": "LC.state UI-сущности имеет визуализацию (badge/disabled/hidden).",
+        "group": "Design Validation"
+      },
+      "V-MK-04": {
+        "scope": "MK",
+        "severity": "info",
+        "what": "Tab order указан и логичен.",
+        "group": "Design Validation"
+      },
+      "V-MK-05": {
+        "scope": "MK, DS",
+        "severity": "warning",
+        "what": "Контраст текст-фон ≥4.5:1 (WCAG AA).",
+        "group": "Design Validation"
+      },
+      "V-MK-06": {
+        "scope": "MK",
+        "severity": "info",
+        "what": "Hit area mobile ≥44×44px.",
+        "group": "Design Validation"
+      },
+      "V-MK-07": {
+        "scope": "MK",
+        "severity": "warning",
+        "what": "Responsive: breakpoints и изменения layout указаны.",
+        "group": "Design Validation"
+      },
+      "V-MK-08": {
+        "scope": "MK, DS",
+        "severity": "blocking",
+        "what": "Все color/typography/spacing токены MK существуют в DS.",
+        "group": "Design Validation"
+      },
+      "V-LE-01": {
+        "scope": "LESSON",
+        "severity": "blocking",
+        "what": "Frontmatter — валидный YAML с обязательными полями.",
+        "group": "Lesson Validation"
+      },
+      "V-LE-02": {
+        "scope": "LESSON",
+        "severity": "blocking",
+        "what": "active: fix_ref резолвится, 'Fix applied' заполнена.",
+        "group": "Lesson Validation"
+      },
+      "V-LE-03": {
+        "scope": "LESSON",
+        "severity": "blocking",
+        "what": "active: guard/guard_kind заданы, 'Guard (reusable)' заполнена.",
+        "group": "Lesson Validation"
+      },
+      "V-LE-04": {
+        "scope": "LESSON",
+        "severity": "warning",
+        "what": "applies_to[] ссылается на существующие артефакты (orphan ок).",
+        "group": "Lesson Validation"
+      },
+      "V-LE-05": {
+        "scope": "LESSON",
+        "severity": "warning",
+        "what": "open дольше N дней (default 7) помечается (hygiene).",
+        "group": "Lesson Validation"
+      },
+      "V-AM-frontmatter": {
+        "scope": "App Map",
+        "severity": "warning",
+        "what": "Frontmatter AM содержит id/type/status.",
+        "group": "App Map Validation"
+      },
+      "V-AM-id": {
+        "scope": "App Map",
+        "severity": "warning",
+        "what": "id равен литерально 'AM' (singleton как DS).",
+        "group": "App Map Validation"
+      },
+      "V-AM-module-ref": {
+        "scope": "App Map",
+        "severity": "info",
+        "what": "Каждый id из modules[] существует в features/.",
+        "group": "App Map Validation"
+      },
+      "V-AM-nm-ref": {
+        "scope": "App Map",
+        "severity": "info",
+        "what": "Каждый id из navigation_maps[] существует в mockups/.",
+        "group": "App Map Validation"
+      },
+      "P-RULE-01": {
+        "scope": "IC",
+        "severity": "blocking",
+        "what": "Любое add/change/delete IC триггерит Product DA review (adaptive depth). Реализован хуком ic-change-trigger.",
+        "group": "Process rule"
+      },
+      "P-RULE-02": {
+        "scope": "BR",
+        "severity": "blocking",
+        "what": "Любое изменение активного BR триггерит DA subagent для impact-анализа. Реализован хуком br-change-trigger.",
+        "group": "Process rule"
+      }
+    },
+    "artifacts": {
+      "PS": {
+        "name": "Problem Statement",
+        "tier": "🟠",
+        "cardinality": "Singleton",
+        "lineageFrom": [],
+        "lineageTo": [
+          "MR",
+          "CA",
+          "SEG",
+          "VP",
+          "HYP",
+          "MVP"
+        ]
+      },
+      "MR": {
+        "name": "Market Research",
+        "tier": "🟡",
+        "cardinality": "Singleton",
+        "lineageFrom": [
+          "PS"
+        ],
+        "lineageTo": [
+          "SEG",
+          "VP"
+        ]
+      },
+      "CA": {
+        "name": "Competitive Analysis",
+        "tier": "🟡",
+        "cardinality": "Singleton",
+        "lineageFrom": [
+          "PS"
+        ],
+        "lineageTo": [
+          "VP"
+        ]
+      },
+      "SEG": {
+        "name": "Segment & JTBD",
+        "tier": "🟠",
+        "cardinality": "2–4",
+        "lineageFrom": [
+          "PS",
+          "MR"
+        ],
+        "lineageTo": [
+          "VP",
+          "FM",
+          "RPM"
+        ]
+      },
+      "VP": {
+        "name": "Value Proposition",
+        "tier": "🟠",
+        "cardinality": "1 / SEG",
+        "lineageFrom": [
+          "PS",
+          "MR",
+          "CA",
+          "SEG"
+        ],
+        "lineageTo": [
+          "HYP",
+          "FM"
+        ]
+      },
+      "HYP": {
+        "name": "Hypothesis",
+        "tier": "🟠",
+        "cardinality": "3–5",
+        "lineageFrom": [
+          "PS",
+          "VP"
+        ],
+        "lineageTo": [
+          "MVP",
+          "FM"
+        ]
+      },
+      "MVP": {
+        "name": "MVP Scope",
+        "tier": "🟠",
+        "cardinality": "Singleton",
+        "lineageFrom": [
+          "PS",
+          "HYP"
+        ],
+        "lineageTo": [
+          "RM",
+          "RL",
+          "FM"
+        ]
+      },
+      "RM": {
+        "name": "Product Roadmap",
+        "tier": "🟡",
+        "cardinality": "Singleton",
+        "lineageFrom": [
+          "MVP"
+        ],
+        "lineageTo": [
+          "RL"
+        ]
+      },
+      "RL": {
+        "name": "Release Plan",
+        "tier": "🟡",
+        "cardinality": "Per release",
+        "lineageFrom": [
+          "MVP",
+          "RM"
+        ],
+        "lineageTo": [
+          "FM"
+        ]
+      },
+      "FM": {
+        "name": "Feature Map Entry",
+        "tier": "🟠",
+        "cardinality": "Per feature",
+        "lineageFrom": [
+          "SEG",
+          "VP",
+          "HYP",
+          "MVP",
+          "RL"
+        ],
+        "lineageTo": [
+          "SC",
+          "BR",
+          "LC",
+          "VC",
+          "IC",
+          "RPM",
+          "MK"
+        ]
+      },
+      "SC": {
+        "name": "User Scenario",
+        "tier": "🟠",
+        "cardinality": "Per scenario",
+        "lineageFrom": [
+          "FM"
+        ],
+        "lineageTo": [
+          "BR",
+          "LC",
+          "VC",
+          "AM"
+        ]
+      },
+      "BR": {
+        "name": "Business Rule",
+        "tier": "🔴",
+        "cardinality": "Per rule",
+        "lineageFrom": [
+          "FM",
+          "SC"
+        ],
+        "lineageTo": [
+          "LC",
+          "VC",
+          "IC"
+        ]
+      },
+      "LC": {
+        "name": "Entity Lifecycle Model",
+        "tier": "🟢",
+        "cardinality": "Per entity",
+        "lineageFrom": [
+          "FM",
+          "SC",
+          "BR"
+        ],
+        "lineageTo": [
+          "VC",
+          "IC"
+        ]
+      },
+      "RPM": {
+        "name": "Role & Permission Model",
+        "tier": "🟢",
+        "cardinality": "Singleton",
+        "lineageFrom": [
+          "SEG",
+          "FM"
+        ],
+        "lineageTo": []
+      },
+      "VC": {
+        "name": "Verification Criteria",
+        "tier": "🟢",
+        "cardinality": "Per scenario",
+        "lineageFrom": [
+          "FM",
+          "SC",
+          "BR",
+          "LC"
+        ],
+        "lineageTo": []
+      },
+      "IC": {
+        "name": "Invariant Check",
+        "tier": "🔴",
+        "cardinality": "Per invariant",
+        "lineageFrom": [
+          "FM",
+          "BR",
+          "LC"
+        ],
+        "lineageTo": []
+      },
+      "NFR": {
+        "name": "Non-Functional Requirement",
+        "tier": "🟠",
+        "cardinality": "Per NFR",
+        "lineageFrom": [
+          "FM"
+        ],
+        "lineageTo": []
+      },
+      "MK": {
+        "name": "Mockup Package",
+        "tier": "🟠",
+        "cardinality": "Per screen/flow",
+        "lineageFrom": [
+          "FM"
+        ],
+        "lineageTo": [
+          "DS",
+          "NM",
+          "AM"
+        ]
+      },
+      "DS": {
+        "name": "Design System",
+        "tier": "🟡",
+        "cardinality": "Singleton",
+        "lineageFrom": [
+          "MK"
+        ],
+        "lineageTo": []
+      },
+      "NM": {
+        "name": "Navigation Map",
+        "tier": "🟢",
+        "cardinality": "Per flow",
+        "lineageFrom": [
+          "MK"
+        ],
+        "lineageTo": [
+          "AM"
+        ]
+      },
+      "AM": {
+        "name": "App Map (карта приложения + CJM-слой)",
+        "tier": "🟢",
+        "cardinality": "Singleton",
+        "lineageFrom": [
+          "SC",
+          "MK",
+          "NM"
+        ],
+        "lineageTo": []
+      },
+      "BG": {
+        "name": "Business Glossary",
+        "tier": "🟡",
+        "cardinality": "Singleton",
+        "lineageFrom": [],
+        "lineageTo": []
+      },
+      "NOTE": {
+        "name": "Unstructured Note",
+        "tier": "🟡",
+        "cardinality": "Per note",
+        "lineageFrom": [],
+        "lineageTo": [
+          "FM",
+          "SC",
+          "BR",
+          "IC",
+          "NFR",
+          "HYP"
+        ]
+      },
+      "LESSON": {
+        "name": "Corrective Lesson",
+        "tier": "🟡",
+        "cardinality": "Per lesson",
+        "lineageFrom": [],
+        "lineageTo": []
+      }
+    }
+  }
+}</script>
+
+<script src="vendor/cytoscape.min.js"></script>
+<script src="vendor/cytoscape-expand-collapse.js"></script>
+<script src="vendor/layout-base.js"></script>
+<script src="vendor/cose-base.js"></script>
+<script src="vendor/cytoscape-fcose.js"></script>
+<script>
+"use strict";
+(function(){
+  var DATA = JSON.parse(document.getElementById('proc-data').textContent);
+
+  // fcose is a layout extension → needs explicit registration. expand-collapse auto-registers
+  // its UMD on load (re-registering it logs a harmless "already exists" warning), so register
+  // ONLY fcose here. (The load-order guarantees expand-collapse self-registered before this runs.)
+  if (window.cytoscapeFcose) { try { cytoscape.use(window.cytoscapeFcose); } catch(e){} }
+
+  var laneColor = {};
+  DATA.lanes.forEach(function(l){ laneColor[l.id] = l.color; });
+  laneColor['artifacts'] = 'var(--pmo)';
+  function laneOf(parentId){ // resolve a node's lane color via its top ancestor id "lane:<x>"
+    return null;
+  }
+
+  // fcose — compound-aware force layout. dagre ignored parent nesting (lanes overlapped,
+  // children spilled, artifacts pool sparse); fcose packs compounds tightly. FULL (randomize)
+  // for initial / explicit relayout / grouping; INC (incremental, from current positions) for
+  // the expand-collapse drill so opening a process refines rather than reshuffling the whole map.
+  var FCOSE_BASE = {
+    name:'fcose', quality:'proof', animate:false, fit:false,
+    packComponents:true, nodeDimensionsIncludeLabels:true, uniformNodeDimensions:false,
+    nodeSeparation:82, idealEdgeLength:95, nodeRepulsion:6500,
+    gravity:0.25, gravityCompound:1.3, gravityRangeCompound:1.6, nestingFactor:0.12,
+    numIter:2500, tile:true, tilingPaddingVertical:14, tilingPaddingHorizontal:14
+  };
+  var LAYOUT_FULL = Object.assign({}, FCOSE_BASE, { randomize:true });
+  var LAYOUT_INC  = Object.assign({}, FCOSE_BASE, { randomize:false, quality:'default', numIter:1200 });
+
+  var cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: { nodes: DATA.nodes, edges: DATA.edges },
+    wheelSensitivity: 0.22,
+    minZoom: 0.08, maxZoom: 3.2,
+    boxSelectionEnabled: true,   // Shift+drag = рамка выделения (plain drag всё ещё пан)
+    selectionType: 'single',     // одиночный клик выделяет один; Shift аккумулирует — не ломает single-tap панель
+    style: [
+      // compounds
+      { selector: 'node[kind="lane"]', style: {
+        'shape':'round-rectangle','background-opacity':0.06,'background-color':'data(color)',
+        'border-width':1.5,'border-color':'data(color)','border-opacity':0.6,
+        'label':'data(label)','color':'data(color)','font-size':15,'font-weight':'bold',
+        'text-valign':'top','text-halign':'left','text-margin-x':10,'text-margin-y':6,'padding':16 } },
+      { selector: 'node[kind="artgroup"]', style: {
+        'shape':'round-rectangle','background-opacity':0.04,'background-color':'#e3b341',
+        'border-width':1,'border-color':'#6e7681','border-style':'dashed',
+        'label':'data(label)','color':'#8b949e','font-size':11,'text-valign':'top','text-halign':'center','text-margin-y':4,'padding':9 } },
+      // ad-hoc runtime group (создаётся пользователем «в моменте»; не из SSOT)
+      { selector: 'node[kind="adhoc"]', style: {
+        'shape':'round-rectangle','background-opacity':0.10,'background-color':'#1f6feb',
+        'border-width':2,'border-color':'#58a6ff','border-style':'dashed',
+        'label':'data(label)','color':'#79c0ff','font-size':12.5,'font-weight':'bold',
+        'text-valign':'top','text-halign':'center','text-margin-y':5,'padding':13 } },
+      { selector: 'node[kind="process"]', style: {
+        'shape':'round-rectangle','background-color':'#161b22','background-opacity':0.9,
+        'border-width':2,'border-color':'#30363d',
+        'label':'data(label)','color':'#c9d1d9','font-size':12.5,'font-weight':'bold',
+        'text-valign':'top','text-halign':'center','text-margin-y':5,'text-wrap':'wrap','text-max-width':190,'padding':11 } },
+      // steps
+      { selector: 'node[kind="task"]', style: {
+        'shape':'round-rectangle','background-color':'#243049','border-width':1,'border-color':'#3d4d6b',
+        'label':'data(label)','color':'#c9d1d9','font-size':11,'text-wrap':'wrap','text-max-width':130,
+        'text-valign':'center','text-halign':'center','width':150,'height':'label','padding':8 } },
+      { selector: 'node[kind="subprocess"]', style: {
+        'shape':'round-rectangle','background-color':'#243049','border-width':3,'border-color':'#58a6ff','border-style':'double',
+        'label':'data(label)','color':'#c9d1d9','font-size':11,'text-wrap':'wrap','text-max-width':130,
+        'text-valign':'center','text-halign':'center','width':150,'padding':8 } },
+      { selector: 'node[kind="gateway"]', style: {
+        'shape':'diamond','background-color':'#3a2d12','border-width':1.5,'border-color':'#e3b341',
+        'label':'data(label)','color':'#e3b341','font-size':10.5,'text-wrap':'wrap','text-max-width':120,
+        'text-valign':'center','text-halign':'center','width':130,'height':86,'padding':6 } },
+      { selector: 'node[kind="checkpoint"]', style: {
+        'shape':'round-rectangle','background-color':'#2a2030','border-width':1.5,'border-color':'#bc8cff','border-style':'dashed',
+        'label':'data(label)','color':'#d9c7f5','font-size':10.5,'text-wrap':'wrap','text-max-width':130,
+        'text-valign':'center','text-halign':'center','width':150,'padding':8 } },
+      { selector: 'node[kind="start"]', style: {
+        'shape':'round-rectangle','background-color':'#13311c','border-width':1.5,'border-color':'#3fb950',
+        'label':'data(label)','color':'#7ee2a0','font-size':10.5,'text-wrap':'wrap','text-max-width':120,
+        'text-valign':'center','text-halign':'center','width':128,'height':40,'padding':6 } },
+      { selector: 'node[kind="end"]', style: {
+        'shape':'round-rectangle','background-color':'#3a1b1b','border-width':1.5,'border-color':'#f85149',
+        'label':'data(label)','color':'#ffb3ae','font-size':10.5,'text-wrap':'wrap','text-max-width':120,
+        'text-valign':'center','text-halign':'center','width':128,'height':40,'padding':6 } },
+      { selector: 'node[kind="artifact"]', style: {
+        'shape':'round-rectangle','background-color':'#3a2f0c','border-width':1,'border-color':'#e3b341',
+        'label':'data(label)','color':'#e3b341','font-size':11,'font-weight':'bold',
+        'text-valign':'center','text-halign':'center','width':46,'height':30 } },
+      { selector: 'node[kind="artifact"][?boundary]', style: { 'shape':'hexagon','background-color':'#1f2d3d','border-color':'#58a6ff','color':'#79c0ff','width':62 } },
+      // status dimming
+      { selector: 'node.dim', style: { 'opacity':0.28 } },
+      // search highlight
+      { selector: 'node.match', style: { 'border-width':3,'border-color':'#f0f6fc','background-blacken':-0.1 } },
+      { selector: 'node.sel', style: { 'border-width':3,'border-color':'#58a6ff' } },
+      // collapsed compound cue handled by extension; give collapsed look
+      { selector: 'node.cy-expand-collapse-collapsed-node', style: { 'background-opacity':0.16,'border-style':'solid' } },
+
+      // edges
+      { selector: 'edge', style: {
+        'curve-style':'bezier','width':1.4,'line-color':'#8b949e','target-arrow-color':'#8b949e',
+        'target-arrow-shape':'triangle','arrow-scale':0.85,'opacity':0.85,
+        'label':'data(label)','font-size':9,'color':'#6e7681','text-rotation':'autorotate','text-background-color':'#0d1117','text-background-opacity':0.85,'text-background-padding':2 } },
+      { selector: 'edge[type="sequence"]', style: { 'line-color':'#8b949e','target-arrow-color':'#8b949e','width':1.6 } },
+      { selector: 'edge[type="delegate"]', style: { 'line-color':'#f0883e','target-arrow-color':'#f0883e','line-style':'dashed','width':1.8 } },
+      { selector: 'edge[type="produces"]', style: { 'line-color':'#3fb950','target-arrow-color':'#3fb950','width':1.2 } },
+      { selector: 'edge[type="consumes"]', style: { 'line-color':'#58a6ff','target-arrow-color':'#58a6ff','width':1.1,'opacity':0.6 } },
+      { selector: 'edge[type="cascade"]', style: { 'line-color':'#f85149','target-arrow-color':'#f85149','line-style':'dashed','width':1.2 } },
+      { selector: 'edge[type="lineage"]', style: { 'line-color':'#6e7681','target-arrow-color':'#6e7681','line-style':'dotted','width':1 } },
+      { selector: 'edge.cy-expand-collapse-meta-edge', style: { 'line-color':'#586069','target-arrow-color':'#586069','width':2,'line-style':'solid','opacity':0.7 } },
+      { selector: 'edge.off', style: { 'display':'none' } },
+      { selector: 'edge.ehl', style: { 'width':3,'opacity':1,'z-index':99 } }
+    ],
+    layout: LAYOUT_FULL
+  });
+
+  // ── expand/collapse ──
+  var api = null;
+  try {
+    cy.expandCollapse({
+      layoutBy: LAYOUT_INC, fisheye:false, animate:false, undoable:false,
+      cueEnabled:true, expandCollapseCueSize:13, expandCollapseCueLineSize:9,
+      expandCueImage:undefined, collapseCueImage:undefined
+    });
+    api = cy.expandCollapse('get');
+  } catch(e){ console.warn('expand-collapse init failed', e); }
+
+  // default layered view: collapse everything, then open the 5 module lanes (processes stay collapsed).
+  function defaultView(){
+    if (!api){ cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); return; }
+    try {
+      api.collapseAll();
+      var lanes = cy.nodes('[kind="lane"]').filter(function(n){ return n.id() !== 'lane:artifacts'; });
+      api.expand(lanes);
+    } catch(e){ console.warn(e); }
+    cy.layout(LAYOUT_FULL).run();
+    cy.fit(null, 45);
+  }
+
+  // ── edge layers ──
+  function applyLayer(type, on){
+    var eds = cy.edges('[type="'+type+'"]');
+    if (on) eds.removeClass('off'); else eds.addClass('off');
+  }
+  document.querySelectorAll('.lchip[data-layer]').forEach(function(chip){
+    chip.addEventListener('click', function(){
+      var on = chip.getAttribute('aria-pressed') !== 'true';
+      chip.setAttribute('aria-pressed', on ? 'true' : 'false');
+      applyLayer(chip.getAttribute('data-layer'), on);
+    });
+  });
+  // initial: hide produces/consumes/cascade/lineage
+  ['produces','consumes','cascade','lineage'].forEach(function(t){ applyLayer(t, false); });
+
+  // ── status dim ──
+  var dimChip = document.getElementById('dimNonShipped');
+  dimChip.addEventListener('click', function(){
+    var on = dimChip.getAttribute('aria-pressed') !== 'true';
+    dimChip.setAttribute('aria-pressed', on ? 'true' : 'false');
+    if (on) cy.nodes('[status][status!="shipped"]').addClass('dim');
+    else cy.nodes().removeClass('dim');
+  });
+
+  // ── toolbar ──
+  document.getElementById('expandAll').addEventListener('click', function(){ if(api){ try{api.expandAll();}catch(e){} } cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); });
+  document.getElementById('collapseAll').addEventListener('click', function(){ if(api){ try{api.collapseAll();}catch(e){} } cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); });
+  document.getElementById('relayout').addEventListener('click', function(){ cy.layout(LAYOUT_FULL).run(); });
+  document.getElementById('fitBtn').addEventListener('click', function(){ cy.fit(null,40); });
+  document.getElementById('resetBtn').addEventListener('click', function(){ clearSearch(); ungroupAll(); defaultView(); });
+  document.getElementById('zin').addEventListener('click', function(){ cy.zoom({ level: cy.zoom()*1.3, renderedPosition:{ x: cy.width()/2, y: cy.height()/2 } }); });
+  document.getElementById('zout').addEventListener('click', function(){ cy.zoom({ level: cy.zoom()/1.3, renderedPosition:{ x: cy.width()/2, y: cy.height()/2 } }); });
+
+  // ── ad-hoc grouping («группировка в моменте»: session-only, НЕ из SSOT, НЕ persisted) ──
+  // Single place that runs the active layout — Task-2 fcose swap touches only LAYOUT/this fn.
+  function runLayout(){ cy.layout(LAYOUT_FULL).run(); }
+  var _toastT = null;
+  function flash(msg){
+    var t = document.getElementById('toast'); if (!t) return;
+    t.textContent = msg; t.classList.add('show');
+    if (_toastT) clearTimeout(_toastT);
+    _toastT = setTimeout(function(){ t.classList.remove('show'); }, 2600);
+  }
+  var groupSeq = 0;
+  function adhocGroups(){ return cy.nodes('[kind="adhoc"]'); }
+
+  function groupSelected(){
+    var sel = cy.nodes(':selected').filter(function(n){ return n.data('kind') !== 'adhoc'; });
+    if (sel.length < 2){ flash('Выдели ≥2 узла: Shift+рамка или Shift+клик, затем G'); return; }
+    var gid = 'adhoc:' + (++groupSeq);
+    cy.add({ group:'nodes', data:{ id: gid, kind:'adhoc', label:'Группа ' + groupSeq } });
+    // запомнить исходного родителя ДО move — это и есть точка возврата на ungroup
+    sel.forEach(function(n){ var p = n.parent(); n.data('origParent', p.nonempty() ? p.id() : null); });
+    sel.move({ parent: gid });
+    cy.nodes().unselect();
+    runLayout();
+    // создаём РАЗВЁРНУТОЙ (видно обёртку) — свернуть можно cue ⊖ или «Свернуть всё»; expand-collapse
+    // подхватывает новый компаунд автоматически (проверено headless: api.collapse/expand работают)
+    flash('Создана «Группа ' + groupSeq + '» (' + sel.length + ' узлов) — ⊖ свернуть · U разгруппировать');
+  }
+
+  function ungroupOne(g){
+    if (api && g.hasClass('cy-expand-collapse-collapsed-node')){ try { api.expand(g); } catch(e){} }
+    g.children().forEach(function(c){
+      var op = c.data('origParent');
+      c.move({ parent: (op && cy.getElementById(op).nonempty()) ? op : null });
+    });
+    g.remove();
+  }
+  function ungroupAll(){ adhocGroups().forEach(ungroupOne); }
+  function ungroupTargets(){
+    var sel = cy.nodes(':selected');
+    var groups = cy.collection();
+    sel.forEach(function(n){
+      if (n.data('kind') === 'adhoc') groups = groups.union(n);
+      else { var a = n.ancestors('[kind="adhoc"]'); if (a.nonempty()) groups = groups.union(a); }
+    });
+    if (groups.empty()){ flash('Нечего разгруппировать: выдели ad-hoc группу (или её узел) и нажми U'); return; }
+    var nn = groups.length;
+    groups.forEach(ungroupOne);
+    cy.nodes().unselect();
+    runLayout();
+    flash('Разгруппировано: ' + nn);
+  }
+  document.getElementById('groupBtn').addEventListener('click', groupSelected);
+  document.getElementById('ungroupBtn').addEventListener('click', ungroupTargets);
+
+  // ── search ──
+  var q = document.getElementById('q');
+  function clearSearch(){ q.value=''; cy.nodes().removeClass('match'); }
+  q.addEventListener('input', function(){
+    var v = q.value.trim().toLowerCase();
+    cy.nodes().removeClass('match');
+    if (!v) return;
+    var matches = cy.nodes().filter(function(n){
+      var d = n.data();
+      return (String(d.label||'')+' '+String(d.id||'')+' '+String(d.name||'')+' '+String(d.what||'')).toLowerCase().indexOf(v) >= 0;
+    });
+    matches.addClass('match');
+    if (matches.length){
+      // reveal: expand ancestors of the first match
+      var first = matches[0];
+      if (api){ try { first.ancestors().forEach(function(a){ if (a.hasClass('cy-expand-collapse-collapsed-node')) api.expand(a); }); } catch(e){} }
+      cy.animate({ fit: { eles: matches, padding: 80 } }, { duration: 300 });
+    }
+  });
+  q.addEventListener('keydown', function(e){ if (e.key==='Escape'){ clearSearch(); } });
+
+  // ── side panel ──
+  var panel = document.getElementById('panel');
+  var panelBody = document.getElementById('panelBody');
+  document.getElementById('panelClose').addEventListener('click', function(){ panel.classList.remove('open'); cy.nodes().removeClass('sel'); cy.edges().removeClass('ehl'); });
+
+  function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function gateHtml(id){
+    var g = DATA.meta.gates[id]; if (!g) return '<div class="hk">'+esc(id)+'</div>';
+    var cls = g.blocking ? 'blocking' : 'warn';
+    return '<div class="hk '+cls+'"><div class="hkid">'+esc(id)+' '+(g.blocking?'🔒 blocking':'warn')+'</div>'+
+      '<div class="hkmeta">'+esc(g.event)+' · '+esc(g.module)+' · <span class="mono">'+esc(g.source)+'</span></div>'+esc(g.what)+'</div>';
+  }
+  function ruleHtml(id){
+    var r = DATA.meta.rules[id]; if (!r) return '<div class="rl">'+esc(id)+'</div>';
+    return '<div class="rl"><span class="rlid">'+esc(id)+'</span> <span style="color:var(--tx3)">'+esc(r.severity)+' · '+esc(r.scope)+' · '+esc(r.group)+'</span><br>'+esc(r.what)+'</div>';
+  }
+  function artPills(ids){
+    return (ids||[]).map(function(a){ return '<span class="pill" data-goto="art:'+esc(a)+'">'+esc(a)+'</span>'; }).join('');
+  }
+  function showNode(n){
+    var d = n.data(); var h = '';
+    var kindLabel = { lane:'Module / lane', process:'Процесс', task:'Шаг', gateway:'Решение (gateway)', checkpoint:'Checkpoint', subprocess:'Под-процесс', start:'Старт', end:'Конец', artifact:'Артефакт', artgroup:'Группа артефактов', adhoc:'Группа (ad-hoc)' }[d.kind] || d.kind;
+    h += '<div class="kindbadge">'+esc(kindLabel)+(d.status?(' · '+esc(d.status)):'')+'</div>';
+    h += '<h3>'+esc(d.label)+'</h3>';
+    if (d.what) h += '<div class="what">'+esc(d.what)+'</div>';
+
+    if (d.kind === 'process'){
+      if (d.command) h += '<div class="kv"><b>Команда:</b> <span class="mono">/'+esc(d.command)+'</span></div>';
+      if (d.domain)  h += '<div class="kv"><b>Домен:</b> '+esc(d.domain)+'</div>';
+      if (d.doc)     h += '<div class="kv"><a class="src" href="'+esc(d.doc.split('#')[0])+'">'+esc(d.doc)+'</a></div>';
+      h += '<div class="kv" style="margin-top:8px;color:var(--tx3)">Дважды кликни / разверни (⊕), чтобы увидеть шаги.</div>';
+    }
+    if (d.kind === 'artifact'){
+      var m = DATA.meta.artifacts[d.id.replace(/^art:/,'')] || {};
+      if (m.name) h += '<div class="kv"><b>'+esc(m.name)+'</b></div>';
+      if (m.tier) h += '<div class="kv"><b>Tier:</b> '+esc(m.tier)+'</div>';
+      if (m.cardinality) h += '<div class="kv"><b>Кардинальность:</b> '+esc(m.cardinality)+'</div>';
+      if (m.lineageFrom && m.lineageFrom.length){ h += '<div class="sec">Происходит из</div>'+artPills(m.lineageFrom); }
+      if (m.lineageTo && m.lineageTo.length){ h += '<div class="sec">Питает</div>'+artPills(m.lineageTo); }
+    }
+    if (d.kind==='task' || d.kind==='gateway' || d.kind==='checkpoint' || d.kind==='subprocess' || d.kind==='start' || d.kind==='end'){
+      if (d.review) h += '<div class="kv"><b>Review:</b> '+esc(d.review)+'</div>';
+      if (d.produces && d.produces.length){ h += '<div class="sec">Создаёт</div>'+artPills(d.produces); }
+      if (d.consumes && d.consumes.length){ h += '<div class="sec">Потребляет</div>'+artPills(d.consumes); }
+      if (d.hooks && d.hooks.length){ h += '<div class="sec">Хуки / гейты</div>'+d.hooks.map(gateHtml).join(''); }
+      if (d.rules && d.rules.length){ h += '<div class="sec">Правила валидации</div>'+d.rules.map(ruleHtml).join(''); }
+    }
+    panelBody.innerHTML = h;
+    panel.classList.add('open');
+    cy.nodes().removeClass('sel'); n.addClass('sel');
+    cy.edges().removeClass('ehl'); n.connectedEdges().addClass('ehl');
+    // pill navigation
+    panelBody.querySelectorAll('.pill[data-goto]').forEach(function(p){
+      p.addEventListener('click', function(){
+        var tid = p.getAttribute('data-goto');
+        var target = cy.getElementById(tid);
+        if (target && target.length){
+          if (!document.querySelector('.lchip[data-layer="produces"][aria-pressed="true"]')) {}
+          if (api){ try { target.ancestors().forEach(function(a){ if (a.hasClass('cy-expand-collapse-collapsed-node')) api.expand(a); }); } catch(e){} }
+          cy.animate({ fit:{ eles: target, padding: 120 } }, { duration:280 });
+          showNode(target);
+        }
+      });
+    });
+  }
+  cy.on('tap', 'node', function(evt){ showNode(evt.target); });
+  cy.on('tap', function(evt){ if (evt.target === cy){ panel.classList.remove('open'); cy.nodes().removeClass('sel'); cy.edges().removeClass('ehl'); } });
+
+  // ── legend toggle ──
+  document.getElementById('legtgl').addEventListener('click', function(){
+    document.getElementById('legend').classList.toggle('collapsed');
+    this.textContent = document.getElementById('legend').classList.contains('collapsed') ? '▸' : '▾';
+  });
+
+  // ── keyboard: / focuses search · G group · U ungroup ──
+  document.addEventListener('keydown', function(e){
+    if (document.activeElement === q) return;                 // не перехватываем, пока печатают в поиске
+    if (e.ctrlKey || e.metaKey || e.altKey) return;           // не трогаем системные сочетания
+    var k = e.key.toLowerCase();
+    if (e.key === '/'){ e.preventDefault(); q.focus(); }
+    else if (k === 'g'){ e.preventDefault(); groupSelected(); }
+    else if (k === 'u'){ e.preventDefault(); ungroupTargets(); }
+  });
+
+  // ── headless test hook (безвреден в проде; используется смоуком tests/guide/procmap.smoke.mjs) ──
+  window.__cy = cy;
+  window.__procmap = { group: groupSelected, ungroup: ungroupTargets, ungroupAll: ungroupAll, getApi: function(){ return api; } };
+
+  // ── build stamp ──
+  var b = DATA._build;
+  document.getElementById('stamp').textContent = 'сборка ' + b.date + ' · ' + (b.sha||'') + ' · ' + b.lanes + ' lane · ' + b.processes + ' процессов · ' + b.steps + ' шагов · ' + DATA.nodes.length + ' узлов · ' + DATA.edges.length + ' рёбер';
+
+  // initial render
+  defaultView();
+})();
+</script>
+</body>
+</html>

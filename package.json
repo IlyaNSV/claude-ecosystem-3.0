@@ -13,14 +13,19 @@
     "gen:map": "node dev/meta-improvement/scripts/gen-ecosystem-map.cjs",
     "gen:map:check": "node dev/meta-improvement/scripts/gen-ecosystem-map.cjs --check",
     "gen:map:selftest": "node dev/meta-improvement/scripts/gen-ecosystem-map.cjs --selftest",
+    "gen:procmap": "node dev/meta-improvement/scripts/gen-process-map.cjs",
+    "gen:procmap:check": "node dev/meta-improvement/scripts/gen-process-map.cjs --check",
+    "gen:procmap:selftest": "node dev/meta-improvement/scripts/gen-process-map.cjs --selftest",
+    "smoke:procmap": "node tests/guide/procmap.smoke.mjs",
     "test:adapters": "node tests/adapters/handoff-ccsdd.contract.test.cjs",
     "test:orchestrator": "node tests/orchestrator/coverage-oracle.test.cjs && node tests/orchestrator/gate-risk-classifier.test.cjs && node tests/orchestrator/args-parsing.test.cjs && node tests/orchestrator/concerns-propagation.test.cjs && node tests/orchestrator/fidelity-oracle.test.cjs && node tests/orchestrator/audit-fidelity-wiring.test.cjs && node tests/orchestrator/validate-feature-impl-wiring.test.cjs && node tests/orchestrator/feature-to-tdd-impl-wiring.test.cjs && node tests/orchestrator/env-readiness.test.cjs && node tests/orchestrator/capability-probe.test.cjs && node tests/orchestrator/remediation-guard.test.cjs && node tests/orchestrator/design-coverage-oracle.test.cjs && node tests/orchestrator/runtime-readiness.test.cjs && node tests/orchestrator/runtime-smoke-readiness-wiring.test.cjs",
     "smoke:orchestrator": "node tests/orchestrator/workflow-syntax.smoke.cjs",
     "test:audit": "node tests/audit/classify-orchestrator.test.cjs && node tests/audit/feedback-intake.test.cjs",
     "test:product": "node tests/product/cascade-scalar.test.cjs && node tests/product/zone-router.test.cjs && node tests/product/completeness-oracle.test.cjs",
-    "verify": "npm run verify:hooks && npm run test:adapters && npm run test:orchestrator && npm run smoke:orchestrator && npm run test:audit && npm run test:product && npm run gen:map:check"
+    "verify": "npm run verify:hooks && npm run test:adapters && npm run test:orchestrator && npm run smoke:orchestrator && npm run test:audit && npm run test:product && npm run gen:map:check && npm run gen:procmap:check && npm run smoke:procmap"
   },
   "devDependencies": {
-    "eslint": "^9.13.0"
+    "eslint": "^9.13.0",
+    "puppeteer-core": "^25.2.1"
   }
 }
