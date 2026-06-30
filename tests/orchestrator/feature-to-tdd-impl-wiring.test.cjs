@@ -91,7 +91,7 @@ test('the classifier is conservative: an unmatched class defaults to content (no
 test('returns the P5 contract keys incl. conflicts + findings', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'implemented', 'blocked', 'concerns', 'conflicts', 'findings', 'go_gate', 'readiness']) {
+  for (const key of ['feature', 'implemented', 'blocked', 'concerns', 'capabilities', 'conflicts', 'findings', 'go_gate', 'readiness']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
 });
@@ -116,9 +116,9 @@ test('PA-writes target the canonical worktree-shared file + commit-zone advisory
   assert(/FB-LR-23/.test(SRC), 'FB-LR-23 parallel-worktree guard not referenced');
   assert(/const PA_CANON\b/.test(SRC), 'no PA_CANON canonical-pending-actions instruction');
   assert(/git worktree list --porcelain/.test(SRC), 'PA_CANON does not resolve the canonical file via git worktree list');
-  // 1 declaration + 2 uses (block + concern) = 3 occurrences
+  // 1 declaration + 3 uses (block + concern + §6 capability-surface) = 4 occurrences
   const uses = (SRC.match(/\bPA_CANON\b/g) || []).length;
-  assert(uses >= 3, `both PA-emitting prompts (block + concern) must include PA_CANON (decl + 2 uses; found ${uses})`);
+  assert(uses >= 4, `every PA-emitting prompt (block + concern + capability-surface) must include PA_CANON (decl + 3 uses; found ${uses})`);
   // the block-commit carries the commit-zone advisory (shared-worktree .git → explicit-path is the isolation)
   assert(/shared-worktree \.git/.test(SRC), 'recordBlock lacks the FB-LR-23 commit-zone advisory');
 });
@@ -128,6 +128,35 @@ test('keeps the prior P5 guards (FB-001 args, FB-002 empty feature, P6 delegatio
   assert(/!FEATURE/.test(SRC) && /FB-002/.test(SRC), 'FB-002 empty-feature guard missing');
   assert(/workflow\(\s*\{\s*scriptPath:\s*['"][^'"]*validate-feature-impl\.mjs['"]/.test(SRC),
     'P5 must still delegate to P6 by scriptPath (DEC-DEV-0091)');
+});
+
+test('§6 detect-leg: pre-flight enumerates declared external_capabilities, before the task loop (DEC-DEV-0117)', () => {
+  assert(/DEC-DEV-0117/.test(SRC), 'DEC-DEV-0117 (detect-leg) not referenced');
+  assert(/const CAP_PROBE\b/.test(SRC) && /capability-probe\.cjs/.test(SRC), 'capability-probe lib not wired');
+  // the detect-leg must run BEFORE the per-task loop (it is pre-flight — no longer waits for an implementer CONCERN)
+  const detectIdx = SRC.indexOf("label: 'capability-detect'");
+  const loopIdx = SRC.indexOf('for (const task of tasks)');
+  assert(detectIdx !== -1, 'no capability-detect pre-flight agent');
+  assert(loopIdx !== -1 && detectIdx < loopIdx, 'the §6 detect-leg must run BEFORE the task loop (pre-flight, not reactive)');
+});
+
+test('§6 detect-leg: proactively surfaces capability-items via PA_CANON, never auto-provisions a BLOCK (DEC-DEV-0117)', () => {
+  assert(/const surfaceCapability\b/.test(SRC), 'no surfaceCapability helper');
+  // it surfaces to the CANONICAL pending-actions (FB-LR-23 reuse) and is tracking/disclosure only
+  const seg = SRC.slice(SRC.indexOf('const surfaceCapability'), SRC.indexOf('const surfaceCapability') + 1400);
+  assert(/PA_CANON/.test(seg), 'surfaceCapability does not resolve the canonical pending-actions (PA_CANON)');
+  assert(/do NOT provision or mock anything/i.test(seg), 'surfaceCapability must NOT auto-provision/mock a BLOCK (OD7 await is the deferred S7 leg)');
+  assert(/OD7/.test(seg), 'a BLOCK must be flagged for the OD7 escalate→await leg, not silently resolved');
+});
+
+test('§6 detect-leg: detected capabilities flow into the P6 gate disclosure + the envelope (DEC-DEV-0117)', () => {
+  // forwarded to P6 so the gate discloses them at GO
+  assert(/capabilities:\s*capabilityItems/.test(SRC), 'capabilityItems not forwarded to the P6 gate / return');
+  // and the fallback gate also discloses them
+  assert(/capabilityNote/.test(SRC), 'fallback gate does not disclose detected capabilities');
+  // present in the return envelope
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /(^|[\s{,])capabilities\s*:/.test(m[0]), 'return envelope missing capabilities key');
 });
 
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);

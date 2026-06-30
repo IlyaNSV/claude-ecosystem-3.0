@@ -6809,6 +6809,35 @@ N+2 блок A ЗАКРЫТ. Ledger: V-2 row ⛔→✅; FB-LR-28/29 заведе
 
 ---
 
+## DEC-DEV-0117 — §6 capability detect-leg: `external_capabilities` манифест + детерминированный probe (закрывает #3/#4 из 0081)
+
+**Date:** 2026-06-30
+**Trigger:** План «A+B complete» Ф5A — достройка §6 detect-leg (открытый остаток DEC-DEV-0081 после S6: канал = обработчик блокировок, не детектор пробелов). Владелец выбрал фронт Ф5, затем — манифест-конвенцию как источник enumeration.
+**Tag:** #orchestrator #capability-channel #vision-epic-e #feat
+
+### Context
+S6-аудит (DEC-DEV-0081): §6 фейлил, т.к. зависел от блокирующего сигнала имплементера — Mock делал отложенный провайдер (DeepL/ElevenLabs/Whisper) НЕ-блокирующим → канал молчал, GO уходил со скрытым provider-seam. Фиксы #1/#2/#5 (MERGED) починили плумбинг (reported CONCERN пробрасывается). Остался **detect-leg** #3/#4: оркестратор должен САМ замечать отложенную capability. Оценка объёма вскрыла блокер: **спека не объявляет внешние capability машиночитаемо** (FM-002 — субстрат локализации — называет провайдеров только прозой; FM-005 ad-hoc `payment_provider_shape`; имена секретов нигде канонически). Полностью детерминированный #3 невозможен без источника enumeration.
+
+### Options considered (развилка enumeration-источника)
+1. **Манифест-конвенция (выбрано):** структурное опциональное поле `external_capabilities` во frontmatter FM `{capability, secret_env, provider, tier, dev_stand_in}`. Детерминированный probe читает поле + проверяет env. Плюс: `tier`+`dev_stand_in` делают **disposition детерминированной** (block vs deferred = чтение, не эвристика) → обезоруживает dead/noisy-rule риск, на который ругался S7-бриф. Минус: product-ripple (skill авторинга + backfill реальных спек — отложено).
+2. **Handoff-extraction (LLM):** читать external-actor секции handoff'а bounded-LLM-нормализатором. Без схемы, но noisy-risk (ровно предостережение S7) + зависит от handoff.
+3. **Сменить вход Ф5:** YAGNI — 5A дважды-заблокирован (нет источника + нет реального wiring до RL-002). Отвергнуто: владелец выбрал заложить фундамент.
+
+### Decision
+Манифест-конвенция, 5A-core оффлайн на fixtures. **(1)** Поле `external_capabilities` в `docs/pmo/artifacts/FM.md` (опционально, absent==[]==старое поведение 1:1, без нового validation-правила → counts 24/44). **(2)** `orchestrator/lib/capability-probe.cjs` — детерминированный dual-use probe (чистые функции + CLI, stdlib-only, как `env-readiness.cjs`): disposition ∈ {SATISFIED, EXPECTED_ABSENT_BUT_DEFERRED, BLOCK} из `tier`+`dev_stand_in`+env-presence; `provider=TBD` → `provider_choice_pending` (route Product/OD8), ортогонально access-оси (route Integrator). **(3)** Wiring в `feature-to-tdd-impl.mjs` preflight (CODE, агент-релей JSON, как env-probe): enumerate ПЕРЕД task-loop → проактивный surface в **канонический** pending-actions (переиспользует `PA_CANON` 0113 — заодно закрывает §6-writer ногу FB-LR-29) → проброс в P6-гейт + fallback для GO-disclosure → новый ключ конверта `capabilities`. **BLOCK (нет stand-in) раскрывается + помечается для OD7 escalate→await, НЕ авто-оснащается/мокается.**
+
+**Substrate-gated остаток (S7/RL-002):** живое исполнение OD7 `request→await→resume` на реальном блоке + грейд detect-leg на пилоте (нужен реальный in-scope provider-пробел; localization = Mock-only, реальное wiring = RL-002-future). **Product-ripple follow-up:** обновить skill авторинга FM + backfill реальных спек (сейчас поле несёт только fixture).
+
+### Outcome
+Тесты: новый `capability-probe` 12/12 + `feature-to-tdd-impl-wiring` 13→16 (preflight-порядок, PA_CANON-surface без авто-provision, конверт/disclosure); добавлен в `test:orchestrator`; `npm run verify` EXIT=0, check-counts 24/44. Ветка `feat/orchestrator-capability-detect-leg` (стек на PR #79). Next-free DEC-DEV = 0118. **5A-core закрыт** (detect+disposition+surface детерминированы); OD7-execution + S7-грейд + product-backfill — отложенный хвост 5A.
+
+### Lessons
+1. **Манифест обезоруживает noisy/dead-rule риск.** S7-бриф предостерегал не шипить detect-эвристику вслепую. Перенос disposition-данных (`tier`/`dev_stand_in`) в структурную декларацию делает detect+disposition **детерминированными** — больше строится оффлайн, чем казалось; вслепую остаётся только живой S7. Это и есть «реализовать против конкретного субстрата» в правильной форме — субстрат = объявленная спека, не угадайка.
+2. **detect-leg = точка входа в Vision Epic E.** «Оркестратор замечает, что ему нужна внешняя capability, которой нет» — начало сегмента «до прода». Сделать правильно потребовало решить, где живёт перечислимый список (cross-cutting: Product-объявление + Orchestrator-probe + Integrator-оснащение).
+3. **Оценка ДО кода вскрыла настоящий объём.** Прямой заход «написать probe» уткнулся бы в отсутствие источника. Сначала оценка → развилка → решение владельца → потом код.
+
+---
+
 ## Шаблон новой записи
 
 ```markdown

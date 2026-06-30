@@ -83,6 +83,9 @@ fix-loop) — **наш cross-spec слой не нужен**, он покрыт 
 
 ```
 Plan       orchestrator-init + classify (gate-risk-classifier) + validation-commands + DAG-порядок  [наш план]
+§6 detect  pre-flight capability-probe.cjs: enumerate FM external_capabilities + disposition absent  [DEC-DEV-0117]
+             (BLOCK/deferred детерминированы из tier+dev_stand_in) → proactive surface в canonical PA;
+             BLOCK раскрыт + помечен для OD7 await (живое исполнение — substrate-gated S7-остаток)
 Implement  per task (sequential, по _Depends_):                                                       [наш FSM]
              implementer  ← Read kiro-impl/templates/implementer-prompt.md                 [лифт]
              tier=HIGH → reviewer ← reviewer-prompt.md / kiro-review (independent)          [лифт]
