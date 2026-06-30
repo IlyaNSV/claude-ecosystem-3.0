@@ -1,4 +1,7 @@
 <!DOCTYPE html>
+<!-- GENERATED — DO NOT EDIT. Source: docs/guide/ecosystem-map.template.html + docs/guide/ecosystem-map.overlay.json
+     Regenerate: node dev/meta-improvement/scripts/gen-ecosystem-map.cjs
+     Editorial copy lives in the overlay; SSOT facts (command set, artifact catalog, counts) come from disk. -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -43,13 +46,15 @@
   .pipeline{display:flex;gap:0;flex-wrap:wrap;align-items:stretch;margin-top:6px}
   .stage{flex:1;min-width:120px;background:var(--bg2);border:1px solid var(--line);border-radius:9px;
     padding:11px 12px;margin:4px;cursor:pointer;transition:.12s;position:relative}
-  .stage:hover{border-color:#58a6ff;transform:translateY(-2px)}
+  .stage:hover{border-color:#58a6ff}
+  @media(prefers-reduced-motion: no-preference){.stage:hover{transform:translateY(-2px)}}
   .stage.active{border-color:#58a6ff;box-shadow:0 0 0 1px #58a6ff inset}
   .stage .sid{font-weight:700;font-size:13px}
   .stage .snote{color:var(--tx2);font-size:11.5px;margin-top:3px}
   .stage .arrow{position:absolute;right:-11px;top:50%;transform:translateY(-50%);color:var(--tx3);font-size:15px;z-index:2}
   .stage.cond{border-style:dashed}
   .stage.deleg{opacity:.92}
+  .stage.aux{opacity:.82;border-style:dotted}
 
   /* legend */
   .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--tx2)}
@@ -107,22 +112,142 @@
   .note{background:rgba(240,136,62,.08);border:1px solid rgba(240,136,62,.3);border-radius:8px;
     padding:9px 13px;font-size:12px;color:var(--tx);margin-top:10px}
   .empty{color:var(--tx3);padding:14px;text-align:center;display:none}
+
+  /* gates & hooks (B1) */
+  .ghead{font-size:12.5px;color:var(--tx2);margin:14px 0 8px;font-weight:600}
+  .gates-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px}
+  .gate{background:var(--bg2);border:1px solid var(--line);border-radius:9px;padding:11px 12px}
+  .gate.hard{border-left:3px solid var(--crit)}
+  .gate.warn{border-left:3px solid var(--partial)}
+  .gate .gtop{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .gate .gid{font-size:13px;font-weight:700}
+  .gate .gev{font-size:10.5px;color:var(--tx2);border:1px solid var(--line);border-radius:5px;padding:0 6px}
+  .gate .gwhat{color:var(--tx);font-size:12.5px;margin:8px 0 7px}
+  .gate .gbypass{color:var(--tx2);font-size:11.5px;margin-bottom:6px}
+  .gate .gbypass b{color:var(--tx)}
+  .gate .gsrc{font-size:10.5px;word-break:break-all}
+  .b-hard{background:rgba(248,81,73,.15);color:var(--crit);border-color:rgba(248,81,73,.4)}
+  .b-warn{background:rgba(210,153,34,.15);color:var(--partial);border-color:rgba(210,153,34,.4)}
+
+  /* processes (B2) */
+  .plane{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 14px 14px;margin:10px 0}
+  .plane>.phdr{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .procs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+  .proc{background:var(--bg3);border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+  .proc .ptop{display:flex;align-items:center;gap:7px;justify-content:space-between}
+  .proc .pid{font-size:13px;font-weight:700}
+  .proc .pname{color:var(--tx);font-size:12.5px;margin:5px 0;font-weight:600}
+  .proc .pwhat{color:var(--tx2);font-size:11.5px;margin-bottom:7px}
+  .proc .pmeta{color:var(--tx3);font-size:10.5px;margin-bottom:6px}
+  .proc .prod{display:flex;gap:4px;flex-wrap:wrap}
+
+  /* artifact relations + lineage (B3) */
+  .art .arel{margin-top:6px;font-size:10.5px;display:flex;gap:4px;flex-wrap:wrap;align-items:center}
+  .art .arel .lbl{color:var(--tx3)}
+  .art .lin{margin-top:5px;font-size:10px;color:var(--tx3)}
+  .art .lin .lchip{cursor:pointer;color:var(--tx2);border-bottom:1px dotted var(--tx3)}
+  .art .lin .lchip:hover{color:var(--pmo);border-color:var(--pmo)}
+
+  /* validation (B4) */
+  .vgroup{background:var(--bg2);border:1px solid var(--line);border-radius:9px;margin:8px 0;overflow:hidden}
+  .vgroup>summary{cursor:pointer;list-style:none;padding:11px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .vgroup>summary::-webkit-details-marker{display:none}
+  .vgroup .vname{font-weight:600;font-size:13px}
+  .vgroup .vrange{font-size:10.5px;color:var(--tx3);border:1px solid var(--line);border-radius:5px;padding:0 6px}
+  .vgroup .vtally{margin-left:auto;display:flex;gap:9px;font-size:11.5px;color:var(--tx2)}
+  .vgroup .vwhat{color:var(--tx2);font-size:11.5px;padding:0 14px 8px}
+  .vtable{width:100%;border-collapse:collapse;font-size:11.5px}
+  .vtable th,.vtable td{text-align:left;padding:6px 14px;border-top:1px solid var(--line);vertical-align:top}
+  .vtable th{color:var(--tx3);font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+  .vtable td.vsev{white-space:nowrap;color:var(--tx2)}
+  .vtable td.vid{font-weight:600}
+
+  /* roadmap / horizon (B5) */
+  .roads{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+  .road{background:var(--bg2);border:1px dashed var(--line);border-radius:9px;padding:11px 12px;opacity:.85}
+  .road .rtop{display:flex;align-items:center;gap:7px;justify-content:space-between}
+  .road .rlabel{font-size:13px;font-weight:700;color:var(--tx2)}
+  .road .rmeta{color:var(--tx3);font-size:10.5px;margin-top:5px;display:flex;align-items:center;gap:6px}
+  .road .rwhat{color:var(--tx3);font-size:11.5px;margin-top:6px}
+
+  /* ── C3: filter chips (module + status) ─────────────────────────────── */
+  .filterbar{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:10px}
+  .filterbar .flabel{font-size:10.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em}
+  .fchip{font-size:12px;padding:4px 10px;border-radius:20px;background:var(--bg3);border:1px solid var(--line);
+    color:var(--tx2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;user-select:none}
+  .fchip:hover{border-color:#58a6ff}
+  .fchip[aria-pressed="true"]{color:var(--tx);border-color:currentColor;background:var(--bg)}
+  .fchip .fdot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .fsep{align-self:center;color:var(--tx3);padding:0 2px}
+
+  /* ── C6: task ("я хочу…") reverse index ─────────────────────────────── */
+  .tasks{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;margin-top:14px}
+  .tasks h2{margin:0 0 9px;font-size:13px;color:var(--tx);font-weight:600}
+  .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:6px}
+  .task{display:flex;justify-content:space-between;gap:10px;align-items:baseline;background:var(--bg3);
+    border:1px solid var(--line);border-radius:7px;padding:7px 10px;cursor:pointer;font-size:12.5px;text-align:left;
+    color:inherit;font-family:inherit;width:100%}
+  .task:hover{border-color:#58a6ff}
+  .task .tgoal{color:var(--tx)}
+  .task .tcmd{color:var(--tx2);white-space:nowrap}
+
+  /* ── C4: cross-highlight (artifact ↔ command) ───────────────────────── */
+  .card.hl,.art.hl{border-color:var(--pmo);box-shadow:0 0 0 1px var(--pmo) inset}
+  .art.hl-art{border-color:var(--pmo);box-shadow:0 0 0 2px var(--pmo) inset}
+  body.has-hl .card:not(.hl):not(.hidden),
+  body.has-hl .art:not(.hl):not(.hl-art):not(.hidden){opacity:.4}
+  #clearHl{display:none}
+  body.has-hl #clearHl{display:inline-flex;align-items:center;gap:6px}
+
+  /* ── C2: source / SPEC links ─────────────────────────────────────────── */
+  .card .csrc{font-size:10px;margin-top:8px}
+  .card .csrc a{color:var(--tx3)}
+  .mod .mspec{font-size:11px;font-weight:400;margin-left:8px}
+
+  /* ── D1: accessibility — focus rings ─────────────────────────────────── */
+  :focus-visible{outline:2px solid #58a6ff;outline-offset:2px}
+  .stage:focus-visible,.card:focus-visible,.art:focus-visible,.chip:focus-visible,.lchip:focus-visible,
+  .fchip:focus-visible,.btn:focus-visible,.task:focus-visible,.fchip:focus-visible{outline:2px solid #58a6ff;outline-offset:2px;border-radius:7px}
+
+  /* ── D2: print — sane offline overview ───────────────────────────────── */
+  @media print{
+    :root{--bg:#fff;--bg2:#fff;--bg3:#fff;--line:#bbb;--tx:#111;--tx2:#333;--tx3:#555;--pmo:#9a6b00}
+    body{background:#fff;color:#111;font-size:11px}
+    header{position:static;background:#fff;border-bottom:1px solid #999}
+    .controls,.filterbar,.tasks,#clearHl,#expandAll,#reset,.legend,.btn{display:none!important}
+    .note{border-color:#ccc;background:#f6f6f6}
+    .cards,.arts,.gates-grid,.procs,.roads,.tgrid{grid-template-columns:1fr!important}
+    .gloss{columns:1}
+    details>summary~*{display:block!important}
+    details.mod,details.vgroup,.card,.art,.gate,.proc,.road{break-inside:avoid}
+    a{color:#111;text-decoration:underline}
+    .card .csrc a::after,.gate .gsrc::after{content:" (" attr(href) ")";color:#555;font-size:9px;word-break:break-all}
+    body.has-hl .card,body.has-hl .art{opacity:1!important}
+    #print-foot{display:block!important;margin-top:14px;color:#555;font-size:10px;border-top:1px solid #bbb;padding-top:6px}
+  }
+  #print-foot{display:none}
 </style>
 </head>
 <body>
 <header>
   <h1>Ecosystem 3.0 — карта</h1>
-  <p class="sub">PMO-слой над Claude Code. Всё в одном месте: пайплайн D1–D6, команды («когда что»), артефакты, статус «работает сегодня». <span class="mono" style="color:var(--tx3)">v1 · вручную из спеков · <span id="meta-date"></span></span></p>
+  <p class="sub">PMO-слой над Claude Code. Всё в одном месте: пайплайн D1–D6, команды («когда что»), артефакты, статус «работает сегодня». <span class="mono" style="color:var(--tx3)" id="build-stamp"></span></p>
   <div class="controls">
-    <input id="q" type="search" placeholder="Поиск: команда, артефакт, действие… (напр. handoff, BR, drift)">
+    <input id="q" type="search" aria-label="Поиск по командам, артефактам и действиям"
+      placeholder="Поиск: команда, артефакт, действие… (напр. handoff, BR, drift) · нажмите /">
     <label><input type="checkbox" id="onlyShipped"> Только то, что работает сегодня</label>
-    <button class="btn" id="expandAll">Развернуть всё</button>
-    <button class="btn" id="reset">Сброс</button>
+    <button class="btn" id="expandAll" aria-label="Развернуть или свернуть все модули">Развернуть всё</button>
+    <button class="btn" id="reset" aria-label="Сбросить все фильтры и выделение">Сброс</button>
+    <button class="btn" id="clearHl" aria-label="Снять выделение связей">✕ снять выделение</button>
   </div>
+  <div class="filterbar" id="modFilter" role="group" aria-label="Фильтр по модулю"></div>
+  <div class="filterbar" id="statusFilter" role="group" aria-label="Фильтр по статусу"></div>
 </header>
 
 <main>
   <div class="happy" id="happy"></div>
+
+  <div class="tasks" id="tasks" aria-label="Я хочу… — задача к команде"></div>
 
   <div class="section-title">Пайплайн D1–D6 · клик по стадии — фильтр команд</div>
   <div class="pipeline" id="pipeline"></div>
@@ -133,8 +258,23 @@
   <div id="modules"></div>
   <div class="empty" id="emptyCmd">Ничего не найдено по запросу.</div>
 
-  <div class="section-title">Артефакты (24 типа) · что создаётся</div>
+  <div class="section-title">Процессы P1–P6 · кто чем владеет и чем запускается</div>
+  <div id="processes"></div>
+  <div class="note">Дорожки по владельцу: <b>Product</b> ведёт P1–P5 (Discovery → Maintenance), <b>Orchestrator</b> ведёт P3–P6 (handoffs → specs → impl → validate). Чипы команд — клик открывает карточку команды.</div>
+
+  <div class="section-title">Гейты и хуки · что меня заблокирует и почему</div>
+  <div id="gates"></div>
+
+  <div class="section-title" id="art-title">Артефакты · что создаётся</div>
   <div id="artifacts"></div>
+
+  <div class="section-title" id="val-title">Валидация · правила</div>
+  <p class="sub" id="val-note" style="margin:0 0 10px"></p>
+  <div id="validation"></div>
+
+  <div class="section-title">Планируется · горизонт (ещё не «работает сегодня»)</div>
+  <div class="note">Эти пункты — <b>план/горизонт</b>, не текущая функциональность. Намеренно отделены от «только то, что работает сегодня» и не попадают в shipped-фильтр.</div>
+  <div class="roads" id="roadmap" style="margin-top:10px"></div>
 
   <div class="section-title">Глоссарий</div>
   <div class="gloss" id="glossary"></div>
@@ -149,242 +289,2486 @@
     <a href="../pmo/artifacts/README.md">Каталог артефактов</a>
     <a href="../../ROADMAP.md#где-мы-сейчас">Статус (SSOT)</a>
   </div>
-  <div>Эта карта — навигационный обзор для оператора, не источник истины. Канонические авторитеты — по ссылкам выше; «где мы сейчас» всегда в ROADMAP. Статусы здесь зафиксированы вручную (v1); авто-генерация из frontmatter — план Tier-2.</div>
+  <div>Эта карта — навигационный обзор для оператора, не источник истины. Канонические авторитеты — по ссылкам выше; «где мы сейчас» всегда в ROADMAP. Карта <b>генерируется</b> из спеков (frontmatter команд + каталог артефактов + <span class="mono">validation.md</span>) скриптом <span class="mono">gen-ecosystem-map.cjs</span>; редакторская копия — в <span class="mono">ecosystem-map.overlay.json</span>, не правьте HTML напрямую.</div>
+  <div id="print-foot" class="mono"></div>
 </footer>
 
+<!-- Data island: the generator replaces the single seed token below with JSON.stringify(DATA).
+     type="application/json" keeps the payload inert (not executed); hydrated once at startup.
+     The seed token must appear exactly once in this file. -->
+<script id="map-data" type="application/json">{
+  "_build": {
+    "date": "2026-06-30",
+    "sha": "68c0a4e",
+    "commands": 43,
+    "artifacts": 24,
+    "rules": 44,
+    "gates": 18,
+    "processes": 10
+  },
+  "pipeline": [
+    {
+      "id": "D1",
+      "label": "D1 · Discovery",
+      "note": "проблема, рынок, сегменты, гипотезы",
+      "mods": [
+        "product"
+      ]
+    },
+    {
+      "id": "D2B",
+      "label": "D2-B · Behavioral",
+      "note": "поведенческая спецификация фич",
+      "mods": [
+        "product"
+      ]
+    },
+    {
+      "id": "D2UI",
+      "label": "D2-UI · Design",
+      "note": "UI, условно при has_ui",
+      "mods": [
+        "design"
+      ],
+      "cond": true
+    },
+    {
+      "id": "HO",
+      "label": "handoff.md",
+      "note": "boundary object — снимок фичи",
+      "mods": [
+        "product"
+      ]
+    },
+    {
+      "id": "D2T",
+      "label": "D2-T · Tech",
+      "note": "архитектура и стек — делегируется",
+      "mods": [
+        "integrator",
+        "orchestrator"
+      ],
+      "deleg": true
+    },
+    {
+      "id": "D3",
+      "label": "D3–D6 · Build→Ops",
+      "note": "имплементация, QA — через инструменты",
+      "mods": [
+        "orchestrator",
+        "integrator"
+      ],
+      "deleg": true
+    },
+    {
+      "id": "maint",
+      "label": "Maintenance",
+      "note": "гигиена .product/ — валидация, каскады, дрифт",
+      "mods": [
+        "product"
+      ],
+      "aux": true
+    },
+    {
+      "id": "setup",
+      "label": "Setup / Meta",
+      "note": "установка и обслуживание самой экосистемы",
+      "mods": [
+        "ecosystem"
+      ],
+      "aux": true
+    }
+  ],
+  "modules": {
+    "product": {
+      "id": "product",
+      "name": "Product",
+      "color": "var(--product)",
+      "dom": "D1 + D2-Behavioral",
+      "blurb": "Discovery → Planning → спецификация фич → handoff. Ядро ежедневной работы.",
+      "commands": [
+        {
+          "cmd": "/product:bg-rename",
+          "id": "product:bg-rename",
+          "module": "product",
+          "name": "bg-rename",
+          "st": "maint",
+          "status": "partial",
+          "desc": "Mass-rename BG term across all artifacts. v1 manual preview workflow (sed-suggest + IDE find-replace). Atomic apply deferred к v1.1 per DEC-DEV-0012 D.2.",
+          "arg": "\u003cold> \u003cnew> | --commit \u003cold> \u003cnew>",
+          "when": "Mass-rename термина BG по всем артефактам (v1 — ручной preview; atomic apply — v1.1).",
+          "tags": "глоссарий переименование rename",
+          "produces": [
+            "BG"
+          ],
+          "consumes": [
+            "BG"
+          ],
+          "source": "commands/product/bg-rename.md"
+        },
+        {
+          "cmd": "/product:bg-review",
+          "id": "product:bg-review",
+          "module": "product",
+          "name": "bg-review",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Batch review of pending BG candidates from .pending/bg-candidates.yaml. Phases 2-4 of BG extraction algorithm — classification, presentation, approval. Orchestrated by bg-extraction skill.",
+          "arg": "[--all | --new-terms-only | --synonyms-only]",
+          "when": "Ревью pending BG-кандидатов (классификация / синонимы / одобрение).",
+          "tags": "глоссарий bg термины",
+          "produces": [
+            "BG"
+          ],
+          "consumes": [
+            "NOTE"
+          ],
+          "source": "commands/product/bg-review.md"
+        },
+        {
+          "cmd": "/product:cascade",
+          "id": "product:cascade",
+          "module": "product",
+          "name": "cascade",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Manual cascade navigation. Show pending cascade entries from .pending/cascade-pending.yaml and resolve per-entry. Detection-only (V-11 auto-fix happens automatically via cascade-check.js hook).",
+          "arg": "\u003cartifact-id> | --pending [...]",
+          "when": "Навигация каскада: разрешить pending-каскад (V-11 авто-фикс идёт хуком сам).",
+          "tags": "каскад cascade pending",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/cascade.md"
+        },
+        {
+          "cmd": "/product:cleanup",
+          "id": "product:cleanup",
+          "module": "product",
+          "name": "cleanup",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "V-15 orphan detection (default) с opt-in pending hygiene sweep (--pending-hygiene). Default = fast graph analysis listing orphan artifacts. Hygiene mode = cascade revalidate + validation-pending purge + da-pending stale flag. Use --dry-run для preview без apply.",
+          "arg": "[--dry-run] [--pending-hygiene | --full]",
+          "when": "Поиск сирот (V-15) + опц. гигиена pending-очередей.",
+          "tags": "очистка сироты orphan",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/cleanup.md"
+        },
+        {
+          "cmd": "/product:complete",
+          "id": "product:complete",
+          "module": "product",
+          "name": "complete",
+          "st": "D2B",
+          "status": "partial",
+          "desc": "Run the bounded completeness-loop on a feature's D1-D2B spec (Autonomous Pipeline Vision, Epic B). Drives FM + SC/BR/LC/VC/IC/NFR (and MK/NM if has_ui) to handoff-DoR-sufficient completeness in bounded waves — deterministic completeness-oracle for the stop-signal, heterogeneous profile personas (architect/qa/ux-advisor) on each zone's gaps, auto-resolve the resolvable + escalate real decisions. Stop is external + bounded (cap ∧ (score≥τ ∨ Δ\u003cε ∨ info-gain→0)). v1 core/skeleton (DEC-DEV-0098).",
+          "arg": "\u003cFM-NNN> [--max-waves N] [--dry-run]",
+          "when": "Bounded completeness-loop: довести фичу до готовности волнами (v1-скелет, Epic B).",
+          "tags": "completeness loop готовность autonomous",
+          "produces": [],
+          "consumes": [
+            "FM",
+            "SC",
+            "BR",
+            "LC",
+            "VC",
+            "IC",
+            "NFR",
+            "MK",
+            "NM"
+          ],
+          "source": "commands/product/complete.md"
+        },
+        {
+          "cmd": "/product:config",
+          "id": "product:config",
+          "module": "product",
+          "name": "config",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Read or modify Product Module configuration (.claude/product.yaml).",
+          "arg": "[--show | --edit \u003ckey> \u003cvalue>]",
+          "when": "Чтение/правка конфигурации Product Module (product.yaml).",
+          "tags": "конфиг настройки yaml",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/config.md"
+        },
+        {
+          "cmd": "/product:da-review",
+          "id": "product:da-review",
+          "module": "product",
+          "name": "da-review",
+          "st": "D2B",
+          "status": "shipped",
+          "desc": "Manual Product DA review. ID-prefix routing — FM-NNN spawns feature-scope DA; RL-NNN spawns release-scope DA (cross-FM consistency, HYP coverage, rollout deps per DEC-DEV-0026). Findings → .product/.da-findings/\u003cID>-\u003ctimestamp>.md unified schema (DEC-DEV-0030 A.1). Other prefixes (BR/IC/SC/LC/VC/RPM/MK) refused — те реализованы через hooks или approve gates.",
+          "arg": "\u003cFM-NNN | RL-NNN>",
+          "when": "Ручное adversarial DA-ревью: FM → feature-scope, RL → release-scope (cross-FM).",
+          "tags": "devils advocate ревью критика",
+          "produces": [],
+          "consumes": [
+            "FM",
+            "RL",
+            "SC",
+            "BR",
+            "IC",
+            "HYP"
+          ],
+          "source": "commands/product/da-review.md"
+        },
+        {
+          "cmd": "/product:drift-check",
+          "id": "product:drift-check",
+          "module": "product",
+          "name": "drift-check",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Structural self-audit — check that recent artifacts still align with PS, primary HYP, MVP scope. C1 modification.",
+          "arg": "[--scope \u003clast-N> | --since \u003cdate>]",
+          "when": "Само-аудит: артефакты ещё согласованы с PS / primary HYP / MVP-scope?",
+          "tags": "дрифт drift аудит согласованность",
+          "produces": [],
+          "consumes": [
+            "PS",
+            "HYP",
+            "MVP"
+          ],
+          "source": "commands/product/drift-check.md"
+        },
+        {
+          "cmd": "/product:feature",
+          "id": "product:feature",
+          "module": "product",
+          "name": "feature",
+          "st": "D2B",
+          "status": "shipped",
+          "desc": "Start P2 Feature Definition. Enrichment mode (FM-id) или creation mode (\"idea\"). Produces SC, BR, LC, VC, IC + RPM update. Triggers adaptive-depth DA via hooks.",
+          "arg": "\u003cFM-id> | \"\u003cidea>\" | --continue",
+          "when": "Спецификация фичи: сценарии, правила, инварианты. Enrichment FM-id или создание из идеи.",
+          "tags": "фича спецификация enrich SC BR",
+          "produces": [
+            "SC",
+            "BR",
+            "LC",
+            "VC",
+            "IC",
+            "RPM"
+          ],
+          "consumes": [
+            "FM",
+            "SEG",
+            "VP",
+            "HYP"
+          ],
+          "source": "commands/product/feature.md"
+        },
+        {
+          "cmd": "/product:handoff",
+          "id": "product:handoff",
+          "module": "product",
+          "name": "handoff",
+          "st": "HO",
+          "status": "shipped",
+          "desc": "Generate universal handoff для FM-NNN — 13-section markdown с embedded artifact excerpts + SHA-256 hashes для drift detection. Two modes — --mode draft (3-blocker DoR, status partial) и --mode production (8-blocker DoR, status ready). --regenerate force version++. --with-da-review invokes pre-gen DA. Output: .product/handoffs/FM-NNN-handoff.md.",
+          "arg": "\u003cFM-id> [--mode draft|production] [--regenerate] [--with-da-review]",
+          "when": "Сгенерировать универсальный handoff для FM: 13 секций + хэши для drift-detection.",
+          "tags": "handoff передача dor draft production",
+          "produces": [
+            "handoff"
+          ],
+          "consumes": [
+            "FM",
+            "SC",
+            "BR",
+            "LC",
+            "VC",
+            "IC",
+            "NFR",
+            "MK",
+            "DS",
+            "NM",
+            "BG"
+          ],
+          "source": "commands/product/handoff.md"
+        },
+        {
+          "cmd": "/product:init",
+          "id": "product:init",
+          "module": "product",
+          "name": "init",
+          "st": "D1",
+          "status": "shipped",
+          "desc": "Start P1.A Discovery Session for a new product. Creates PS, MR, CA, SEG, VP, HYP artifacts.",
+          "arg": "\u003cidea> | --continue | --deep | --pivot",
+          "when": "Начать Discovery нового продукта: из идеи → проблема, рынок, сегменты, гипотезы.",
+          "tags": "discovery старт идея quick deep",
+          "produces": [
+            "PS",
+            "MR",
+            "CA",
+            "SEG",
+            "VP",
+            "HYP"
+          ],
+          "consumes": [],
+          "source": "commands/product/init.md"
+        },
+        {
+          "cmd": "/product:lesson",
+          "id": "product:lesson",
+          "module": "product",
+          "name": "lesson",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Atomic find→fix→record corrective LESSON-* (fix applied + verified before commit). Use the instant an error is self-detected — the inverse of the deferred .pending queue.",
+          "arg": "\"\u003cчто пошло не так>\" | --resume \u003cid> | --withdraw \u003cid>",
+          "when": "Атомарно зафиксировать corrective LESSON (fix применён и проверён) в момент ошибки.",
+          "tags": "урок lesson ошибка fix",
+          "produces": [
+            "LESSON"
+          ],
+          "consumes": [],
+          "source": "commands/product/lesson.md"
+        },
+        {
+          "cmd": "/product:nfr-review",
+          "id": "product:nfr-review",
+          "module": "product",
+          "name": "nfr-review",
+          "st": "D2B",
+          "status": "shipped",
+          "desc": "F.5a NFR Review для FM. Two phases — Ask (mandatory) + Define (conditional on [Y]). Sanity range warnings (per NFR.md §5). Consumes NOTE-NNN с promote_target=NFR queue. Updates FM.nfr_status atomically с FM version++.",
+          "arg": "\u003cFM-id> | --continue",
+          "when": "NFR-ревью фичи: Ask + Define, sanity-диапазоны по tier.",
+          "tags": "nfr нефункциональные требования",
+          "produces": [
+            "NFR"
+          ],
+          "consumes": [
+            "FM",
+            "NOTE"
+          ],
+          "source": "commands/product/nfr-review.md"
+        },
+        {
+          "cmd": "/product:nfr-upgrade-tier",
+          "id": "product:nfr-upgrade-tier",
+          "module": "product",
+          "name": "nfr-upgrade-tier",
+          "st": "D2B",
+          "status": "shipped",
+          "desc": "Batch NFR review при product tier change (MVP→MMP / MMP→Growth / etc). Re-evaluates active NFRs per new tier sanity ranges; surfaces declined + pending FMs для re-Ask. Updates product.yaml.product_tier OR RM.current_phase + version bumps.",
+          "arg": "\u003cnew-tier> [--dry-run]",
+          "when": "Пересмотр активных NFR при смене product tier (MVP→MMP→Growth…).",
+          "tags": "nfr tier апгрейд",
+          "produces": [
+            "NFR"
+          ],
+          "consumes": [
+            "NFR"
+          ],
+          "source": "commands/product/nfr-upgrade-tier.md"
+        },
+        {
+          "cmd": "/product:patterns",
+          "id": "product:patterns",
+          "module": "product",
+          "name": "patterns",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Meta-linter — scan .product/ for recurring anti-patterns across artifacts. C4 modification. Informational only.",
+          "arg": "[--scope \u003ctype> | --pattern \u003cname>]",
+          "when": "Мета-линтер: повторяющиеся анти-паттерны в .product/. Информационно.",
+          "tags": "паттерны анти-паттерн линтер",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/patterns.md"
+        },
+        {
+          "cmd": "/product:plan",
+          "id": "product:plan",
+          "module": "product",
+          "name": "plan",
+          "st": "D1",
+          "status": "shipped",
+          "desc": "Start P1.B Planning Session. Creates MVP scope, Roadmap, RL-001, and FM skeletons. Requires Discovery complete.",
+          "arg": "[--continue]",
+          "when": "Планирование после Discovery: MVP-scope, Roadmap, RL-001 и скелеты фич (FM).",
+          "tags": "планирование roadmap mvp релиз",
+          "produces": [
+            "MVP",
+            "RM",
+            "RL",
+            "FM"
+          ],
+          "consumes": [
+            "PS",
+            "MR",
+            "CA",
+            "SEG",
+            "VP",
+            "HYP"
+          ],
+          "source": "commands/product/plan.md"
+        },
+        {
+          "cmd": "/product:promote-note",
+          "id": "product:promote-note",
+          "module": "product",
+          "name": "promote-note",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Convert NOTE-* unstructured note to structured artifact (FM/SC/BR/IC/NFR/HYP). D3 modification.",
+          "arg": "\u003cNOTE-id> to \u003cTYPE>",
+          "when": "Превратить свободную заметку NOTE-* в структурный артефакт.",
+          "tags": "note промоут заметка",
+          "produces": [
+            "FM",
+            "SC",
+            "BR",
+            "IC",
+            "NFR",
+            "HYP"
+          ],
+          "consumes": [
+            "NOTE"
+          ],
+          "source": "commands/product/promote-note.md"
+        },
+        {
+          "cmd": "/product:status",
+          "id": "product:status",
+          "module": "product",
+          "name": "status",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Dashboard of .product/ state — artifact counts, pending items, handoff status, recent sessions.",
+          "arg": "",
+          "when": "Дашборд .product/: счётчики артефактов, pending, статус handoff, недавние сессии.",
+          "tags": "статус дашборд обзор",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/status.md"
+        },
+        {
+          "cmd": "/product:validate",
+          "id": "product:validate",
+          "module": "product",
+          "name": "validate",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "On-demand validation of .product/ artifacts. Runs V-01..V-16 + V-H-01..V-H-11 catalog per tier in product.yaml. Filtering --rule, --scope, --tier. --deep for severity uplift. Output: markdown report inline + JSON file.",
+          "arg": "[--rule] [--scope] [--tier] [--deep]",
+          "when": "Проверка .product/: правила V-01..V-16 + V-H-* по tier. Фильтры, --deep.",
+          "tags": "валидация правила check validate",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/validate.md"
+        },
+        {
+          "cmd": "/product:validation-tune",
+          "id": "product:validation-tune",
+          "module": "product",
+          "name": "validation-tune",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "AI proposes PROJECT-LOCAL validation tuning (rule severity / config tweaks) based on observed patterns in THIS project. Systemic defects escalate upstream via /ecosystem:meta-feedback. C3 modification.",
+          "arg": "[--review-suggestions]",
+          "when": "Локальная подстройка валидации под этот проект; системное → upstream meta-feedback.",
+          "tags": "настройка валидации severity tune",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/validation-tune.md"
+        }
+      ]
+    },
+    "design": {
+      "id": "design",
+      "name": "Design",
+      "color": "var(--design)",
+      "dom": "D2-UI · условно has_ui",
+      "blurb": "Итеративная генерация UI (Stitch/HTML). Включается, когда у фичи has_ui=true.",
+      "commands": [
+        {
+          "cmd": "/design:export",
+          "id": "design:export",
+          "module": "design",
+          "name": "export",
+          "st": "D2UI",
+          "status": "conditional",
+          "desc": "D.6 export verify — assemble UI-contract block from MK/DS/NM ready для handoff §10. Standalone sanity check; /product:handoff fills §10 directly from artifacts (no command call from handoff per Q10 carry-forward).",
+          "arg": "\u003cFM-id>",
+          "when": "Сборка UI-contract из MK/DS/NM для handoff §10 (sanity-check).",
+          "tags": "экспорт ui contract",
+          "produces": [],
+          "consumes": [
+            "MK",
+            "DS",
+            "NM"
+          ],
+          "source": "commands/design/export.md"
+        },
+        {
+          "cmd": "/design:iterate",
+          "id": "design:iterate",
+          "module": "design",
+          "name": "iterate",
+          "st": "D2UI",
+          "status": "conditional",
+          "desc": "D.3 continuation на existing active MK. Iteration counter ++; tool dispatch per MK.design_tool; deadlock guard (Q7) inherited from design-session.md.",
+          "arg": "\u003cMK-id> [--from-feedback \"\u003ctext>\"]",
+          "when": "Продолжить итерацию на активном макете (MK).",
+          "tags": "итерация макет",
+          "produces": [
+            "MK"
+          ],
+          "consumes": [
+            "MK"
+          ],
+          "source": "commands/design/iterate.md"
+        },
+        {
+          "cmd": "/design:map",
+          "id": "design:map",
+          "module": "design",
+          "name": "map",
+          "st": "D2UI",
+          "status": "conditional",
+          "desc": "Compose/refresh the App Map (AM) — L0 карта всего приложения (модули × кейсы × пути + CJM-слой) поверх per-flow NM. Mechanical layer derived from FM/NM; editorial layer из app-map.md frontmatter.",
+          "arg": "[--write] [--html] [--facet …]",
+          "when": "Собрать/обновить App Map (AM): модули × кейсы × пути + CJM-слой.",
+          "tags": "app map карта приложения cjm",
+          "produces": [
+            "AM"
+          ],
+          "consumes": [
+            "FM",
+            "NM",
+            "SC"
+          ],
+          "source": "commands/design/map.md"
+        },
+        {
+          "cmd": "/design:migrate",
+          "id": "design:migrate",
+          "module": "design",
+          "name": "migrate",
+          "st": "D2UI",
+          "status": "conditional",
+          "desc": "Migrate MK design_tool between Stitch ↔ HTML (v1.0 per DEC-DEV-0052 C3 cut; Claude Design path → v1.1), or import an MK's visual HTML into the open-design viewer (--to open-design, v1.5). Hard approve gate per-MK (Q1). Regeneration targets are lossy (brief + MK metadata + DS snapshot); open-design is a lossless visual import (no metadata, no regeneration). previous_tools[] audit trail; rollback on failure.",
+          "arg": "\u003cMK-id|--all> --to \u003cstitch|html|open-design>",
+          "when": "Миграция макета между Stitch ↔ HTML ↔ open-design (с rollback).",
+          "tags": "миграция stitch html",
+          "produces": [
+            "MK"
+          ],
+          "consumes": [
+            "MK"
+          ],
+          "source": "commands/design/migrate.md"
+        },
+        {
+          "cmd": "/design:start",
+          "id": "design:start",
+          "module": "design",
+          "name": "start",
+          "st": "D2UI",
+          "status": "conditional",
+          "desc": "Start P2.5 Design Session для FM-NNN с has_ui=true. Workflow D.1 Brief → D.2 Screens → D.3 Iterate → D.4 States → D.5 Artifacts → D.6 Export. Produces MK/DS/NM. Conditional sub-module — Phase 6.",
+          "arg": "\u003cFM-id> [--continue] [--abandon]",
+          "when": "Начать Design-сессию для FM с has_ui: Brief→Screens→Iterate→States→Artifacts→Export.",
+          "tags": "дизайн ui mockup старт",
+          "produces": [
+            "MK",
+            "DS",
+            "NM"
+          ],
+          "consumes": [
+            "FM",
+            "SC"
+          ],
+          "source": "commands/design/start.md"
+        },
+        {
+          "cmd": "/design:status",
+          "id": "design:status",
+          "module": "design",
+          "name": "status",
+          "st": "D2UI",
+          "status": "conditional",
+          "desc": "Design Module dashboard. MK/DS/NM counts per status, active iterations, DS pending items, design tool connectivity, Stitch quota tracking.",
+          "arg": "[--fm \u003cFM-id>] [--verbose]",
+          "when": "Дашборд Design: счётчики MK/DS/NM, итерации, Stitch-квота.",
+          "tags": "статус дизайн",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/design/status.md"
+        },
+        {
+          "cmd": "/design:system",
+          "id": "design:system",
+          "module": "design",
+          "name": "system",
+          "st": "D2UI",
+          "status": "conditional",
+          "desc": "Design System management — review pending DS proposals OR force re-extract from specific MK. Mass-rename workflow surfaces preview + IDE find-replace guidance (atomic — v1.1+).",
+          "arg": "[--review] [--update-from \u003cMK-id>]",
+          "when": "Управление Design System: ревью DS-предложений или ре-экстракт из MK.",
+          "tags": "design system токены",
+          "produces": [
+            "DS"
+          ],
+          "consumes": [
+            "MK"
+          ],
+          "source": "commands/design/system.md"
+        }
+      ]
+    },
+    "integrator": {
+      "id": "integrator",
+      "name": "Integrator",
+      "color": "var(--integrator)",
+      "dom": "D2-Tech · «сисадмин»",
+      "blurb": "Подключает/заменяет внешние инструменты под PMO-карту. Большинство команд — read-only.",
+      "commands": [
+        {
+          "cmd": "/integrator:add",
+          "id": "integrator:add",
+          "module": "integrator",
+          "name": "add",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Add an external tool (npm package, MCP server, git repo, or Dockerized shared daemon) under Integrator management. 6-stage flow with approve gate before install. Idempotent re-run after partial failure.",
+          "arg": "\u003ctool>[@version] [--source …]",
+          "when": "Подключить внешний инструмент (npm/MCP/git/binary/docker) под управление PMO. Approve-gate.",
+          "tags": "подключить инструмент cc-sdd mcp",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/add.md"
+        },
+        {
+          "cmd": "/integrator:gaps",
+          "id": "integrator:gaps",
+          "module": "integrator",
+          "name": "gaps",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Show uncovered PMO zones with criticality assessment. Read-only.",
+          "arg": "",
+          "when": "Непокрытые PMO-зоны с оценкой критичности.",
+          "tags": "пробелы gaps непокрытые",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/gaps.md",
+          "ro": true
+        },
+        {
+          "cmd": "/integrator:journal",
+          "id": "integrator:journal",
+          "module": "integrator",
+          "name": "journal",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "View Integrator decision journal with optional filtering.",
+          "arg": "[--filter \u003ctag>] [--limit \u003cN>] [--scope global|project]",
+          "when": "Журнал решений Integrator с фильтрами.",
+          "tags": "журнал решения",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/journal.md",
+          "ro": true
+        },
+        {
+          "cmd": "/integrator:map",
+          "id": "integrator:map",
+          "module": "integrator",
+          "name": "map",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Show current PMO coverage by active tools. Read-only.",
+          "arg": "",
+          "when": "Покрытие PMO-зон активными инструментами.",
+          "tags": "карта покрытие pmo",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/map.md",
+          "ro": true
+        },
+        {
+          "cmd": "/integrator:remove",
+          "id": "integrator:remove",
+          "module": "integrator",
+          "name": "remove",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Remove a tool from Integrator management. Impact analysis + backup + uninstall + cleanup contracts + update pmo-mapping. Destructive; requires explicit user confirmation.",
+          "arg": "\u003ctool> [--confirm]",
+          "when": "Убрать инструмент: impact-анализ + backup + uninstall. Destructive — требует подтверждения.",
+          "tags": "удалить инструмент",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/remove.md"
+        },
+        {
+          "cmd": "/integrator:research",
+          "id": "integrator:research",
+          "module": "integrator",
+          "name": "research",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Research tools for a PMO need; presents 2-5 options with comparison, doesn't install.",
+          "arg": "\u003cneed-description>",
+          "when": "Подобрать инструменты под PMO-need: 2–5 вариантов с сравнением, без установки.",
+          "tags": "ресёрч подбор инструментов",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/research.md",
+          "ro": true
+        },
+        {
+          "cmd": "/integrator:scan",
+          "id": "integrator:scan",
+          "module": "integrator",
+          "name": "scan",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Scan project environment to detect existing customizations and conflicts before any modifying action.",
+          "arg": "",
+          "when": "Сканировать окружение: существующие кастомизации/конфликты перед изменениями.",
+          "tags": "скан окружение конфликты",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/scan.md",
+          "ro": true
+        },
+        {
+          "cmd": "/integrator:status",
+          "id": "integrator:status",
+          "module": "integrator",
+          "name": "status",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Full Integrator state overview. Read-only.",
+          "arg": "",
+          "when": "Полный обзор состояния Integrator.",
+          "tags": "статус обзор",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/status.md",
+          "ro": true
+        },
+        {
+          "cmd": "/integrator:update",
+          "id": "integrator:update",
+          "module": "integrator",
+          "name": "update",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Update an installed tool to a new version. Backup → install new → drift detection → contract repair → verify. Per SPEC §7.4 + DEC-DEV-0040 Q2 (kept in Phase 5, not Maintenance).",
+          "arg": "\u003ctool> [\u003cversion>] [--check-only] [--repair]",
+          "when": "Обновить инструмент: backup→install→drift-detection→contract-repair→verify.",
+          "tags": "обновить инструмент версия",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/update.md"
+        }
+      ]
+    },
+    "orchestrator": {
+      "id": "orchestrator",
+      "name": "Orchestrator",
+      "color": "var(--orchestrator)",
+      "dom": "D2-Tech + D3+ · runtime",
+      "blurb": "Проводит PMO-процессы end-to-end как in-harness Workflow силами role-агентов. Требует активный cc-sdd.",
+      "commands": [
+        {
+          "cmd": "/orchestrator:run",
+          "id": "orchestrator:run",
+          "module": "orchestrator",
+          "name": "run",
+          "st": "D3",
+          "status": "shipped",
+          "desc": "Run an Orchestrator PMO process end-to-end as an in-harness Workflow. First increment ships P3 batch-features-to-cc-sdd (route Product handoffs into cc-sdd specs). Reads handoffs + tool-docs; delegates spec generation to cc-sdd's kiro-spec-batch; gates with a content-fidelity preflight and an independent coverage oracle.",
+          "arg": "\u003cprocess> [--feature FM-NNN ...] [--all] [--no-stack-gate]",
+          "when": "Прогнать PMO-процесс end-to-end. Построены и live-validated: P3 (handoffs → cc-sdd specs) → P4 (audit-spec-fidelity) → P5 (feature-to-tdd-impl) → P6 (validate-feature-impl). Возвращает GO / NO-GO / MANUAL_VERIFY. Предусловие: активный cc-sdd (сначала /integrator:add cc-sdd).",
+          "tags": "оркестратор run P3 P4 P5 P6 cc-sdd impl tdd",
+          "produces": [
+            "spec"
+          ],
+          "consumes": [
+            "handoff"
+          ],
+          "source": "commands/orchestrator/run.md"
+        }
+      ]
+    },
+    "ecosystem": {
+      "id": "ecosystem",
+      "name": "Ecosystem",
+      "color": "var(--ecosystem)",
+      "dom": "установка и обслуживание",
+      "blurb": "Команды над самой экосистемой: установка, проверка, обновление, фидбэк.",
+      "commands": [
+        {
+          "cmd": "/ecosystem:bootstrap",
+          "id": "ecosystem:bootstrap",
+          "module": "ecosystem",
+          "name": "bootstrap",
+          "st": "setup",
+          "status": "shipped",
+          "desc": "Install Ecosystem 3.0 into the current project. Clones ecosystem to .claude/, initializes .product/, generates CLAUDE.md, configures env + settings, sets up MCP stack.",
+          "arg": "[--offline] [--no-mcp] [--force]",
+          "when": "Установить экосистему в проект: .claude/ + .product/ + CLAUDE.md + MCP-стек.",
+          "tags": "установка bootstrap старт",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/ecosystem/bootstrap.md"
+        },
+        {
+          "cmd": "/ecosystem:enable-d7-audit",
+          "id": "ecosystem:enable-d7-audit",
+          "module": "ecosystem",
+          "name": "enable-d7-audit",
+          "st": "setup",
+          "status": "shipped",
+          "desc": "One-time opt-in setup — register the D7 session-audit SessionEnd hook in this project's .claude/settings.local.json (uses absolute path to the ecosystem repo).",
+          "arg": "[--ecosystem-root=\u003cpath>]",
+          "when": "Однократно включить D7 session-audit hook в этом проекте.",
+          "tags": "d7 аудит сессий hook",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/ecosystem/enable-d7-audit.md"
+        },
+        {
+          "cmd": "/ecosystem:meta-feedback",
+          "id": "ecosystem:meta-feedback",
+          "module": "ecosystem",
+          "name": "meta-feedback",
+          "st": "setup",
+          "status": "shipped",
+          "desc": "Capture SYSTEMIC feedback about the ecosystem itself (defective rules/processes) into a committable upstream outbox for delivery to the ecosystem repo. Hybrid delivery — local pickup (co-located) or git/issue (remote). C3 upstream contour.",
+          "arg": "[--review] [--push] [--issue] [--from …]",
+          "when": "Зафиксировать СИСТЕМНЫЙ фидбэк об экосистеме в upstream-outbox (для доставки в репо).",
+          "tags": "фидбэк meta feedback upstream",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/ecosystem/meta-feedback.md"
+        },
+        {
+          "cmd": "/ecosystem:pending-actions",
+          "id": "ecosystem:pending-actions",
+          "module": "ecosystem",
+          "name": "pending-actions",
+          "st": "setup",
+          "status": "shipped",
+          "desc": "List pending user-action entries (PA-NNN) from .claude/pending-actions.md. Read-only with --status and --source filters.",
+          "arg": "[--status …] [--source …] [--limit N]",
+          "when": "Список pending действий пользователя (PA-NNN).",
+          "tags": "pending действия",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/ecosystem/pending-actions.md",
+          "ro": true
+        },
+        {
+          "cmd": "/ecosystem:update",
+          "id": "ecosystem:update",
+          "module": "ecosystem",
+          "name": "update",
+          "st": "setup",
+          "status": "shipped",
+          "desc": "Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead.",
+          "arg": "[--dry-run] [--force] [--offline] …",
+          "when": "Синхронизировать экосистему к latest upstream; сохраняет user-zone и состояние пилота.",
+          "tags": "обновление update upstream sync",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/ecosystem/update.md"
+        },
+        {
+          "cmd": "/ecosystem:verify",
+          "id": "ecosystem:verify",
+          "module": "ecosystem",
+          "name": "verify",
+          "st": "setup",
+          "status": "shipped",
+          "desc": "Verify Ecosystem 3.0 installation in current project. Non-destructive health check.",
+          "arg": "",
+          "when": "Health-check установки экосистемы. Non-destructive.",
+          "tags": "проверка verify health",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/ecosystem/verify.md"
+        }
+      ]
+    }
+  },
+  "artifacts": [
+    {
+      "group": {
+        "id": "D1",
+        "label": "D1 · Discovery & Strategy"
+      },
+      "items": [
+        {
+          "id": "PS",
+          "name": "Problem Statement",
+          "tier": "🟠",
+          "cardinality": "Singleton",
+          "lineageFrom": [],
+          "lineageTo": [
+            "MR",
+            "CA",
+            "SEG",
+            "VP",
+            "HYP",
+            "MVP"
+          ],
+          "producedBy": [
+            "product:init"
+          ],
+          "consumedBy": [
+            "product:drift-check",
+            "product:plan"
+          ]
+        },
+        {
+          "id": "MR",
+          "name": "Market Research",
+          "tier": "🟡",
+          "cardinality": "Singleton",
+          "lineageFrom": [
+            "PS"
+          ],
+          "lineageTo": [
+            "SEG",
+            "VP"
+          ],
+          "producedBy": [
+            "product:init"
+          ],
+          "consumedBy": [
+            "product:plan"
+          ]
+        },
+        {
+          "id": "CA",
+          "name": "Competitive Analysis",
+          "tier": "🟡",
+          "cardinality": "Singleton",
+          "lineageFrom": [
+            "PS"
+          ],
+          "lineageTo": [
+            "VP"
+          ],
+          "producedBy": [
+            "product:init"
+          ],
+          "consumedBy": [
+            "product:plan"
+          ]
+        },
+        {
+          "id": "SEG",
+          "name": "Segment & JTBD",
+          "tier": "🟠",
+          "cardinality": "2–4",
+          "lineageFrom": [
+            "PS",
+            "MR"
+          ],
+          "lineageTo": [
+            "VP",
+            "FM",
+            "RPM"
+          ],
+          "producedBy": [
+            "product:init"
+          ],
+          "consumedBy": [
+            "product:feature",
+            "product:plan"
+          ]
+        },
+        {
+          "id": "VP",
+          "name": "Value Proposition",
+          "tier": "🟠",
+          "cardinality": "1 / SEG",
+          "lineageFrom": [
+            "PS",
+            "MR",
+            "CA",
+            "SEG"
+          ],
+          "lineageTo": [
+            "HYP",
+            "FM"
+          ],
+          "producedBy": [
+            "product:init"
+          ],
+          "consumedBy": [
+            "product:feature",
+            "product:plan"
+          ]
+        },
+        {
+          "id": "HYP",
+          "name": "Hypothesis",
+          "tier": "🟠",
+          "cardinality": "3–5",
+          "lineageFrom": [
+            "PS",
+            "VP"
+          ],
+          "lineageTo": [
+            "MVP",
+            "FM"
+          ],
+          "producedBy": [
+            "product:init",
+            "product:promote-note"
+          ],
+          "consumedBy": [
+            "product:da-review",
+            "product:drift-check",
+            "product:feature",
+            "product:plan"
+          ]
+        },
+        {
+          "id": "MVP",
+          "name": "MVP Scope",
+          "tier": "🟠",
+          "cardinality": "Singleton",
+          "lineageFrom": [
+            "PS",
+            "HYP"
+          ],
+          "lineageTo": [
+            "RM",
+            "RL",
+            "FM"
+          ],
+          "producedBy": [
+            "product:plan"
+          ],
+          "consumedBy": [
+            "product:drift-check"
+          ]
+        },
+        {
+          "id": "RM",
+          "name": "Product Roadmap",
+          "tier": "🟡",
+          "cardinality": "Singleton",
+          "lineageFrom": [
+            "MVP"
+          ],
+          "lineageTo": [
+            "RL"
+          ],
+          "producedBy": [
+            "product:plan"
+          ],
+          "consumedBy": []
+        },
+        {
+          "id": "RL",
+          "name": "Release Plan",
+          "tier": "🟡",
+          "cardinality": "Per release",
+          "lineageFrom": [
+            "MVP",
+            "RM"
+          ],
+          "lineageTo": [
+            "FM"
+          ],
+          "producedBy": [
+            "product:plan"
+          ],
+          "consumedBy": [
+            "product:da-review"
+          ]
+        }
+      ]
+    },
+    {
+      "group": {
+        "id": "bridge",
+        "label": "Мост D1↔D2"
+      },
+      "items": [
+        {
+          "id": "FM",
+          "name": "Feature Map Entry",
+          "tier": "🟠",
+          "cardinality": "Per feature",
+          "lineageFrom": [
+            "SEG",
+            "VP",
+            "HYP",
+            "MVP",
+            "RL"
+          ],
+          "lineageTo": [
+            "SC",
+            "BR",
+            "LC",
+            "VC",
+            "IC",
+            "RPM",
+            "MK"
+          ],
+          "producedBy": [
+            "product:plan",
+            "product:promote-note"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:da-review",
+            "product:feature",
+            "product:handoff",
+            "product:nfr-review",
+            "design:map",
+            "design:start"
+          ]
+        }
+      ]
+    },
+    {
+      "group": {
+        "id": "D2B",
+        "label": "D2-Behavioral"
+      },
+      "items": [
+        {
+          "id": "SC",
+          "name": "User Scenario",
+          "tier": "🟠",
+          "cardinality": "Per scenario",
+          "lineageFrom": [
+            "FM"
+          ],
+          "lineageTo": [
+            "BR",
+            "LC",
+            "VC",
+            "AM"
+          ],
+          "producedBy": [
+            "product:feature",
+            "product:promote-note"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:da-review",
+            "product:handoff",
+            "design:map",
+            "design:start"
+          ]
+        },
+        {
+          "id": "BR",
+          "name": "Business Rule",
+          "tier": "🔴",
+          "cardinality": "Per rule",
+          "lineageFrom": [
+            "FM",
+            "SC"
+          ],
+          "lineageTo": [
+            "LC",
+            "VC",
+            "IC"
+          ],
+          "producedBy": [
+            "product:feature",
+            "product:promote-note"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:da-review",
+            "product:handoff"
+          ]
+        },
+        {
+          "id": "LC",
+          "name": "Entity Lifecycle Model",
+          "tier": "🟢",
+          "cardinality": "Per entity",
+          "lineageFrom": [
+            "FM",
+            "SC",
+            "BR"
+          ],
+          "lineageTo": [
+            "VC",
+            "IC"
+          ],
+          "producedBy": [
+            "product:feature"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:handoff"
+          ]
+        },
+        {
+          "id": "RPM",
+          "name": "Role & Permission Model",
+          "tier": "🟢",
+          "cardinality": "Singleton",
+          "lineageFrom": [
+            "SEG",
+            "FM"
+          ],
+          "lineageTo": [],
+          "producedBy": [
+            "product:feature"
+          ],
+          "consumedBy": []
+        },
+        {
+          "id": "VC",
+          "name": "Verification Criteria",
+          "tier": "🟢",
+          "cardinality": "Per scenario",
+          "lineageFrom": [
+            "FM",
+            "SC",
+            "BR",
+            "LC"
+          ],
+          "lineageTo": [],
+          "producedBy": [
+            "product:feature"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:handoff"
+          ]
+        },
+        {
+          "id": "IC",
+          "name": "Invariant Check",
+          "tier": "🔴",
+          "cardinality": "Per invariant",
+          "lineageFrom": [
+            "FM",
+            "BR",
+            "LC"
+          ],
+          "lineageTo": [],
+          "producedBy": [
+            "product:feature",
+            "product:promote-note"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:da-review",
+            "product:handoff"
+          ]
+        },
+        {
+          "id": "NFR",
+          "name": "Non-Functional Requirement",
+          "tier": "🟠",
+          "cardinality": "Per NFR",
+          "lineageFrom": [
+            "FM"
+          ],
+          "lineageTo": [],
+          "producedBy": [
+            "product:nfr-review",
+            "product:nfr-upgrade-tier",
+            "product:promote-note"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:handoff",
+            "product:nfr-upgrade-tier"
+          ]
+        }
+      ]
+    },
+    {
+      "group": {
+        "id": "D2UI",
+        "label": "D2-UI · Design (has_ui)"
+      },
+      "items": [
+        {
+          "id": "MK",
+          "name": "Mockup Package",
+          "tier": "🟠",
+          "cardinality": "Per screen/flow",
+          "lineageFrom": [
+            "FM"
+          ],
+          "lineageTo": [
+            "DS",
+            "NM",
+            "AM"
+          ],
+          "producedBy": [
+            "design:iterate",
+            "design:migrate",
+            "design:start"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:handoff",
+            "design:export",
+            "design:iterate",
+            "design:migrate",
+            "design:system"
+          ]
+        },
+        {
+          "id": "DS",
+          "name": "Design System",
+          "tier": "🟡",
+          "cardinality": "Singleton",
+          "lineageFrom": [
+            "MK"
+          ],
+          "lineageTo": [],
+          "producedBy": [
+            "design:start",
+            "design:system"
+          ],
+          "consumedBy": [
+            "product:handoff",
+            "design:export"
+          ]
+        },
+        {
+          "id": "NM",
+          "name": "Navigation Map",
+          "tier": "🟢",
+          "cardinality": "Per flow",
+          "lineageFrom": [
+            "MK"
+          ],
+          "lineageTo": [
+            "AM"
+          ],
+          "producedBy": [
+            "design:start"
+          ],
+          "consumedBy": [
+            "product:complete",
+            "product:handoff",
+            "design:export",
+            "design:map"
+          ]
+        },
+        {
+          "id": "AM",
+          "name": "App Map (карта приложения + CJM-слой)",
+          "tier": "🟢",
+          "cardinality": "Singleton",
+          "lineageFrom": [
+            "SC",
+            "MK",
+            "NM"
+          ],
+          "lineageTo": [],
+          "producedBy": [
+            "design:map"
+          ],
+          "consumedBy": []
+        }
+      ]
+    },
+    {
+      "group": {
+        "id": "cross",
+        "label": "Cross-cutting"
+      },
+      "items": [
+        {
+          "id": "BG",
+          "name": "Business Glossary",
+          "tier": "🟡",
+          "cardinality": "Singleton",
+          "lineageFrom": [],
+          "lineageTo": [],
+          "producedBy": [
+            "product:bg-rename",
+            "product:bg-review"
+          ],
+          "consumedBy": [
+            "product:bg-rename",
+            "product:handoff"
+          ]
+        },
+        {
+          "id": "NOTE",
+          "name": "Unstructured Note",
+          "tier": "🟡",
+          "cardinality": "Per note",
+          "lineageFrom": [],
+          "lineageTo": [
+            "FM",
+            "SC",
+            "BR",
+            "IC",
+            "NFR",
+            "HYP"
+          ],
+          "producedBy": [],
+          "consumedBy": [
+            "product:bg-review",
+            "product:nfr-review",
+            "product:promote-note"
+          ]
+        },
+        {
+          "id": "LESSON",
+          "name": "Corrective Lesson",
+          "tier": "🟡",
+          "cardinality": "Per lesson",
+          "lineageFrom": [],
+          "lineageTo": [],
+          "producedBy": [
+            "product:lesson"
+          ],
+          "consumedBy": []
+        }
+      ]
+    }
+  ],
+  "lineage": [
+    {
+      "from": "PS",
+      "to": "MR"
+    },
+    {
+      "from": "PS",
+      "to": "CA"
+    },
+    {
+      "from": "PS",
+      "to": "SEG"
+    },
+    {
+      "from": "PS",
+      "to": "VP"
+    },
+    {
+      "from": "PS",
+      "to": "HYP"
+    },
+    {
+      "from": "PS",
+      "to": "MVP"
+    },
+    {
+      "from": "MR",
+      "to": "SEG"
+    },
+    {
+      "from": "MR",
+      "to": "VP"
+    },
+    {
+      "from": "CA",
+      "to": "VP"
+    },
+    {
+      "from": "SEG",
+      "to": "VP"
+    },
+    {
+      "from": "SEG",
+      "to": "FM"
+    },
+    {
+      "from": "SEG",
+      "to": "RPM"
+    },
+    {
+      "from": "VP",
+      "to": "HYP"
+    },
+    {
+      "from": "VP",
+      "to": "FM"
+    },
+    {
+      "from": "HYP",
+      "to": "MVP"
+    },
+    {
+      "from": "HYP",
+      "to": "FM"
+    },
+    {
+      "from": "MVP",
+      "to": "RM"
+    },
+    {
+      "from": "MVP",
+      "to": "RL"
+    },
+    {
+      "from": "MVP",
+      "to": "FM"
+    },
+    {
+      "from": "RM",
+      "to": "RL"
+    },
+    {
+      "from": "RL",
+      "to": "FM"
+    },
+    {
+      "from": "FM",
+      "to": "SC"
+    },
+    {
+      "from": "FM",
+      "to": "BR"
+    },
+    {
+      "from": "FM",
+      "to": "LC"
+    },
+    {
+      "from": "FM",
+      "to": "VC"
+    },
+    {
+      "from": "FM",
+      "to": "IC"
+    },
+    {
+      "from": "FM",
+      "to": "RPM"
+    },
+    {
+      "from": "FM",
+      "to": "MK"
+    },
+    {
+      "from": "SC",
+      "to": "BR"
+    },
+    {
+      "from": "SC",
+      "to": "LC"
+    },
+    {
+      "from": "SC",
+      "to": "VC"
+    },
+    {
+      "from": "SC",
+      "to": "AM"
+    },
+    {
+      "from": "BR",
+      "to": "LC"
+    },
+    {
+      "from": "BR",
+      "to": "VC"
+    },
+    {
+      "from": "BR",
+      "to": "IC"
+    },
+    {
+      "from": "LC",
+      "to": "VC"
+    },
+    {
+      "from": "LC",
+      "to": "IC"
+    },
+    {
+      "from": "MK",
+      "to": "DS"
+    },
+    {
+      "from": "MK",
+      "to": "NM"
+    },
+    {
+      "from": "MK",
+      "to": "AM"
+    },
+    {
+      "from": "NM",
+      "to": "AM"
+    },
+    {
+      "from": "NOTE",
+      "to": "FM"
+    },
+    {
+      "from": "NOTE",
+      "to": "SC"
+    },
+    {
+      "from": "NOTE",
+      "to": "BR"
+    },
+    {
+      "from": "NOTE",
+      "to": "IC"
+    },
+    {
+      "from": "NOTE",
+      "to": "NFR"
+    },
+    {
+      "from": "NOTE",
+      "to": "HYP"
+    }
+  ],
+  "gates": [
+    {
+      "id": "process-gate",
+      "module": "ecosystem",
+      "event": "commit-msg",
+      "blocking": true,
+      "what": "Блокирует коммит (exit 1) при COUNT DRIFT (несовместимость counts в доках), CHANGELOG MISSING (feat/fix в consumer-zone без CHANGELOG) или DEV_JOURNAL MISSING (fix:/DEC-DEV-N без записи в журнал).",
+      "bypass": "Добавить [skip-process-gate] в сообщение коммита.",
+      "source": "dev/meta-improvement/scripts/process-gate.js"
+    },
+    {
+      "id": "lesson-gate",
+      "module": "product",
+      "event": "Stop",
+      "blocking": true,
+      "what": "Блокирует закрытие сессии при открытых/обрезанных LESSON-*.md — критические уроки требуют разрешения перед выходом.",
+      "bypass": "env LESSON_GATE_MODE=warn|off; авто-override после 8 подряд блоков.",
+      "source": "hooks/product/lesson-gate.js"
+    },
+    {
+      "id": "lesson-presence-gate",
+      "module": "product",
+      "event": "PreToolUse",
+      "blocking": true,
+      "what": "В strict-режиме отказывает мутирующим инструментам (Write|Edit|Bash|NotebookEdit) при открытых LESSON-*.md; в warn (дефолт) — только предупреждает.",
+      "bypass": "env LESSON_GATE_MODE=warn (дефолт) | off; маркер lesson-in-progress пропускает /product:lesson.",
+      "source": "hooks/product/lesson-presence-gate.js"
+    },
+    {
+      "id": "artifact-validate",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "Инлайн-валидация .product/ по правилам V-* (tier-aware: pilot=только Blocking, mvp=+Warning; quiet-draft на draft).",
+      "bypass": "validation_overrides[] (постоянно) или approve_overrides[] (временно, expires_at).",
+      "source": "hooks/product/artifact-validate.js"
+    },
+    {
+      "id": "cascade-check",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "Детекция каскадов + V-11 (двусторонние рефы) auto-fix; авто-чинит V-11 если зависимый активен, остальное кладёт в .pending/cascade-pending.yaml на ручной разбор.",
+      "bypass": "draft статус пропускает каскад (quiet-draft).",
+      "source": "hooks/product/cascade-check.js"
+    },
+    {
+      "id": "br-change-trigger",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "P-RULE-02: на изменение business-rules/ снимает git diff, кладёт запись в da-pending.yaml и сигналит оркестратору спавнить product-devils-advocate (adaptive-depth).",
+      "bypass": "draft статус пропускает триггер.",
+      "source": "hooks/product/br-change-trigger.js"
+    },
+    {
+      "id": "ic-change-trigger",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "P-RULE-01: симметрия br-change-trigger для invariants/; на изменение IC кладёт severity в pending и сигналит DA.",
+      "bypass": "draft статус пропускает триггер.",
+      "source": "hooks/product/ic-change-trigger.js"
+    },
+    {
+      "id": "product-handoff-gate",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "V-H-04 drift: на сохранение .product/ артефакта пересчитывает SHA-256 (body без frontmatter, LF) против хешей в handoffs/; mismatch → warn про /product:handoff --regenerate.",
+      "bypass": "—",
+      "source": "hooks/product/product-handoff-gate.js"
+    },
+    {
+      "id": "zone-change-trigger",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "Маршрутизатор zone→persona для completeness-loop (Epic A): сопоставляет файл зоне, считает magnitude, спавнит персоны (architect/qa/ux-advisor) при magnitude≥threshold.",
+      "bypass": "draft статус; magnitude \u003c min_magnitude зоны.",
+      "source": "hooks/product/zone-change-trigger.js"
+    },
+    {
+      "id": "bg-extractor",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "Фаза 1 BG-извлечения: сканирует bold-термины в .product/, фильтрует стоплистом, дедуплицирует против glossary.md, добавляет кандидатов в .pending/bg-candidates.yaml.",
+      "bypass": "—",
+      "source": "hooks/product/bg-extractor.js"
+    },
+    {
+      "id": "session-state",
+      "module": "product",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "Снимает снапшот .product/.sessions/current.yaml при изменениях артефактов — для восстановления после перерыва сессии.",
+      "bypass": "—",
+      "source": "hooks/product/session-state.js"
+    },
+    {
+      "id": "worktree-enter-guard",
+      "module": "product",
+      "event": "PreToolUse",
+      "blocking": false,
+      "what": "Предполётная проверка перед входом в git worktree: выводит опасности (non-empty .pending/, свежие .sessions/, beads in_progress, shared gitignored) в stderr/additionalContext, но не блокирует.",
+      "bypass": "—",
+      "source": "hooks/product/worktree-enter-guard.js"
+    },
+    {
+      "id": "design-artifact-validate",
+      "module": "design",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "Инлайн-валидация MK/NM/DS/AM: YAML frontmatter, 5 обязательных полей MK, ref-существование, V-MK-08 token coverage, AM-проверки; quiet-draft на draft.",
+      "bypass": "validation_overrides[] в артефакте.",
+      "source": "hooks/design/design-artifact-validate.js"
+    },
+    {
+      "id": "app-map-cascade",
+      "module": "design",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "App Map каскад: на изменение FM/NM/SC пересканирует механический слой AM (FM-set + NM coverage) против persisted; на дрейф → app-map-pending.yaml + сигнал 'run /design:map --write'.",
+      "bypass": "draft статус артефакта пропускает триггер.",
+      "source": "hooks/design/app-map-cascade.js"
+    },
+    {
+      "id": "journal-hook",
+      "module": "integrator",
+      "event": "PostToolUse",
+      "blocking": false,
+      "what": "Авто-журнал каждого мутирующего действия Integrator в project-journal.md (Bash|Write|Edit|NotebookEdit на integrator-paths) с дедупом; архивирует половину при >500 entries.",
+      "bypass": "—",
+      "source": "hooks/integrator/journal-hook.js"
+    },
+    {
+      "id": "scope-guard",
+      "module": "integrator",
+      "event": "PreToolUse",
+      "blocking": false,
+      "what": "Охранник границы Integrator scope: при активной Integrator-команде ловит writes на запрещённые paths (.product/, .kiro/, docs/pmo/) → stderr warn + PA-entry, но не блокирует (warn-only).",
+      "bypass": "FORBIDDEN_PATH_EXCEPTIONS в скрипте; снять маркер .session-context.json.",
+      "source": "hooks/integrator/scope-guard.js"
+    },
+    {
+      "id": "rails-session-start",
+      "module": "ecosystem",
+      "event": "SessionStart",
+      "blocking": false,
+      "what": "Регенерирует work-rails digest (RAILS.md) на старте сессии и инъектит компактный summary через additionalContext — новая сессия входит в курс работ без явного вызова.",
+      "bypass": "env RAILS_AUTOGEN=0; снять SessionStart entry из settings.local.json.",
+      "source": "dev/meta-improvement/hooks/rails-session-start.js"
+    },
+    {
+      "id": "session-audit",
+      "module": "ecosystem",
+      "event": "SessionEnd",
+      "blocking": false,
+      "what": "Писатель маркера (Phase 4.1): добавляет Pending-строку в audit-index.md при завершении сессии (id, timestamp, project, transcript) для последующего batch-аудита /meta:audit-smoke.",
+      "bypass": "—",
+      "source": "dev/meta-improvement/hooks/session-audit.js"
+    }
+  ],
+  "processes": [
+    {
+      "id": "P1",
+      "owner": "product",
+      "name": "Initialization (Discovery + Planning)",
+      "status": "shipped",
+      "domain": "D1",
+      "commands": [
+        "product:init",
+        "product:plan"
+      ],
+      "what": "Discovery (PS/MR/CA/SEG/VP/HYP) + Planning (MVP/RM/RL/FM-скелеты). draft→iterate→approve."
+    },
+    {
+      "id": "P2",
+      "owner": "product",
+      "name": "Feature Definition",
+      "status": "shipped",
+      "domain": "D2B",
+      "commands": [
+        "product:feature",
+        "product:nfr-review",
+        "product:da-review"
+      ],
+      "what": "Поведенческая спецификация фичи: SC/BR/LC/VC/IC/RPM + NFR; adaptive-depth DA через хуки."
+    },
+    {
+      "id": "P2.5",
+      "owner": "design",
+      "name": "Design Module (conditional: has_ui)",
+      "status": "conditional",
+      "domain": "D2UI",
+      "commands": [
+        "design:start",
+        "design:iterate",
+        "design:system",
+        "design:map",
+        "design:export"
+      ],
+      "what": "Итеративный UI при has_ui=true: MK/DS/NM/AM. Brief→Screens→Iterate→States→Artifacts→Export."
+    },
+    {
+      "id": "P3p",
+      "owner": "product",
+      "name": "Feedback Integration (STUB v1)",
+      "status": "partial",
+      "domain": "maint",
+      "commands": [
+        "product:validation-tune"
+      ],
+      "what": "Интеграция обратной связи в .product/ — v1 заглушка; локальная подстройка валидации."
+    },
+    {
+      "id": "P4p",
+      "owner": "product",
+      "name": "Cascade Consistency",
+      "status": "shipped",
+      "domain": "maint",
+      "commands": [
+        "product:cascade",
+        "product:validate",
+        "product:cleanup"
+      ],
+      "what": "Каскадная согласованность ссылок (V-11 auto-fix хуком) + on-demand валидация/очистка."
+    },
+    {
+      "id": "P5p",
+      "owner": "product",
+      "name": "Periodic Review (partial)",
+      "status": "partial",
+      "domain": "maint",
+      "commands": [
+        "product:drift-check",
+        "product:patterns"
+      ],
+      "what": "Периодический само-аудит согласованности с PS/HYP/MVP + мета-линтер анти-паттернов."
+    },
+    {
+      "id": "P3o",
+      "owner": "orchestrator",
+      "name": "batch-features-to-cc-sdd",
+      "status": "shipped",
+      "domain": "D2T",
+      "commands": [
+        "orchestrator:run"
+      ],
+      "what": "Маршрутизация Product-handoffs в cc-sdd specs; preflight content-fidelity + независимый coverage-oracle."
+    },
+    {
+      "id": "P4o",
+      "owner": "orchestrator",
+      "name": "audit-spec-fidelity",
+      "status": "shipped",
+      "domain": "D2T",
+      "commands": [
+        "orchestrator:run"
+      ],
+      "what": "Аудит соответствия сгенерированного spec исходному handoff: семантический auditor + ground-truth confirm перед фиксом."
+    },
+    {
+      "id": "P5o",
+      "owner": "orchestrator",
+      "name": "feature-to-tdd-impl",
+      "status": "shipped",
+      "domain": "D3",
+      "commands": [
+        "orchestrator:run"
+      ],
+      "what": "Имплементация фичи в TDD-цикле; bounded auto-retry transient, эскалация конфликтов (не self-resolve)."
+    },
+    {
+      "id": "P6o",
+      "owner": "orchestrator",
+      "name": "validate-feature-impl",
+      "status": "shipped",
+      "domain": "D3",
+      "commands": [
+        "orchestrator:run"
+      ],
+      "what": "Валидация имплементации против spec/design: 3 валидатора + verify-finding-before-act; GO/NO-GO/MANUAL_VERIFY."
+    }
+  ],
+  "validation": {
+    "count": 44,
+    "note": "Канон: 44 автоматизируемых правила (V-*:16, V-H-*:11, V-MK-*:8, V-LE-*:5, V-AM-*:4) + 2 process rule (P-RULE-01/02, неавтоматизируемые — реализованы через DA-хуки, см. секцию гейтов). Source: docs/pmo/validation.md §объём. Tier-based activation (pilot/mvp/full) управляет инлайн-проверками по стадии продукта.",
+    "groups": [
+      {
+        "id": "artifact",
+        "name": "Artifact Validation",
+        "range": "V-01..V-18",
+        "count": 16,
+        "what": "Целостность артефактов D1-D2: обязательные ссылки, достижимость состояний, orphan/stale, frontmatter-канон.",
+        "linkCommand": "product:validate",
+        "rules": [
+          {
+            "id": "V-01",
+            "scope": "FM, SC",
+            "severity": "blocking",
+            "what": "FM в in-progress/shipped имеет ≥1 активный SC."
+          },
+          {
+            "id": "V-02",
+            "scope": "SC, BR",
+            "severity": "warning",
+            "what": "Активный SC ссылается на ≥1 BR (чистая навигация разрешена)."
+          },
+          {
+            "id": "V-03",
+            "scope": "SC, BR",
+            "severity": "blocking",
+            "what": "Все BR, на которые ссылается активный SC, в статусе active."
+          },
+          {
+            "id": "V-04",
+            "scope": "SC, FM",
+            "severity": "blocking",
+            "what": "Активный SC ссылается на FM в in-progress/shipped."
+          },
+          {
+            "id": "V-05",
+            "scope": "LC",
+            "severity": "blocking",
+            "what": "Каждое состояние LC достижимо из initial_state."
+          },
+          {
+            "id": "V-06",
+            "scope": "LC, SC, BR",
+            "severity": "warning",
+            "what": "Каждый transition LC имеет trigger (SC) или guard (BR)."
+          },
+          {
+            "id": "V-07",
+            "scope": "SC, VC",
+            "severity": "warning",
+            "what": "Альт/ошибочные потоки SC покрыты VC."
+          },
+          {
+            "id": "V-08",
+            "scope": "SC/BR/LC, BG",
+            "severity": "warning",
+            "what": "Bold-термины в SC/BR/LC определены в BG."
+          },
+          {
+            "id": "V-09",
+            "scope": "SEG, VP",
+            "severity": "blocking",
+            "what": "Активный SEG имеет ровно один VP."
+          },
+          {
+            "id": "V-10",
+            "scope": "FM",
+            "severity": "blocking",
+            "what": "FM имеет segment и ≥1 JTBD из него."
+          },
+          {
+            "id": "V-11",
+            "scope": "кросс-ссылки",
+            "severity": "blocking",
+            "what": "Двусторонние ссылки консистентны (auto-fix)."
+          },
+          {
+            "id": "V-12",
+            "scope": "все",
+            "severity": "warning",
+            "what": "Draft не обновлялся >14 дней → stale."
+          },
+          {
+            "id": "V-14a",
+            "scope": "BR",
+            "severity": "warning",
+            "what": "Два BR с перекрытием scope и конфликтом параметров."
+          },
+          {
+            "id": "V-15",
+            "scope": "много типов",
+            "severity": "warning",
+            "what": "Артефакт без FM-использования → orphan."
+          },
+          {
+            "id": "V-16",
+            "scope": "FM, NFR",
+            "severity": "условно",
+            "what": "FM прошла NFR Review (active/declined/pending по tier)."
+          },
+          {
+            "id": "V-18",
+            "scope": "IC/BR/SC",
+            "severity": "warning",
+            "what": "Frontmatter типа соответствует канону."
+          }
+        ]
+      },
+      {
+        "id": "handoff",
+        "name": "Handoff Validation",
+        "range": "V-H-01..V-H-11",
+        "count": 11,
+        "what": "Самодостаточность handoff: 13 секций, хеши артефактов, резолв ссылок, валидный YAML.",
+        "linkCommand": "product:handoff",
+        "rules": [
+          {
+            "id": "V-H-01",
+            "scope": "Handoff",
+            "severity": "blocking",
+            "what": "13 обязательных секций в правильном порядке."
+          },
+          {
+            "id": "V-H-02",
+            "scope": "Handoff",
+            "severity": "blocking",
+            "what": "Каждый встроенный артефакт имеет artifact_hashes c валидным sha256."
+          },
+          {
+            "id": "V-H-03",
+            "scope": "Handoff",
+            "severity": "blocking",
+            "what": "Список встроенных артефактов в frontmatter и теле совпадает."
+          },
+          {
+            "id": "V-H-04",
+            "scope": "Handoff",
+            "severity": "warning",
+            "what": "SHA-256 хеши совпадают с текущим .product/ (drift detection)."
+          },
+          {
+            "id": "V-H-05",
+            "scope": "Handoff",
+            "severity": "blocking",
+            "what": "Внутренние ссылки резолвятся в встроенные артефакты (self-contained)."
+          },
+          {
+            "id": "V-H-06",
+            "scope": "Handoff",
+            "severity": "blocking",
+            "what": "Валидный YAML с обязательными полями."
+          },
+          {
+            "id": "V-H-07",
+            "scope": "Handoff, BG",
+            "severity": "warning",
+            "what": "Bold-термины во встроенных артефактах есть в BG excerpt."
+          },
+          {
+            "id": "V-H-08",
+            "scope": "Handoff, MK",
+            "severity": "blocking",
+            "what": "Если has_ui=true — §10 содержит MK/DS snapshot/NM."
+          },
+          {
+            "id": "V-H-09",
+            "scope": "Handoff, FM",
+            "severity": "warning",
+            "what": "Dependencies перечисляет все FM-зависимости из тела FM."
+          },
+          {
+            "id": "V-H-10",
+            "scope": "Handoff",
+            "severity": "warning",
+            "what": "Out of Scope содержит явный список исключений."
+          },
+          {
+            "id": "V-H-11",
+            "scope": "Handoff, NFR",
+            "severity": "условно",
+            "what": "NFR-секция соответствует FM.nfr_status и embedded."
+          }
+        ]
+      },
+      {
+        "id": "design",
+        "name": "Design Validation",
+        "range": "V-MK-01..V-MK-08",
+        "count": 8,
+        "what": "Покрытие UI: экраны на SC-шаги, BR в состояниях компонентов, токены DS, WCAG-контраст.",
+        "linkCommand": "design:export",
+        "rules": [
+          {
+            "id": "V-MK-01",
+            "scope": "SC, MK",
+            "severity": "blocking",
+            "what": "Каждый UI-шаг SC покрыт экраном в MK."
+          },
+          {
+            "id": "V-MK-02",
+            "scope": "BR, MK",
+            "severity": "warning",
+            "what": "Validation/auth BR → error/disabled состояния компонентов."
+          },
+          {
+            "id": "V-MK-03",
+            "scope": "LC, MK",
+            "severity": "warning",
+            "what": "LC.state UI-сущности имеет визуализацию (badge/disabled/hidden)."
+          },
+          {
+            "id": "V-MK-04",
+            "scope": "MK",
+            "severity": "info",
+            "what": "Tab order указан и логичен."
+          },
+          {
+            "id": "V-MK-05",
+            "scope": "MK, DS",
+            "severity": "warning",
+            "what": "Контраст текст-фон ≥4.5:1 (WCAG AA)."
+          },
+          {
+            "id": "V-MK-06",
+            "scope": "MK",
+            "severity": "info",
+            "what": "Hit area mobile ≥44×44px."
+          },
+          {
+            "id": "V-MK-07",
+            "scope": "MK",
+            "severity": "warning",
+            "what": "Responsive: breakpoints и изменения layout указаны."
+          },
+          {
+            "id": "V-MK-08",
+            "scope": "MK, DS",
+            "severity": "blocking",
+            "what": "Все color/typography/spacing токены MK существуют в DS."
+          }
+        ]
+      },
+      {
+        "id": "lesson",
+        "name": "Lesson Validation",
+        "range": "V-LE-01..V-LE-05",
+        "count": 5,
+        "what": "Целостность LESSON-*: YAML, fix_ref/guard заполнены для active, hygiene для долго-open.",
+        "linkCommand": "product:lesson",
+        "rules": [
+          {
+            "id": "V-LE-01",
+            "scope": "LESSON",
+            "severity": "blocking",
+            "what": "Frontmatter — валидный YAML с обязательными полями."
+          },
+          {
+            "id": "V-LE-02",
+            "scope": "LESSON",
+            "severity": "blocking",
+            "what": "active: fix_ref резолвится, 'Fix applied' заполнена."
+          },
+          {
+            "id": "V-LE-03",
+            "scope": "LESSON",
+            "severity": "blocking",
+            "what": "active: guard/guard_kind заданы, 'Guard (reusable)' заполнена."
+          },
+          {
+            "id": "V-LE-04",
+            "scope": "LESSON",
+            "severity": "warning",
+            "what": "applies_to[] ссылается на существующие артефакты (orphan ок)."
+          },
+          {
+            "id": "V-LE-05",
+            "scope": "LESSON",
+            "severity": "warning",
+            "what": "open дольше N дней (default 7) помечается (hygiene)."
+          }
+        ]
+      },
+      {
+        "id": "appmap",
+        "name": "App Map Validation",
+        "range": "V-AM-*",
+        "count": 4,
+        "what": "Целостность AM-singleton: frontmatter, id=='AM', modules[]/navigation_maps[] резолвятся.",
+        "linkCommand": "design:map",
+        "rules": [
+          {
+            "id": "V-AM-frontmatter",
+            "scope": "App Map",
+            "severity": "warning",
+            "what": "Frontmatter AM содержит id/type/status."
+          },
+          {
+            "id": "V-AM-id",
+            "scope": "App Map",
+            "severity": "warning",
+            "what": "id равен литерально 'AM' (singleton как DS)."
+          },
+          {
+            "id": "V-AM-module-ref",
+            "scope": "App Map",
+            "severity": "info",
+            "what": "Каждый id из modules[] существует в features/."
+          },
+          {
+            "id": "V-AM-nm-ref",
+            "scope": "App Map",
+            "severity": "info",
+            "what": "Каждый id из navigation_maps[] существует в mockups/."
+          }
+        ]
+      }
+    ],
+    "processRules": [
+      {
+        "id": "P-RULE-01",
+        "scope": "IC",
+        "severity": "blocking",
+        "what": "Любое add/change/delete IC триггерит Product DA review (adaptive depth). Реализован хуком ic-change-trigger."
+      },
+      {
+        "id": "P-RULE-02",
+        "scope": "BR",
+        "severity": "blocking",
+        "what": "Любое изменение активного BR триггерит DA subagent для impact-анализа. Реализован хуком br-change-trigger."
+      }
+    ]
+  },
+  "glossary": [
+    [
+      "D1–D6",
+      "Шесть управленческих доменов PMO: Discovery → Behavioral → Tech → Build → QA → Ops/Meta."
+    ],
+    [
+      "handoff.md",
+      "Универсальный 13-секционный snapshot фичи — самодостаточная передача в любой реализатор."
+    ],
+    [
+      "DoR",
+      "Definition of Ready — критерий готовности handoff (draft = 3 блокера, production = 8)."
+    ],
+    [
+      "DA",
+      "Devil's Advocate — adversarial-ревью в изолированном контексте перед вложением в имплементацию."
+    ],
+    [
+      "BG",
+      "Business Glossary — сквозной словарь; пополняется из любого артефакта, каскадный rename."
+    ],
+    [
+      "cc-sdd",
+      "Внешний spec-driven инструмент-реализатор; подключается через /integrator:add."
+    ],
+    [
+      "GO / NO-GO",
+      "Вердикт Orchestrator-гейта; третий исход — MANUAL_VERIFY (нужна ручная проверка)."
+    ],
+    [
+      "has_ui",
+      "Флаг фичи: есть ли интерфейс. true → включается Design Module."
+    ],
+    [
+      "confidence",
+      "Поле уверенности ассистента в артефакте (high/medium/low) — основа авто-approve и анти-дрифта."
+    ],
+    [
+      "tier / review",
+      "Уровни ревью: 🔴 Critical, 🟠 Strategic, 🟡 Standard, 🟢 Confirmation — определяют, когда нужен approve."
+    ],
+    [
+      "P1–P5",
+      "Процессы Product Module: Discovery, Planning, Feature, Handoff, Maintenance."
+    ],
+    [
+      "P3–P6 (orch.)",
+      "Процессы Orchestrator: batch→specs, audit-fidelity, tdd-impl, validate-impl."
+    ],
+    [
+      "gate / хук",
+      "Детерминированный enforcement: PreToolUse/PostToolUse/commit-msg/Stop хуки, блокирующие (🔒) или warn-only."
+    ],
+    [
+      "tier-based activation",
+      "pilot/mvp/full — какие правила валидации работают inline на каждой стадии продукта."
+    ]
+  ],
+  "tasks": [
+    {
+      "goal": "Начать новый продукт с нуля (проблема, рынок, гипотезы)",
+      "cmd": "product:init"
+    },
+    {
+      "goal": "Запланировать MVP, роадмап и релизы",
+      "cmd": "product:plan"
+    },
+    {
+      "goal": "Описать фичу: сценарии, бизнес-правила, инварианты",
+      "cmd": "product:feature"
+    },
+    {
+      "goal": "Задать нефункциональные требования фичи",
+      "cmd": "product:nfr-review"
+    },
+    {
+      "goal": "Нарисовать UI для фичи (has_ui)",
+      "cmd": "design:start"
+    },
+    {
+      "goal": "Критически проверить фичу или релиз (adversarial)",
+      "cmd": "product:da-review"
+    },
+    {
+      "goal": "Довести фичу до полноты автоматически (волнами)",
+      "cmd": "product:complete"
+    },
+    {
+      "goal": "Передать фичу в реализацию (boundary object)",
+      "cmd": "product:handoff"
+    },
+    {
+      "goal": "Подключить внешний инструмент-реализатор (cc-sdd)",
+      "cmd": "integrator:add"
+    },
+    {
+      "goal": "Прогнать процесс до кода и получить GO/NO-GO",
+      "cmd": "orchestrator:run"
+    },
+    {
+      "goal": "Проверить целостность .product/ (правила V-*)",
+      "cmd": "product:validate"
+    },
+    {
+      "goal": "Найти осиротевшие/устаревшие артефакты",
+      "cmd": "product:cleanup"
+    },
+    {
+      "goal": "Проверить, что артефакты не уплыли от PS/HYP/MVP",
+      "cmd": "product:drift-check"
+    },
+    {
+      "goal": "Превратить свободную заметку в структурный артефакт",
+      "cmd": "product:promote-note"
+    },
+    {
+      "goal": "Зафиксировать урок сразу после ошибки",
+      "cmd": "product:lesson"
+    },
+    {
+      "goal": "Установить экосистему в проект",
+      "cmd": "ecosystem:bootstrap"
+    },
+    {
+      "goal": "Обновить экосистему до свежей версии",
+      "cmd": "ecosystem:update"
+    },
+    {
+      "goal": "Послать системный фидбэк об экосистеме upstream",
+      "cmd": "ecosystem:meta-feedback"
+    }
+  ],
+  "roadmap": [
+    {
+      "id": "orch-6ch",
+      "label": "§6-channel concerns",
+      "status": "planned",
+      "owner": "orchestrator",
+      "what": "Полноценный §6-канал передачи CONCERNS как detector, а не block-handler (S6 root-cause, DEC-DEV-0081 #3/#4) — substrate-gated, brief написан."
+    },
+    {
+      "id": "orch-s7",
+      "label": "S7 → P7 → P2 build-front",
+      "status": "planned",
+      "owner": "orchestrator",
+      "what": "Достройка модуля: S7-контракты → P7 (Integrator maintenance/verify/debug/docs) → возврат к P2; снимает PILOT POINT когда модуль полный."
+    },
+    {
+      "id": "design-claude-path",
+      "label": "Claude Design path (v1.1)",
+      "status": "planned",
+      "owner": "design",
+      "what": "Migrate MK design_tool в Claude-нативный путь (v1.1, перенесён из DEC-DEV-0052 C3 cut)."
+    },
+    {
+      "id": "bg-atomic-rename",
+      "label": "Atomic BG rename (v1.1)",
+      "status": "planned",
+      "owner": "product",
+      "what": "/product:bg-rename атомарный apply вместо ручного preview (DEC-DEV-0012 D.2)."
+    },
+    {
+      "id": "vision-ef",
+      "label": "Vision Epic E/F (coordinate-only)",
+      "status": "planned",
+      "owner": "ecosystem",
+      "what": "Autonomous Pipeline до прода (coordinate-only) — горизонт после полного модуля; границы=фазы (Epic C)."
+    }
+  ],
+  "boundaryObjects": [
+    "handoff",
+    "spec"
+  ]
+}</script>
+
 <script>
-const META_DATE = "2026-06-25";
+// ── Hydrate ───────────────────────────────────────────────────────────────
+const DATA = JSON.parse(document.getElementById("map-data").textContent);
 
-// ── Пайплайн ──────────────────────────────────────────────────────────────
-const PIPELINE = [
-  {id:"D1",   label:"D1 · Discovery",   note:"проблема, рынок, сегменты, гипотезы", mods:["product"]},
-  {id:"D2B",  label:"D2-B · Behavioral", note:"поведенческая спецификация фич", mods:["product"]},
-  {id:"D2UI", label:"D2-UI · Design",    note:"UI, условно при has_ui", mods:["design"], cond:true},
-  {id:"HO",   label:"handoff.md",        note:"boundary object — снимок фичи", mods:["product"]},
-  {id:"D2T",  label:"D2-T · Tech",       note:"архитектура и стек — делегируется", mods:["integrator","orchestrator"], deleg:true},
-  {id:"D3",   label:"D3–D6 · Build→Ops", note:"имплементация, QA — через инструменты", mods:["orchestrator","integrator"], deleg:true},
-];
-
-// ── Модули и команды ──────────────────────────────────────────────────────
-const MODULES = [
-  { id:"product", name:"Product", color:"var(--product)", dom:"D1 + D2-Behavioral",
-    blurb:"Discovery → Planning → спецификация фич → handoff. Ядро ежедневной работы.",
-    commands:[
-      {cmd:"/product:init", st:"D1", status:"shipped", produces:["PS","MR","CA","SEG","VP","HYP"],
-        when:"Начать Discovery нового продукта: из идеи → проблема, рынок, сегменты, гипотезы.",
-        arg:"<idea> | --continue | --deep | --pivot", tags:"discovery старт идея quick deep"},
-      {cmd:"/product:plan", st:"D1", status:"shipped", produces:["MVP","RM","RL","FM"],
-        when:"Планирование после Discovery: MVP-scope, Roadmap, RL-001 и скелеты фич (FM).",
-        arg:"[--continue]", tags:"планирование roadmap mvp релиз"},
-      {cmd:"/product:feature", st:"D2B", status:"shipped", produces:["SC","BR","LC","VC","IC","RPM"],
-        when:"Спецификация фичи: сценарии, правила, инварианты. Enrichment FM-id или создание из идеи.",
-        arg:'<FM-id> | "<idea>" | --continue', tags:"фича спецификация enrich SC BR"},
-      {cmd:"/product:handoff", st:"HO", status:"shipped", produces:["handoff"],
-        when:"Сгенерировать универсальный handoff для FM: 13 секций + хэши для drift-detection.",
-        arg:"<FM-id> [--mode draft|production] [--regenerate] [--with-da-review]", tags:"handoff передача dor draft production"},
-      {cmd:"/product:da-review", st:"D2B", status:"shipped", produces:[],
-        when:"Ручное adversarial DA-ревью: FM → feature-scope, RL → release-scope (cross-FM).",
-        arg:"<FM-NNN | RL-NNN>", tags:"devils advocate ревью критика"},
-      {cmd:"/product:nfr-review", st:"D2B", status:"shipped", produces:["NFR"],
-        when:"NFR-ревью фичи: Ask + Define, sanity-диапазоны по tier.",
-        arg:"<FM-id> | --continue", tags:"nfr нефункциональные требования"},
-      {cmd:"/product:nfr-upgrade-tier", st:"D2B", status:"shipped", produces:["NFR"],
-        when:"Пересмотр активных NFR при смене product tier (MVP→MMP→Growth…).",
-        arg:"<new-tier> [--dry-run]", tags:"nfr tier апгрейд"},
-      {cmd:"/product:complete", st:"D2B", status:"partial", produces:[],
-        when:"Bounded completeness-loop: довести фичу до готовности волнами (v1-скелет, Epic B).",
-        arg:"<FM-NNN> [--max-waves N] [--dry-run]", tags:"completeness loop готовность"},
-      {cmd:"/product:promote-note", st:"maint", status:"shipped", produces:["FM","SC","BR","IC","NFR","HYP"],
-        when:"Превратить свободную заметку NOTE-* в структурный артефакт.",
-        arg:"<NOTE-id> to <TYPE>", tags:"note промоут заметка"},
-      {cmd:"/product:bg-review", st:"maint", status:"shipped", produces:["BG"],
-        when:"Ревью pending BG-кандидатов (классификация / синонимы / одобрение).",
-        arg:"[--all | --new-terms-only | --synonyms-only]", tags:"глоссарий bg термины"},
-      {cmd:"/product:bg-rename", st:"maint", status:"partial", produces:["BG"],
-        when:"Mass-rename термина BG по всем артефактам (v1 — ручной preview; atomic apply — v1.1).",
-        arg:"<old> <new> | --commit <old> <new>", tags:"глоссарий переименование rename"},
-      {cmd:"/product:cascade", st:"maint", status:"shipped", produces:[],
-        when:"Навигация каскада: разрешить pending-каскад (V-11 авто-фикс идёт хуком сам).",
-        arg:"<artifact-id> | --pending [...]", tags:"каскад cascade pending"},
-      {cmd:"/product:validate", st:"maint", status:"shipped", produces:[],
-        when:"Проверка .product/: правила V-01..V-16 + V-H-* по tier. Фильтры, --deep.",
-        arg:"[--rule] [--scope] [--tier] [--deep]", tags:"валидация правила check"},
-      {cmd:"/product:drift-check", st:"maint", status:"shipped", produces:[],
-        when:"Само-аудит: артефакты ещё согласованы с PS / primary HYP / MVP-scope?",
-        arg:"[--scope <last-N> | --since <date>]", tags:"дрифт drift аудит согласованность"},
-      {cmd:"/product:cleanup", st:"maint", status:"shipped", produces:[],
-        when:"Поиск сирот (V-15) + опц. гигиена pending-очередей.",
-        arg:"[--dry-run] [--pending-hygiene | --full]", tags:"очистка сироты orphan"},
-      {cmd:"/product:patterns", st:"maint", status:"shipped", produces:[],
-        when:"Мета-линтер: повторяющиеся анти-паттерны в .product/. Информационно.",
-        arg:"[--scope <type> | --pattern <name>]", tags:"паттерны анти-паттерн линтер"},
-      {cmd:"/product:status", st:"maint", status:"shipped", produces:[],
-        when:"Дашборд .product/: счётчики артефактов, pending, статус handoff, недавние сессии.",
-        arg:"", tags:"статус дашборд обзор"},
-      {cmd:"/product:lesson", st:"maint", status:"shipped", produces:["LESSON"],
-        when:"Атомарно зафиксировать corrective LESSON (fix применён и проверён) в момент ошибки.",
-        arg:'"<что пошло не так>" | --resume <id> | --withdraw <id>', tags:"урок lesson ошибка fix"},
-      {cmd:"/product:validation-tune", st:"maint", status:"shipped", produces:[],
-        when:"Локальная подстройка валидации под этот проект; системное → upstream meta-feedback.",
-        arg:"[--review-suggestions]", tags:"настройка валидации severity tune"},
-      {cmd:"/product:config", st:"maint", status:"shipped", produces:[],
-        when:"Чтение/правка конфигурации Product Module (product.yaml).",
-        arg:"[--show | --edit <key> <value>]", tags:"конфиг настройки yaml"},
-    ]
-  },
-  { id:"design", name:"Design", color:"var(--design)", dom:"D2-B04 · условно has_ui",
-    blurb:"Итеративная генерация UI (Stitch/HTML). Включается, когда у фичи has_ui=true.",
-    commands:[
-      {cmd:"/design:start", st:"D2UI", status:"conditional", produces:["MK","DS","NM"],
-        when:"Начать Design-сессию для FM с has_ui: Brief→Screens→Iterate→States→Artifacts→Export.",
-        arg:"<FM-id> [--continue] [--abandon]", tags:"дизайн ui mockup старт"},
-      {cmd:"/design:iterate", st:"D2UI", status:"conditional", produces:["MK"],
-        when:"Продолжить итерацию на активном макете (MK).",
-        arg:"<MK-id> [--from-feedback \"<text>\"]", tags:"итерация макет"},
-      {cmd:"/design:system", st:"D2UI", status:"conditional", produces:["DS"],
-        when:"Управление Design System: ревью DS-предложений или ре-экстракт из MK.",
-        arg:"[--review] [--update-from <MK-id>]", tags:"design system токены"},
-      {cmd:"/design:map", st:"D2UI", status:"conditional", produces:["AM"],
-        when:"Собрать/обновить App Map (AM): модули × кейсы × пути + CJM-слой.",
-        arg:"[--write] [--html] [--facet …]", tags:"app map карта приложения cjm"},
-      {cmd:"/design:export", st:"D2UI", status:"conditional", produces:[],
-        when:"Сборка UI-contract из MK/DS/NM для handoff §10 (sanity-check).",
-        arg:"<FM-id>", tags:"экспорт ui contract"},
-      {cmd:"/design:status", st:"D2UI", status:"conditional", produces:[],
-        when:"Дашборд Design: счётчики MK/DS/NM, итерации, Stitch-квота.",
-        arg:"[--fm <FM-id>] [--verbose]", tags:"статус дизайн"},
-      {cmd:"/design:migrate", st:"D2UI", status:"conditional", produces:["MK"],
-        when:"Миграция макета между Stitch ↔ HTML ↔ open-design (с rollback).",
-        arg:"<MK-id|--all> --to <stitch|html|open-design>", tags:"миграция stitch html"},
-    ]
-  },
-  { id:"integrator", name:"Integrator", color:"var(--integrator)", dom:"D2-Tech · «сисадмин»",
-    blurb:"Подключает/заменяет внешние инструменты под PMO-карту. Большинство команд — read-only.",
-    commands:[
-      {cmd:"/integrator:add", st:"D2T", status:"shipped", produces:[],
-        when:"Подключить внешний инструмент (npm/MCP/git/binary/docker) под управление PMO. Approve-gate.",
-        arg:"<tool>[@version] [--source …]", tags:"подключить инструмент cc-sdd mcp"},
-      {cmd:"/integrator:remove", st:"D2T", status:"shipped", produces:[],
-        when:"Убрать инструмент: impact-анализ + backup + uninstall. Destructive — требует подтверждения.",
-        arg:"<tool> [--confirm]", tags:"удалить инструмент"},
-      {cmd:"/integrator:update", st:"D2T", status:"shipped", produces:[],
-        when:"Обновить инструмент: backup→install→drift-detection→contract-repair→verify.",
-        arg:"<tool> [<version>] [--check-only] [--repair]", tags:"обновить инструмент версия"},
-      {cmd:"/integrator:scan", st:"D2T", status:"shipped", ro:true, produces:[],
-        when:"Сканировать окружение: существующие кастомизации/конфликты перед изменениями.",
-        arg:"", tags:"скан окружение конфликты"},
-      {cmd:"/integrator:status", st:"D2T", status:"shipped", ro:true, produces:[],
-        when:"Полный обзор состояния Integrator.",
-        arg:"", tags:"статус обзор"},
-      {cmd:"/integrator:map", st:"D2T", status:"shipped", ro:true, produces:[],
-        when:"Покрытие PMO-зон активными инструментами.",
-        arg:"", tags:"карта покрытие pmo"},
-      {cmd:"/integrator:gaps", st:"D2T", status:"shipped", ro:true, produces:[],
-        when:"Непокрытые PMO-зоны с оценкой критичности.",
-        arg:"", tags:"пробелы gaps непокрытые"},
-      {cmd:"/integrator:research", st:"D2T", status:"shipped", ro:true, produces:[],
-        when:"Подобрать инструменты под PMO-need: 2–5 вариантов с сравнением, без установки.",
-        arg:"<need-description>", tags:"ресёрч подбор инструментов"},
-      {cmd:"/integrator:journal", st:"D2T", status:"shipped", ro:true, produces:[],
-        when:"Журнал решений Integrator с фильтрами.",
-        arg:"[--filter <tag>] [--limit <N>] [--scope global|project]", tags:"журнал решения"},
-    ]
-  },
-  { id:"orchestrator", name:"Orchestrator", color:"var(--orchestrator)", dom:"D2-Tech + D3+ · runtime",
-    blurb:"Проводит PMO-процессы end-to-end как in-harness Workflow силами role-агентов. Требует активный cc-sdd.",
-    commands:[
-      {cmd:"/orchestrator:run", st:"D3", status:"shipped", produces:[],
-        when:"Прогнать PMO-процесс end-to-end. Построены и live-validated: P3 (handoffs → cc-sdd specs) → P4 (audit-spec-fidelity) → P5 (feature-to-tdd-impl) → P6 (validate-feature-impl). Возвращает GO / NO-GO / MANUAL_VERIFY. Предусловие: активный cc-sdd (сначала /integrator:add cc-sdd).",
-        arg:"<process> [--feature FM-NNN ...] [--all] [--no-stack-gate]", tags:"оркестратор run P3 P4 P5 P6 cc-sdd impl tdd"},
-    ]
-  },
-  { id:"ecosystem", name:"Ecosystem", color:"var(--ecosystem)", dom:"установка и обслуживание",
-    blurb:"Команды над самой экосистемой: установка, проверка, обновление, фидбэк.",
-    commands:[
-      {cmd:"/ecosystem:bootstrap", st:"setup", status:"shipped", produces:[],
-        when:"Установить экосистему в проект: .claude/ + .product/ + CLAUDE.md + MCP-стек.",
-        arg:"[--offline] [--no-mcp] [--force]", tags:"установка bootstrap старт"},
-      {cmd:"/ecosystem:verify", st:"setup", status:"shipped", produces:[],
-        when:"Health-check установки экосистемы. Non-destructive.",
-        arg:"", tags:"проверка verify health"},
-      {cmd:"/ecosystem:update", st:"setup", status:"shipped", produces:[],
-        when:"Синхронизировать экосистему к latest upstream; сохраняет user-zone и состояние пилота.",
-        arg:"[--dry-run] [--force] [--offline] …", tags:"обновление update upstream sync"},
-      {cmd:"/ecosystem:meta-feedback", st:"setup", status:"shipped", produces:[],
-        when:"Зафиксировать СИСТЕМНЫЙ фидбэк об экосистеме в upstream-outbox (для доставки в репо).",
-        arg:"[--review] [--push] [--issue] [--from …]", tags:"фидбэк meta feedback upstream"},
-      {cmd:"/ecosystem:pending-actions", st:"setup", status:"shipped", ro:true, produces:[],
-        when:"Список pending действий пользователя (PA-NNN).",
-        arg:"[--status …] [--source …] [--limit N]", tags:"pending действия"},
-      {cmd:"/ecosystem:enable-d7-audit", st:"setup", status:"shipped", produces:[],
-        when:"Однократно включить D7 session-audit hook в этом проекте.",
-        arg:"[--ecosystem-root=<path>]", tags:"d7 аудит сессий hook"},
-    ]
-  },
-];
-
-// ── Артефакты (24) ────────────────────────────────────────────────────────
-const ARTIFACTS = [
-  {g:"D1 · Discovery & Strategy",items:[
-    ["PS","Problem Statement","🟠","Singleton"],
-    ["MR","Market Research","🟡","Singleton"],
-    ["CA","Competitive Analysis","🟡","Singleton"],
-    ["SEG","Segment & JTBD","🟠","2–4"],
-    ["VP","Value Proposition","🟠","1 / SEG"],
-    ["HYP","Hypothesis","🟠","3–5"],
-    ["MVP","MVP Scope","🟠","Singleton"],
-    ["RM","Product Roadmap","🟡","Singleton"],
-    ["RL","Release Plan","🟡","Per release"],
-  ]},
-  {g:"Мост D1↔D2",items:[
-    ["FM","Feature Map Entry","🟠","Per feature"],
-  ]},
-  {g:"D2-Behavioral",items:[
-    ["SC","User Scenario","🟠","Per scenario"],
-    ["BR","Business Rule","🔴","Per rule"],
-    ["LC","Entity Lifecycle","🟢","Per entity"],
-    ["RPM","Role & Permission Model","🟢","Singleton"],
-    ["VC","Verification Criteria","🟢","Per scenario"],
-    ["IC","Invariant Check","🔴","Per invariant"],
-    ["NFR","Non-Functional Requirement","🟠","Per NFR"],
-  ]},
-  {g:"D2-B04 · Design (has_ui)",items:[
-    ["MK","Mockup Package","🟠","Per screen/flow"],
-    ["DS","Design System","🟡","Singleton"],
-    ["NM","Navigation Map","🟢","Per flow"],
-    ["AM","App Map (+ CJM)","🟢","Singleton"],
-  ]},
-  {g:"Cross-cutting",items:[
-    ["BG","Business Glossary","🟡","Singleton"],
-    ["NOTE","Unstructured Note","🟡","Per note"],
-    ["LESSON","Corrective Lesson","🟡","Per lesson"],
-  ]},
-];
-
-// ── Глоссарий ─────────────────────────────────────────────────────────────
-const GLOSSARY = [
-  ["D1–D6","Шесть управленческих доменов PMO: Discovery → Behavioral → Tech → Build → QA → Ops/Meta."],
-  ["handoff.md","Универсальный 13-секционный snapshot фичи — самодостаточная передача в любой реализатор."],
-  ["DoR","Definition of Ready — критерий готовности handoff (draft = 3 блокера, production = 8)."],
-  ["DA","Devil's Advocate — adversarial-ревью в изолированном контексте перед вложением в имплементацию."],
-  ["BG","Business Glossary — сквозной словарь; пополняется из любого артефакта, каскадный rename."],
-  ["cc-sdd","Внешний spec-driven инструмент-реализатор; подключается через /integrator:add."],
-  ["GO / NO-GO","Вердикт Orchestrator-гейта; третий исход — MANUAL_VERIFY (нужна ручная проверка)."],
-  ["has_ui","Флаг фичи: есть ли интерфейс. true → включается Design Module."],
-  ["confidence","Поле уверенности ассистента в артефакте (high/medium/low) — основа авто-approve и анти-дрифта."],
-  ["tier / review","Уровни ревью: 🔴 Critical, 🟠 Strategic, 🟡 Standard, 🟢 Confirmation — определяют, когда нужен approve."],
-  ["P1–P5","Процессы Product Module: Discovery, Planning, Feature, Handoff, Maintenance."],
-  ["P3–P6 (orch.)","Процессы Orchestrator: batch→specs, audit-fidelity, tdd-impl, validate-impl."],
-];
-
-// ── Render ────────────────────────────────────────────────────────────────
-const MODBY = Object.fromEntries(MODULES.map(m=>[m.id,m]));
+const MODBY = DATA.modules;                       // { modId: {id,name,color,dom,blurb,commands[]} }
+const MODLIST = Object.values(DATA.modules);      // insertion order from generator
 const STATUS_LABEL = {shipped:"работает", partial:"v1 / частично", conditional:"условно (has_ui)", planned:"план"};
+const STAGE_IDS = DATA.pipeline.map(s=>s.id);
+const STATUS_IDS = ["shipped","partial","conditional","planned"];
+// Module SPEC docs (relative to docs/guide/). Only modules that ship a SPEC.md.
+const SPEC_PATH = {
+  product:"../product-module/SPEC.md", design:"../design-module/SPEC.md",
+  integrator:"../integrator-module/SPEC.md", orchestrator:"../orchestrator-module/SPEC.md",
+};
 let activeStage = null;
+const activeMods = new Set();       // C3: empty = all modules
+const activeStatuses = new Set();   // C3: empty = all statuses
+let hlState = null;                 // C4: {kind:"art"|"cmd", id} or null
+let suppressHash = false;           // guard so programmatic writes don't loop
 
+const LANEBY = {}; DATA.pipeline.forEach(p=>LANEBY[p.id]=p);   // lane id → {label,…}
+function modColor(id){return (DATA.modules[id]||{}).color||"var(--tx3)";}
+function cmdChip(id){return `<span class="chip" data-cmd="${esc(id)}">/${esc(id)}</span>`;}
+const SEV={blocking:"🔴",warning:"🟡",info:"🔵","условно":"⚪"};
+function sevGlyph(s){return SEV[s]||"•";}
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
 function badge(status){return `<span class="badge b-${status}">${STATUS_LABEL[status]||status}</span>`;}
 
-function renderMetaDate(){document.getElementById("meta-date").textContent = META_DATE;}
+// ── Build stamp (from DATA._build; no manual date constant anywhere) ──────
+function renderBuildStamp(){
+  const b = DATA._build || {};
+  const parts = [];
+  if(b.date) parts.push(b.date);
+  if(b.sha)  parts.push(b.sha);
+  if(b.commands!=null)  parts.push(`${b.commands} команд`);
+  if(b.artifacts!=null) parts.push(`${b.artifacts} артефактов`);
+  document.getElementById("build-stamp").textContent = parts.join(" · ");
+}
 
 function renderHappy(){
   document.getElementById("happy").innerHTML =
@@ -398,25 +2782,29 @@ function renderHappy(){
 
 function renderPipeline(){
   const el = document.getElementById("pipeline");
-  el.innerHTML = PIPELINE.map((s,i)=>{
-    const cls = ["stage", s.cond?"cond":"", s.deleg?"deleg":""].join(" ");
-    const ar = i<PIPELINE.length-1 ? `<span class="arrow">▶</span>`:"";
-    const bar = s.mods.map(m=>`<span class="dot" style="background:${MODBY[m].color}"></span>`).join("");
+  // arrows connect only the linear (non-aux) lanes; aux lanes (maint/setup) are valid
+  // stage filters but excluded from the D1→D6 flow.
+  let lastMain = -1;
+  DATA.pipeline.forEach((s,i)=>{ if(!s.aux) lastMain = i; });
+  el.innerHTML = DATA.pipeline.map((s,i)=>{
+    const cls = ["stage", s.cond?"cond":"", s.deleg?"deleg":"", s.aux?"aux":""].join(" ").replace(/\s+/g," ").trim();
+    const ar = (!s.aux && i<lastMain) ? `<span class="arrow">▶</span>` : "";
+    const bar = (s.mods||[]).map(m=>`<span class="dot" style="background:${(MODBY[m]||{}).color||"var(--tx3)"}"></span>`).join("");
     return `<div class="${cls}" data-stage="${s.id}">
-      <div class="sid">${s.label} ${bar}</div>
-      <div class="snote">${s.note}</div>${ar}</div>`;
+      <div class="sid">${esc(s.label)} ${bar}</div>
+      <div class="snote">${esc(s.note)}</div>${ar}</div>`;
   }).join("");
   el.querySelectorAll(".stage").forEach(n=>n.addEventListener("click",()=>toggleStage(n.dataset.stage)));
 }
 
 function renderLegend(){
-  const mods = MODULES.map(m=>`<span class="it"><span class="dot" style="background:${m.color}"></span>${m.name}</span>`).join("");
+  const mods = MODLIST.map(m=>`<span class="it"><span class="dot" style="background:${m.color}"></span>${esc(m.name)}</span>`).join("");
   const sts = Object.keys(STATUS_LABEL).map(s=>`<span class="it">${badge(s)}</span>`).join("");
   document.getElementById("legend").innerHTML = mods + `<span class="it" style="color:var(--tx3)">│</span>` + sts;
 }
 
-const stageCmdMap = {D1:["D1"],D2B:["D2B"],D2UI:["D2UI"],HO:["HO"],D2T:["D2T"],D3:["D3"]};
 function toggleStage(id){
+  if(!STAGE_IDS.includes(id)) return;
   activeStage = (activeStage===id)?null:id;
   document.querySelectorAll(".stage").forEach(n=>n.classList.toggle("active", n.dataset.stage===activeStage));
   applyFilters();
@@ -425,54 +2813,225 @@ function toggleStage(id){
 
 function renderModules(){
   const wrap = document.getElementById("modules");
-  wrap.innerHTML = MODULES.map(m=>{
-    const cards = m.commands.map(c=>{
+  wrap.innerHTML = MODLIST.map(m=>{
+    const cards = (m.commands||[]).map(c=>{
       const prod = (c.produces&&c.produces.length)
-        ? `<div class="prod">→ ${c.produces.map(p=>`<span class="chip" data-art="${p}">${p}</span>`).join("")}</div>`:"";
+        ? `<div class="prod">→ ${c.produces.map(p=>`<span class="chip" data-art="${esc(p)}">${esc(p)}</span>`).join("")}</div>`:"";
+      const cons = (c.consumes&&c.consumes.length)
+        ? `<div class="prod" style="margin-top:4px">← ${c.consumes.map(p=>`<span class="chip" data-art="${esc(p)}">${esc(p)}</span>`).join("")}</div>`:"";
       const ro = c.ro?`<span class="ro">read-only</span>`:"";
-      const hay = (c.cmd+" "+c.when+" "+(c.arg||"")+" "+(c.tags||"")+" "+(c.produces||[]).join(" ")).toLowerCase();
-      return `<div class="card" data-status="${c.status}" data-stage="${c.st}" data-hay="${hay.replace(/"/g,'')}">
-        <div class="top"><span class="cmd mono" style="color:${m.color}">${c.cmd}</span> <span style="display:flex;gap:6px">${ro}${badge(c.status)}</span></div>
-        <div class="when">${c.when}</div>
-        ${c.arg?`<div class="arg mono">${c.arg.replace(/</g,"&lt;")}</div>`:""}
-        ${prod}
+      const src = c.source
+        ? `<div class="csrc mono"><a href="../../${esc(c.source)}" title="Открыть исходник команды">↗ ${esc(c.source)}</a></div>`:"";
+      const arts = [...new Set([...(c.produces||[]),...(c.consumes||[])])].join(" ");
+      const hay = (c.cmd+" "+(c.when||"")+" "+(c.desc||"")+" "+(c.arg||"")+" "+(c.tags||"")+" "+
+        (c.produces||[]).join(" ")+" "+(c.consumes||[]).join(" ")).toLowerCase();
+      return `<div class="card" tabindex="0" data-id="${esc(c.id)}" data-mod="${esc(c.module)}" data-status="${c.status}" data-stage="${c.st}" data-arts="${esc(arts)}" data-hay="${esc(hay).replace(/"/g,'')}">
+        <div class="top"><span class="cmd mono" style="color:${m.color}">${esc(c.cmd)}</span> <span style="display:flex;gap:6px">${ro}${badge(c.status)}</span></div>
+        <div class="when">${esc(c.when||c.desc||"")}</div>
+        ${c.arg?`<div class="arg mono">${esc(c.arg)}</div>`:""}
+        ${prod}${cons}${src}
       </div>`;
     }).join("");
+    const spec = SPEC_PATH[m.id]
+      ? `<a class="mspec mono" href="${SPEC_PATH[m.id]}" onclick="event.stopPropagation()">SPEC ↗</a>`:"";
     return `<details class="mod" open style="border-left-color:${m.color}" data-mod="${m.id}">
       <summary><span class="chev">▶</span>
-        <span style="color:${m.color}">${m.name}</span>
-        <span class="mdom">${m.dom}</span>
-        <span class="mblurb">${m.blurb}</span>
+        <span style="color:${m.color}">${esc(m.name)}</span>
+        <span class="mdom">${esc(m.dom)}</span>${spec}
+        <span class="mblurb">${esc(m.blurb)}</span>
       </summary>
       <div class="cards">${cards}</div>
     </details>`;
   }).join("");
-  wrap.querySelectorAll(".chip").forEach(ch=>ch.addEventListener("click",e=>{
-    e.preventDefault();
-    document.getElementById("q").value = ch.dataset.art;
-    applyFilters();
-    document.querySelector(".section-title").scrollIntoView({behavior:"smooth",block:"start"});
-  }));
 }
 
 function renderArtifacts(){
-  document.getElementById("artifacts").innerHTML = ARTIFACTS.map(g=>{
-    const items = g.items.map(([id,name,rl,card])=>
-      `<div class="art" data-hay="${(id+" "+name).toLowerCase()}">
-        <div class="aid">${id} <span class="rl">${rl}</span></div>
-        <div class="aname">${name}</div>
-        <div class="ameta">${card}</div>
-      </div>`).join("");
-    return `<div class="agroup"><h3>${g.g}</h3><div class="arts">${items}</div></div>`;
+  const total = (DATA._build && DATA._build.artifacts!=null)
+    ? DATA._build.artifacts
+    : DATA.artifacts.reduce((n,g)=>n+g.items.length,0);
+  document.getElementById("art-title").textContent = `Артефакты (${total} типа) · кто создаёт, кто потребляет, родословная`;
+  const lchips = ids => (ids||[]).map(x=>`<span class="lchip" data-art="${esc(x)}">${esc(x)}</span>`).join(" ");
+  document.getElementById("artifacts").innerHTML = DATA.artifacts.map(g=>{
+    const items = g.items.map(a=>{
+      const prod = (a.producedBy&&a.producedBy.length)
+        ? `<div class="arel"><span class="lbl">создаёт:</span> ${a.producedBy.map(cmdChip).join("")}</div>`:"";
+      const cons = (a.consumedBy&&a.consumedBy.length)
+        ? `<div class="arel"><span class="lbl">потребляет:</span> ${a.consumedBy.map(cmdChip).join("")}</div>`:"";
+      const from = (a.lineageFrom&&a.lineageFrom.length) ? `<div class="lin">⬑ из: ${lchips(a.lineageFrom)}</div>`:"";
+      const to   = (a.lineageTo&&a.lineageTo.length)     ? `<div class="lin">⬐ в: ${lchips(a.lineageTo)}</div>`:"";
+      const hay = (a.id+" "+a.name+" "+(a.producedBy||[]).join(" ")+" "+(a.consumedBy||[]).join(" ")).toLowerCase();
+      return `<div class="art" data-id="${esc(a.id)}" data-hay="${esc(hay)}">
+        <div class="aid">${esc(a.id)} <span class="rl">${esc(a.tier)}</span></div>
+        <div class="aname">${esc(a.name)}</div>
+        <div class="ameta">${esc(a.cardinality||"")}</div>
+        ${from}${to}${prod}${cons}
+      </div>`;
+    }).join("");
+    return `<div class="agroup"><h3>${esc(g.group.label)}</h3><div class="arts">${items}</div></div>`;
+  }).join("");
+}
+
+// ── B2: Processes P1–P6 (swimlanes by owner) ──────────────────────────────
+function renderProcesses(){
+  const owners = [];
+  DATA.processes.forEach(p=>{ if(!owners.includes(p.owner)) owners.push(p.owner); });
+  document.getElementById("processes").innerHTML = owners.map(ow=>{
+    const m = DATA.modules[ow] || {name:ow, color:"var(--tx3)"};
+    const mine = DATA.processes.filter(p=>p.owner===ow);
+    const cards = mine.map(p=>{
+      const lane = LANEBY[p.domain];
+      const chips = (p.commands||[]).map(cmdChip).join("");
+      return `<div class="proc" data-status="${esc(p.status)}">
+        <div class="ptop"><span class="pid" style="color:${m.color}">${esc(p.id)}</span>${badge(p.status)}</div>
+        <div class="pname">${esc(p.name)}</div>
+        <div class="pwhat">${esc(p.what)}</div>
+        <div class="pmeta">домен: ${esc(lane?lane.label:p.domain)}</div>
+        <div class="prod">${chips}</div>
+      </div>`;
+    }).join("");
+    return `<div class="plane">
+      <div class="phdr"><span class="dot" style="background:${m.color}"></span>
+        <span style="color:${m.color}">${esc(m.name)}</span>
+        <span style="color:var(--tx3);font-weight:400">· ${mine.length} процессов</span></div>
+      <div class="procs">${cards}</div>
+    </div>`;
+  }).join("");
+}
+
+// ── B1: Gates & hooks ("что меня заблокирует") ────────────────────────────
+function renderGates(){
+  const hard = DATA.gates.filter(g=>g.blocking);
+  const warn = DATA.gates.filter(g=>!g.blocking);
+  const card = (g,kind)=>{
+    const m = DATA.modules[g.module] || {};
+    const blab = g.blocking
+      ? `<span class="badge b-hard">🔒 блокирует</span>`
+      : `<span class="badge b-warn">warn-only</span>`;
+    const bp = (g.bypass && g.bypass!=="—")
+      ? `<div class="gbypass"><b>обход:</b> ${esc(g.bypass)}</div>`
+      : `<div class="gbypass" style="color:var(--tx3)">обхода нет</div>`;
+    const hay = (g.id+" "+g.what+" "+g.event+" "+g.module).toLowerCase();
+    return `<div class="gate ${kind}" data-hay="${esc(hay)}">
+      <div class="gtop"><span class="dot" style="background:${m.color||'var(--tx3)'}" title="${esc(m.name||g.module)}"></span>
+        <span class="gid mono">${esc(g.id)}</span><span class="gev">${esc(g.event)}</span>${blab}</div>
+      <div class="gwhat">${esc(g.what)}</div>
+      ${bp}
+      <a class="gsrc mono" href="../../${esc(g.source)}">${esc(g.source)}</a>
+    </div>`;
+  };
+  document.getElementById("gates").innerHTML =
+    `<div class="ghead">🔒 Блокирующие (${hard.length}) — остановят коммит / сессию / инструмент</div>`+
+    `<div class="gates-grid">${hard.map(g=>card(g,"hard")).join("")}</div>`+
+    `<div class="ghead">Warn-only (${warn.length}) — предупреждают и пишут pending, но не блокируют</div>`+
+    `<div class="gates-grid">${warn.map(g=>card(g,"warn")).join("")}</div>`;
+}
+
+// ── B4: Validation surface ────────────────────────────────────────────────
+function renderValidation(){
+  const v = DATA.validation;
+  document.getElementById("val-title").textContent = `Валидация · ${v.count} правил`;
+  document.getElementById("val-note").textContent = v.note || "";
+  const groups = v.groups.map(g=>{
+    const tally = {};
+    (g.rules||[]).forEach(r=>{ tally[r.severity]=(tally[r.severity]||0)+1; });
+    const tallyHtml = Object.keys(tally).map(s=>`<span title="${esc(s)}">${sevGlyph(s)} ${tally[s]}</span>`).join("");
+    const rows = (g.rules||[]).map(r=>
+      `<tr><td class="mono vid">${esc(r.id)}</td><td>${esc(r.scope)}</td>`+
+      `<td class="vsev">${sevGlyph(r.severity)} ${esc(r.severity)}</td><td>${esc(r.what)}</td></tr>`).join("");
+    const hay = (g.id+" "+g.name+" "+g.range+" "+(g.rules||[]).map(r=>r.id+" "+r.what).join(" ")).toLowerCase();
+    return `<details class="vgroup" data-hay="${esc(hay)}">
+      <summary><span class="vname">${esc(g.name)}</span><span class="vrange mono">${esc(g.range)}</span>
+        <span class="badge b-shipped">${g.count}</span>
+        <span class="vtally">${tallyHtml}</span></summary>
+      <div class="vwhat">${esc(g.what)} · команда: <a href="#" data-cmd="${esc(g.linkCommand)}" class="mono">/${esc(g.linkCommand)}</a></div>
+      <table class="vtable"><thead><tr><th>ID</th><th>Scope</th><th>Severity</th><th>Что проверяет</th></tr></thead>
+        <tbody>${rows}</tbody></table>
+    </details>`;
+  }).join("");
+  const pr = (v.processRules||[]).map(r=>
+    `<li style="margin:4px 0"><b class="mono">${esc(r.id)}</b> <span style="color:var(--tx3)">(${esc(r.scope)}, ${sevGlyph(r.severity)} ${esc(r.severity)})</span> — <span style="color:var(--tx2)">${esc(r.what)}</span></li>`).join("");
+  document.getElementById("validation").innerHTML = groups +
+    `<div class="note"><b>Process-rules (неавтоматизируемые, реализованы через DA-хуки):</b>`+
+    `<ul style="margin:6px 0 0;padding-left:18px;list-style:none">${pr}</ul></div>`;
+}
+
+// ── B5: Roadmap / horizon (planned, never "works today") ──────────────────
+function renderRoadmap(){
+  document.getElementById("roadmap").innerHTML = DATA.roadmap.map(r=>{
+    const m = DATA.modules[r.owner] || {};
+    const hay = (r.label+" "+r.what+" "+r.owner).toLowerCase();
+    return `<div class="road" data-hay="${esc(hay)}">
+      <div class="rtop"><span class="rlabel">${esc(r.label)}</span>${badge(r.status)}</div>
+      <div class="rmeta"><span class="dot" style="background:${m.color||'var(--tx3)'}"></span> ${esc(m.name||r.owner)}</div>
+      <div class="rwhat">${esc(r.what)}</div>
+    </div>`;
   }).join("");
 }
 
 function renderGlossary(){
-  document.getElementById("glossary").innerHTML = GLOSSARY.map(([t,d])=>
-    `<div class="g" data-hay="${(t+" "+d).toLowerCase()}"><b>${t}</b> — <span>${d}</span></div>`).join("");
+  document.getElementById("glossary").innerHTML = DATA.glossary.map(([t,d])=>
+    `<div class="g" data-hay="${esc((t+" "+d).toLowerCase())}"><b>${esc(t)}</b> — <span>${esc(d)}</span></div>`).join("");
+}
+
+// ── Tasks (C6): «я хочу…» goal → command reverse index ────────────────────
+function renderTasks(){
+  document.getElementById("tasks").innerHTML =
+    `<h2>Я хочу…</h2>` +
+    DATA.tasks.map(t=>
+      `<div class="task" tabindex="0" role="button" data-cmd="${esc(t.cmd)}" `+
+      `aria-label="${esc(t.goal)} → /${esc(t.cmd)}">`+
+      `<span class="tgoal">${esc(t.goal)}</span>`+
+      `<span class="tcmd mono">/${esc(t.cmd)}</span></div>`).join("");
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────
+// ── C3: render filter chips (module + status) & wire toggles ───────────────
+function renderFilters(){
+  const mf = document.getElementById("modFilter");
+  const sf = document.getElementById("statusFilter");
+  mf.innerHTML = `<span class="flabel">Модуль:</span>` + MODLIST.map(m=>
+    `<button class="fchip" type="button" data-mod="${esc(m.id)}" aria-pressed="false">`+
+    `<span class="fdot" style="background:${m.color}"></span>${esc(m.name)}</button>`).join("");
+  sf.innerHTML = `<span class="flabel">Статус:</span>` + STATUS_IDS.map(s=>
+    `<button class="fchip" type="button" data-status="${esc(s)}" aria-pressed="false">`+
+    `<span class="fdot" style="background:var(--${s})"></span>${esc(STATUS_LABEL[s])}</button>`).join("");
+  mf.querySelectorAll(".fchip").forEach(ch=>ch.addEventListener("click",()=>{
+    const id=ch.dataset.mod;
+    if(activeMods.has(id)) activeMods.delete(id); else activeMods.add(id);
+    ch.setAttribute("aria-pressed", activeMods.has(id)?"true":"false");
+    applyFilters();
+  }));
+  sf.querySelectorAll(".fchip").forEach(ch=>ch.addEventListener("click",()=>{
+    const id=ch.dataset.status;
+    if(activeStatuses.has(id)) activeStatuses.delete(id); else activeStatuses.add(id);
+    ch.setAttribute("aria-pressed", activeStatuses.has(id)?"true":"false");
+    applyFilters();
+  }));
+}
+
+// ── C4: cross-highlight — clicking an artifact lights its commands & vice-versa ──
+function applyHighlight(){
+  document.querySelectorAll(".hl,.hl-art").forEach(n=>n.classList.remove("hl","hl-art"));
+  if(!hlState || !hlState.id){ document.body.classList.remove("has-hl"); return; }
+  document.body.classList.add("has-hl");
+  if(hlState.kind==="art"){
+    document.querySelectorAll(".art").forEach(a=>{ if(a.dataset.id===hlState.id) a.classList.add("hl-art"); });
+    document.querySelectorAll(".card").forEach(c=>{
+      if((c.dataset.arts||"").split(" ").filter(Boolean).includes(hlState.id)) c.classList.add("hl");
+    });
+  } else if(hlState.kind==="cmd"){
+    const card=[...document.querySelectorAll(".card")].find(c=>c.dataset.id===hlState.id);
+    if(card) card.classList.add("hl");
+    const arts = card ? (card.dataset.arts||"").split(" ").filter(Boolean) : [];
+    document.querySelectorAll(".art").forEach(a=>{ if(arts.includes(a.dataset.id)) a.classList.add("hl-art"); });
+  }
+}
+function setHighlight(kind,id){
+  hlState = (hlState && hlState.kind===kind && hlState.id===id) ? null : {kind,id};
+  applyHighlight();
+  writeHash();
+}
+
 function applyFilters(){
   const q = document.getElementById("q").value.trim().toLowerCase();
   const onlyShipped = document.getElementById("onlyShipped").checked;
@@ -485,7 +3044,9 @@ function applyFilters(){
       const okQ = !q || hay.includes(q);
       const okShip = !onlyShipped || card.dataset.status==="shipped";
       const okStage = !activeStage || card.dataset.stage===activeStage;
-      const show = okQ && okShip && okStage;
+      const okMod = !activeMods.size || activeMods.has(card.dataset.mod);
+      const okStatus = !activeStatuses.size || activeStatuses.has(card.dataset.status);
+      const show = okQ && okShip && okStage && okMod && okStatus;
       card.classList.toggle("hidden", !show);
       if(show) visible++;
     });
@@ -501,19 +3062,131 @@ function applyFilters(){
     const any=[...g.querySelectorAll(".art")].some(a=>!a.classList.contains("hidden"));
     g.classList.toggle("hidden", !any);
   });
+
+  // gates / validation / roadmap react to text query only (onlyShipped/stage never hide them)
+  document.querySelectorAll(".gate").forEach(x=>x.classList.toggle("hidden", q && !x.dataset.hay.includes(q)));
+  document.querySelectorAll(".vgroup").forEach(x=>x.classList.toggle("hidden", q && !x.dataset.hay.includes(q)));
+  document.querySelectorAll(".road").forEach(x=>x.classList.toggle("hidden", q && !x.dataset.hay.includes(q)));
+
+  writeHash();   // C1: reflect current filter state into the shareable URL (no-op while restoring)
+}
+
+// Jump to a command/artifact by setting the search query + scrolling to commands.
+function searchFor(text){
+  const q = document.getElementById("q");
+  q.value = text;
+  applyFilters();
+  const modwrap = document.getElementById("modules");
+  if(modwrap) modwrap.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
 function reset(){
   document.getElementById("q").value="";
   document.getElementById("onlyShipped").checked=false;
   activeStage=null;
+  activeMods.clear();
+  activeStatuses.clear();
+  hlState=null;
   document.querySelectorAll(".stage").forEach(n=>n.classList.remove("active"));
-  applyFilters();
+  document.querySelectorAll('#modFilter .fchip,#statusFilter .fchip').forEach(ch=>ch.setAttribute("aria-pressed","false"));
+  document.body.classList.remove("has-hl");
+  document.querySelectorAll(".hl,.hl-art").forEach(n=>n.classList.remove("hl","hl-art"));
+  applyFilters();   // funnels through writeHash() → clears the URL fragment
+}
+
+// ── C1: URL hash sync — shareable deep-link · restore-on-load · back-button ──
+// Serializes {q, stage, module(csv), status(csv), onlyShipped, hl} into
+// location.hash and restores it on load / hashchange. The single guard is
+// suppressHash: readHash() raises it so the applyFilters() it triggers can't
+// write the hash back (which would loop the programmatic write ↔ hashchange echo).
+function writeHash(){
+  if(suppressHash) return;                       // restoring → don't echo back into the URL
+  const p = new URLSearchParams();
+  const q = document.getElementById("q").value.trim();
+  if(q) p.set("q", q);
+  if(activeStage) p.set("stage", activeStage);
+  if(activeMods.size) p.set("module", [...activeMods].join(","));
+  if(activeStatuses.size) p.set("status", [...activeStatuses].join(","));
+  if(document.getElementById("onlyShipped").checked) p.set("onlyShipped", "1");
+  if(hlState && hlState.kind && hlState.id) p.set("hl", hlState.kind+":"+hlState.id);
+  const qs = p.toString();
+  const next = qs ? "#"+qs : "";
+  if((location.hash||"") === next) return;        // nothing changed → no history churn
+  if(next){
+    location.hash = next;                         // new history entry → shareable + back-button
+  } else {
+    // All state cleared: strip the fragment cleanly without firing hashchange.
+    history.replaceState(null, "", location.pathname + location.search);
+  }
+}
+
+function readHash(){
+  const raw = (location.hash||"").replace(/^#/, "");
+  const p = new URLSearchParams(raw);
+  suppressHash = true;                            // restore must not re-write the URL
+  // text query
+  document.getElementById("q").value = p.get("q") || "";
+  // "works today" shortcut
+  document.getElementById("onlyShipped").checked = p.get("onlyShipped") === "1";
+  // pipeline stage (validated against declared lanes; unknown dropped)
+  const st = p.get("stage");
+  activeStage = (st && STAGE_IDS.includes(st)) ? st : null;
+  document.querySelectorAll(".stage").forEach(n=>n.classList.toggle("active", n.dataset.stage===activeStage));
+  // module / status filter sets (validated; unknown ids ignored)
+  activeMods.clear();
+  (p.get("module")||"").split(",").filter(Boolean).forEach(m=>{ if(DATA.modules[m]) activeMods.add(m); });
+  activeStatuses.clear();
+  (p.get("status")||"").split(",").filter(Boolean).forEach(s=>{ if(STATUS_IDS.includes(s)) activeStatuses.add(s); });
+  // reflect filter chips (C3) if they have already been rendered
+  document.querySelectorAll("#modFilter .fchip").forEach(ch=>{
+    if(ch.dataset.mod!=null) ch.setAttribute("aria-pressed", activeMods.has(ch.dataset.mod)?"true":"false");
+  });
+  document.querySelectorAll("#statusFilter .fchip").forEach(ch=>{
+    if(ch.dataset.status!=null) ch.setAttribute("aria-pressed", activeStatuses.has(ch.dataset.status)?"true":"false");
+  });
+  // cross-highlight (C4): hl=<kind>:<id>
+  const hl = p.get("hl");
+  hlState = null;
+  if(hl){ const i = hl.indexOf(":"); if(i>0) hlState = {kind:hl.slice(0,i), id:hl.slice(i+1)}; }
+  if(typeof applyHighlight === "function") applyHighlight();   // honoured once C4 wires it
+  // re-render the filtered view; open modules when a stage is pinned
+  applyFilters();                                 // writeHash() inside is suppressed
+  if(activeStage) document.querySelectorAll("details.mod").forEach(d=>d.open=true);
+  suppressHash = false;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────
-renderMetaDate(); renderHappy(); renderPipeline(); renderLegend();
-renderModules(); renderArtifacts(); renderGlossary();
+renderBuildStamp(); renderHappy(); renderPipeline(); renderLegend();
+renderModules(); renderProcesses(); renderGates();
+renderArtifacts(); renderValidation(); renderRoadmap(); renderGlossary(); renderTasks();
+renderFilters();                          // C3: module + status filter chips
+(function(){ const b=DATA._build||{}; const pf=document.getElementById("print-foot");
+  if(pf) pf.textContent = "Ecosystem 3.0 — карта · "+[b.date,b.sha].filter(Boolean).join(" · ")+
+    " · сгенерировано из спеков (gen-ecosystem-map.cjs)"; })();   // D2: print footer
+
+// Delegated navigation: command chips (data-cmd) and lineage chips (.lchip[data-art])
+// jump to the matching card via the search query. Existing produce-chips keep their own handler.
+document.addEventListener("click", e=>{
+  // 1) chips keep their jump-via-search behaviour (command & artifact chips)
+  const cc = e.target.closest("[data-cmd]");
+  if(cc){ e.preventDefault(); searchFor(cc.dataset.cmd); return; }
+  const ca = e.target.closest(".lchip[data-art],.chip[data-art]");
+  if(ca){ e.preventDefault(); searchFor(ca.dataset.art); return; }
+  if(e.target.closest("a")) return;                 // real links (source / SPEC) navigate
+  // 2) C4: clicking a card / artifact body toggles the cross-highlight
+  const art = e.target.closest(".art");
+  if(art && art.dataset.id){ setHighlight("art", art.dataset.id); return; }
+  const card = e.target.closest(".card");
+  if(card && card.dataset.id){ setHighlight("cmd", card.dataset.id); }
+});
+
+// Keyboard activation for focusable task rows (C6): Enter/Space → jump to command.
+document.addEventListener("keydown", e=>{
+  if(e.key!=="Enter" && e.key!==" ") return;
+  const t = e.target.closest && e.target.closest(".task[data-cmd]");
+  if(t){ e.preventDefault(); searchFor(t.dataset.cmd); }
+});
+
 document.getElementById("q").addEventListener("input", applyFilters);
 document.getElementById("onlyShipped").addEventListener("change", applyFilters);
 document.getElementById("reset").addEventListener("click", reset);
@@ -521,6 +3194,30 @@ document.getElementById("expandAll").addEventListener("click", ()=>{
   const any=[...document.querySelectorAll("details.mod")].some(d=>!d.open);
   document.querySelectorAll("details.mod").forEach(d=>d.open=any);
 });
+document.getElementById("clearHl").addEventListener("click", ()=>{ hlState=null; applyHighlight(); writeHash(); });
+
+// ── C5: keyboard nav — "/" focus search · Esc reset · ←/→ move pipeline stage ──
+document.addEventListener("keydown", e=>{
+  const tag=(e.target.tagName||"").toLowerCase();
+  const typing = tag==="input"||tag==="textarea"||e.target.isContentEditable;
+  if(e.key==="/" && !typing){ e.preventDefault(); document.getElementById("q").focus(); return; }
+  if(e.key==="Escape"){ reset(); if(document.activeElement && document.activeElement.blur) document.activeElement.blur(); return; }
+  if((e.key==="ArrowLeft"||e.key==="ArrowRight") && !typing){
+    if(!STAGE_IDS.length) return;
+    e.preventDefault();
+    let i = STAGE_IDS.indexOf(activeStage);
+    if(i<0) i = (e.key==="ArrowRight") ? 0 : STAGE_IDS.length-1;
+    else    i = (e.key==="ArrowRight") ? (i+1)%STAGE_IDS.length : (i-1+STAGE_IDS.length)%STAGE_IDS.length;
+    toggleStage(STAGE_IDS[i]);
+  }
+});
+
+// C1: restore state from the URL on load + react to back/forward & shared links.
+// suppressHash is false here, so a genuine navigation runs readHash(); the echo of
+// our own programmatic writeHash() is absorbed because readHash() re-applies the
+// identical state and the applyFilters() it calls is suppressed from re-writing.
+window.addEventListener("hashchange", readHash);
+readHash();
 </script>
 </body>
 </html>
