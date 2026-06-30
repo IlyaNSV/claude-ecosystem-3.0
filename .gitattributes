@@ -1,0 +1,9 @@
+# Line-ending policy.
+# Scripts launched through the scriptPath-Workflow permission validator
+# (orchestrator/processes/*.mjs) MUST be LF — a CR byte (U+000D) makes the
+# Windows validator reject the whole file, blocking the launch (FB-LR-27,
+# DEC-DEV-0114). Pin the script families to LF so the source never ships CRLF.
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.js  text eol=lf
+*.sh  text eol=lf

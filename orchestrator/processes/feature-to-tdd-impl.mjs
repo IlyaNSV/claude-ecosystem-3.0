@@ -55,6 +55,7 @@ const FEATURE = A.feature || ''                                  // cc-sdd featu
 const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const CLASSIFIER = A.classifier || '.claude/orchestrator/lib/gate-risk-classifier.cjs'
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs'   // DEC-DEV-0092: shared readiness probe (pre-flight)
+const CAP_PROBE = A.capabilityProbe || '.claude/orchestrator/lib/capability-probe.cjs'  // DEC-DEV-0117: §6 detect-leg — enumerate the feature's declared external_capabilities
 const REMEDIATION_GUARD = A.remediationGuard || '.claude/orchestrator/lib/remediation-guard.cjs'  // DEC-DEV-0096: block-discretion backbone (T5)
 const KIRO_TPL = A.kiroTemplates || '.claude/skills/kiro-impl/templates'
 const REGISTRY = A.registry || ''                                // optional load-bearing.<FM>.yaml/json
@@ -320,12 +321,65 @@ const surfaceConcern = (taskId, concern) =>
     { phase: 'Implement', label: `concern:${taskId}` },
   )
 
+// DEC-DEV-0117 (§6 detect-leg, fix #4): proactively surface the capability-items the
+// PRE-FLIGHT PROBE detected from the feature's external_capabilities manifest — NOT
+// waiting for an implementer CONCERN (the S6-silent failure mode). Tracking/disclosure
+// format. A BLOCK (no dev stand-in) is DISCLOSED + flagged for the OD7 escalate→await
+// leg, whose live execution is the substrate-gated S7 remainder — we never auto-provision
+// or mock here. Update-in-place (no duplicate §6 block per feature) for idempotent re-runs.
+const surfaceCapability = (capItems) =>
+  agent(
+    `Pre-flight §6 capability detection found external capabilities this feature DECLARES (its external_capabilities manifest) but the environment does not satisfy.\n` +
+    `Record them as ONE tracking section in the canonical pending-actions file. Scan for an existing "§6 capability — ${FEATURE}" block first and UPDATE IT IN PLACE (do not duplicate). For each item record: capability, type (secret/tool), provider (or "TBD → Product / OD8"), provisioning tier, route (Integrator for access; Product for provider CHOICE), disposition, and rationale.\n` +
+    `Items: ${JSON.stringify(capItems)}\n` +
+    `These are TRACKING / DISCLOSURE, not requests to provision now (real access is a future deliverable per its tier). For a BLOCK disposition (no dev stand-in) note "would block a real run — escalate→await (OD7) when a task needs real access"; do NOT provision or mock anything here. ` +
+    PA_CANON +
+    `Do NOT block, do NOT commit code. Return a one-line confirmation.`,
+    { phase: 'Plan', label: 'capability-surface' },
+  )
+
 // ---- Phase 2: implement — sequential per-task FSM --------------------------
 phase('Implement')
 const implemented = []
 const blockedTasks = []
 const concerns = []   // FB-013 (DEC-DEV-0081 fix #1): non-blocking implementer CONCERNS, propagated not dropped
 const conflicts = []  // DEC-DEV-0096 (T5, FB-LR-07): cross-spec/design contradictions escalated at impl time — surfaced, never self-resolved
+const capabilityItems = []  // DEC-DEV-0117 (§6 detect-leg): proactively-detected external-capability gaps, surfaced pre-flight (not awaiting an implementer CONCERN)
+
+// ---- pre-flight §6 capability detect-leg (DEC-DEV-0117; closes #3/#4 of DEC-DEV-0081) ----
+// S6 root cause: the §6 channel was a BLOCK-handler, not a gap-DETECTOR — a spec-mandated
+// Mock made a deferred provider non-blocking, so the channel stayed silent and a GO shipped
+// a real provider seam (DeepL/ElevenLabs/Whisper) hidden behind a stand-in. This DETECT-leg
+// makes the orchestrator itself enumerate the feature's DECLARED external_capabilities (FM
+// manifest) and disposition the absent ones DETERMINISTICALLY (capability-probe.cjs: block vs
+// deferred follows from tier + dev_stand_in, not a heuristic — defusing the dead-/noisy-rule
+// risk), BEFORE any task runs — no longer waiting for the implementer to notice. CODE, not LLM
+// initiative: the agent only relays the lib's JSON (like the env probe). The ESCALATE→AWAIT
+// execution on a BLOCK (OD7 async request→await→resume) is the substrate-gated S7 remainder —
+// here a BLOCK is DISCLOSED + tracked, never auto-provisioned/mocked.
+const CAP_DETECT_SCHEMA = {
+  type: 'object',
+  properties: {
+    summary: { type: 'object' },
+    capabilities: { type: 'array', items: { type: 'object' } },
+  },
+}
+{
+  const cap = await agent(
+    `Run the §6 capability detect-leg probe: \`node ${CAP_PROBE} --feature ${FEATURE} --root .\` via Bash and relay its JSON verbatim ` +
+    `(capabilities[] with disposition/routes/surface + summary). Do NOT provision or mock anything — just relay the lib output.`,
+    { schema: CAP_DETECT_SCHEMA, phase: 'Plan', label: 'capability-detect' },
+  )
+  const surfaced = ((cap && cap.capabilities) || []).filter((c) => c && c.surface)
+  for (const c of surfaced) capabilityItems.push(c)
+  if (surfaced.length) {
+    const sum = (cap && cap.summary) || {}
+    log(`§6 detect-leg: ${surfaced.length} external-capability item(s) surfaced — ${sum.blocking || 0} BLOCK / ${sum.deferred || 0} deferred / ${sum.provider_choices || 0} provider-choice`)
+    await surfaceCapability(surfaced)
+  } else {
+    log('§6 detect-leg: no surfaced external capability (manifest empty or all satisfied)')
+  }
+}
 
 for (const task of tasks) {
   log(`task ${task.id} [${task.tier}${task.tier === 'LOW' ? `:${task.profile || '?'}` : ''}] — implementing`)
@@ -463,6 +517,7 @@ if (implemented.length) {
       readiness: fwdReadiness,                         // DEC-DEV-0092: pre-flight hint (P6 takes worst-of with its own probe)
       validationCommands: (plan && plan.validation_commands) || {},
       concerns,            // FB-013: forward deferred-capability flags so P6 DISCLOSES them at GO
+      capabilities: capabilityItems,  // DEC-DEV-0117 (§6 detect-leg): forward proactively-detected external-capability gaps so P6 DISCLOSES them at GO too
       degraded,            // FB-010: blocked tasks → P6 advisory mode
       maxRemediationRounds: 3,
     })
@@ -484,11 +539,15 @@ if (implemented.length) {
     const concernNote = concerns.length
       ? ` DEFERRED-CAPABILITY CONCERNS surfaced during impl (FB-013): ${concerns.map((c) => `${c.task}: ${c.concern}`).join(' | ')}. Factor these into the verdict and DISCLOSE them in findings — a GO over a deferred real seam (mock-only provider / unwired skeleton) is GO-with-caveats, not a clean production GO.`
       : ''
+    // DEC-DEV-0117 (§6 detect-leg): pre-flight DETECTED external-capability gaps must also be DISCLOSED at GO.
+    const capabilityNote = capabilityItems.length
+      ? ` §6 DETECTED EXTERNAL-CAPABILITY GAPS (DEC-DEV-0117): ${capabilityItems.map((c) => `${c.capability} [${c.disposition}${c.provider_choice_pending ? ', provider TBD' : ''}]`).join(' | ')}. A GO over a BLOCK or a deferred real provider seam is GO-with-caveats — DISCLOSE these, do not read as a clean production GO.`
+      : ''
     go = await agent(
       `Invoke kiro-validate-impl ${FEATURE} as the feature-level GO/NO-GO gate (cross-task consistency, full suite, spec coverage). ` +
       (degraded
         ? `ADVISORY MODE — ${blockedTasks.length} task(s) blocked (${blockedTasks.join(', ')}); the feature is NOT complete. Do NOT remediate. Run the cross-task / integration checks anyway and SURFACE any seams (orphan wiring, unhandled events, missing call-sites) as findings. Return MANUAL_VERIFY_REQUIRED + findings (FB-010: a blocked task must not hide a cross-task gap).`
-        : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote,
+        : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote + capabilityNote,
       { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
     )
     // Visibility (DEC-DEV-0091): a degraded gate must never read as a clean GO — surface it in findings.
@@ -510,6 +569,7 @@ return {
   implemented: implemented.map((t) => t.id),
   blocked: blockedTasks,
   concerns,                       // FB-013 (DEC-DEV-0081 fix #1): deferred-capability flags, propagated not dropped
+  capabilities: capabilityItems,  // DEC-DEV-0117 (§6 detect-leg): proactively-detected external-capability gaps (disposition/routes), surfaced pre-flight + disclosed at GO
   conflicts: conflicts.concat((go && go.conflicts) || []),   // DEC-DEV-0096 (T5, FB-LR-07) impl-time escalations ⊕ DEC-DEV-0104 (FB-LR-19) the P6 gate's escalated conflicts. impl-time entries {task, conflict_class, detail}; gate entries {validator, ref, kind, conflict_class, masked}. (Was impl-time only → e.g. Run C glossary returned conflicts:[] despite the gate escalating 2 cross-spec conflicts.)
   findings: (go && go.findings) || [],               // DEC-DEV-0104 (FB-LR-19): surface the gate's findings in the envelope (was captured in `go` but dropped at return → a NO-GO carried no machine-readable reason)
   go_gate: go && go.result,
