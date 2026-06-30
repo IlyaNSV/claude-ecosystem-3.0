@@ -161,7 +161,7 @@
 | **T1** (lying-substrate × verdict) | G-2 | ⛔ **OWED (not exercised)** | Same neutralization — suite GREEN, zero substrate failures to classify; the lying-substrate→MANUAL_VERIFY path was not triggered. |
 | **V-2 / 0103** (persona resolution) | R-1 | ⛔ **OWED (not exercised)** | Personas never spawned: `/product:complete FM-001` stopped at Wave-1 on a perfect oracle score (`met:true, gaps:[]`); persona spawn is **gap-gated**, and `advisor-pending.yaml` is a **routing table**, not a spawn queue. **No** `Agent type not found` and **no** silent general-purpose fallback occurred (the feared FB-LR-17 regression did *not* recur) — but resolution was never put to the test. |
 | **FB-LR-19 / 0104**, **T5-transient / 0096** | (G-3) | ⏸ **DEFERRED** | Fork C deferred the P5→P6 run; both stay verify-green + code-confirmed, awaiting a real un-done P5 feature. |
-| **had_trial** (§4) | G-2 | ⏳ **OPEN (product)** | The idempotency contradiction was **not touched** by the run (the edited trial-seam line was the adjacent `account.confirmed` arity, guard-classified `unilateral:false`); stays OPEN for the owner Path A/B decision. |
+| **had_trial** (§4) | G-2 | ✅ **RESOLVED — Path A (DEC-DEV-0116)** | Owner ratified **Path A** (billing FM-005 = sole `had_trial` writer; auth FM-001 emits idempotent `account.confirmed` only). Spec already Path-A-consistent (IC-027 v2 §usage); pilot decision DEC-PLAN-038. Conflict closed. |
 
 ### Ledger (new findings — continue from FB-LR-22)
 
@@ -177,3 +177,59 @@
 - **T5 escalate-don't-mask (0096) fires live on real cross-spec conflicts** — second independent confirmation after Run-C glossary; the run-B unilateral-resolution mask did not recur.
 - **No persona→general-purpose fallback** — R-1 confirms the FB-LR-17 safety-rail: the only `general-purpose` spawn was the by-design `/product:validate` runner; persona resolution fails loud (0 `Agent type not found`), never silently downgrades.
 - **Single-writer / boundary isolation held under parallel worktrees** — despite FB-LR-23, main code (`08a946c` on `pre-cc-sdd-pilot`) was never mutated by the worktree runs; an out-of-worktree Edit was caught and reverted.
+
+---
+
+## N+2 OWED-batch live-run (Run 1/2/3) — DEC-DEV-0114 — 2026-06-29
+
+> The owner-driven live-run of the items Fork C (DEC-DEV-0111) left OWED/DEFERRED, per reviewer-rubric
+> [ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md](ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6. Graded
+> post-hoc by the layered evidence model ([[feedback_audit_evidence_layers]]: narrative + authoritative
+> `.output` envelopes + pilot git ground-truth) + executor/reviewer separation. Pilot sessions: **Run 1**
+> `ff4325b9` (`/product:complete FM-001`+`FM-006`, V-2 vehicle); **Run 2** `88615a07` (`validate-feature-impl
+> --feature billing`, main checkout); **Run 3** `45065f1c` (`feature-to-tdd-impl --feature glossary`, worktree
+> `run/g3-glossary`). **Run 2 ∥ Run 3 ran concurrently in two worktrees sharing one `.git`** — an unplanned
+> live stress-test of the 0112/0113 Ф1 fixes. Next-free DEC-DEV after this = **0115**.
+
+### Verdict per ref (the sweep)
+
+| ref | run | verdict | one-line |
+|---|---|---|---|
+| **FB-LR-16 / 0102** (non-ready disclosure) | Run 3 | ✅ **LIVE-VALIDATED** | 3 fix-commits under `readiness=DEGRADED`, each marked `[readiness=DEGRADED: re-verify on a READY re-run]`; disclosure finding present; `committed_under_non_ready≈3`; executor independently re-verified (build+test exit 0). Closes the Fork-C OWED (there the substrate was raised → path vacated; here DEGRADED-readiness exercised the same disclosure leg). |
+| **FB-LR-19 / 0104** (P5 envelope surfaces nested-P6) | Run 3 | ✅ **LIVE-VALIDATED** | P5 `result.conflicts:[3]` (design-alignment no-call-site + design-contradiction + integration-boundary orphan) + `result.findings:[7]` merging impl-time ⊕ gate. Closes the Fork-C DEFERRED (G-3 finally run). |
+| **FB-LR-23 / 0113** (worktree PA-guard) | Run 2 ∥ Run 3 | ✅ **LIVE-VALIDATED → 0111 OPEN follow-up CLOSED** | Two concurrent worktrees minted PA-031/032/033 (billing) vs PA-034/035/036/037 (glossary) into the ONE canonical main-checkout `pending-actions.md` — distinct, monotonic, zero id-collision. Exactly the G-1 double-mint bug, now prevented under live concurrency. |
+| **FB-LR-24 / 0112** (probe DEGRADED-not-false-down) | Run 2, Run 3 | ✅ **LIVE-VALIDATED → QUEUED item CLOSED** | Both runs: probe = DEGRADED only because pg_isready/redis-cli absent (FB-LR-24); the gate concluded substrate-UP by corroboration (docker ps healthy + db:status + green suite) → never a false NO-GO. Run 2's envelope quotes it verbatim. |
+| **FB-LR-21 / 0106** (RA-10 orphan) | Run 2, Run 3 | ✅ **LIVE-VALIDATED (2nd/3rd)** | Run 2: `IPaymentProvider.listInvoices` (RL-002 forward-investment) surfaced as orphan-export finding, not `clean:true`. Run 3: `buildSnapshot/readSnapshot` orphan surfaced (escalated cross-spec). |
+| **FB-LR-15 / 0101** (negative) | Run 2, Run 3 | ✅ **LIVE-VALIDATED (neg)** | `validators_incomplete:[]` + all 3 RA lenses ran on both. Positive (a validator dies) not-exercised. |
+| **T5 / 0096** (escalate-don't-mask) | Run 2, Run 3 | ✅ **LIVE-VALIDATED (2nd/3rd)** | Run 2: 3 dunning-email cross-spec conflicts ESCALATED (`masked:false`) → MANUAL_VERIFY. Run 3: 3 glossary escalations (PA-035/036/037), none self-resolved. |
+| **V-2 / 0103** (persona resolution) | Run 1, **Re-run `a2aaf44a`** | ✅ **LIVE-VALIDATED (re-prep) — DEC-DEV-0115** | Run 1 not-exercised (Wave-1 `met:true`, no spawn — FB-LR-26 status-downgrade). Re-prepped on isolated worktree `run/v2-personas` with a real B4 gap (active SC-004, no VC → oracle `score=0.8, met=false`). SURFACE spawned all 3 canonical personas in parallel — `subagent_type` = `qa-advisor`/`architect-advisor`/`ux-advisor`, all launched `is_error=false`, **zero «Agent type not found», zero general-purpose fallback** (subagent JSONL confirms each ran under its persona prompt with its lens-set); all 3 returned detailed gaps-only findings; convergent root (SC-004 reverses LC-001/NOTE-002 RL-002 defer) → single collapsed PA-034 escalation, **0 auto-fixes** (verify-before-act blocked fabricating a VC), artifacts untouched. **Closes N+2 block A.** |
+| **T5-transient / 0096**, **T1 false-down** | Run 2/3 | ⚪ **not-exercised** | No transient occurred; both executors had substrate UP (rational uncoached choice). T1's DEGRADED→MANUAL_VERIFY pairing DID hold in Run 3; only the lying-substrate false-down leg stays owed. |
+| **had_trial** (§4) | — | ✅ **RESOLVED — Path A (DEC-DEV-0116)** | Owner ratified Path A (billing sole writer); pilot decision DEC-PLAN-038. The escalation mechanism (validated by analogy) is now moot — conflict closed at source. |
+
+### Ledger (new finding — continue from FB-LR-26)
+
+| id | sev | run | finding | corrected root-cause | route / status |
+|---|---|---|---|---|---|
+| FB-LR-27 | 🟡 | Run 2, Run 3 | **CRLF line-endings in the shipped orchestrator `.mjs` break the `scriptPath`-Workflow permission validator on Windows.** Both orchestrator runs had to LF-normalize the process script (513/517 CR → 0) before launch, then `git checkout --` to restore the tree. | The ecosystem repo's OWN `.mjs` are CRLF (`validate-feature-impl.mjs` CR=513/LF=513) — delivered to the pilot as-is; the harness permission-validator rejects CR (U+000D) on Windows. No `.gitattributes` pinned script eol. | **FIXED (source) — DEC-DEV-0114.** Root `.gitattributes` pins `*.mjs/*.cjs/*.js/*.sh text eol=lf` so a fresh checkout/clone of the source produces LF working-tree files (overriding `core.autocrlf=true`), and `/ecosystem:update` then copies LF. The committed blobs were ALREADY LF under autocrlf; the CRLF lived only in the checked-out working tree that delivery copies (so a byte-renormalize is a no-op — the attribute is the fix). **Remaining (QUEUED):** deliver a `.gitattributes` into the pilot's `.claude/` so the pilot's own autocrlf does not re-convert the installed `.mjs`, + a one-time LF-normalize of the already-committed pilot copies (the source fix is not retroactive on the pilot). |
+
+| FB-LR-28 | 🔵 | Re-run `a2aaf44a` | **completeness-loop SURFACE brief is path-inconsistent in a worktree context** — qa-advisor got the worktree-correct path; architect & ux got non-worktree (main-checkout) paths. SC-004 (worktree-only) → not-found → both personas self-healed via Glob; other shared files silently read from the main checkout (benign — only FM-001's `scenarios` list differed, immaterial to findings). | Brief path construction doesn't anchor to the run's resolved root/cwd; mixes worktree-absolute and main-checkout-absolute paths across the 3 briefs. | **OPEN (backlog, low).** Source-side: SURFACE must build persona file paths relative to the feature's resolved root (or pass cwd). Latent risk: a materially-edited+present file passed at the main-checkout path → silent stale read (no not-found to trigger heal). Cost here = 2 personas burned a Glob+re-read. |
+| FB-LR-29 | 🔵 | Re-run `a2aaf44a` | **completeness-loop ESCALATE writes worktree-local `pending-actions.md` without the 0113 PA_CANON resolution.** Wrote PA-034 to the worktree copy (uncommitted), not the canonical main-checkout ledger. | The 0113 PA_CANON guard landed only in orchestrator P4/P5/P6; the product completeness-loop ESCALATE leg is a separate PA-writer it never covered. | **OPEN (backlog, low / open-question).** Benign in isolation; latent PA-id divergence if run concurrently with an orchestrator run (which writes canonical). Needs a decision: should product-gate PAs share the canonical ledger, or stay scenario/worktree-local by design? |
+
+**Backlog dispositions (DEC-DEV-0116, Ф4 owner-forks):** **FB-LR-25** (envelope observability — surface undelivered/deferred queues) → **WONTFIX / backlog** — superseded by FB-LR-19/0104 (P5 already folds `conflicts`+`findings` into the envelope); marginal value, owner decided no PR. **FB-LR-28/29** (this V-2 run) remain LOW backlog (no PR scheduled).
+
+### Whole-session read — V-2 re-run `a2aaf44a` (holistic, not just mechanism-check)
+
+> Per owner directive (2026-06-29, [[feedback_session_analysis_holistic]]): grade the session as a whole — ~85% deterministic-as-designed, ~15% emergent/non-deterministic (LLM) split into emergent-good / not-quite / emergent-bad.
+
+- **As-designed (~85%, clean):** oracle SCORE/RE-SCORE + plateau-stop; canonical persona resolution (the headline); verify-before-act (no fabricated VC); honest un-met stop (rail 5); artifacts untouched + PA uncommitted (FB-LR-23).
+- **Emergent-GOOD (the better part of the 15%):** the loop did NOT spawn only `qa-advisor` (B4 is oracle-tagged D4/qa-only) — it READ SC-004's open-questions and reasoned the gap spans 3 zones → spawned architect + ux too. Richer than the mechanical zone→persona map dictates. Also: parent did its own ground-truth homework (LC-001/MK-001) in parallel and pre-converged on the scope-reversal; PA-034 collapsed 7 decisions into one entry (judgment, precedent PA-029). All non-deterministic (another run might spawn only qa / emit 7 PAs) but all correct-or-better.
+- **NOT-QUITE (mild, the rest of the 15%):** FB-LR-28 path-briefing inconsistency (self-healed, benign, wasted a little tool budget); FB-LR-29 PA written worktree-local without PA_CANON (latent).
+- **Emergent-BAD: none.** The single tempting wrong move (fabricate a VC to clear B4) was explicitly refused by verify-before-act. No hallucination, no silent rounding, no scope-creep.
+- **Net:** PASS with margin. The 15% non-determinism here resolved toward *over-delivery* (3-zone consult) rather than drift — the most favorable outcome for a completeness-loop.
+
+### Positive confirmations (Run 1/2/3 — live-validated, no action)
+- **0112 + 0113 (my own Ф1) live-validated as a side effect** — the strongest confirmation of both: concurrent worktrees, no PA-id collision; DEGRADED-not-false-down across 3 gate runs.
+- **Bounded completeness-loop (Run 1) — Vision Epic B intact:** FM-001 Wave-1 success without rounding the oracle `met:true` to "done" (explicitly closed delegated B5/B6/B8); FM-006 surfaced a real V-05 (LC-007 two-entry lifecycle vs single-entry schema) and ESCALATED (rail 4), did not auto-fix.
+- **ITP T2 fired in the pilot (Run 2)** — `AskUserQuestion` on the work-6-vs-pilot tree decision (B≥3 × R=dear); merge-safety (merge-base) analysis before merging work-6.
+- **remediation-guard content-vs-conflict split held** — billing auto-fixed 5 findings but escalated 3 cross-spec; glossary 3 fixes + 3 escalations; FB-LR-07 boundary respected.
+- **Shifted-escalation-with-ratification (Run 2)** — the req-10.4 auto-fix (`bfef870`) effectively realized route-2 of the Stripe `whx`/PA-030 conflict; executor surfaced it for owner ratify-or-revert, did NOT close it unilaterally.
