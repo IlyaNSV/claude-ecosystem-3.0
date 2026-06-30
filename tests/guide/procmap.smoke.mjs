@@ -69,13 +69,32 @@ try {
   page.on('console', (m) => { if (m.type() === 'error') jsErrors.push('console.error ' + m.text()); });
 
   const url = 'file:///' + HTML.replace(/\\/g, '/');
+  // ELK lays out ASYNchronously (elkjs is promise-based) → wait on the page's __layoutRunning
+  // flag instead of guessing a sleep duration.
+  const settle = async () => {
+    await page.waitForFunction(() => window.__layoutRunning === false, { timeout: 25000 }).catch(() => {});
+    await new Promise((r) => setTimeout(r, 500));
+  };
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 45000 });
   await page.waitForFunction(() => !!window.__cy && !!window.__procmap, { timeout: 15000 });
-  await new Promise((r) => setTimeout(r, 1800)); // let the initial fcose layout settle
+  await settle();
 
-  // ── layout health (measured FIRST, on the pristine default view so no prior mutation
-  //    disturbs positions): sibling MODULE lanes should not grossly overlap — the dagre→fcose
-  //    fix (dagre laid compounds out as global bounding boxes that stacked on each other). ──
+  // ── timeline order (the ELK win): default-view processes flow left→right by pipeline order.
+  //    elk.direction RIGHT → x increases along the flow; assert the main chain is monotonic. ──
+  const tl = await page.evaluate(() => {
+    const cy = window.__cy;
+    const x = (id) => { const n = cy.getElementById(id); return n.nonempty() ? n.position('x') : NaN; };
+    return {
+      discovery: x('proc:P1A'), planning: x('proc:P1B'), feature: x('proc:P2A'),
+      orch3: x('proc:P3o'), orch4: x('proc:P4o'), orch5: x('proc:P5o'), orch6: x('proc:P6o'),
+    };
+  });
+  const tlMono = tl.discovery < tl.planning && tl.planning < tl.feature && tl.feature < tl.orch3
+    && tl.orch3 < tl.orch4 && tl.orch4 < tl.orch5 && tl.orch5 < tl.orch6;
+  ok(tlMono, 'processes in pipeline-timeline order (Discovery<Planning<Feature<P3o<P4o<P5o<P6o)');
+
+  // ── layout health (measured on the pristine default view, before any expand mutates positions):
+  //    sibling MODULE lanes should not grossly overlap. ──
   const overlap = await page.evaluate(() => {
     const cy = window.__cy;
     const lanes = cy.nodes('[kind="lane"]').filter((n) => n.id() !== 'lane:artifacts' && n.visible());
@@ -100,6 +119,25 @@ try {
   console.log(`  lane-overlap: max ${(overlap.maxRatio * 100).toFixed(1)}% (${overlap.worst || 'n/a'}) across ${overlap.laneCount} module lanes`);
   ok(overlap.maxRatio < 0.6, `sibling lanes not grossly overlapping (max ${(overlap.maxRatio * 100).toFixed(1)}% < 60%)`);
 
+  // ── traversal order (the other ELK win): expanding a process lays its steps in next[] order.
+  //    Expand P1A and assert (almost) all its internal sequence edges point forward (x increasing). ──
+  await page.evaluate(() => {
+    const cy = window.__cy; const api = window.__procmap.getApi();
+    if (api) { try { api.expand(cy.getElementById('proc:P1A')); } catch (e) { /* ignore */ } }
+  });
+  await settle();
+  const trav = await page.evaluate(() => {
+    const cy = window.__cy;
+    const seq = cy.edges('[type="sequence"]').filter((e) =>
+      e.source().parent().id() === 'proc:P1A' && e.target().parent().id() === 'proc:P1A');
+    let fwd = 0;
+    seq.forEach((e) => { if (e.source().position('x') <= e.target().position('x')) fwd++; });
+    return { total: seq.length, forward: fwd };
+  });
+  const travRatio = trav.total ? trav.forward / trav.total : 1;
+  console.log(`  P1A traversal: ${trav.forward}/${trav.total} sequence edges flow forward (x↑)`);
+  ok(travRatio >= 0.8, `expanded process steps flow in traversal order (${trav.forward}/${trav.total} forward ≥80%)`);
+
   // ── structural invariants: expand everything, count vs the data island ──
   const struct = await page.evaluate(() => {
     const cy = window.__cy;
@@ -122,6 +160,8 @@ try {
   ok(struct.nanPos === 0, `no NaN/Infinity node positions (got ${struct.nanPos})`);
   ok(struct.bbW > 0 && struct.bbH > 0, `graph has non-zero extents (${struct.bbW}×${struct.bbH})`);
   ok(struct.dangling === 0, `no dangling edges (got ${struct.dangling})`);
+
+  await settle(); // let the expandAll layout finish before mutating with grouping
 
   // ── ad-hoc grouping feature round-trip ──
   const grp = await page.evaluate(() => {

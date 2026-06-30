@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- GENERATED — DO NOT EDIT. Source: docs/guide/ecosystem-processes.template.html + docs/guide/process-graph.overlay.json
      Regenerate: node dev/meta-improvement/scripts/gen-process-map.cjs
-     Vendored libs in docs/guide/vendor/ (cytoscape, cytoscape-expand-collapse, fcose: layout-base + cose-base + cytoscape-fcose) — fully offline. -->
+     Vendored libs in docs/guide/vendor/ (cytoscape, cytoscape-expand-collapse, ELK: elk.bundled + cytoscape-elk) — fully offline. -->
 <html lang="ru">
 <head>
 <meta charset="utf-8">
@@ -168,18 +168,17 @@
 
 <script src="vendor/cytoscape.min.js"></script>
 <script src="vendor/cytoscape-expand-collapse.js"></script>
-<script src="vendor/layout-base.js"></script>
-<script src="vendor/cose-base.js"></script>
-<script src="vendor/cytoscape-fcose.js"></script>
+<script src="vendor/elk.bundled.js"></script>
+<script src="vendor/cytoscape-elk.js"></script>
 <script>
 "use strict";
 (function(){
   var DATA = JSON.parse(document.getElementById('proc-data').textContent);
 
-  // fcose is a layout extension → needs explicit registration. expand-collapse auto-registers
-  // its UMD on load (re-registering it logs a harmless "already exists" warning), so register
-  // ONLY fcose here. (The load-order guarantees expand-collapse self-registered before this runs.)
-  if (window.cytoscapeFcose) { try { cytoscape.use(window.cytoscapeFcose); } catch(e){} }
+  // cytoscape-elk is a layout extension → needs explicit registration (it closes over the global
+  // ELK from elk.bundled.js). expand-collapse auto-registers its UMD on load (re-registering warns),
+  // so register ONLY elk here. (Load order guarantees expand-collapse self-registered before this.)
+  if (window.cytoscapeElk) { try { cytoscape.use(window.cytoscapeElk); } catch(e){} }
 
   var laneColor = {};
   DATA.lanes.forEach(function(l){ laneColor[l.id] = l.color; });
@@ -188,19 +187,33 @@
     return null;
   }
 
-  // fcose — compound-aware force layout. dagre ignored parent nesting (lanes overlapped,
-  // children spilled, artifacts pool sparse); fcose packs compounds tightly. FULL (randomize)
-  // for initial / explicit relayout / grouping; INC (incremental, from current positions) for
-  // the expand-collapse drill so opening a process refines rather than reshuffling the whole map.
-  var FCOSE_BASE = {
-    name:'fcose', quality:'proof', animate:false, fit:false,
-    packComponents:true, nodeDimensionsIncludeLabels:true, uniformNodeDimensions:false,
-    nodeSeparation:82, idealEdgeLength:95, nodeRepulsion:6500,
-    gravity:0.25, gravityCompound:1.3, gravityRangeCompound:1.6, nestingFactor:0.12,
-    numIter:2500, tile:true, tilingPaddingVertical:14, tilingPaddingHorizontal:14
+  // ELK layered — directional + compound-aware + DETERMINISTIC. Lays nodes out along the flow
+  // (elk.direction RIGHT) by their edges AND input/model order, so by default the map reads in
+  // PIPELINE-TIMELINE order (ECO-setup → Discovery → Planning → Feature → Design → Orchestrator
+  // P3→P6 → …) and EXPANDING a process lays its steps in TRAVERSAL (next[]) order — not "wherever"
+  // like a force layout. dagre couldn't nest compounds; fcose had direction/order = none (random).
+  // ELK is async (elkjs is promise-based) → callers fit on `layoutstop`, never synchronously.
+  var ELK_LAYOUT = {
+    name:'elk', fit:false, nodeDimensionsIncludeLabels:true,
+    elk: {
+      'algorithm':'layered',
+      'elk.direction':'RIGHT',
+      'elk.hierarchyHandling':'INCLUDE_CHILDREN',
+      'elk.layered.considerModelOrder.strategy':'NODES_AND_EDGES',
+      'elk.layered.crossingMinimization.semiInteractive':true,
+      'elk.layered.nodePlacement.strategy':'NETWORK_SIMPLEX',
+      'elk.layered.spacing.nodeNodeBetweenLayers':62,
+      'elk.spacing.nodeNode':30,
+      'elk.spacing.edgeNode':20,
+      'elk.padding':'[top=30,left=16,bottom=16,right=16]'
+    }
   };
-  var LAYOUT_FULL = Object.assign({}, FCOSE_BASE, { randomize:true });
-  var LAYOUT_INC  = Object.assign({}, FCOSE_BASE, { randomize:false, quality:'default', numIter:1200 });
+  // single deterministic engine → one config for initial / relayout / drill / grouping.
+  function runLayout(after){
+    var l = cy.layout(ELK_LAYOUT);
+    if (after) l.one('layoutstop', after);
+    l.run();
+  }
 
   var cy = cytoscape({
     container: document.getElementById('cy'),
@@ -284,14 +297,14 @@
       { selector: 'edge.off', style: { 'display':'none' } },
       { selector: 'edge.ehl', style: { 'width':3,'opacity':1,'z-index':99 } }
     ],
-    layout: LAYOUT_FULL
+    layout: { name:'preset' }   // placeholder; defaultView() runs the real ELK async + fits on layoutstop
   });
 
   // ── expand/collapse ──
   var api = null;
   try {
     cy.expandCollapse({
-      layoutBy: LAYOUT_INC, fisheye:false, animate:false, undoable:false,
+      layoutBy: ELK_LAYOUT, fisheye:false, animate:false, undoable:false,
       cueEnabled:true, expandCollapseCueSize:13, expandCollapseCueLineSize:9,
       expandCueImage:undefined, collapseCueImage:undefined
     });
@@ -300,14 +313,13 @@
 
   // default layered view: collapse everything, then open the 5 module lanes (processes stay collapsed).
   function defaultView(){
-    if (!api){ cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); return; }
+    if (!api){ runLayout(function(){ cy.fit(null,40); }); return; }
     try {
       api.collapseAll();
       var lanes = cy.nodes('[kind="lane"]').filter(function(n){ return n.id() !== 'lane:artifacts'; });
       api.expand(lanes);
     } catch(e){ console.warn(e); }
-    cy.layout(LAYOUT_FULL).run();
-    cy.fit(null, 45);
+    runLayout(function(){ cy.fit(null, 45); });
   }
 
   // ── edge layers ──
@@ -335,17 +347,16 @@
   });
 
   // ── toolbar ──
-  document.getElementById('expandAll').addEventListener('click', function(){ if(api){ try{api.expandAll();}catch(e){} } cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); });
-  document.getElementById('collapseAll').addEventListener('click', function(){ if(api){ try{api.collapseAll();}catch(e){} } cy.layout(LAYOUT_FULL).run(); cy.fit(null,40); });
-  document.getElementById('relayout').addEventListener('click', function(){ cy.layout(LAYOUT_FULL).run(); });
+  document.getElementById('expandAll').addEventListener('click', function(){ if(api){ try{api.expandAll();}catch(e){} } runLayout(function(){ cy.fit(null,40); }); });
+  document.getElementById('collapseAll').addEventListener('click', function(){ if(api){ try{api.collapseAll();}catch(e){} } runLayout(function(){ cy.fit(null,40); }); });
+  document.getElementById('relayout').addEventListener('click', function(){ runLayout(function(){ cy.fit(null,40); }); });
   document.getElementById('fitBtn').addEventListener('click', function(){ cy.fit(null,40); });
   document.getElementById('resetBtn').addEventListener('click', function(){ clearSearch(); ungroupAll(); defaultView(); });
   document.getElementById('zin').addEventListener('click', function(){ cy.zoom({ level: cy.zoom()*1.3, renderedPosition:{ x: cy.width()/2, y: cy.height()/2 } }); });
   document.getElementById('zout').addEventListener('click', function(){ cy.zoom({ level: cy.zoom()/1.3, renderedPosition:{ x: cy.width()/2, y: cy.height()/2 } }); });
 
   // ── ad-hoc grouping («группировка в моменте»: session-only, НЕ из SSOT, НЕ persisted) ──
-  // Single place that runs the active layout — Task-2 fcose swap touches only LAYOUT/this fn.
-  function runLayout(){ cy.layout(LAYOUT_FULL).run(); }
+  // re-layout via the shared runLayout() (ELK, defined above) so a new group lays out in order.
   var _toastT = null;
   function flash(msg){
     var t = document.getElementById('toast'); if (!t) return;
@@ -503,6 +514,11 @@
   });
 
   // ── headless test hook (безвреден в проде; используется смоуком tests/guide/procmap.smoke.mjs) ──
+  // __layoutRunning lets the headless smoke await async ELK deterministically (waitForFunction)
+  // instead of guessing a sleep duration.
+  window.__layoutRunning = false;
+  cy.on('layoutstart', function(){ window.__layoutRunning = true; });
+  cy.on('layoutstop', function(){ window.__layoutRunning = false; });
   window.__cy = cy;
   window.__procmap = { group: groupSelected, ungroup: ungroupTargets, ungroupAll: ungroupAll, getApi: function(){ return api; } };
 
