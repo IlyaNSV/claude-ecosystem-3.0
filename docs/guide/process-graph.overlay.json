@@ -1,0 +1,312 @@
+{
+  "_doc": {
+    "what": "Editorial SSOT for the interactive BPMN-style process map (docs/guide/ecosystem-processes.html). Encodes EVERY process of the ecosystem as a drill-down graph: lane (module) -> process -> step/gateway, with produces/consumes data edges, and hooks + validation rules attached as METADATA (not as separate nodes). gen-process-map.cjs merges this with SSOT facts harvested from disk (command SET, 24-artifact catalog) and from ecosystem-map.overlay.json (gate list, validation rule ids, artifact tiers/lineage), then injects the result into ecosystem-processes.template.html.",
+    "split": "SSOT (NOT duplicated here): command existence (commands/**/*.md), 24-artifact catalog (docs/pmo/artifacts/), gate id set + validation rule id set + artifact tier/lineage (docs/guide/ecosystem-map.overlay.json). EDITORIAL (this file owns): lanes; processes[] with steps[] (id, kind, label, what, produces, consumes, hooks, rules, review, alt); crossEdges (process->process); cascadeEdges (artifact->artifact triggers). All copy is Russian.",
+    "kinds": "step.kind in {start,task,gateway,checkpoint,subprocess,end}. edge.type in {sequence,produces,consumes,delegate,cascade,lineage}.",
+    "rules": "Every process.command + step.command MUST be a real command id. produces/consumes ids MUST be artifact ids or boundaryObjects (handoff, spec). hooks[] ids MUST be gate ids from ecosystem-map.overlay.json. rules[] ids MUST be validation rule ids (V-*, V-H-*, V-MK-*, V-LE-*, V-AM-*, P-RULE-*). step.alt[].to + crossEdges from/to MUST resolve to a step id (within the same process) or a process id. doc path (before #) MUST exist on disk. Edit here, then: node dev/meta-improvement/scripts/gen-process-map.cjs",
+    "regen": "node dev/meta-improvement/scripts/gen-process-map.cjs   (write) | --selftest (asserts) | --check (CI staleness)"
+  },
+
+  "boundaryObjects": ["handoff", "spec"],
+
+  "lanes": [
+    {"id": "product",      "label": "Product",      "color": "#3fb950", "what": "D1 + D2-Behavioral — ядро ежедневной работы: Discovery -> Planning -> спецификация фич -> handoff + поддержка."},
+    {"id": "design",       "label": "Design",       "color": "#bc8cff", "what": "D2-UI, условно при has_ui — итеративная генерация UI (Stitch/HTML)."},
+    {"id": "integrator",   "label": "Integrator",   "color": "#58a6ff", "what": "D2-Tech «сисадмин» — подключает/обновляет внешние инструменты-реализаторы под PMO-карту."},
+    {"id": "orchestrator", "label": "Orchestrator", "color": "#f0883e", "what": "D2-Tech + D3+ runtime — гонит PMO-процессы end-to-end как in-harness Workflow; требует активный cc-sdd."},
+    {"id": "ecosystem",    "label": "Ecosystem",    "color": "#8b949e", "what": "Установка и обслуживание самой экосистемы: bootstrap / update / verify / feedback."}
+  ],
+
+  "processes": [
+    {
+      "id": "P1A", "lane": "product", "label": "P1.A · Discovery Session", "status": "shipped",
+      "domain": "D1", "command": "product:init", "doc": "docs/pmo/processes.md",
+      "what": "От идеи продукта до Discovery-базы (PS/MR/CA/SEG/VP/HYP). Quick (30-60м) или Deep (2-4ч). Паттерн draft->iterate->approve на каждом шаге.",
+      "steps": [
+        {"id": "P1A.start", "kind": "start", "label": "Идея продукта", "what": "Текстовое описание идеи + опц. контекст (отрасль, аудитория). Выбор режима Quick/Deep."},
+        {"id": "D1.1", "kind": "task", "label": "D1.1 Problem Discovery", "what": "5-8 уточняющих вопросов -> draft PS, iterate до approve.", "produces": ["PS"], "hooks": ["bg-extractor", "session-state", "artifact-validate"]},
+        {"id": "G1", "kind": "gateway", "label": "G1 · approve PS", "review": "strategic", "what": "🟠 Strategic per-item approve. Разблокирует параллельный MR+CA.", "hooks": ["cascade-check"], "rules": ["V-11"]},
+        {"id": "D1.2", "kind": "task", "label": "D1.2 Market Research", "what": "Quick: 5-8 web searches + scrapes c пометками [оценочно]. Deep: subagent market-researcher (8-фаз). MR -> queued для DRC.", "produces": ["MR"]},
+        {"id": "D1.3", "kind": "task", "label": "D1.3 Competitive Analysis", "what": "Discovery конкурентов (Exa+Brave+Firecrawl), feature-matrix. Deep: subagent competitor-analyst. CA -> queued для DRC.", "produces": ["CA"]},
+        {"id": "D1.4", "kind": "task", "label": "D1.4 Segment & JTBD", "what": "Синтез PS+MR+CA -> 2-4 сегмента x 2-4 JTBD. Приоритеты primary/secondary/exploratory.", "produces": ["SEG"], "consumes": ["PS", "MR", "CA"]},
+        {"id": "G4", "kind": "gateway", "label": "G4 · approve SEG", "review": "strategic", "what": "🟠 Strategic per-SEG approve. Разблокирует VP.", "hooks": ["cascade-check"]},
+        {"id": "DRC", "kind": "checkpoint", "label": "🔁 Discovery Review Checkpoint", "review": "standard", "what": "Batch-approve research-снимка (MR+CA) после сегментации, когда контекст ясен. Bundle / per-item / reject.", "consumes": ["MR", "CA"]},
+        {"id": "D1.4a", "kind": "task", "label": "D1.4a Value Proposition", "what": "Per active SEG -> VP-* (1:1), использует CA для дифференциации.", "produces": ["VP"], "consumes": ["SEG", "CA"]},
+        {"id": "G4a", "kind": "gateway", "label": "G4a · approve VP", "review": "strategic", "what": "🟠 Strategic per-VP approve."},
+        {"id": "D1.5", "kind": "task", "label": "D1.5 Hypothesis Formulation", "what": "SEG+VP+MR -> 3-5 HYP. Human утверждает метрики и пороги (success/invalidation/deferred).", "produces": ["HYP"], "consumes": ["SEG", "VP", "MR"]},
+        {"id": "G5", "kind": "gateway", "label": "G5 · approve HYP", "review": "strategic", "what": "🟠 Strategic per-HYP -> status=testing. Discovery завершена.", "hooks": ["cascade-check"]},
+        {"id": "D1.5z", "kind": "task", "label": "D1.5z BG extraction (финальный проход)", "what": "Полный BG-extraction по всем артефактам, batch-presentation, human approves BG.", "produces": ["BG"], "hooks": ["bg-extractor"], "rules": ["V-08"]},
+        {"id": "P1A.end", "kind": "end", "label": "Discovery complete", "what": "PS/MR/CA/SEG/VP/HYP в active + glossary. -> P1.B Planning."}
+      ]
+    },
+    {
+      "id": "P1B", "lane": "product", "label": "P1.B · Planning Session", "status": "shipped",
+      "domain": "D1", "command": "product:plan", "doc": "docs/pmo/processes.md",
+      "what": "От Discovery-базы до MVP scope + Roadmap + RL-001 + FM-скелеты. Per-artifact approve (без нумерованных гейтов).",
+      "steps": [
+        {"id": "D1.6", "kind": "task", "label": "D1.6 MVP Scope", "what": "primary HYP + набор фич для валидации, MoSCoW priorities. MVP approve -> RM разблокирован.", "produces": ["MVP"], "consumes": ["HYP", "PS"]},
+        {"id": "D1.7", "kind": "task", "label": "D1.7 Product Roadmap", "what": "Из MVP+HYP -> draft RM (3-6 мес горизонт, направления). RM approve -> RL могут создаваться.", "produces": ["RM"], "consumes": ["MVP", "HYP"]},
+        {"id": "D1.8", "kind": "task", "label": "D1.8 Release Planning", "what": "RL-001 (= MVP) детальнее: target_date, features, rollout. Per-FM skeleton approve (has_ui? priority? HYP?).", "produces": ["RL", "FM"], "consumes": ["MVP", "RM"]},
+        {"id": "D1.9", "kind": "task", "label": "D1.9 Feature Prioritization (continuous)", "what": "Не отдельный процесс — непрерывный диалог через /product:status, не периодический ритм."},
+        {"id": "P1B.end", "kind": "end", "label": "Planning complete", "what": "MVP/RM/RL active + FM-скелеты в planned. -> P2 Feature Definition."}
+      ]
+    },
+    {
+      "id": "P2A", "lane": "product", "label": "P2.A · Feature Definition (Enrichment)", "status": "shipped",
+      "domain": "D2B", "command": "product:feature", "doc": "docs/pmo/processes.md",
+      "what": "Обогащение FM-скелета до полной поведенческой спецификации, готовой к handoff. Per-artifact approve; adaptive-depth DA через хуки.",
+      "steps": [
+        {"id": "F.1", "kind": "task", "label": "F.1 Load FM context", "what": "Читает FM-скелет + связанные SEG/VP/HYP, показывает контекст человеку.", "consumes": ["FM", "SEG", "VP", "HYP"]},
+        {"id": "F.2", "kind": "task", "label": "F.2 Scenario Authoring", "what": "2-4 SC на фичу: actors, preconditions, trigger, steps, postconditions. Alt/error flows = отдельные SC. Per-SC approve.", "produces": ["SC"], "consumes": ["FM"], "rules": ["V-01", "V-02", "V-04"]},
+        {"id": "F.3", "kind": "task", "label": "F.3 Business Rule Extraction", "what": "Из шагов active SC -> implicit правила BR (category, parameters, rationale, scenarios[] bi-dir). Per-BR approve. Триггерит DA (P-RULE-02).", "produces": ["BR"], "consumes": ["SC"], "hooks": ["br-change-trigger"], "rules": ["V-03", "V-14a", "P-RULE-02"]},
+        {"id": "F.4", "kind": "task", "label": "F.4 Entity Lifecycle Derivation", "what": "Per сущность -> LC (states + transitions из SC steps + BR guards). 🟢 Confirmation: auto-approve если confidence high.", "produces": ["LC"], "consumes": ["SC", "BR"], "rules": ["V-05", "V-06"]},
+        {"id": "F.5", "kind": "task", "label": "F.5 Invariant Check Identification", "what": "Кандидаты IC из BR+LC. Триггерит P-RULE-01 (DA review) per IC. Human явно подтверждает абсолютность правила.", "produces": ["IC"], "consumes": ["BR", "LC"], "hooks": ["ic-change-trigger"], "rules": ["V-11", "P-RULE-01"]},
+        {"id": "F.5a.0", "kind": "gateway", "label": "F.5a.0 NFR Ask", "review": "strategic", "what": "Анализ FM (has_ui/PII/платежи/real-time) -> MVP implied defaults. Выбор: [Y] обсудим / [D] defaults (declined) / [L] отложить (pending).", "consumes": ["FM"], "alt": [{"to": "F.6", "label": "[D]/[L] skip"}]},
+        {"id": "F.5a.1", "kind": "task", "label": "F.5a.1 NFR Define", "what": "Только при [Y]: NFR-* с realistic defaults по sanity-ranges. Guardrail: target вне диапазона -> warning + override rationale.", "produces": ["NFR"], "consumes": ["FM"], "rules": ["V-16"]},
+        {"id": "F.6", "kind": "task", "label": "F.6 Verification Criteria", "what": "Из SC+BR+LC+NFR -> VC (Given/When/Then). Покрытие main+alt+error. NFR -> доп. VC (perf assertions).", "produces": ["VC"], "consumes": ["SC", "BR", "LC", "NFR"], "rules": ["V-07"]},
+        {"id": "F.7", "kind": "task", "label": "F.7 Role & Permission Model", "what": "Новые роли из SC.actors -> RPM; actions из SC steps -> matrix; conditional permissions -> ссылки на BR. Human confirm.", "produces": ["RPM"], "consumes": ["SC"]},
+        {"id": "F.8", "kind": "gateway", "label": "F.8 Design Module? (has_ui)", "what": "Если has_ui=true -> параллельно запускается P2.5 Design Module.", "consumes": ["FM"], "alt": [{"to": "P2.5", "label": "has_ui=true → параллельно"}]},
+        {"id": "F.9", "kind": "task", "label": "F.9 Product DA Review (optional)", "what": "Adversarial 6-линз перед handoff для complex фич. Findings 3-tier (🔴/🟡/🔵). См. под-процесс DA.", "consumes": ["FM", "SC", "BR", "IC"], "alt": [{"to": "DA", "label": "запускает"}]},
+        {"id": "F.10", "kind": "gateway", "label": "F.10 FM transition", "review": "strategic", "what": "Все SC/BR/LC/VC/IC/NFR active + RPM + MK(если has_ui) -> FM planned->in-progress. Проверка DoR. Разблокирует /product:handoff.", "consumes": ["FM"]},
+        {"id": "P2A.end", "kind": "end", "label": "Feature ready for handoff", "what": "FM in-progress, embedded артефакты в active. -> Handoff."}
+      ]
+    },
+    {
+      "id": "P2B", "lane": "product", "label": "P2.B · Feature Creation (новая фича «снизу»)", "status": "shipped",
+      "domain": "D2B", "command": "product:feature", "doc": "docs/pmo/processes.md",
+      "what": "Создание фичи из свободного описания (не из скелета): добавляет F.0-F.0b перед общим F.1-F.10.",
+      "steps": [
+        {"id": "F.0", "kind": "task", "label": "F.0 Idea parsing", "what": "Парсит описание: для какого SEG, JTBD, гипотеза (если явно)."},
+        {"id": "F.0a", "kind": "gateway", "label": "F.0a D1-alignment check", "what": "Есть ли подходящий SEG/HYP/VP? Если нет — 🟡 warning (не блок): (a) новый SEG mini-D1.4, (b) best-fit existing, (c) exploratory.", "consumes": ["SEG", "HYP", "VP"]},
+        {"id": "F.0b", "kind": "task", "label": "F.0b FM skeleton creation", "what": "Формирует FM-скелет, human approves -> FM planned.", "produces": ["FM"]},
+        {"id": "P2B.join", "kind": "end", "label": "→ F.1…F.10 (как enrichment)", "what": "Дальше как P2.A.", "alt": [{"to": "P2A", "label": "продолжает как enrichment"}]}
+      ]
+    },
+    {
+      "id": "DA", "lane": "product", "label": "Product DA Review (adaptive-depth)", "status": "shipped",
+      "domain": "D2B", "command": "product:da-review", "doc": "docs/pmo/processes.md",
+      "what": "Adversarial review бизнес-артефактов в изолированном контексте (builder/critic separation). Триггерится на каждое изменение active BR/IC; subagent сам выбирает глубину.",
+      "steps": [
+        {"id": "DA.classify", "kind": "gateway", "label": "Классификация диффа", "what": "Subagent анализирует git diff -> cosmetic | significant + rationale.", "next": ["DA.cosmetic", "DA.full"]},
+        {"id": "DA.cosmetic", "kind": "task", "label": "Quick consistency (~5м)", "what": "Cosmetic: не сломал ли refs/supporting rules/lifecycle guards. Один блок findings, без 6 линз.", "next": ["DA.findings"]},
+        {"id": "DA.full", "kind": "task", "label": "Full 6-lens review (~20-30м)", "what": "Significant: Scalability / Reliability / Edge cases / Security / Alternatives / User assumptions.", "next": ["DA.findings"]},
+        {"id": "DA.findings", "kind": "task", "label": "Findings 3-tier", "what": "🔴 Critical / 🟡 Important / 🔵 Discussion -> .product/.da-findings/."},
+        {"id": "DA.reception", "kind": "gateway", "label": "Reception", "what": "Per finding: Act on / Defer (known limitation) / Dismiss (обязателен rationale в journal — anti-sycophancy). Не блокирует автоматически."}
+      ]
+    },
+    {
+      "id": "APPROVE", "lane": "product", "label": "Approve Gate (механика)", "status": "shipped",
+      "domain": "D2B", "command": "product:validate", "doc": "docs/pmo/processes.md",
+      "what": "Что происходит на любом approve. Два пути: стандартный (Critical/Strategic/Standard) и auto-approve (🟢 Confirmation).",
+      "steps": [
+        {"id": "AP.req", "kind": "start", "label": "Human: approve", "what": "Запрос на перевод draft->active."},
+        {"id": "AP.branch", "kind": "gateway", "label": "Tier review?", "what": "🟢 Confirmation (LC/VC/RPM/NM) + confidence high + чистая валидация -> auto-approve. Иначе стандартный путь.", "next": ["AP.validate", "AP.auto"]},
+        {"id": "AP.validate", "kind": "task", "label": "1. Inline validation", "what": "Applicable V-* per tier. Blocking failed -> stop, статус остаётся draft.", "hooks": ["artifact-validate"], "rules": ["V-01", "V-03", "V-11"]},
+        {"id": "AP.transition", "kind": "task", "label": "2. Status transition + version++", "what": "draft -> active; version++ в frontmatter; updated timestamp."},
+        {"id": "AP.bg", "kind": "task", "label": "3. BG extraction", "what": "Запуск BG-extraction (Phase 1-4).", "hooks": ["bg-extractor"], "alt": [{"to": "BG", "label": "запускает"}]},
+        {"id": "AP.cascade", "kind": "task", "label": "4. Cascade check", "what": "Identifies dependents, предлагает bundle.", "hooks": ["cascade-check"], "rules": ["V-11"], "alt": [{"to": "P4", "label": "запускает"}]},
+        {"id": "AP.journal", "kind": "task", "label": "5. Decision journal", "what": "Запись для Strategic/Critical уровней.", "next": ["AP.end"]},
+        {"id": "AP.auto", "kind": "task", "label": "Auto-approve (🟢)", "what": "Confirmation-артефакт + confidence high + чистая валидация -> auto-transition без явного approve; «revert <id>» откатывает.", "next": ["AP.end"]},
+        {"id": "AP.end", "kind": "end", "label": "active", "what": "Артефакт active."}
+      ]
+    },
+    {
+      "id": "BG", "lane": "product", "label": "BG Extraction (continuous)", "status": "shipped",
+      "domain": "maint", "command": "product:bg-review", "doc": "docs/pmo/processes.md",
+      "what": "Непрерывное извлечение бизнес-терминов из артефактов. 4 фазы + mass-rename + orphan detection.",
+      "steps": [
+        {"id": "BG.p1", "kind": "task", "label": "Phase 1 · Candidate Extraction (hook)", "what": "bg-extractor.js на PostToolUse: bold-термины + capitalized phrases - стоплист - тех-термины - дубли -> кандидаты в .pending/bg-candidates.yaml.", "hooks": ["bg-extractor"]},
+        {"id": "BG.p2", "kind": "task", "label": "Phase 2 · Classification", "what": "new-term / existing-term (add ref) / possible-synonym (Levenshtein<3) / abandoned-candidate."},
+        {"id": "BG.p3", "kind": "task", "label": "Phase 3 · Presentation (batched)", "what": "Накапливает, presents при approve / в /product:status / на старте следующей сессии — не прерывает flow."},
+        {"id": "BG.p4", "kind": "gateway", "label": "Phase 4 · Human Approval", "what": "Per-term: [Y] accept / [edit] / [reject] / [M] merge / [keep].", "produces": ["BG"]},
+        {"id": "BG.rename", "kind": "subprocess", "label": "Mass-rename workflow", "what": "/product:bg-rename: identify affected (used_in) -> patch preview -> approve bundle/per-artifact -> atomic apply + BG version++ + single commit -> cascade.", "produces": ["BG"], "rules": ["V-08", "V-11"]},
+        {"id": "BG.orphan", "kind": "task", "label": "Orphan term detection", "what": "Термины с пустым used_in -> deprecate/delete (через /product:cleanup --dry-run, V-15).", "rules": ["V-15"]}
+      ]
+    },
+    {
+      "id": "P4", "lane": "product", "label": "P4 · Cascade Consistency (continuous)", "status": "shipped",
+      "domain": "maint", "command": "product:cascade", "doc": "docs/pmo/validation.md",
+      "what": "Каскадная согласованность — интегрирована в каждый approve gate. V-11 (bi-dir) авто-фиксится хуком; остальное -> pending на ручной разбор.",
+      "steps": [
+        {"id": "P4.trigger", "kind": "start", "label": "Trigger: active артефакт изменён", "what": "Approve новой версии / change parameters.", "hooks": ["cascade-check"]},
+        {"id": "P4.identify", "kind": "task", "label": "Identify dependents", "what": "Через bi-dir refs (V-11 гарантирует consistency).", "rules": ["V-11"]},
+        {"id": "P4.bfs", "kind": "task", "label": "BFS traversal", "what": "В порядке priority: Critical -> Strategic -> Standard -> Confirmation."},
+        {"id": "P4.reval", "kind": "task", "label": "Per-dependent re-validation", "what": "Applicable rules per тип зависимого."},
+        {"id": "P4.collect", "kind": "task", "label": "Collect changes", "what": "Status transitions, re-approve needed, requires_review flags."},
+        {"id": "P4.present", "kind": "gateway", "label": "Present bundle + human approve", "what": "[Y]es all / [P]er-item / [N]o (rollback). DA review при IC/BR в каскаде."},
+        {"id": "P4.apply", "kind": "task", "label": "Apply atomic", "what": "Всё или ничего; rollback при failure."}
+      ]
+    },
+    {
+      "id": "P5", "lane": "product", "label": "P5 · Periodic Review (partial)", "status": "partial",
+      "domain": "maint", "command": "product:drift-check", "doc": "docs/pmo/processes.md",
+      "what": "Само-аудит согласованности + мета-линтер. P5.A покрыт P4 (continuous); P5.B Actuality Refresh не проектируется в v1 (нет триггера).",
+      "steps": [
+        {"id": "P5.drift", "kind": "task", "label": "Drift-check (C1)", "what": "Артефакты ещё согласованы с PS / primary HYP / MVP-scope? Direction alignment report 🟢/🟡/🔴.", "consumes": ["PS", "HYP", "MVP"], "rules": ["V-12"]},
+        {"id": "P5.patterns", "kind": "task", "label": "Patterns meta-linter (C4)", "what": "Повторяющиеся анти-паттерны в .product/ (hard-coded values, missing actors, asymmetric deps, stale drafts). Информационно."},
+        {"id": "P5.cleanup", "kind": "task", "label": "Cleanup (V-15 orphans)", "what": "Поиск сирот + опц. гигиена pending-очередей.", "rules": ["V-15"]}
+      ]
+    },
+    {
+      "id": "P3p", "lane": "product", "label": "P3 · Feedback Integration (STUB v1)", "status": "partial",
+      "domain": "maint", "command": "product:validation-tune", "doc": "docs/pmo/processes.md",
+      "what": "Out-of-scope v1 (D5 на ~5% покрытии). Вместо pipeline: manual дописывание + локальная подстройка валидации; системные дефекты -> upstream.",
+      "steps": [
+        {"id": "P3.tune", "kind": "task", "label": "Validation-tune (C3)", "what": "AI предлагает project-local подстройку (severity/threshold). Approval — human, запись в journal."},
+        {"id": "P3.escalate", "kind": "gateway", "label": "Системный дефект?", "what": "Системное -> /ecosystem:meta-feedback (upstream outbox).", "alt": [{"to": "ECO-feedback", "label": "upstream"}]}
+      ]
+    },
+
+    {
+      "id": "P2.5", "lane": "design", "label": "P2.5 · Design Module (has_ui)", "status": "conditional",
+      "domain": "D2UI", "command": "design:start", "doc": "docs/pmo/processes.md",
+      "what": "Условный под-модуль (has_ui=true). Создаёт Design Package (MK), обновляет DS, строит NM, обновляет AM. 6 шагов Brief->Export.",
+      "steps": [
+        {"id": "D.1", "kind": "task", "label": "D.1 Design Brief (🟡)", "what": "Из SC+BR+LC+BG+RPM -> design brief. Редактируемый документ, не финальный артефакт.", "consumes": ["SC", "BR", "LC", "BG", "RPM"]},
+        {"id": "D.2", "kind": "task", "label": "D.2 Screen Generation (🟠)", "what": "subagent screen-generator через Stitch MCP (или HTML fallback). Первый variant экранов per SC-шаг с UI.", "consumes": ["SC"], "hooks": ["design-artifact-validate"], "rules": ["V-MK-01"]},
+        {"id": "D.3", "kind": "task", "label": "D.3 Iterative Refinement (🟠)", "what": "Цикл feedback->правки. Мелкие — Stitch один вызов; крупные — subagent. До approve. (/design:iterate)", "produces": ["MK"]},
+        {"id": "D.4", "kind": "task", "label": "D.4 Component State Matrix (🟢)", "what": "Checklist состояний per компонент (default/hover/focus/error/disabled/loading/empty/overflow). Дорисовка missing.", "rules": ["V-MK-02", "V-MK-03"]},
+        {"id": "D.5", "kind": "task", "label": "D.5 Artifact Generation (🟠)", "what": "MK как Design Package; DS обновляется (auto-extract tokens, human confirm); NM из MK+LC; AM обновляется (/design:map).", "produces": ["MK", "DS", "NM", "AM"], "hooks": ["app-map-cascade"], "rules": ["V-MK-08", "V-AM-frontmatter"]},
+        {"id": "D.6", "kind": "task", "label": "D.6 Export for handoff", "what": "MK/DS snapshot/NM готовы для embed в handoff §10 (/design:export).", "consumes": ["MK", "DS", "NM"], "rules": ["V-MK-05"]},
+        {"id": "P2.5.end", "kind": "end", "label": "UI-contract ready", "what": "-> handoff §10.", "alt": [{"to": "HO", "label": "assets → handoff"}]}
+      ]
+    },
+
+    {
+      "id": "HO", "lane": "product", "label": "Handoff Generation (boundary object)", "status": "shipped",
+      "domain": "HO", "command": "product:handoff", "doc": "docs/product-module/handoff-spec.md",
+      "what": "Генерация универсального 13-секционного handoff для FM с embedded excerpts + SHA-256 хэшами для drift-detection. Два режима DoR: draft (3 блокера) / production (8 блокеров).",
+      "steps": [
+        {"id": "HO.dor", "kind": "gateway", "label": "DoR gate", "what": "draft (status partial, 3 блокера) или production (status ready, 8 блокеров). --with-da-review запускает pre-gen DA.", "rules": ["V-H-01", "V-H-06"]},
+        {"id": "HO.assemble", "kind": "task", "label": "Assemble 13 sections", "what": "Embedded excerpts FM/SC/BR/LC/VC/IC/NFR + §10 UI (MK/DS/NM если has_ui) + BG excerpt.", "consumes": ["FM", "SC", "BR", "LC", "VC", "IC", "NFR", "MK", "DS", "NM", "BG"], "rules": ["V-H-02", "V-H-05", "V-H-08", "V-H-11"]},
+        {"id": "HO.hash", "kind": "task", "label": "SHA-256 hashing", "what": "Хэш body (без frontmatter, LF) каждого артефакта -> artifact_hashes. Drift-detection хук пересчитывает на каждое сохранение.", "produces": ["handoff"], "hooks": ["product-handoff-gate"], "rules": ["V-H-04"]},
+        {"id": "HO.end", "kind": "end", "label": "handoff.md готов", "what": "Самодостаточная передача -> любой реализатор / Orchestrator.", "alt": [{"to": "P3o", "label": "→ Orchestrator"}]}
+      ]
+    },
+
+    {
+      "id": "P3o", "lane": "orchestrator", "label": "P3 · batch-features-to-cc-sdd", "status": "shipped",
+      "domain": "D2T", "command": "orchestrator:run", "doc": "commands/orchestrator/run.md",
+      "what": "Маршрутизация Product-handoffs в cc-sdd specs. Preflight content-fidelity + независимый coverage-oracle. Предусловие: активный cc-sdd.",
+      "steps": [
+        {"id": "P3o.read", "kind": "task", "label": "Read handoffs + tool-docs", "what": "Читает handoff(ы) + документацию cc-sdd.", "consumes": ["handoff"]},
+        {"id": "P3o.preflight", "kind": "gateway", "label": "Content-fidelity preflight", "what": "Проверка полноты handoff перед делегацией."},
+        {"id": "P3o.delegate", "kind": "task", "label": "Delegate to kiro-spec-batch", "what": "Генерация spec делегируется cc-sdd (по scriptPath, вложенный Workflow).", "produces": ["spec"]},
+        {"id": "P3o.oracle", "kind": "gateway", "label": "Coverage oracle", "what": "Независимый оракул покрытия handoff -> spec.", "alt": [{"to": "P4o", "label": "→ audit"}]}
+      ]
+    },
+    {
+      "id": "P4o", "lane": "orchestrator", "label": "P4 · audit-spec-fidelity", "status": "shipped",
+      "domain": "D2T", "command": "orchestrator:run", "doc": "commands/orchestrator/run.md",
+      "what": "Аудит соответствия сгенерированного spec исходному handoff: семантический auditor + ground-truth confirm перед фиксом (verify-finding-before-act).",
+      "steps": [
+        {"id": "P4o.audit", "kind": "task", "label": "Semantic auditor", "what": "Сверяет spec vs handoff на семантический дрейф.", "consumes": ["spec", "handoff"]},
+        {"id": "P4o.confirm", "kind": "gateway", "label": "Ground-truth confirm", "what": "Подтверждение находки против кода/спека ДО фикса; refuted -> отброшено. Fabricated-trace exempt."},
+        {"id": "P4o.fix", "kind": "task", "label": "Spec-completion route", "what": "Order-aware verify (baseline-sha + 3-way disposition); gap исключает из impl_ready."}
+      ]
+    },
+    {
+      "id": "P5o", "lane": "orchestrator", "label": "P5 · feature-to-tdd-impl", "status": "shipped",
+      "domain": "D3", "command": "orchestrator:run", "doc": "commands/orchestrator/run.md",
+      "what": "Имплементация фичи в TDD-цикле. Bounded auto-retry на transient; эскалация конфликтов (не self-resolve, single-writer).",
+      "steps": [
+        {"id": "P5o.tdd", "kind": "task", "label": "TDD implementation", "what": "Делегирует cc-sdd impl в TDD-цикле.", "consumes": ["spec"]},
+        {"id": "P5o.retry", "kind": "gateway", "label": "Transient? bounded retry", "what": "remediation-guard: transient -> bounded auto-retry; conflict>transient (worst-of) -> escalate."},
+        {"id": "P5o.escalate", "kind": "gateway", "label": "Escalate (не self-resolve)", "what": "Cross-spec/design конфликт -> conflicts понижает GO->MANUAL_VERIFY; P5 не маскирует."}
+      ]
+    },
+    {
+      "id": "P6o", "lane": "orchestrator", "label": "P6 · validate-feature-impl", "status": "shipped",
+      "domain": "D3", "command": "orchestrator:run", "doc": "commands/orchestrator/run.md",
+      "what": "Валидация имплементации против spec/design: 3 валидатора + verify-finding-before-act. Итог GO / NO-GO / MANUAL_VERIFY.",
+      "steps": [
+        {"id": "P6o.validators", "kind": "task", "label": "3 validators (RA-8/9/10)", "what": "Mechanical + 3 валидатора по spec/design.", "consumes": ["spec"]},
+        {"id": "P6o.verify", "kind": "task", "label": "verify-finding-before-act", "what": "Семантический аудитор сверяется с ground-truth до фикса."},
+        {"id": "P6o.verdict", "kind": "gateway", "label": "GO / NO-GO / MANUAL_VERIFY", "review": "critical", "what": "Verdict x readiness (env-readiness.cjs). conflicts -> понижение GO->MANUAL_VERIFY."},
+        {"id": "P7o.readiness", "kind": "task", "label": "P7 runtime-smoke-readiness (deterministic leg)", "what": "Детерминированная нога готовности (DEC-DEV-0120) перед вердиктом."}
+      ]
+    },
+
+    {
+      "id": "INT-add", "lane": "integrator", "label": "integrator:add (подключение инструмента)", "status": "shipped",
+      "domain": "D2T", "command": "integrator:add", "doc": "commands/integrator/add.md",
+      "what": "Подключение внешнего инструмента (npm/MCP/git/docker) под управление PMO. 6-стадийный flow с approve-gate перед install. Идемпотентный re-run.",
+      "steps": [
+        {"id": "INT.scan", "kind": "task", "label": "1. Scan env", "what": "Существующие кастомизации/конфликты (scan-guard scope-guard)."},
+        {"id": "INT.research", "kind": "task", "label": "2. Research/select", "what": "Подбор инструмента под PMO-need."},
+        {"id": "INT.gate", "kind": "gateway", "label": "3. Approve gate (перед install)", "what": "Human approve до любой установки."},
+        {"id": "INT.install", "kind": "task", "label": "4. Install", "what": "Установка + регистрация в pmo-mapping."},
+        {"id": "INT.contract", "kind": "task", "label": "5. Contract wiring", "what": "Адаптер handoff->tool (tri-location pattern); copy в .claude/integrator/adapters/.", "hooks": ["journal-hook"]},
+        {"id": "INT.verify", "kind": "gateway", "label": "6. Verify + journal", "what": "Проверка + запись в decision-journal.", "alt": [{"to": "P3o", "label": "enables Orchestrator"}]}
+      ]
+    },
+    {
+      "id": "INT-maint", "lane": "integrator", "label": "Integrator: maintenance + read-only", "status": "shipped",
+      "domain": "D2T", "command": "integrator:status", "doc": "docs/integrator-module/SPEC.md",
+      "what": "Сопровождение инструментов (update/remove) + read-only обзор покрытия PMO-зон.",
+      "steps": [
+        {"id": "INT.update", "kind": "task", "label": "update", "what": "backup -> install new -> drift-detection -> contract-repair -> verify."},
+        {"id": "INT.remove", "kind": "task", "label": "remove (destructive)", "what": "Impact-анализ + backup + uninstall + cleanup contracts. Требует подтверждения.", "hooks": ["scope-guard"]},
+        {"id": "INT.ro", "kind": "task", "label": "read-only: status/map/gaps/research/journal/scan", "what": "Обзор состояния, покрытия PMO, непокрытых зон, журнала решений."}
+      ]
+    },
+
+    {
+      "id": "ECO-setup", "lane": "ecosystem", "label": "Setup: bootstrap / update / verify", "status": "shipped",
+      "domain": "setup", "command": "ecosystem:bootstrap", "doc": "commands/ecosystem/bootstrap.md",
+      "what": "Установка и синхронизация самой экосистемы в проект. update сохраняет user-zone и состояние пилота (2-level wipe-protection).",
+      "steps": [
+        {"id": "ECO.bootstrap", "kind": "task", "label": "bootstrap", "what": "Clone .claude/ + init .product/ + CLAUDE.md + env/settings + MCP-стек.", "hooks": ["rails-session-start"]},
+        {"id": "ECO.update", "kind": "task", "label": "update", "what": "Sync к latest upstream; overwrites ecosystem-zone, preserves user-zone + Orchestrator project-state. 2-level wipe-protection."},
+        {"id": "ECO.verify", "kind": "task", "label": "verify", "what": "Non-destructive health-check установки."}
+      ]
+    },
+    {
+      "id": "ECO-feedback", "lane": "ecosystem", "label": "Meta-feedback + governance", "status": "shipped",
+      "domain": "setup", "command": "ecosystem:meta-feedback", "doc": "commands/ecosystem/meta-feedback.md",
+      "what": "Системный фидбэк об экосистеме (upstream outbox, гибрид-доставка) + pending-actions + D7 session-audit.",
+      "steps": [
+        {"id": "ECO.feedback", "kind": "task", "label": "meta-feedback (upstream)", "what": "СИСТЕМНЫЙ фидбэк -> committable outbox -> local pickup / git-issue."},
+        {"id": "ECO.pa", "kind": "task", "label": "pending-actions (PA-NNN)", "what": "Список pending действий пользователя (read-only)."},
+        {"id": "ECO.audit", "kind": "task", "label": "enable-d7-audit", "what": "Регистрирует SessionEnd hook для batch-аудита сессий.", "hooks": ["session-audit"]}
+      ]
+    }
+  ],
+
+  "crossEdges": [
+    {"from": "P1A", "to": "P1B", "type": "sequence", "label": "Discovery complete"},
+    {"from": "P1B", "to": "P2A", "type": "sequence", "label": "FM skeleton → enrichment"},
+    {"from": "P2B", "to": "P2A", "type": "sequence", "label": "creation → enrichment"},
+    {"from": "P2A", "to": "P2.5", "type": "sequence", "label": "F.8 has_ui (parallel)"},
+    {"from": "P2A", "to": "DA", "type": "sequence", "label": "F.9 DA review"},
+    {"from": "P2A", "to": "HO", "type": "sequence", "label": "F.10 → handoff"},
+    {"from": "P2.5", "to": "HO", "type": "produces", "label": "UI assets → §10"},
+    {"from": "P3p", "to": "ECO-feedback", "type": "delegate", "label": "systemic → upstream"},
+    {"from": "HO", "to": "P3o", "type": "delegate", "label": "handoff → specs"},
+    {"from": "P3o", "to": "P4o", "type": "sequence", "label": "spec → audit"},
+    {"from": "P4o", "to": "P5o", "type": "sequence", "label": "impl_ready → tdd"},
+    {"from": "P5o", "to": "P6o", "type": "sequence", "label": "impl → validate"},
+    {"from": "INT-add", "to": "P3o", "type": "delegate", "label": "cc-sdd enables Orchestrator"},
+    {"from": "ECO-setup", "to": "P1A", "type": "delegate", "label": "bootstrap enables Product"}
+  ],
+
+  "cascadeEdges": [
+    {"from": "PS", "to": "MR", "label": "pivot → all"},
+    {"from": "PS", "to": "SEG"},
+    {"from": "SEG", "to": "VP", "label": "1:1"},
+    {"from": "SEG", "to": "FM"},
+    {"from": "VP", "to": "HYP"},
+    {"from": "HYP", "to": "FM"},
+    {"from": "HYP", "to": "MVP", "label": "primary_hypothesis"},
+    {"from": "MVP", "to": "RM"},
+    {"from": "FM", "to": "SC", "label": "embedded"},
+    {"from": "SC", "to": "BR", "label": "bi-dir"},
+    {"from": "BR", "to": "LC", "label": "guards"},
+    {"from": "BR", "to": "IC", "label": "P-RULE DA"},
+    {"from": "LC", "to": "VC", "label": "transitions"},
+    {"from": "IC", "to": "BR", "label": "support"},
+    {"from": "MK", "to": "DS", "label": "tokens"},
+    {"from": "DS", "to": "MK", "label": "all MK using token"},
+    {"from": "BG", "to": "FM", "label": "mass-rename"}
+  ]
+}
