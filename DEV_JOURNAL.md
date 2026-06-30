@@ -7016,6 +7016,35 @@ Selftest зелёный: **5 lane · 20 процессов · 108 шагов · 
 
 ---
 
+## DEC-DEV-0124 — Раскладка карты процессов fcose→ELK layered: таймлайн-порядок процессов + traversal-порядок шагов
+
+**Date:** 2026-07-01
+**Trigger:** Владелец: «расположи процессы в порядке таймлайна актуальности использования по дефолту, но так, чтобы при раскрытии блоков они открывались не где попало, а в порядке прохождения».
+**Tag:** #ux #process-map #layout
+
+### Context
+Я сам ввёл проблему в 0123: fcose (force-directed) чинит compound-вложенность, но **не имеет направления/порядка** — процессы и шаги ложатся «где попало» (+ randomize → каждый прогон иначе). Владелец явно хочет ДВА порядка: (1) дефолтный вид — процессы по таймлайну пайплайна (Discovery→Planning→Feature→Design→Orchestrator P3→P6→…); (2) раскрытие процесса — шаги по порядку прохождения (`next[]`). Данные это уже несут: авторский порядок процессов = таймлайн, crossEdges кодируют поток (`ECO-setup→P1A→…→HO→P3o→P4o→P5o→P6o`, `INT-add→P3o`), шаги связаны `next[]`.
+
+### Options considered
+1. **ELK layered (выбрано)** — Sugiyama-раскладка: направленная (`elk.direction=RIGHT`), **compound-aware** (`hierarchyHandling=INCLUDE_CHILDREN`), **детерминированная** (нет randomize → «не где попало», один и тот же порядок каждый раз), уважает входной порядок (`considerModelOrder=NODES_AND_EDGES`) — таймлайн как tiebreaker, sequence-рёбра задают traversal. Даёт ОБА порядка из коробки. Минус: bundle `elk.bundled.js` ~1.6 МБ (для локального статичного HTML приемлемо); async (elkjs promise-based) → фит по `layoutstop`.
+2. **fcose + relativePlacementConstraint** — сгенерить ~277 порядковых констрейнтов из `next[]`/crossEdges. Отвергнуто: конфликтующие констрейнты хрупки, fcose их тихо игнорит/ломается; ELK для этого и создан.
+3. **dagre** — направленный, но **игнорит compound** (исходный дефект 0123). Отвергнуто.
+4. **ELK direction DOWN** vs **RIGHT** — RIGHT (таймлайн слева-направо — естественнее для «timeline»).
+
+### Decision
+Заменил fcose→`cytoscape-elk`+`elkjs` (вендорнуты офлайн `elk.bundled.js`+`cytoscape-elk.js`; fcose-вендоры удалены). Один детерминированный `ELK_LAYOUT` (layered/RIGHT/INCLUDE_CHILDREN/considerModelOrder=NODES_AND_EDGES/NETWORK_SIMPLEX) для initial/relayout/drill/группировки — нет fcose-различия FULL/INC, т.к. ELK стабилен. Async-обвязка: `runLayout(after)` фитит по `layoutstop`; config `layout:'preset'`-плейсхолдер, реальный ELK делает `defaultView()`; toolbar/expandAll/collapseAll/relayout/defaultView — все через `runLayout(fit)`. expand-collapse `layoutBy:ELK_LAYOUT` (раскрытие раскладывает шаги по `next[]`). Test-hook `__layoutRunning` (layoutstart/stop) — смоук ждёт async-ELK через `waitForFunction`, не угадывает sleep. Смоук дополнен 2 ассертами порядка: timeline-монотонность процессов (x: Discovery<Planning<Feature<P3o<P4o<P5o<P6o) + traversal-forward шагов раскрытого процесса (≥80% sequence-рёбер x↑).
+
+### Outcome
+Самопроверка в Chrome (headless, прочитаны скриншоты + метрики): процессы монотонны по таймлайну (P1A 973 < P1B 1207 < P2A 1654 < … < P6o 2927); раскрытый P1A — **13/13 sequence-рёбер forward** (Кейс→D1.1→G1→D1.2→D1.3→D1.4→G4→D1.5→G5→… слева-направо); lane-overlap **0.0%** (ELK и упорядочивает, И не пересекает дорожки); extents компактнее (5433×2085 vs fcose 12000×14000); 0 JS-ошибок. `smoke:procmap` **13/13**, `npm run verify` EXIT=0. counts 24/44 не тронуты. Ветка `feat/process-map-elk-timeline` off `830304d`.
+
+### Lessons
+1. **Сначала уточни требование, потом инструмент.** 0123 поставил fcose ради compound-вложенности, пожертвовав направлением — и владелец сразу заметил «где попало». Force-layout читаем как карта, но не как ПОРЯДОК. Когда нужен и порядок, и вложенность, и детерминизм — это ELK layered, а не force. (ELK я отметил отложенным апгрейдом ещё в 0123 — ровно на этот запрос.)
+2. **Данные уже несли порядок — движок просто должен его уважать.** Не пришлось переупорядочивать overlay: авторский порядок процессов = таймлайн, `next[]`/crossEdges = поток. ELK `considerModelOrder` + edge-direction подняли это в раскладку. Кодируй порядок в данных (модель-ордер + рёбра), бери движок, который его читает.
+3. **Детерминизм раскладки = «не где попало».** Жалоба была не только про порядок, но и про стабильность (fcose randomize → каждый раз иначе). ELK детерминирован → раскрытие всегда одинаковое. Для drill-down карт предсказуемость важнее «органичности».
+4. **Async-layout требует флага готовности, не sleep.** elkjs promise-based; фит по `layoutstop`, а смоук ждёт `__layoutRunning===false` через `waitForFunction`. Угадывание `setTimeout` под async-движок = флапающий тест (зеркалит lesson 3 из 0123 про стохастику, но здесь причина — асинхронность, не рандом).
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
