@@ -342,9 +342,13 @@ function injectPayload(template, DATA) {
 }
 
 const eol = (s) => s.replace(/\r\n/g, '\n');
-// _build.date is the only time-varying field — neutralize it before byte-compare.
+// _build.date and _build.sha are volatile provenance (date rolls over daily; sha changes
+// on EVERY commit, including the merge commit a PR lands as) — neutralize BOTH before the
+// staleness compare, otherwise --check false-positives "STALE" after any merge or overnight
+// even though no content drifted. The structural counts in _build stay byte-checked.
 const neutralizeDate = (s) => s.replace(/"date":\s*"\d{4}-\d{2}-\d{2}"/g, '"date": "____"');
-const normalizeForCompare = (s) => neutralizeDate(eol(s));
+const neutralizeSha = (s) => s.replace(/"sha":\s*"[0-9a-f]*"/g, '"sha": "____"');
+const normalizeForCompare = (s) => neutralizeSha(neutralizeDate(eol(s)));
 
 function buildHtml(DATA) {
   const template = fs.readFileSync(TEMPLATE, 'utf8');
