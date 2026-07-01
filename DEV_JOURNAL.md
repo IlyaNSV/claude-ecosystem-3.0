@@ -7461,6 +7461,36 @@ Kickoff-артефакты: work-order BATCH_2 + эта запись + ROADMAP V
 
 ---
 
+## DEC-DEV-0140 — Wave B / B-a: completeness-loop закалён для worktree/parallel-безопасности (FB-LR-28/29 + persistence)
+
+**Date:** 2026-07-01
+**Trigger:** старт стройки полной волны Epic B (work-order `dev/ECOSYSTEM_VISION_BATCH_2.md`, задача B-a). Дефекты FB-LR-28/29 всплыли на live-run completeness-loop (V-2 re-run `a2aaf44a`); без них полная волна ненадёжна в worktree/параллельном контексте.
+**Tag:** #bug-fix #vision-epic-b #wave-b #worktree-safety
+
+### Context
+`skills/product/completeness-loop.md` — v1 `core/skeleton`: волна SCORE→SURFACE→CLASSIFY→RESOLVE→ESCALATE→RE-SCORE описана прозой, harness-driven. B1-core прошёл live-validation (0115), но грейд V-2 re-run зафиксировал два latent-дефекта надёжности (обе 🔵 LOW, self-healed в тот раз, но latent) + недовшитый persistence-контракт. B-a закрывает их **до** достройки runner (B-b), иначе детерминированная волна компаундирует ненадёжность (degrade-gracefully порядок work-order).
+
+### Root causes
+1. **FB-LR-28 (path-anchoring).** SURFACE-бриф строил пути персон без якоря к resolved-root прогона → микс worktree-absolute + main-checkout-absolute (в V-2: qa-advisor получил worktree-корректный путь, architect+ux — main-checkout; спаслись Glob только потому, что файл оказался not-found). Latent-риск: materially-edited+present файл по неверному checkout → тихое stale-чтение (нет not-found → нет self-heal).
+2. **FB-LR-29 (worktree-local PA).** ESCALATE писал worktree-local `pending-actions.md` без PA_CANON-резолюции — 0113-guard осел только в orchestrator P4/P5/P6, product-gate ESCALATE был отдельным PA-writer, которого guard не покрыл. Latent PA-id divergence при параллельном orchestrator-ране.
+3. **Persistence — контракт без действия.** Keyed-write findings (`.advisor-findings/<persona>-<id>.md`) жил только в секции Idempotency как описание, не как явный шаг SURFACE.
+
+### Decision
+Три правки в скилле (prose-only, без кода):
+1. SURFACE резолвит feature-root ОДИН раз, строит все брифы персон от него; тихое stale-чтение помечено как correctness-rail, не косметика.
+2. ESCALATE портирует PA_CANON дословно из orchestrator (`git worktree list --porcelain` → FIRST worktree = main checkout → его `.claude/pending-actions.md`; allocate next PA-NNN; не `git add`/commit). Open-question FB-LR-29 закрыт: product-gate PA **шарят** canonical ledger (не worktree-local by design).
+3. Keyed-write findings стал явным действием SURFACE; секция Idempotency ужата до ссылки на него (single-source, без дубль-дрейфа).
+
+### Outcome
+`npm run verify` зелёный (скилл — проза; код/оракул/хуки не тронуты; counts 24/44 без изменений). Consumer-zone (`skills/`) → CHANGELOG `[Unreleased] ### Fixed`. Смоук в worktree-контексте пилота (повтор условий `a2aaf44a` без FB-LR-28/29) — на пилот-леге B-d.
+
+### Lessons
+1. **Cross-cutting guard не самораспространяется.** PA_CANON (0113) чинил orchestrator PA-writers, но product completeness-loop — отдельный PA-writer той же worktree-опасности. При добавлении cross-cutting guard'а надо явно просканировать ВСЕ writer'ы того же класса (тут — все, кто пишет `pending-actions.md`), а не только тот, где симптом всплыл первым. [[env_parallel_sessions_share_checkout]]
+2. **Latent ≠ ignorable перед достройкой.** Оба дефекта self-healed в V-2 (benign), но B-a закрывает их ДО runner (B-b): в детерминированной волне latent-путь-дрейф компаундирует. Порядок work-order (надёжность → runner → close-out → калибровка) — не бюрократия, а degrade-gracefully.
+3. **Prose-контракт без явного шага дрейфует к неисполнению.** Persistence findings был «описан» (раздел-инвариант), но не «предписан» (шаг волны) — в harness-driven скилле действие должно жить в шаге, иначе исполнитель волен его пропустить.
+
+---
+
 ## DEC-DEV-0139 — Единая легенда «Оси именования» в глоссарии + фикс дрейфнувшей расшифровки `P1–P5` (doc-UX Волна 2, E2)
 
 **Date:** 2026-07-01
