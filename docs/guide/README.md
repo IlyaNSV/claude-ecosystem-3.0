@@ -7,6 +7,7 @@
 | Файл | Что это | Статус |
 |---|---|---|
 | **[ecosystem-map.html](ecosystem-map.html)** | **Интерактивная карта «всё в одном месте»** — пайплайн D1–D6, все ~43 команды («когда что»), 24 артефакта, глоссарий, фильтр «что работает сегодня». Открывается в браузере, без зависимостей. | ✅ v1 |
+| **[ecosystem-processes.html](ecosystem-processes.html)** | **Интерактивная BPMN-карта всех процессов** — lane → процесс → шаг (drill-down в порядке таймлайна пайплайна), zoom, свёртка узлов вместе со связями, слои рёбер, side-panel с хуками/правилами, ad-hoc группировка «в моменте», in-app просмотр `.md`. Генерируется из SSOT. | ✅ gen |
 | **[01-first-session.md](01-first-session.md)** | **Первая продуктовая сессия** — нарратив от свежего bootstrap через `init → plan → feature → handoff` на сквозном примере, с реальными approve-гейтами | ✅ v1 |
 | **[00-concepts.md](00-concepts.md)** | **Мысленная модель** D1–D6 + цикл draft→approve + уровни ревью + граф артефактов + глоссарий — прочитать первым | ✅ v1 |
 | **[05-implementation.md](05-implementation.md)** | **От handoff к коду** — Integrator + Orchestrator (P3→P6), как читать вердикт `GO/NO-GO × readiness × conflicts` | ✅ v1 |
