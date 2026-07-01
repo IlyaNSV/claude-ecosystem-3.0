@@ -7384,6 +7384,37 @@ Shared hash-param **`#focus=kind:id`** + **adapter-паттерн в шелле*
 
 ---
 
+## DEC-DEV-0138 — Guided Research Wave 1: intake+metrics+anti-hype скиллы + тонкая `/ecosystem:research` (lightweight, pre-artifact)
+
+**Date:** 2026-07-01
+**Trigger:** Запрос владельца — обширно расширить поиск/сбор/обработку информации (harness + экосистема) с со-формированием точного запроса + метриками полезности + скепсисом/анти-хайпом. Blueprint (`dev/RESEARCH_CAPABILITY_BLUEPRINT.md`, PR #102) + Wave 0.5 bake-off доставлены; владелец: «иди по дефолтам, строй лёгкий скилл».
+**Tag:** #architecture #tooling #research #ux
+
+### Context
+Retrieval/триангуляция/анти-хайп уже жили в трёх силосах (integrator `research-protocol`, product `market-research-protocol-quick`, harness `deep-research`), но НИКТО не со-формировал точный бриф до поиска и не скорил decision-usefulness (только credibility), гейтя синтез. Blueprint развёл: net-new = Pillar A (co-form) + Pillar B (usefulness-metrics contract); Pillars C (loop) + D (anti-hype) — обёртка над существующим (`orchestrate, don't duplicate`).
+
+### Options considered
+1. Формальный PMO-артефакт-тип (Research Brief) сразу — тяжело: схема + validation + count-sweep 24→25. Отвергнут для Wave 1 (преждевременно, CLAUDE.md §4 cuttable-scope).
+2. **Лёгкий markdown-скилл сейчас, формальный артефакт отложен за триггером reuse≥N + form-drift (Wave 3). ← выбрано** (дефолт владельца «слоями»).
+3. Расширить `/integrator:research` vs новый тонкий `/ecosystem:research`. Выбран новый тонкий (§7.1 #2) — общий ресёрч ≠ tool-research; делегирует в существующие loop'ы.
+Дом скилла: `skills/ecosystem/` (cross-cutting) над product/integrator (§7.1 #1). Опц. warn-хук отложен («defer if noise»).
+
+### Decision
+2 скилла + 1 команда (consumer-zone), без нового типа артефакта / правила валидации (counts остаются 24/44):
+- `skills/ecosystem/research-intake.md` — Pillar A (co-form + Research Brief шаблон) + Pillar B (Relevance⟂Utility, Tier-1 hard gates, Tier-2 weighted, вердикт PASS/PARTIAL/SHORTFALL + subscores + Metrics Contract шаблон).
+- `skills/ecosystem/anti-hype-filter.md` — Pillar D (atomize→SIFT→provenance→H1-H8→triangulate→faithfulness→keep/DEMOTE/drop + audit-trail).
+- `commands/ecosystem/research.md` — тонкий `/ecosystem:research` (A→B→C reuse deep-research/market-research/research-protocol + MCP + WebSearch/WebFetch fallback →D→scored synthesis + approve-gate + cache).
+Скиллы self-contained (без `dev/`-ссылок — dev/ не ставится потребителю). Wave-2 answer-engine (Perplexity Sonar, provisional по Wave 0.5) НЕ подключён — команда помечает как future. `verify.md` Step 4 + summary: ecosystem-команды 6→7 (+research).
+
+### Outcome
+check-counts ✓ 24/44 (аддитивно, без новых типов/правил); hook-smoke 28/0. Полный `npm run verify` в worktree не прогнан (нет node_modules + puppeteer-смоуки smoke:procmap/mapshell); изменение — только markdown/доки, не трогает проверяемые подсистемы (hooks/adapters/orchestrator/generators) → полный verify на CI / после merge. Pre-decision blueprint DEC-DEV-развилка (§7.1 #8) закрыта этим build-решением. Формальный артефакт остаётся отложен до Wave 3. Работа в изолированном worktree off ветки `docs/research-capability-blueprint` (параллельные сессии держат общий checkout). Нумерация: 0134/0136/0137 заняты параллельными ветками (guide-map-deeplink / vision-wave-b-kickoff+main / guide-doc-type) → взят первый свободный **0138** по скану всех remote-веток; ⚠ финальный fetch упал по 443 (сеть транзиторно недоступна) → снимок слегка устаревший, backstop = renumber-at-merge [[feedback_dec_dev_collision_check]].
+
+### Lessons
+1. Value-add ресёрч-капабилити над внешним стеком — это **интейк-контракт + гейт полезности**, не retrieval; C/D — тонкие обёртки (`orchestrate, don't duplicate`).
+2. Скептичный фильтр, который проектируешь, надо доказывать догфудом: Wave 0.5 tool-selection сам прогнан через Pillars B/D (убил vendor-самобенчи, tier-conflation «91%» = deep-mode $50/1k) → честный вердикт «частично» до keyed bake-off. [[feedback_blind_comparison]]
+
+---
+
 ## DEC-DEV-0136 — Wave B kickoff: полная волна completeness-loop — owner-развилки зафиксированы + work-order
 
 **Date:** 2026-07-01
