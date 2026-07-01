@@ -301,7 +301,7 @@
 <script id="map-data" type="application/json">{
   "_build": {
     "date": "2026-07-01",
-    "sha": "6932f77",
+    "sha": "e3d8e69",
     "commands": 43,
     "artifacts": 24,
     "rules": 44,
@@ -3225,6 +3225,23 @@ document.addEventListener("keydown", e=>{
 // identical state and the applyFilters() it calls is suppressed from re-writing.
 window.addEventListener("hashchange", readHash);
 readHash();
+
+// ── C3/PR#3b: cross-map deep-link — honour #focus=kind:id + expose current focus to the shell ──
+// The switch-view navbar (map-shell) carries getFocus() to the other map; applyFocus lights an
+// artifact (art:*) or command (cmd:*) here. art:* is the shared node type both maps can focus.
+if(window.MapShell && MapShell.registerView){
+  MapShell.registerView({
+    getFocus(){ return (hlState && hlState.kind && hlState.id) ? hlState.kind+":"+hlState.id : null; },
+    applyFocus(tok){
+      const i = tok.indexOf(":"); if(i<0) return;
+      const kind = tok.slice(0,i), id = tok.slice(i+1);
+      if(kind!=="art" && kind!=="cmd") return;
+      if(!(hlState && hlState.kind===kind && hlState.id===id)) setHighlight(kind, id);   // light it (no toggle-off)
+      const el = document.querySelector((kind==="art"?".art":".card")+'[data-id="'+id+'"]');
+      if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+    }
+  });
+}
 </script>
 </body>
 </html>

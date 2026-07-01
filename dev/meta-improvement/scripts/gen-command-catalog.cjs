@@ -89,6 +89,7 @@ function render(modules) {
     body += '\n';
   }
   const head =
+    `---\ndoc_type: reference\n---\n` +
     `<!-- GENERATED FILE — DO NOT EDIT BY HAND.\n` +
     `     Source of truth: frontmatter of commands/**/*.md.\n` +
     `     Regenerate: node ${REL_SELF} -->\n\n` +

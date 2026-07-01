@@ -1,3 +1,6 @@
+---
+doc_type: reference
+---
 <!-- GENERATED FILE — DO NOT EDIT BY HAND.
      Source of truth: docs/pmo/artifacts/*.md (H1 names) + docs/guide/ecosystem-map.overlay.json (tier/lineage/glossary).
      Regenerate: node dev/meta-improvement/scripts/gen-glossary.cjs -->
