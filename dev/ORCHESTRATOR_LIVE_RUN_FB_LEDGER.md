@@ -233,3 +233,19 @@
 - **ITP T2 fired in the pilot (Run 2)** — `AskUserQuestion` on the work-6-vs-pilot tree decision (B≥3 × R=dear); merge-safety (merge-base) analysis before merging work-6.
 - **remediation-guard content-vs-conflict split held** — billing auto-fixed 5 findings but escalated 3 cross-spec; glossary 3 fixes + 3 escalations; FB-LR-07 boundary respected.
 - **Shifted-escalation-with-ratification (Run 2)** — the req-10.4 auto-fix (`bfef870`) effectively realized route-2 of the Stripe `whx`/PA-030 conflict; executor surfaced it for owner ratify-or-revert, did NOT close it unilaterally.
+
+---
+
+## P2 dogfood + profiling study — DEC-DEV-0126/0129/0132 — 2026-07-01
+
+> P2 `decide-architecture-foundation` built (0129); live dogfood on the real S7-generated forks PA-040/042; then a blind A/B profiling study (0132) of the 3-persona jury vs 1 general-purpose subagent. Findings below feed the wave-2 (Autonomous Pipeline Vision) kickoff, not standalone fixes.
+
+### Ledger (new findings — continue from FB-LR-29)
+
+| id | sev | run | finding | corrected root-cause | route / status |
+|---|---|---|---|---|---|
+| FB-LR-30 | 🔵 | S7 Phase-2 dogfood (DEC-DEV-0126) | **PA-040 over-framing.** The escalation headlined BullMQ-vs-RPUSH as a standalone "transport conflict", but an independent check shows RPUSH is a deliberate, documented boundary decision (`apps/api` intentionally without a `bullmq` dependency) and BR-040 backoff IS implemented (`retry-policy.ts` / `stage.processor.ts`). The load-bearing defect is narrowly the missing consumer — which PA-040 also names ("never drains it"). | ForkBrief/escalation slightly over-weights transport mechanics vs the narrow real gap; routing + owner action (allocate the worker-bootstrap task) are correct regardless. | **OPEN (backlog, low).** Framing-only, no wrong route. Note beside PA-040. |
+| FB-LR-31 | 🟡 | P2 profiling study (`4af995d1`, DEC-DEV-0132) | **Lossy Brief-phase is the jury's bottleneck, not the jury itself.** Blind A/B: 1 GP ≥ 3-persona jury on D2 (factor coverage) / D3 (risk detection), in significant part because GP read the full raw PA while the jury read a lossy lifted-ForkBrief (verified on PA-040: the brief dropped the load-bearing fact "apps/worker already runs BullMQ" and mislabeled the worker as "NEW"). | `consilium-synth` feeds architects a lifted brief, not the raw PA; the lift is lossy and can drop/mislabel decisive facts. | **OPEN (actionable) — feeds Epic D design.** Architects must see the raw PA (or the lift must be lossless). Carry into the wave-2 consilium design. |
+| FB-LR-32 | 🟡 | P2 profiling study (`4af995d1`, DEC-DEV-0132) | **Distributed-veto blind spot.** Independent fixed-lens scoring + a deterministic sum can miss a *distributed* must-not-ship that a single holistic pass catches. A control run flagged an in-process `sleep`-as-canon violating a HIGH-confidence pinned NFR-004 that the jury rated only "weak" and passed. | `consilium-synth` sums per-lens scores with no rule "unanimously-weak ⇒ soft-veto / re-examine"; diversity of panel ≠ integration across lenses. | **OPEN (actionable) — feeds Epic D design.** Add a distributed-veto / unanimous-weak re-examine rule to `consilium-synth`. |
+
+**Disposition:** FB-LR-30 = framing-only LOW (no PR). FB-LR-31/32 are **P2 / Epic-D design inputs** — carried into the wave-2 (Autonomous Pipeline Vision) kickoff rather than fixed standalone. Full study: `dev/ORCHESTRATOR_P2_PROFILING_STUDY.md`.
