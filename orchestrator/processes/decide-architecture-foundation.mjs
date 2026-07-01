@@ -10,7 +10,7 @@ export const meta = {
 }
 
 /*
- * Orchestrator process P2 `decide-architecture-foundation` — build DEC-DEV-0128
+ * Orchestrator process P2 `decide-architecture-foundation` — build DEC-DEV-0129
  * (Phase 5C of the "module complete" plan; design ratified in DEC-DEV-0127, contract
  * dev/ORCHESTRATOR_P2_KICKOFF.md). Reading: SPEC §3.2 P2 / §3.3 RA-1 (the
  * architecture-consilium role, priors velocity/fidelity/integrity); Vision Epic D
@@ -67,7 +67,7 @@ export const meta = {
 const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const FORK = A.fork || A.forkId || ''                                   // fork id (PA-NNN or an ad-hoc ref)
 const FORK_BRIEF_IN = (A.forkBrief && typeof A.forkBrief === 'object') ? A.forkBrief : null  // optional pre-assembled ForkBrief
-const SYNTH = A.synth || '.claude/orchestrator/lib/consilium-synth.cjs' // DEC-DEV-0128: deterministic synthesis core
+const SYNTH = A.synth || '.claude/orchestrator/lib/consilium-synth.cjs' // DEC-DEV-0129: deterministic synthesis core
 
 // The 3 fixed priors (RA-1). v1 is a fixed panel; a configurable panel is post-v1
 // (DEC-DEV-0127 §9.3). Mirrors consilium-synth.cjs PRIOR_LIST (the script cannot require the lib).

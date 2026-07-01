@@ -123,7 +123,7 @@ Workflow({
   scriptPath: '.claude/orchestrator/processes/decide-architecture-foundation.mjs',
   args: {
     fork: "<PA-NNN | ref>",                                  // the declared fork (best: a cross-spec-conflict PA)
-    synth: '.claude/orchestrator/lib/consilium-synth.cjs',   // DEC-DEV-0128: deterministic matrix/rank/veto
+    synth: '.claude/orchestrator/lib/consilium-synth.cjs',   // DEC-DEV-0129: deterministic matrix/rank/veto
     forkBrief: {}                                            // optional pre-assembled ForkBrief (else P2 lifts it from the PA)
   }
 })

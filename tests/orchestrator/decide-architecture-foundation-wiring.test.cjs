@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Static guard for the Orchestrator P2 `decide-architecture-foundation` process wiring
- * (DEC-DEV-0128; design DEC-DEV-0127).
+ * (DEC-DEV-0129; design DEC-DEV-0127).
  *
  * The .mjs is a harness Workflow script (agent/parallel/phase globals + top-level return)
  * and cannot run standalone, so this asserts structural invariants at the source level
@@ -40,7 +40,7 @@ function test(name, fn) {
 }
 function assert(cond, msg) { if (!cond) throw new Error(msg); }
 
-console.log('orchestrator P2 — decide-architecture-foundation wiring (DEC-DEV-0128)');
+console.log('orchestrator P2 — decide-architecture-foundation wiring (DEC-DEV-0129)');
 
 test('declares the meta header (name + Brief/Consilium/Synthesize/Recommend phases) and FB-001 args guard', () => {
   assert(/export const meta\s*=/.test(SRC), 'missing export const meta');
@@ -50,7 +50,7 @@ test('declares the meta header (name + Brief/Consilium/Synthesize/Recommend phas
     assert(new RegExp(`phase\\('${ph}'\\)`).test(SRC), `phase('${ph}') call missing`);
   }
   assert(/typeof args === 'string' \? JSON\.parse\(args\)/.test(SRC), 'FB-001 args guard missing');
-  assert(/DEC-DEV-0128/.test(SRC), 'DEC-DEV-0128 (build) not referenced');
+  assert(/DEC-DEV-0129/.test(SRC), 'DEC-DEV-0129 (build) not referenced');
   assert(/DEC-DEV-0127/.test(SRC), 'DEC-DEV-0127 (ratified design) not referenced');
 });
 

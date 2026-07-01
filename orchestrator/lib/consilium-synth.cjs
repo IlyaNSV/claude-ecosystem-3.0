@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * consilium-synth.cjs — deterministic synthesis core of the Orchestrator P2
- * `decide-architecture-foundation` process (DEC-DEV-0128; design DEC-DEV-0127).
+ * `decide-architecture-foundation` process (DEC-DEV-0129; design DEC-DEV-0127).
  *
  * WHY THIS EXISTS (SPEC §3.2 P2 / §3.3 RA-1; Vision Epic D; RUN 01 E1):
  *   P2 supports a decision on an UNDECIDED architecture fork. Its engine is a
@@ -282,7 +282,7 @@ function parseArgs(argv) {
 function printHelp() {
   process.stdout.write([
     'consilium-synth.cjs — Orchestrator P2: aggregate a 3-prior architecture jury into',
-    'a recommendation (matrix + rank + veto). Deterministic (DEC-DEV-0128).',
+    'a recommendation (matrix + rank + veto). Deterministic (DEC-DEV-0129).',
     '',
     'USAGE:  node consilium-synth.cjs --verdicts-file verdicts.json [--options a,b,c]',
     '        node consilium-synth.cjs --verdicts \'[{"prior":"velocity",...}]\' --options a,b',

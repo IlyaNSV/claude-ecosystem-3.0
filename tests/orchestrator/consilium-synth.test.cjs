@@ -1,6 +1,6 @@
 'use strict';
 /**
- * Unit test for the Orchestrator consilium-synth lib (DEC-DEV-0128) — the P2
+ * Unit test for the Orchestrator consilium-synth lib (DEC-DEV-0129) — the P2
  * `decide-architecture-foundation` deterministic synthesis core. The CLI's FS reads are
  * environment-dependent; the PURE functions are the correctness surface the
  * recommendation rides on:
@@ -51,7 +51,7 @@ const V = (prior, scores, rec, blocking) => ({
   blocking_concerns: blocking || [],
 });
 
-console.log('orchestrator consilium-synth — P2 pure functions (DEC-DEV-0128)');
+console.log('orchestrator consilium-synth — P2 pure functions (DEC-DEV-0129)');
 
 test('exports the contract surface + prior/strength enums are stable', () => {
   assert.ok(typeof buildMatrix === 'function', 'buildMatrix missing');
