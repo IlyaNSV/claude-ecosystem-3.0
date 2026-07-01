@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * check-guide-doctype.cjs — A3 (doc-UX batch, DEC-DEV-0136).
+ * check-guide-doctype.cjs — A3 (doc-UX batch, DEC-DEV-0137).
  *
  * Инвариант Diátaxis для USER-слоя `docs/guide/*.md`:
  *   1. У каждой доки — валидный `doc_type` из enum (+ опц. вторичный `doc_type_secondary`).
