@@ -129,7 +129,7 @@ test('the recommendation + trade-off + disclosures ride in the return envelope, 
   }
 });
 
-test('Fix A (DEC-DEV-0134): the architects read the RAW SOURCE, not only the lossy lift', () => {
+test('Fix A (DEC-DEV-0135): the architects read the RAW SOURCE, not only the lossy lift', () => {
   // the brief carries the verbatim source it was lifted from
   assert(/source_excerpt/.test(SRC), 'FORK_BRIEF_SCHEMA must carry source_excerpt');
   // the Brief agent is told to capture it verbatim (anti-loss)
@@ -140,10 +140,10 @@ test('Fix A (DEC-DEV-0134): the architects read the RAW SOURCE, not only the los
   assert(/raw source WINS/i.test(SRC), 'on a fact disagreement the source must win over the lift');
   // …without licensing invented options (the lift-not-invent discipline holds)
   assert(/NOT to invent an option the fork does not pose/i.test(SRC), 'the source must not become a license to invent options');
-  assert(/DEC-DEV-0134/.test(SRC), 'DEC-DEV-0134 (the fix) must be referenced');
+  assert(/DEC-DEV-0135/.test(SRC), 'DEC-DEV-0135 (the fix) must be referenced');
 });
 
-test('Fix synthesis (DEC-DEV-0134): the soft-veto flag is threaded + disclosed', () => {
+test('Fix synthesis (DEC-DEV-0135): the soft-veto flag is threaded + disclosed', () => {
   assert(/soft_vetoed/.test(SRC), 'the synth relay + envelope must carry soft_vetoed');
   assert(/const softVetoed = /.test(SRC), 'soft_vetoed must be read from the synth result');
   assert(/synth\.soft_vetoed/.test(SRC), 'softVetoed must come FROM the synth result (deterministic CODE)');
@@ -152,7 +152,7 @@ test('Fix synthesis (DEC-DEV-0134): the soft-veto flag is threaded + disclosed',
   assert(/least-bad pick, not an endorsement/i.test(SRC), 'the soft-veto disclosure must frame it as least-bad, not endorsed');
 });
 
-test('Fix synthesis (DEC-DEV-0134): the post-panel integration pass is surfacing-only, after the panel', () => {
+test('Fix synthesis (DEC-DEV-0135): the post-panel integration pass is surfacing-only, after the panel', () => {
   const integIdx = SRC.indexOf("label: 'integration'");
   const synthIdx = SRC.indexOf("label: 'synth'");
   const tradeoffIdx = SRC.indexOf("label: 'tradeoff'");

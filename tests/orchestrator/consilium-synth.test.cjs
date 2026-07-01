@@ -204,7 +204,7 @@ test('summarize: reports recommended, strength, and the option/survivor/veto cou
   assert.strictEqual(sum.panel_complete, true);
 });
 
-// --- soft-veto (DEC-DEV-0134): the distributed-weakness flag ------------------
+// --- soft-veto (DEC-DEV-0135): the distributed-weakness flag ------------------
 // An option NO lens scores ≥ SOFT_VETO_THRESHOLD is weak under EVERY prior. It is FLAGGED,
 // not removed (only a hard veto removes) — and a full-panel agreement on such an option is
 // never STRONG (agreement on the least-bad is not a rubber-stamp). Profiling study

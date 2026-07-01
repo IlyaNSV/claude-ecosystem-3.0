@@ -38,7 +38,7 @@
  *         must weigh.
  *       · `none`   ⟺ EVERY option is vetoed by ≥1 lens — there is no clean pick; the
  *         veto set itself is the finding to escalate (harder than a split).
- *   - SOFT-VETO (DEC-DEV-0134 — the distributed-weakness flag): an option that NO lens
+ *   - SOFT-VETO (DEC-DEV-0135 — the distributed-weakness flag): an option that NO lens
  *     scores ≥ SOFT_VETO_THRESHOLD is "soft-vetoed" — weak under EVERY prior. It is NOT
  *     removed (a hard veto does that), but it is FLAGGED, because the deterministic SUM
  *     can rank a weak-across-the-board option as a viable split survivor, masking that no
@@ -88,7 +88,7 @@ const STRENGTH = {
 const SCORE_MIN = 0;
 const SCORE_MAX = 5;
 
-// An option NO lens scores ≥ this is "soft-vetoed": weak under EVERY prior (DEC-DEV-0134).
+// An option NO lens scores ≥ this is "soft-vetoed": weak under EVERY prior (DEC-DEV-0135).
 // Not removed (a hard veto does that) — flagged for re-examination so the deterministic sum
 // cannot quietly promote a weak-across-the-board option to a viable split, and a full-panel
 // agreement on such an option is never `strong` (profiling study DEC-DEV-0132 finding #2).
@@ -179,7 +179,7 @@ function buildMatrix(verdicts, optionIds) {
       max,
       blocking,
       vetoed: blocking.length > 0,
-      // soft veto (DEC-DEV-0134): NO lens scored it ≥ SOFT_VETO_THRESHOLD — weak under every
+      // soft veto (DEC-DEV-0135): NO lens scored it ≥ SOFT_VETO_THRESHOLD — weak under every
       // prior. A pure property of the scores (a hard veto subsumes it; synthesize() separates
       // the actionable, non-hard-vetoed set).
       soft_vetoed: max < SOFT_VETO_THRESHOLD,
@@ -247,7 +247,7 @@ function synthesize(verdicts, optionIds) {
     }
   }
 
-  // Soft-veto (DEC-DEV-0134): surviving options no lens scored ≥ SOFT_VETO_THRESHOLD — weak
+  // Soft-veto (DEC-DEV-0135): surviving options no lens scored ≥ SOFT_VETO_THRESHOLD — weak
   // under every prior. A hard veto subsumes a soft one, so only NON-hard-vetoed options count.
   // If even the RECOMMENDED option is soft-vetoed, a full-panel "agreement" is agreement on the
   // LEAST-BAD option — never near-formal; demote STRONG → SPLIT so it is re-examined, not

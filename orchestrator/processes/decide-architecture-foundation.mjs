@@ -30,7 +30,7 @@ export const meta = {
  *
  * THE ENGINE — a jury, not a debate (DEC-DEV-0127 §4):
  *   3 architects run in `parallel()`, each with a distinct prior, each reading the ForkBrief
- *   + the RAW SOURCE it was lifted from (Fix A, DEC-DEV-0134 — see below), no cross-talk, no
+ *   + the RAW SOURCE it was lifted from (Fix A, DEC-DEV-0135 — see below), no cross-talk, no
  *   consensus round. Heterogeneity is the condition under which a panel beats one opinion;
  *   cross-talk collapses it to groupthink. Each returns a structured ArchVerdict (scores per
  *   option + recommended + risks-of-own-prior + blocking_concerns) so the synthesis is
@@ -39,7 +39,7 @@ export const meta = {
  * THE SYNTHESIS — hybrid code + prompt (DEC-DEV-0127 §5 / §9.2):
  *   Layer-3 (CODE, consilium-synth.cjs): matrix + rank + veto — worst-of by blocking
  *   (any lens's blocking_concern vetoes an option), sum-of-scores for rank, + a SOFT-VETO
- *   flag (Fix synthesis, DEC-DEV-0134: an option no lens scores strongly is weak-across-the-
+ *   flag (Fix synthesis, DEC-DEV-0135: an option no lens scores strongly is weak-across-the-
  *   board — flagged, and a soft-vetoed top pick is demoted out of `strong`). This fixes WHAT
  *   is recommended and how strongly (strong | split | none). Layer-2.5 (PROMPT, surfacing-
  *   only): a post-panel holistic INTEGRATION pass — one reasoner reads the whole fork after
@@ -49,7 +49,7 @@ export const meta = {
  *   layer on top of the fixed skeleton. A split is NOT a bug of the synthesis; it IS the
  *   product (the trade-off the owner must weigh), so P2 surfaces it, never papers it over.
  *
- * FIX A + FIX SYNTHESIS (DEC-DEV-0134; profiling study DEC-DEV-0132): the P2 dogfood A/B
+ * FIX A + FIX SYNTHESIS (DEC-DEV-0135; profiling study DEC-DEV-0132): the P2 dogfood A/B
  *   surfaced two mechanism blind spots. (Layer-2 loss) the jury saw only a LOSSY lifted
  *   ForkBrief → architects now also read the raw source_excerpt (the ground truth wins on a
  *   fact the lift dropped). (Layer-3 integration loss) independent fixed-lens scoring + a
@@ -112,7 +112,7 @@ const FORK_BRIEF_SCHEMA = {
       },
     },
     constraints: { type: 'string' },                        // .product (VP/NFR/product_class) + steering/design pins
-    source_excerpt: { type: 'string' },                     // DEC-DEV-0134 (Fix A): VERBATIM raw PA block + cited constraint lines — the ground truth the architects read alongside the (lossy) lift
+    source_excerpt: { type: 'string' },                     // DEC-DEV-0135 (Fix A): VERBATIM raw PA block + cited constraint lines — the ground truth the architects read alongside the (lossy) lift
     affected_specs: { type: 'array', items: { type: 'string' } },
     decidable: { type: 'boolean' },                         // false ⇒ <2 enumerated options (under-specified fork)
     note: { type: 'string' },
@@ -148,14 +148,14 @@ const SYNTH_SCHEMA = {
     ranked: { type: 'array', items: { type: 'string' } },
     survivors: { type: 'array', items: { type: 'string' } },
     vetoed: { type: 'array', items: { type: 'string' } },
-    soft_vetoed: { type: 'array', items: { type: 'string' } },   // DEC-DEV-0134: survivors weak under every lens (no prior ≥ threshold)
+    soft_vetoed: { type: 'array', items: { type: 'string' } },   // DEC-DEV-0135: survivors weak under every lens (no prior ≥ threshold)
     recommendations: { type: 'object' },
     panel_complete: { type: 'boolean' },
     blocking_concerns: { type: 'array', items: { type: 'object' } },
   },
 }
 
-// DEC-DEV-0134 (Fix synthesis / Layer-3): the post-panel holistic INTEGRATION pass — one
+// DEC-DEV-0135 (Fix synthesis / Layer-3): the post-panel holistic INTEGRATION pass — one
 // reasoner reads the WHOLE fork AFTER the independent panel, adversarially, to catch what
 // independent fixed-lens scoring + a deterministic SUM structurally miss (a distributed
 // must-not-ship no single lens vetoed; one lens's fact undercutting another's score; a
@@ -211,7 +211,7 @@ const PA_CANON = 'CANONICAL pending-actions (FB-LR-23, parallel-worktree safety)
 
 // One consilium architect. Sees the ForkBrief + the RAW SOURCE it was lifted from + its own
 // prior; votes independently (jury, not debate — cross-talk collapses a panel to groupthink,
-// Vision D). Fix A (DEC-DEV-0134): the architects read the raw source, not only the lifted
+// Vision D). Fix A (DEC-DEV-0135): the architects read the raw source, not only the lifted
 // brief, so a lossy Brief-lift can no longer cap the panel (profiling study DEC-DEV-0132: the
 // PA-040 brief dropped + mis-framed a decision-relevant fact the whole panel then inherited).
 const archPrompt = (prior, brief) =>
@@ -224,7 +224,7 @@ const archPrompt = (prior, brief) =>
   + `Score EACH option 0..5 STRICTLY from your "${prior}" lens (0 = terrible for ${prior}, 5 = ideal for ${prior}) — return them in scores as { option_id: score }. Name your recommended_option (the top under YOUR lens). List risks_of_recommendation — what YOUR lens pays if the owner takes your pick (be honest about your prior's blind spots). Only if an option is genuinely UNACCEPTABLE under your lens, add it to blocking_concerns as { option_id, concern } — a blocking_concern is a VETO (it removes that option from the recommendation), so reserve it for "this must not ship", not "I mildly dislike it".\n`
   + `Judge the fork AS POSED — do NOT invent new options, do NOT edit any file, do NOT decide for the owner. Return the ArchVerdict.`
 
-// The post-panel holistic INTEGRATION pass (DEC-DEV-0134, Fix synthesis / Layer-3). One
+// The post-panel holistic INTEGRATION pass (DEC-DEV-0135, Fix synthesis / Layer-3). One
 // reasoner reads the WHOLE fork AFTER the independent panel, adversarially, to catch the
 // cross-lens failures a fixed-lens sum cannot see. SURFACING-ONLY: it raises a disclosure,
 // it does NOT re-score and does NOT change the deterministic recommendation (that stays CODE).
@@ -270,7 +270,7 @@ if (!brief) {
     `Assemble the ForkBrief for architecture fork "${FORK}" — the input P2 will weigh. This is DECISION-SUPPORT prep, NOT a decision.\n`
     + `1) Resolve the fork's pending-action. ${PA_CANON}Find the PA block whose id/title matches "${FORK}" (a cross-spec-conflict PA is the ideal input — it already enumerates the options and names the conflicting specs).\n`
     + `2) LIFT — do NOT invent — the mutually-exclusive options (a/b/c…) the PA lists: each with an id, a short summary, and the sanctioned artifacts it would mutate (design.md / tech.md / tasks.md / a spec section). Read the cited specs and .product ONLY to fill constraints (VP / NFR / product_class, steering / design pins) — never to add an option the fork does not pose.\n`
-    + `3) Capture source_excerpt (Fix A, DEC-DEV-0134): the VERBATIM text of the fork's PA block + the specific cited constraint lines you read (the pinned NFR / VP / product_class / steering / design lines that bear on an option) — QUOTE, do not paraphrase. The architects read this raw source as the GROUND TRUTH alongside your lift, so a fact your distillation drops does NOT silently cap the panel. Do not editorialize; this is the source, not your summary.\n`
+    + `3) Capture source_excerpt (Fix A, DEC-DEV-0135): the VERBATIM text of the fork's PA block + the specific cited constraint lines you read (the pinned NFR / VP / product_class / steering / design lines that bear on an option) — QUOTE, do not paraphrase. The architects read this raw source as the GROUND TRUTH alongside your lift, so a fact your distillation drops does NOT silently cap the panel. Do not editorialize; this is the source, not your summary.\n`
     + `4) If the fork enumerates FEWER THAN 2 options (nothing to weigh — under-specified, not a real fork), set decidable:false + a one-line note naming what is missing; do NOT fabricate a second option.\n`
     + `Return the ForkBrief. Do NOT edit any file. Do NOT commit.`,
     { schema: FORK_BRIEF_SCHEMA, phase: 'Brief', label: `brief:${FORK || 'fork'}` },
@@ -322,7 +322,7 @@ const synth = await agent(
 const recommended = (synth && synth.recommended != null) ? synth.recommended : null
 const strength = (synth && synth.strength) || 'none'
 const vetoed = (synth && synth.vetoed) || []
-const softVetoed = (synth && Array.isArray(synth.soft_vetoed)) ? synth.soft_vetoed : []   // DEC-DEV-0134: survivors weak under every lens
+const softVetoed = (synth && Array.isArray(synth.soft_vetoed)) ? synth.soft_vetoed : []   // DEC-DEV-0135: survivors weak under every lens
 const panelComplete = !(synth && synth.panel_complete === false)
 
 // Layer-2.5 (PROMPT, surfacing-only): the post-panel holistic integration pass — one reasoner
@@ -363,7 +363,7 @@ const pkg = {
   matrix: (synth && synth.matrix) || {},
   ranked: (synth && synth.ranked) || [],
   vetoed,
-  soft_vetoed: softVetoed,                                    // DEC-DEV-0134: survivors weak under every lens (flagged, not removed)
+  soft_vetoed: softVetoed,                                    // DEC-DEV-0135: survivors weak under every lens (flagged, not removed)
   integration: integrationFlag                               // post-panel holistic flag (surfaced, never auto-applied)
     ? { flag: true, distributed_veto: distributedVeto, recalibration: (integration && integration.recalibration) || '', note: (integration && integration.note) || '' }
     : { flag: false },
@@ -376,10 +376,10 @@ const disclosures = []
 if (!panelComplete) disclosures.push(`consilium ran with a REDUCED panel (${verdicts.length}/${PRIOR_LIST.length} priors reported) — the recommendation rests on fewer than 3 lenses; re-run for a full panel before ratifying a close call.`)
 if (strength === 'none') disclosures.push('every option is vetoed by at least one lens — there is NO clean pick; the fork must be re-posed (see the veto ledger).')
 else if (strength === 'split') disclosures.push('the lenses DIVERGE — the recommendation is the top-scoring survivor, but the owner is weighing a real trade-off (see the_real_tradeoff), not rubber-stamping a consensus.')
-// DEC-DEV-0134 — soft-veto: an option weak under EVERY lens survived the sum but no lens endorsed it.
+// DEC-DEV-0135 — soft-veto: an option weak under EVERY lens survived the sum but no lens endorsed it.
 if (recommended && softVetoed.includes(recommended)) disclosures.push('the recommended option is WEAK under every lens (no prior scored it strongly — soft-veto): a least-bad pick, not an endorsement; re-examine whether the fork is well-posed before ratifying.')
 else if (softVetoed.length) disclosures.push(`soft-veto: option(s) [${softVetoed.join(', ')}] survived the sum but no lens scored them strongly (weak under every lens).`)
-// DEC-DEV-0134 — post-panel integration flag (surfaced, never auto-applied): a cross-lens issue the per-lens sum could not see.
+// DEC-DEV-0135 — post-panel integration flag (surfaced, never auto-applied): a cross-lens issue the per-lens sum could not see.
 if (integrationFlag) {
   const dv = distributedVeto.map((d) => `${d.option_id}${d.hard_line ? ` (${d.hard_line})` : ''}`).filter(Boolean).join(', ')
   disclosures.push(`post-panel integration flag: the per-lens sum may mislead${dv ? ` — possible distributed must-not-ship on [${dv}] that no single lens vetoed` : ''}${integration && integration.recalibration ? ` — recalibration: ${integration.recalibration}` : ''}; owner should re-examine before ratifying (SURFACED, not auto-applied).`)
@@ -399,8 +399,8 @@ return {
   matrix: pkg.matrix,
   ranked: pkg.ranked,
   vetoed,                               // options a lens blocked (never recommended)
-  soft_vetoed: softVetoed,              // DEC-DEV-0134: survivors weak under EVERY lens — flagged for re-examination, not removed
-  integration: pkg.integration,         // DEC-DEV-0134: post-panel holistic flag { flag, distributed_veto, recalibration, note } (surfaced, not auto-applied)
+  soft_vetoed: softVetoed,              // DEC-DEV-0135: survivors weak under EVERY lens — flagged for re-examination, not removed
+  integration: pkg.integration,         // DEC-DEV-0135: post-panel holistic flag { flag, distributed_veto, recalibration, note } (surfaced, not auto-applied)
   panel_complete: panelComplete,        // false ⇒ a prior died; recommendation on a reduced panel (disclosed)
   verdicts_count: verdicts.length,
   disclosures,                          // reduced-panel / split / all-vetoed / soft-veto / integration caveats — carried, never dropped
