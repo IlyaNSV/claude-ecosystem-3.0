@@ -379,10 +379,28 @@
     ["has_ui", "Флаг фичи: есть ли интерфейс. true → включается Design Module."],
     ["confidence", "Поле уверенности ассистента в артефакте (high/medium/low) — основа авто-approve и анти-дрифта."],
     ["tier / review", "Уровни ревью: 🔴 Critical, 🟠 Strategic, 🟡 Standard, 🟢 Confirmation — определяют, когда нужен approve."],
-    ["P1–P5", "Процессы Product Module: Discovery, Planning, Feature, Handoff, Maintenance."],
+    ["P1–P5 (Product)", "Процессы Product Module: P1 Initialization (Discovery+Planning), P2 Feature, P3 Feedback (stub), P4 Cascade, P5 Periodic Review."],
     ["P3–P6 (orch.)", "Процессы Orchestrator: batch→specs, audit-fidelity, tdd-impl, validate-impl."],
     ["gate / хук", "Детерминированный enforcement: PreToolUse/PostToolUse/commit-msg/Stop хуки, блокирующие (🔒) или warn-only."],
     ["tier-based activation", "pilot/mvp/full — какие правила валидации работают inline на каждой стадии продукта."]
+  ],
+
+  "namingAxes": [
+    {"axis": "D1–D6", "what": "Шесть управленческих доменов PMO (Discovery → Governance)", "values": "D1 Discovery · D2 Requirements&Design (сплит B/T/UI) · D3 Build · D4 QA · D5 Ops · D6 Meta/Governance", "notWith": "`D.1–D.6` (шаги Design) · `D1.1–D1.9` (шаги Discovery) · `D2-B01…` (обязанности PMO)"},
+    {"axis": "D.1–D.6 (с точкой)", "what": "Шаги сессии `/design:start` (Design Module)", "values": "D.1 Brief · D.2 Screens · D.3 Iterate · D.4 States · D.5 Artifacts · D.6 Export", "notWith": "`D1–D6` — домены пайплайна (без точки)"},
+    {"axis": "D1.1–D1.9", "what": "Упорядоченные шаги Discovery/Planning-сессии", "values": "D1.1 Problem · D1.4a VP · D1.5 Hypothesis · D1.6 MVP · D1.9 Prioritization", "notWith": "домен `D1` · шаг `D.1` (Design)"},
+    {"axis": "D2-B## / D2-T## / D3-##", "what": "Функциональные обязанности-роли внутри доменов PMO", "values": "D2-B01…B05 (B04 = UX/UI) · D2-T01…T08 · D3-01…07 · D4-01…07", "notWith": "`D2-B`/`D2-UI` как ДОМЕН артефактов — это группа, не роль"},
+    {"axis": "Принципы P1–P7", "what": "Семь принципов паттерна draft→approve (философия)", "values": "P1 Assistant-led · P2 Iterative>waterfall · P4 Approve≠формальность · P5 Post-approve automation · P7 Transparent escalation", "notWith": "процессы `P1–P5` Product · `P1–P7` Orchestrator — это НЕ философия"},
+    {"axis": "Процессы Product P1–P5", "what": "Процессные семейства Product Module", "values": "P1 Initialization (Discovery+Planning) · P2 Feature · P3 Feedback (stub) · P4 Cascade · P5 Periodic Review", "notWith": "принципы `P1–P7` · Orchestrator `P1–P7`. В картах — суффикс `p` (`P4p`)"},
+    {"axis": "Процессы Orchestrator P1–P7", "what": "Рантайм-процессы Orchestrator", "values": "P1 init · P2 decide-architecture · P3 batch→cc-sdd · P4 audit-fidelity · P5 tdd-impl · P6 validate-impl · P7 runtime-smoke", "notWith": "Product `P1–P5`. В картах — суффикс `o` (`P4o`); оператор обычно видит `P3o–P6o` (+P7-leg внутри P6)"},
+    {"axis": "Артефакты — 24 типа", "what": "ID-префиксы типов артефактов PMO", "values": "PS MR CA SEG VP HYP MVP RM RL · FM · SC BR LC RPM VC IC NFR · MK DS NM AM · BG NOTE LESSON", "notWith": "`MVP`-тип ≠ стадия продукта ≠ `validation_tier=mvp`"},
+    {"axis": "Домены артефактов", "what": "Группировка 24 артефактов в карте/глоссарии", "values": "D1 · bridge (FM) · D2-B · D2-UI · cross", "notWith": "домены пайплайна `D1–D6` (имена частично пересекаются)"},
+    {"axis": "Модули", "what": "Top-level модули / namespace команд", "values": "Product · Design · Integrator · Orchestrator · Ecosystem", "notWith": "мета-слой = `D6` в PMO-карте, но `D7` в dev-доках (CLAUDE.md)"},
+    {"axis": "Уровни ревью", "what": "Строгость approve-ревью артефакта", "values": "🔴 Critical · 🟠 Strategic · 🟡 Standard · 🟢 Confirmation", "notWith": "`validation_tier` · `product_tier` — тоже зовутся «tier»"},
+    {"axis": "product_tier / validation_tier", "what": "Зрелость продукта / охват inline-валидации", "values": "product_tier: ИДЕЯ→MVP→MMP→GROWTH→MATURE · validation_tier: pilot / mvp / full", "notWith": "review-уровни 🔴🟠🟡🟢 (третий смысл слова «tier»)"},
+    {"axis": "Вердикты Orchestrator", "what": "Исход гейта — две независимые оси + conflicts", "values": "result: GO / NO-GO / MANUAL_VERIFY · readiness: READY / DEGRADED / ENV_NOT_READY · conflicts[] понижает GO→MANUAL_VERIFY", "notWith": ""},
+    {"axis": "Гейты Discovery", "what": "Named approve-гейты Discovery-сессии", "values": "G1 · G4 · G4a · G5 · DRC (нумерация с пропусками — `G2`/`G3` НЕТ)", "notWith": ""},
+    {"axis": "Лестницы L#", "what": "Два несвязанных «L»-масштаба", "values": "L0–L5: уровни понимания в `guide/README` · L0–L2: зум App Map (AM→NM→MK)", "notWith": "друг с другом; «autonomy L0/L1» в доках НЕТ"}
   ],
 
   "tasks": [

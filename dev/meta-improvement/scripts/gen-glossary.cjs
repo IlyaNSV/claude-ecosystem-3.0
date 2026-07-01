@@ -62,12 +62,33 @@ function selftest(names, overlay) {
     else if (seen.has(term)) errs.push(`duplicate glossary term: ${term}`);
     seen.add(term);
   }
+  const axSeen = new Set();
+  for (const ax of overlay.namingAxes || []) {
+    if (!ax.axis || !String(ax.axis).trim()) errs.push('namingAxes entry with empty "axis"');
+    else { if (axSeen.has(ax.axis)) errs.push(`duplicate naming axis: ${ax.axis}`); axSeen.add(ax.axis); }
+    if (!ax.what || !String(ax.what).trim()) errs.push(`namingAxes[${ax.axis}] has empty "what"`);
+    if (!ax.values || !String(ax.values).trim()) errs.push(`namingAxes[${ax.axis}] has empty "values"`);
+  }
   return errs;
 }
 
 function render(names, overlay) {
   const A = overlay.artifacts;
   let body = '';
+  // E2 — единая легенда осей именования (editorial, из overlay.namingAxes). Разводит
+  // перегруженные метки `D…`/`P…`, чтобы читатель не конфлатил разные оси. Эмитится
+  // первым (это «карта карт» — ориентир перед детальными таблицами артефактов).
+  if (overlay.namingAxes && overlay.namingAxes.length) {
+    body += '## Оси именования — какой «D…»/«P…» о чём\n\n';
+    body += '> Экосистема нумерует РАЗНЫЕ вещи похожими метками (`D…`, `P…`, домены, уровни). ' +
+      'Эта таблица разводит оси — чтобы `D2` (домен пайплайна) не путать с `D.2` (шаг Design), ' +
+      'а `P4` Product — с `P4` Orchestrator.\n\n';
+    body += '| Ось | Что нумерует | Значения | Не путать с |\n|---|---|---|---|\n';
+    for (const ax of overlay.namingAxes) {
+      body += `| **${cell(ax.axis)}** | ${cell(ax.what)} | ${cell(ax.values)} | ${cell(ax.notWith || '—')} |\n`;
+    }
+    body += '\n';
+  }
   for (const g of overlay.artifactGroups) {
     body += `## ${g.label}\n\n`;
     body += '| ID | Название | Ревью | Питает |\n|---|---|---|---|\n';
@@ -95,7 +116,7 @@ function render(names, overlay) {
     'Ревью-уровни: 🔴 Critical · 🟠 Strategic · 🟡 Standard · 🟢 Confirmation ' +
     '(подробно — [00-concepts §5](00-concepts.md)). «Питает» — какие артефакты выводятся из этого ' +
     '(полная родословная — [artifacts/README](../pmo/artifacts/README.md)). Интерактивно — [ecosystem-map.html](ecosystem-map.html).\n\n' +
-    `**Типов артефактов: ${nArt}** + сквозные термины, домены и вердикты.\n\n`;
+    `**Типов артефактов: ${nArt}** + оси именования, домены, сквозные термины и вердикты.\n\n`;
   return head + body;
 }
 

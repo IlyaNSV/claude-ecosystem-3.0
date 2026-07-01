@@ -47,7 +47,7 @@ const TOKEN = '/*__MAP_DATA__*/';
 const STATUS_ENUM = ['shipped', 'partial', 'conditional', 'planned'];
 const OVERLAY_TOP_KEYS = new Set([
   '_doc', 'boundaryObjects', 'pipeline', 'modules', 'commands', 'artifacts',
-  'artifactGroups', 'gates', 'processes', 'validation', 'glossary', 'tasks', 'roadmap',
+  'artifactGroups', 'gates', 'processes', 'validation', 'glossary', 'namingAxes', 'tasks', 'roadmap',
 ]);
 
 // ─────────────────────────── frontmatter (sibling parser) ───────────────────────────

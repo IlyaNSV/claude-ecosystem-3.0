@@ -9,7 +9,29 @@ doc_type: reference
 
 > **Сгенерирован** из спеков артефактов (`docs/pmo/artifacts/*.md`) и редакторского overlay — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-glossary.cjs`. Ревью-уровни: 🔴 Critical · 🟠 Strategic · 🟡 Standard · 🟢 Confirmation (подробно — [00-concepts §5](00-concepts.md)). «Питает» — какие артефакты выводятся из этого (полная родословная — [artifacts/README](../pmo/artifacts/README.md)). Интерактивно — [ecosystem-map.html](ecosystem-map.html).
 
-**Типов артефактов: 24** + сквозные термины, домены и вердикты.
+**Типов артефактов: 24** + оси именования, домены, сквозные термины и вердикты.
+
+## Оси именования — какой «D…»/«P…» о чём
+
+> Экосистема нумерует РАЗНЫЕ вещи похожими метками (`D…`, `P…`, домены, уровни). Эта таблица разводит оси — чтобы `D2` (домен пайплайна) не путать с `D.2` (шаг Design), а `P4` Product — с `P4` Orchestrator.
+
+| Ось | Что нумерует | Значения | Не путать с |
+|---|---|---|---|
+| **D1–D6** | Шесть управленческих доменов PMO (Discovery → Governance) | D1 Discovery · D2 Requirements&Design (сплит B/T/UI) · D3 Build · D4 QA · D5 Ops · D6 Meta/Governance | `D.1–D.6` (шаги Design) · `D1.1–D1.9` (шаги Discovery) · `D2-B01…` (обязанности PMO) |
+| **D.1–D.6 (с точкой)** | Шаги сессии `/design:start` (Design Module) | D.1 Brief · D.2 Screens · D.3 Iterate · D.4 States · D.5 Artifacts · D.6 Export | `D1–D6` — домены пайплайна (без точки) |
+| **D1.1–D1.9** | Упорядоченные шаги Discovery/Planning-сессии | D1.1 Problem · D1.4a VP · D1.5 Hypothesis · D1.6 MVP · D1.9 Prioritization | домен `D1` · шаг `D.1` (Design) |
+| **D2-B## / D2-T## / D3-##** | Функциональные обязанности-роли внутри доменов PMO | D2-B01…B05 (B04 = UX/UI) · D2-T01…T08 · D3-01…07 · D4-01…07 | `D2-B`/`D2-UI` как ДОМЕН артефактов — это группа, не роль |
+| **Принципы P1–P7** | Семь принципов паттерна draft→approve (философия) | P1 Assistant-led · P2 Iterative>waterfall · P4 Approve≠формальность · P5 Post-approve automation · P7 Transparent escalation | процессы `P1–P5` Product · `P1–P7` Orchestrator — это НЕ философия |
+| **Процессы Product P1–P5** | Процессные семейства Product Module | P1 Initialization (Discovery+Planning) · P2 Feature · P3 Feedback (stub) · P4 Cascade · P5 Periodic Review | принципы `P1–P7` · Orchestrator `P1–P7`. В картах — суффикс `p` (`P4p`) |
+| **Процессы Orchestrator P1–P7** | Рантайм-процессы Orchestrator | P1 init · P2 decide-architecture · P3 batch→cc-sdd · P4 audit-fidelity · P5 tdd-impl · P6 validate-impl · P7 runtime-smoke | Product `P1–P5`. В картах — суффикс `o` (`P4o`); оператор обычно видит `P3o–P6o` (+P7-leg внутри P6) |
+| **Артефакты — 24 типа** | ID-префиксы типов артефактов PMO | PS MR CA SEG VP HYP MVP RM RL · FM · SC BR LC RPM VC IC NFR · MK DS NM AM · BG NOTE LESSON | `MVP`-тип ≠ стадия продукта ≠ `validation_tier=mvp` |
+| **Домены артефактов** | Группировка 24 артефактов в карте/глоссарии | D1 · bridge (FM) · D2-B · D2-UI · cross | домены пайплайна `D1–D6` (имена частично пересекаются) |
+| **Модули** | Top-level модули / namespace команд | Product · Design · Integrator · Orchestrator · Ecosystem | мета-слой = `D6` в PMO-карте, но `D7` в dev-доках (CLAUDE.md) |
+| **Уровни ревью** | Строгость approve-ревью артефакта | 🔴 Critical · 🟠 Strategic · 🟡 Standard · 🟢 Confirmation | `validation_tier` · `product_tier` — тоже зовутся «tier» |
+| **product_tier / validation_tier** | Зрелость продукта / охват inline-валидации | product_tier: ИДЕЯ→MVP→MMP→GROWTH→MATURE · validation_tier: pilot / mvp / full | review-уровни 🔴🟠🟡🟢 (третий смысл слова «tier») |
+| **Вердикты Orchestrator** | Исход гейта — две независимые оси + conflicts | result: GO / NO-GO / MANUAL_VERIFY · readiness: READY / DEGRADED / ENV_NOT_READY · conflicts[] понижает GO→MANUAL_VERIFY | — |
+| **Гейты Discovery** | Named approve-гейты Discovery-сессии | G1 · G4 · G4a · G5 · DRC (нумерация с пропусками — `G2`/`G3` НЕТ) | — |
+| **Лестницы L#** | Два несвязанных «L»-масштаба | L0–L5: уровни понимания в `guide/README` · L0–L2: зум App Map (AM→NM→MK) | друг с другом; «autonomy L0/L1» в доках НЕТ |
 
 ## D1 · Discovery & Strategy
 
@@ -74,7 +96,7 @@ doc_type: reference
 | **has_ui** | Флаг фичи: есть ли интерфейс. true → включается Design Module. |
 | **confidence** | Поле уверенности ассистента в артефакте (high/medium/low) — основа авто-approve и анти-дрифта. |
 | **tier / review** | Уровни ревью: 🔴 Critical, 🟠 Strategic, 🟡 Standard, 🟢 Confirmation — определяют, когда нужен approve. |
-| **P1–P5** | Процессы Product Module: Discovery, Planning, Feature, Handoff, Maintenance. |
+| **P1–P5 (Product)** | Процессы Product Module: P1 Initialization (Discovery+Planning), P2 Feature, P3 Feedback (stub), P4 Cascade, P5 Periodic Review. |
 | **P3–P6 (orch.)** | Процессы Orchestrator: batch→specs, audit-fidelity, tdd-impl, validate-impl. |
 | **gate / хук** | Детерминированный enforcement: PreToolUse/PostToolUse/commit-msg/Stop хуки, блокирующие (🔒) или warn-only. |
 | **tier-based activation** | pilot/mvp/full — какие правила валидации работают inline на каждой стадии продукта. |
