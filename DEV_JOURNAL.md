@@ -7112,6 +7112,35 @@ Watch-sheet:
 
 ---
 
+## DEC-DEV-0127 — P2 `decide-architecture-foundation`: work-definition — жюри ×3 → recommendation-пакет владельцу (design, pre-build)
+
+**Date:** 2026-07-01
+**Trigger:** Владелец выбрал фронт «5C — P2» (последний orchestrator-процесс до полного модуля) + «kickoff-дизайн сначала» → ратифицировал 4 проектных решения. Полный контракт — `dev/ORCHESTRATOR_P2_KICKOFF.md`.
+**Tag:** #orchestrator #p2 #consilium #design #kickoff
+
+### Context
+P2 был CUT из первого инкремента (опц.; запускался руками в RUN 01 E1). Заготовки существовали, сборочного контракта — нет. Слот SPEC §3.2 (зона D2-T01/02, «scope-defining gate»); роль RA-1 `architecture-consilium` (prior'ы velocity/fidelity/integrity); прецедент ручного прогона (`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` #129–184); констрейнт Vision Epic D (жюри, не дебаты); открытый вопрос #7 (автоматизируемость консилиум-синтеза проверена на одной развилке/стеке — нужна ДРУГАЯ). Триггер момента: S7-прогон сгенерировал реальную арх-развилку `PA-040/042` (BullMQ-очередь vs plain-Redis + аллокация worker-bootstrap) — готовый dogfood-материал.
+
+### Options considered (ключевая ось — граница решения)
+1. **Авто-решение (P2 выбирает + финализирует DEC)** — быстрее, но ломает конвенцию owner-arbitration (FB-LR-07), рискует стать тем «односторонним резолвом», что гейты запрещают; Vision D: консилиум на одном связном решении = groupthink + ~15× без жюри-модели. **Отвергнут.**
+2. **Recommendation-пакет владельцу (P2 готовит, владелец ратифицирует)** — консистентно с FB-LR-07 / `PA-042` и Vision D (жюри готовит, не решает за пользователя). **Выбран.**
+
+### Decision (ратифицировано владельцем — 4 пункта)
+1. **Граница = рекомендация, не авто-решение.** P2 сжимает развилку до решаемого вида (варианты × линзы × риски × рекомендация + выпяченный раскол); владелец ратифицирует → DEC → правка спеков. P2 сам спеки не правит, PA не закрывает, DEC не финализирует (только черновик).
+2. **Движок = жюри ×3, фикс-prior'ы velocity/fidelity/integrity** (RA-1), `parallel()`, без кросс-тока и раунда консенсуса (гетерогенность = условие не-вырождения). Каждый архитектор → structured `ArchVerdict` (scores per option / recommended / risks-of-own-prior / blocking_concerns).
+3. **Вход = объявленная развилка**, лучше всего cross-spec-conflict PA (типа `PA-040/042` — лифтит options/affected_specs); P2 сам развилки не детектит (это работа гейтов). Manual-дверь: `/orchestrator:run decide-architecture-foundation --fork <PA-NNN|ref>`.
+4. **Синтез RA-0 = гибрид код+промпт:** код считает матрицу×prior + ранг + veto-по-blocking детерминированно (образец `remediation-guard` worst-of); промпт формулирует «настоящий trade-off» на расколе. Раскол линз = и есть решение владельца (не форсить консенсус).
+
+### Outcome
+Pending build (после компактации диалога): `orchestrator/processes/decide-architecture-foundation.mjs` + `skills/orchestrator/architecture-consilium.md` + wiring `commands/orchestrator/run.md` (снять «P2 deferred») + возможная либа `orchestrator/lib/consilium-synth.cjs` → **fixture-smoke** зелёный (counts 24/44 additive, `npm run verify` EXIT=0) → **dogfood на `PA-040/042`** (ДРУГАЯ развилка, чем стек RUN 01 → закрывает открытый вопрос #7 + даёт владельцу реальный decision-support по конвейеру localization). **Exit = P2 построен → orchestrator-модуль ПОЛНЫЙ (P1–P7 + §6 двусторонний) → снимает блокер PILOT POINT.**
+
+### Lessons
+1. **Autonomy/obedience — по месту решения, не по максимуму полюса** ([[project_autonomy_obedience_balance]]): P2 автономен в *качестве подготовки* развилки, послушен в *том, что финал за владельцем*. Арх-выбор — ровно класс, где «подготовить, не решить» правильнее «решить самому».
+2. **Консилиум ≠ дебаты для связного решения:** панель на одном арх-решении окупается только как гетерогенное ЖЮРИ (разные prior'ы, без консенсус-раунда) — иначе groupthink + ~15× стоимость (Vision-ресёрч). Синтез ВЫПЯЧИВАЕТ раскол линз, а не гасит его — раскол и есть решение владельца.
+3. **Открытый вопрос закрывается материалом, не рассуждением:** автоматизируемость синтеза (open-Q#7) проверяется прогоном на ВТОРОЙ развилке (`PA-040/042` ≠ выбор стека RUN 01), а не ещё одним раундом дизайна. Удачно, что гейт S7 сам сгенерировал эту развилку.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
