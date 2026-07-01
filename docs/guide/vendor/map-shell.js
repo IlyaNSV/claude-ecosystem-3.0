@@ -23,6 +23,22 @@
   // в шаблоне процессов — используется его side-panel'ом при сборке href.)
   function docRel(p) { return /^(?:[a-z]+:)?\/\//i.test(p) ? p : '../../' + String(p).replace(/^\.?\/*/, ''); }
 
+  // ── cross-map deep-link (PR#3b / C3) ──
+  // Общий `#focus=kind:id`, который чтит любая карта: `art:*` — общий узел обеих карт, `cmd:*` —
+  // только карта команд. Каждая карта регистрирует адаптер {getFocus, applyFocus}; на загрузке
+  // шелл читает `focus=` из hash и зовёт applyFocus. Навбар «переключить вид» переносит ТЕКУЩИЙ
+  // фокус в другую карту (getFocus → href#focus=…), чтобы переключение сохраняло контекст.
+  var view = null;  // зарегистрированный адаптер активной карты
+  function readFocus() {
+    var m = /(?:^|[#&])focus=([^&]+)/.exec(location.hash || '');
+    return m ? decodeURIComponent(m[1]) : null;
+  }
+  function registerView(adapter) {
+    view = adapter || null;
+    var f = readFocus();
+    if (view && view.applyFocus && f) { try { view.applyFocus(f); } catch (e) { /* карта решает, резолвится ли токен */ } }
+  }
+
   // ── навбар переключения вида ──
   var VIEWS = [
     { id: 'map', href: 'ecosystem-map.html', icon: '🗺', label: 'Карта команд' },
@@ -45,6 +61,14 @@
     }
     nav.innerHTML = html;
     header.insertBefore(nav, header.firstChild);
+    // switch-view переносит текущий фокус: клик по ссылке на другую карту → её URL + #focus=<token>.
+    var link = nav.querySelector('a.shell-viewlink');
+    if (link) {
+      link.addEventListener('click', function (e) {
+        var token = view && view.getFocus ? view.getFocus() : null;
+        if (token) { e.preventDefault(); location.href = link.getAttribute('href') + '#focus=' + encodeURIComponent(token); }
+      });
+    }
   }
 
   // ── doc-панель (модалка) ──
@@ -144,5 +168,5 @@
   if (document.querySelector('header') && document.body) init();
   else document.addEventListener('DOMContentLoaded', init);
 
-  window.MapShell = { openDoc: openDoc, docRel: docRel, closeDoc: closeDoc };
+  window.MapShell = { openDoc: openDoc, docRel: docRel, closeDoc: closeDoc, registerView: registerView };
 })();
