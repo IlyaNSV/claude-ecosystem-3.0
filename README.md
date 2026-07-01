@@ -12,6 +12,7 @@
 | Зачем пришёл | Куда смотреть |
 |---|---|
 | 🗺️ **Карта системы одним взглядом** | **[docs/MAP.md](docs/MAP.md)** — pipeline D1-D6 + C4 container (визуальный entry-point) |
+| 🚀 **Научиться вести продукт** (руководство оператора) | **[docs/guide/README.md](docs/guide/README.md)** — единый вход «Начни здесь»: лестница L0→L5, роутер «Я хочу…», две интерактивные карты |
 | 🤔 **Первый раз — что это и зачем** | [Концепция в одной строке](#концепция-в-одной-строке) + [Четыре модуля](#четыре-модуля) ниже → потом [ROADMAP.md «Где мы сейчас»](ROADMAP.md) |
 | 🔧 **Установить и запустить** | [BOOTSTRAP.md](BOOTSTRAP.md) → [INSTALL-HUMAN.md](INSTALL-HUMAN.md) → [Quick Start](#quick-start--двухфазная-установка) ниже |
 | 📖 **Развиваю саму экосистему** | [CLAUDE.md](CLAUDE.md) (repo conventions) → [DEV_JOURNAL.md](DEV_JOURNAL.md) последние 5 entries → [ROADMAP.md](ROADMAP.md) |
