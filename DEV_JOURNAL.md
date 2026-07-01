@@ -7139,6 +7139,34 @@ Pending build (после компактации диалога): `orchestrator/
 2. **Консилиум ≠ дебаты для связного решения:** панель на одном арх-решении окупается только как гетерогенное ЖЮРИ (разные prior'ы, без консенсус-раунда) — иначе groupthink + ~15× стоимость (Vision-ресёрч). Синтез ВЫПЯЧИВАЕТ раскол линз, а не гасит его — раскол и есть решение владельца.
 3. **Открытый вопрос закрывается материалом, не рассуждением:** автоматизируемость синтеза (open-Q#7) проверяется прогоном на ВТОРОЙ развилке (`PA-040/042` ≠ выбор стека RUN 01), а не ещё одним раундом дизайна. Удачно, что гейт S7 сам сгенерировал эту развилку.
 
+## DEC-DEV-0128 — P2 `decide-architecture-foundation` BUILT — жюри ×3 → детерминированный синтез → recommendation-пакет владельцу
+
+**Date:** 2026-07-01
+**Trigger:** Сборка ратифицированного в DEC-DEV-0127 контракта P2 (последний orchestrator-процесс до полного модуля). Контракт: `dev/ORCHESTRATOR_P2_KICKOFF.md`.
+**Tag:** #orchestrator #p2 #consilium #build #module-complete
+
+### Context
+DEC-DEV-0127 ратифицировал 4 решения (граница=рекомендация; жюри ×3 velocity/fidelity/integrity; вход=объявленная развилка; синтез=гибрид код+промпт). Сборка должна была превратить контракт в работающий процесс, не сдвигая границу «рекомендация, не авто-решение» (FB-LR-07) и держа синтез детерминированным (Vision D: раскол линз ВЫПЯЧИВАЕТСЯ, не гасится). Гейты: `npm run verify` EXIT=0, counts 24/44 additive, harness-диалект `.mjs`.
+
+### Options considered (решения уровня сборки — не пере-litigated дизайн 0127)
+1. **STRONG требует ПОЛНОЙ панели (3/3) единогласно** vs «2-из-3 = strong». Выбрано полное: 2-из-3 с умершим архитектором → `panel_complete:false` + `split`, никогда strong (panel-honesty, зеркалит fail-loud `runtime-readiness`/`capability-probe`).
+2. **Veto = worst-of по blocking** (любой prior блокирует → вариант вне рекомендации) vs «взвешенный штраф». Выбран worst-of (зеркало `remediation-guard`: конфликт бьёт предпочтение; консервативно к НЕ-рекомендации). Ранг выживших = сумма scores; тай-брейк = min-floor (worst-of ещё раз).
+3. **Синтез в коде vs промпте** — как в 0127 §9.2: гибрид. Код (`consilium-synth.cjs`) фиксирует matrix+rank+veto+strength; промпт формулирует `the_real_tradeoff`/`rationale`/`dec_draft` ПОВЕРХ (не может менять что рекомендовано). Wiring-тест это принуждает (recommended/strength/vetoed читаются из synth).
+4. **Развилка <2 опций** → surface (route spec-author/owner) vs фабрикация. Выбран surface: `decidable:false`, ранний return, `recordUnDecidable` — НЕ выдумывать второй вариант (P2-аналог `NOT_STARTABLE`).
+5. **Как агент прогоняет чистый синтез при harness-запрете FS в скрипте** — агент материализует вердикты во временный файл и гоняет CLI `--verdicts-file`, релеит JSON (паттерн «либа через Bash», DEC-DEV-0073 §D.1).
+
+### Decision
+Построены 3 артефакта + wiring: **`orchestrator/lib/consilium-synth.cjs`** (детерминир. dual-use: `buildMatrix`/`rankSurvivors`/`synthesize` → STRONG|SPLIT|NONE; veto worst-of; panel-honesty; CLI `--verdicts-file`/`--verdicts`); **`orchestrator/processes/decide-architecture-foundation.mjs`** (Workflow Brief→Consilium→Synthesize→Recommend: lift ForkBrief из PA [не выдумывать опции] → `parallel()` жюри ×3 без консенсус-раунда → relay синтез-либы → формулировка trade-off → запись recommendation-пакета + DRAFT DEC в канонический PA через `PA_CANON`, без флипа статуса/правки спеков/финализации DEC); **`skills/orchestrator/architecture-consilium.md`** (prior-методология + ArchVerdict-схема с anti-pattern field-warnings + синтез-граница). Wiring: `commands/orchestrator/run.md` (снята «P2 deferred» → таблица/preflight/launch/after-run контракт), `package.json` (2 теста в `test:orchestrator`), cross-component awareness `orchestrator/README.md`/`docs/orchestrator-module/SPEC.md`/`verify.md` (плюс починена устаревшая строка verify.md «P2/P4/P6/P7 deferred»).
+
+### Outcome
+`npm run verify` EXIT=0: consilium-synth 15/15 + decide-architecture-foundation-wiring 9/9 + авто-покрытие generic `args-parsing` (FB-001 guard 4/4) + `workflow-syntax` smoke (парсинг в harness-диалекте) + gen:map/gen:procmap check зелёные (карты не тронуты — генератор читает overlay, не сканирует `.mjs`). Counts 24/44 без изменений (net-new либа+процесс+скилл, ни артефакт-тип, ни правило). **Orchestrator-цепочка P1–P7 + §6 двусторонний — ПОЛНАЯ → снимается блокер PILOT POINT.** Осталось: живой dogfood-грейд на реальной развилке S7 `PA-040/042` (BullMQ-очередь vs plain-Redis + аллокация worker-bootstrap — ДРУГАЯ развилка, чем стек RUN 01 → закрывает open-Q#7) — отдельная пилотная сессия.
+
+### Lessons
+1. **Panel-honesty = тот же fail-loud, что и в readiness-либах:** «умерший prior» нельзя молча свернуть в консенсус — 2-из-3 никогда не strong. Неполнота панели ДЕКЛАРИРУЕТСЯ (`panel_complete:false` + disclosure), как «непрозондированный ≠ доказанно-up» в `runtime-readiness`.
+2. **Veto worst-of переносится 1:1 из `remediation-guard`:** «конфликт бьёт транзиент» ⇒ «блок-концерн бьёт высокий score». Консервативный дефолт синтеза — к НЕ-рекомендации спорного варианта, ledger вето виден, не скрыт.
+3. **Раскол — продукт, не баг:** детерминир. код НЕ форсит консенсус на split; он выдаёт top-by-sum + отдаёт промпту `the_real_tradeoff`. Ценность P2 на расколе — выпятить, что именно взвешивает владелец, а не выбрать за него.
+4. **Граница держится тестом, не намерением:** wiring-инвариант «recommended/strength/vetoed ← synth» + «промпт НЕ меняет рекомендацию» + «Do NOT finalize DEC / close PA / edit spec» кодифицирует FB-LR-07 в структуру, а не в благие пожелания.
+
 ---
 
 ```markdown
