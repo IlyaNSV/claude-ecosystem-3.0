@@ -95,6 +95,29 @@
   footer{padding:7px 18px;border-top:1px solid var(--line);font-size:11px;color:var(--tx3);background:var(--bg);z-index:30}
   footer a{margin-right:12px}
   .stamp{color:var(--tx3)}
+
+  /* in-app doc preview modal — renders .md fetched + decoded as UTF-8 (no charset-guessing «кракозябры») */
+  .docmodal{position:absolute;inset:0;z-index:50;display:none;background:rgba(1,4,9,.55)}
+  .docmodal.open{display:flex;justify-content:flex-end}
+  .docmodal .docpanel{width:min(760px,92vw);background:var(--bg2);border-left:1px solid var(--line);
+    display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
+  .docmodal .dochead{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);flex:none}
+  .docmodal .dochead h3{margin:0;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .docmodal .dochead a{font-size:11px}
+  .docmodal .dochead .px{cursor:pointer;color:var(--tx2);font-size:18px;border:none;background:none}
+  .docmodal .docbody{overflow-y:auto;padding:14px 20px 40px;font-size:13px;line-height:1.55;color:var(--tx)}
+  .docmodal .docbody h1{font-size:19px;margin:14px 0 8px}
+  .docmodal .docbody h2{font-size:16px;margin:16px 0 7px;border-top:1px solid var(--line);padding-top:12px}
+  .docmodal .docbody h3{font-size:14px;margin:12px 0 6px}
+  .docmodal .docbody h4{font-size:12.5px;color:var(--tx2);margin:10px 0 5px}
+  .docmodal .docbody p{margin:7px 0}
+  .docmodal .docbody ul{margin:6px 0 6px 18px;padding:0}
+  .docmodal .docbody li{margin:3px 0}
+  .docmodal .docbody code{background:var(--bg3);border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:12px}
+  .docmodal .docbody pre.md-code{background:var(--bg3);border:1px solid var(--line);border-radius:7px;padding:10px 12px;overflow-x:auto;font-size:12px;line-height:1.45}
+  .docmodal .docbody pre.md-code code{background:none;border:none;padding:0}
+  .docmodal .docbody blockquote{margin:7px 0;padding:2px 12px;border-left:3px solid var(--line);color:var(--tx2)}
+  .docmodal .docbody .docloading,.docmodal .docbody .docerr{color:var(--tx2);font-size:12.5px;padding:8px 0}
 </style>
 </head>
 <body>
@@ -153,13 +176,24 @@
     <button class="px" id="panelClose" aria-label="Закрыть">✕</button>
     <div id="panelBody"></div>
   </aside>
+
+  <div class="docmodal" id="docModal" role="dialog" aria-modal="true" aria-label="Просмотр документа">
+    <div class="docpanel">
+      <div class="dochead">
+        <h3 id="docTitle">Документ</h3>
+        <a id="docOpenRaw" href="#" target="_blank" rel="noopener">открыть ↗</a>
+        <button class="px" id="docClose" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="docbody" id="docBody"></div>
+    </div>
+  </div>
 </div>
 
 <footer>
   <a href="ecosystem-map.html">← Карта команд/артефактов</a>
-  <a href="../MAP.md">docs/MAP (обзор)</a>
-  <a href="../pmo/processes.md">processes.md</a>
-  <a href="../pmo/validation.md">validation.md</a>
+  <a href="../MAP.md" class="doclink" data-title="docs/MAP.md">docs/MAP (обзор)</a>
+  <a href="../pmo/processes.md" class="doclink" data-title="processes.md">processes.md</a>
+  <a href="../pmo/validation.md" class="doclink" data-title="validation.md">validation.md</a>
   <span class="stamp" id="stamp"></span>
 </footer>
 
@@ -294,7 +328,8 @@
         'target-arrow-shape':'triangle','arrow-scale':0.85,'opacity':0.85,
         'label':'data(label)','font-size':9,'color':'#6e7681','text-rotation':'autorotate','text-background-color':'#0d1117','text-background-opacity':0.85,'text-background-padding':2 } },
       { selector: 'edge[type="sequence"]', style: { 'line-color':'#8b949e','target-arrow-color':'#8b949e','width':1.6 } },
-      { selector: 'edge[type="delegate"]', style: { 'line-color':'#f0883e','target-arrow-color':'#f0883e','line-style':'dashed','width':1.8 } },
+      // long cross-lane delegation edges: dimmed by default (declutter), lit on node-select via .ehl below
+      { selector: 'edge[type="delegate"]', style: { 'line-color':'#f0883e','target-arrow-color':'#f0883e','line-style':'dashed','width':1.8,'opacity':0.5 } },
       { selector: 'edge[type="produces"]', style: { 'line-color':'#3fb950','target-arrow-color':'#3fb950','width':1.2 } },
       { selector: 'edge[type="consumes"]', style: { 'line-color':'#58a6ff','target-arrow-color':'#58a6ff','width':1.1,'opacity':0.6 } },
       { selector: 'edge[type="cascade"]', style: { 'line-color':'#f85149','target-arrow-color':'#f85149','line-style':'dashed','width':1.2 } },
@@ -326,7 +361,8 @@
       var lanes = cy.nodes('[kind="lane"]').filter(function(n){ return n.id() !== 'lane:artifacts'; });
       api.expand(lanes);
     } catch(e){ console.warn(e); }
-    runLayout(function(){ cy.fit(null, 45); });
+    // fit, then nudge content clear of the top-left legend overlay (its label used to sit under the legend)
+    runLayout(function(){ cy.fit(null, 45); if (cy.getElementById('lane:artifacts').nonempty()) cy.panBy({ x: 165, y: 22 }); });
   }
 
   // ── edge layers ──
@@ -465,7 +501,7 @@
     if (d.kind === 'process'){
       if (d.command) h += '<div class="kv"><b>Команда:</b> <span class="mono">/'+esc(d.command)+'</span></div>';
       if (d.domain)  h += '<div class="kv"><b>Домен:</b> '+esc(d.domain)+'</div>';
-      if (d.doc)     h += '<div class="kv"><a class="src" href="'+esc(d.doc.split('#')[0])+'">'+esc(d.doc)+'</a></div>';
+      if (d.doc)     h += '<div class="kv"><a class="src doclink" href="'+esc(docRel(d.doc.split('#')[0]))+'" data-title="'+esc(d.doc)+'">'+esc(d.doc)+'</a></div>';
       h += '<div class="kv" style="margin-top:8px;color:var(--tx3)">Дважды кликни / разверни (⊕), чтобы увидеть шаги.</div>';
     }
     if (d.kind === 'artifact'){
@@ -510,6 +546,70 @@
     this.textContent = document.getElementById('legend').classList.contains('collapsed') ? '▸' : '▾';
   });
 
+  // ── in-app doc preview: fetch the .md + decode UTF-8 OURSELVES, render inside this UTF-8 page. ──
+  // Why: a raw .md link served without charset=utf-8 (e.g. the IDE built-in server) lets a locale-RU
+  // GUI-Chrome fall back to cp1251 → «кракозябры». Decoding bytes as UTF-8 here sidesteps charset-
+  // guessing entirely. On file:// without --allow-file-access-from-files fetch is blocked → we surface
+  // a hint + the raw-open link (graceful degradation; the IDE http server is same-origin and works).
+  var docModal = document.getElementById('docModal');
+  function closeDoc(){ docModal.classList.remove('open'); }
+  document.getElementById('docClose').addEventListener('click', closeDoc);
+  docModal.addEventListener('click', function(e){ if (e.target === docModal) closeDoc(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && docModal.classList.contains('open')) closeDoc(); });
+
+  // repo-root-relative doc paths (side-panel d.doc = "docs/…" / "commands/…") → this page lives in
+  // docs/guide/, so prefix ../../ ; footer links are already guide-relative and pass through untouched.
+  function docRel(p){ return /^(?:[a-z]+:)?\/\//i.test(p) ? p : '../../' + String(p).replace(/^\.?\/*/, ''); }
+
+  function mdInline(s){
+    return s
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  }
+  // deliberately minimal markdown (headings/lists/quote/fenced-code/inline) — v1 per design D-2;
+  // richer render lands with the shared map-shell (C3). Escapes first, so raw HTML shows as text.
+  function renderMd(src){
+    var parts = String(src).split('```'); // even idx = prose, odd idx = fenced code
+    var out = '';
+    for (var i=0;i<parts.length;i++){
+      var seg = esc(parts[i]);
+      if (i % 2 === 1){ out += '<pre class="md-code">'+seg+'</pre>'; continue; }
+      var lines = seg.split(/\r?\n/), inList = false;
+      for (var j=0;j<lines.length;j++){
+        var ln = lines[j];
+        var mh = ln.match(/^(#{1,4})\s+(.*)$/);
+        var mli = ln.match(/^\s*[-*]\s+(.*)$/);
+        var mbq = ln.match(/^\s*&gt;\s?(.*)$/);
+        if (mh){ if(inList){out+='</ul>';inList=false;} var lv=mh[1].length; out += '<h'+lv+'>'+mdInline(mh[2])+'</h'+lv+'>'; }
+        else if (mli){ if(!inList){out+='<ul>';inList=true;} out += '<li>'+mdInline(mli[1])+'</li>'; }
+        else if (mbq){ if(inList){out+='</ul>';inList=false;} out += '<blockquote>'+mdInline(mbq[1])+'</blockquote>'; }
+        else if (ln.trim()===''){ if(inList){out+='</ul>';inList=false;} }
+        else { if(inList){out+='</ul>';inList=false;} out += '<p>'+mdInline(ln)+'</p>'; }
+      }
+      if(inList){ out+='</ul>'; }
+    }
+    return out;
+  }
+  function openDoc(url, title){
+    var body = document.getElementById('docBody');
+    document.getElementById('docTitle').textContent = title || 'Документ';
+    document.getElementById('docOpenRaw').href = url;
+    body.innerHTML = '<div class="docloading">Загрузка…</div>';
+    docModal.classList.add('open');
+    fetch(url).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.arrayBuffer(); })
+      .then(function(buf){ body.innerHTML = renderMd(new TextDecoder('utf-8').decode(new Uint8Array(buf))); })
+      .catch(function(err){ body.innerHTML = '<div class="docerr">Не удалось открыть в панели ('+esc(String(err && err.message || err))+
+        '). Ссылка «открыть ↗» выше откроет файл в новой вкладке. На file:// fetch к локальным файлам заблокирован — используй IDE-сервер.</div>'; });
+  }
+  // delegated: clicks on .doclink open the in-app preview; every other link navigates normally
+  document.addEventListener('click', function(e){
+    var a = e.target && e.target.closest ? e.target.closest('a.doclink') : null;
+    if (!a) return;
+    e.preventDefault();
+    openDoc(a.getAttribute('href'), a.getAttribute('data-title') || a.textContent);
+  });
+
   // ── keyboard: / focuses search · G group · U ungroup ──
   document.addEventListener('keydown', function(e){
     if (document.activeElement === q) return;                 // не перехватываем, пока печатают в поиске
@@ -527,7 +627,7 @@
   cy.on('layoutstart', function(){ window.__layoutRunning = true; });
   cy.on('layoutstop', function(){ window.__layoutRunning = false; });
   window.__cy = cy;
-  window.__procmap = { group: groupSelected, ungroup: ungroupTargets, ungroupAll: ungroupAll, getApi: function(){ return api; } };
+  window.__procmap = { group: groupSelected, ungroup: ungroupTargets, ungroupAll: ungroupAll, getApi: function(){ return api; }, openDoc: openDoc };
 
   // ── build stamp ──
   var b = DATA._build;

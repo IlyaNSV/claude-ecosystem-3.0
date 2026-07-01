@@ -119,6 +119,21 @@ try {
   console.log(`  lane-overlap: max ${(overlap.maxRatio * 100).toFixed(1)}% (${overlap.worst || 'n/a'}) across ${overlap.laneCount} module lanes`);
   ok(overlap.maxRatio < 0.6, `sibling lanes not grossly overlapping (max ${(overlap.maxRatio * 100).toFixed(1)}% < 60%)`);
 
+  // ── C2: the top-left legend overlay must not sit on top of the artifacts-lane label ──
+  const legend = await page.evaluate(() => {
+    const el = document.getElementById('legend');
+    const lb = el.getBoundingClientRect();
+    const cy = window.__cy;
+    const art = cy.getElementById('lane:artifacts');
+    if (art.empty()) return { checked: false };
+    const rb = art.renderedBoundingBox();
+    const leg = { x1: lb.left, y1: lb.top, x2: lb.right, y2: lb.bottom };
+    // "clear" = the artifacts lane starts to the RIGHT of, or BELOW, the legend box
+    const clear = rb.x1 >= leg.x2 - 2 || rb.y1 >= leg.y2 - 2 || rb.x2 <= leg.x1 + 2;
+    return { checked: true, clear };
+  });
+  if (legend.checked) ok(legend.clear, 'legend overlay does not cover the artifacts-lane label (C2 declutter)');
+
   // ── traversal order (the other ELK win): expanding a process lays its steps in next[] order.
   //    Expand P1A and assert (almost) all its internal sequence edges point forward (x increasing). ──
   await page.evaluate(() => {
@@ -190,6 +205,26 @@ try {
   ok(grp.danglingAfterGroup === 0, `no dangling edges after group (got ${grp.danglingAfterGroup})`);
   ok(grp.removed, 'ungroup removes the ad-hoc compound');
   ok(grp.danglingAfterUngroup === 0, `no dangling edges after ungroup (got ${grp.danglingAfterUngroup})`);
+
+  // ── C1: in-app doc preview decodes UTF-8 ITSELF → no charset-guessing «кракозябры» (regression) ──
+  const doc = await page.evaluate(async () => {
+    window.__procmap.openDoc('../pmo/processes.md', 'processes.md');
+    const started = Date.now();
+    return await new Promise((resolve) => {
+      const poll = () => {
+        const open = document.getElementById('docModal').classList.contains('open');
+        const txt = (document.getElementById('docBody').textContent || '').trim();
+        if (open && txt && txt !== 'Загрузка…' && !/^Не удалось/.test(txt)) resolve({ open, ok: true, sample: txt.replace(/\s+/g, ' ').slice(0, 160) });
+        else if (Date.now() - started > 8000) resolve({ open, ok: false, sample: txt.slice(0, 160) });
+        else setTimeout(poll, 100);
+      };
+      poll();
+    });
+  });
+  const cyrillicOk = /Назначение|Версия|методолог/i.test(doc.sample || '');
+  ok(doc.open && doc.ok, `in-app doc preview opens & loads (${doc.ok ? 'loaded' : 'FAILED: ' + (doc.sample || '')})`);
+  ok(cyrillicOk, `doc preview decodes UTF-8 (Cyrillic intact, no кракозябры): "${(doc.sample || '').slice(0, 56)}"`);
+  await page.evaluate(() => document.getElementById('docClose').click());
 
   // ── artifact screenshot (for human/agent eyes; NOT the gate) ──
   try {
