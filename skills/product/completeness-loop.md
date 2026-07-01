@@ -47,13 +47,20 @@ wave N:
                   → { score, tau, met, gaps[], ambiguities[], delegated_unverified[] }
                   If met AND no new info this wave → STOP (success).
 
-  2. SURFACE    — for each gap/ambiguity, let the zone's persona name precisely what is missing.
+  2. SURFACE    — resolve the feature root ONCE for this run, then let each zone's persona name
+                  precisely what is missing. PATH-ANCHORING (FB-LR-28): build EVERY persona brief's
+                  file paths from that single resolved root — the run's cwd / worktree, never a mix of
+                  worktree-absolute and main-checkout-absolute across briefs. A present-but-edited file
+                  handed at the wrong checkout is a SILENT stale read (no not-found to trigger a Glob
+                  self-heal), so anchor once and pass consistent paths to all three.
                   The personas are already routed by zone (advisor-pending.yaml / zone-router):
                     architect-advisor (feasibility/decomposition/data-state),
                     qa-advisor (testability/acceptance/edge/VC-coverage),
                     ux-advisor (flows/states — has_ui only).
-                  Spawn each as its CANONICAL subagent_type (not-found = STOP, never
-                  general-purpose fallback). Findings are GAPS only (clean:true otherwise).
+                  Spawn each as its CANONICAL subagent_type (not-found = STOP, never general-purpose
+                  fallback). Findings are GAPS only (clean:true otherwise); each persona WRITES them to
+                  `.product/.advisor-findings/<persona>-<ARTIFACT-ID>.md` — keyed on persona+id, not
+                  timestamped, so a re-run overwrites in place (idempotent, never a near-duplicate).
 
   3. CLASSIFY   — split this wave's gaps:
                     resolvable  = a derivation the assistant can complete from existing upstream
@@ -69,8 +76,18 @@ wave N:
                   IDEMPOTENT: update the artifact in place keyed on its id — never append a
                   near-duplicate (LOOP_READINESS_AUDIT §5.3 / DEC-DEV-0089).
 
-  5. ESCALATE   — queue each decision for the human (a pending-action / open question). Record
-                  the assumption if you proceed on a reversible one (ITP T1 style), block on the rest.
+  5. ESCALATE   — queue each decision for the human as a pending-action, written to the SINGLE
+                  CANONICAL pending-actions ledger — not a worktree-local copy (FB-LR-29 / the 0113
+                  PA_CANON guard, ported from orchestrator P4/P5/P6). Parallel git worktrees share one
+                  .git but have separate trees, so a worktree-local `.claude/pending-actions.md` lets
+                  PA-ids collide across concurrent runs. Resolve the canonical file ONCE: run
+                  `git worktree list --porcelain`, take the FIRST `worktree <path>` (the main checkout,
+                  shared by every worktree) → `<that-path>/.claude/pending-actions.md`; if not in a
+                  worktree, fall back to `.claude/pending-actions.md`. READ / allocate the next PA-NNN
+                  (highest existing id + 1) / APPEND against THAT file — never a worktree-local copy. Do
+                  NOT `git add` or commit it (it may live in another checkout) — leave it as working-tree
+                  state. Record the assumption if you proceed on a reversible one (ITP T1 style), block
+                  on the rest.
 
   6. RE-SCORE   — run the oracle again; compute Δscore vs wave N-1.
 ```
@@ -90,8 +107,9 @@ round a partial spec up to "done" (no silent truncation, rail 5).
 ## Idempotency & recovery (per B4 / LOOP_READINESS_AUDIT)
 
 - Every write step updates in place keyed on artifact id (re-running a wave must not duplicate).
-- The advisor personas write to `.product/.advisor-findings/<persona>-<ARTIFACT-ID>.md` (keyed,
-  not timestamped) — a re-run overwrites.
+- The advisor-findings write (SURFACE) is keyed on persona+id
+  (`.product/.advisor-findings/<persona>-<ARTIFACT-ID>.md`), not timestamped — a re-run overwrites,
+  never appends a near-duplicate.
 - A wave is resumable: a crash between write and commit re-enters at SCORE, which re-derives
   the gap set from the current tree (the oracle is a pure function of `.product/` state).
 
