@@ -16,6 +16,7 @@ DEC-DEV-0076).
 
 | `<process>` | What it does | Zone |
 |---|---|---|
+| `decide-architecture-foundation` | Decision-support on an undecided architecture fork: a 3-prior jury (velocity/fidelity/integrity) → a scored recommendation + DRAFT DEC for the owner (P2) | D2-T01/T02 |
 | `batch-features-to-cc-sdd` | Route a batch of `status: ready\|partial` handoffs into cc-sdd specs (P3) | D2-T01/T06 |
 | `audit-spec-fidelity` | Audit generated specs against `.product` for fidelity drift, before impl (P4) | D2-T verify |
 | `feature-to-tdd-impl` | Drive one feature's `tasks.md` to implemented code via native TDD loop (P5) | D3 |
@@ -26,13 +27,26 @@ P5 delegates its feature-level gate to P6 (`validate-feature-impl`) via `workflo
 also run P6 standalone to re-gate an already-implemented feature. P7 (`runtime-smoke-readiness`)
 runs after a P6 GO — its **readiness leg** (the deterministic verdict) is built; the **live boot**
 is substrate-gated (needs a pilot dev env), and the full Epic E deploy chain awaits Integrator
-D3-runtime. P2 (`decide-architecture-foundation`) is still deferred.
+D3-runtime. **P2 (`decide-architecture-foundation`) is built** — it runs an undecided
+architecture fork through a heterogeneous 3-prior consilium (velocity/fidelity/integrity) and
+hands the owner a scored recommendation + a DRAFT DEC; it never auto-decides (FB-LR-07). Its
+live grade is a dogfood on the S7 fork `PA-040/042`.
 
 ## Pre-flight (read-only, before launching)
 
-**Always:** confirm cc-sdd is `active` in `.claude/integrator/active-tools.yaml`. If not →
+**Always (the cc-sdd processes P3–P7 — P2 is the exception, see its block below):** confirm cc-sdd is `active` in `.claude/integrator/active-tools.yaml`. If not →
 stop: these processes need cc-sdd; run `/integrator:add cc-sdd` first. Do NOT improvise a
 substitute.
+
+**For `decide-architecture-foundation` (P2)** — the one process that does NOT need cc-sdd (it
+reads a declared fork + the `.product`/spec sources; it does not touch cc-sdd):
+1. `consilium-synth` present (`.claude/orchestrator/lib/consilium-synth.cjs`) — the
+   deterministic matrix/rank/veto backbone (the recommendation is not eyeballed).
+2. **A declared fork.** `--fork <PA-NNN | ref>` names the architecture fork to weigh — best a
+   **cross-spec-conflict pending-action** that already enumerates the options (P6/P4 escalate
+   these; the S7 fork `PA-040/042` is the live example). P2 does NOT detect forks — it consumes
+   a posed one; a fork with fewer than 2 enumerated options is under-specified → P2 surfaces
+   that (route the spec-author/owner), it does not fabricate an option.
 
 **For `batch-features-to-cc-sdd` (P3):**
 1. `kiro-spec-batch` skill installed.
@@ -40,7 +54,7 @@ substitute.
    `status: ready|partial` in `.product/handoffs/`; none found → stop.
 3. **Stack decided?** P3 pins `tech.md`. If `.kiro/steering/tech.md` already pins a stack,
    proceed. If not, this is the one irreducible human gate (RUN 01) — ask the user (or run
-   P2 when it ships). `--no-stack-gate` passes `stackDecided:false` to halt cleanly at
+   P2 (`decide-architecture-foundation`) to weigh the stack fork through the consilium first). `--no-stack-gate` passes `stackDecided:false` to halt cleanly at
    Steering (dry inspection).
 
 **For `feature-to-tdd-impl` (P5):**
@@ -99,6 +113,21 @@ Load the regimen skills for context, then launch the matching Workflow.
 > undefined and the process runs target-less (live-run RUN 01 FB-001/FB-002: an empty
 > feature let the Plan agent pick the wrong spec). The scripts now defensively parse a
 > string, but pass an object so the guard is belt-and-suspenders.
+
+**P2 — `decide-architecture-foundation`** (skills: `orchestrator-init`,
+`architecture-consilium`) — decision-support on an undecided architecture fork; hands the
+owner a scored recommendation + a DRAFT DEC, never an auto-decision:
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/decide-architecture-foundation.mjs',
+  args: {
+    fork: "<PA-NNN | ref>",                                  // the declared fork (best: a cross-spec-conflict PA)
+    synth: '.claude/orchestrator/lib/consilium-synth.cjs',   // DEC-DEV-0129: deterministic matrix/rank/veto
+    forkBrief: {}                                            // optional pre-assembled ForkBrief (else P2 lifts it from the PA)
+  }
+})
+```
 
 **P3 — `batch-features-to-cc-sdd`** (skills: `orchestrator-init`, `build-steering`,
 `build-briefs-from-handoff`, `coverage-oracle`):
@@ -230,6 +259,19 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
   real seam is an over-claim. Surface every `concerns[]` item the run returned + its route
   (Integrator for access/tool/secret; Product for provider choice) — a green GO must not hide
   them. (S6/DEC-DEV-0081: the implementer flagged exactly this and the FSM used to drop it.)
+- **P2 (`decide-architecture-foundation`):** the return is a **recommendation for the owner,
+  not a decision.** `recommendation` = `{option_id, strength}`, `strength ∈ strong | split |
+  none`: `strong` (the full 3-prior panel converged, no veto) → ratification is near-formal;
+  `split` (the lenses diverge) → **surface `the_real_tradeoff`** — the owner weighs a real
+  trade-off, not a rubber-stamp; `none` (every option vetoed by ≥1 lens) → no clean pick, the
+  fork must be re-posed (see `vetoed`). The recommendation + the option×prior `matrix` + a
+  **DRAFT** `dec_draft` are written into the fork's pending-action as a *proposal*
+  (`**Resolution (proposed by P2 consilium)**`) — P2 does **not** flip the PA, edit any spec,
+  or finalize the DEC (FB-LR-07); the owner ratifies → commits the DEC + edits the specs (or
+  orders P3/P5 to implement the chosen option). Read `disclosures`: `panel_complete:false` = an
+  architect died → the recommendation rests on a reduced panel (re-run before ratifying a close
+  call); `decidable:false` = the fork was under-specified (<2 options), nothing was weighed.
+  `applies_to` lists the specs the chosen option would change.
 - **P3:** if `coverage_incomplete` is non-empty → those features miss source ids in their
   specs; recommend re-running the relevant `kiro-spec-*`. If blocked features exist →
   surface the route (Product / Integrator) per item. Live caveat: can a Workflow `agent()`

@@ -10,6 +10,8 @@
 > P5 делегирует feature-гейт в P6 через `workflow()`). §6 capability detect-leg (DEC-DEV-0117) +
 > P7 `runtime-smoke-readiness` readiness-leg (DEC-DEV-0120) — «тесты зелёные ≠ приложение
 > стартует»; живой boot + полный Epic E (deploy) — substrate-gated (нужен Integrator D3-runtime).
+> P2 `decide-architecture-foundation` (DEC-DEV-0129) — консилиум-гейт: жюри ×3 (velocity/
+> fidelity/integrity) → scored recommendation + DRAFT DEC владельцу (рекомендация, не авто-решение).
 
 ## Принцип: оркеструем, не переписываем (DEC-DEV-0076)
 
@@ -35,6 +37,7 @@ Layer-1 (скелет процесса) и Layer-3 (гейты) — наши и 
 orchestrator/
 ├── README.md                       # этот файл
 ├── processes/                      # Workflow-скелеты (.mjs, in-harness)
+│   ├── decide-architecture-foundation.mjs  # P2 — консилиум-гейт: жюри ×3 → recommendation владельцу (DEC-DEV-0129)
 │   ├── batch-features-to-cc-sdd.mjs   # P3
 │   ├── feature-to-tdd-impl.mjs        # P5 (делегирует feature-гейт в P6; §6 detect-leg pre-flight)
 │   ├── audit-spec-fidelity.mjs        # P4 — pre-impl fidelity-гейт (spec vs .product)
@@ -45,7 +48,8 @@ orchestrator/
     ├── fidelity-oracle.cjs            # P4 trace-integrity (spec-refs ⊆ .product ground-truth)
     ├── gate-risk-classifier.cjs       # P0-2 предикат тяжести гейта HIGH/LOW (P5)
     ├── capability-probe.cjs           # §6 detect-leg: disposition external_capabilities (P5; DEC-DEV-0117)
-    └── runtime-readiness.cjs          # P7 readiness-ядро: run-target + §6 boot-caps + env → verdict (DEC-DEV-0120)
+    ├── runtime-readiness.cjs          # P7 readiness-ядро: run-target + §6 boot-caps + env → verdict (DEC-DEV-0120)
+    └── consilium-synth.cjs            # P2 синтез-ядро: matrix + rank + veto-по-blocking → recommendation (DEC-DEV-0129)
 
 skills/orchestrator/                # регламент-методология (lazy-loaded)
 ├── orchestrator-init.md            # P1 — сбор контекста + resume после /compact
@@ -53,7 +57,9 @@ skills/orchestrator/                # регламент-методология 
 ├── build-briefs-from-handoff.md    # P3 — мост handoff→brief.md/roadmap (замена kiro-discovery)
 ├── coverage-oracle.md              # P3 — детерминированный coverage-гейт
 ├── gate-risk-classifier.md         # P5 — предикат HIGH/LOW (enforcement, не presence)
-└── tdd-impl-loop.md                # P5 — native-контроллер, лифтит kiro-impl prompts/gates
+├── audit-spec-fidelity.md          # P4 — методология fidelity-аудита (spec vs .product)
+├── tdd-impl-loop.md                # P5 — native-контроллер, лифтит kiro-impl prompts/gates
+└── architecture-consilium.md       # P2 — prior-методология жюри + ArchVerdict-схема + синтез-граница
 
 commands/orchestrator/
 └── run.md                          # /orchestrator:run <process> [--feature ...]

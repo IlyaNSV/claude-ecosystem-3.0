@@ -49,7 +49,7 @@ Count per namespace:
 - `.claude/commands/integrator/*.md` — expect 9 (research, map, gaps, status, journal, scan, add, remove, update)
 - `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~20)
 - `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
-- `.claude/commands/orchestrator/*.md` — expect 1+ (run; first increment — P2/P4/P6/P7 processes deferred)
+- `.claude/commands/orchestrator/*.md` — expect 1+ (run — dispatches processes P2–P7; only deploy/rollback deferred)
 - `.claude/commands/ecosystem/*.md` — expect 6 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
 
 Report counts + note what's expected for current ROADMAP phase.
