@@ -38,6 +38,17 @@
  *         must weigh.
  *       · `none`   ⟺ EVERY option is vetoed by ≥1 lens — there is no clean pick; the
  *         veto set itself is the finding to escalate (harder than a split).
+ *   - SOFT-VETO (DEC-DEV-0135 — the distributed-weakness flag): an option that NO lens
+ *     scores ≥ SOFT_VETO_THRESHOLD is "soft-vetoed" — weak under EVERY prior. It is NOT
+ *     removed (a hard veto does that), but it is FLAGGED, because the deterministic SUM
+ *     can rank a weak-across-the-board option as a viable split survivor, masking that no
+ *     lens actually endorsed it. If even the RECOMMENDED option is soft-vetoed, a
+ *     full-panel "agreement" is agreement on the LEAST-BAD option, never a rubber-stamp →
+ *     it is demoted out of `strong`. (Profiling study DEC-DEV-0132 finding #2: independent
+ *     fixed-lens scoring + a sum trades away holistic cross-lens integration; this recovers
+ *     the "unanimously weak ⇒ re-examine" signal the raw sum drops. The complementary
+ *     "one lens's fact undercuts another's score" case, which CODE cannot see, is the .mjs
+ *     post-panel integration pass — surfacing-only, it never changes this deterministic pick.)
  *
  * HONEST ABOUT THE PANEL (fail-loud, not fail-open): if fewer than 3 priors reported
  *   (an architect died on a terminal error), `panel_complete:false` rides in the
@@ -76,6 +87,13 @@ const STRENGTH = {
 
 const SCORE_MIN = 0;
 const SCORE_MAX = 5;
+
+// An option NO lens scores ≥ this is "soft-vetoed": weak under EVERY prior (DEC-DEV-0135).
+// Not removed (a hard veto does that) — flagged for re-examination so the deterministic sum
+// cannot quietly promote a weak-across-the-board option to a viable split, and a full-panel
+// agreement on such an option is never `strong` (profiling study DEC-DEV-0132 finding #2).
+// 3 = the 0..5 midpoint: max score < 3 ⇒ every lens scored it ≤ 2 (weak-to-bad everywhere).
+const SOFT_VETO_THRESHOLD = 3;
 
 // ---------------------------------------------------------------------------
 // Pure helpers.
@@ -129,8 +147,8 @@ function collectOptionIds(verdicts, optionIds) {
 
 /**
  * Build the option × prior score matrix + veto attribution.
- * @returns { [optionId]: { scores:{velocity,fidelity,integrity}, sum, min,
- *                          blocking:[{prior,concern}], vetoed:boolean } }
+ * @returns { [optionId]: { scores:{velocity,fidelity,integrity}, sum, min, max,
+ *                          blocking:[{prior,concern}], vetoed:boolean, soft_vetoed:boolean } }
  */
 function buildMatrix(verdicts, optionIds) {
   const vs = (Array.isArray(verdicts) ? verdicts : []).filter(isPriorVerdict);
@@ -153,12 +171,18 @@ function buildMatrix(verdicts, optionIds) {
       }
     }
     const vals = PRIOR_LIST.map((p) => scores[p]);
+    const max = Math.max(...vals);
     matrix[id] = {
       scores,
       sum: vals.reduce((a, b) => a + b, 0),
       min: Math.min(...vals),
+      max,
       blocking,
       vetoed: blocking.length > 0,
+      // soft veto (DEC-DEV-0135): NO lens scored it ≥ SOFT_VETO_THRESHOLD — weak under every
+      // prior. A pure property of the scores (a hard veto subsumes it; synthesize() separates
+      // the actionable, non-hard-vetoed set).
+      soft_vetoed: max < SOFT_VETO_THRESHOLD,
     };
   }
   return matrix;
@@ -223,6 +247,17 @@ function synthesize(verdicts, optionIds) {
     }
   }
 
+  // Soft-veto (DEC-DEV-0135): surviving options no lens scored ≥ SOFT_VETO_THRESHOLD — weak
+  // under every prior. A hard veto subsumes a soft one, so only NON-hard-vetoed options count.
+  // If even the RECOMMENDED option is soft-vetoed, a full-panel "agreement" is agreement on the
+  // LEAST-BAD option — never near-formal; demote STRONG → SPLIT so it is re-examined, not
+  // rubber-stamped. It is never REMOVED (that is a hard veto's job) — only flagged + disclosed.
+  const softVetoed = survivors.filter((id) => matrix[id].soft_vetoed);
+  const recommendedSoftVetoed = recommended != null && softVetoed.includes(recommended);
+  if (recommendedSoftVetoed && strength === STRENGTH.STRONG) {
+    strength = STRENGTH.SPLIT;
+  }
+
   // all blocking concerns, flattened + option-attributed (the veto ledger the owner sees).
   const blockingConcerns = ids.flatMap((id) =>
     matrix[id].blocking.map((b) => ({ option_id: id, prior: b.prior, concern: b.concern })));
@@ -240,6 +275,8 @@ function synthesize(verdicts, optionIds) {
     recommended,                   // option_id | null (null ⇔ strength none)
     strength,                      // strong | split | none
     split: strength === STRENGTH.SPLIT,
+    soft_vetoed: softVetoed,       // survivors weak under EVERY lens (no prior ≥ threshold) — flagged, not removed
+    recommended_soft_vetoed: recommendedSoftVetoed,  // true ⇒ even the top pick is weak everywhere (demoted from strong)
     blocking_concerns: blockingConcerns,
   };
 }
@@ -253,6 +290,7 @@ function summarize(synth) {
     options: Array.isArray(s.options) ? s.options.length : 0,
     survivors: Array.isArray(s.survivors) ? s.survivors.length : 0,
     vetoed: Array.isArray(s.vetoed) ? s.vetoed.length : 0,
+    soft_vetoed: Array.isArray(s.soft_vetoed) ? s.soft_vetoed.length : 0,
     panel_complete: !!s.panel_complete,
   };
 }
@@ -291,10 +329,12 @@ function printHelp() {
     '           risks_of_recommendation[], blocking_concerns:[{option_id, concern}] }.',
     '',
     '→ JSON { recommended, strength: strong|split|none, matrix, ranked, survivors, vetoed,',
-    '         recommendations, panel_complete, blocking_concerns, summary }.',
+    '         soft_vetoed, recommendations, panel_complete, blocking_concerns, summary }.',
     'strong ⇒ full panel unanimous on a surviving option; split ⇒ lenses diverge (surface',
     'the trade-off); none ⇒ every option vetoed (escalate). An option ANY prior blocks is',
-    'vetoed and never recommended (worst-of). The owner ratifies — P2 does not decide.',
+    'vetoed and never recommended (worst-of). soft_vetoed = survivors no lens scored >= 3',
+    '(weak under every lens) — flagged, not removed; a soft-vetoed top pick is never strong.',
+    'The owner ratifies — P2 does not decide.',
   ].join('\n') + '\n');
 }
 
@@ -347,6 +387,7 @@ module.exports = {
   STRENGTH,
   SCORE_MIN,
   SCORE_MAX,
+  SOFT_VETO_THRESHOLD,
   clampScore,
   isPriorVerdict,
   concernOptionId,
