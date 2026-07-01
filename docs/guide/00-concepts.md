@@ -129,15 +129,9 @@ PS  (проблема, корень)
 
 ## 8. Словарь несущих сокращений
 
-**Артефакты Discovery (D1):** `PS` problem statement · `MR` market research · `CA` competitive analysis · `SEG` сегмент+JTBD · `VP` value proposition · `HYP` гипотеза · `MVP` scope · `RM` roadmap · `RL` release plan.
+Полный канонический словарь — **[`03-glossary.md`](03-glossary.md)**: 24 типа артефактов (ID · название · уровень ревью · что питает, по доменам D1 / D2-B / D2-UI / cross) + сквозные термины и вердикты. **Генерируется** из спеков артефактов + overlay — не дрейфует.
 
-**Мост и поведение (D2):** `FM` feature map entry (запись фичи) · `SC` сценарий · `BR` бизнес-правило 🔴 · `LC` жизненный цикл сущности · `VC` критерии проверки · `IC` инвариант 🔴 · `RPM` роли и права · `NFR` нефункциональные требования.
-
-**Дизайн (D2-UI):** `MK` mockup · `DS` design system · `NM` navigation map · `AM` app map (+CJM).
-
-**Сквозное:** `BG` бизнес-глоссарий · `NOTE` свободная заметка · `LESSON` corrective-урок.
-
-**Процессы и вердикты:** `D1–D6` управленческие домены · `P1–P5` процессы Product · `DoR` definition of ready (готовность handoff) · `DA` devil's advocate · `GO/NO-GO/MANUAL_VERIFY` вердикт оркестратор-гейта · `cc-sdd` внешний инструмент-реализатор · `has_ui` флаг наличия интерфейса.
+Самые несущие: `PS` проблема (корень) · `FM` запись фичи (мост D1→D2) · `SC` сценарий · `BR` бизнес-правило 🔴 · `IC` инвариант 🔴 · `handoff.md` граница передачи · `DoR` готовность handoff · `DA` devil's advocate · `GO/NO-GO/MANUAL_VERIFY` вердикт гейта · `has_ui` флаг интерфейса.
 
 ---
 
