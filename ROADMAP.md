@@ -150,7 +150,7 @@
 | Эпик | Что | Зона | Статус |
 |---|---|---|---|
 | **A** | Реестр гетерогенных профильных персон (architect/qa/ux-advisor) + детерминированный zone→agent роутер | Product/Design (owned) | ✅ Increment 1 слит + Track V live-validated (0098/0103) |
-| **B** | Bounded completeness-loop для D1-D2B; граница «достаточности» = handoff DoR; стоп = cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0) | Product (owned) | ✅ B1-core + B4 слиты (0098/0099); полная волна позже |
+| **B** | Bounded completeness-loop для D1-D2B; граница «достаточности» = handoff DoR; стоп = cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0) | Product (owned) | 🔄 B1-core + B4 слиты (0098/0099); **полная волна — kickoff 0134** (work-order BATCH_2) |
 | **C** | Крупные автономные шаги (макро `batch-enrich-feature-set`, 5-8 шагов = границы фаз с гейтами) + branch-anticipation | Product macro (Workflow) | 📋 после B |
 | **D** | Консилиум-примитив как жюри (`parallel()` фан-аут гетерогенных персон → synthesis → в гейт, не вместо) | cross-cutting | 📋 с/после A |
 | **E** | Сегмент до прода (CI/build, provisioning, deploy/rollback, QA-инфра, monitoring) | Orchestrator+Integrator | 🔗 **coordinate-only** (зона оркестратор-трека; предусловие = §6-канал + D3/D4/D5-инструменты) |
@@ -159,6 +159,8 @@
 **Порядок:** (A ∥ F1) → B → (C ∥ D) → F2 → E(+F3). Фронт пайплайна (качество входа) — первым: ошибки спеки компаундируются вниз по конвейеру, чинить дешевле всего у источника.
 
 **Increment 1 (СЛИТ 2026-06-25):** Epic A целиком (3 персоны + zone-routing) + B4 (loop-readiness аудит) + B1-core (completeness-oracle + bounded-loop + `/product:complete`). **Track V live-run grade'нут** (V-1 zone-хук / V-3 оракул PASS; V-2 frontmatter-фикс — DEC-DEV-0103); V-2 ре-ран после `/ecosystem:update`. Граница соблюдена: ни один файл `orchestrator/` не тронут.
+
+**Wave B — полная волна (kickoff 2026-07-01, DEC-DEV-0134):** докрутка B1-`skeleton` → рабочий откалиброванный loop. Горизонт 1 (живой dogfood P2 + profiling study 0132) пройден. Owner-развилки зафиксированы: durable engine = **in-harness Workflow**; auto-fix = **conservative → pilot-calibrated**; **F1 отложен** (B в дефолт L1); B4 снят (уже `complete`). Sub-phases: **B-a** loop-надёжность (fix FB-LR-28 path-anchoring + FB-LR-29 PA_CANON + findings persistence) → **B-b** durable wave-runner (Workflow) → **B-c** close-out B5/B6/B8 → **B-d** real-resolve пилот-калибровка (committed = B-a→B-b; B-c/B-d stretch/pilot-gated). Work-order [`dev/ECOSYSTEM_VISION_BATCH_2.md`](dev/ECOSYSTEM_VISION_BATCH_2.md) `ready-to-run`. Предпосылка: merge P2-хвоста #94/#96.
 
 ---
 
