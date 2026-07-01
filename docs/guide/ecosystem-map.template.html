@@ -227,6 +227,7 @@
   }
   #print-foot{display:none}
 </style>
+<link rel="stylesheet" href="vendor/map-shell.css">
 </head>
 <body>
 <header>
@@ -282,13 +283,13 @@
 
 <footer>
   <div style="margin-bottom:8px">
-    <a href="../../README.md">README</a>
+    <a href="../../README.md" class="doclink" data-title="README.md">README</a>
     <a href="ecosystem-processes.html">🗺 Карта процессов (BPMN)</a>
-    <a href="../MAP.md">docs/MAP (диаграммы)</a>
-    <a href="../pmo/pmo-map.md">PMO-карта D1–D6</a>
-    <a href="../pmo/processes.md">Процессы P1–P5</a>
-    <a href="../pmo/artifacts/README.md">Каталог артефактов</a>
-    <a href="../../ROADMAP.md#где-мы-сейчас">Статус (SSOT)</a>
+    <a href="../MAP.md" class="doclink" data-title="docs/MAP.md">docs/MAP (диаграммы)</a>
+    <a href="../pmo/pmo-map.md" class="doclink" data-title="pmo-map.md">PMO-карта D1–D6</a>
+    <a href="../pmo/processes.md" class="doclink" data-title="processes.md">Процессы P1–P5</a>
+    <a href="../pmo/artifacts/README.md" class="doclink" data-title="artifacts/README.md">Каталог артефактов</a>
+    <a href="../../ROADMAP.md#где-мы-сейчас" class="doclink" data-title="ROADMAP.md">Статус (SSOT)</a>
   </div>
   <div>Эта карта — навигационный обзор для оператора, не источник истины. Канонические авторитеты — по ссылкам выше; «где мы сейчас» всегда в ROADMAP. Карта <b>генерируется</b> из спеков (frontmatter команд + каталог артефактов + <span class="mono">validation.md</span>) скриптом <span class="mono">gen-ecosystem-map.cjs</span>; редакторская копия — в <span class="mono">ecosystem-map.overlay.json</span>, не правьте HTML напрямую.</div>
   <div id="print-foot" class="mono"></div>
@@ -298,6 +299,11 @@
      type="application/json" keeps the payload inert (not executed); hydrated once at startup.
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">/*__MAP_DATA__*/</script>
+
+<!-- общий шелл (навбар «переключить вид» + in-app UTF-8 doc-панель, чинит «кракозябры» на
+     command-source / SPEC / footer .md-ссылках). Конфиг задаёт текущий вид для подсветки навбара. -->
+<script>window.MAP_SHELL = { view: 'map' };</script>
+<script src="vendor/map-shell.js"></script>
 
 <script>
 // ── Hydrate ───────────────────────────────────────────────────────────────
@@ -390,7 +396,7 @@ function renderModules(){
         ? `<div class="prod" style="margin-top:4px">← ${c.consumes.map(p=>`<span class="chip" data-art="${esc(p)}">${esc(p)}</span>`).join("")}</div>`:"";
       const ro = c.ro?`<span class="ro">read-only</span>`:"";
       const src = c.source
-        ? `<div class="csrc mono"><a href="../../${esc(c.source)}" title="Открыть исходник команды">↗ ${esc(c.source)}</a></div>`:"";
+        ? `<div class="csrc mono"><a href="../../${esc(c.source)}" class="doclink" data-title="${esc(c.source)}" title="Открыть исходник команды">↗ ${esc(c.source)}</a></div>`:"";
       const arts = [...new Set([...(c.produces||[]),...(c.consumes||[])])].join(" ");
       const hay = (c.cmd+" "+(c.when||"")+" "+(c.desc||"")+" "+(c.arg||"")+" "+(c.tags||"")+" "+
         (c.produces||[]).join(" ")+" "+(c.consumes||[]).join(" ")).toLowerCase();
@@ -402,7 +408,7 @@ function renderModules(){
       </div>`;
     }).join("");
     const spec = SPEC_PATH[m.id]
-      ? `<a class="mspec mono" href="${SPEC_PATH[m.id]}" onclick="event.stopPropagation()">SPEC ↗</a>`:"";
+      ? `<a class="mspec mono doclink" data-title="${esc(m.name)} — SPEC" href="${SPEC_PATH[m.id]}" onclick="event.stopPropagation()">SPEC ↗</a>`:"";
     return `<details class="mod" open style="border-left-color:${m.color}" data-mod="${m.id}">
       <summary><span class="chev">▶</span>
         <span style="color:${m.color}">${esc(m.name)}</span>

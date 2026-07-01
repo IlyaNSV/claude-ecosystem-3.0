@@ -1,0 +1,44 @@
+/* map-shell.css — общий chrome двух карт экосистемы (ecosystem-map.html + ecosystem-processes.html).
+   Вендорится офлайн; инжектится вместе с map-shell.js (DEC-DEV-0132, doc-UX батч C3). Владеет:
+     · навбаром «⇄ переключить вид» (команды ⇆ процессы), добавляемым в <header>;
+     · in-app UTF-8 doc-панелью: клик по `a.doclink` → fetch .md → декод байтов как UTF-8 нами →
+       минимальный markdown в панель. Сырой .md, отданный без charset=utf-8 (встроенный IDE-сервер),
+       иначе роняет locale-RU Chrome в cp1251 → «кракозябры»; декод здесь обходит charset-переговоры.
+   Использует var(--x, fallback), чтобы наследовать одинаковую тёмную палитру обеих карт, с жёсткими
+   фолбэками (панель самодостаточна, если карта не объявит какую-то переменную). */
+
+/* ── навбар переключения вида (добавляется первым ребёнком в <header>) ── */
+.shell-nav{display:flex;gap:8px;align-items:center;margin:0 0 10px;flex-wrap:wrap}
+.shell-nav .shell-brand{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--tx3,#6e7681);margin-right:2px}
+.shell-viewlink{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 11px;border-radius:20px;
+  background:var(--bg3,#1c2330);border:1px solid var(--line,#30363d);color:var(--tx2,#8b949e);text-decoration:none;cursor:pointer}
+.shell-viewlink:hover{border-color:#58a6ff;text-decoration:none}
+.shell-viewlink.is-current{color:var(--tx,#c9d1d9);border-color:#58a6ff;background:var(--bg,#0d1117);cursor:default;font-weight:600}
+.shell-viewlink .vi{font-size:13px}
+
+/* ── in-app doc-панель (сама декодирует UTF-8 → «кракозябры» невозможны) ── */
+/* position:fixed (не absolute): работает и в скролящемся документе карты команд, и в
+   overflow:hidden флекс-вьюпорте карты процессов. */
+.docmodal{position:fixed;inset:0;z-index:9000;display:none;background:rgba(1,4,9,.55)}
+.docmodal.open{display:flex;justify-content:flex-end}
+.docmodal .docpanel{width:min(760px,92vw);height:100%;background:var(--bg2,#161b22);border-left:1px solid var(--line,#30363d);
+  display:flex;flex-direction:column;box-shadow:-8px 0 30px rgba(0,0,0,.5)}
+.docmodal .dochead{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line,#30363d);flex:none}
+.docmodal .dochead h3{margin:0;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tx,#c9d1d9)}
+.docmodal .dochead a{font-size:11px;color:#58a6ff}
+.docmodal .dochead .px{cursor:pointer;color:var(--tx2,#8b949e);font-size:18px;border:none;background:none}
+.docmodal .docbody{overflow-y:auto;padding:14px 20px 40px;font-size:13px;line-height:1.55;color:var(--tx,#c9d1d9)}
+.docmodal .docbody h1{font-size:19px;margin:14px 0 8px}
+.docmodal .docbody h2{font-size:16px;margin:16px 0 7px;border-top:1px solid var(--line,#30363d);padding-top:12px}
+.docmodal .docbody h3{font-size:14px;margin:12px 0 6px}
+.docmodal .docbody h4{font-size:12.5px;color:var(--tx2,#8b949e);margin:10px 0 5px}
+.docmodal .docbody p{margin:7px 0}
+.docmodal .docbody ul{margin:6px 0 6px 18px;padding:0}
+.docmodal .docbody li{margin:3px 0}
+.docmodal .docbody code{background:var(--bg3,#1c2330);border:1px solid var(--line,#30363d);border-radius:4px;padding:0 4px;font-size:12px;
+  font-family:ui-monospace,SFMono-Regular,"SF Mono",Consolas,"Liberation Mono",monospace}
+.docmodal .docbody pre.md-code{background:var(--bg3,#1c2330);border:1px solid var(--line,#30363d);border-radius:7px;padding:10px 12px;overflow-x:auto;font-size:12px;line-height:1.45}
+.docmodal .docbody pre.md-code code{background:none;border:none;padding:0}
+.docmodal .docbody blockquote{margin:7px 0;padding:2px 12px;border-left:3px solid var(--line,#30363d);color:var(--tx2,#8b949e)}
+.docmodal .docbody a{color:#58a6ff}
+.docmodal .docbody .docloading,.docmodal .docbody .docerr{color:var(--tx2,#8b949e);font-size:12.5px;padding:8px 0}
