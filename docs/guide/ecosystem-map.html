@@ -301,8 +301,8 @@
 <script id="map-data" type="application/json">{
   "_build": {
     "date": "2026-07-01",
-    "sha": "e3d8e69",
-    "commands": 43,
+    "sha": "324b9fd",
+    "commands": 44,
     "artifacts": 24,
     "rules": 44,
     "gates": 18,
@@ -1172,6 +1172,22 @@
           "produces": [],
           "consumes": [],
           "source": "commands/ecosystem/pending-actions.md",
+          "ro": true
+        },
+        {
+          "cmd": "/ecosystem:research",
+          "id": "ecosystem:research",
+          "module": "ecosystem",
+          "name": "research",
+          "st": "setup",
+          "status": "shipped",
+          "desc": "Guided Research — co-form a precise brief + usefulness-metrics contract, run a skeptical research loop over the existing stack, filter hype, and synthesize a cited answer scored against the contract. Read-only.",
+          "arg": "\u003cwhat you want to find out>",
+          "when": "Guided research: со-формировать бриф + контракт метрик полезности, скептический ресёрч-цикл по стеку, анти-хайп фильтр, сводка со скорингом. Read-only.",
+          "tags": "ресёрч research guided знания поиск",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/ecosystem/research.md",
           "ro": true
         },
         {
@@ -2599,8 +2615,8 @@
       "Уровни ревью: 🔴 Critical, 🟠 Strategic, 🟡 Standard, 🟢 Confirmation — определяют, когда нужен approve."
     ],
     [
-      "P1–P5",
-      "Процессы Product Module: Discovery, Planning, Feature, Handoff, Maintenance."
+      "P1–P5 (Product)",
+      "Процессы Product Module: P1 Initialization (Discovery+Planning), P2 Feature, P3 Feedback (stub), P4 Cascade, P5 Periodic Review."
     ],
     [
       "P3–P6 (orch.)",
