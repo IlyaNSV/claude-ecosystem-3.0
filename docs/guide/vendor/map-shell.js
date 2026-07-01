@@ -111,7 +111,10 @@
   // намеренно минимальный markdown (заголовки/списки/цитаты/fenced-code/inline). Экранируем ПЕРВЫМИ,
   // так что сырой HTML показывается текстом.
   function renderMd(src) {
-    var parts = String(src).split('```'); // чётный idx = проза, нечётный = fenced code
+    // Срезаем ведущий YAML-фронтматтер (doc_type-метка A3) и HTML-комменты (напр. GENERATED-баннер
+    // в 02/03) — это метаданные, не проза; в панели они были бы визуальным шумом.
+    src = String(src).replace(/^﻿?---\r?\n[\s\S]*?\r?\n---\r?\n/, '').replace(/<!--[\s\S]*?-->/g, '');
+    var parts = src.split('```'); // чётный idx = проза, нечётный = fenced code
     var out = '';
     for (var i = 0; i < parts.length; i++) {
       var seg = esc(parts[i]);
