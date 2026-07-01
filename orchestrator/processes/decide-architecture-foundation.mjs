@@ -29,19 +29,33 @@ export const meta = {
  *   QUALITY of preparation; obedience in WHO makes the final call.
  *
  * THE ENGINE — a jury, not a debate (DEC-DEV-0127 §4):
- *   3 architects run in `parallel()`, each with a distinct prior, each seeing ONLY the
- *   ForkBrief (no cross-talk, no consensus round). Heterogeneity is the condition under
- *   which a panel beats one opinion; cross-talk collapses it to groupthink. Each returns
- *   a structured ArchVerdict (scores per option + recommended + risks-of-own-prior +
- *   blocking_concerns) so the synthesis is deterministic, not hand-waved.
+ *   3 architects run in `parallel()`, each with a distinct prior, each reading the ForkBrief
+ *   + the RAW SOURCE it was lifted from (Fix A, DEC-DEV-0134 — see below), no cross-talk, no
+ *   consensus round. Heterogeneity is the condition under which a panel beats one opinion;
+ *   cross-talk collapses it to groupthink. Each returns a structured ArchVerdict (scores per
+ *   option + recommended + risks-of-own-prior + blocking_concerns) so the synthesis is
+ *   deterministic, not hand-waved.
  *
  * THE SYNTHESIS — hybrid code + prompt (DEC-DEV-0127 §5 / §9.2):
  *   Layer-3 (CODE, consilium-synth.cjs): matrix + rank + veto — worst-of by blocking
- *   (any lens's blocking_concern vetoes an option), sum-of-scores for rank. This fixes
- *   WHAT is recommended and how strongly (strong | split | none). Layer-2 (PROMPT):
- *   formulates `the_real_tradeoff` on a split + the DRAFT dec — the semantic layer on
- *   top of the fixed skeleton. A split is NOT a bug of the synthesis; it IS the product
- *   (the trade-off the owner must weigh), so P2 surfaces it, never papers it over.
+ *   (any lens's blocking_concern vetoes an option), sum-of-scores for rank, + a SOFT-VETO
+ *   flag (Fix synthesis, DEC-DEV-0134: an option no lens scores strongly is weak-across-the-
+ *   board — flagged, and a soft-vetoed top pick is demoted out of `strong`). This fixes WHAT
+ *   is recommended and how strongly (strong | split | none). Layer-2.5 (PROMPT, surfacing-
+ *   only): a post-panel holistic INTEGRATION pass — one reasoner reads the whole fork after
+ *   the panel to catch the distributed must-not-ship / cross-lens-fact blind spot a fixed-
+ *   lens SUM cannot see; it raises a disclosure, it never changes the deterministic pick.
+ *   Layer-2 (PROMPT): formulates `the_real_tradeoff` on a split + the DRAFT dec — the semantic
+ *   layer on top of the fixed skeleton. A split is NOT a bug of the synthesis; it IS the
+ *   product (the trade-off the owner must weigh), so P2 surfaces it, never papers it over.
+ *
+ * FIX A + FIX SYNTHESIS (DEC-DEV-0134; profiling study DEC-DEV-0132): the P2 dogfood A/B
+ *   surfaced two mechanism blind spots. (Layer-2 loss) the jury saw only a LOSSY lifted
+ *   ForkBrief → architects now also read the raw source_excerpt (the ground truth wins on a
+ *   fact the lift dropped). (Layer-3 integration loss) independent fixed-lens scoring + a
+ *   deterministic sum trades away holistic cross-lens integration → the soft-veto rule
+ *   (deterministic) + the post-panel integration pass (holistic, surfacing-only) recover it
+ *   without abandoning the jury (whose value is insurance / auditability, not decision uplift).
  *
  * DETERMINISM MODEL (SPEC §2): Layer-1 SKELETON = the Brief→Consilium→Synthesize→
  *   Recommend FSM (below). Layer-2 JUDGMENT = the 3 architects + the trade-off
@@ -98,6 +112,7 @@ const FORK_BRIEF_SCHEMA = {
       },
     },
     constraints: { type: 'string' },                        // .product (VP/NFR/product_class) + steering/design pins
+    source_excerpt: { type: 'string' },                     // DEC-DEV-0134 (Fix A): VERBATIM raw PA block + cited constraint lines — the ground truth the architects read alongside the (lossy) lift
     affected_specs: { type: 'array', items: { type: 'string' } },
     decidable: { type: 'boolean' },                         // false ⇒ <2 enumerated options (under-specified fork)
     note: { type: 'string' },
@@ -133,9 +148,38 @@ const SYNTH_SCHEMA = {
     ranked: { type: 'array', items: { type: 'string' } },
     survivors: { type: 'array', items: { type: 'string' } },
     vetoed: { type: 'array', items: { type: 'string' } },
+    soft_vetoed: { type: 'array', items: { type: 'string' } },   // DEC-DEV-0134: survivors weak under every lens (no prior ≥ threshold)
     recommendations: { type: 'object' },
     panel_complete: { type: 'boolean' },
     blocking_concerns: { type: 'array', items: { type: 'object' } },
+  },
+}
+
+// DEC-DEV-0134 (Fix synthesis / Layer-3): the post-panel holistic INTEGRATION pass — one
+// reasoner reads the WHOLE fork AFTER the independent panel, adversarially, to catch what
+// independent fixed-lens scoring + a deterministic SUM structurally miss (a distributed
+// must-not-ship no single lens vetoed; one lens's fact undercutting another's score; a
+// mis-calibrated strength). SURFACING-ONLY: it raises a disclosure, it does NOT change the
+// deterministic recommendation (that stays CODE — profiling study DEC-DEV-0132 finding #3).
+const INTEGRATION_SCHEMA = {
+  type: 'object',
+  required: ['integration_flag'],
+  properties: {
+    integration_flag: { type: 'boolean' },                  // true ⇒ the per-lens sum may mislead (surfaced, never auto-applied)
+    distributed_veto: {                                     // options the sum keeps as viable that cross a hard line no single lens blocked
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['option_id', 'why'],
+        properties: {
+          option_id: { type: 'string' },
+          hard_line: { type: 'string' },                    // the pinned constraint it crosses (NFR-x / steering pin / dead runtime seam)
+          why: { type: 'string' },
+        },
+      },
+    },
+    recalibration: { type: 'string' },                      // e.g. "this 'split' reads as a clear call once X is integrated across lenses"
+    note: { type: 'string' },
   },
 }
 
@@ -165,20 +209,41 @@ const PA_CANON = 'CANONICAL pending-actions (FB-LR-23, parallel-worktree safety)
 
 // ---- role prompts + PA writers ---------------------------------------------
 
-// One consilium architect. Sees ONLY the ForkBrief + its own prior; votes independently
-// (jury, not debate — cross-talk collapses a panel to groupthink, Vision D).
+// One consilium architect. Sees the ForkBrief + the RAW SOURCE it was lifted from + its own
+// prior; votes independently (jury, not debate — cross-talk collapses a panel to groupthink,
+// Vision D). Fix A (DEC-DEV-0134): the architects read the raw source, not only the lifted
+// brief, so a lossy Brief-lift can no longer cap the panel (profiling study DEC-DEV-0132: the
+// PA-040 brief dropped + mis-framed a decision-relevant fact the whole panel then inherited).
 const archPrompt = (prior, brief) =>
   `You are ONE architect on a 3-member consilium — a JURY, not a debate. Your prior is "${prior}": ${PRIOR_LENS[prior]}.\n`
-  + `You see ONLY this ForkBrief. You do NOT see the other architects' verdicts and you do NOT coordinate with them — independent voting is what makes a consilium worth more than one opinion; cross-talk collapses it to groupthink.\n`
-  + `ForkBrief: ${JSON.stringify(brief)}\n`
+  + `You do NOT see the other architects' verdicts and you do NOT coordinate with them — independent voting is what makes a consilium worth more than one opinion; cross-talk collapses it to groupthink.\n`
+  + `ForkBrief (a convenience INDEX — the enumerated options + a distilled constraints view): ${JSON.stringify(brief)}\n`
+  + (brief && brief.source_excerpt
+    ? `RAW SOURCE the brief was lifted from (the GROUND TRUTH — read it): ${JSON.stringify(brief.source_excerpt)}\nThe brief is a lift and may have DROPPED or mis-framed a fact. For FACTS and CONSTRAINTS the raw source WINS over the brief — if they disagree, trust the source and correct your reasoning. But the OPTIONS to weigh are exactly the brief's enumerated options: use the source to get the facts right, NOT to invent an option the fork does not pose.\n`
+    : '')
   + `Score EACH option 0..5 STRICTLY from your "${prior}" lens (0 = terrible for ${prior}, 5 = ideal for ${prior}) — return them in scores as { option_id: score }. Name your recommended_option (the top under YOUR lens). List risks_of_recommendation — what YOUR lens pays if the owner takes your pick (be honest about your prior's blind spots). Only if an option is genuinely UNACCEPTABLE under your lens, add it to blocking_concerns as { option_id, concern } — a blocking_concern is a VETO (it removes that option from the recommendation), so reserve it for "this must not ship", not "I mildly dislike it".\n`
   + `Judge the fork AS POSED — do NOT invent new options, do NOT edit any file, do NOT decide for the owner. Return the ArchVerdict.`
+
+// The post-panel holistic INTEGRATION pass (DEC-DEV-0134, Fix synthesis / Layer-3). One
+// reasoner reads the WHOLE fork AFTER the independent panel, adversarially, to catch the
+// cross-lens failures a fixed-lens sum cannot see. SURFACING-ONLY: it raises a disclosure,
+// it does NOT re-score and does NOT change the deterministic recommendation (that stays CODE).
+const integrationPrompt = (brief, verdicts, synth) =>
+  `You are the POST-PANEL INTEGRATION check of a 3-architect consilium — one reasoner who reads the WHOLE fork AFTER the independent panel, to catch what independent fixed-lens scoring + a deterministic SUM structurally miss. The panel scored each option under ONE lens in isolation; the synthesis SUMMED those scores. That guarantees every lens is heard, but nobody integrated ACROSS lenses — that is your job, adversarially.\n`
+  + `You do NOT re-score and you do NOT change the recommendation (the recommendation is deterministic CODE — you SURFACE a concern, the owner decides). Look for three failure modes the sum cannot see:\n`
+  + `1) DISTRIBUTED must-not-ship: an option the sum keeps as a viable survivor that actually crosses a HARD line — violates a pinned / HIGH-confidence NFR or steering / product-class constraint, or leaves a dead runtime seam — where NO single lens raised a blocking veto because each only found it "weak" within its lens. A sum of "weak, weak, strong" is a split; integrated, it may be a must-not-ship.\n`
+  + `2) One lens's FACT undercuts another lens's SCORE: e.g. velocity scored an option high on a premise that fidelity's or integrity's finding invalidates.\n`
+  + `3) MIS-CALIBRATION: a "split" that is really a clear call once you integrate across concerns, or a "strong" shakier than the sum implies.\n`
+  + `RAW FORK (read source_excerpt as the ground truth, not only the lifted brief): ${JSON.stringify(brief)}\n`
+  + `The 3 architect verdicts: ${JSON.stringify(verdicts)}\n`
+  + `The deterministic synthesis (recommended + strength + matrix + vetoed + soft_vetoed): ${JSON.stringify(synth)}\n`
+  + `Set integration_flag:true ONLY if you find a REAL cross-lens issue the per-lens sum missed (default false — do NOT invent one; a clean, well-summed fork returns false). For each distributed must-not-ship add { option_id, hard_line (the exact constraint it crosses), why }. Use recalibration to name a mis-calibrated strength. This is SURFACED to the owner as a disclosure — you are NOT vetoing, re-scoring, or deciding. Return the integration verdict.`
 
 // Write the recommendation into the fork's pending-action as a PROPOSAL (never a resolution).
 const deliverRecommendation = (pkg) =>
   agent(
     `Deliver the P2 consilium recommendation into the fork's pending-action as a PROPOSAL for the owner — you are NOT resolving it.\n`
-    + `Find the PA block for fork "${pkg.fork_id}". APPEND a sub-block — or UPDATE IT IN PLACE if a prior "Resolution (proposed by P2 consilium)" block already exists (idempotent re-runs) — containing: the recommended option + strength ("${pkg.recommendation.strength}"); the_real_tradeoff; the option-by-prior score matrix (as a readable table); the veto ledger (which lens blocked which option, if any); and the DEC DRAFT verbatim (clearly marked DRAFT — the owner ratifies/edits it and assigns the real number).\n`
+    + `Find the PA block for fork "${pkg.fork_id}". APPEND a sub-block — or UPDATE IT IN PLACE if a prior "Resolution (proposed by P2 consilium)" block already exists (idempotent re-runs) — containing: the recommended option + strength ("${pkg.recommendation.strength}"); the_real_tradeoff; the option-by-prior score matrix (as a readable table); the veto ledger (which lens blocked which option, if any); the soft-veto + integration flags if present (options weak under EVERY lens / a possible distributed must-not-ship the per-lens sum missed — marked SURFACED for re-examination, NOT removed); and the DEC DRAFT verbatim (clearly marked DRAFT — the owner ratifies/edits it and assigns the real number).\n`
     + `Package: ${JSON.stringify(pkg)}\n`
     + `${PA_CANON}`
     + `Do NOT change the PA status to done/dismissed (the owner ratifies). Do NOT edit any spec / design / tasks file. Do NOT commit code. Return a one-line confirmation.`,
@@ -205,7 +270,8 @@ if (!brief) {
     `Assemble the ForkBrief for architecture fork "${FORK}" — the input P2 will weigh. This is DECISION-SUPPORT prep, NOT a decision.\n`
     + `1) Resolve the fork's pending-action. ${PA_CANON}Find the PA block whose id/title matches "${FORK}" (a cross-spec-conflict PA is the ideal input — it already enumerates the options and names the conflicting specs).\n`
     + `2) LIFT — do NOT invent — the mutually-exclusive options (a/b/c…) the PA lists: each with an id, a short summary, and the sanctioned artifacts it would mutate (design.md / tech.md / tasks.md / a spec section). Read the cited specs and .product ONLY to fill constraints (VP / NFR / product_class, steering / design pins) — never to add an option the fork does not pose.\n`
-    + `3) If the fork enumerates FEWER THAN 2 options (nothing to weigh — under-specified, not a real fork), set decidable:false + a one-line note naming what is missing; do NOT fabricate a second option.\n`
+    + `3) Capture source_excerpt (Fix A, DEC-DEV-0134): the VERBATIM text of the fork's PA block + the specific cited constraint lines you read (the pinned NFR / VP / product_class / steering / design lines that bear on an option) — QUOTE, do not paraphrase. The architects read this raw source as the GROUND TRUTH alongside your lift, so a fact your distillation drops does NOT silently cap the panel. Do not editorialize; this is the source, not your summary.\n`
+    + `4) If the fork enumerates FEWER THAN 2 options (nothing to weigh — under-specified, not a real fork), set decidable:false + a one-line note naming what is missing; do NOT fabricate a second option.\n`
     + `Return the ForkBrief. Do NOT edit any file. Do NOT commit.`,
     { schema: FORK_BRIEF_SCHEMA, phase: 'Brief', label: `brief:${FORK || 'fork'}` },
   )
@@ -256,7 +322,19 @@ const synth = await agent(
 const recommended = (synth && synth.recommended != null) ? synth.recommended : null
 const strength = (synth && synth.strength) || 'none'
 const vetoed = (synth && synth.vetoed) || []
+const softVetoed = (synth && Array.isArray(synth.soft_vetoed)) ? synth.soft_vetoed : []   // DEC-DEV-0134: survivors weak under every lens
 const panelComplete = !(synth && synth.panel_complete === false)
+
+// Layer-2.5 (PROMPT, surfacing-only): the post-panel holistic integration pass — one reasoner
+// reads the WHOLE fork after the panel to catch the distributed must-not-ship / cross-lens-fact
+// blind spot the independent-lens sum cannot see (profiling study DEC-DEV-0132 finding #3). It
+// SURFACES a disclosure — it does NOT change the deterministic recommendation (that stays CODE).
+const integration = await agent(
+  integrationPrompt(brief, verdicts, synth),
+  { schema: INTEGRATION_SCHEMA, phase: 'Synthesize', label: 'integration' },
+)
+const integrationFlag = !!(integration && integration.integration_flag)
+const distributedVeto = (integration && Array.isArray(integration.distributed_veto)) ? integration.distributed_veto : []
 
 // Layer-2 (PROMPT): formulate the human-readable trade-off + a DRAFT dec ON TOP of the fixed matrix.
 const tradeoff = await agent(
@@ -285,6 +363,10 @@ const pkg = {
   matrix: (synth && synth.matrix) || {},
   ranked: (synth && synth.ranked) || [],
   vetoed,
+  soft_vetoed: softVetoed,                                    // DEC-DEV-0134: survivors weak under every lens (flagged, not removed)
+  integration: integrationFlag                               // post-panel holistic flag (surfaced, never auto-applied)
+    ? { flag: true, distributed_veto: distributedVeto, recalibration: (integration && integration.recalibration) || '', note: (integration && integration.note) || '' }
+    : { flag: false },
   panel_complete: panelComplete,
 }
 await deliverRecommendation(pkg)
@@ -294,6 +376,14 @@ const disclosures = []
 if (!panelComplete) disclosures.push(`consilium ran with a REDUCED panel (${verdicts.length}/${PRIOR_LIST.length} priors reported) — the recommendation rests on fewer than 3 lenses; re-run for a full panel before ratifying a close call.`)
 if (strength === 'none') disclosures.push('every option is vetoed by at least one lens — there is NO clean pick; the fork must be re-posed (see the veto ledger).')
 else if (strength === 'split') disclosures.push('the lenses DIVERGE — the recommendation is the top-scoring survivor, but the owner is weighing a real trade-off (see the_real_tradeoff), not rubber-stamping a consensus.')
+// DEC-DEV-0134 — soft-veto: an option weak under EVERY lens survived the sum but no lens endorsed it.
+if (recommended && softVetoed.includes(recommended)) disclosures.push('the recommended option is WEAK under every lens (no prior scored it strongly — soft-veto): a least-bad pick, not an endorsement; re-examine whether the fork is well-posed before ratifying.')
+else if (softVetoed.length) disclosures.push(`soft-veto: option(s) [${softVetoed.join(', ')}] survived the sum but no lens scored them strongly (weak under every lens).`)
+// DEC-DEV-0134 — post-panel integration flag (surfaced, never auto-applied): a cross-lens issue the per-lens sum could not see.
+if (integrationFlag) {
+  const dv = distributedVeto.map((d) => `${d.option_id}${d.hard_line ? ` (${d.hard_line})` : ''}`).filter(Boolean).join(', ')
+  disclosures.push(`post-panel integration flag: the per-lens sum may mislead${dv ? ` — possible distributed must-not-ship on [${dv}] that no single lens vetoed` : ''}${integration && integration.recalibration ? ` — recalibration: ${integration.recalibration}` : ''}; owner should re-examine before ratifying (SURFACED, not auto-applied).`)
+}
 if (disclosures.length) log(`P2 disclosures: ${disclosures.join(' | ')}`)
 log(`P2 recommendation: ${recommended || '(none)'} [${strength}] on fork "${forkId}" — proposed to owner (not auto-decided)`)
 
@@ -309,7 +399,9 @@ return {
   matrix: pkg.matrix,
   ranked: pkg.ranked,
   vetoed,                               // options a lens blocked (never recommended)
+  soft_vetoed: softVetoed,              // DEC-DEV-0134: survivors weak under EVERY lens — flagged for re-examination, not removed
+  integration: pkg.integration,         // DEC-DEV-0134: post-panel holistic flag { flag, distributed_veto, recalibration, note } (surfaced, not auto-applied)
   panel_complete: panelComplete,        // false ⇒ a prior died; recommendation on a reduced panel (disclosed)
   verdicts_count: verdicts.length,
-  disclosures,                          // reduced-panel / split / all-vetoed caveats — carried, never dropped
+  disclosures,                          // reduced-panel / split / all-vetoed / soft-veto / integration caveats — carried, never dropped
 }

@@ -123,10 +123,50 @@ test('the recommendation + trade-off + disclosures ride in the return envelope, 
   for (const key of [
     'fork_id', 'decidable', 'recommendation', 'strength', 'the_real_tradeoff',
     'rationale', 'dec_draft', 'applies_to', 'matrix', 'ranked', 'vetoed',
-    'panel_complete', 'verdicts_count', 'disclosures',
+    'soft_vetoed', 'integration', 'panel_complete', 'verdicts_count', 'disclosures',
   ]) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return envelope missing key: ${key}`);
   }
+});
+
+test('Fix A (DEC-DEV-0134): the architects read the RAW SOURCE, not only the lossy lift', () => {
+  // the brief carries the verbatim source it was lifted from
+  assert(/source_excerpt/.test(SRC), 'FORK_BRIEF_SCHEMA must carry source_excerpt');
+  // the Brief agent is told to capture it verbatim (anti-loss)
+  assert(/VERBATIM text of the fork's PA block/i.test(SRC), 'the Brief agent must capture the source verbatim');
+  // the architect prompt shows the raw source AND makes it the tie-breaker over the lift
+  assert(/brief\.source_excerpt/.test(SRC), 'the architect prompt must include the raw source_excerpt');
+  assert(/GROUND TRUTH/i.test(SRC), 'the raw source must be framed as the ground truth');
+  assert(/raw source WINS/i.test(SRC), 'on a fact disagreement the source must win over the lift');
+  // …without licensing invented options (the lift-not-invent discipline holds)
+  assert(/NOT to invent an option the fork does not pose/i.test(SRC), 'the source must not become a license to invent options');
+  assert(/DEC-DEV-0134/.test(SRC), 'DEC-DEV-0134 (the fix) must be referenced');
+});
+
+test('Fix synthesis (DEC-DEV-0134): the soft-veto flag is threaded + disclosed', () => {
+  assert(/soft_vetoed/.test(SRC), 'the synth relay + envelope must carry soft_vetoed');
+  assert(/const softVetoed = /.test(SRC), 'soft_vetoed must be read from the synth result');
+  assert(/synth\.soft_vetoed/.test(SRC), 'softVetoed must come FROM the synth result (deterministic CODE)');
+  // a soft-vetoed recommendation is disclosed as a least-bad pick, not an endorsement
+  assert(/WEAK under every lens/i.test(SRC), 'a soft-vetoed recommendation must be disclosed');
+  assert(/least-bad pick, not an endorsement/i.test(SRC), 'the soft-veto disclosure must frame it as least-bad, not endorsed');
+});
+
+test('Fix synthesis (DEC-DEV-0134): the post-panel integration pass is surfacing-only, after the panel', () => {
+  const integIdx = SRC.indexOf("label: 'integration'");
+  const synthIdx = SRC.indexOf("label: 'synth'");
+  const tradeoffIdx = SRC.indexOf("label: 'tradeoff'");
+  assert(integIdx !== -1, 'no integration agent');
+  assert(synthIdx < integIdx, 'the integration pass runs AFTER the deterministic synth');
+  assert(integIdx < tradeoffIdx, 'the integration pass runs before the trade-off narrative');
+  assert(/const integrationPrompt = /.test(SRC), 'no integrationPrompt helper');
+  // surfacing-only: it must NOT re-score or change the recommendation
+  assert(/you do NOT change the recommendation/i.test(SRC), 'the integration pass must be surfacing-only (never changes the CODE pick)');
+  assert(/You do NOT re-score/i.test(SRC), 'the integration pass must not re-score');
+  assert(/DISTRIBUTED must-not-ship/i.test(SRC), 'the integration pass must hunt the distributed must-not-ship the sum misses');
+  // the flag is disclosed to the owner (surfaced), never auto-applied
+  assert(/post-panel integration flag/i.test(SRC), 'the integration flag must ride in disclosures');
+  assert(/SURFACED, not auto-applied/i.test(SRC), 'the integration flag must be surfaced, not auto-applied');
 });
 
 test('a reduced panel / split / all-vetoed fork is disclosed (a recommendation is not a rubber-stamp)', () => {

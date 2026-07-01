@@ -204,6 +204,76 @@ test('summarize: reports recommended, strength, and the option/survivor/veto cou
   assert.strictEqual(sum.panel_complete, true);
 });
 
+// --- soft-veto (DEC-DEV-0134): the distributed-weakness flag ------------------
+// An option NO lens scores ≥ SOFT_VETO_THRESHOLD is weak under EVERY prior. It is FLAGGED,
+// not removed (only a hard veto removes) — and a full-panel agreement on such an option is
+// never STRONG (agreement on the least-bad is not a rubber-stamp). Profiling study
+// DEC-DEV-0132 finding #2: independent fixed-lens scoring + a sum drops the "unanimously weak
+// ⇒ re-examine" signal; this recovers it deterministically.
+
+test('buildMatrix: max + soft_vetoed — an option no lens scores >= 3 is weak-across-the-board', () => {
+  const m = buildMatrix([
+    V('velocity', { a: 5, b: 2 }, 'a'),
+    V('fidelity', { a: 4, b: 1 }, 'a'),
+    V('integrity', { a: 4, b: 2 }, 'a'),
+  ], ['a', 'b']);
+  assert.strictEqual(m.a.max, 5);
+  assert.strictEqual(m.a.soft_vetoed, false, 'a is strong under some lens ⇒ not soft-vetoed');
+  assert.strictEqual(m.b.max, 2, 'b best score is 2');
+  assert.strictEqual(m.b.soft_vetoed, true, 'no lens scored b >= 3 ⇒ soft-vetoed');
+});
+
+test('synthesize: a soft-vetoed option is FLAGGED but NOT removed (only a hard veto removes)', () => {
+  const s = synthesize([
+    V('velocity', { a: 5, b: 2 }, 'a'),
+    V('fidelity', { a: 4, b: 1 }, 'a'),
+    V('integrity', { a: 4, b: 2 }, 'a'),
+  ], ['a', 'b']);
+  assert.deepStrictEqual(s.soft_vetoed, ['b'], 'b is weak under every lens ⇒ soft-vetoed');
+  assert.ok(s.survivors.includes('b'), 'soft-veto does NOT remove the option from survivors');
+  assert.strictEqual(s.recommended, 'a', 'the strong survivor still leads');
+  assert.strictEqual(s.strength, STRENGTH.STRONG, 'the recommended option is not soft-vetoed ⇒ still strong');
+  assert.strictEqual(s.recommended_soft_vetoed, false);
+});
+
+test('synthesize: full-panel unanimous on a WEAK-EVERYWHERE option ⇒ demoted from strong to split', () => {
+  // all 3 recommend 'a', but 'a' is scored weak under EVERY lens (max 2 < 3) — agreement on the
+  // least-bad option, not an endorsement. The distributed-weakness blind spot the sum would miss.
+  const s = synthesize([
+    V('velocity', { a: 2, b: 1 }, 'a'),
+    V('fidelity', { a: 2, b: 1 }, 'a'),
+    V('integrity', { a: 2, b: 1 }, 'a'),
+  ], ['a', 'b']);
+  assert.strictEqual(s.recommended, 'a', 'still the top-by-sum survivor (soft-veto never removes)');
+  assert.strictEqual(s.strength, STRENGTH.SPLIT, 'unanimous but weak-everywhere ⇒ demoted out of strong');
+  assert.strictEqual(s.recommended_soft_vetoed, true, 'the recommended option is itself soft-vetoed');
+  assert.deepStrictEqual(s.soft_vetoed.slice().sort(), ['a', 'b'], 'both options are weak everywhere');
+  assert.strictEqual(s.split, true, 'the split flag tracks the demotion');
+});
+
+test('synthesize: a HARD veto subsumes the soft flag (soft_vetoed lists survivors only)', () => {
+  const s = synthesize([
+    V('velocity', { a: 5, b: 1 }, 'a'),
+    V('fidelity', { a: 4, b: 1 }, 'a'),
+    V('integrity', { a: 4, b: 1 }, 'a', [{ option_id: 'b', concern: 'unsafe' }]),
+  ], ['a', 'b']);
+  assert.deepStrictEqual(s.vetoed, ['b'], 'b is hard-vetoed');
+  assert.deepStrictEqual(s.soft_vetoed, [], 'a hard-vetoed option is not double-counted as soft-vetoed');
+  assert.strictEqual(s.recommended, 'a');
+  assert.strictEqual(s.strength, STRENGTH.STRONG, 'a is strong + unanimous ⇒ still strong');
+});
+
+test('summarize: reports the soft_vetoed count; SOFT_VETO_THRESHOLD is exported + stable', () => {
+  const { SOFT_VETO_THRESHOLD } = lib;
+  assert.strictEqual(SOFT_VETO_THRESHOLD, 3, 'the soft-veto threshold drifted');
+  const s = synthesize([
+    V('velocity', { a: 5, b: 2 }, 'a'),
+    V('fidelity', { a: 4, b: 1 }, 'a'),
+    V('integrity', { a: 4, b: 2 }, 'a'),
+  ], ['a', 'b']);
+  assert.strictEqual(summarize(s).soft_vetoed, 1, 'the summary carries the soft-veto count');
+});
+
 // --- CLI seam: verdicts file ⇒ synthesised JSON end-to-end -------------------
 test('CLI seam: --verdicts-file + --options flows to a deterministic recommendation', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p2-synth-'));
