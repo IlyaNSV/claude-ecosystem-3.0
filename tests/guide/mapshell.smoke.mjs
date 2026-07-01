@@ -2,7 +2,7 @@
 // map (docs/guide/ecosystem-map.html). Sibling of procmap.smoke.mjs — that one
 // covers the process map; this one covers the OTHER map now that the in-app
 // UTF-8 doc-panel + switch-view navbar moved into the vendored map-shell.{js,css}
-// (DEC-DEV-0132, doc-UX batch C3).
+// (DEC-DEV-0133, doc-UX batch C3).
 //
 // Gates DETERMINISTICALLY: no JS errors · window.MapShell present · switch-view
 // nav links to the process map · clicking a footer `.doclink` (a .md link that
