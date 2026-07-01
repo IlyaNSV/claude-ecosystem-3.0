@@ -50,7 +50,7 @@
 | понять, **почему меня заблокировали** / что значит `NO-GO` | [`06-gates.md`](06-gates.md) |
 | найти **нужную команду** | [`02-commands.md`](02-commands.md) · [ecosystem-map.html](ecosystem-map.html) |
 | **увидеть все процессы** целиком (BPMN) | [ecosystem-processes.html](ecosystem-processes.html) |
-| вспомнить, **что за артефакт** `PS`/`FM`/`BR`… | [`00-concepts.md`](00-concepts.md) §8 (словарь) |
+| вспомнить, **что за артефакт** `PS`/`FM`/`BR`… | [`03-glossary.md`](03-glossary.md) (словарь) |
 
 ---
 
@@ -78,9 +78,10 @@
 | [`05-implementation.md`](05-implementation.md) | How-to | От handoff к коду: Integrator + Orchestrator (P3→P6), как читать вердикт `GO/NO-GO × readiness × conflicts` | ✅ v1 |
 | [`06-gates.md`](06-gates.md) | Explanation · How-to | Почему тебя останавливают (approve / DA / refusal / вердикт) — гейты как страховка + что делать | ✅ v1 |
 | [`02-commands.md`](02-commands.md) | Reference | Каталог всех команд «когда что» — **генерируется** из frontmatter (`gen:catalog`), не дрейфует | ✅ gen |
+| [`03-glossary.md`](03-glossary.md) | Reference | Словарь: 24 артефакта (ID · название · ревью · родословная, по доменам) + сквозные термины — **генерируется** из спеков + overlay | ✅ gen |
 
 ---
 
 ## Провенанс
 
-Статусы и описания в `ecosystem-map.html` / `ecosystem-processes.html` — из спеков; текстовый каталог [`02-commands.md`](02-commands.md) **генерируется** (`npm run gen:catalog`, `--check` валит при рассинхроне) — анти-дрейф, согласуется с решением [docs/MAP.md](../MAP.md) не вести cross-ref-таблицы руками. Обе интерактивные карты тоже генерируются из SSOT (`gen-ecosystem-map` / `gen-process-map`, в `npm run verify`) — правь overlay/шаблон, не сгенерированный HTML. Канонический статус «где мы сейчас» — всегда [ROADMAP.md](../../ROADMAP.md#где-мы-сейчас).
+Статусы и описания в `ecosystem-map.html` / `ecosystem-processes.html` — из спеков; текстовый каталог команд [`02-commands.md`](02-commands.md) и словарь [`03-glossary.md`](03-glossary.md) **генерируются** (`npm run gen:catalog` / `gen:glossary`, `--check` валит при рассинхроне) — анти-дрейф, согласуется с решением [docs/MAP.md](../MAP.md) не вести cross-ref-таблицы руками. Обе интерактивные карты тоже генерируются из SSOT (`gen-ecosystem-map` / `gen-process-map`, в `npm run verify`) — правь overlay/шаблон, не сгенерированный HTML. Канонический статус «где мы сейчас» — всегда [ROADMAP.md](../../ROADMAP.md#где-мы-сейчас).

@@ -79,6 +79,16 @@ try {
   await page.waitForFunction(() => !!window.__cy && !!window.__procmap, { timeout: 15000 });
   await settle();
 
+  // ── C3: shared shell (map-shell.js) loaded — switch-view nav + MapShell API present ──
+  const shell = await page.evaluate(() => ({
+    hasShell: !!window.MapShell && typeof window.MapShell.openDoc === 'function',
+    navToMap: !!document.querySelector('.shell-nav a.shell-viewlink[href="ecosystem-map.html"]'),
+    current: !!document.querySelector('.shell-nav .shell-viewlink.is-current'),
+  }));
+  ok(shell.hasShell, 'shared shell (window.MapShell) loaded');
+  ok(shell.navToMap, 'switch-view nav links to the commands map (ecosystem-map.html)');
+  ok(shell.current, 'switch-view nav marks the current view');
+
   // ── timeline order (the ELK win): default-view processes flow left→right by pipeline order.
   //    elk.direction RIGHT → x increases along the flow; assert the main chain is monotonic. ──
   const tl = await page.evaluate(() => {
