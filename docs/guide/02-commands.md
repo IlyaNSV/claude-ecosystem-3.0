@@ -1,3 +1,6 @@
+---
+doc_type: reference
+---
 <!-- GENERATED FILE — DO NOT EDIT BY HAND.
      Source of truth: frontmatter of commands/**/*.md.
      Regenerate: node dev/meta-improvement/scripts/gen-command-catalog.cjs -->

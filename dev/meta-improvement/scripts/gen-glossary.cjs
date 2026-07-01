@@ -85,6 +85,7 @@ function render(names, overlay) {
 
   const nArt = Object.keys(names).length;
   const head =
+    '---\ndoc_type: reference\n---\n' +
     '<!-- GENERATED FILE — DO NOT EDIT BY HAND.\n' +
     '     Source of truth: docs/pmo/artifacts/*.md (H1 names) + docs/guide/ecosystem-map.overlay.json (tier/lineage/glossary).\n' +
     `     Regenerate: node ${REL_SELF} -->\n\n` +
