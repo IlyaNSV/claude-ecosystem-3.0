@@ -7354,6 +7354,33 @@ Recon показал: у двух карт нет общего chrome/леген
 
 ---
 
+## DEC-DEV-0136 — Wave B kickoff: полная волна completeness-loop — owner-развилки зафиксированы + work-order
+
+**Date:** 2026-07-01
+**Trigger:** горизонт 1 пройден (P2 dogfood + profiling study 0132, оркестратор-цепочка P1–P7+§6 построена); владелец дал старт волне 2 (Autonomous Pipeline Vision, полная волна Epic B) с директивой «по развилкам — рекомендация; развилка б — подтверждена».
+**Tag:** #vision #epic-b #kickoff #completeness-loop #methodology
+
+### Context
+Vision-порядок `(A ∥ F1) → B → (C ∥ D) → F2 → E`. Фронт пайплайна первым — ошибки спеки D1-D2B компаундируются вниз (METR). Уже готово: **Epic A** (3 персоны + zone-router, live-validated 0115), **B1-core** (`completeness-oracle.cjs` + `/product:complete` + `completeness-loop.md` skeleton, 0098), **B4 loop-readiness audit** (`dev/LOOP_READINESS_AUDIT.md` `complete`, 0098). Волна B = докрутка `v1 core/skeleton` → рабочий откалиброванный loop, НЕ стройка с нуля.
+
+### Options considered (owner-развилки)
+1. **Durable engine** — (a) in-harness Workflow `pipeline()` / (b) n8n/cron cross-session. B = session-scope (границы фаз ≠ cross-session); n8n избыточен до реальной потребности (vision §10).
+2. **Auto-fix широта** — (a) conservative surface+escalate, калибровать real-resolve на пилоте / (b) сразу расширенный авто-resolve. Rail 4 (decisions escalate) + Huang-self-grading-риск → живые данные, не догадка.
+3. **F1** — (a) параллельно с B / (b) отложить. F1 (autonomy L0/L1) не блокирует B (loop в дефолт L1); wiring требует сверки gate-контракта с оркестратор-треком.
+4. **B4-audit** — строить первым? Факт-чек: уже `complete`.
+
+### Decision
+Развилки зафиксированы: **б=in-harness Workflow**, **в=conservative→pilot-calibrated**, **а=B сразу, F1 отложен**, **г снята (B4 complete)**. Kickoff Section 1-5 пройден inline (substrate = независимый cold-read Epic B через Explore-субагента — частичный bias-resist эквивалент fresh-session). Work-order `dev/ECOSYSTEM_VISION_BATCH_2.md` (`ready-to-run`) с sub-phases: **B-a** loop-надёжность (fix FB-LR-28 path-anchoring + FB-LR-29 PA_CANON + findings persistence) → **B-b** durable wave-runner (Workflow) → **B-c** close-out B5/B6/B8 → **B-d** real-resolve пилот-калибровка. Committed = B-a→B-b; B-c/B-d stretch/pilot-gated. FB-LR-31/32 (0132) — design-входы в SURFACE (персоны видят сырьё, не lossy brief; distributed-veto).
+
+### Outcome
+Kickoff-артефакты: work-order BATCH_2 + эта запись + ROADMAP Vision-секция (волна B in-progress). FB-LR-30/31/32 занесены в live-run ledger (отдельный коммит #96). Epic D / F2 / C — вне батча (граф `(C ∥ D)` после B). Merge P2-хвоста (#94/#96) — предпосылка, за владельцем. Next-free DEC-DEV = **0137** (verify `git fetch` перед присвоением — параллельные сессии).
+
+### Lessons
+1. **Факт-чек kickoff-премис перебивает неуверенность разведки.** Explore пометил B4 «статус неясен / partial» — прямой Read показал `complete`. Допущение «B4 первой задачей» скорректировано ДО старта стройки, а не в середине (phase-kickoff Section 1 anti-bias; ROADMAP-гипотеза-не-контракт). [[feedback_substrate_premise_verification]]
+2. **`core/skeleton` ≠ недострой.** Conservative RESOLVE — сознательный дефолт: real-resolve ждёт живых пилот-данных (rail 4), а не догадки о том, что «безопасно авто-фиксить». Калибровка ширины — B-d, не B-a.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
