@@ -236,6 +236,19 @@ try {
   ok(cyrillicOk, `doc preview decodes UTF-8 (Cyrillic intact, no кракозябры): "${(doc.sample || '').slice(0, 56)}"`);
   await page.evaluate(() => document.getElementById('docClose').click());
 
+  // ── C3/PR#3b: cross-map deep-link — #focus=art:FM selects & reveals the FM node on load (a
+  //    switch-view from the command map lands here focused on the same artifact). ──
+  await page.evaluate(() => { location.hash = 'focus=art:FM'; });
+  await page.reload({ waitUntil: 'networkidle0', timeout: 45000 });
+  await page.waitForFunction(() => !!window.__cy && !!window.MapShell, { timeout: 15000 });
+  await settle();
+  const pfocus = await page.evaluate(() => {
+    const cy = window.__cy;
+    const n = cy.getElementById('art:FM');
+    return { found: n.nonempty(), sel: n.nonempty() && n.hasClass('sel') };
+  });
+  ok(pfocus.found && pfocus.sel, `deep-link #focus=art:FM selects the FM node (found=${pfocus.found})`);
+
   // ── artifact screenshot (for human/agent eyes; NOT the gate) ──
   try {
     const shot = path.join(os.tmpdir(), 'procmap-smoke.png');

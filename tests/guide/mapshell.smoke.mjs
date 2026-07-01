@@ -105,6 +105,17 @@ try {
   const cyrillicOk = /Назначение|Версия|методолог/i.test(doc.sample || '');
   ok(cyrillicOk, `doc preview decodes UTF-8 (Cyrillic intact, no кракозябры): "${(doc.sample || '').slice(0, 56)}"`);
 
+  // ── C3/PR#3b: cross-map deep-link — #focus=art:FM lights the FM artifact on load (the reverse
+  //    direction of the process map's focus test; a switch-view from processes lands here). ──
+  await page.evaluate(() => { location.hash = 'focus=art:FM'; });
+  await page.reload({ waitUntil: 'networkidle0', timeout: 45000 });
+  await page.waitForFunction(() => !!window.MapShell, { timeout: 15000 });
+  const focus = await page.evaluate(() => {
+    const el = document.querySelector('.art[data-id="FM"]');
+    return { found: !!el, hl: !!(el && el.classList.contains('hl-art')) };
+  });
+  ok(focus.found && focus.hl, `deep-link #focus=art:FM highlights the FM artifact (found=${focus.found})`);
+
   // ── artifact screenshot (for human/agent eyes; NOT the gate) ──
   try {
     const shot = path.join(os.tmpdir(), 'mapshell-smoke.png');

@@ -549,6 +549,33 @@
 
   // initial render
   defaultView();
+
+  // ── C3/PR#3b: cross-map deep-link — honour #focus=art:id + expose the selected artifact ──
+  // An art:* node is shared with the command map; the switch-view navbar (map-shell) carries the
+  // current selection back. A cmd:* token has no node here → applyFocus no-ops gracefully.
+  if (window.MapShell && window.MapShell.registerView){
+    window.MapShell.registerView({
+      getFocus: function(){ var s = cy.nodes('.sel'); return (s.length && s[0].data('kind')==='artifact') ? s[0].id() : null; },
+      applyFocus: function(tok){
+        if (tok.indexOf('art:') !== 0) return;
+        var reveal = function(){
+          // artifacts live in the DEFAULT-collapsed «Артефакты» lane — expand-collapse removes a
+          // collapsed compound's descendants from the graph, so getElementById(art:*) is empty until
+          // we expand the lane + its groups. Reveal them, then re-layout so the node has a real
+          // position BEFORE we recentre (fitting mid-async-layout lands on a blank canvas).
+          if (api){
+            try { api.expand(cy.getElementById('lane:artifacts')); api.expand(cy.nodes('node[kind="artgroup"]')); } catch(e){}
+          }
+          var n = cy.getElementById(tok);
+          if (!n || !n.length) return;
+          showNode(n);                                  // select + side-panel + light connected edges
+          runLayout(function(){ cy.animate({ center:{ eles: n }, zoom: 1.1 }, { duration: 320 }); });
+        };
+        // defaultView() kicks off an async ELK layout on load; wait it out so our re-layout doesn't race it.
+        if (window.__layoutRunning) cy.one('layoutstop', reveal); else reveal();
+      }
+    });
+  }
 })();
 </script>
 </body>
