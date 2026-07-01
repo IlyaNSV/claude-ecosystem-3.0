@@ -50,7 +50,7 @@ Count per namespace:
 - `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~20)
 - `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
 - `.claude/commands/orchestrator/*.md` — expect 1+ (run — dispatches processes P2–P7; only deploy/rollback deferred)
-- `.claude/commands/ecosystem/*.md` — expect 6 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
+- `.claude/commands/ecosystem/*.md` — expect 7 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
 
 Report counts + note what's expected for current ROADMAP phase.
 
@@ -176,7 +176,7 @@ COMMANDS
   ✓ product/:      20          (Phase 2+ — init, feature, da-review, validate, complete, ...)
   ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
   ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
-  ✓ ecosystem/:    6           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback)
+  ✓ ecosystem/:    7           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
 
 ORCHESTRATOR CONTRACT (delivery spot-check — DEC-DEV-0101/0102/0104)
   ✓ validators_incomplete + committed_under_non_ready   (validate-feature-impl.mjs)
