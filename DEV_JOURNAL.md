@@ -7254,6 +7254,39 @@ Recognition-over-recall (принцип #4 батча) требует едино
 
 ---
 
+## DEC-DEV-0133 — Общий шелл двух карт: вендоренный `map-shell.{js,css}` — навбар «переключить вид» + in-app UTF-8 doc-панель в ОБЕИХ картах (doc-UX Волна 1, PR#3a / C3)
+
+> **Нумерация:** изначально записано как 0132; перенумеровано в 0133 из-за межсессионной коллизии — параллельная сессия застолбила 0132 за P2-профилинг-исследованием (PR #96) от той же базы `origin/main`. Уступил как позже-созданный PR ([[feedback_dec_dev_collision_check]]).
+
+**Date:** 2026-07-01
+**Trigger:** doc-UX батч Волна 1 PR#3 (C3) — две карты были двумя отдельными приложениями (P-6); doc-панель (C1, DEC-DEV-0128) жила ТОЛЬКО в карте процессов → `.md`-ссылки карты команд (command-source / SPEC / footer) всё ещё уводили в сырьё → «кракозябры» (недочинённый P-4).
+**Tag:** #docs #guide #maps #shell #anti-mojibake #refactor
+
+### Context
+Recon показал: у двух карт нет общего chrome/легенды/deeplink — только плоские `<a>` друг на друга (P-6). Кракозябры (P-4) закрыты в processes (0128), но ecosystem-map остался с сырыми `.md`-ссылками. C3 «общий шелл» в полном объёме (навбар + `view=`/`focus=` cross-map deeplink + панель + тултипы глоссария) = L, трогает ОБА генерируемых шаблона. Наибольшая ценность и самодостаточность — у выноса doc-панели в шелл + подключения к обеим картам (чинит остаток P-4).
+
+### Decision
+**Cuttable-scope: режу C3 на 3a (этот) + 3b.** PR#3a = вендоренные `docs/guide/vendor/map-shell.{js,css}` (развилка D-3, опция «вынести», а не «скопировать в оба» = дубль-дрейф), которые инклюдят ОБА шаблона:
+- **doc-панель мигрирует в шелл** (dedup): processes отдаёт свою инлайн-панель (CSS + разметку `#docModal` + `openDoc`/`renderMd`/`docRel`/делегацию) → шелл; в шаблоне остаются тонкие шимы (`docRel`/`openDoc` → `window.MapShell.*`), так что side-panel и headless-хук `__procmap.openDoc` работают без правок. ecosystem-map ПОЛУЧАЕТ панель → `.md`-ссылки (command-source/SPEC/footer) помечены `class="doclink"` → читаемый UTF-8 вместо кракозябр.
+- **Навбар «⇄ переключить вид»** (команды ⇆ процессы) — шелл добавляет первым ребёнком в `<header>` **синхронно** (до раскладки cytoscape, иначе граф на ~30px выше); текущий вид подсвечен из `window.MAP_SHELL.view`.
+- **Делегирование doclink — в CAPTURE-фазе**: бьёт `stopPropagation` на SPEC-ссылках внутри `<summary>` (их `onclick=stopPropagation` в bubble иначе не дал бы шеллу перехватить); `preventDefault`+`stopPropagation`+`openDoc`. Панель `position:fixed` (не `absolute`) — работает и в скролящемся документе карты команд, и в overflow:hidden флексе карты процессов.
+
+Модалка injectится в `document.body` с ТЕМИ ЖЕ id (`#docModal/#docBody/#docClose`) → существующий procmap-смоук проходит без правок. CSS через `var(--x, fallback)` — наследует одинаковую тёмную палитру обеих карт, самодостаточен.
+
+### Scope (что отложено в PR#3b)
+Единый hash-deeplink `view=map|processes` + `focus=kind:id` (cross-map фокус узла) и тултипы акронимов из `glossary.json` (E1 доп. эмит) — самая сложная и наименее ценная часть; едет отдельным PR. A3 doc_type — по-прежнему без потребителя (см. 0131).
+
+### Outcome
+`npm run verify` EXIT=0. procmap.smoke 17→**20** (+3: шелл загружен · навбар линкует другую карту · подсвечивает текущий вид; doc-панель по-прежнему зелёная — теперь через шелл). Новый `mapshell.smoke.mjs` **7/7** (ecosystem-map: MapShell · навбар · клик footer-doclink → панель с целой кириллицей). **Визуально проверено в Chrome (puppeteer):** обе карты — навбар подсвечивает текущий вид, клик по `.md` открывает UTF-8-панель с целой кириллицей + markdown; 0 JS-ошибок, раскладка не поехала. Consumer-zone; аддитивно → **counts 24/44**.
+
+### Lessons
+1. **Общий шелл = single source для сквозного chrome** двух приложений: даже с разными движками (кастомный DOM ecosystem-map ↔ Cytoscape processes) выносимы навбар/deeplink-конвенция/doc-панель/клавиатура; движок-специфика остаётся в шаблоне. Дедуп через тонкие шимы (`__procmap.openDoc`/`docRel`) сохраняет старые контракты (смоук, side-panel) без правок.
+2. **Capture-фаза бьёт `stopPropagation`**: doc-ссылка внутри `<summary>` с `onclick=stopPropagation` не перехватывается bubble-делегатом; document-listener в capture ловит её первым (и `preventDefault` заодно гасит toggle summary — чище прежнего).
+3. **Синхронный инжект chrome, меняющего высоту header, — ДО измерения вьюпорта потребителем** (cytoscape мерит `#wrap`): иначе граф на высоту навбара выше и клипается. Скрипт шелла — перед app-IIFE, `init()` синхронно (не ждём DOMContentLoaded).
+4. **Cuttable-scope спасает L-фичу**: 3a (панель-в-обе-карты + навбар, чинит остаток мохибейка, самоценно) отдельно от 3b (cross-map `focus=` deeplink + тултипы) → ранний фидбэк, обозримый ревью.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
