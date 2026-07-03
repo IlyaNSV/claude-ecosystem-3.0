@@ -62,23 +62,30 @@
 > 👤 = требуется владелец. Этапы E1–E4 строго последовательны; E5/E6 частично параллелизуемы после E4;
 > E0 — немедленно.
 
-### E0 — Гигиена + якорение *(немедленно; дёшево; всё обратимое)*
-- [x] Спасти данные Wave 2 из temp → `dev/research-cache/wave2-free-bakeoff/` *(сделано 2026-07-03, этот PR)*.
-- [ ] FB-ledger статус-флипы: FB-LR-28/29 → FIXED (0140/#105); FB-LR-31/32 → FIXED-in-P2 (0135, Epic D наследует);
-      FB-LR-30 → note-only. Один `docs:`-коммит.
-- [ ] Уборка merged-веток (local+remote, список в §0) + `git worktree remove jiggly-sauteeing-narwhal`.
-- [ ] **`next-dec-dev` скрипт** (§4.3) — снять хроническую коллизию номеров (5 повторов за 2 дня).
-- [ ] Memory-sync: статус-записи → `a8be54e`/0141/этот план; `last memory-sync` в CLAUDE.md.
-- [ ] ROADMAP «Последнее обновление» — свернуть форвард-факт (P2 merged, B-a merged, doc-UX волны 0–2/E2, research W1).
-- **CP-0:** `npm run verify` EXIT=0; `git branch -a` без мусора; ledger без stale-OPEN.
+### E0 — Гигиена + якорение *(немедленно; дёшево; всё обратимое)* — ✅ ЗАКРЫТ 2026-07-03
+- [x] Спасти данные Wave 2 из temp → `dev/research-cache/wave2-free-bakeoff/` *(сделано 2026-07-03, PR #106)*.
+- [x] FB-ledger статус-флипы: FB-LR-28/29 → FIXED (0140/#105); FB-LR-31/32 → FIXED-in-P2 (0135, Epic D наследует);
+      FB-LR-30 не тронут (note-only). *(PR #107)*
+- [x] Уборка merged-веток (5 local + 9 remote) + `git worktree remove jiggly-sauteeing-narwhal` *(2026-07-03)*.
+- [x] **`next-dec-dev` скрипт** (§4.3) — `npm run next-dec-dev`, сканит main + все remote-ветки, `--check NNNN`. *(PR #107)*
+- [x] Memory-sync: статус-записи актуализированы; `last memory-sync: 2026-07-03` в CLAUDE.md. *(PR #107)*
+- [x] ROADMAP «Последнее обновление» — форвард-свод 2026-07-03. *(PR #107)*
+- **CP-0: ✅** `npm run verify` EXIT=0 на смёрженном main `b9e0d16`; ветки без мусора; ledger без stale-OPEN.
+  *(Попутная находка PR #107: `process-gate` false-positive на doc-коммитах, упоминающих исторические
+  DEC-DEV полной строкой в теле — кандидат в D7-backlog / E7.)*
 
-### E1 — Research Wave 2 close-out *(закрыть единственный обрыв; ~1 сессия)*
-- [ ] Досчёт **батча-C** (9 запросов) по спасённому скрипту/queryset (§4.2) — свежий Workflow-ран.
-- [ ] Ре-агрегация n=24 (пилот+B+C) → per-bucket таблица win-rate B1 vs B0 + разбор конфаундов.
-- [ ] Итоговая нота `dev/RESEARCH_CAPABILITY_WAVE2_BAKEOFF.md` (методология free-проекции + вердикт + limits).
-- [ ] Autoflow: DEC-DEV (по `next-dec-dev`) + CHANGELOG если consumer-zone тронута (вряд ли — dev-only) + PR.
-- [ ] Rider: **harness-зеркало** — копия `research-intake.md`/`anti-hype-filter.md` в `~/.claude/skills/` (контракт Wave 1).
-- **CP-1:** нота с явным вердиктом; 👤 развилка §5.1 (keyed bake-off) закрыта решением.
+### E1 — Research Wave 2 close-out *(закрыть единственный обрыв; ~1 сессия)* — ✅ ЗАКРЫТ 2026-07-03
+- [x] Досчёт **батча-C**: Workflow `wf_ff6ec361-c3b` — 9/9 ok, 36/36 агентов, 0 ошибок; модель запинена
+      `opus` (консистентно с пилотом/B — без пина унаследовалась бы модель сессии = конфаунд судьи).
+- [x] Ре-агрегация n=24 — воспроизводимый `dev/research-cache/wave2-free-bakeoff/aggregate.py`;
+      конфаунды: цитатный ОПРОВЕРГНУТ, length honest-несведён (смягчён). *(PR #108)*
+- [x] Итоговая нота `dev/RESEARCH_CAPABILITY_WAVE2_BAKEOFF.md` — вердикт: **B1-дисциплина бьёт naive
+      в 94.4% решённых** (17 clean + 4 lean + 2 tie + 1 B0 из 24; overall 3.91→4.72; топ-рычаг P3 Faithfulness +1.42;
+      swap-agreement 83%, 0 unstable). *(PR #108, DEC-DEV-0141)*
+- [x] Autoflow: DEC-DEV-0141 (номер выдан+сверен `next-dec-dev`) + PR #108 MERGED; CHANGELOG не тронут (dev-zone).
+- [x] Rider: harness-зеркало — `~/.claude/skills/{research-intake,anti-hype-filter}/SKILL.md` (подхватились в сессии).
+- **CP-1: ✅** нота с явным вердиктом; 👤 развилка §5.1: рекомендация «keyed bake-off НЕ сейчас,
+  вернуться при Wave-2-tooling» зафиксирована в ноте — дефолт принят с merge #108, переоткрыть можно словом.
 
 ### E2 — Wave B / B-b durable wave-runner + B-c *(committed-ядро волны B; в отдельном worktree)*
 - [ ] Построить runner по проектировке §4.1 (развилка размещения — реши на kickoff, рекомендация дана).
