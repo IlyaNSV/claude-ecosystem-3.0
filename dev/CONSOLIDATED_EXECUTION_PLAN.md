@@ -87,15 +87,23 @@
 - **CP-1: ✅** нота с явным вердиктом; 👤 развилка §5.1: рекомендация «keyed bake-off НЕ сейчас,
   вернуться при Wave-2-tooling» зафиксирована в ноте — дефолт принят с merge #108, переоткрыть можно словом.
 
-### E2 — Wave B / B-b durable wave-runner + B-c *(committed-ядро волны B; в отдельном worktree)*
-- [ ] Построить runner по проектировке §4.1 (развилка размещения — реши на kickoff, рекомендация дана).
-- [ ] `/product:complete <FM>` вызывает runner (session-scope; cross-session НЕ строим — развилка «б» 0136).
-- [ ] Идемпотентность шагов по `LOOP_READINESS_AUDIT.md` (🟢 loop-body / 🟠 keyed / 🔴 escalate).
-- [ ] **B-c close-out** (stretch, дёшев после B-b): на stop — авто-триггер `delegated_unverified`
-      (B5 `/product:bg-review`, B6/B8 `/product:validate`); completion-report показывает их статус явно.
-- [ ] Учесть design-входы FB-LR-31/32 в SURFACE (персоны видят сырьё, не lossy-brief; distributed-veto паттерн).
-- **CP-2:** фикстурный smoke — oracle<1 → ≤3 волн, резолвимое доведено, decision эскалирован в PA_CANON,
-  честный стоп un-met; wiring-тесты + `verify.md` Step 4; `npm run verify` EXIT=0; DEV_JOURNAL (runner-топология).
+### E2 — Wave B / B-b durable wave-runner + B-c *(committed-ядро волны B; в отдельном worktree)* — ✅ ПОСТРОЕН (PR #111, DEC-DEV-0142)
+- [x] Runner построен по §4.1: развилка размещения → **(a)** новый top-level `product/processes/complete-feature.mjs`
+      (545 строк; wiring bootstrap/update/verify по прецеденту 0078); `gap-classifier.cjs` = classify + stop-вердикт SSOT
+      (20 юнитов); стоп-контракт кодом (classifier authority + in-code зеркала: hard cap / met / Δ<ε).
+- [x] `/product:complete <FM>` диспетчит runner через `Workflow({scriptPath})` + честный inline-fallback (до-1.7.0).
+- [x] Идемпотентность по `LOOP_READINESS_AUDIT.md`: 🟢 whitelist (VC/LC/RPM) → auto keyed update-in-place;
+      🔴/unknown → decision → PA_CANON. Находка: контракт 0140 «persona WRITES findings» был невыполним
+      (advisors без Write) → персистенция writer-шагом рантайма, советники read-only.
+- [x] **B-c close-out** включён: на stop — advisory B5 (`bg-review`) + B6/B8 (`validate`) параллельно,
+      статусы в `delegated_closeout`, `met` не флипают.
+- [x] FB-LR-31 в SURFACE: raw-source брифы (персоны читают артефакты сами, бриф не пересказывает);
+      FB-LR-32: findings идут сырыми в детерминированный CLASSIFY без lossy-суммирования.
+- **CP-2: ✅ (build-часть)** — юниты покрывают всю стоп-семантику (met/cap/converged/decisions_only + continue)
+  и классификацию; wiring-тест `complete-feature-wiring.test.cjs` 47 ассертов (scriptPath-диспетч, PA_CANON
+  verbatim, rail-5 ключи, честный un-met); `verify.md` Step 4 + новый 4.6; `npm run verify` EXIT=0;
+  DEV_JOURNAL 0142 (3 развилки). *Live-прогон волны на реальном oracle<1 — это B-d (E4): Workflow-скрипт
+  вне harness не исполняется, фикстурный end-to-end подменён юнитами стоп-формулы + wiring-гардами.*
 
 ### E3 — Patch-cut 1.7.0 + доставка в пилот *(по `checklists/patch-cut.md`)*
 - [ ] Нарезать `[Unreleased]` (двухнедельный багаж: N+2 close-out, Vision Increment 1 + B-a/B-b, P2, P7, S7,

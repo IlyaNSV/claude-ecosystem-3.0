@@ -9,6 +9,12 @@ description: Bounded completeness-loop for D1-D2B artifacts (Autonomous Pipeline
 > **conservative** (surface + escalate by default) until live pilot data calibrates what is
 > safe to auto-resolve. Full auto-fix breadth + the consilium escalation channel (Epic D) come later.
 
+> **Executable form (B-b):** the durable runner `product/processes/complete-feature.mjs` (deployed
+> `.claude/product/processes/`) is the **executable form** of this contract — `/product:complete`
+> dispatches it as a Workflow. This skill remains the **SSOT for the wave semantics** (the runner
+> honors it, does not supersede it). The deterministic gap-split + stop-verdict live in
+> `hooks/product/lib/gap-classifier.cjs` (the runner is the transport; the stop LOGIC is the .cjs).
+
 ## Purpose
 
 Iteratively bring a feature's behavioral spec (FM + SC/BR/LC/VC/IC/NFR, and MK/NM if `has_ui`)
@@ -53,14 +59,17 @@ wave N:
                   worktree-absolute and main-checkout-absolute across briefs. A present-but-edited file
                   handed at the wrong checkout is a SILENT stale read (no not-found to trigger a Glob
                   self-heal), so anchor once and pass consistent paths to all three.
-                  The personas are already routed by zone (advisor-pending.yaml / zone-router):
+                  The personas are already routed by zone (SSOT: `hooks/product/zone-routing.yaml`,
+                  deployed `.claude/hooks/product/zone-routing.yaml`; engine `zone-router.cjs`):
                     architect-advisor (feasibility/decomposition/data-state),
                     qa-advisor (testability/acceptance/edge/VC-coverage),
                     ux-advisor (flows/states — has_ui only).
                   Spawn each as its CANONICAL subagent_type (not-found = STOP, never general-purpose
-                  fallback). Findings are GAPS only (clean:true otherwise); each persona WRITES them to
-                  `.product/.advisor-findings/<persona>-<ARTIFACT-ID>.md` — keyed on persona+id, not
-                  timestamped, so a re-run overwrites in place (idempotent, never a near-duplicate).
+                  fallback). Findings are GAPS only (clean:true otherwise), RETURNED by the personas
+                  (the advisors are read-only by design) and PERSISTED BY THE LOOP RUNNER via a
+                  dedicated writer step to `.product/.advisor-findings/<persona>-<ARTIFACT-ID>.md` —
+                  keyed on persona+id, not timestamped, so a re-run overwrites in place (idempotent,
+                  never a near-duplicate, DEC-DEV-0140).
 
   3. CLASSIFY   — split this wave's gaps:
                     resolvable  = a derivation the assistant can complete from existing upstream

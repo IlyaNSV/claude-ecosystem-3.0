@@ -51,6 +51,7 @@ Count per namespace:
 - `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
 - `.claude/commands/orchestrator/*.md` — expect 1+ (run — dispatches processes P2–P7; only deploy/rollback deferred)
 - `.claude/commands/ecosystem/*.md` — expect 7 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
+- `.claude/product/processes/*.mjs` — expect 1 (complete-feature — the completeness-loop Workflow wave-runner; new top-level runtime dir mirroring `.claude/orchestrator/processes/`, DEC-DEV-0142)
 
 Report counts + note what's expected for current ROADMAP phase.
 
@@ -86,6 +87,26 @@ Report ✓ present / ❌ absent per marker.
 > behavioral one: that the gate *behaves* correctly is validated by a **live Orchestrator run** graded
 > post-hoc, never here. (The non-drifting version — markers generated from the `.mjs` return objects
 > rather than hand-listed — is a deferred follow-up.)
+
+### Step 4.6: Product wave-runner contract freshness (delivery spot-check)
+
+Same rationale as Step 4.5, applied to the new top-level `.claude/product/processes/` runtime
+dir (the completeness-loop Workflow wave-runner, DEC-DEV-0142) — a partial/aborted sync could
+leave it present (Step 4 count passes) but stale (contents pre-date the wiring).
+
+| Marker (string in the installed file) | File (`.claude/product/processes/`) | Proves landed | Since |
+|---|---|---|---|
+| `delegated_unverified` | `complete-feature.mjs` | rail-5 completion report surfaces unverified delegation | DEC-DEV-0142 |
+| `gap-classifier.cjs` | `complete-feature.mjs` | deterministic CLASSIFY wiring (`hooks/product/lib/gap-classifier.cjs`) landed | DEC-DEV-0142 |
+
+Report ✓ present / ❌ absent per marker.
+
+> **Caveat (same discipline as Step 4.5, DEC-DEV-0082):** this marker list is a **baseline
+> snapshot of the current wave-runner contract**, not a hard schema. An absent marker most
+> likely means a stale or partial `/ecosystem:update` → re-run it. But if the contract
+> legitimately evolved and **this list** wasn't refreshed, that's list-drift, not a bad install
+> — investigate which before raising ❌. Delivery presence only — behavior is validated by a
+> **live completeness-loop run** graded post-hoc, never here.
 
 ### Step 5: Config consistency
 
@@ -177,10 +198,14 @@ COMMANDS
   ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
   ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
   ✓ ecosystem/:    7           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
+  ✓ product/processes: 1       (complete-feature — completeness-loop wave-runner; DEC-DEV-0142)
 
 ORCHESTRATOR CONTRACT (delivery spot-check — DEC-DEV-0101/0102/0104)
   ✓ validators_incomplete + committed_under_non_ready   (validate-feature-impl.mjs)
   ✓ conflicts.concat                                    (feature-to-tdd-impl.mjs)
+
+PRODUCT WAVE-RUNNER CONTRACT (delivery spot-check — DEC-DEV-0142)
+  ✓ delegated_unverified + gap-classifier.cjs           (complete-feature.mjs)
 
 MCP STACK
   ✓ Sequential Thinking   installed

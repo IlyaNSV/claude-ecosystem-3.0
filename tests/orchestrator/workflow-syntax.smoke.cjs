@@ -1,6 +1,8 @@
 'use strict';
 /**
- * Syntax smoke for the Orchestrator Workflow scripts (orchestrator/processes/*.mjs).
+ * Syntax smoke for the harness Workflow scripts — orchestrator/processes/*.mjs AND
+ * product/processes/*.mjs (the completeness-loop wave-runner, Epic B / B-b, lives in the
+ * latter). Both dirs use the same harness Workflow dialect and are scanned identically.
  *
  * The harness Workflow dialect is NOT plain ESM: scripts use `export const meta`
  * (module goal) together with top-level `await` AND top-level `return` (which the
@@ -18,7 +20,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const PROC_DIR = path.join(__dirname, '..', '..', 'orchestrator', 'processes');
+// Every dir that holds harness Workflow scripts. existsSync-guarded below so a dir that
+// hasn't been created yet (e.g. product/processes/ before the wave-runner lands) is simply
+// skipped, not a failure.
+const PROC_DIRS = [
+  path.join(__dirname, '..', '..', 'orchestrator', 'processes'),
+  path.join(__dirname, '..', '..', 'product', 'processes'),
+].filter((d) => fs.existsSync(d));
+
 const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
 
 // globals the harness injects into a Workflow script
@@ -49,19 +58,26 @@ function parseWorkflow(file) {
   new AsyncFunction(...INJECTED, body);
 }
 
-console.log('orchestrator Workflow syntax smoke (harness dialect)');
+console.log('Workflow syntax smoke (harness dialect)');
 
-const files = fs.existsSync(PROC_DIR)
-  ? fs.readdirSync(PROC_DIR).filter((f) => f.endsWith('.mjs'))
-  : [];
+// { dir, file } pairs across every scanned PROC_DIRS entry, so output/assertions can name
+// which dir a script came from (orchestrator/processes vs product/processes).
+const entries = [];
+for (const dir of PROC_DIRS) {
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith('.mjs'));
+  for (const f of files) entries.push({ dir, file: f });
+}
 
 test('at least one Workflow script present', () => {
-  if (!files.length) throw new Error(`no .mjs under ${PROC_DIR}`);
+  if (!entries.length) throw new Error(`no .mjs under ${PROC_DIRS.join(', ') || '(no scanned dirs exist)'}`);
 });
 
-for (const f of files) {
-  test(`${f} — parses in harness dialect + has meta`, () => {
-    parseWorkflow(path.join(PROC_DIR, f));
+for (const { dir, file } of entries) {
+  // Both scanned dirs are named `processes/` (orchestrator/processes, product/processes) —
+  // basename(dir) alone would collide, so label with the parent dir too.
+  const label = `${path.basename(path.dirname(dir))}/${path.basename(dir)}/${file}`;
+  test(`${label} — parses in harness dialect + has meta`, () => {
+    parseWorkflow(path.join(dir, file));
   });
 }
 

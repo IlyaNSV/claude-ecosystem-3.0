@@ -300,8 +300,8 @@
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">{
   "_build": {
-    "date": "2026-07-01",
-    "sha": "324b9fd",
+    "date": "2026-07-03",
+    "sha": "c60a883",
     "commands": 44,
     "artifacts": 24,
     "rules": 44,
@@ -1197,7 +1197,7 @@
           "name": "update",
           "st": "setup",
           "status": "shipped",
-          "desc": "Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead.",
+          "desc": "Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/product/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead.",
           "arg": "[--dry-run] [--force] [--offline] …",
           "when": "Синхронизировать экосистему к latest upstream; сохраняет user-zone и состояние пилота.",
           "tags": "обновление update upstream sync",

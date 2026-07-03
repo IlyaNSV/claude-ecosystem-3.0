@@ -7,7 +7,7 @@ argument-hint: "[--offline] [--no-mcp] [--force]"
 
 **Precondition:** this command requires Ecosystem 3.0 to be globally installed (via `install.sh` or `install.ps1` — see `~/.claude/ecosystem/README.md`). If globally installed, this command is autocompletable from any directory.
 
-**What it does:** installs Ecosystem 3.0 into the **current project directory**, populating `.claude/` with commands/skills/agents/hooks/orchestrator/docs, initializing `.product/` skeleton, and generating a project-level `CLAUDE.md`. (Bootstrap bulk-copies all non-filtered ecosystem subdirs, so the top-level `orchestrator/` runtime dir — Workflow scripts + deterministic helpers — is included automatically; `/ecosystem:update` syncs it namespace-aware per Step 5.1.)
+**What it does:** installs Ecosystem 3.0 into the **current project directory**, populating `.claude/` with commands/skills/agents/hooks/orchestrator/product/docs, initializing `.product/` skeleton, and generating a project-level `CLAUDE.md`. (Bootstrap bulk-copies all non-filtered ecosystem subdirs, so the top-level `orchestrator/` runtime dir — Workflow scripts + deterministic helpers — and the top-level `product/` runtime dir — the completeness-loop Workflow wave-runner, DEC-DEV-0142 — are included automatically; `/ecosystem:update` syncs both namespace-aware per Step 5.1.)
 
 User invoked: `/ecosystem:bootstrap $ARGUMENTS`
 

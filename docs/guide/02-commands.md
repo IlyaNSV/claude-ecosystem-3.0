@@ -9,19 +9,20 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `commands/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-command-catalog.cjs`. Интерактивная версия — [ecosystem-map.html](ecosystem-map.html). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 43 команд** в 5 модулях.
+**Всего: 44 команд** в 5 модулях.
 
-## /ecosystem:* (6)
+## /ecosystem:* (7)
 
 Установка и обслуживание самой экосистемы
 
 | Команда | Что делает | Аргументы |
 |---|---|---|
 | `/ecosystem:bootstrap` | Install Ecosystem 3.0 into the current project. Clones ecosystem to .claude/, initializes .product/, generates CLAUDE.md, configures env + settings, sets up MCP stack. | `[--offline] [--no-mcp] [--force]` |
-| `/ecosystem:enable-d7-audit` | One-time opt-in setup — register the D7 session-audit SessionEnd hook in this project's .claude/settings.local.json (uses absolute path to the ecosystem repo). | `--ecosystem-root=<absolute-path>` |
+| `/ecosystem:enable-d7-audit` | One-time opt-in setup — register the D7 session-audit SessionEnd hook in this project's .claude/settings.local.json (uses absolute path to the ecosystem repo). | `[--ecosystem-root=<absolute-path>]` |
 | `/ecosystem:meta-feedback` | Capture SYSTEMIC feedback about the ecosystem itself (defective rules/processes) into a committable upstream outbox for delivery to the ecosystem repo. Hybrid delivery — local pickup (co-located) or git/issue (remote). C3 upstream contour. | `[--review] [--push] [--issue] [--from <validation-tune\|feedback-journal\|manual>]` |
 | `/ecosystem:pending-actions` | List pending user-action entries (PA-NNN) from .claude/pending-actions.md. Read-only with --status and --source filters. | `[--status <pending\|done\|dismissed\|all>] [--source <module>] [--limit <N>]` |
-| `/ecosystem:update` | Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead. | `[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-commit]` |
+| `/ecosystem:research` | Guided Research — co-form a precise brief + usefulness-metrics contract, run a skeptical research loop over the existing stack, filter hype, and synthesize a cited answer scored against the contract. Read-only. | `<what you want to find out>` |
+| `/ecosystem:update` | Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/product/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead. | `[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-commit]` |
 | `/ecosystem:verify` | Verify Ecosystem 3.0 installation in current project. Non-destructive health check. | — |
 
 ## /product:* (20)
@@ -38,10 +39,10 @@ doc_type: reference
 | `/product:config` | Read or modify Product Module configuration (.claude/product.yaml). | `[--show \| --edit <key> <value>]` |
 | `/product:da-review` | Manual Product DA review. ID-prefix routing — FM-NNN spawns feature-scope DA; RL-NNN spawns release-scope DA (cross-FM consistency, HYP coverage, rollout deps per DEC-DEV-0026). Findings → .product/.da-findings/<ID>-<timestamp>.md unified schema (DEC-DEV-0030 A.1). Other prefixes (BR/IC/SC/LC/VC/RPM/MK) refused — те реализованы через hooks или approve gates. | `<FM-NNN \| RL-NNN>` |
 | `/product:drift-check` | Structural self-audit — check that recent artifacts still align with PS, primary HYP, MVP scope. C1 modification. | `[--scope <last-N-artifacts> \| --since <date>]` |
-| `/product:feature` | Start P2 Feature Definition. Enrichment mode (FM-id) или creation mode ("idea"). Produces SC, BR, LC, VC, IC + RPM update. Triggers adaptive-depth DA via hooks. | `<FM-id> \| "<idea description>" \| --continue [<FM-id>]` |
+| `/product:feature` | Start P2 Feature Definition. Enrichment mode (FM-id) или creation mode ("idea"). Produces SC, BR, LC, VC, IC + RPM update. Triggers adaptive-depth DA via hooks. | `<FM-id> \| \"<idea description>\" \| --continue [<FM-id>]` |
 | `/product:handoff` | Generate universal handoff для FM-NNN — 13-section markdown с embedded artifact excerpts + SHA-256 hashes для drift detection. Two modes — --mode draft (3-blocker DoR, status partial) и --mode production (8-blocker DoR, status ready). --regenerate force version++. --with-da-review invokes pre-gen DA. Output: .product/handoffs/FM-NNN-handoff.md. | `<FM-id> [--mode draft\|production] [--regenerate] [--with-da-review]` |
 | `/product:init` | Start P1.A Discovery Session for a new product. Creates PS, MR, CA, SEG, VP, HYP artifacts. | `<idea description> OR --continue OR --deep OR --pivot` |
-| `/product:lesson` | Atomic find→fix→record corrective LESSON-* (fix applied + verified before commit). Use the instant an error is self-detected — the inverse of the deferred .pending queue. | `"<what went wrong>"  \|  --resume <LESSON-id>  \|  --withdraw <LESSON-id> "<reason>"` |
+| `/product:lesson` | Atomic find→fix→record corrective LESSON-* (fix applied + verified before commit). Use the instant an error is self-detected — the inverse of the deferred .pending queue. | `\"<what went wrong>\"  \|  --resume <LESSON-id>  \|  --withdraw <LESSON-id> \"<reason>\"` |
 | `/product:nfr-review` | F.5a NFR Review для FM. Two phases — Ask (mandatory) + Define (conditional on [Y]). Sanity range warnings (per NFR.md §5). Consumes NOTE-NNN с promote_target=NFR queue. Updates FM.nfr_status atomically с FM version++. | `<FM-id> \| --continue [<FM-id>]` |
 | `/product:nfr-upgrade-tier` | Batch NFR review при product tier change (MVP→MMP / MMP→Growth / etc). Re-evaluates active NFRs per new tier sanity ranges; surfaces declined + pending FMs для re-Ask. Updates product.yaml.product_tier OR RM.current_phase + version bumps. | `<new-tier> [--dry-run]` |
 | `/product:patterns` | Meta-linter — scan .product/ for recurring anti-patterns across artifacts. C4 modification. Informational only. | `[--scope <artifact-type> \| --pattern <pattern-name>]` |
@@ -58,9 +59,9 @@ doc_type: reference
 | Команда | Что делает | Аргументы |
 |---|---|---|
 | `/design:export` | D.6 export verify — assemble UI-contract block from MK/DS/NM ready для handoff §10. Standalone sanity check; /product:handoff fills §10 directly from artifacts (no command call from handoff per Q10 carry-forward). | `<FM-id>` |
-| `/design:iterate` | D.3 continuation на existing active MK. Iteration counter ++; tool dispatch per MK.design_tool; deadlock guard (Q7) inherited from design-session.md. | `<MK-id> [--from-feedback "<text>"]` |
+| `/design:iterate` | D.3 continuation на existing active MK. Iteration counter ++; tool dispatch per MK.design_tool; deadlock guard (Q7) inherited from design-session.md. | `<MK-id> [--from-feedback \"<text>\"]` |
 | `/design:map` | Compose/refresh the App Map (AM) — L0 карта всего приложения (модули × кейсы × пути + CJM-слой) поверх per-flow NM. Mechanical layer derived from FM/NM; editorial layer из app-map.md frontmatter. | `[--write] [--html] [--facet module\|case\|role\|path] [--role R-xxx]` |
-| `/design:migrate` | Migrate MK design_tool between Stitch ↔ HTML (v1.0 per DEC-DEV-0052 C3 cut; Claude Design path → v1.1), or import an MK's visual HTML into the open-design viewer (--to open-design, v1.5). Hard approve gate per-MK (Q1). Regeneration targets are lossy (brief + MK metadata + DS snapshot); open-design is a lossless visual import (no metadata, no regeneration). previous_tools[] audit trail; rollback on failure. | `<MK-id\|--all> --to <stitch\|html\|open-design> [--reason "<text>"]` |
+| `/design:migrate` | Migrate MK design_tool between Stitch ↔ HTML (v1.0 per DEC-DEV-0052 C3 cut; Claude Design path → v1.1), or import an MK's visual HTML into the open-design viewer (--to open-design, v1.5). Hard approve gate per-MK (Q1). Regeneration targets are lossy (brief + MK metadata + DS snapshot); open-design is a lossless visual import (no metadata, no regeneration). previous_tools[] audit trail; rollback on failure. | `<MK-id\|--all> --to <stitch\|html\|open-design> [--reason \"<text>\"]` |
 | `/design:start` | Start P2.5 Design Session для FM-NNN с has_ui=true. Workflow D.1 Brief → D.2 Screens → D.3 Iterate → D.4 States → D.5 Artifacts → D.6 Export. Produces MK/DS/NM. Conditional sub-module — Phase 6. | `<FM-id> [--continue] [--abandon]` |
 | `/design:status` | Design Module dashboard. MK/DS/NM counts per status, active iterations, DS pending items, design tool connectivity, Stitch quota tracking. | `[--fm <FM-id>] [--verbose]` |
 | `/design:system` | Design System management — review pending DS proposals OR force re-extract from specific MK. Mass-rename workflow surfaces preview + IDE find-replace guidance (atomic — v1.1+). | `[--review] [--update-from <MK-id>]` |
