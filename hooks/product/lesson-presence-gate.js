@@ -11,10 +11,15 @@
  * MUTATING tool call (PreToolUse) until the lesson is resolved.
  *
  * SHIPS DEFAULTED TO WARN (per the "Strict Stop, warn PreToolUse" decision): the
- * deny path below is DORMANT unless env LESSON_GATE_MODE=strict is set, because
- * the marker-exemption logic (don't deny the lesson-capture protocol's own
- * writes/Bash) must be validated by a live smoke (S-LE) before it can be trusted
- * to gate without self-deadlocking the very protocol that resolves the lesson.
+ * deny path below is DORMANT unless env LESSON_GATE_MODE=strict is set.
+ * The armed S-LE live smoke (pilot session 4fb6e0f2, 2026-07-04) CONFIRMED the
+ * self-deadlock the original marker-only exemption predicted: the protocol's FIRST
+ * writes (the LESSON-* file, then the lesson-in-progress marker — lesson-capture.md
+ * steps 3-4) happen BEFORE any marker can exist, so marker-only exemption denies the
+ * very write that would create the marker. Fixed by the TARGET carve-out below
+ * (isLessonResolutionTarget, DEC-DEV-0143): mutations whose target IS a
+ * lesson-resolution instrument are always allowed. warn->strict flip still awaits a
+ * PASS re-run of the S-LE smoke against this fix.
  *
  * BLOCKING CONTRACT (verified against code.claude.com/docs/en/hooks, 2026-06):
  *   - PreToolUse denies a tool call via stdout JSON
@@ -103,11 +108,46 @@ function openLessons(projectRoot) {
       continue;
     }
     if (frontmatterStatus(text) === 'open') {
-      const id = (name.match(/^(LESSON-\d+)/) || [null, name])[1];
+      // Numeric ids extract as LESSON-NNN; non-numeric ids (e.g. a synthetic smoke
+      // lesson) fall back to the filename sans .md — never with the extension
+      // (cosmetic S-LE finding, DEC-DEV-0143).
+      const id = (name.match(/^(LESSON-\d+)/) || [null, name.replace(/\.md$/, '')])[1];
       open.push(id);
     }
   }
   return open;
+}
+
+function isLessonResolutionTarget(projectRoot, payload) {
+  // DEADLOCK BREAKER (S-LE smoke 2026-07-04, DEC-DEV-0143). The resolution protocol's
+  // first writes are the LESSON-* file itself and the lesson-in-progress marker — both
+  // happen BEFORE a marker can exist, so a marker-only exemption self-deadlocks (the
+  // deny blocks the very write that would create the marker). A mutation whose TARGET
+  // is a lesson-resolution instrument is therefore always allowed:
+  //   - .product/lessons/**                       (author / open→active-flip the lesson)
+  //   - .product/.sessions/lesson-in-progress.*   (the protocol marker)
+  // Bash stays gated (its targets are not parseable from the command string) — the
+  // protocol writes the marker and the lesson via Write/Edit (lesson-capture.md steps
+  // 3-4) and deletes the marker only after the open→active flip, when no open lesson
+  // gates Bash anymore.
+  const ti = (payload && payload.tool_input) || {};
+  const fp = ti.file_path || ti.notebook_path || '';
+  if (!fp) return false;
+  let abs;
+  let lessons;
+  let sessions;
+  try {
+    abs = path.resolve(fp);
+    lessons = path.resolve(projectRoot, '.product', 'lessons');
+    sessions = path.resolve(projectRoot, '.product', '.sessions');
+  } catch (_) {
+    return false;
+  }
+  const norm = (p) => (process.platform === 'win32' ? p.toLowerCase() : p);
+  const a = norm(abs);
+  if (a === norm(lessons) || a.startsWith(norm(lessons) + path.sep)) return true;
+  if (a.startsWith(norm(sessions) + path.sep) && /^lesson-in-progress\./.test(path.basename(abs))) return true;
+  return false;
 }
 
 function captureInProgress(projectRoot) {
@@ -188,8 +228,10 @@ function main() {
     if (!MUTATING_TOOLS.has(toolName)) return;
 
     if (mode === 'strict') {
-      // Exempt the lesson-capture protocol's own work (its fix Edits + verify Bash).
-      if (captureInProgress(projectRoot)) return;
+      // Exempt (a) the protocol mid-flow — fresh marker (its fix Edits + verify Bash) —
+      // and (b) any mutation whose TARGET is a lesson-resolution instrument (the
+      // deadlock breaker, see isLessonResolutionTarget).
+      if (captureInProgress(projectRoot) || isLessonResolutionTarget(projectRoot, payload)) return;
       process.stdout.write(denyJSON(ids));
       return;
     }
@@ -212,4 +254,4 @@ if (require.main === module) {
   process.exit(0);
 }
 
-module.exports = { frontmatterStatus, openLessons, captureInProgress, resolveProjectRoot };
+module.exports = { frontmatterStatus, openLessons, captureInProgress, resolveProjectRoot, isLessonResolutionTarget };
