@@ -7536,6 +7536,33 @@ Wave 2 keyed bake-off неисполним as-designed: ключей answer-engi
 
 ---
 
+## DEC-DEV-0142 — Wave B / B-b: durable wave-runner completeness-loop — новый top-level `product/processes/` + детерминированный `gap-classifier.cjs` (classify + stop-вердикт)
+
+**Date:** 2026-07-03
+**Trigger:** этап **E2** сводного плана (`dev/CONSOLIDATED_EXECUTION_PLAN.md` §4.1) / sub-phase **B-b** work-order Wave B (DEC-DEV-0136). Волна completeness-loop (skill 0098, закалённый B-a/0140) исполнялась как harness-driven проза — обернуть в исполняемый, детерминированно оркеструемый Workflow-скрипт.
+**Tag:** #architecture #product #vision-epic-b
+
+### Context
+Skill `completeness-loop.md` — поведенческий контракт (5 hard rails), но его исполнение прозой не даёт ни bounded-гарантий кодом, ни воспроизводимой оркестрации персон. Harness-констрейнт Workflow-скриптов (no fs / no require / no Date) не позволяет заимпортить классификатор напрямую — прецедент решения тот же, что у orchestrator-процессов: детерминированная dual-use `.cjs`-либа + агент-транспорт через `node`.
+
+### Options considered
+1. **Размещение runner:** (a) новый top-level `product/processes/complete-feature.mjs`, зеркально `orchestrator/` — **выбрано**: чистый zoning (Epic B = Product-owned), граница work-order 0136 «orchestrator/ не трогать» не нарушена; цена — деплой-wiring `update.md` по прецеденту DEC-DEV-0078 (bootstrap подхватывает bulk-copy автоматически). (b) положить в `orchestrator/processes/` — деплой бесплатен, но ломает зонирование. Отвергнуто.
+2. **CLASSIFY + стоп-вердикт:** (i) inline-JS в `.mjs` — не тестируется (смоук только парсит), дрейф при правках; (ii) **выбрано** — отдельная либа `hooks/product/lib/gap-classifier.cjs` (classify по разметке `LOOP_READINESS_AUDIT.md` + `shouldStop` = единый тестируемый SSOT стоп-формулы), вызываемая субагентом через `node` (как oracle); `.mjs` держит **in-code зеркала** (hard cap `for`-bound, pre-SURFACE met-check, post-classify met/Δ mirror) — терминация гарантирована даже при испорченном LLM-транспорте.
+3. **Персистенция advisor-findings:** (i) дать персонам Write; (ii) **выбрано** — выделенный writer-шаг рантайма после SURFACE. Находка: контракт 0140 «each persona WRITES its findings» был **невыполним** — у advisor-агентов tool grants без Write (skill-prose дефект, вскрыт при построении исполняемой формы). Персоны остаются read-only (least-privilege: они же PostToolUse zone-router advisory), запись keyed persona+FM с overwrite-in-place сохранена — исполнитель сместился.
+
+### Decision
+Runner (545 строк): SCORE (oracle через агент, verbatim) → SURFACE (FB-LR-28 anchor-root один на ран; FB-LR-31 raw-source брифы — персоны читают сырые артефакты, бриф не пересказывает; crash-safe слоты с try/catch + bounded re-spawn, canonical agentType без general-purpose fallback; writer-шаг персистенции) → CLASSIFY (транспорт к `.cjs`; классификатор = stop authority) → RESOLVE (conservative whitelist только VC/LC/RPM-деривации + in-code guard; verify-before-act 0093; sequential single-writer; идемпотентно keyed) → ESCALATE (PA_CANON verbatim из P6; PA-dedup 0089) → **CloseOut B-c**: advisory B5/B6/B8 (`bg-review`/`validate`), никогда не флипает `met`. Финальный re-score state-based (`resolvedAfterLastScore > 0`), honest_unmet — rail 5. `/product:complete` диспетчит `Workflow({scriptPath})` + честный inline-fallback на skill-прозу для до-1.7.0 инсталляций. Wiring: `update.md` (namespace-aware `product/`, 9 точек), `bootstrap.md`, `verify.md` (Step 4 счётчик + новый Step 4.6 маркеры `delegated_unverified`/`gap-classifier.cjs` + Step 9); generic workflow-смоук обобщён `PROC_DIR`→`PROC_DIRS`; 20 юнитов классификатора в `test:product`.
+
+### Outcome
+`npm run verify` EXIT=0 (28 hooks; смоук 8/8 включая новый `.mjs`; счётчики 24/44 не тронуты — аддитивно). Сборка — оркестрация субагентами (recon sonnet → 3 параллельных исполнителя sonnet×2/opus в worktree → Fable-ревью): ревью поймало 3 дефекта до коммита (persona-slot craш при throw agentType; невыполнимая persona-write; re-score guard узок — converged тоже выходит с непроголосованными фиксами) + висячий code-fence; противоречие брифа в dedupe-ключе исполнитель сам разрешил с обоснованием (сегмент `source` убит, иначе кросс-источниковый дедуп невозможен). Live-грейд авто-RESOLVE — B-d на пилоте (E4), отдельная сессия.
+
+### Lessons
+1. **Контракт «кто пишет файл» сверяй с tool grants исполняющего агента.** Проза 0140 обещала запись от персон, у которых нет Write — дефект жил незамеченным, пока контракт не стал исполняемой формой. Executable-форма — дешёвый детектор невыполнимых обещаний прозы.
+2. **Стоп-логику — в тестируемую `.cjs`, даже когда Workflow не может её require.** LLM-как-транспорт stdout + in-code зеркала в `.mjs` дают и единый SSOT формулы (юниты покрывают все 4 статуса), и гарантию терминации при любом поведении транспорта.
+3. **Generic-смоук с захардкоженным каталогом молча пропустит новый top-level runtime dir.** При добавлении каталога процессов первым делом расширяй скан смоука (`PROC_DIRS`), иначе «parses in harness dialect» перестаёт быть гарантией для новых скриптов.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
