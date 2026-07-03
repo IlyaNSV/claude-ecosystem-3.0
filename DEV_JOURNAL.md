@@ -7563,6 +7563,31 @@ Runner (545 строк): SCORE (oracle через агент, verbatim) → SURF
 
 ---
 
+## DEC-DEV-0143 — S-LE смоук подтвердил self-deadlock marker-exemption у lesson-presence-gate → target-carve-out (fix) + итоги S-LE прогона
+
+**Date:** 2026-07-04
+**Trigger:** армированный S-LE live-смоук в пилоте (сессия `4fb6e0f2`, CC 2.1.200, Windows; урок `LESSON-SLE-SMOKE` open + `LESSON_GATE_MODE=strict`) — этап E4 плана. Грейд post-hoc по транскрипту (opus-форензика, executor/reviewer separation).
+**Tag:** #fix #hooks #product #smoke
+
+### Context
+Дизайн LESSON-гейта (DEC-DEV-0062) сознательно держал PreToolUse-prong в `warn`, пока S-LE не проверит marker-exemption вживую — header хука прямо предсказывал риск «self-deadlocking the very protocol that resolves the lesson». Смоук прогнан впервые с реально взведённым уроком.
+
+### Root cause
+**Marker-exemption самоблокируется по конструкции.** Порядок протокола (`lesson-capture.md` шаги 3-4): файл урока `status: open` пишется ДО маркера, маркер — следом; т.е. первые же записи протокола происходят, когда маркера ещё НЕТ. Strict-deny бьёт по любому мутирующему вызову без маркера → протокол не может ни создать маркер (запись denied), ни отредактировать урок (denied). Live-подтверждено: 3× deny, включая Bash-проверку маркера и Edit самого файла урока изнутри `/product:lesson --resume`; сессия честно диагностировала «замкнутый круг» и эскалировала владельцу вместо фабрикации обхода (правильное поведение агента при дефекте механизма).
+
+### Decision
+**Target-carve-out** (а не расширение прав или маркер-бутстрап через ещё один хук): в strict-ветке deny НЕ применяется к мутациям, чья ЦЕЛЬ — сам инструмент разрешения урока: `file_path` под `.product/lessons/**` (авторинг/флип урока) или `.product/.sessions/lesson-in-progress.*` (маркер). Bash остаётся под гейтом (его цели непарсимы из строки команды) — протоколу Bash и не нужен до флипа open→active, после которого гейт спит. Отвергнуто: (i) ставить маркер UserPromptSubmit-хуком на `/product:lesson`-промпт — второй пишущий механизм с гонками против carve-out'а на 4 строки; (ii) exemption по имени скилла — harness не передаёт его в PreToolUse. Riders: не-числовой id-фолбэк без `.md` (косметика из смоука); smoke-раннер обучен `payloadExtra` (hook_event_name) + `expectStdoutIncludes/Absent` (blocking-хуки отвечают stdout-JSON'ом, раньше раннер умел только stderr) — 6 новых кейсов пинуют deny/carve-out/exemption/reminder/warn.
+
+### Outcome
+Смоук-хуки 34/34 (28→34). Итоги S-LE: S-LE.2/4/5/6 PASS; S-LE.3 deny PASS + exemption FAIL→FIXED (этот fix); S-LE.1 PARTIAL — stderr-фидбек Stop-гейта доходит до модели (инжект подтверждён транскриптом), но `preventedContinuation:false` на CC 2.1.200 — hard-block чистого закрытия не продемонстрирован (неотличимо от «владелец закрыл окно»). **`lesson-presence-gate` остаётся `warn` — флип warn→strict заблокирован до PASS live-ре-прогона S-LE.1/S-LE.3 против фикса** (после следующей доставки в пилот). Таблица — `dev/gates/S_LE_LESSON_GATE_SMOKE.md`.
+
+### Lessons
+1. **Write-ahead протокол + маркер-exemption несовместимы по порядку записи:** если exemption-токен создаётся тем же классом операций, который гейтится, гейт обязан иметь carve-out по ЦЕЛИ операции, а не только по токену — иначе deadlock заложен конструкцией и не виден до live-прогона.
+2. **Смоук, который «нашёл блокер», успешнее смоука, который «прошёл»:** дефект был предсказан комментарием в коде четыре недели назад, но подтвердить/опровергнуть его мог только армированный live-прогон (S-LE и был введён под это).
+3. **Блокирующие хуки отвечают stdout-JSON'ом — смоук-раннер, умеющий только stderr-ассерты, слеп к их главному контракту.** Расширение раннера (payloadExtra + stdout-ассерты) — разовая цена, дальше все blocking-хуки тестируемы.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 

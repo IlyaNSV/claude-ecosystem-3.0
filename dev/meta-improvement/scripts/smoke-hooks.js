@@ -507,6 +507,93 @@ const TEST_CASES = [
     },
     expectStderrIncludes: /AM-stale/,
   },
+
+  // ---------- lesson-presence-gate (DEC-DEV-0062; deadlock carve-out DEC-DEV-0143) ----------
+  // The armed S-LE live smoke (pilot 4fb6e0f2, 2026-07-04) confirmed a marker-only
+  // exemption self-deadlocks the resolution protocol (its first writes — the lesson
+  // file + the marker — happen BEFORE a marker can exist). These cases pin the fix:
+  // deny still fires on ordinary targets; lesson-resolution targets are carved out;
+  // a fresh marker exempts everything; warn stays non-blocking.
+  {
+    hook: 'hooks/product/lesson-presence-gate.js',
+    label: 'strict-deny-ordinary-target',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'PreToolUse' },
+    env: { LESSON_GATE_MODE: 'strict' },
+    setup: (ctx) => {
+      const lessons = path.join(ctx.tmpProduct, 'lessons');
+      fs.mkdirSync(lessons, { recursive: true });
+      fs.writeFileSync(
+        path.join(lessons, 'LESSON-001.md'),
+        '---\nid: LESSON-001\nstatus: open\n---\n\n# smoke lesson\n',
+        'utf-8'
+      );
+    },
+    expectStdoutIncludes: /"permissionDecision":"deny"/,
+  },
+  {
+    hook: 'hooks/product/lesson-presence-gate.js',
+    label: 'strict-carveout-lesson-file-target',
+    toolName: 'Edit',
+    filePath: path.join(TMP_PRODUCT, 'lessons', 'LESSON-001.md'),
+    payloadExtra: { hook_event_name: 'PreToolUse' },
+    env: { LESSON_GATE_MODE: 'strict' },
+    expectStdoutAbsent: /permissionDecision/,
+  },
+  {
+    hook: 'hooks/product/lesson-presence-gate.js',
+    label: 'strict-carveout-marker-target',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, '.sessions', 'lesson-in-progress.LESSON-001'),
+    payloadExtra: { hook_event_name: 'PreToolUse' },
+    env: { LESSON_GATE_MODE: 'strict' },
+    expectStdoutAbsent: /permissionDecision/,
+  },
+  {
+    hook: 'hooks/product/lesson-presence-gate.js',
+    label: 'strict-exemption-fresh-marker',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'PreToolUse' },
+    env: { LESSON_GATE_MODE: 'strict' },
+    setup: (ctx) => {
+      const sess = path.join(ctx.tmpProduct, '.sessions');
+      fs.mkdirSync(sess, { recursive: true });
+      fs.writeFileSync(path.join(sess, 'lesson-in-progress.LESSON-001'), 'LESSON-001 smoke', 'utf-8');
+    },
+    expectStdoutAbsent: /permissionDecision/,
+  },
+  {
+    hook: 'hooks/product/lesson-presence-gate.js',
+    label: 'ups-reminder-not-blocking',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'UserPromptSubmit' },
+    env: { LESSON_GATE_MODE: 'strict' },
+    setup: (ctx) => {
+      // Drop the fresh marker from the previous case — reminder must fire regardless.
+      try { fs.unlinkSync(path.join(ctx.tmpProduct, '.sessions', 'lesson-in-progress.LESSON-001')); } catch (_e) { /* absent ok */ }
+    },
+    expectStdoutIncludes: /additionalContext/,
+  },
+  {
+    hook: 'hooks/product/lesson-presence-gate.js',
+    label: 'warn-default-no-deny',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'PreToolUse' },
+    env: { LESSON_GATE_MODE: 'warn' },
+    setup: (ctx) => {
+      // Leave no open lesson behind for unrelated later cases: this is the LAST
+      // lesson case — clean up inside it after asserting (teardown-in-next-setup
+      // pattern is unavailable, so the lesson stays; harmless — only lesson hooks
+      // scan .product/lessons). Keep LESSON-001 open so the warn nag fires.
+      void ctx;
+    },
+    expectStdoutAbsent: /permissionDecision/,
+    expectStderrIncludes: /LESSON GATE \(reminder\)/,
+  },
 ];
 
 // Patterns в stderr that signal real bugs (vs benign log).
@@ -571,12 +658,12 @@ for (const tc of TEST_CASES) {
   // Step 2: runtime smoke — pipe hook input JSON
   const toolName = tc.toolName || 'Write';
   const toolInput = tc.toolInput || (tc.filePath ? { file_path: tc.filePath } : {});
-  const hookInput = JSON.stringify({
+  const hookInput = JSON.stringify(Object.assign({
     session_id: 'smoke',
     tool_name: toolName,
     tool_input: toolInput,
     cwd: TMP_DIR,
-  });
+  }, tc.payloadExtra || {})); // payloadExtra: e.g. hook_event_name for event-dispatching hooks
   const childEnv = Object.assign({}, process.env, tc.env || {});
   const runRes = spawnSync('node', [hookPath], {
     input: hookInput,
@@ -634,6 +721,40 @@ for (const tc of TEST_CASES) {
         stdout: (runRes.stdout || '').slice(0, 500),
       });
       console.error(`FAIL  ${tcLabel} (expectStderrAbsent ${matcher} but pattern found)`);
+      continue;
+    }
+  }
+
+  // Step 3c/3d: optional stdout assertions — blocking hooks answer via stdout JSON
+  // (PreToolUse permissionDecision / UserPromptSubmit additionalContext), not stderr.
+  const stdoutText = runRes.stdout || '';
+  if (tc.expectStdoutIncludes) {
+    const matcher = tc.expectStdoutIncludes;
+    const ok = matcher instanceof RegExp ? matcher.test(stdoutText) : stdoutText.includes(matcher);
+    if (!ok) {
+      failures.push({
+        hook: tcLabel,
+        phase: 'expectStdoutIncludes',
+        expected: matcher.toString(),
+        stderr: stderr.slice(0, 2000),
+        stdout: stdoutText.slice(0, 2000),
+      });
+      console.error(`FAIL  ${tcLabel} (expectStdoutIncludes ${matcher} not matched)`);
+      continue;
+    }
+  }
+  if (tc.expectStdoutAbsent) {
+    const matcher = tc.expectStdoutAbsent;
+    const present = matcher instanceof RegExp ? matcher.test(stdoutText) : stdoutText.includes(matcher);
+    if (present) {
+      failures.push({
+        hook: tcLabel,
+        phase: 'expectStdoutAbsent',
+        expected: `absence of ${matcher.toString()}`,
+        stderr: stderr.slice(0, 2000),
+        stdout: stdoutText.slice(0, 2000),
+      });
+      console.error(`FAIL  ${tcLabel} (expectStdoutAbsent ${matcher} but pattern found)`);
       continue;
     }
   }

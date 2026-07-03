@@ -1,6 +1,11 @@
 # S-LE — LESSON-* gate runtime contracts (live smoke checklist)
 
-> **Статус:** ⏳ PENDING — не прогонялся.
+> **Статус:** 🟠 ПРОГНАН 2026-07-04 (армированная пилот-сессия `4fb6e0f2`, CC 2.1.200, Windows) —
+> **нашёл блокер и он починен**: marker-exemption самоблокировался (протокол не мог создать
+> собственный маркер — deny бил по первой же записи), закрыт target-carve-out'ом
+> **DEC-DEV-0143** + 6 закреплённых смоук-кейсов в `smoke-hooks.js`. **warn→strict флип
+> ЗАБЛОКИРОВАН до PASS ре-прогона S-LE.1/S-LE.3 против фикса** (после доставки следующего патча
+> в пилот). Итоги — в таблице результатов ниже.
 > **Введён:** DEC-DEV-0062 (2026-06-06).
 > **Тип:** HARD prerequisite — блокирует перевод `hooks/product/lesson-presence-gate.js` (PreToolUse prong) из `warn` в `strict`.
 > **Где прогонять:** следующая **продуктовая пилот-сессия на Windows** (напр. `my-first-test/`) с установленным/обновлённым LESSON-* (`/ecosystem:bootstrap` или `/ecosystem:update`). **НЕ** в dev-сессии самой экосистемы.
@@ -67,12 +72,14 @@
 
 | Шаг | Контракт | Результат | Заметка |
 |---|---|---|---|
-| S-LE.1 | Stop блокирует (`exit 2`) | ⏳ | |
-| S-LE.2 | Stop payload (stdin + cwd) | ⏳ | |
-| S-LE.3 | PreToolUse deny + marker-exemption | ⏳ | |
-| S-LE.4 | UserPromptSubmit reminder, не блок | ⏳ | |
-| S-LE.5 | bootstrap Step 6b emit + dedup | ⏳ | |
-| S-LE.6 | fail-open | ⏳ | |
+| S-LE.1 | Stop блокирует (`exit 2`) | 🟠 PARTIAL (2026-07-04, `4fb6e0f2`) | stderr-фидбек гейта ДОХОДИТ до модели (инжект «Stop hook feedback: 🛑 LESSON GATE…» с resume-инструкцией), но авторитетное поле показало `preventedContinuation:false, level:"suggestion"` — на CC 2.1.200 (bypassPermissions) hard-block чистого закрытия не продемонстрирован; неотличимо от «владелец закрыл окно в момент фидбека». Одиночный Stop-ивент → зацикливания нет. Ре-проверить на ре-прогоне. |
+| S-LE.2 | Stop payload (stdin + cwd) | ✅ PASS | `cwd` в Stop-событии; хук резолвит root и перечисляет уроки за ~82-99 мс без tty-зависания. |
+| S-LE.3 | PreToolUse deny + marker-exemption | deny ✅ PASS · exemption ❌ FAIL → **FIXED 0143** | Deny сработал 3× с видимой причиной (форма `hookSpecificOutput.permissionDecision:"deny"` подтверждена). **Marker-exemption самозаблокировался** (протокол не может создать маркер — его создание само denied; предсказание из header'а хука подтвердилось). Починено target-carve-out'ом (`isLessonResolutionTarget`: цели `.product/lessons/**` + `lesson-in-progress.*` всегда разрешены; Bash остаётся под гейтом — протокол пишет маркер Write'ом). 6 кейсов закреплены в `smoke-hooks.js`. Live-ре-прогон exemption — требуется. |
+| S-LE.4 | UserPromptSubmit reminder, не блок | ✅ PASS | `additionalContext` «⚠️ Open LESSON-*…» инжектится, промпт не блокируется. |
+| S-LE.5 | bootstrap Step 6b emit + dedup | ✅ PASS (2026-07-03, детерминир. чек после `/ecosystem:update`) | `Stop`/`PreToolUse`/`UserPromptSubmit` в `settings.json` пилота ровно по одной регистрации каждого. |
+| S-LE.6 | fail-open | ✅ PASS (2026-07-03, детерминир.) | Битый stdin → exit 0 (оба хука); вне `.product` → exit 0. |
+
+**Косметика (починено в 0143):** не-числовой id (`LESSON-SLE-SMOKE`) фолбэчил на имя файла с `.md` — теперь фолбэк без расширения. **Наблюдение:** `LESSON_GATE_MODE=strict` работал как эфемерный env консоли (в settings не персистится) — так и задумано для смоука.
 
 ---
 
