@@ -106,9 +106,13 @@
   вне harness не исполняется, фикстурный end-to-end подменён юнитами стоп-формулы + wiring-гардами.*
 
 ### E3 — Patch-cut 1.7.0 + доставка в пилот *(по `checklists/patch-cut.md`)*
-- [ ] Нарезать `[Unreleased]` (двухнедельный багаж: N+2 close-out, Vision Increment 1 + B-a/B-b, P2, P7, S7,
-      doc-UX Волны 0–2, Research W1, BPMN-карта) → версия **1.7.0**, тег.
-- [ ] 👤 `/ecosystem:update` в `my-first-test` (wipe-protection + namespace-preserve контракт).
+- [x] **Cut ✅ 2026-07-03:** `[Unreleased]` → `## [1.7.0]` + release-сводка (Оркестратор ПОЛНЫЙ + N+2 hardening,
+      Vision Inc-1 + B-a/B-b/B-c 0142, Research W1, doc-UX Волны 0–2, feedback-контур ф.2; deferred-пометки
+      перенесены); свежий пустой `[Unreleased]`; ROADMAP «Последнее обновление» обновлён; check-counts ✓ 24/44
+      (N/A-класс — счётчики не менялись); тег **`v1.7.0`** на main.
+- [ ] 👤 `/ecosystem:update` в `my-first-test` (wipe-protection + namespace-preserve контракт). ⚠ Новое в 1.7.0
+      для доставки: top-level `product/` (первый namespace-aware sync нового каталога — проверить, что
+      `.claude/product/processes/complete-feature.mjs` появился, verify.md Step 4.6 маркеры зелёные).
 - [ ] Pilot-side `.gitattributes` delivery (FB-LR-27, QUEUED) — вместе с update.
 - **CP-3:** `verify-update.sh` зелёный на пилоте; состояние пилота не тронуто (контракт §6 CLAUDE.md).
 
