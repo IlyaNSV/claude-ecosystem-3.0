@@ -110,14 +110,20 @@
 - [ ] 🧪 **B-d real-resolve калибровка:** `/product:complete` на фиче с реальным oracle<1 gap →
       откалибровать широту авто-RESOLVE (какие 🟢-деривации безопасны с verify-before-act) → обновить skill.
       Грейд: sensitivity (нашёл реальные gaps) + specificity (0 сфабрикованных артефактов).
-- [ ] 🧪 **P2-dogfood починенного консилиума** (закрывает хвост фронта 1): прогнать
-      `decide-architecture-foundation` на **живой** развилке — кандидат **PA-040 (BullMQ vs plain-Redis)**,
-      реальная и открытая. Проверить: `source_excerpt` доходит сырым, soft-veto/integration-проход срабатывают.
+- [ ] 🧪 **P2-dogfood починенного консилиума** (закрывает хвост фронта 1; вариант 2 подтверждён владельцем
+      2026-07-03): прогнать `decide-architecture-foundation` на **живой** развилке. ⚠ Экс-кандидат PA-040
+      уже ратифицирован в пилоте (DEC-PLAN-039/040, `68c77ee`) → ждать СЛЕДУЮЩУЮ реальную арх-развилку
+      (естественный кандидат — при имплементации Task 5.4 worker-bootstrap); НЕ фабриковать (FB-LR-26).
+      Проверить: `source_excerpt` доходит сырым, soft-veto/integration-проход срабатывают.
 - [ ] 🧪 **S-LE lesson-gate smoke** (`dev/gates/S_LE_LESSON_GATE_SMOKE.md`) — hard-prereq флипа
       `lesson-presence-gate` warn→strict (DEC-DEV-0062). Плюс, сколько влезет: PATCH_1.3.3 S1–S5, PHASE_6 S1–S7.
-- [ ] 👤 Пилот-решения: had_trial канон-коммит (DEC-PLAN-038, Path A); судьба `run/s7-localization`
-      (зелёная 7.1 → merge в продукт + READY-ре-гейт); PA-039 (live-verify + flag-flip → Integrator).
-- [ ] Уборка пилотных worktree: `run/v2-personas`, `run/g3-glossary`, `run/s7-localization` (после решения).
+- [ ] **[РЕШЕНО ДА 2026-07-03]** merge `run/s7-localization` → `pre-cc-sdd-pilot` (несёт 7.1 OpenAI-провайдер
+      + Task 5.4 spec + ратификации DEC-PLAN-039/040) + **READY-ре-гейт `d0299f9`** (orphan-export fix,
+      `readiness=ENV_NOT_READY` — re-verify на READY-ране). had_trial канон — ✅ уже закоммичен (DEC-PLAN-038
+      в journal.md пилота, факт-чек 2026-07-03). Остаётся 👤 PA-039 (live-verify + flag-flip → Integrator).
+- [ ] Уборка пилотных worktree: `run/v2-personas` (⚠ несёт modified worktree-local `.claude/pending-actions.md`
+      — перед сносом сверить с каноническим ledger, не потерять PA-контент), `run/g3-glossary`,
+      `run/s7-localization` (после merge), `worktree-hashed-dreaming-dolphin`, `worktree-merry-meandering-horizon`.
 - **CP-4:** грейды записаны (DEV_JOURNAL + ledger); RESOLVE-широта обоснована живыми данными; N-волна
   Wave B объявляется закрытой (B-a..B-d ✓).
 
@@ -147,12 +153,15 @@
       до работающего+используемого. Рекомендуемое окно — после E3 (перед новой волной).
 - [ ] **env-probe hardening** FB-LR-09 + FB-LR-24 (migration-history integrity в shared env-readiness).
 - [ ] 👤 **FB-LR-25** — fold escalations + un-drained queues в один disclosure (или wontfix-подтверждение).
-- [ ] **Research Wave 2-tooling** (вписать выбранный answer-engine в bootstrap MCP-стек) — gated вердиктом E1
-      + решением §5.1; **Wave 3** (формальный RB-артефакт) — bring-forward триггер: reuse ≥5 И form-drift;
-      **Wave 4** — по спросу.
+- [ ] **Research Wave 2-tooling — двухступенчато (решение владельца 2026-07-03, §5.1):**
+      (i) **tool-agnostic answer-engine коннектор** — контракт интерфейса `query → {answer, citations[],
+      provenance-tier}` + слот в fallback-таблице `/ecosystem:research` + конфиг-плейсхолдер ключей;
+      строится БЕЗ покупки ключей — «готовность к подключению»; (ii) подключение конкретного engine
+      (Perplexity Sonar provisional) + keyed bake-off — при появлении ключей/реальной потребности.
+      **Wave 3** (формальный RB-артефакт) — bring-forward триггер: reuse ≥5 И form-drift; **Wave 4** — по спросу.
 - [ ] **Epic E + живой P7-boot** — substrate-gated: нужны D3-runtime инструменты Интегратора
       (**Phase 7**, `dev/gates/PHASE_7_READINESS.md` — skeleton); войдёт после (C ∥ D) по vision-графу.
-- [ ] 👤 Statusline-микро: вернуть ленту этапов/заголовок вкладки без 💬-пересказа? (оффер сессии 5 без ответа).
+- [x] **Statusline-микро: закрыто 2026-07-03** — владелец: «пересказы сейчас не нужны»; без действий.
 
 ## 4. Проектировки (для поставленного без спроектированной реализации)
 
@@ -206,20 +215,26 @@ B2 = редакторская Mermaid (D-6=b) с coarse-freshness правило
 Proposal (vision §5 Epic G) явно помечен «развилки не пред-решены»; реализация после owner-ревью
 (рекомендуемая точка — kickoff E5) и не раньше реальной потребности в >3–4 персонах.
 
-## 5. Решения, ждущие владельца 👤
+## 5. Решения владельца — ЗАФИКСИРОВАНЫ 2026-07-03 (ответы получены; 6/8 — дефолт-рекомендация, переиграбельны словом)
 
-1. **Keyed bake-off (Research):** платный head-to-head Perplexity/Linkup (~$50, 7 🚧-пунктов
-   `RESEARCH_CAPABILITY_WAVE0.5_BAKEOFF.md` §7) — **рекомендация: НЕ сейчас**. Free-проекция E1 отвечает
-   на вопрос методологии (B1-дисциплина >> naive); keyed нужен только при реальном подключении
-   answer-engine (Wave 2-tooling), туда и отложить.
-2. **P2-dogfood вариант** (фронт 1, финальный выбор «1 ничего / 2 живой dogfood / 3 ре-ран A/B»):
-   **рекомендация: вариант 2** на PA-040 в E4; полный ре-ран Слоя-1 — не делать (дорого, маргинально).
-3. **had_trial канон** (DEC-PLAN-038, Path A) — коммит в пилоте за владельцем (E4).
-4. **`run/s7-localization`** — зелёную работу 7.1 (OpenAI-провайдер) мержить в продукт пилота + READY-ре-гейт? (E4)
-5. **FB-LR-25** — единый disclosure-конверт эскалаций: делать или подтвердить wontfix (E7).
-6. **Epic G §7-ревью** — развилки матрицы субагентов (E5).
-7. **Statusline** — вернуть ленту этапов без 💬-пересказа? (E7, микро).
-8. **D-7 / C4 «ты здесь»** — после E4: карты реально помогают оператору? строить ли C4 (E6).
+1. **Keyed bake-off (Research): ✅ отложен + НОВАЯ задача** — владелец: «сделать коннектор под
+   agnostic-tool, быть готовым к подключению в будущем» → в E7 Research-строку добавлен
+   **tool-agnostic answer-engine коннектор** (интерфейс без покупки ключей; см. E7). Сам keyed — при подключении engine.
+2. **P2-dogfood: ✅ вариант 2 (живой dogfood)** — согласовано. ⚠ Импакт-факт: PA-040/042 **уже
+   ратифицированы в пилоте** (DEC-PLAN-039/040, tip `68c77ee` ветки `run/s7-localization`) → субстрат ушёл;
+   E4 скорректирован: прогон на СЛЕДУЮЩЕЙ живой арх-развилке (не фабриковать, FB-LR-26).
+3. **had_trial канон: ✅ закрыто, коммит НЕ нужен** — факт-чек 2026-07-03: DEC-PLAN-038 уже закоммичен
+   в `pre-cc-sdd-pilot` (`.product/.decisions/journal.md`), дерево пилота чистое.
+4. **`run/s7-localization`: ✅ ДА** — мержить в `pre-cc-sdd-pilot` + READY-ре-гейт `d0299f9`
+   (orphan-export fix помечен `readiness=ENV_NOT_READY`). Действие внесено в E4.
+5. **FB-LR-25: ✅ wontfix подтверждён** (моё суждение по «как считаешь нужным»: решение уже было —
+   DEC-DEV-0116; stale табличная строка ledger дофлипнута этим PR).
+6. **Epic G §7-ревью: 👤 дефолт (a) — E5, скоуп G1+G2** (per-агент конфиг + матрица участия, дефолт =
+   текущий zone-routing; панель G3 вторым инкрементом). Альтернативы, если хочешь иначе:
+   (b) сначала G3-панель read-model; (c) отложить G за E5 до спроса от консилиум-пресетов Epic D.
+7. **Statusline: ✅ закрыто** — «пересказы сейчас не нужны»; ничего не делаем (выключено целиком).
+8. **C4 «ты здесь»: 👤 дефолт (a) — решить после E4** по живым пилот-впечатлениям от карт.
+   Альтернативы: (b) строить в E6 сразу; (c) не строить (вычеркнуть, дизайн сохраняется).
 
 ## 6. Process-обязательства и риски
 
