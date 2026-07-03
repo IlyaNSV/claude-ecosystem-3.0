@@ -19,6 +19,7 @@
     "gen:glossary": "node dev/meta-improvement/scripts/gen-glossary.cjs",
     "gen:glossary:check": "node dev/meta-improvement/scripts/gen-glossary.cjs --check",
     "gen:glossary:selftest": "node dev/meta-improvement/scripts/gen-glossary.cjs --selftest",
+    "next-dec-dev": "node dev/meta-improvement/scripts/next-dec-dev.js",
     "check:doctype": "node dev/meta-improvement/scripts/check-guide-doctype.cjs",
     "smoke:procmap": "node tests/guide/procmap.smoke.mjs",
     "smoke:mapshell": "node tests/guide/mapshell.smoke.mjs",
