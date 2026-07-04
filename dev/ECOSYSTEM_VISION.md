@@ -88,9 +88,9 @@ D1 Discovery ──/product:init,plan──► D2-B Requirements ──/product:
 
 ### 2.2. Агенты и «консилиум» (Intent B/C)
 
-- `agents/`: всего **4 субагента** — `product-devils-advocate` (бизнес-критик, 6 линз, adaptive-depth, pre-mortem/inversion/steelman) + 3 утилитарных Integrator-агента. **Профильных персон (UI/UX, SEO, архитектор, QA, security, data) — НЕТ.**
+- `agents/`: всего **4 субагента** — `product-devils-advocate` (бизнес-критик, 6 линз, adaptive-depth, pre-mortem/inversion/steelman) + 3 утилитарных Integrator-агента. **Профильных персон (UI/UX, SEO, архитектор, QA, security, data) — НЕТ.** *(⚠ факт-фикс 2026-07-04, DEC-DEV-0145: устарело — в репо 7 субагентов; `architect/qa/ux-advisor` построены Epic A1 и live-validated DEC-DEV-0115.)*
 - **«Консилиум» сегодня — дисциплина ресёрча, не панель.** §7.6 (DEC-DEV-0047): `/integrator:research` может делать fan-out на N bias-anchored приоров — **но только при объявленном scope + approve-gate**; иначе СТОП. Это **guardrail**, а не совещающийся орган.
-- `architecture-consilium ×3` в orchestrator SPEC — **только концептуальная таксономия**, файла-агента нет, процесс P2 не построен.
+- `architecture-consilium ×3` в orchestrator SPEC — **только концептуальная таксономия**, файла-агента нет, процесс P2 не построен. *(⚠ факт-фикс 2026-07-04, DEC-DEV-0145: СИЛЬНО устарело — P2 `decide-architecture-foundation` ПОСТРОЕН (DEC-DEV-0129: `orchestrator/lib/consilium-synth.cjs` matrix+rank+veto worst-of + skill `architecture-consilium.md`) и обкатан+починен DEC-DEV-0135 (raw-source + soft-veto + integration-pass). Epic D ниже читать как «генерализация построенного», не «стройка с нуля».)*
 - Весь код **намеренно анти-автономен** (hard-approve gates, «no silent fan-out», §6 capability-gate). Идея «консилиум заменяет пользователя» идёт **против этого зерна** и требует явного дизайна гейтов.
 
 ### 2.3. Зернистость процессов и текущая автономия (Intent C)
@@ -253,6 +253,8 @@ A ──► G (матрица субагентов: control-plane участия
 
 ### Epic D — Консилиум-примитив *(cross-module; реюз §7.6 + Workflow `parallel()`)*
 **Намерение:** C2 — переиспользуемый «совет» для точек решений/конфликтов/brainstorm, как подготовка решения, не замена гейта.
+
+> **⚠ Ре-скоуп на kickoff волны (C∥D), DEC-DEV-0145 (2026-07-04):** ядро D1 УЖЕ реализовано оркестраторным P2 (`consilium-synth.cjs` + жюри ×3 — DEC-DEV-0129/0135, live-validated). Волна = **генерализация**: параметризовать хардкод `PRIOR_LIST` (панель инъекцией, backward-compat) + тонкий product-раннер для completeness-эскалаций (форк-образные decision-PA, ≥2 опций). Слепая зона исходной формулировки «реюз»: synth фильтрует вердикты не-арх-приоров (`isPriorVerdict`) и требует ≥2 перечисленных опций — drop-in-реюз для persona-панели невозможен без параметризации.
 
 **Инкременты:**
 - **D1.** Консилиум-примитив = `parallel()` фан-аут на N **гетерогенных** персон (Epic A) с **разными priors** → synthesis-агрегатор → structured-verdict → **в гейт** (не вместо). Реализован как **жюри/breadth-first**, не консенсус-дебаты (§4 кластер 2). Опционально — разные модели для усиления гетерогенности.
