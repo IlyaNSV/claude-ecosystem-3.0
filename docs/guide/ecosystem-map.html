@@ -300,9 +300,9 @@
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">{
   "_build": {
-    "date": "2026-07-03",
-    "sha": "c60a883",
-    "commands": 44,
+    "date": "2026-07-04",
+    "sha": "24893a8",
+    "commands": 45,
     "artifacts": 24,
     "rules": 44,
     "gates": 18,
@@ -496,6 +496,30 @@
           "produces": [],
           "consumes": [],
           "source": "commands/product/config.md"
+        },
+        {
+          "cmd": "/product:consilium",
+          "id": "product:consilium",
+          "module": "product",
+          "name": "consilium",
+          "st": "D2B",
+          "status": "partial",
+          "desc": "Prepare a decision on an already-escalated, FORK-SHAPED decision pending-action (>=2 mutually-exclusive options) by running a heterogeneous jury of Epic-A profile personas (architect/qa + ux when the decision touches UI). Each juror scores the options INDEPENDENTLY from the raw artifacts; their verdicts aggregate DETERMINISTICALLY through the shared consilium-synth (matrix + rank + hard/soft-veto); a recommendation package is written back into the SAME PA in place. PREPARE-ONLY — the jury recommends, the owner ratifies. Epic D generalization of the Orchestrator P2 primitive (DEC-DEV-0145).",
+          "arg": "\u003cPA-NNN> [--feature FM-NNN]",
+          "when": "Консилиум-жюри персон готовит решение по эскалированному форк-образному decision-PA (>=2 опции); prepare-only, владелец ратифицирует (Epic D, DEC-DEV-0145).",
+          "tags": "consilium жюри решение форк decision prepare autonomous",
+          "produces": [],
+          "consumes": [
+            "FM",
+            "SC",
+            "BR",
+            "IC",
+            "NFR",
+            "VC",
+            "MK",
+            "NM"
+          ],
+          "source": "commands/product/consilium.md"
         },
         {
           "cmd": "/product:da-review",
@@ -1449,6 +1473,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:da-review",
             "product:feature",
             "product:handoff",
@@ -1485,6 +1510,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:da-review",
             "product:handoff",
             "design:map",
@@ -1511,6 +1537,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:da-review",
             "product:handoff"
           ]
@@ -1569,6 +1596,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:handoff"
           ]
         },
@@ -1589,6 +1617,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:da-review",
             "product:handoff"
           ]
@@ -1609,6 +1638,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:handoff",
             "product:nfr-upgrade-tier"
           ]
@@ -1641,6 +1671,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:handoff",
             "design:export",
             "design:iterate",
@@ -1682,6 +1713,7 @@
           ],
           "consumedBy": [
             "product:complete",
+            "product:consilium",
             "product:handoff",
             "design:export",
             "design:map"
@@ -2659,6 +2691,10 @@
     {
       "goal": "Довести фичу до полноты автоматически (волнами)",
       "cmd": "product:complete"
+    },
+    {
+      "goal": "Подготовить решение по форк-развилке жюри персон (prepare-only)",
+      "cmd": "product:consilium"
     },
     {
       "goal": "Передать фичу в реализацию (boundary object)",

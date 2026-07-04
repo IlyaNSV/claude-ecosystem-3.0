@@ -47,11 +47,11 @@ If count differs, list missing or unexpected files.
 
 Count per namespace:
 - `.claude/commands/integrator/*.md` — expect 9 (research, map, gaps, status, journal, scan, add, remove, update)
-- `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~20)
+- `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~21, incl. `complete` + `consilium`)
 - `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
 - `.claude/commands/orchestrator/*.md` — expect 1+ (run — dispatches processes P2–P7; only deploy/rollback deferred)
 - `.claude/commands/ecosystem/*.md` — expect 7 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
-- `.claude/product/processes/*.mjs` — expect 1 (complete-feature — the completeness-loop Workflow wave-runner; new top-level runtime dir mirroring `.claude/orchestrator/processes/`, DEC-DEV-0142)
+- `.claude/product/processes/*.mjs` — expect 2 (complete-feature — the completeness-loop Workflow wave-runner, DEC-DEV-0142; consilium — the decision-prep jury for escalated fork-shaped decision-PAs, DEC-DEV-0145; new top-level runtime dir mirroring `.claude/orchestrator/processes/`)
 
 Report counts + note what's expected for current ROADMAP phase.
 
@@ -98,6 +98,8 @@ leave it present (Step 4 count passes) but stale (contents pre-date the wiring).
 |---|---|---|---|
 | `delegated_unverified` | `complete-feature.mjs` | rail-5 completion report surfaces unverified delegation | DEC-DEV-0142 |
 | `gap-classifier.cjs` | `complete-feature.mjs` | deterministic CLASSIFY wiring (`hooks/product/lib/gap-classifier.cjs`) landed | DEC-DEV-0142 |
+| `consilium-synth.cjs` | `consilium.mjs` | decision-prep jury transports the shared deterministic synthesis (`--panel`) | DEC-DEV-0145 |
+| `PREPARE-ONLY` | `consilium.mjs` | prepare-only rail (jury recommends, owner ratifies — PA never closed) | DEC-DEV-0145 |
 
 Report ✓ present / ❌ absent per marker.
 
@@ -194,18 +196,19 @@ LESSON-* GATE (DEC-DEV-0062)
 
 COMMANDS
   ✓ integrator/:   9           (research, map, gaps, status, journal, scan, add, remove, update)
-  ✓ product/:      20          (Phase 2+ — init, feature, da-review, validate, complete, ...)
+  ✓ product/:      21          (Phase 2+ — init, feature, da-review, validate, complete, consilium, ...)
   ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
   ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
   ✓ ecosystem/:    7           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
-  ✓ product/processes: 1       (complete-feature — completeness-loop wave-runner; DEC-DEV-0142)
+  ✓ product/processes: 2       (complete-feature — completeness-loop wave-runner, DEC-DEV-0142; consilium — decision-prep jury, DEC-DEV-0145)
 
 ORCHESTRATOR CONTRACT (delivery spot-check — DEC-DEV-0101/0102/0104)
   ✓ validators_incomplete + committed_under_non_ready   (validate-feature-impl.mjs)
   ✓ conflicts.concat                                    (feature-to-tdd-impl.mjs)
 
-PRODUCT WAVE-RUNNER CONTRACT (delivery spot-check — DEC-DEV-0142)
+PRODUCT WAVE-RUNNER CONTRACT (delivery spot-check — DEC-DEV-0142/0145)
   ✓ delegated_unverified + gap-classifier.cjs           (complete-feature.mjs)
+  ✓ consilium-synth.cjs + PREPARE-ONLY                  (consilium.mjs)
 
 MCP STACK
   ✓ Sequential Thinking   installed

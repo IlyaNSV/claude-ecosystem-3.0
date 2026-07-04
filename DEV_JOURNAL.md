@@ -7616,6 +7616,29 @@ Work-order `dev/ECOSYSTEM_VISION_BATCH_3.md` записан (ready-to-run); drif
 
 ---
 
+## DEC-DEV-0146 — Wave (C∥D) D-ядро ПОСТРОЕНО: панель-параметризация consilium-synth (D1a) + `/product:consilium` жюри-раннер для decision-эскалаций (D1b) + политика §7.6 в коде (D2)
+
+**Date:** 2026-07-04
+**Trigger:** стройка committed-target BATCH_3 после merge kickoff-PR #115 (DEC-DEV-0145). Сборка = MDP-оркестрация (D1a — main-модель сама, орк-либа = высокий R; D1b runtime-код — opus-исполнитель в worktree `ce3-wt-wave-cd`; ревью — main).
+**Tag:** #vision #epic-d #consilium #product
+
+### Context
+Kickoff 0145 ре-скоупил Epic D в генерализацию построенного P2. Блокеры drop-in: хардкод `PRIOR_LIST` (persona-вердикты молча фильтруются `isPriorVerdict`) + отсутствие канала жюри для decision-PA completeness-loop.
+
+### Decision
+1. **D1a** — `consilium-synth.cjs` принимает опциональную панель: `normalizePanel()` (dedupe/trim/fallback на дефолт — malformed панель не сужает и не опустошает жюри молча), `synthesize/buildMatrix/isPriorVerdict/collectOptionIds(…, panel)`, CLI `--panel a,b,c` + `panel` в object-форме, результат раскрывает `panel` (D2 no-silent-fan-out). Omitted == `[velocity,fidelity,integrity]` 1:1 — все 20 P2-тестов зелёные без правок; +6 юнитов (custom-панель, panel-honesty на custom, veto/soft-veto panel-agnostic, byte-identical backward-compat, CLI). Отвергнуто: generic-копия либы (дубль математики/дрейф двух soft-veto); маппинг персон на 3 арх-приора (теряет гетерогенность).
+2. **D1b** — `product/processes/consilium.mjs` (5 фаз Load→Scope→Jury→Synthesize→Recommend) + `commands/product/consilium.md` (Workflow({scriptPath}) + inline-fallback). 7 рельсов В КОДЕ: R1 fork-guard <2 опций → честный отказ ДО спавна + non-blocking маршрут-нота в PA (вторая опция НЕ фабрикуется); R2 declared scope до фан-аута (subject+панель+axes в log); R3 панель по зоне (architect+qa всегда, ux только UI-bearing — зеркало условного ux-спавна complete-feature; прямой вызов zone-router отклонён исполнителем обоснованно: он роутит по file-path, у decision-PA его нет); R4 raw-source брифы (FB-LR-31); R5 canonical agentType + crash-safe слоты + bounded re-spawn=1 + форс `prior` к канон-имени персоны (слот авторитетен о том, ЧЬЯ линза бежала); R6 synth = транспорт verbatim (`--panel` из panelNames; verdicts → `.product/.consilium/<PA>-verdicts.json` под anchor-root); R7 integration-pass surfacing-only (зеркало 0135). PA-out = update-in-place (0089), prepare-only — PA не закрывается, спеки не правятся, «ратификация за владельцем» явной строкой.
+3. **D2** — политика §7.6 зашита и в код (R2), и в команду текстом; `category_eligible` (SSOT gap-classifier: threshold/moscow/screen-decision/*-semantic) — surfaced caveat, hard-block остаётся fork-guard.
+
+### Outcome
+`npm run verify` EXIT=0 в worktree (26 synth-юнитов; consilium-wiring 62 ассертов; workflow-смоук парсит новый .mjs; gen:map/catalog перегенерированы — урок PR #102 закрыт регистрацией в overlay; counts 24/44 не тронуты). Исполнитель поймал и починил дефект собственного теста (наивный «нет Date/Math»-чек ложно бил по harness-constraint комментариям → strip-comments). Live-грейд жюри на реальном decision-PA — pilot-gated (как B-d), отдельная сессия.
+
+### Lessons
+1. **«Реюз роутера» ≠ «вызов роутера»:** zone-router детерминирован по file-path, а вход жюри — PA без пути; правильная форма реюза — зеркалирование его РЕШЕНИЯ (условный ux-гейт), не его интерфейса. Проверяй, на каком ключе детерминирован реюзаемый оракул, до того как обещать «прямой реюз» в брифе.
+2. **Форс идентичности слота поверх self-report агента:** персона может мис-лейбльнуть `prior` — слот, который её спавнил, знает истину и перезаписывает. Дешёвый guard против тихой потери вердикта на панель-фильтре.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
