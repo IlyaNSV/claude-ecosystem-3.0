@@ -7640,6 +7640,29 @@ Work-order `dev/ECOSYSTEM_VISION_BATCH_3.md` записан (ready-to-run); drif
 
 ---
 
+## DEC-DEV-0146 — MDP model-pinning во всех Workflow-процессах (VC-118): 56 пиновок + смоук-гейт «agent() обязан нести model/agentType»
+
+**Date:** 2026-07-04
+**Trigger:** шаг 3 очереди DEC-DEV-0144 (VC-118 — «задокументированный, но не закрытый разрыв»: MDP §3 предписывает пиновать модель per-stage, но ни один `agent()` в `orchestrator/processes/*.mjs` / `product/processes/complete-feature.mjs` её не передавал → все стадии наследовали дорогую модель сессии = waste + конфаунд для judged-стадий).
+**Tag:** #orchestrator #product #mdp #feat
+
+### Context
+7 процессных файлов, 56 реальных agent()-вызовов без model. Якоря назначения уже существовали в репо: `settings.json.template._model_strategy` («Opus for product/adversarial, Sonnet for mechanical, Haiku for hooks/scanners») + MDP worst-of-оси + правило «жюри на одной фиксированной модели». Персоны (`architect/qa/ux-advisor`) уже запинованы через frontmatter определений (`model: claude-opus-4-8`) — их вызовы через `agentType:` не дублируются.
+
+### Decision
+1. **56 аддитивных пиновок** (только поле `model:` в существующий opts; без `effort`, без изменения промптов). Раскладка: **opus** = судейство/adversarial/verify (жюри P2 `arch:*`×3, панель P6 `validate:*`×3, `verify-drift`/`verify:*`/`verify-completion`, review HIGH), impl с высоким R (`impl:*` TDD-код, `spec-fix`, `remediate`, `kiro-spec-batch`, `brief:*` P2 — lossy lift капит жюри, DEC-DEV-0135), диагностика (`debug:*`, `boot-smoke`, `classify-block` — мис-классификация маскирует upstream-конфликт FB-LR-07); **sonnet** = механика/relay (init/baseline/git, оракул- и либа-relay, PA-write/dedup, plan-parse, synth — рекомендация вычисляется КОДОМ `consilium-synth.cjs`, LOW-tier `verify` — зеркалит HIGH/LOW-разрез самого gate-risk-classifier, `resolve:*` — консервативный whitelist деривации + verify-before-act); **haiku** = не используется (консервативно).
+2. **Смоук-гейт** в `tests/orchestrator/workflow-syntax.smoke.cjs` (не в N wiring-тестов): каждая строка с `label:` обязана нести `model:` ИЛИ `agentType:`. Выбор места: сканирует ОБА PROC_DIRS → покрывает `batch-features-to-cc-sdd.mjs` (без wiring-теста) и все будущие процессы бесплатно. Опора на инвариант single-line opts задокументирована в самом тесте.
+3. Отвергнуто: дублировать `model` в persona-вызовах (определение агента — SSOT); пиновать `effort` (вне скоупа шага); haiku для тривиальных relay (цена ошибки в gate-цепях выше экономии).
+
+### Outcome
+smoke:orchestrator 15/15 (7 новых MDP-чеков), test:orchestrator/test:product зелёные, полный `npm run verify` EXIT=0. Дифф: 7 процессов (+56 model-строк, ноль прочих изменений — проверено ревью `-U0`) + смоук. Исполнитель — opus-субагент; ревью main-моделью: дифф построчно, спот-чек frontmatter персон, 4 спорных назначения (classify-block/verify-completion→opus, LOW-verify/resolve→sonnet) подтверждены с их rationale.
+
+### Lessons
+1. **«Задокументированный разрыв» живёт, пока его не цементирует исполняемый гейт:** MDP-предписание существовало с 2026-07-03, `_model_strategy` — ещё дольше, но ни одна пиновка не появилась, пока внешний аудит (VC-118) не сделал это work-item'ом; смоук-гейт переводит дисциплину в невозможность регресса (тот же урок, что process-gate/DEC-DEV-0083).
+2. **Пин жюри — один call-site:** когда N плеч жюри текут через одну точку вызова, одна пиновка гарантирует «judge fixed across arms» конструкцией, а не дисциплиной.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
