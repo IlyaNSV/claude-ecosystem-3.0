@@ -42,48 +42,48 @@
 
 ---
 
-## D-ядро *(committed)*
+## D-ядро *(committed)* — **✅ ПОСТРОЕНО 2026-07-04 (DEC-DEV-0146, PR #117): D1a+D1b+D2, verify EXIT=0; live-грейд жюри = pilot-gated**
 
 ### D1a — Параметризация synth *(первый коммит; трогает `orchestrator/lib/` — согласованная точка)*
-- [ ] `consilium-synth.cjs`: `PRIOR_LIST` → инъекция панели (напр. `synthesize(verdicts, opts, {panel})`); default = `[velocity,fidelity,integrity]` — **P2 behavior 1:1**, все существующие тесты зелёные без правок.
-- [ ] `panelComplete`/`isPriorVerdict` считают от переданной панели; юниты на custom-панель (persona-набор) + на default-путь.
+- [x] `consilium-synth.cjs`: `PRIOR_LIST` → инъекция панели (напр. `synthesize(verdicts, opts, {panel})`); default = `[velocity,fidelity,integrity]` — **P2 behavior 1:1**, все существующие тесты зелёные без правок.
+- [x] `panelComplete`/`isPriorVerdict` считают от переданной панели; юниты на custom-панель (persona-набор) + на default-путь.
 
 **Acceptance:** P2-тесты без изменений зелёные; новый юнит: панель `[architect,qa,ux]` агрегируется, чужой prior отфильтрован, panel-honesty работает.
 **Process:** `refactor(orchestrator-lib)` + DEV_JOURNAL (согласованное исключение границы); CHANGELOG не нужен (behavior-neutral).
 
 ### D1b — Product-раннер `/product:consilium`
-- [ ] `product/processes/consilium.mjs` (Workflow): вход = decision-PA id; guard «форк-образный, ≥2 опций» (не форк → честный отказ с маршрутом «доформулируй опции / оставь владельцу»); fan-out гетерогенных персон Epic A (по зоне решения, реюз zone-router; has_ui=false → без ux) с **raw-source** брифами (FB-LR-31); агрегация через `consilium-synth.cjs` (агент-транспорт `node`, как gap-classifier); рекомендация-пакет → PA update-in-place (PA-dedup 0089).
-- [ ] Команда `commands/product/consilium.md` + inline-fallback для до-волновых инсталляций (паттерн `/product:complete`).
-- [ ] Консилиум-eligible категории `gap-classifier`: `threshold/moscow/screen-decision/ic-semantic/br-semantic/sc-semantic`; `broken-ref/fm-status` — plain-PA (не жюри).
+- [x] `product/processes/consilium.mjs` (Workflow): вход = decision-PA id; guard «форк-образный, ≥2 опций» (не форк → честный отказ с маршрутом «доформулируй опции / оставь владельцу»); fan-out гетерогенных персон Epic A (по зоне решения, реюз zone-router; has_ui=false → без ux) с **raw-source** брифами (FB-LR-31); агрегация через `consilium-synth.cjs` (агент-транспорт `node`, как gap-classifier); рекомендация-пакет → PA update-in-place (PA-dedup 0089).
+- [x] Команда `commands/product/consilium.md` + inline-fallback для до-волновых инсталляций (паттерн `/product:complete`).
+- [x] Консилиум-eligible категории `gap-classifier`: `threshold/moscow/screen-decision/ic-semantic/br-semantic/sc-semantic`; `broken-ref/fm-status` — plain-PA (не жюри).
 
 **Acceptance:** фикстурный decision-PA с 2 опциями → жюри ×N персон → детерминированная рекомендация в PA; не-форк → отказ без фабрикации второй опции; smoke в `npm run verify` (wiring Step 4 + счётчики).
 **Process:** `feat(product)` consumer-zone → 🔒 CHANGELOG + DEV_JOURNAL (runner-топология); verify.md Step 4 + summary.
 
 ### D2 — Политика консилиума *(реюз §7.6)*
-- [ ] В skill/команду D1b зашита политика: объявленный scope (subject + prior-labels + comparison-axes) обязателен; **no silent fan-out** (спавн жюри виден в отчёте с составом); на связанном/необратимом — информирует, не решает; approve-gate сохранён.
+- [x] В skill/команду D1b зашита политика: объявленный scope (subject + prior-labels + comparison-axes) обязателен; **no silent fan-out** (спавн жюри виден в отчёте с составом); на связанном/необратимом — информирует, не решает; approve-gate сохранён.
 
 **Acceptance:** отчёт раннера всегда содержит панель+scope; при отсутствии scope — стоп, не «додумать».
 
 ---
 
 ## C-i — `batch-enrich-feature-set` *(stretch; после/с D — консилиум = decision-prep внутри стадии)*
-- [ ] `product/processes/batch-enrich-feature-set.mjs`: `pipeline()` по FM релиза; стадии = тонкий агент-транспорт существующих `/product`-команд обогащения (F.2→F.10) + `complete-feature` как completeness-стадия; гейт на границе фаз (L1 PA-escalate, решение «д»); checkpoint-файл прогресса ДО запуска (урок E1: session-limit на батчах).
-- [ ] `log()` покрытие: что пропущено/отброшено — явно (no silent truncation).
+- [x] `product/processes/batch-enrich-feature-set.mjs`: `pipeline()` по FM релиза; стадии = тонкий агент-транспорт существующих `/product`-команд обогащения (F.2→F.10) + `complete-feature` как completeness-стадия; гейт на границе фаз (L1 PA-escalate, решение «д»); checkpoint-файл прогресса ДО запуска (урок E1: session-limit на батчах).
+- [x] `log()` покрытие: что пропущено/отброшено — явно (no silent truncation).
 
 **Acceptance:** прогон по ≥2 FM фикстуры доводит стадии, эскалирует decision, переживает обрыв (checkpoint + resume со шва).
 **Process:** `feat(product)` → 🔒 CHANGELOG + DEV_JOURNAL; verify.md.
 
 ## G1+G2 минимум *(stretch; owner-дефолт (a))*
-- [ ] **G1:** `agent-roster.yaml` (или секция product.yaml): per-персона `enabled/model/depth_threshold/extra_lenses`; absent == встроенный дефолт 1:1.
-- [ ] **G2:** participation-matrix как **слой над `zone-router`** (решение «е»): `resolve(zone, magnitude, roster) → firing_set`; дефолт = текущий zone-routing 1:1; юниты.
-- [ ] Именованные пресеты состава (бывш. D3/G4, решение «ж») — если влезет: `lean/full/…`, потребляются D1b-панелью.
+- [x] **G1:** `agent-roster.yaml` (или секция product.yaml): per-персона `enabled/model/depth_threshold/extra_lenses`; absent == встроенный дефолт 1:1.
+- [x] **G2:** participation-matrix как **слой над `zone-router`** (решение «е»): `resolve(zone, magnitude, roster) → firing_set`; дефолт = текущий zone-routing 1:1; юниты.
+- [x] Именованные пресеты состава (бывш. D3/G4, решение «ж») — если влезет: `lean/full/…`, потребляются D1b-панелью.
 
 **Acceptance:** без конфига поведение экосистемы байт-в-байт прежнее; с конфигом — панель/firing переопределяются детерминированно.
 **Process:** `feat(product)` → 🔒 CHANGELOG + DEV_JOURNAL; при новых артефакт-типах — 🔒 count-sweep.
 
 ## F1 — контракт + skeleton *(stretch; coordination-gated)*
-- [ ] Контракт-док: как `resolve(operation_class, risk_tier, env_tier, policy, override) → disposition` **потребляет** `gate-risk-classifier.cjs`/`env-readiness.cjs` (не пере-выводит); сверка полей с оркестратор-треком.
-- [ ] Skeleton `lib/autonomy-policy.cjs` (pure function, L0/L1, floor-константы, юниты) — БЕЗ wiring в процессы.
+- [x] Контракт-док: как `resolve(operation_class, risk_tier, env_tier, policy, override) → disposition` **потребляет** `gate-risk-classifier.cjs`/`env-readiness.cjs` (не пере-выводит); сверка полей с оркестратор-треком.
+- [x] Skeleton `lib/autonomy-policy.cjs` (pure function, L0/L1, floor-константы, юниты) — БЕЗ wiring в процессы.
 
 **Acceptance:** резолвер тестируем изолированно; wiring — следующая волна после сверки.
 
