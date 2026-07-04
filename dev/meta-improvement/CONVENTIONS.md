@@ -65,14 +65,16 @@ dev/meta-improvement/
 │   ├── audit-smoke-workflow.md  # phase smoke→audit ритуал (Phase 4.1)
 │   ├── audit-watch.md           # semi-auto session-audit watcher (Audit v2 Incr.2)
 │   └── live-run-validation.md   # live-прогон (dogfood) validation protocol (DEC-DEV-0086)
-├── patterns/                    # 6 patterns + index
+├── patterns/                    # 8 patterns + index
 │   ├── README.md
 │   ├── spec-drift-sweep.md
 │   ├── readiness-gate.md
 │   ├── b1-frontmatter-convention.md    (validated)
 │   ├── cuttable-scope-discipline.md
 │   ├── smoke-test-plan.md
-│   └── da-subagent-type-contract.md    # DEC-DEV-0064
+│   ├── blind-comparison-protocol.md    # DEC-DEV-0132
+│   ├── da-subagent-type-contract.md    # DEC-DEV-0064
+│   └── config-failure-first-triage.md  # DEC-DEV-0144 / VC-096
 ├── skills/
 │   └── memory-sync.md
 ├── scripts/
