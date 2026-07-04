@@ -210,6 +210,44 @@ Activates `verify-hooks.js` blocking gate когда `git commit` touches `hooks
 
 ---
 
+## Step 3.5 — «built ≠ validated» (VC-127)
+
+> **Врезка (DEC-DEV-0144, из `dev/VIBE_CODING_ANALYSIS.md` VC-127 / §7 риск 5).**
+> Планка приёмки — прогнанный eval, а не написанный план. Механизм/процесс считается
+> **built** после кода+тестов, но **НЕ validated**, пока его runtime-smoke реально
+> **ПРОГНАН зелёным** на живой среде.
+
+### Что делать
+
+1. **Разделяй built vs validated в статус-доках явно.** В ROADMAP «Где мы сейчас»,
+   CHANGELOG, gates и DEV_JOURNAL пиши «built (smoke план написан)» ↔ «validated
+   (smoke прогнан <дата/сессия>)» — не схлопывай в «done». Static smoke (`verify-hooks.js`)
+   ≠ runtime smoke на пилоте: первый ловит crash, второй — контракт.
+2. **Считай deferred-smoke долг.** Пробеги активные smoke-планы в статусе «next pilot
+   session»: `ls dev/gates/*SMOKE*` + grep «pending / next pilot». **Накопление >2
+   планов = сигнал остановиться и прогнать**, а не наращивать новые «built»-механизмы
+   поверх непроверенных.
+3. **Не архивируй smoke-план, пока он не прогнан** (уже кодифицировано в Step 5.2 —
+   этот шаг усиливает: план в «pending» не даёт закрывать фазу как prod-validated).
+4. **Prod-graduation** — перед объявлением процесса/модуля production-ready прогони
+   [`dev/gates/SUBSTRATE_GRADUATION_GATE.md`](../../gates/SUBSTRATE_GRADUATION_GATE.md);
+   его PASS требует VC-127-привязку (каждый «работает» = прогнанный smoke).
+
+### Pass
+
+- Каждый механизм, помеченный в закрытии как «работает / готов к проду», имеет
+  прогнанный зелёный runtime-smoke ИЛИ явно помечен «built, validation pending».
+- Deferred-smoke долг ≤2 планов, ИЛИ прогон запланирован на ближайшую пилот-сессию.
+
+### Fail
+
+- «Done» без прогнанного smoke → переклассифицировать в «built, validation pending»;
+  завести/обновить smoke-план в `dev/gates/`.
+- Долг >2 непрогнанных планов → flag в DEC-DEV closure findings + приоритезировать
+  прогон над новой работой.
+
+---
+
 ## Step 4 — Documentation consistency check (≤10 min)
 
 **Цель:** distinct from Step 1 — это cross-document semantic alignment (не status banners). Hook manifest ↔ processes.md ↔ SPEC; CHANGELOG additions ↔ actual files; ROADMAP claims ↔ actual deliverable count.

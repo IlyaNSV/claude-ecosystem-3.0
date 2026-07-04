@@ -7688,6 +7688,29 @@ smoke:orchestrator 15/15 (7 новых MDP-чеков), test:orchestrator/test:p
 
 ---
 
+## DEC-DEV-0148 — Substrate-graduation гейт + правило «built ≠ validated» + минимальный CI (VC-133/134/127) — очередь vibe-coding анализа ЗАКРЫТА
+
+**Date:** 2026-07-04
+**Trigger:** шаг 6 (финальный) очереди DEC-DEV-0144. Порог «production-ready» не был оформлен: трейсы отсутствовали (закрыто 0147), CI не было вовсе (`.github/workflows` пуст), а несколько runtime-smoke месяцами стояли «built по написанному плану» (§7 риск 5 анализа).
+**Tag:** #d7 #gates #ci #feat
+
+### Context
+4-компонентный substrate-чеклист из Google-статьи (VC-133/134): evals-в-CI / трейсы / scoped permissions / security review. К моменту шага: трейсы ✅ built (0147), scoped permissions ✅ существовали (tools:-frontmatter 7 субагентов + scope-guard), CI ❌, security review 🟡 частичен.
+
+### Decision
+1. **`dev/gates/SUBSTRATE_GRADUATION_GATE.md`** — readiness-гейт per graduation-событие (не разовый): 4 компонента с честными статусами, критерий закрытия компонента 4, PASS-чеклист с VC-127-привязкой, таблица deferred-smoke долга (3 плана «next pilot session» — уже за порогом «>2», прогон приоритетен).
+2. **CI-нога = минимальный GitHub Action** `.github/workflows/verify.yml` (ubuntu, node 22, `npm install` — лок-файла нет, `npm run verify`; floor без matrix/cache). Выбран вместо задокументированного solo-субститута: браузерные смоуки кросс-платформенны (нашли `/usr/bin/google-chrome` ubuntu-раннера, graceful-skip при отсутствии), Action самовалидируется первым прогоном на этом же PR (VC-127 в действии). Отвергнуто: только-документировать локальный verify (CI дешевле, чем казалось); полный agent-eval в CI (потолок, отдельный трек VC-128).
+3. **VC-127 «built ≠ validated»** — Step 3.5 в `phase-closure.md` (разделять built/validated в статус-доках; считать deferred-smoke долг, >2 = стоп; не архивировать непрогнанные планы; prod-graduation → гейт) + строка-связка в `live-run-validation.md` (именно live-прогон флипает built→validated).
+
+### Outcome
+`npm run verify` локально EXIT=0; первый Linux-прогон verify — на CI этого PR (статически замеченные риски: браузерные смоуки на ubuntu впервые ЗАПУСТЯТСЯ, а не скипнутся; case-sensitivity unknown-unknowns; eslint по `^`-диапазону). **Очередь DEC-DEV-0144 §8 закрыта целиком:** шаги 1-6 = PR #114/#116/#118/#119/#120/этот; шаг 7 (линзы VC-108/024) — deferred до kickoff Epic F/G by design. Исполнитель — opus-субагент; ревью main-моделью.
+
+### Lessons
+1. **Гейт, честно фиксирующий собственное нарушение, ценнее «зелёного»:** таблица deferred-smoke долга в гейте сразу показала 3 плана за порогом — гейт родился с actionable-находкой, а не декларацией.
+2. **CI-решение стоило проверить фактом, а не предположением:** «verify не готов к Linux» казалось блокером, но чтение смоуков показало кросс-платформенный browser-резолв с graceful-skip — цена CI-ноги упала с «отдельный трек» до «12 строк yml» (config-failure-first в действии: сначала проверь harness-факты).
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
