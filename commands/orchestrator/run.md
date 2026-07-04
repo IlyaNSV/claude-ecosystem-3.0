@@ -215,6 +215,41 @@ Workflow({
 })
 ```
 
+### Run ledger (dispatcher wiring — VC-087 / VC-134)
+
+You (the dispatcher) bracket the Workflow with the run-ledger so every run leaves a
+durable, greppable record. **The Workflow body may never read the wall clock** (it
+must resume deterministically) — so YOU stamp both timestamps from the environment
+date and pass them in as ISO strings.
+
+**Before launching the Workflow** — open the ledger and capture the run-id:
+
+```
+RUN_ID=$(node .claude/orchestrator/lib/run-ledger.cjs start \
+  --process <process> --at "<ISO-now>" --args "<the raw $ARGUMENTS>")
+```
+
+This creates `.claude/orchestrator/runs/<RUN_ID>/run.json` (`status: running`) — a
+crashed run still leaves that trace. Then launch the matching `Workflow({…})` above.
+
+**After the Workflow returns** — stamp the ledger with the return value:
+
+```
+node .claude/orchestrator/lib/run-ledger.cjs finish \
+  --run-id "$RUN_ID" --at "<ISO-now>" \
+  --process-path .claude/orchestrator/processes/<process>.mjs \
+  --result-file <path-to-the-Workflow-return-value-JSON>
+```
+
+`finish` records `finished_at` / `duration_ms` / the result summary + a `model_map`
+(the per-stage `label → model`, extracted from the process source — a persona spawned
+by `agentType:` is recorded `via-agent-definition`), and appends ONE compact line to
+`.claude/orchestrator/runs/ledger.ndjson`. Write the Workflow return value (the object
+the process returned) to a temp JSON file and pass it via `--result-file` (or `--result
+'<inline-json>'` for a small one). Pass `--tokens '<json>'` opportunistically if the
+harness surfaced usage. If a `start` never ran (a crash before it), `finish` still
+lands the record as `status: finished-unstarted` — it never fails for a missing start.
+
 The Workflow runs in the background; watch progress with `/workflows`. P3 returns
 features-specced / blocked / cross-spec / coverage-incomplete / commit sha; P4 returns
 audited / faithful / spec_fixed / product_routed / residual / **`coverage_gaps`** (design→tasks
@@ -234,11 +269,17 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
 > sequential — one commit at a time, never fanned out — so committers never race inside a run;
 > a fix that finds the defect already resolved by a sibling commit does not double-commit.
 
-> **Run records (FB-003).** The source of truth for a run is the harness transcript-dir
-> (`/workflows`, `…/subagents/workflows/wf_*`) plus the Workflow return value above.
-> `.claude/orchestrator/runs/` is NOT auto-created by the processes in this increment —
-> it exists only when a human/agent writes a feedback journal or checkpoint there. Don't
-> expect an auto run-ledger (a durable per-run ledger is a tracked follow-up).
+> **Run records (FB-003 / VC-087 / VC-134).** `.claude/orchestrator/runs/` is now
+> **auto-created by the run-ledger** (`start`/`finish` wiring above) — the "tracked
+> follow-up" is closed. Each run gets a durable `runs/<RUN_ID>/run.json` (process,
+> timestamps, `duration_ms`, `status`, result summary, per-stage `model_map`) and one
+> compact line in `runs/ledger.ndjson` — the quantitative-observability layer (duration
+> / model-mix / verdict) that behavioural observability (audit-journal, feedback-intake)
+> lacked, and the trace-leg of the VC-133/134 production-substrate graduation gate. The
+> harness transcript-dir (`/workflows`, `…/subagents/workflows/wf_*`) stays the **source
+> of truth for per-agent detail** (prompts, transcripts, tokens); the ledger is the
+> durable, greppable **summary** over it, not a replacement. A human/agent may still
+> write feedback journals or checkpoints under `runs/` alongside it.
 
 ## Autonomy & gates (SPEC §6/§7)
 
