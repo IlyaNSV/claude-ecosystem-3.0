@@ -14,6 +14,8 @@
 | [Cuttable Scope Discipline](cuttable-scope-discipline.md) | Phase planning; meta-domain design; mid-phase scope creep concern | provisional | 3 (DEC-DEV-0012, DEC-DEV-0017, DEC-DEV-0020) |
 | [Smoke Test Plan](smoke-test-plan.md) | After substantive phase implementation, before integration trust | provisional | 1 (Phase 3.I plan, DEC-DEV-0014) |
 | [Blind Pre-registered Comparison](blind-comparison-protocol.md) | Qualitative/semantic comparison where the verdict is a judgment (not a passing test), esp. when the evaluator has a stake | provisional | 1 (DEC-DEV-0132 — P2 jury vs 1-GP) |
+| [DA Subagent-Type Contract](da-subagent-type-contract.md) | Authoring/auditing any path that spawns the DA subagent; «Agent type not found» = loud error, no silent fallback | provisional | 2 audit clusters (DEC-DEV-0064) |
+| [Config-Failure-First Triage](config-failure-first-triage.md) | Agent/subagent/hook/process misbehaved — BEFORE blaming the model or patching the prompt blind, run the harness-cause checklist | provisional | 1 (DEC-DEV-0144 / VC-096 — FB-020) |
 
 ## How to use
 
