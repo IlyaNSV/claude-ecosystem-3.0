@@ -248,7 +248,7 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
    - Перед phase: [`checklists/phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) + `dev/PHASE_<N>_READINESS.md`
    - После phase: [`checklists/phase-closure.md`](dev/meta-improvement/checklists/phase-closure.md)
    - Перед доставкой в пилот / релизом: [`checklists/patch-cut.md`](dev/meta-improvement/checklists/patch-cut.md) — нарезка версии из CHANGELOG `[Unreleased]` (контракт накопления + cut — CONVENTIONS §11)
-   - При architectural decisions: [`patterns/`](dev/meta-improvement/patterns/) (5 patterns)
+   - При architectural decisions: [`patterns/`](dev/meta-improvement/patterns/) (8 patterns)
    - При memory drift: [`skills/memory-sync.md`](dev/meta-improvement/skills/memory-sync.md)
    - Verify update outcome: [`scripts/verify-update.sh`](dev/meta-improvement/scripts/verify-update.sh)
    - Hook reminder зарегистрирован (`.claude/settings.local.json` PostToolUse Bash) — fires на phase-completion commits
