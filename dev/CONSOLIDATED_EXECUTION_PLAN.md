@@ -110,34 +110,38 @@
       Vision Inc-1 + B-a/B-b/B-c 0142, Research W1, doc-UX Волны 0–2, feedback-контур ф.2; deferred-пометки
       перенесены); свежий пустой `[Unreleased]`; ROADMAP «Последнее обновление» обновлён; check-counts ✓ 24/44
       (N/A-класс — счётчики не менялись); тег **`v1.7.0`** на main.
-- [ ] 👤 `/ecosystem:update` в `my-first-test` (wipe-protection + namespace-preserve контракт). ⚠ Новое в 1.7.0
-      для доставки: top-level `product/` (первый namespace-aware sync нового каталога — проверить, что
-      `.claude/product/processes/complete-feature.mjs` появился, verify.md Step 4.6 маркеры зелёные).
-- [ ] Pilot-side `.gitattributes` delivery (FB-LR-27, QUEUED) — вместе с update.
-- **CP-3:** `verify-update.sh` зелёный на пилоте; состояние пилота не тронуто (контракт §6 CLAUDE.md).
+- [x] 👤 `/ecosystem:update` в `my-first-test` ✅ 2026-07-03 (пилот `a3eabb0`+`2526a16`): top-level `product/`
+      доехал namespace-aware (`.claude/product/processes/complete-feature.mjs` на месте), verify зелёный.
+- [x] Pilot-side `.gitattributes` (FB-LR-27) ✅ — LF-пины `*.mjs/*.cjs/*.js` + re-checkout (546 CR → 0),
+      пилот `8270773`; Workflow-валидатор принимает скрипты.
+- **CP-3: ✅** — update доставлен, verify зелёный на пилоте, состояние пилота не тронуто.
 
-### E4 — Пилотный live-батч 🧪 *(один заход, несколько прогонов; executor/reviewer separation)*
+### E4 — Пилотный live-батч 🧪 *(один заход, несколько прогонов; executor/reviewer separation)* — **✅ закрыт-по-максимуму 2026-07-04** (событийные хвосты ⏳ trigger-gated, не блокируют E5)
 Дизайн прогонов — по урокам FB-LR-26 (триггер = РЕАЛЬНЫЙ дефицит, не срежиссированный) и
 [[feedback_separate_task_from_test]] (чистая задача исполнителю, рубрика у ревьюера, грейд post-hoc).
-- [ ] 🧪 **B-d real-resolve калибровка:** `/product:complete` на фиче с реальным oracle<1 gap →
-      откалибровать широту авто-RESOLVE (какие 🟢-деривации безопасны с verify-before-act) → обновить skill.
-      Грейд: sensitivity (нашёл реальные gaps) + specificity (0 сфабрикованных артефактов).
-- [ ] 🧪 **P2-dogfood починенного консилиума** (закрывает хвост фронта 1; вариант 2 подтверждён владельцем
-      2026-07-03): прогнать `decide-architecture-foundation` на **живой** развилке. ⚠ Экс-кандидат PA-040
-      уже ратифицирован в пилоте (DEC-PLAN-039/040, `68c77ee`) → ждать СЛЕДУЮЩУЮ реальную арх-развилку
-      (естественный кандидат — при имплементации Task 5.4 worker-bootstrap); НЕ фабриковать (FB-LR-26).
-      Проверить: `source_excerpt` доходит сырым, soft-veto/integration-проход срабатывают.
-- [ ] 🧪 **S-LE lesson-gate smoke** (`dev/gates/S_LE_LESSON_GATE_SMOKE.md`) — hard-prereq флипа
-      `lesson-presence-gate` warn→strict (DEC-DEV-0062). Плюс, сколько влезет: PATCH_1.3.3 S1–S5, PHASE_6 S1–S7.
-- [ ] **[РЕШЕНО ДА 2026-07-03]** merge `run/s7-localization` → `pre-cc-sdd-pilot` (несёт 7.1 OpenAI-провайдер
-      + Task 5.4 spec + ратификации DEC-PLAN-039/040) + **READY-ре-гейт `d0299f9`** (orphan-export fix,
-      `readiness=ENV_NOT_READY` — re-verify на READY-ране). had_trial канон — ✅ уже закоммичен (DEC-PLAN-038
-      в journal.md пилота, факт-чек 2026-07-03). Остаётся 👤 PA-039 (live-verify + flag-flip → Integrator).
-- [ ] Уборка пилотных worktree: `run/v2-personas` (⚠ несёт modified worktree-local `.claude/pending-actions.md`
-      — перед сносом сверить с каноническим ledger, не потерять PA-контент), `run/g3-glossary`,
-      `run/s7-localization` (после merge), `worktree-hashed-dreaming-dolphin`, `worktree-merry-meandering-horizon`.
-- **CP-4:** грейды записаны (DEV_JOURNAL + ledger); RESOLVE-широта обоснована живыми данными; N-волна
-  Wave B объявляется закрытой (B-a..B-d ✓).
+- [x] 🧪 **B-b terminate-path live-смоук ✅ 2026-07-04** (сессия `59a45840`): `/product:complete FM-003` —
+      met wave-1 (score 1.0), 0 персон, CloseOut B-c advisory (B5 PASS / B6–B8 PARTIAL, `met` не флипнут),
+      честный отчёт; surfaced V-11 (reverse-ref MK-003↔SC, auto-fixable — не применён). Ретро в 0142 Outcome.
+- ⏳ 🧪 **B-d real-resolve калибровка** — **gated по событию:** все 7 фич канона score=1.0/met=true,
+      реального oracle<1 гэпа НЕТ — не фабрикуем (FB-LR-26). Триггер = первый живой gap (напр. новая SC
+      без VC при Task 5.4). Грейд: sensitivity + specificity (0 сфабрикованных артефактов).
+- ⏳ 🧪 **P2-dogfood починенного консилиума** — ждёт СЛЕДУЮЩУЮ реальную арх-развилку (естественный
+      кандидат — impl Task 5.4 worker-bootstrap); НЕ фабриковать (FB-LR-26). Проверить: `source_excerpt`
+      сырым, soft-veto/integration-проход.
+- [x] 🧪 **S-LE lesson-gate smoke ✅ ПРОГНАН 2026-07-04** (армированная сессия `4fb6e0f2`): S-LE.2/4/5/6 PASS,
+      S-LE.3 deny PASS + **exemption FAIL = self-deadlock → починен target-carve-out (DEC-DEV-0143, PR #112
+      merged)** + 6 кейсов в `smoke-hooks.js` (34/34); S-LE.1 PARTIAL (`preventedContinuation:false` на
+      CC 2.1.200). ⏳ ре-прогон S-LE.1/S-LE.3 против фикса — после следующей доставки в пилот; **warn→strict
+      флип заблокирован до PASS**. ⏳ PATCH_1.3.3 S1–S5 / PHASE_6 S1–S7 — следующая пилот-сессия.
+- [x] merge `run/s7-localization` → `pre-cc-sdd-pilot` ✅ (пилот `510ce24`) + **READY-ре-гейт `d0299f9`
+      PASS** (Docker up: pg_isready accepting / redis PONG; `pnpm -r test` exit 0; providers 131/131).
+      Остаётся 👤 ⏳ PA-039 (live-verify + flag-flip → Integrator) — по событию.
+- [x] Уборка пилотных worktree ✅: все 5 снесены; PA-контент из `v2-personas` перенесён fold-in'ом
+      (PA-034-коллизия → **PA-043**, provenance-note; владелец: **G2, resolved** `00a0b45`);
+      `g3-glossary` — дропнут по решению владельца.
+- **CP-4: ✅ закрыт-по-максимуму** — всё исполнимое сделано и заграйжено; событийные хвосты (B-d,
+  P2-dogfood, PA-039, S-LE ре-прогон, PATCH/PHASE смоуки) — trigger-gated, НЕ блокируют E5.
+  **Wave B: B-a ✅ B-b ✅ (terminate-path live) B-c ✅; B-d gated** — волна закрыта в build-части.
 
 ### E5 — Vision следующая волна: `(C ∥ D)` + G-ревью *(kickoff по D7 `phase-kickoff.md`)*
 - [ ] **Epic D** (консилиум-примитив как reusable-канал эскалаций): D1 жюри+synthesis — реюз
