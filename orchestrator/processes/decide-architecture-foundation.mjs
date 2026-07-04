@@ -247,7 +247,7 @@ const deliverRecommendation = (pkg) =>
     + `Package: ${JSON.stringify(pkg)}\n`
     + `${PA_CANON}`
     + `Do NOT change the PA status to done/dismissed (the owner ratifies). Do NOT edit any spec / design / tasks file. Do NOT commit code. Return a one-line confirmation.`,
-    { phase: 'Recommend', label: 'deliver-recommendation' },
+    { model: 'sonnet', phase: 'Recommend', label: 'deliver-recommendation' },   // MDP: pending-actions write of the recommendation package (standard/mechanical)
   )
 
 // On an under-specified fork (<2 options): record a non-blocking note, do NOT fabricate an option.
@@ -257,7 +257,7 @@ const recordUnDecidable = (brief) =>
     + `Append a NON-BLOCKING tracking note to the fork's PA (or a new item if none exists): "P2 decide-architecture-foundation could not run — the fork needs >=2 enumerated, mutually-exclusive options; route the spec-author / owner to pose them." ${brief && brief.note ? `Missing: ${brief.note}. ` : ''}\n`
     + `${PA_CANON}`
     + `Do NOT fabricate a second option. Do NOT commit code. Return a one-line confirmation.`,
-    { phase: 'Brief', label: 'under-specified' },
+    { model: 'sonnet', phase: 'Brief', label: 'under-specified' },   // MDP: non-blocking PA tracking note (standard/mechanical)
   )
 
 // ===========================================================================
@@ -273,7 +273,7 @@ if (!brief) {
     + `3) Capture source_excerpt (Fix A, DEC-DEV-0135): the VERBATIM text of the fork's PA block + the specific cited constraint lines you read (the pinned NFR / VP / product_class / steering / design lines that bear on an option) — QUOTE, do not paraphrase. The architects read this raw source as the GROUND TRUTH alongside your lift, so a fact your distillation drops does NOT silently cap the panel. Do not editorialize; this is the source, not your summary.\n`
     + `4) If the fork enumerates FEWER THAN 2 options (nothing to weigh — under-specified, not a real fork), set decidable:false + a one-line note naming what is missing; do NOT fabricate a second option.\n`
     + `Return the ForkBrief. Do NOT edit any file. Do NOT commit.`,
-    { schema: FORK_BRIEF_SCHEMA, phase: 'Brief', label: `brief:${FORK || 'fork'}` },
+    { model: 'opus', schema: FORK_BRIEF_SCHEMA, phase: 'Brief', label: `brief:${FORK || 'fork'}` },   // MDP: fidelity-critical option lift + source_excerpt (a lossy lift caps the whole jury — DEC-DEV-0135)
   )
 }
 const options = (brief && Array.isArray(brief.options)) ? brief.options : []
@@ -306,7 +306,7 @@ if (!decidable) {
 // ---- Phase 2: consilium — the heterogeneous jury (parallel, no cross-talk) --
 phase('Consilium')
 const verdicts = (await parallel(PRIOR_LIST.map((prior) => () =>
-  agent(archPrompt(prior, brief), { schema: ARCH_VERDICT_SCHEMA, phase: 'Consilium', label: `arch:${prior}` }),
+  agent(archPrompt(prior, brief), { model: 'opus', schema: ARCH_VERDICT_SCHEMA, phase: 'Consilium', label: `arch:${prior}` }),   // MDP judging: the consilium JURY — pinned + FIXED across all 3 arms (single call site → identical model)
 ))).filter(Boolean)
 log(`consilium: ${verdicts.length}/${PRIOR_LIST.length} architect verdict(s) returned`)
 
@@ -317,7 +317,7 @@ const synth = await agent(
   `Synthesise the consilium verdicts DETERMINISTICALLY — the recommendation must come from CODE, not from your judgment.\n`
   + `1) Write this JSON array of the ${verdicts.length} architect verdict(s) to a temporary file (via Bash — e.g. a heredoc, or Node fs to a scratch path):\n${JSON.stringify(verdicts)}\n`
   + `2) Run \`node ${SYNTH} --verdicts-file <that-temp-file> --options ${optionIds.join(',')}\` via Bash and RELAY its JSON VERBATIM (recommended + strength + matrix + ranked + survivors + vetoed + recommendations + panel_complete + blocking_concerns). Do NOT hand-compute or second-guess the matrix / rank / veto — relay the lib output exactly.`,
-  { schema: SYNTH_SCHEMA, phase: 'Synthesize', label: 'synth' },
+  { model: 'sonnet', schema: SYNTH_SCHEMA, phase: 'Synthesize', label: 'synth' },   // MDP: consilium-synth.cjs relay — recommendation is CODE, agent only transports (mechanical)
 )
 const recommended = (synth && synth.recommended != null) ? synth.recommended : null
 const strength = (synth && synth.strength) || 'none'
@@ -331,7 +331,7 @@ const panelComplete = !(synth && synth.panel_complete === false)
 // SURFACES a disclosure — it does NOT change the deterministic recommendation (that stays CODE).
 const integration = await agent(
   integrationPrompt(brief, verdicts, synth),
-  { schema: INTEGRATION_SCHEMA, phase: 'Synthesize', label: 'integration' },
+  { model: 'opus', schema: INTEGRATION_SCHEMA, phase: 'Synthesize', label: 'integration' },   // MDP: adversarial cross-lens holistic reasoning (deep judgment)
 )
 const integrationFlag = !!(integration && integration.integration_flag)
 const distributedVeto = (integration && Array.isArray(integration.distributed_veto)) ? integration.distributed_veto : []
@@ -348,7 +348,7 @@ const tradeoff = await agent(
       : `This is a STRONG recommendation (the full panel converged, no veto). Keep the rationale short — ratification is near-formal.\n`)
   + `Also produce: rationale (why the recommended option leads, in the matrix's terms); dec_draft — a DRAFT "DEC-<MODULE>-NNNN" the owner will ratify / edit (NOT a finalized decision — leave the number as NNNN and mark it DRAFT); applies_to — the specs / docs / tasks the recommended option would change (for the owner's follow-up edit).\n`
   + `BOUNDARY: you are PREPARING a recommendation, NOT making the decision. Do NOT edit design.md / tech.md / tasks.md / any spec, do NOT finalize a DEC, do NOT close the pending-action. Return the trade-off package.`,
-  { schema: TRADEOFF_SCHEMA, phase: 'Synthesize', label: 'tradeoff' },
+  { model: 'opus', schema: TRADEOFF_SCHEMA, phase: 'Synthesize', label: 'tradeoff' },   // MDP: formulates the real trade-off + DRAFT dec (synthesis/judgment)
 )
 
 // ---- Phase 4: recommend — deliver the package to the owner (never auto-decide)

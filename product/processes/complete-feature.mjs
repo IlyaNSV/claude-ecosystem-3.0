@@ -225,7 +225,7 @@ const anchor = await agent(
   `\`.product/features/${FEATURE}-*.md\` under it (Glob). Return {root: <absolute run cwd>, product_dir: <root>/.product, ` +
   `fm_file: <absolute path to the FM file, or "" if not found>}. This single root anchors EVERY persona brief's paths for ` +
   `the whole run — do NOT switch checkouts mid-run.`,
-  { schema: ANCHOR_SCHEMA, phase: 'Score', label: 'anchor-root' },
+  { model: 'sonnet', schema: ANCHOR_SCHEMA, phase: 'Score', label: 'anchor-root' },   // MDP: resolve run root + feature file (pwd/glob — mechanical)
 )
 const ANCHOR_ROOT = (anchor && anchor.root) || '.'
 const ANCHOR_FM = (anchor && anchor.fm_file) || `${ANCHOR_ROOT}/.product/features/${FEATURE}-*.md`
@@ -253,7 +253,7 @@ for (let wave = 1; wave <= MAX_WAVES; wave += 1) {
     `\`node ${ORACLE} --feature ${FEATURE} --root ${ANCHOR_ROOT}\` via Bash, from the anchored run root. ` +
     `Return its JSON output VERBATIM — {feature, fm_status, has_ui, blockers, score, tau, met, gaps[] (STRINGS), ` +
     `ambiguities[], delegated_unverified[]}. Do NOT add, drop, or reinterpret fields.`,
-    { schema: ORACLE_SCHEMA, phase: 'Score', label: `score:wave${wave}` },
+    { model: 'sonnet', schema: ORACLE_SCHEMA, phase: 'Score', label: `score:wave${wave}` },   // MDP: completeness-oracle JSON relay — the stop-signal is CODE (mechanical transport)
   )
   if (!oracle) {
     // The stop-signal itself failed — cannot proceed without it. Stop honestly (rail 5), do not guess done.
@@ -339,7 +339,7 @@ for (let wave = 1; wave <= MAX_WAVES; wave += 1) {
       `finding with artifact_id / category / description / proposed_fix (when present).\n` +
       `The findings (grouped by the \`persona\` key):\n${JSON.stringify(personaFindings)}\n` +
       `Return {written: [<file paths written>]}.`,
-      { schema: persistSchema, phase: 'Surface', label: `persist-findings:wave${wave}` },
+      { model: 'sonnet', schema: persistSchema, phase: 'Surface', label: `persist-findings:wave${wave}` },   // MDP: dedicated writer of advisor-findings files (mechanical)
     )
     log(`wave ${wave}: persisted advisor-findings files: ${(persisted && persisted.written && persisted.written.length) || 0} (advisory — findings already carried in-band)`)
   }
@@ -362,7 +362,7 @@ for (let wave = 1; wave <= MAX_WAVES; wave += 1) {
     `2) Run \`node ${CLASSIFIER} <that-file>\` via Bash.\n` +
     `3) Return its stdout JSON VERBATIM — {resolvable:[{source,key,category,detail,artifact_id?}], decisions:[same], ` +
     `stop:{fire,status,reasons}, counts}. Do NOT edit, re-interpret, or add fields. The classifier is the stop authority.`,
-    { schema: CLASSIFY_SCHEMA, phase: 'Score', label: `classify:wave${wave}` },
+    { model: 'sonnet', schema: CLASSIFY_SCHEMA, phase: 'Score', label: `classify:wave${wave}` },   // MDP: gap-classifier.cjs transport — the split + stop verdict are CODE (mechanical transport)
   )
   const stopVerdict = (cls && cls.stop) || { fire: false, status: 'continue', reasons: ['classifier returned no stop verdict — defaulting to continue (in-code mirrors below still bound the loop)'] }
 
@@ -395,7 +395,7 @@ for (let wave = 1; wave <= MAX_WAVES; wave += 1) {
         `(validation / cascade / BG / zone-router) fire. IDEMPOTENT, keyed on the artifact id: UPDATE IN PLACE, NEVER append a ` +
         `near-duplicate (DEC-DEV-0089). Do NOT invent a threshold / MoSCoW call / 🔴 BR-IC semantic / screen choice — those are ` +
         `DECISIONS (they are escalated, not here). Return {applied:true, dropped:false, artifact_id, note}.`,
-        { schema: RESOLVE_SCHEMA, phase: 'Resolve', label: `resolve:${g.category}:${g.artifact_id || g.key || wave}` },
+        { model: 'sonnet', schema: RESOLVE_SCHEMA, phase: 'Resolve', label: `resolve:${g.category}:${g.artifact_id || g.key || wave}` },   // MDP: conservative WHITELISTED derivation only (decisions escalate) + verify-before-act — de-risked mechanical authoring
       )
       if (fix && fix.applied) {
         resolvedThisWave += 1
@@ -423,7 +423,7 @@ for (let wave = 1; wave <= MAX_WAVES; wave += 1) {
       `UPDATE it in place (do NOT append a duplicate, DEC-DEV-0089); otherwise allocate the next PA-NNN and APPEND a concise entry ` +
       `(the feature, the decision + its category, the route: Product for a threshold/MoSCoW/provider/screen/🔴 BR-IC semantic; the ` +
       `owning spec's author for a broken-ref / structural gap). Return {queued:[{pa_id, decision_key}], updated_in_place:[{pa_id, decision_key}]}.`,
-      { schema: ESCALATE_SCHEMA, phase: 'Escalate', label: `escalate:wave${wave}` },
+      { model: 'sonnet', schema: ESCALATE_SCHEMA, phase: 'Escalate', label: `escalate:wave${wave}` },   // MDP: batch decision PA write + dedup (standard/mechanical)
     )
     const queued = (esc && esc.queued) || []
     const updated = (esc && esc.updated_in_place) || []
@@ -472,7 +472,7 @@ if (!DRY_RUN && resolvedAfterLastScore > 0) {
     `Final re-score for feature ${FEATURE} — reflect the last wave's applied fixes (the loop exited after RESOLVE, ` +
     `so the last oracle run predates them). ` +
     `Run \`node ${ORACLE} --feature ${FEATURE} --root ${ANCHOR_ROOT}\` via Bash and return its JSON VERBATIM. Do NOT change anything.`,
-    { schema: ORACLE_SCHEMA, phase: 'Score', label: 'final-rescore' },
+    { model: 'sonnet', schema: ORACLE_SCHEMA, phase: 'Score', label: 'final-rescore' },   // MDP: completeness-oracle JSON relay (mechanical transport)
   )
   if (rescore) { finalOracle = rescore; log(`final re-score (post-loop): score=${rescore.score}, met=${rescore.met}`) }
 }
@@ -489,13 +489,13 @@ if (finalDelegated.length && !DRY_RUN) {
       `Advisory close-out B5 for feature ${FEATURE}: execute the procedure of ${ANCHOR_ROOT}/.claude/commands/product/bg-review.md scoped to ${FEATURE} ` +
       `(BG covers the bold terms). Read that command doc and follow it against the anchored root ${ANCHOR_ROOT}. This is ADVISORY — report the outcome; ` +
       `do NOT treat it as the loop's stop-signal. Return {status:'PASS'|'FAIL'|'PARTIAL', summary, findings:[...]}.`,
-      { schema: CLOSEOUT_SCHEMA, phase: 'CloseOut', label: 'closeout:bg-review' },
+      { model: 'sonnet', schema: CLOSEOUT_SCHEMA, phase: 'CloseOut', label: 'closeout:bg-review' },   // MDP: advisory execution of the bg-review command procedure (standard; never flips met)
     ),
     () => agent(
       `Advisory close-out B6/B8 for feature ${FEATURE}: execute the procedure of ${ANCHOR_ROOT}/.claude/commands/product/validate.md scoped to ${FEATURE} ` +
       `(V-01..V-11 + the RPM-covers-SC.actors check). Read that command doc and follow it against the anchored root ${ANCHOR_ROOT}. This is ADVISORY — report ` +
       `the outcome; do NOT treat it as the loop's stop-signal. Return {status:'PASS'|'FAIL'|'PARTIAL', summary, findings:[...]}.`,
-      { schema: CLOSEOUT_SCHEMA, phase: 'CloseOut', label: 'closeout:validate' },
+      { model: 'sonnet', schema: CLOSEOUT_SCHEMA, phase: 'CloseOut', label: 'closeout:validate' },   // MDP: advisory execution of the validate command procedure V-01..V-11 (standard; never flips met)
     ),
   ])
   delegatedCloseout = {
