@@ -7663,6 +7663,31 @@ smoke:orchestrator 15/15 (7 новых MDP-чеков), test:orchestrator/test:p
 
 ---
 
+## DEC-DEV-0147 — Run-ledger: количественная observability оркестратор-прогонов + авто-создание runs/<id>/ (VC-087 + VC-134)
+
+**Date:** 2026-07-04
+**Trigger:** шаг 5 очереди DEC-DEV-0144. Поведенческая observability сильна (audit-journal, feedback-intake, effect-probe), количественной НЕ было — ни duration, ни model-mix, ни verdict-времянки; `.claude/orchestrator/runs/` не авто-создавался (run.md «Run records (FB-003)» честно держал это как «tracked follow-up»). Тихий дрейф авто-прогонов (§7 риск 7 анализа) без дренажа.
+**Tag:** #orchestrator #observability #feat
+
+### Context
+Жёсткое ограничение: Workflow `.mjs` не имеет права читать wall-clock (детерминированный resume) → таймстемпы обязаны приходить снаружи. Плюс свежие 56 model-пиновок (DEC-DEV-0146) сделали карту «label → model» статически извлекаемой из исходника процесса.
+
+### Decision
+**Новая либа `orchestrator/lib/run-ledger.cjs`** (CJS, только builtins, CLI + чистые экспорты) + wiring в `commands/orchestrator/run.md`:
+1. Диспетчер (harness, исполняющий run.md) обрамляет Workflow: `start --at <ISO>` ДО (создаёт `runs/<id>/run.json` status:running — упавший прогон оставляет след) и `finish --at <ISO>` ПОСЛЕ (finished_at, duration_ms, result-сводка verdict/readiness/conflicts/counts, `model_map` из исходника процесса, tokens opportunistic) + одна строка в `runs/ledger.ndjson`.
+2. run-id детерминирован: `<yyyy-mm-dd>-<slug>-<base36(epoch-ms)>`, без Math.random; ndjson идемпотентен по run_id (retry finish не дублирует времянку), run.json — last-write-wins; `finish` без `start` не падает (status finished-unstarted).
+3. `model_map` извлекается из label-строк исходника (инвариант single-line opts, уже зацементированный смоуком 0146); agentType-персоны помечаются `via-agent-definition`.
+4. Отвергнуто: (i) пер-агентные таймстемпы изнутри процесса — нарушает determinism-контракт, а транскрипт-дир harness уже хранит per-agent детали (ledger = durable сводка, не замена); (ii) инструментировать 56 call-site'ов runtime-обёрткой — инвазивно, статическая экстракция даёт ту же карту бесплатно; (iii) размещение рядом с dev-side `audit-journal.ndjson` (первичная формулировка VC-087) — прогоны живут в проекте-потребителе, контракт места уже объявлен run.md = `.claude/orchestrator/runs/`.
+
+### Outcome
+Тест `tests/orchestrator/run-ledger.test.cjs` 10/10 (в `test:orchestrator`); CLI прогнан e2e на реальном процессе; полный `npm run verify` EXIT=0. run.md «Run records» переписан: follow-up закрыт, транскрипт-дир остаётся source of truth per-agent деталей. Закрывает трейс-ногу VC-133/134 graduation-гейта (шаг 6) и даёт дренаж «тихого дрейфа». Исполнитель — opus-субагент; ревью main-моделью: либа построчно, дифф run.md, verify.
+
+### Lessons
+1. **Determinism-контракт Workflow диктует топологию observability:** раз скрипт не может знать время — часы живут у диспетчера, а скрипт остаётся чистым; «кто ставит таймстемп» = архитектурное решение, не деталь.
+2. **Цементирование инварианта окупается немедленно:** смоук-гейт 0146 («label-строка несёт model») через день стал парсинг-контрактом для extractModelMap — исполняемые инварианты компаундятся.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
