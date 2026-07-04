@@ -144,16 +144,21 @@
   **Wave B: B-a ✅ B-b ✅ (terminate-path live) B-c ✅; B-d gated** — волна закрыта в build-части.
 
 ### E5 — Vision следующая волна: `(C ∥ D)` + G-ревью *(kickoff по D7 `phase-kickoff.md`)*
-- [ ] **Epic D** (консилиум-примитив как reusable-канал эскалаций): D1 жюри+synthesis — реюз
-      `consilium-synth.cjs` (0135 уже внёс soft-veto + integration-pass); D2 политика §7.6; D3 cost-gate
-      + именованные пресеты панелей. Вход: эскалации completeness-loop (B) и гейтов (F2 позже).
-- [ ] **Epic C** (крупные автономные шаги): C-i `batch-enrich-feature-set` (pipeline по FM) →
-      C-ii 5–8 границ-гейтов → C-iii branch-anticipation. Рельсы anti-over-engineering из vision §5.
-- [ ] **Epic G** — провести §7-ревью proposal'а (развилки НЕ пред-решены — 👤); G1/G2 строить только
-      после/вместе с F1 (общая config-механика) и не раньше реальной потребности >3–4 персон.
-- [ ] **F1** (autonomy resolver L0/L1) — координируемый трек: сверка gate-контракта с
-      `gate-risk-classifier`/`env-readiness` оркестратора (причина отложки в 0136).
-- **CP-5:** kickoff-DEC на волну + по DEC на инкремент; counts-sweep если появятся артефакт-типы/правила.
+- [x] **Kickoff ✅ 2026-07-04 (DEC-DEV-0145)** — recon свежим opus-агентом (Sections 1/2/4) + drift-фиксы
+      vision §2.2/§5. **Ключевой ре-скоуп: Epic D = генерализация построенного P2** (`consilium-synth.cjs`
+      live-validated 0129/0135 — примитив УЖЕ есть; блокеры drop-in: хардкод `PRIOR_LIST` + требование
+      ≥2 опций). Work-order волны = **`dev/ECOSYSTEM_VISION_BATCH_3.md`** (ready-to-run; развилки а-и).
+- [ ] **D-ядро (committed):** D1a параметризация панели synth (backward-compat, P2-тесты зелёные —
+      согласованное исключение границы `orchestrator/`) → D1b раннер `/product:consilium <PA>`
+      (форк-образные decision-PA ≥2 опций; prepare-only, владелец ратифицирует) → D2 политика §7.6.
+- [ ] **C-i (stretch, после/с D):** `batch-enrich-feature-set.mjs` — тонкая оркестрация поверх
+      существующих `/product`-команд + checkpoint; C-ii = реюз L1 PA-escalate; **C-iii CUT**
+      (BF-триггер: данные ≥1 прогона C-i).
+- [ ] **G1+G2 минимум (stretch, дефолт (a)):** roster-config + participation-matrix СЛОЕМ над
+      zone-router; D3-пресеты ≡ G4-пресеты = одна реализация; **G3 панель/метрики CUT** (<4 firing-персон).
+- [ ] **F1 (stretch, coordination-gated):** контракт-спека (потребляет risk-tier `gate-risk-classifier`,
+      не пере-выводит) + skeleton `lib/autonomy-policy.cjs`; wiring — после сверки с оркестратор-треком.
+- **CP-5:** kickoff-DEC ✅ (0145); по DEC на инкремент; counts-sweep если появятся артефакт-типы/правила.
 
 ### E6 — doc-UX Волна 2 остаток *(параллелизуемо с E5; независимый трек)*
 - [ ] **C5 «объясни путь»** (дизайн готов: BFS по флоу-рёбрам, подсветка; smoke «P1A→P6o непуст и монотонен»).

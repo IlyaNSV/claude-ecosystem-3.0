@@ -7590,6 +7590,32 @@ Runner (545 строк): SCORE (oracle через агент, verbatim) → SURF
 
 ---
 
+## DEC-DEV-0145 — E5 kickoff: волна Vision (C ∥ D) + G-минимум + F1-контракт — ре-скоуп Epic D в «генерализацию построенного P2»
+
+**Date:** 2026-07-04
+**Trigger:** E4 закрыт-по-максимуму (PR #113) → E5 kickoff по D7 `phase-kickoff.md` (Sections 1/2/4 recon — свежий opus-агент для bias-resistance, fresh-session-эквивалент; я — ревью+решения). Work-order = `dev/ECOSYSTEM_VISION_BATCH_3.md`.
+**Tag:** #vision #kickoff #consilium #epic-c #epic-g #f1
+
+### Context
+План E5 (CONSOLIDATED_EXECUTION_PLAN) формулировал Epic D по vision-доке как «реализовать консилиум-примитив». Холодный recon вскрыл, что примитив **уже построен и live-validated** как оркестраторный P2 (`consilium-synth.cjs` + жюри ×3, DEC-DEV-0129/0135) — крупнейший vision-drift (§2.2 утверждал «P2 не построен», «персон нет» при 7 в репо). Плюс два скрытых контракт-блокера drop-in-реюза: `isPriorVerdict()` фильтрует вердикты вне хардкода `PRIOR_LIST` (`consilium-synth.cjs:79`), и synth ранжирует только форк (≥2 опций). Факты spot-check'нуты против кода перед решениями (MDP-ревью recon'а).
+
+### Decisions (kickoff-развилки а-и, полная таблица в BATCH_3)
+1. **Epic D = генерализация, не стройка:** параметризация панели в `consilium-synth.cjs` (default = 3 арх-приора 1:1, P2-тесты зелёные — согласованное исключение границы `orchestrator/`) + тонкий раннер `/product:consilium <PA>` в `product/processes/`. Отвергнуто: свежая generic-либа (дубль математики, дрейф двух soft-veto); маппинг персон на арх-приоры (теряет гетерогенность); inline-жюри внутри каждой волны loop'а (~15× cost + groupthink на тривиях).
+2. **Вход D — только форк-образные decision-PA** (≥2 опций; категории threshold/moscow/*-semantic из gap-classifier); открытые вопросы остаются plain-PA; вторая опция НЕ фабрикуется. Prepare-only: жюри готовит, владелец ратифицирует (авто-proceed = F2/L2, позже).
+3. **C-i = новый `batch-enrich-feature-set.mjs`** — тонкая оркестрация поверх существующих `/product`-команд, `complete-feature` как стадия; НЕ ре-имплементация authoring в Workflow; checkpoint-файл до запуска (урок E1). C-ii гейты = реюз L1 PA-escalate (диспозицию владеют F1/F2).
+4. **Анти-фрагментация «кто участвует»:** 4 потенциальных firing-решателя (zone-router / gate-risk-classifier / D3 cost-gate / G2 matrix) строятся стопкой — G2 слоем над zone-router, D3-панель потребляет G-пресеты; **D3-пресеты ≡ G4-пресеты = одна реализация**.
+5. **Scope:** committed = D-ядро (D1a параметризация → D1b раннер → D2 политика §7.6); stretch = C-i, G1+G2-минимум (owner-дефолт (a)), F1 контракт+skeleton (`autonomy-policy.cjs` потребляет risk-tier gate-risk-classifier, НЕ пере-выводит; wiring — после сверки с оркестратор-треком). Cuts с BF-триггерами: C-iii branch-anticipation (нет данных прогона), G3 панель/метрики (<4 firing-персон), расширения G 1-7 (отдельный §7-раунд).
+
+### Outcome
+Work-order `dev/ECOSYSTEM_VISION_BATCH_3.md` записан (ready-to-run); drift-фиксы vision §2.2 (персоны/P2) + ре-скоуп-нота §5 Epic D — этим же PR. Коллизия DEC-DEV сработала **5-й раз**: `next-dec-dev` дал 0144 чистым, но параллельная сессия заняла его в PR #114 между аллокацией и коммитом → перенумеровано в 0145 по скану открытых PR ([[feedback_dec_dev_collision_check]] — скан PR-веток обязателен даже после аллокатора).
+
+### Lessons
+1. **Vision-док — снапшот, эпики протухают целиком:** между принятием vision и стартом волны параллельный трек успел ПОСТРОИТЬ ядро эпика (P2 = D1). Kickoff-recon свежим агентом против КОДА (не против vision-прозы) — единственное, что это ловит; иначе волна дублировала бы live-validated механизм.
+2. **«Реюз» в план-прозе — проверяй контракт реюзабельности кодом:** vision честно писал «реюз consilium-synth», но хардкод `PRIOR_LIST` + требование ≥2 опций делали drop-in невозможным. Слепая зона формулировки «reuse» = отсутствие проверки, что интерфейс переживёт нового потребителя.
+3. **Аллокатор номера не спасает от гонки аллокация→коммит:** `next-dec-dev` был прав в момент запуска — номер сгорел за минуты. Финальная сверка по открытым PR непосредственно перед коммитом остаётся обязательной.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
