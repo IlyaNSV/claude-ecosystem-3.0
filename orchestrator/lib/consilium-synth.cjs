@@ -73,10 +73,26 @@ const fs = require('fs');
 
 const CONSILIUM_SYNTH_SCHEMA_VERSION = 1;
 
-// The 3 fixed priors (RA-1). v1 is a fixed panel; a configurable panel (cost /
-// security / …) is post-v1 (DEC-DEV-0127 §9.3).
+// The 3 default priors (RA-1). P2 keeps this fixed panel; other consumers (Epic D
+// generalization, DEC-DEV-0145 — the post-v1 configurable panel DEC-DEV-0127 §9.3
+// promised) inject their own via the optional `panel` parameter / --panel flag.
+// Omitted panel == this list, so every pre-0145 caller behaves 1:1.
 const PRIORS = { VELOCITY: 'velocity', FIDELITY: 'fidelity', INTEGRITY: 'integrity' };
 const PRIOR_LIST = [PRIORS.VELOCITY, PRIORS.FIDELITY, PRIORS.INTEGRITY];
+
+/** Normalize an injected panel: unique non-empty strings; anything unusable ⇒ the
+ *  default 3-prior panel (conservative — a malformed panel must not silently widen
+ *  or empty the jury). */
+function normalizePanel(panel) {
+  if (!Array.isArray(panel)) return PRIOR_LIST;
+  const out = [];
+  for (const p of panel) {
+    if (typeof p !== 'string') continue;
+    const t = p.trim();
+    if (t && !out.includes(t)) out.push(t);
+  }
+  return out.length > 0 ? out : PRIOR_LIST;
+}
 
 // Recommendation strength — how much the jury converges (drives owner ratification).
 const STRENGTH = {
@@ -107,9 +123,11 @@ function clampScore(v) {
   return Math.max(SCORE_MIN, Math.min(SCORE_MAX, n));
 }
 
-/** A verdict counts only if it names one of the 3 known priors. */
-function isPriorVerdict(v) {
-  return !!(v && typeof v === 'object' && PRIOR_LIST.includes(v.prior));
+/** A verdict counts only if it names a prior of the active panel (default: the 3
+ *  architecture priors). Anything else is filtered — a persona outside the declared
+ *  panel never silently joins the jury. */
+function isPriorVerdict(v, panel) {
+  return !!(v && typeof v === 'object' && normalizePanel(panel).includes(v.prior));
 }
 
 /** The blocking_concern → option id it vetoes ({option_id|option} object form).
@@ -126,13 +144,13 @@ function concernOptionId(b) {
  * names. A prior that scores an option the ForkBrief forgot to declare still lands in
  * the matrix (defensive — we never silently drop a scored option).
  */
-function collectOptionIds(verdicts, optionIds) {
+function collectOptionIds(verdicts, optionIds, panel) {
   const set = new Set();
   for (const id of Array.isArray(optionIds) ? optionIds : []) {
     if (id != null) set.add(String(id));
   }
   for (const v of Array.isArray(verdicts) ? verdicts : []) {
-    if (!isPriorVerdict(v)) continue;
+    if (!isPriorVerdict(v, panel)) continue;
     if (v.scores && typeof v.scores === 'object') {
       for (const k of Object.keys(v.scores)) set.add(String(k));
     }
@@ -150,13 +168,14 @@ function collectOptionIds(verdicts, optionIds) {
  * @returns { [optionId]: { scores:{velocity,fidelity,integrity}, sum, min, max,
  *                          blocking:[{prior,concern}], vetoed:boolean, soft_vetoed:boolean } }
  */
-function buildMatrix(verdicts, optionIds) {
-  const vs = (Array.isArray(verdicts) ? verdicts : []).filter(isPriorVerdict);
-  const ids = collectOptionIds(vs, optionIds);
+function buildMatrix(verdicts, optionIds, panel) {
+  const priors = normalizePanel(panel);
+  const vs = (Array.isArray(verdicts) ? verdicts : []).filter((v) => isPriorVerdict(v, priors));
+  const ids = collectOptionIds(vs, optionIds, priors);
   const matrix = {};
   for (const id of ids) {
     const scores = {};
-    for (const p of PRIOR_LIST) {
+    for (const p of priors) {
       const v = vs.find((x) => x.prior === p);
       const raw = v && v.scores && Object.prototype.hasOwnProperty.call(v.scores, id) ? v.scores[id] : 0;
       scores[p] = clampScore(raw);
@@ -170,7 +189,7 @@ function buildMatrix(verdicts, optionIds) {
         }
       }
     }
-    const vals = PRIOR_LIST.map((p) => scores[p]);
+    const vals = priors.map((p) => scores[p]);
     const max = Math.max(...vals);
     matrix[id] = {
       scores,
@@ -209,17 +228,18 @@ function rankSurvivors(matrix, survivors) {
  * The PROMPT (in the .mjs) formulates `the_real_tradeoff`/`rationale`/`dec_draft` on
  * top of this; this lib fixes WHAT is recommended, WHY it survived, and how strongly.
  */
-function synthesize(verdicts, optionIds) {
-  const vs = (Array.isArray(verdicts) ? verdicts : []).filter(isPriorVerdict);
-  const ids = collectOptionIds(vs, optionIds);
-  const matrix = buildMatrix(vs, ids);
+function synthesize(verdicts, optionIds, panel) {
+  const priors = normalizePanel(panel);
+  const vs = (Array.isArray(verdicts) ? verdicts : []).filter((v) => isPriorVerdict(v, priors));
+  const ids = collectOptionIds(vs, optionIds, priors);
+  const matrix = buildMatrix(vs, ids, priors);
 
   const survivors = ids.filter((id) => !matrix[id].vetoed);
   const vetoed = ids.filter((id) => matrix[id].vetoed);
   const ranked = rankSurvivors(matrix, survivors);
 
   const priorsReported = Array.from(new Set(vs.map((v) => v.prior)));
-  const panelComplete = priorsReported.length >= PRIOR_LIST.length;
+  const panelComplete = priorsReported.length >= priors.length;
 
   // per-prior recommended option (raw — the prompt reads this to name the divergence).
   const recommendations = {};
@@ -264,6 +284,7 @@ function synthesize(verdicts, optionIds) {
 
   return {
     schema_version: CONSILIUM_SYNTH_SCHEMA_VERSION,
+    panel: priors,                 // the active jury (disclosure — no silent fan-out, D2 policy)
     options: ids,
     matrix,
     ranked,
@@ -311,6 +332,7 @@ function parseArgs(argv) {
       case '--verdicts-file': a.verdictsFile = next(); break;
       case '--verdicts': a.verdicts = next(); break;
       case '--options': a.options = next(); break;
+      case '--panel': a.panel = next(); break;
       default: break;
     }
   }
@@ -322,8 +344,12 @@ function printHelp() {
     'consilium-synth.cjs — Orchestrator P2: aggregate a 3-prior architecture jury into',
     'a recommendation (matrix + rank + veto). Deterministic (DEC-DEV-0129).',
     '',
-    'USAGE:  node consilium-synth.cjs --verdicts-file verdicts.json [--options a,b,c]',
+    'USAGE:  node consilium-synth.cjs --verdicts-file verdicts.json [--options a,b,c] [--panel p1,p2,p3]',
     '        node consilium-synth.cjs --verdicts \'[{"prior":"velocity",...}]\' --options a,b',
+    '',
+    '--panel (optional, DEC-DEV-0145): inject a custom jury (e.g. architect,qa,ux for the',
+    'Epic D product consilium). Omitted == the default velocity,fidelity,integrity panel',
+    '(pre-0145 behavior 1:1). Verdicts naming a prior outside the active panel are filtered.',
     '',
     'verdicts = an array of ArchVerdict { prior, scores:{opt:0..5}, recommended_option,',
     '           risks_of_recommendation[], blocking_concerns:[{option_id, concern}] }.',
@@ -360,10 +386,12 @@ function main() {
     process.stderr.write(`consilium-synth: --verdicts is not valid JSON: ${(e && e.message) || e}\n`);
     process.exit(2);
   }
-  // accept either a bare array or { verdicts:[...], options:[...] }
+  // accept either a bare array or { verdicts:[...], options:[...], panel:[...] }
   let optionIds = args.options ? String(args.options).split(',').map((s) => s.trim()).filter(Boolean) : null;
+  let panel = args.panel ? String(args.panel).split(',').map((s) => s.trim()).filter(Boolean) : null;
   if (verdicts && !Array.isArray(verdicts) && typeof verdicts === 'object') {
     if (!optionIds && Array.isArray(verdicts.options)) optionIds = verdicts.options;
+    if (!panel && Array.isArray(verdicts.panel)) panel = verdicts.panel;
     verdicts = verdicts.verdicts;
   }
   if (!Array.isArray(verdicts)) {
@@ -371,7 +399,7 @@ function main() {
     process.exit(2);
   }
 
-  const synth = synthesize(verdicts, optionIds);
+  const synth = synthesize(verdicts, optionIds, panel);
   process.stdout.write(JSON.stringify({ ...synth, summary: summarize(synth) }, null, 2) + '\n');
   process.exit(0);
 }
@@ -388,6 +416,7 @@ module.exports = {
   SCORE_MIN,
   SCORE_MAX,
   SOFT_VETO_THRESHOLD,
+  normalizePanel,
   clampScore,
   isPriorVerdict,
   concernOptionId,

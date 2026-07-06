@@ -9,7 +9,7 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `commands/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-command-catalog.cjs`. Интерактивная версия — [ecosystem-map.html](ecosystem-map.html). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 44 команд** в 5 модулях.
+**Всего: 45 команд** в 5 модулях.
 
 ## /ecosystem:* (7)
 
@@ -25,7 +25,7 @@ doc_type: reference
 | `/ecosystem:update` | Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/product/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead. | `[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-commit]` |
 | `/ecosystem:verify` | Verify Ecosystem 3.0 installation in current project. Non-destructive health check. | — |
 
-## /product:* (20)
+## /product:* (21)
 
 Ядро ежедневной работы — D1 Discovery + D2-Behavioral
 
@@ -37,6 +37,7 @@ doc_type: reference
 | `/product:cleanup` | V-15 orphan detection (default) с opt-in pending hygiene sweep (--pending-hygiene). Default = fast graph analysis listing orphan artifacts. Hygiene mode = cascade revalidate + validation-pending purge + da-pending stale flag. Use --dry-run для preview без apply. | `[--dry-run] [--pending-hygiene \| --full]` |
 | `/product:complete` | Run the bounded completeness-loop on a feature's D1-D2B spec (Autonomous Pipeline Vision, Epic B). Drives FM + SC/BR/LC/VC/IC/NFR (and MK/NM if has_ui) to handoff-DoR-sufficient completeness in bounded waves — deterministic completeness-oracle for the stop-signal, heterogeneous profile personas (architect/qa/ux-advisor) on each zone's gaps, auto-resolve the resolvable + escalate real decisions. Stop is external + bounded (cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0)). v1 core/skeleton (DEC-DEV-0098). | `<FM-NNN> [--max-waves N] [--dry-run]` |
 | `/product:config` | Read or modify Product Module configuration (.claude/product.yaml). | `[--show \| --edit <key> <value>]` |
+| `/product:consilium` | Prepare a decision on an already-escalated, FORK-SHAPED decision pending-action (>=2 mutually-exclusive options) by running a heterogeneous jury of Epic-A profile personas (architect/qa + ux when the decision touches UI). Each juror scores the options INDEPENDENTLY from the raw artifacts; their verdicts aggregate DETERMINISTICALLY through the shared consilium-synth (matrix + rank + hard/soft-veto); a recommendation package is written back into the SAME PA in place. PREPARE-ONLY — the jury recommends, the owner ratifies. Epic D generalization of the Orchestrator P2 primitive (DEC-DEV-0145). | `<PA-NNN> [--feature FM-NNN]` |
 | `/product:da-review` | Manual Product DA review. ID-prefix routing — FM-NNN spawns feature-scope DA; RL-NNN spawns release-scope DA (cross-FM consistency, HYP coverage, rollout deps per DEC-DEV-0026). Findings → .product/.da-findings/<ID>-<timestamp>.md unified schema (DEC-DEV-0030 A.1). Other prefixes (BR/IC/SC/LC/VC/RPM/MK) refused — те реализованы через hooks или approve gates. | `<FM-NNN \| RL-NNN>` |
 | `/product:drift-check` | Structural self-audit — check that recent artifacts still align with PS, primary HYP, MVP scope. C1 modification. | `[--scope <last-N-artifacts> \| --since <date>]` |
 | `/product:feature` | Start P2 Feature Definition. Enrichment mode (FM-id) или creation mode ("idea"). Produces SC, BR, LC, VC, IC + RPM update. Triggers adaptive-depth DA via hooks. | `<FM-id> \| \"<idea description>\" \| --continue [<FM-id>]` |

@@ -324,5 +324,80 @@ test('CLI: --verdicts inline JSON is accepted (test/agent convenience)', () => {
   assert.strictEqual(s.strength, 'strong');
 });
 
+// ---------------------------------------------------------------------------
+// Panel parameterization (DEC-DEV-0145 — Epic D generalization). Omitted panel
+// must stay 1:1 with the 3-prior default (every test above IS that guarantee);
+// these pin the injected-panel surface.
+// ---------------------------------------------------------------------------
+
+test('panel: normalizePanel — dedupes, trims, and falls back to the default on garbage', () => {
+  assert.deepStrictEqual(lib.normalizePanel(['architect', ' qa ', 'architect', '', 42]), ['architect', 'qa']);
+  assert.deepStrictEqual(lib.normalizePanel(null), PRIOR_LIST, 'no panel ⇒ default 3 priors');
+  assert.deepStrictEqual(lib.normalizePanel([]), PRIOR_LIST, 'empty panel ⇒ default, never an empty jury');
+  assert.deepStrictEqual(lib.normalizePanel([null, '']), PRIOR_LIST, 'all-garbage panel ⇒ default');
+});
+
+test('panel: a custom persona jury aggregates; out-of-panel verdicts are filtered', () => {
+  const PANEL = ['architect', 'qa', 'ux'];
+  const s = synthesize([
+    V('architect', { a: 5, b: 2 }, 'a'),
+    V('qa', { a: 4, b: 3 }, 'a'),
+    V('ux', { a: 4, b: 2 }, 'a'),
+    V('velocity', { a: 0, b: 5 }, 'b'), // arch prior NOT in this panel — must not join
+  ], ['a', 'b'], PANEL);
+  assert.deepStrictEqual(s.panel, PANEL, 'the result discloses the active jury');
+  assert.strictEqual(s.recommended, 'a');
+  assert.strictEqual(s.strength, STRENGTH.STRONG, 'full custom panel unanimous ⇒ strong');
+  assert.strictEqual(s.matrix.b.scores.velocity, undefined, 'out-of-panel prior never scores the matrix');
+  assert.deepStrictEqual(s.priors_reported.slice().sort(), ['architect', 'qa', 'ux']);
+});
+
+test('panel: panel honesty holds for a custom jury (a missing persona is never strong)', () => {
+  const s = synthesize([
+    V('architect', { a: 5, b: 2 }, 'a'),
+    V('qa', { a: 4, b: 3 }, 'a'),
+    // ux died — 2-of-3
+  ], ['a', 'b'], ['architect', 'qa', 'ux']);
+  assert.strictEqual(s.panel_complete, false);
+  assert.strictEqual(s.strength, STRENGTH.SPLIT, '2-of-3 custom panel is never strong');
+});
+
+test('panel: veto + soft-veto semantics are panel-agnostic', () => {
+  const s = synthesize([
+    V('architect', { a: 5, b: 2 }, 'a', [{ option_id: 'a', concern: 'breaks contract' }]),
+    V('qa', { a: 5, b: 2 }, 'a'),
+  ], ['a', 'b'], ['architect', 'qa']);
+  assert.deepStrictEqual(s.vetoed, ['a'], 'worst-of veto holds under a custom panel');
+  assert.strictEqual(s.recommended, 'b');
+  assert.ok(s.soft_vetoed.includes('b'), 'b (max 2 < 3) is soft-vetoed under the custom panel too');
+});
+
+test('panel: omitted panel is byte-identical to the default-list call (backward-compat seam)', () => {
+  const verdicts = [
+    V('velocity', { a: 5, b: 2 }, 'a'),
+    V('fidelity', { a: 4, b: 3 }, 'a'),
+    V('integrity', { a: 4, b: 2 }, 'a'),
+  ];
+  const implicit = synthesize(verdicts, ['a', 'b']);
+  const explicit = synthesize(verdicts, ['a', 'b'], PRIOR_LIST);
+  assert.deepStrictEqual(implicit, explicit);
+});
+
+test('panel: CLI --panel flows through (persona jury via the agent-transport seam)', () => {
+  const out = execFileSync('node', [
+    LIB_PATH,
+    '--verdicts', JSON.stringify([
+      V('architect', { a: 5, b: 2 }, 'a'),
+      V('qa', { a: 4, b: 3 }, 'a'),
+    ]),
+    '--options', 'a,b',
+    '--panel', 'architect,qa',
+  ], { encoding: 'utf8' });
+  const s = JSON.parse(out);
+  assert.strictEqual(s.recommended, 'a');
+  assert.strictEqual(s.strength, 'strong', 'full 2-persona panel unanimous ⇒ strong');
+  assert.deepStrictEqual(s.panel, ['architect', 'qa']);
+});
+
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);
