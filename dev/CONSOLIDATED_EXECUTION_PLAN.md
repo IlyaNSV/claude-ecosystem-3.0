@@ -143,22 +143,30 @@
   P2-dogfood, PA-039, S-LE ре-прогон, PATCH/PHASE смоуки) — trigger-gated, НЕ блокируют E5.
   **Wave B: B-a ✅ B-b ✅ (terminate-path live) B-c ✅; B-d gated** — волна закрыта в build-части.
 
-### E5 — Vision следующая волна: `(C ∥ D)` + G-ревью *(kickoff по D7 `phase-kickoff.md`)*
+### E5 — Vision следующая волна: `(C ∥ D)` + G-ревью *(kickoff по D7 `phase-kickoff.md`)* — **✅ ПОСТРОЕНА ПОЛНОСТЬЮ 2026-07-07** (committed + все 3 stretch; live-прогоны = trigger-gated хвосты, не блокируют)
 - [x] **Kickoff ✅ 2026-07-04 (DEC-DEV-0145)** — recon свежим opus-агентом (Sections 1/2/4) + drift-фиксы
       vision §2.2/§5. **Ключевой ре-скоуп: Epic D = генерализация построенного P2** (`consilium-synth.cjs`
       live-validated 0129/0135 — примитив УЖЕ есть; блокеры drop-in: хардкод `PRIOR_LIST` + требование
       ≥2 опций). Work-order волны = **`dev/ECOSYSTEM_VISION_BATCH_3.md`** (ready-to-run; развилки а-и).
-- [ ] **D-ядро (committed):** D1a параметризация панели synth (backward-compat, P2-тесты зелёные —
-      согласованное исключение границы `orchestrator/`) → D1b раннер `/product:consilium <PA>`
-      (форк-образные decision-PA ≥2 опций; prepare-only, владелец ратифицирует) → D2 политика §7.6.
-- [ ] **C-i (stretch, после/с D):** `batch-enrich-feature-set.mjs` — тонкая оркестрация поверх
-      существующих `/product`-команд + checkpoint; C-ii = реюз L1 PA-escalate; **C-iii CUT**
-      (BF-триггер: данные ≥1 прогона C-i).
-- [ ] **G1+G2 минимум (stretch, дефолт (a)):** roster-config + participation-matrix СЛОЕМ над
-      zone-router; D3-пресеты ≡ G4-пресеты = одна реализация; **G3 панель/метрики CUT** (<4 firing-персон).
-- [ ] **F1 (stretch, coordination-gated):** контракт-спека (потребляет risk-tier `gate-risk-classifier`,
-      не пере-выводит) + skeleton `lib/autonomy-policy.cjs`; wiring — после сверки с оркестратор-треком.
-- **CP-5:** kickoff-DEC ✅ (0145); по DEC на инкремент; counts-sweep если появятся артефакт-типы/правила.
+- [x] **D-ядро (committed) ✅ 2026-07-04 (DEC-DEV-0149, PR #117):** D1a параметризация панели synth
+      (backward-compat, P2-тесты зелёные) → D1b раннер `/product:consilium <PA>` (prepare-only,
+      владелец ратифицирует) → D2 политика §7.6. Live-грейд жюри = pilot-gated.
+- [x] **C-i (stretch) ✅ 2026-07-07 (DEC-DEV-0150, PR #123):** `/product:batch-enrich` —
+      `batch-enrich-feature-set.mjs`, тонкая оркестрация поверх существующих `/product`-команд,
+      checkpoint-first+resume, гейты границ фаз = L1 PA-escalate (реюз, решение «д»); FM-цикл
+      последовательный (single-writer, зафикс. отклонение от «pipeline()»); **C-iii CUT**
+      (BF-триггер: данные ≥1 прогона C-i). Live-прогон ≥2 FM = pilot-gated.
+- [x] **G1+G2 минимум (stretch, дефолт (a)) ✅ 2026-07-07 (DEC-DEV-0151, PR #124):**
+      `hooks/product/lib/agent-roster.cjs` — roster-config + participation-matrix СЛОЕМ над
+      zone-router (absent == байт-в-байт 1:1); пресеты `lean/full` (D3≡G4 одна реализация,
+      wiring в D1b-панель = BF); **G3 панель/метрики CUT** (<4 firing-персон).
+- [x] **F1 (stretch, coordination-gated) ✅ 2026-07-07 (DEC-DEV-0152, PR #125):**
+      `dev/AUTONOMY_POLICY_F1_CONTRACT.md` (потребляет risk-tier/readiness, не пере-выводит;
+      чек-лист сверки §6) + skeleton `lib/autonomy-policy.cjs` (L0/L1, floor LOCKED, 70 юнитов);
+      wiring = F2 после сверки с оркестратор-треком.
+- **CP-5:** kickoff-DEC ✅ (0145); DEC на каждый инкремент ✅ (0149/0150/0151/0152); артефакт-типы/правила
+      не добавлялись — counts 24/44 без изменений. Событийные хвосты E5 ⏳: live-грейд `/product:consilium`
+      на реальном форк-PA; live-прогон batch-enrich ≥2 FM; roster-переопределение на пилоте (все pilot-gated).
 
 ### E6 — doc-UX Волна 2 остаток *(параллелизуемо с E5; независимый трек)*
 - [ ] **C5 «объясни путь»** (дизайн готов: BFS по флоу-рёбрам, подсветка; smoke «P1A→P6o непуст и монотонен»).
