@@ -241,7 +241,7 @@ const anchor = await agent(
   + `1) Run \`pwd\` (or \`git rev-parse --show-toplevel\`) via Bash to get the absolute run root.\n`
   + `2) Resolve the consilium-synth library: test each of these candidate paths under the run root, in order, and return the FIRST that EXISTS (via Bash \`test -f\`): ${JSON.stringify(SYNTH_CANDIDATES)}. If none exists, return the first candidate anyway (the Synthesize step will surface the failure honestly).\n`
   + `Return {root: <absolute run cwd>, synth: <resolved consilium-synth.cjs path>}. This single root anchors EVERY persona brief's paths for the whole run — do NOT switch checkouts mid-run.`,
-  { schema: ANCHOR_SCHEMA, phase: 'Load', label: 'anchor-root' },
+  { model: 'sonnet', schema: ANCHOR_SCHEMA, phase: 'Load', label: 'anchor-root' },   // MDP: resolve run root + lib path (pwd/test -f — mechanical)
 )
 const ANCHOR_ROOT = (anchor && anchor.root) || '.'
 const SYNTH = (anchor && anchor.synth) || SYNTH_CANDIDATES[0]
@@ -259,7 +259,7 @@ const fork = await agent(
   + `5) Capture \`source_excerpt\`: the VERBATIM PA block text + the specific cited constraint lines (QUOTE, do not paraphrase) — the ground truth the jurors read alongside your lift.\n`
   + `6) Name \`comparison_axes\`: the 2-4 axes the options genuinely differ on (e.g. "delivery cost", "data-integrity risk", "user-flow friction") — the declared scope of what the jury weighs.\n`
   + `Return the fork. Do NOT edit any file. Do NOT commit. Do NOT change the PA.`,
-  { schema: FORK_SCHEMA, phase: 'Load', label: `load:${PA_ID}` },
+  { model: 'sonnet', schema: FORK_SCHEMA, phase: 'Load', label: `load:${PA_ID}` },   // MDP: LIFT the fork from the PA (read + structure, never invent — mechanical)
 )
 
 const options = (fork && Array.isArray(fork.options)) ? fork.options : []
@@ -278,7 +278,7 @@ if (!decidable) {
     + `— there is nothing for a jury to weigh (an under-specified decision, not a fork).\n`
     + `${PA_CANON}Append a NON-BLOCKING tracking note to that PA (do NOT change its status): "consilium could not run — needs >=2 enumerated, mutually-exclusive options; reformulate the options or leave the call to the owner."${missing}\n`
     + `Do NOT fabricate a second option. Do NOT edit any spec. Do NOT commit. Return a one-line confirmation.`,
-    { phase: 'Load', label: 'refuse:under-specified' },
+    { model: 'sonnet', phase: 'Load', label: 'refuse:under-specified' },   // MDP: non-blocking PA routing note (mechanical write)
   )
   return refusal(
     `PA ${PA_ID} is not fork-shaped (${optionIds.length} option(s), need >=2) — reformulate the options or leave the call to the owner.${missing}`,
@@ -363,7 +363,7 @@ const synth = await agent(
   + `1) Write this JSON array of the ${verdicts.length} persona verdict(s) to the file ${ANCHOR_ROOT}/.product/.consilium/${PA_ID}-verdicts.json (create the .consilium dir if absent), byte-for-byte:\n${JSON.stringify(verdicts)}\n`
   + `2) Run \`node ${SYNTH} --verdicts-file ${ANCHOR_ROOT}/.product/.consilium/${PA_ID}-verdicts.json --options ${optionIds.join(',')} --panel ${panelNames.join(',')}\` via Bash. The --panel flag injects THIS persona jury (DEC-DEV-0145) so verdicts naming these personas are counted (not filtered as non-architecture priors).\n`
   + `3) RELAY its JSON output VERBATIM — {recommended, strength, panel, matrix, ranked, survivors, vetoed, soft_vetoed, recommendations, panel_complete, blocking_concerns}. Do NOT hand-compute, re-interpret, or second-guess the matrix / rank / veto — relay the lib output exactly. If \`node\` fails or the lib path does not exist, return {recommended:null, strength:"none", panel_complete:false} and say so.`,
-  { schema: SYNTH_SCHEMA, phase: 'Synthesize', label: 'synth' },
+  { model: 'sonnet', schema: SYNTH_SCHEMA, phase: 'Synthesize', label: 'synth' },   // MDP: consilium-synth.cjs transport — the recommendation is CODE (mechanical relay)
 )
 const recommended = (synth && synth.recommended != null) ? synth.recommended : null
 const strength = (synth && synth.strength) || 'none'
@@ -379,7 +379,7 @@ const integration = await agent(
   + `The ${verdicts.length} verdict(s): ${JSON.stringify(verdicts)}\n`
   + `The deterministic synthesis: ${JSON.stringify(synth)}\n`
   + `Set integration_flag:true ONLY if you find a REAL cross-lens issue the per-lens sum missed (default false — do NOT invent one; a clean, well-summed fork returns false). Put the disclosure in \`note\`. This is SURFACED to the owner — you are NOT vetoing, re-scoring, or deciding.`,
-  { schema: INTEGRATION_SCHEMA, phase: 'Synthesize', label: 'integration' },
+  { model: 'opus', schema: INTEGRATION_SCHEMA, phase: 'Synthesize', label: 'integration' },   // MDP: cross-lens adversarial judging — the one reasoning stage (opus)
 )
 const integrationFlag = !!(integration && integration.integration_flag)
 const integrationNote = integrationFlag ? ((integration && integration.note) || 'cross-lens issue surfaced (see verdicts)') : ''
@@ -412,7 +412,7 @@ await agent(
   + `- an explicit line: "This is the JURY'S recommendation — RATIFICATION is the owner's; the fork is not decided."\n`
   + `Package: ${JSON.stringify(pkg)}\n`
   + `Do NOT change the PA status to done/dismissed (the owner ratifies). Do NOT edit any spec / design / feature file. Do NOT commit code. Return a one-line confirmation.`,
-  { phase: 'Recommend', label: 'deliver-recommendation' },
+  { model: 'sonnet', phase: 'Recommend', label: 'deliver-recommendation' },   // MDP: PA update-in-place from a fixed package (mechanical write)
 )
 
 // ---- disclosures + honest report (no silent truncation) --------------------------------------

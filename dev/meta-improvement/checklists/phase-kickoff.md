@@ -167,6 +167,37 @@ Inline AI carries forward Phase N-1's mental model, may not see ambiguities intr
 
 ---
 
+## Section 3b — Static-context budget audit (≤10 min)
+
+**Цель:** always-on контекст (то, что инжектится в КАЖДУЮ сессию до первого слова задачи) платит токенами каждый запрос и **растёт молча** — по чуть-чуть на каждом «добавим строку в CLAUDE.md». Per-kickoff инвентаризация держит границу static/lazy осознанной. (Codified DEC-DEV-0144 / VC-044, `dev/VIBE_CODING_ANALYSIS.md` §4.)
+
+### Что делать
+
+1. **Инвентаризация always-on источников** (замер размера — строки/KB):
+   ```bash
+   wc -l CLAUDE.md dev/meta-improvement/rails/RAILS.md   # repo CLAUDE + SessionStart-inject
+   wc -l ~/.claude/CLAUDE.md                              # глобальные договорённости (ITP/MDP/...)
+   ls -la ~/.claude/projects/<this-project>/memory/MEMORY.md  # memory-индекс
+   ```
+   + warn-хуки с длинными preamble (`hooks/**`, `dev/meta-improvement/hooks/**`) — что они печатают в каждый матчащий вызов.
+
+2. **Сравни с прошлым kickoff** (цифры — в kickoff DEC-DEV-записи; первая итерация = записать baseline). Рост >20% без осознанного решения — сигнал.
+
+3. **Для каждого крупного блока — тест «платит ли он за место»:** нужен ли В КАЖДОЙ сессии, или это (a) lazy skill (загружается per задаче), (b) reference-док (читается по ссылке при нужде), (c) архив? Прецеденты выноса: снапшот статуса → pointer-collapse на ROADMAP (Tier-1 reform); история памяти → архивные записи (DEC-DEV-0100); раздутый MEMORY.md → index-archive (2026-07-04).
+
+4. **Резка или добавление always-on контента — DEC-DEV-запись** (что и почему решили держать в static / вынести).
+
+### Pass
+
+- Инвентарь снят, цифры записаны в kickoff-запись (baseline или дельта)
+- Каждый блок >30 строк имеет явный ответ «почему static, а не lazy/reference»
+
+### Fail
+
+- Рост без решения → вынести кандидатов в lazy/reference тем же kickoff-коммитом, или зафиксировать осознанное «оставляем» с rationale
+
+---
+
 ## Section 4 — Scope discipline (≤15 min)
 
 **Цель:** apply «cuttable scope» pattern. Identify deliverables что can defer to v1.1+ без blocking Phase N value.

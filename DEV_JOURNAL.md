@@ -7640,10 +7640,81 @@ Work-order `dev/ECOSYSTEM_VISION_BATCH_3.md` записан (ready-to-run); drif
 
 ---
 
-## DEC-DEV-0146 — Wave (C∥D) D-ядро ПОСТРОЕНО: панель-параметризация consilium-synth (D1a) + `/product:consilium` жюри-раннер для decision-эскалаций (D1b) + политика §7.6 в коде (D2)
+## DEC-DEV-0146 — MDP model-pinning во всех Workflow-процессах (VC-118): 56 пиновок + смоук-гейт «agent() обязан нести model/agentType»
 
 **Date:** 2026-07-04
-**Trigger:** стройка committed-target BATCH_3 после merge kickoff-PR #115 (DEC-DEV-0145). Сборка = MDP-оркестрация (D1a — main-модель сама, орк-либа = высокий R; D1b runtime-код — opus-исполнитель в worktree `ce3-wt-wave-cd`; ревью — main).
+**Trigger:** шаг 3 очереди DEC-DEV-0144 (VC-118 — «задокументированный, но не закрытый разрыв»: MDP §3 предписывает пиновать модель per-stage, но ни один `agent()` в `orchestrator/processes/*.mjs` / `product/processes/complete-feature.mjs` её не передавал → все стадии наследовали дорогую модель сессии = waste + конфаунд для judged-стадий).
+**Tag:** #orchestrator #product #mdp #feat
+
+### Context
+7 процессных файлов, 56 реальных agent()-вызовов без model. Якоря назначения уже существовали в репо: `settings.json.template._model_strategy` («Opus for product/adversarial, Sonnet for mechanical, Haiku for hooks/scanners») + MDP worst-of-оси + правило «жюри на одной фиксированной модели». Персоны (`architect/qa/ux-advisor`) уже запинованы через frontmatter определений (`model: claude-opus-4-8`) — их вызовы через `agentType:` не дублируются.
+
+### Decision
+1. **56 аддитивных пиновок** (только поле `model:` в существующий opts; без `effort`, без изменения промптов). Раскладка: **opus** = судейство/adversarial/verify (жюри P2 `arch:*`×3, панель P6 `validate:*`×3, `verify-drift`/`verify:*`/`verify-completion`, review HIGH), impl с высоким R (`impl:*` TDD-код, `spec-fix`, `remediate`, `kiro-spec-batch`, `brief:*` P2 — lossy lift капит жюри, DEC-DEV-0135), диагностика (`debug:*`, `boot-smoke`, `classify-block` — мис-классификация маскирует upstream-конфликт FB-LR-07); **sonnet** = механика/relay (init/baseline/git, оракул- и либа-relay, PA-write/dedup, plan-parse, synth — рекомендация вычисляется КОДОМ `consilium-synth.cjs`, LOW-tier `verify` — зеркалит HIGH/LOW-разрез самого gate-risk-classifier, `resolve:*` — консервативный whitelist деривации + verify-before-act); **haiku** = не используется (консервативно).
+2. **Смоук-гейт** в `tests/orchestrator/workflow-syntax.smoke.cjs` (не в N wiring-тестов): каждая строка с `label:` обязана нести `model:` ИЛИ `agentType:`. Выбор места: сканирует ОБА PROC_DIRS → покрывает `batch-features-to-cc-sdd.mjs` (без wiring-теста) и все будущие процессы бесплатно. Опора на инвариант single-line opts задокументирована в самом тесте.
+3. Отвергнуто: дублировать `model` в persona-вызовах (определение агента — SSOT); пиновать `effort` (вне скоупа шага); haiku для тривиальных relay (цена ошибки в gate-цепях выше экономии).
+
+### Outcome
+smoke:orchestrator 15/15 (7 новых MDP-чеков), test:orchestrator/test:product зелёные, полный `npm run verify` EXIT=0. Дифф: 7 процессов (+56 model-строк, ноль прочих изменений — проверено ревью `-U0`) + смоук. Исполнитель — opus-субагент; ревью main-моделью: дифф построчно, спот-чек frontmatter персон, 4 спорных назначения (classify-block/verify-completion→opus, LOW-verify/resolve→sonnet) подтверждены с их rationale.
+
+### Lessons
+1. **«Задокументированный разрыв» живёт, пока его не цементирует исполняемый гейт:** MDP-предписание существовало с 2026-07-03, `_model_strategy` — ещё дольше, но ни одна пиновка не появилась, пока внешний аудит (VC-118) не сделал это work-item'ом; смоук-гейт переводит дисциплину в невозможность регресса (тот же урок, что process-gate/DEC-DEV-0083).
+2. **Пин жюри — один call-site:** когда N плеч жюри текут через одну точку вызова, одна пиновка гарантирует «judge fixed across arms» конструкцией, а не дисциплиной.
+
+---
+
+## DEC-DEV-0147 — Run-ledger: количественная observability оркестратор-прогонов + авто-создание runs/<id>/ (VC-087 + VC-134)
+
+**Date:** 2026-07-04
+**Trigger:** шаг 5 очереди DEC-DEV-0144. Поведенческая observability сильна (audit-journal, feedback-intake, effect-probe), количественной НЕ было — ни duration, ни model-mix, ни verdict-времянки; `.claude/orchestrator/runs/` не авто-создавался (run.md «Run records (FB-003)» честно держал это как «tracked follow-up»). Тихий дрейф авто-прогонов (§7 риск 7 анализа) без дренажа.
+**Tag:** #orchestrator #observability #feat
+
+### Context
+Жёсткое ограничение: Workflow `.mjs` не имеет права читать wall-clock (детерминированный resume) → таймстемпы обязаны приходить снаружи. Плюс свежие 56 model-пиновок (DEC-DEV-0146) сделали карту «label → model» статически извлекаемой из исходника процесса.
+
+### Decision
+**Новая либа `orchestrator/lib/run-ledger.cjs`** (CJS, только builtins, CLI + чистые экспорты) + wiring в `commands/orchestrator/run.md`:
+1. Диспетчер (harness, исполняющий run.md) обрамляет Workflow: `start --at <ISO>` ДО (создаёт `runs/<id>/run.json` status:running — упавший прогон оставляет след) и `finish --at <ISO>` ПОСЛЕ (finished_at, duration_ms, result-сводка verdict/readiness/conflicts/counts, `model_map` из исходника процесса, tokens opportunistic) + одна строка в `runs/ledger.ndjson`.
+2. run-id детерминирован: `<yyyy-mm-dd>-<slug>-<base36(epoch-ms)>`, без Math.random; ndjson идемпотентен по run_id (retry finish не дублирует времянку), run.json — last-write-wins; `finish` без `start` не падает (status finished-unstarted).
+3. `model_map` извлекается из label-строк исходника (инвариант single-line opts, уже зацементированный смоуком 0146); agentType-персоны помечаются `via-agent-definition`.
+4. Отвергнуто: (i) пер-агентные таймстемпы изнутри процесса — нарушает determinism-контракт, а транскрипт-дир harness уже хранит per-agent детали (ledger = durable сводка, не замена); (ii) инструментировать 56 call-site'ов runtime-обёрткой — инвазивно, статическая экстракция даёт ту же карту бесплатно; (iii) размещение рядом с dev-side `audit-journal.ndjson` (первичная формулировка VC-087) — прогоны живут в проекте-потребителе, контракт места уже объявлен run.md = `.claude/orchestrator/runs/`.
+
+### Outcome
+Тест `tests/orchestrator/run-ledger.test.cjs` 10/10 (в `test:orchestrator`); CLI прогнан e2e на реальном процессе; полный `npm run verify` EXIT=0. run.md «Run records» переписан: follow-up закрыт, транскрипт-дир остаётся source of truth per-agent деталей. Закрывает трейс-ногу VC-133/134 graduation-гейта (шаг 6) и даёт дренаж «тихого дрейфа». Исполнитель — opus-субагент; ревью main-моделью: либа построчно, дифф run.md, verify.
+
+### Lessons
+1. **Determinism-контракт Workflow диктует топологию observability:** раз скрипт не может знать время — часы живут у диспетчера, а скрипт остаётся чистым; «кто ставит таймстемп» = архитектурное решение, не деталь.
+2. **Цементирование инварианта окупается немедленно:** смоук-гейт 0146 («label-строка несёт model») через день стал парсинг-контрактом для extractModelMap — исполняемые инварианты компаундятся.
+
+---
+
+## DEC-DEV-0148 — Substrate-graduation гейт + правило «built ≠ validated» + минимальный CI (VC-133/134/127) — очередь vibe-coding анализа ЗАКРЫТА
+
+**Date:** 2026-07-04
+**Trigger:** шаг 6 (финальный) очереди DEC-DEV-0144. Порог «production-ready» не был оформлен: трейсы отсутствовали (закрыто 0147), CI не было вовсе (`.github/workflows` пуст), а несколько runtime-smoke месяцами стояли «built по написанному плану» (§7 риск 5 анализа).
+**Tag:** #d7 #gates #ci #feat
+
+### Context
+4-компонентный substrate-чеклист из Google-статьи (VC-133/134): evals-в-CI / трейсы / scoped permissions / security review. К моменту шага: трейсы ✅ built (0147), scoped permissions ✅ существовали (tools:-frontmatter 7 субагентов + scope-guard), CI ❌, security review 🟡 частичен.
+
+### Decision
+1. **`dev/gates/SUBSTRATE_GRADUATION_GATE.md`** — readiness-гейт per graduation-событие (не разовый): 4 компонента с честными статусами, критерий закрытия компонента 4, PASS-чеклист с VC-127-привязкой, таблица deferred-smoke долга (3 плана «next pilot session» — уже за порогом «>2», прогон приоритетен).
+2. **CI-нога = минимальный GitHub Action** `.github/workflows/verify.yml` (ubuntu, node 22, `npm install` — лок-файла нет, `npm run verify`; floor без matrix/cache). Выбран вместо задокументированного solo-субститута: браузерные смоуки кросс-платформенны (нашли `/usr/bin/google-chrome` ubuntu-раннера, graceful-skip при отсутствии), Action самовалидируется первым прогоном на этом же PR (VC-127 в действии). Отвергнуто: только-документировать локальный verify (CI дешевле, чем казалось); полный agent-eval в CI (потолок, отдельный трек VC-128).
+3. **VC-127 «built ≠ validated»** — Step 3.5 в `phase-closure.md` (разделять built/validated в статус-доках; считать deferred-smoke долг, >2 = стоп; не архивировать непрогнанные планы; prod-graduation → гейт) + строка-связка в `live-run-validation.md` (именно live-прогон флипает built→validated).
+
+### Outcome
+`npm run verify` локально EXIT=0; первый Linux-прогон verify — на CI этого PR (статически замеченные риски: браузерные смоуки на ubuntu впервые ЗАПУСТЯТСЯ, а не скипнутся; case-sensitivity unknown-unknowns; eslint по `^`-диапазону). **Очередь DEC-DEV-0144 §8 закрыта целиком:** шаги 1-6 = PR #114/#116/#118/#119/#120/этот; шаг 7 (линзы VC-108/024) — deferred до kickoff Epic F/G by design. Исполнитель — opus-субагент; ревью main-моделью.
+
+### Lessons
+1. **Гейт, честно фиксирующий собственное нарушение, ценнее «зелёного»:** таблица deferred-smoke долга в гейте сразу показала 3 плана за порогом — гейт родился с actionable-находкой, а не декларацией.
+2. **CI-решение стоило проверить фактом, а не предположением:** «verify не готов к Linux» казалось блокером, но чтение смоуков показало кросс-платформенный browser-резолв с graceful-skip — цена CI-ноги упала с «отдельный трек» до «12 строк yml» (config-failure-first в действии: сначала проверь harness-факты).
+
+---
+
+## DEC-DEV-0149 — Wave (C∥D) D-ядро ПОСТРОЕНО: панель-параметризация consilium-synth (D1a) + `/product:consilium` жюри-раннер для decision-эскалаций (D1b) + политика §7.6 в коде (D2)
+
+**Date:** 2026-07-04
+**Trigger:** стройка committed-target BATCH_3 после merge kickoff-PR #115 (DEC-DEV-0145). Сборка = MDP-оркестрация (D1a — main-модель сама, орк-либа = высокий R; D1b runtime-код — opus-исполнитель в worktree `ce3-wt-wave-cd`; ревью — main). *(Изначально записан как 0146 в PR #117 — перенумерован в 0149 при merge: параллельный vibe-coding-трек занял 0146-0148, PR #118-#121; 7-я итерация [[feedback_dec_dev_collision_check]].)*
 **Tag:** #vision #epic-d #consilium #product
 
 ### Context
@@ -7653,13 +7724,15 @@ Kickoff 0145 ре-скоупил Epic D в генерализацию постр
 1. **D1a** — `consilium-synth.cjs` принимает опциональную панель: `normalizePanel()` (dedupe/trim/fallback на дефолт — malformed панель не сужает и не опустошает жюри молча), `synthesize/buildMatrix/isPriorVerdict/collectOptionIds(…, panel)`, CLI `--panel a,b,c` + `panel` в object-форме, результат раскрывает `panel` (D2 no-silent-fan-out). Omitted == `[velocity,fidelity,integrity]` 1:1 — все 20 P2-тестов зелёные без правок; +6 юнитов (custom-панель, panel-honesty на custom, veto/soft-veto panel-agnostic, byte-identical backward-compat, CLI). Отвергнуто: generic-копия либы (дубль математики/дрейф двух soft-veto); маппинг персон на 3 арх-приора (теряет гетерогенность).
 2. **D1b** — `product/processes/consilium.mjs` (5 фаз Load→Scope→Jury→Synthesize→Recommend) + `commands/product/consilium.md` (Workflow({scriptPath}) + inline-fallback). 7 рельсов В КОДЕ: R1 fork-guard <2 опций → честный отказ ДО спавна + non-blocking маршрут-нота в PA (вторая опция НЕ фабрикуется); R2 declared scope до фан-аута (subject+панель+axes в log); R3 панель по зоне (architect+qa всегда, ux только UI-bearing — зеркало условного ux-спавна complete-feature; прямой вызов zone-router отклонён исполнителем обоснованно: он роутит по file-path, у decision-PA его нет); R4 raw-source брифы (FB-LR-31); R5 canonical agentType + crash-safe слоты + bounded re-spawn=1 + форс `prior` к канон-имени персоны (слот авторитетен о том, ЧЬЯ линза бежала); R6 synth = транспорт verbatim (`--panel` из panelNames; verdicts → `.product/.consilium/<PA>-verdicts.json` под anchor-root); R7 integration-pass surfacing-only (зеркало 0135). PA-out = update-in-place (0089), prepare-only — PA не закрывается, спеки не правятся, «ратификация за владельцем» явной строкой.
 3. **D2** — политика §7.6 зашита и в код (R2), и в команду текстом; `category_eligible` (SSOT gap-classifier: threshold/moscow/screen-decision/*-semantic) — surfaced caveat, hard-block остаётся fork-guard.
+4. **Merge-rider (0146-гейт соседа):** параллельно влитый DEC-DEV-0146 ввёл смоук-гейт «каждый `agent()` несёт `model:`/`agentType:`» — consilium.mjs допинован по той же раскладке: **sonnet** = anchor/load/synth-транспорт/deliver/refuse (механика+relay — рекомендацию вычисляет код), **opus** = integration-pass (судейство), жюри — `agentType:` (модель из frontmatter определений персон).
 
 ### Outcome
-`npm run verify` EXIT=0 в worktree (26 synth-юнитов; consilium-wiring 62 ассертов; workflow-смоук парсит новый .mjs; gen:map/catalog перегенерированы — урок PR #102 закрыт регистрацией в overlay; counts 24/44 не тронуты). Исполнитель поймал и починил дефект собственного теста (наивный «нет Date/Math»-чек ложно бил по harness-constraint комментариям → strip-comments). Live-грейд жюри на реальном decision-PA — pilot-gated (как B-d), отдельная сессия.
+`npm run verify` EXIT=0 на дереве, смёрженном с main `caf8d3b` (26 synth-юнитов; consilium-wiring 62 ассертов; workflow-смоук вкл. новый model-pin-гейт 0146; gen:map/catalog перегенерированы — урок PR #102 закрыт регистрацией в overlay; counts 24/44 не тронуты). Исполнитель поймал и починил дефект собственного теста (наивный «нет Date/Math»-чек ложно бил по harness-constraint комментариям → strip-comments). Live-грейд жюри на реальном decision-PA — pilot-gated (как B-d), отдельная сессия.
 
 ### Lessons
 1. **«Реюз роутера» ≠ «вызов роутера»:** zone-router детерминирован по file-path, а вход жюри — PA без пути; правильная форма реюза — зеркалирование его РЕШЕНИЯ (условный ux-гейт), не его интерфейса. Проверяй, на каком ключе детерминирован реюзаемый оракул, до того как обещать «прямой реюз» в брифе.
 2. **Форс идентичности слота поверх self-report агента:** персона может мис-лейбльнуть `prior` — слот, который её спавнил, знает истину и перезаписывает. Дешёвый guard против тихой потери вердикта на панель-фильтре.
+3. **Параллельный трек может ввести НОВЫЙ гейт, пока твой PR открыт:** conflict-резолюция — это не только склейка текста; после merge main в ветку прогоняй полный verify и жди, что чужие свежие гейты предъявят требования к твоему коду (здесь — model-pinning).
 
 ---
 

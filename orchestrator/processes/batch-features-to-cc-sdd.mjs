@@ -133,7 +133,7 @@ const init = await agent(
   `Confirm cc-sdd is wired + active in .claude/integrator/active-tools.yaml and that the kiro-spec-batch skill is installed; confirm zones D2-T01/T06 covered in pmo-mapping.yaml; ` +
   `map the .product/ handoff batch (${HANDOFFS.length ? HANDOFFS.join(', ') : 'all status: ready|partial in .product/handoffs/'}); ` +
   `run the env-readiness-probe. Return a one-paragraph init summary + whether the batch is routable. If cc-sdd / kiro-spec-batch is NOT present, say so plainly — do NOT improvise a substitute.`,
-  { phase: 'Init', label: 'init' },
+  { model: 'sonnet', phase: 'Init', label: 'init' },   // MDP: orchestrator-init recon (mechanical)
 )
 log(`init: ${init ? 'context gathered' : 'init returned nothing'}`)
 
@@ -143,7 +143,7 @@ await agent(
   `Run the build-steering regimen (skills/orchestrator/build-steering.md). DELEGATE to cc-sdd's kiro-steering skill to bootstrap/sync .kiro/steering/{product,tech,structure}.md. ` +
   `The tech stack is ${STACK_DECIDED ? 'DECIDED — ensure tech.md pins it with explicit versions + a compatibility matrix' : 'NOT decided — STOP and request it; do not let a stack be inferred silently'}. ` +
   `Supplement product.md with .product/ framing. Do NOT build roadmap.md "## Specs" here (that is the bridge's job). Return the stack + pinned versions in one line.`,
-  { phase: 'Steering', label: 'steering' },
+  { model: 'sonnet', phase: 'Steering', label: 'steering' },   // MDP: delegate to kiro-steering, pin stack (standard/mechanical)
 )
 
 // ---- Phase 3: bridge — handoff → brief.md + roadmap line (+ preflight C-07) -
@@ -160,7 +160,7 @@ const bridged = (await parallel(
       `3) Write .kiro/specs/<slug>/brief.md from the adapter's cc_sdd_input (embed the must-cover source ids).\n` +
       `4) Write/append the .kiro/steering/roadmap.md "## Specs (dependency order)" line (FM-NNN + Dependencies from §12) in kiro-spec-batch's exact format.\n` +
       `Set experimental=true if handoff status is partial. Return the Bridge verdict.`,
-      { schema: BRIDGE_SCHEMA, phase: 'Bridge', label: `bridge:${h}` },
+      { model: 'sonnet', schema: BRIDGE_SCHEMA, phase: 'Bridge', label: `bridge:${h}` },   // MDP: deterministic-preflight-gated brief authoring from adapter output (standard)
     ),
   ),
 )).filter(Boolean)
@@ -183,7 +183,7 @@ if (!ready.length) {
     `It reads .kiro/steering/roadmap.md "## Specs (dependency order)" + each .kiro/specs/<slug>/brief.md, builds dependency waves, dispatches per-feature spec subagents, runs its cross-spec consistency review + fix loop, and finalizes. ` +
     `If nested subagent dispatch is unavailable in this context, fall back to running the kiro-spec-* pipeline (init→requirements→design→tasks) per feature yourself, in dependency-wave order, then run kiro-spec-batch's Step 4 cross-spec review prompt once. ` +
     `Return which features got a complete spec (spec.json + requirements.md + design.md + tasks.md), which failed, and the cross-spec review outcome.`,
-    { schema: BATCH_SCHEMA, phase: 'Author', label: 'kiro-spec-batch' },
+    { model: 'opus', schema: BATCH_SCHEMA, phase: 'Author', label: 'kiro-spec-batch' },   // MDP: deep spec authoring (waves/dispatch/cross-spec) + system stitching
   )
   const specced = (batch && batch.specced) || []
   log(`kiro-spec-batch: specced ${specced.length} — ${specced.join(', ')}; cross-spec: ${(batch && batch.cross_spec) || 'n/a'}`)
@@ -197,7 +197,7 @@ if (!ready.length) {
         `node ${ORACLE} --handoff <its handoff> --spec .kiro/specs/${b.slug}/requirements.md --spec .kiro/specs/${b.slug}/design.md ` +
         `--self-report '${JSON.stringify([].concat((b.source_ids || {}).scenarios || [], (b.source_ids || {}).rules || [], (b.source_ids || {}).invariants || []))}'.\n` +
         `passed = exit 0. Report coverage.families.*.missing + any self_report_cross_check flags. Do NOT eyeball coverage — relay the helper's JSON.`,
-        { schema: COVERAGE_SCHEMA, phase: 'Coverage', label: `coverage:${b.feature}` },
+        { model: 'sonnet', schema: COVERAGE_SCHEMA, phase: 'Coverage', label: `coverage:${b.feature}` },   // MDP: coverage-oracle deterministic-gate relay (mechanical transport)
       ),
     ),
   )).filter(Boolean)
@@ -210,7 +210,7 @@ if (!ready.length) {
     `Commit ONLY the authored cc-sdd specs + steering + briefs for this batch: ` +
     `git add .kiro/specs/ .kiro/steering/ and commit (feat(specs): batch ${specced.join('+')} → cc-sdd specs). ` +
     `Do NOT add unrelated files (ambient .beads/ churn, project-journal). Return the sha.`,
-    { schema: COMMIT_SCHEMA, phase: 'Commit', label: 'commit' },
+    { model: 'sonnet', schema: COMMIT_SCHEMA, phase: 'Commit', label: 'commit' },   // MDP: selective git add + commit (mechanical)
   )
 
   result = {

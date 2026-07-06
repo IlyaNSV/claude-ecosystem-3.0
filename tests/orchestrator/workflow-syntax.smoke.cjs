@@ -81,5 +81,43 @@ for (const { dir, file } of entries) {
   });
 }
 
+// ---- MDP model-pinning gate (VC-118) ---------------------------------------
+// The Model Delegation Policy (global CLAUDE.md, §3.3) requires every Workflow agent()
+// call to pin its model per-stage: an agent() WITHOUT opts.model inherits the (expensive)
+// SESSION model, which is both waste AND a confound for judged/graded stages (a jury must
+// hold ONE fixed model across its arms). This gate makes that non-optional: EVERY agent()
+// call must carry either `model:` (an explicit per-stage pin) OR `agentType:` (a canonical
+// persona whose model is pinned in its agents/**/*.md frontmatter — pinning it again in the
+// call would just duplicate the definition). It is placed HERE, in the shared smoke that
+// scans BOTH PROC_DIRS, rather than in the per-process wiring tests, because (a) it then
+// covers files that have no wiring test (batch-features-to-cc-sdd.mjs) and every FUTURE
+// process for free, and (b) it is one check in one place instead of N.
+//
+// Invariant this relies on (true across every process today, and the style to keep): each
+// agent() call passes its opts as a SINGLE-LINE object literal, and `label:` appears ONLY in
+// an agent() opts object (never in a schema / workflow() / parallel() opts). So "# of lines
+// with `label:`" == "# of agent() calls", and model/agentType live on that same line. A
+// future multi-line opts object would trip this — the fix is to keep model/agentType on the
+// label line, which also keeps the pin visible at the call site.
+for (const { dir, file } of entries) {
+  const label = `${path.basename(path.dirname(dir))}/${path.basename(dir)}/${file}`;
+  test(`${label} — every agent() call pins model: or agentType: (MDP/VC-118)`, () => {
+    const src = fs.readFileSync(path.join(dir, file), 'utf8');
+    const lines = src.split(/\r?\n/);
+    const unpinned = [];
+    lines.forEach((line, i) => {
+      if (!/\blabel:/.test(line)) return;                 // not an agent() opts line
+      if (/\b(model|agentType):/.test(line)) return;      // pinned (explicit model OR a canonical persona)
+      unpinned.push(`L${i + 1}: ${line.trim()}`);
+    });
+    if (unpinned.length) {
+      throw new Error(
+        `${unpinned.length} agent() call(s) missing an MDP model pin (add \`model: '…'\` per MDP tier, ` +
+        `or \`agentType:\` for a canonical persona):\n        ${unpinned.join('\n        ')}`
+      );
+    }
+  });
+}
+
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);

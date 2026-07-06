@@ -243,7 +243,7 @@ const mech = await agent(
   `(the suite RED is an env artifact, the gate could NOT judge the code).\n` +
   `  • READY          — substrate up and any suite failures are REAL test failures (code).\n` +
   `passed = (suite green AND build green). List every failure verbatim in failures[]; put the probe/allowlist reasons in readiness_reasons[].`,
-  { schema: MECH_SCHEMA, phase: 'Mechanical', label: 'mechanical' },
+  { model: 'sonnet', schema: MECH_SCHEMA, phase: 'Mechanical', label: 'mechanical' },   // MDP: run suite/build + relay + deterministic allowlist classify (standard/mechanical)
 )
 log(`mechanical: ${mech && mech.passed ? 'GREEN' : 'RED'}${mech && mech.failures && mech.failures.length ? ` — ${mech.failures.length} failure(s)` : ''}; readiness=${(mech && mech.readiness) || 'READY'}`)
 
@@ -257,7 +257,7 @@ const BASELINE_SCHEMA = { type: 'object', required: ['sha'], properties: { sha: 
 const base = await agent(
   `Capture the pre-gate baseline: run \`git rev-parse HEAD\` via Bash and return its sha. ` +
   `This is the ground-truth snapshot the feature was handed to the gate at — do NOT commit or change anything.`,
-  { schema: BASELINE_SCHEMA, phase: 'Mechanical', label: 'baseline' },
+  { model: 'sonnet', schema: BASELINE_SCHEMA, phase: 'Mechanical', label: 'baseline' },   // MDP: git-sha relay (mechanical)
 )
 const BASELINE = (base && base.sha) || ''
 log(`baseline sha for order-aware verify: ${BASELINE || '(unavailable — verify falls back to worktree-only)'}`)
@@ -275,7 +275,7 @@ const validateOne = (v) =>
     `requirement or a clean seam is reported via clean:true, it is NOT a finding (do not emit a "coverage confirmed" finding). ` +
     `For every finding include where_to_verify so it can be ` +
     `independently confirmed against ground truth before anyone acts on it. Return your verdict (validator: ${v.key}).`,
-    { schema: VALIDATOR_SCHEMA, phase: 'Validate', label: `validate:${v.key}` },
+    { model: 'opus', schema: VALIDATOR_SCHEMA, phase: 'Validate', label: `validate:${v.key}` },   // MDP judging: the RA-8/9/10 validator panel — pinned + FIXED across all 3 lenses (single call site)
   )
 
 // FB-LR-15 (DEC-DEV-0101): a validator that dies on a TERMINAL API error ("Connection closed
@@ -321,7 +321,7 @@ const verifyFinding = (f) =>
     `  • refuted          — absent in BOTH worktree and baseline → the validator misread; a true hallucination → drop.\n` +
     `${BASELINE ? '' : 'With no baseline, use present (defect in worktree) or refuted (absent) only.\n'}` +
     `confirmed = (disposition !== 'refuted'). Return disposition + confirmed + evidence (cite what you found in EACH tree).`,
-    { schema: VERIFY_SCHEMA, phase: 'Synthesize', label: `verify:${f.validator}:${f.ref || f.kind}` },
+    { model: 'opus', schema: VERIFY_SCHEMA, phase: 'Synthesize', label: `verify:${f.validator}:${f.ref || f.kind}` },   // MDP: verify-finding-before-act (judgment, high R — gates remediate vs drop)
   )
 
 // verify all raw findings in parallel (read-only); bucket by disposition (DEC-DEV-0093).
@@ -358,7 +358,7 @@ const escalateConflict = (f, fix) =>
     `the contradiction (which specs/requirements/design decisions disagree), the feature, and the route — Product for a cross-spec/requirement contradiction or a provider/design CHOICE, ` +
     PA_CANON +
     `the owning spec's author for a design self-contradiction. Mark it a cross-spec-conflict escalation requiring an upstream decision. Never commit code.`,
-    { phase: 'Synthesize', label: `escalate-conflict:${f.validator}:${f.ref || f.kind}` },
+    { model: 'sonnet', phase: 'Synthesize', label: `escalate-conflict:${f.validator}:${f.ref || f.kind}` },   // MDP: escalation PA write (standard/mechanical)
   )
 
 // FB-LR-16 (DEC-DEV-0102): the gate may remediate + COMMIT here, BEFORE the verdict is
@@ -405,7 +405,7 @@ while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
         : '') +
       `Otherwise fix the concrete defect ONLY (no scope creep), add/repair the covering test if the lens is requirements-coverage, then selective-commit (NEVER git add -A — explicit paths) with message: fix(${FEATURE}): ${f.kind} ${f.ref || ''}; return remediated:true, block_class:'fixed'. ` +
       `THEN self-check your fix: run \`node ${REMEDIATION_GUARD} --fix-note "<your one-line note of what you did>"\` and set unilateral to its result — if your fix actually resolved a contradiction by picking a side, set unilateral:true so it is surfaced (it should normally be false).`,
-      { schema: REMEDIATE_SCHEMA, phase: 'Synthesize', label: `remediate:${f.validator}:${f.ref || f.kind}` },
+      { model: 'opus', schema: REMEDIATE_SCHEMA, phase: 'Synthesize', label: `remediate:${f.validator}:${f.ref || f.kind}` },   // MDP: fixes + commits a confirmed code defect (impl, high R + discretion)
     )
     const cls = (fix && fix.block_class) || ''
     const isEscalate = cls === 'cross-spec-conflict' || cls === 'design-contradiction'

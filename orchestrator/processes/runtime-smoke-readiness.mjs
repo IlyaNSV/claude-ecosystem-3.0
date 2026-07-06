@@ -119,7 +119,7 @@ const emitRuntimeRequest = (requests) =>
     `These are escalate→await (OD7): a real run is BLOCKED until access exists — note "escalate→await when a runtime smoke needs real access". Do NOT provision, mock, or fake any capability to make the boot pass. ` +
     PA_CANON +
     `Do NOT commit code. Return a one-line confirmation.`,
-    { phase: 'Smoke', label: 'runtime-capability-request' },
+    { model: 'sonnet', phase: 'Smoke', label: 'runtime-capability-request' },   // MDP: §6 capability-request PA write (standard/mechanical)
   )
 
 // On NOT_STARTABLE: no run target is declared — the app has no boot command. That is a
@@ -130,7 +130,7 @@ const recordNotStartable = () =>
     `Append a NON-BLOCKING tracking entry to the canonical pending-actions file: "P7 runtime-smoke could not run — no dev/start command declared", route Product (scaffold/spec gap — the run target must be defined before a runtime smoke is meaningful). Do NOT invent or guess a boot command. ` +
     PA_CANON +
     `Do NOT commit code. Return a one-line confirmation.`,
-    { phase: 'Report', label: 'not-startable' },
+    { model: 'sonnet', phase: 'Report', label: 'not-startable' },   // MDP: non-blocking PA tracking write (standard/mechanical)
   )
 
 // ===========================================================================
@@ -143,7 +143,7 @@ phase('Assess')
 const envProbe = await agent(
   `Run the env-readiness probe: \`node ${ENV_PROBE}\` via Bash and relay its JSON verbatim (readiness + reasons). ` +
   `Do NOT start any substrate yourself — just report whether what the project uses is up.`,
-  { schema: ENV_READINESS_SCHEMA, phase: 'Assess', label: 'env-readiness' },
+  { model: 'sonnet', schema: ENV_READINESS_SCHEMA, phase: 'Assess', label: 'env-readiness' },   // MDP: env-probe JSON relay (mechanical transport)
 )
 const envReadiness = (envProbe && envProbe.readiness) || 'unknown'
 log(`pre-flight env-readiness: ${envReadiness}${envProbe && envProbe.reasons && envProbe.reasons.length ? ` — ${envProbe.reasons.join('; ')}` : ''}`)
@@ -153,7 +153,7 @@ log(`pre-flight env-readiness: ${envReadiness}${envProbe && envProbe.reasons && 
 const assess = await agent(
   `Run the runtime-smoke readiness probe: \`node ${RUNTIME_PROBE}${FEATURE ? ` --feature ${FEATURE}` : ''} --root . --env ${envReadiness}${P6_VERDICT ? ` --p6 ${P6_VERDICT}` : ''}\` via Bash and relay its JSON verbatim ` +
   `(verdict + smoke_attemptable + run_target + requests + disclosures + plan). Do NOT provision, boot, or mock anything — just relay the lib output.`,
-  { schema: ASSESS_SCHEMA, phase: 'Assess', label: 'runtime-readiness' },
+  { model: 'sonnet', schema: ASSESS_SCHEMA, phase: 'Assess', label: 'runtime-readiness' },   // MDP: runtime-readiness.cjs JSON relay (mechanical transport)
 )
 const verdict = (assess && assess.verdict) || 'NOT_STARTABLE'
 const requests = (assess && assess.requests) || []
@@ -194,7 +194,7 @@ if (verdict === 'BLOCKED_ON_CAPABILITY') {
     `1) Boot the app with its run command in the background. 2) Wait up to the boot window. 3) Observe the success signals (process stays up, no fatal on startup, the server reports listening / a first request is not a 500). ` +
     `4) If it FAILS to start, diagnose against the failure_classes — especially env-not-loaded (a 500 because runtime config / .env never loaded: the RUN 01 root cause that 223 green tests missed). 5) Stop the booted process.\n` +
     `Return result (STARTS | FAILS_TO_START | INCONCLUSIVE) + started + failure_class (a plan id or null) + diagnosis + observed. Do NOT edit code, do NOT commit.`,
-    { schema: SMOKE_SCHEMA, phase: 'Smoke', label: 'boot-smoke' },
+    { model: 'opus', schema: SMOKE_SCHEMA, phase: 'Smoke', label: 'boot-smoke' },   // MDP: boots the app + DIAGNOSES a failed start against the failure taxonomy (judgment/depth)
   )
   p7Result = (smoke && smoke.result) || 'INCONCLUSIVE'
   log(`P7 boot smoke: ${p7Result}${smoke && smoke.failure_class ? ` (${smoke.failure_class})` : ''}`)

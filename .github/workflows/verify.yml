@@ -1,0 +1,24 @@
+# Minimal CI floor (DEC-DEV-0144 / VC-133/134): run `npm run verify` on every
+# push to main and every PR. This is the FLOOR (evals-in-CI leg of the substrate
+# graduation gate), not the ceiling — no matrix / cache / badges / agent-evals here.
+# Browser smokes (tests/guide/*.smoke.mjs) find /usr/bin/google-chrome on the
+# ubuntu runner and run; they skip cleanly (exit 0) if no browser is present.
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # No package-lock.json in the repo → npm install, not npm ci.
+      - run: npm install --no-audit --no-fund
+      - run: npm run verify

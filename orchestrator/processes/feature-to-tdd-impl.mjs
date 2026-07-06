@@ -169,7 +169,7 @@ const plan = await agent(
   `${REGISTRY ? ` --registry ${REGISTRY}` : ''}. Relay its per-task tier/profile/why — do NOT eyeball tiers.\n` +
   `4) Read tasks.md for each actionable sub-task's _Boundary_/_Requirements_/_Depends_/(P)/done state and whether it is behavioral.\n` +
   `Return the ordered task plan (dependency order; one entry per actionable sub-task) + validation_commands.`,
-  { schema: PLAN_SCHEMA, phase: 'Plan', label: 'plan' },
+  { model: 'sonnet', schema: PLAN_SCHEMA, phase: 'Plan', label: 'plan' },   // MDP: task-DAG parse + classifier-tier relay (plan-parse mechanics; tiers come from CODE)
 )
 const tasks = ((plan && plan.tasks) || []).filter((t) => !t.done && !t.blocked)
 log(`plan: ${tasks.length} actionable task(s); HIGH=${tasks.filter((t) => t.tier === 'HIGH').map((t) => t.id).join(',') || '∅'}; LOW=${tasks.filter((t) => t.tier === 'LOW').map((t) => t.id).join(',') || '∅'}`)
@@ -195,7 +195,7 @@ if (tasks.length) {
   const probe = await agent(
     `Run the env-readiness probe: \`node ${ENV_PROBE}\` via Bash and relay its JSON verbatim (readiness + checks + reasons). ` +
     `Do NOT start any substrate yourself — just report whether what the project uses (per the probe's own detection) is up.`,
-    { schema: ENV_READINESS_SCHEMA, phase: 'Plan', label: 'env-readiness' },
+    { model: 'sonnet', schema: ENV_READINESS_SCHEMA, phase: 'Plan', label: 'env-readiness' },   // MDP: env-probe JSON relay (mechanical transport)
   )
   envReadiness = (probe && probe.readiness) || 'READY'
   log(`pre-flight env-readiness: ${envReadiness}${probe && probe.reasons && probe.reasons.length ? ` — ${probe.reasons.join('; ')}` : ''}`)
@@ -211,7 +211,7 @@ const implement = (task, extra = '') =>
     `FB-013: if you satisfy a real external/provider/secret/adapter seam with a Mock or unwired skeleton because real access is DEFERRED (not out of scope), state that explicitly in the CONCERNS field of your Status Report — it is propagated downstream, not dropped.\n` +
     `FB-LR-07 (T5): NEVER resolve a cross-spec/requirement contradiction or a design self-contradiction yourself. If this task requires picking a side of such a conflict, return BLOCKED, set block_class:'cross-spec-conflict' or 'design-contradiction', and state the contradiction explicitly in the blocker — do NOT commit a unilateral choice.\n` +
     `Do NOT commit, do NOT edit tasks.md. End with the exact ## Status Report block.${extra}`,
-    { schema: IMPL_SCHEMA, phase: 'Implement', label: `impl:${task.id}` },
+    { model: 'opus', schema: IMPL_SCHEMA, phase: 'Implement', label: `impl:${task.id}` },   // MDP: TDD implementer writes REAL runtime code (deep + high R)
   )
 
 const debug = (task, reason) =>
@@ -219,7 +219,7 @@ const debug = (task, reason) =>
     `Read ${KIRO_TPL}/debugger-prompt.md (kiro-debug protocol) — fresh-context root-cause for task ${task.id}. ` +
     `Failure: ${reason}. Use git diff of current uncommitted changes + spec ${SPEC_DIR}. ` +
     `Return NEXT_ACTION (RETRY_TASK | BLOCK_TASK | STOP_FOR_HUMAN) + ROOT_CAUSE + FIX_PLAN.`,
-    { schema: DEBUG_SCHEMA, phase: 'Implement', label: `debug:${task.id}` },
+    { model: 'opus', schema: DEBUG_SCHEMA, phase: 'Implement', label: `debug:${task.id}` },   // MDP: fresh-context root-cause debugging (deep reasoning)
   )
 
 // DEC-DEV-0096 (T5, FB-LR-08 / FB-LR-07): classify a BLOCK before deciding what to do with it.
@@ -241,7 +241,7 @@ const classifyBlock = (task, reason) =>
     `Run the deterministic backbone: \`node ${REMEDIATION_GUARD} --reason "<the blocker text>"\` via Bash and read its \`class\`. ` +
     `Then return the class, ESCALATING (cross-spec-conflict | design-contradiction) if EITHER the lib OR your own reading sees a contradiction BETWEEN requirements/specs or a design self-contradiction — conservative toward escalation: a contradiction must NOT be auto-retried or self-resolved (FB-LR-07).\n` +
     `class ∈ {transient (a flaky/locked/timed-out hiccup a retry would clear), capability (missing tool/secret/access/upstream decision), cross-spec-conflict, design-contradiction, content (a genuine code/logic gap)}.`,
-    { schema: BLOCK_CLASS_SCHEMA, phase: 'Implement', label: `classify-block:${task.id}` },
+    { model: 'opus', schema: BLOCK_CLASS_SCHEMA, phase: 'Implement', label: `classify-block:${task.id}` },   // MDP: escalate-vs-retry judgment over a deterministic backbone — high R (mis-escalation masks a cross-spec conflict, FB-LR-07)
   ).then((r) => (r && r.class) || 'content')
 
 const gate = (task, impl) => {
@@ -251,7 +251,7 @@ const gate = (task, impl) => {
       `Run git diff yourself; do NOT trust the implementer report. Verify against requirements §${(task.requirements || []).join(', ')} + design + _Boundary_ ${task.boundary || 'n/a'}. ` +
       `Also flag: (a) FB-010 — any new exported/public method this task created that has NO production call-site (orphan export = cross-task integration gap; per-task review is the only place narrow enough to spot it before the seam is forgotten); (b) FB-006 — any change to project-global config outside _Boundary_ (git core.hooksPath, root lifecycle scripts, hook-managing tooling). ` +
       `Return the exact ## Review Verdict block. Set gate:independent.`,
-      { schema: REVIEW_SCHEMA, phase: 'Implement', label: `review:${task.id}` },
+      { model: 'opus', schema: REVIEW_SCHEMA, phase: 'Implement', label: `review:${task.id}` },   // MDP judging: HIGH-tier INDEPENDENT adversarial review
     )
   }
   return agent(
@@ -260,7 +260,7 @@ const gate = (task, impl) => {
     `(e.g. declarative-invariant → live DB introspection that the constraint exists; test-only → mutation proof; ` +
     `infra → boundary + git check-ignore + secrets-scan). NO separate reviewer subagent. ` +
     `Return a Review Verdict (APPROVED|REJECTED, gate:inline).`,
-    { schema: REVIEW_SCHEMA, phase: 'Implement', label: `verify:${task.id}` },
+    { model: 'sonnet', schema: REVIEW_SCHEMA, phase: 'Implement', label: `verify:${task.id}` },   // MDP: LOW-tier inline mechanical property-check — the gate-risk-classifier already ruled this task low-blast-radius (honors the HIGH/LOW rigor split)
   )
 }
 
@@ -293,7 +293,7 @@ const recordBlock = (taskId, reason) =>
     `(Product | Integrator | manual-staging | human) so it isn't silently lost. ` +
     PA_CANON +
     `Do NOT commit code.`,
-    { phase: 'Implement', label: `block:${taskId}` },
+    { model: 'sonnet', phase: 'Implement', label: `block:${taskId}` },   // MDP: annotate + commit block + PA write (mechanical)
   )
 
 // FB-013 (DEC-DEV-0081 fix #1): a task can reach READY_FOR_REVIEW + APPROVED and STILL
@@ -318,7 +318,7 @@ const surfaceConcern = (taskId, concern) =>
     `If the concern is a routine note (refactor/cleanup/style), do NOTHING. ` +
     PA_CANON +
     `Never block the task, never commit code.`,
-    { phase: 'Implement', label: `concern:${taskId}` },
+    { model: 'sonnet', phase: 'Implement', label: `concern:${taskId}` },   // MDP: non-blocking concern PA write + light triage (standard/mechanical)
   )
 
 // DEC-DEV-0117 (§6 detect-leg, fix #4): proactively surface the capability-items the
@@ -335,7 +335,7 @@ const surfaceCapability = (capItems) =>
     `These are TRACKING / DISCLOSURE, not requests to provision now (real access is a future deliverable per its tier). For a BLOCK disposition (no dev stand-in) note "would block a real run — escalate→await (OD7) when a task needs real access"; do NOT provision or mock anything here. ` +
     PA_CANON +
     `Do NOT block, do NOT commit code. Return a one-line confirmation.`,
-    { phase: 'Plan', label: 'capability-surface' },
+    { model: 'sonnet', phase: 'Plan', label: 'capability-surface' },   // MDP: §6 capability PA tracking write (standard/mechanical)
   )
 
 // ---- Phase 2: implement — sequential per-task FSM --------------------------
@@ -368,7 +368,7 @@ const CAP_DETECT_SCHEMA = {
   const cap = await agent(
     `Run the §6 capability detect-leg probe: \`node ${CAP_PROBE} --feature ${FEATURE} --root .\` via Bash and relay its JSON verbatim ` +
     `(capabilities[] with disposition/routes/surface + summary). Do NOT provision or mock anything — just relay the lib output.`,
-    { schema: CAP_DETECT_SCHEMA, phase: 'Plan', label: 'capability-detect' },
+    { model: 'sonnet', schema: CAP_DETECT_SCHEMA, phase: 'Plan', label: 'capability-detect' },   // MDP: capability-probe.cjs JSON relay (mechanical transport)
   )
   const surfaced = ((cap && cap.capabilities) || []).filter((c) => c && c.surface)
   for (const c of surfaced) capabilityItems.push(c)
@@ -412,7 +412,7 @@ for (const task of tasks) {
       log(`task ${task.id} transient block (retry ${transientRetries}/${MAX_TRANSIENT_RETRIES}) — re-probing env + retrying, no debug round`)
       await agent(
         `Re-run the env-readiness probe: \`node ${ENV_PROBE}\` via Bash and relay its JSON. Do NOT start any substrate yourself — just report whether it is now up.`,
-        { schema: ENV_READINESS_SCHEMA, phase: 'Implement', label: `env-recheck:${task.id}` },
+        { model: 'sonnet', schema: ENV_READINESS_SCHEMA, phase: 'Implement', label: `env-recheck:${task.id}` },   // MDP: env-probe JSON relay (mechanical transport)
       )
       impl = await implement(task, ` Previous attempt hit a TRANSIENT block (${impl.blocker || ''}); retry ${transientRetries}/${MAX_TRANSIENT_RETRIES}.`)
       continue
@@ -468,14 +468,14 @@ for (const task of tasks) {
   // verify-completion (fresh evidence) → selective commit + mark [x]
   await agent(
     `Invoke kiro-verify-completion on the claim that task ${task.id} is complete, using FRESH evidence from current code state (re-run the relevant validation command). If it does not hold, say so — do not rubber-stamp.`,
-    { phase: 'Implement', label: `verify-completion:${task.id}` },
+    { model: 'opus', phase: 'Implement', label: `verify-completion:${task.id}` },   // MDP judging: fresh-evidence completion gate ("do not rubber-stamp")
   )
   const commit = await agent(
     `Selective commit for task ${task.id}: stage ONLY the changed files (${(impl.files_changed || []).join(', ')}) + ${SPEC_DIR}/tasks.md; mark task ${task.id} [x] in tasks.md; append a one-line ## Implementation Notes entry IF the task revealed a cross-cutting insight. ` +
     `NEVER git add -A / git add . — explicit paths only. ` +
     `FB-005: after staging, run git status --porcelain. If files this task introduced but that fell outside files_changed remain unstaged (lockfile/manifest churn it caused — package.json, pnpm-lock.yaml — or wiring it added, e.g. a worker entrypoint), STAGE THEM into this commit too so the task is committed completely and the tree is clean for the next task. Leave genuinely unrelated/ambient churn (.beads/, integrator project-journal) unstaged. Report any in-boundary file you had to add and any leftover. ` +
     `Commit message: feat(${FEATURE}): ${task.id} ${task.text || ''}. Return the sha.`,
-    { schema: COMMIT_SCHEMA, phase: 'Implement', label: `commit:${task.id}` },
+    { model: 'sonnet', schema: COMMIT_SCHEMA, phase: 'Implement', label: `commit:${task.id}` },   // MDP: selective commit + git-status reconcile (mechanical)
   )
   // FB-013 (DEC-DEV-0081 fix #1): propagate a non-blocking CONCERN (deferred-capability /
   // mock-stand-in) rather than dropping it — read it from the final implementer report and
@@ -548,7 +548,7 @@ if (implemented.length) {
       (degraded
         ? `ADVISORY MODE — ${blockedTasks.length} task(s) blocked (${blockedTasks.join(', ')}); the feature is NOT complete. Do NOT remediate. Run the cross-task / integration checks anyway and SURFACE any seams (orphan wiring, unhandled events, missing call-sites) as findings. Return MANUAL_VERIFY_REQUIRED + findings (FB-010: a blocked task must not hide a cross-task gap).`
         : `On NO-GO: fix ONLY the concrete findings, cap at 3 rounds; re-run. Return GO | NO-GO | MANUAL_VERIFY_REQUIRED + findings.`) + concernNote + capabilityNote,
-      { schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },
+      { model: 'opus', schema: GATE_SCHEMA, phase: 'Validate', label: degraded ? 'validate-impl:advisory' : 'validate-impl' },   // MDP judging: feature-level GO/NO-GO gate (fallback when nested P6 workflow() unavailable)
     )
     // Visibility (DEC-DEV-0091): a degraded gate must never read as a clean GO — surface it in findings.
     if (go) {

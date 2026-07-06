@@ -152,7 +152,7 @@ const auditOne = (feature, extra = '') =>
     `Relay trace_integrity.passed + every dangling ref (the cited id has NO source in .product — kind:missing-trace-source [FB-LR-12: the id may be a real owned contract, the source is what's missing — NOT an accusation it was fabricated], route:spec unless the id SHOULD exist in product, then route:product).\n` +
     `3) SEMANTIC pass: ${FIDELITY_AUDITOR}\n` +
     `faithful = (trace_integrity_passed AND no semantic drifts). Return the audit verdict.${extra}`,
-    { schema: AUDIT_SCHEMA, phase: 'Audit', label: `audit:${feature}` },
+    { model: 'opus', schema: AUDIT_SCHEMA, phase: 'Audit', label: `audit:${feature}` },   // MDP: deterministic-oracle relay + SEMANTIC fidelity audit (judgment)
   )
 
 // ---- design→tasks structural coverage (DEC-DEV-0095, FB-LR-05) — HYBRID: deterministic oracle
@@ -171,7 +171,7 @@ const coverageAudit = (feature) =>
     `Keep ONLY real gaps — a file some task plausibly builds is NOT a gap (drop it). For a forward_ref, confirm NO concrete task does the deferred wiring.\n` +
     `Return gaps[] (kind: uncovered-design-file | dangling-forward-ref; path; detail = why it stays unbuilt + the impact, e.g. "assembly module no task creates → routes/providers mount nothing"; ` +
     `severity — an unmounted entrypoint/module/router is high). gaps:[] if every design file is owned by some task.`,
-    { schema: COVERAGE_SCHEMA, phase: 'Audit', label: `coverage:${feature}` },
+    { model: 'opus', schema: COVERAGE_SCHEMA, phase: 'Audit', label: `coverage:${feature}` },   // MDP: oracle candidates + SEMANTIC gap confirm (judgment)
   )
 
 // ---- verify-finding-before-act (parity with P6, DEC-DEV-0087) --------------
@@ -193,7 +193,7 @@ const verifyDrift = (feature, d) =>
     `  • refuted          — the spec matches the product in BOTH current and baseline → the auditor misread; a hallucination → drop.\n` +
     `${BASELINE ? '' : 'With no baseline, use present (current spec drifts) or refuted (matches) only.\n'}` +
     `confirmed = (disposition !== 'refuted'). Return disposition + confirmed + evidence (cite current spec vs baseline vs product).`,
-    { schema: VERIFY_SCHEMA, phase: 'Triage', label: `verify-drift:${feature}:${d.ref || d.kind}` },
+    { model: 'opus', schema: VERIFY_SCHEMA, phase: 'Triage', label: `verify-drift:${feature}:${d.ref || d.kind}` },   // MDP: verify-finding-before-act (judgment, high R)
   )
 
 // ---- Phase 1: init ---------------------------------------------------------
@@ -203,7 +203,7 @@ await agent(
   `(skills/orchestrator/audit-spec-fidelity.md) for context. Confirm each feature has a generated spec ` +
   `(${FEATURES.map((f) => `${SPEC_BASE}/${f}/{requirements,design,tasks}.md`).join('; ')}) and that ${ORACLE} exists. ` +
   `If a spec is missing, note it — do NOT improvise. One-paragraph readiness summary.`,
-  { phase: 'Init', label: 'init' },
+  { model: 'sonnet', phase: 'Init', label: 'init' },   // MDP: recon / readiness summary (mechanical)
 )
 
 // pre-gate baseline (DEC-DEV-0093, FB-LR-03): the spec snapshot for ORDER-AWARE verifyDrift —
@@ -213,7 +213,7 @@ const BASELINE_SCHEMA = { type: 'object', required: ['sha'], properties: { sha: 
 const base = await agent(
   `Capture the pre-gate baseline: run \`git rev-parse HEAD\` via Bash and return its sha. ` +
   `This is the spec snapshot before any fidelity spec-fix — do NOT commit or change anything.`,
-  { schema: BASELINE_SCHEMA, phase: 'Init', label: 'baseline' },
+  { model: 'sonnet', schema: BASELINE_SCHEMA, phase: 'Init', label: 'baseline' },   // MDP: git-sha relay (mechanical)
 )
 const BASELINE = (base && base.sha) || ''
 log(`baseline sha for order-aware verify: ${BASELINE || '(unavailable — verify falls back to current-spec-only)'}`)
@@ -268,7 +268,7 @@ for (const a of drifting) {
       `If one exists, UPDATE it in place (refresh detail/severity; do not duplicate) instead of appending — only APPEND when no open PA matches that (feature, route:product, ids) signature. Match on (feature, route, ids), NOT the drift wording (it varies run-to-run). ` +
       PA_CANON +
       `Do NOT edit .product/ and do NOT patch the spec around it (OD8 reverse channel). Do NOT commit code.`,
-      { phase: 'Triage', label: `product-route:${a.feature}` },
+      { model: 'sonnet', phase: 'Triage', label: `product-route:${a.feature}` },   // MDP: pending-actions write + dedup (standard/mechanical)
     )
     productRouted.push({ feature: a.feature, drifts: productDrifts.length })
   }
@@ -302,7 +302,7 @@ for (const a of drifting) {
         `${presentDrifts.map((d) => `${d.ref || d.kind}: ${d.detail || ''}${d.evidence ? ` [evidence: ${d.evidence}]` : ''}`).join(' | ')}. ` +
         `Edit only ${SPEC_BASE}/${current.feature}/{requirements,design,tasks}.md; do NOT touch .product/. Selective commit ` +
         `(fix(specs): ${current.feature} fidelity). Return whether fixed.`,
-        { schema: FIX_SCHEMA, phase: 'Triage', label: `spec-fix:${current.feature}:r${round}` },
+        { model: 'opus', schema: FIX_SCHEMA, phase: 'Triage', label: `spec-fix:${current.feature}:r${round}` },   // MDP: edits + commits spec content (impl, higher R)
       )
       if (!fix || !fix.fixed) break
       current = await auditOne(current.feature, ' (RE-AUDIT after spec-fix — P1-2: confirm the fix did not introduce new drift.)')
@@ -327,7 +327,7 @@ for (const c of coveredFeatures) {
     `DEDUP (FB-LR-10, repeated-run idempotency): if an OPEN pending-action already routes feature ${c.feature} + the same unbuilt file(s) as a spec-completion, UPDATE it in place instead of appending a duplicate (match on (feature, route:spec, paths)). ` +
     PA_CANON +
     `Do NOT edit tasks.md yourself in this gate (a missing task is for the spec author / P3 re-run, not an auto-fix). Do NOT commit code.`,
-    { phase: 'Triage', label: `coverage-route:${c.feature}` },
+    { model: 'sonnet', phase: 'Triage', label: `coverage-route:${c.feature}` },   // MDP: pending-actions write + dedup (standard/mechanical)
   )
   log(`coverage gap (${c.feature}): ${c.gaps.length} unbuilt design file(s) → routed spec-completion (feature NOT impl-ready)`)
 }

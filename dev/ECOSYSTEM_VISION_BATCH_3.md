@@ -42,7 +42,7 @@
 
 ---
 
-## D-ядро *(committed)* — **✅ ПОСТРОЕНО 2026-07-04 (DEC-DEV-0146, PR #117): D1a+D1b+D2, verify EXIT=0; live-грейд жюри = pilot-gated**
+## D-ядро *(committed)* — **✅ ПОСТРОЕНО 2026-07-04 (DEC-DEV-0149 (изнач. 0146, перенумерован при merge), PR #117): D1a+D1b+D2, verify EXIT=0; live-грейд жюри = pilot-gated**
 
 ### D1a — Параметризация synth *(первый коммит; трогает `orchestrator/lib/` — согласованная точка)*
 - [x] `consilium-synth.cjs`: `PRIOR_LIST` → инъекция панели (напр. `synthesize(verdicts, opts, {panel})`); default = `[velocity,fidelity,integrity]` — **P2 behavior 1:1**, все существующие тесты зелёные без правок.
