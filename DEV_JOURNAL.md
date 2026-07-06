@@ -7736,6 +7736,29 @@ Kickoff 0145 ре-скоупил Epic D в генерализацию постр
 
 ---
 
+## DEC-DEV-0150 — Wave (C∥D) stretch C-i ПОСТРОЕН: `/product:batch-enrich` — макро-батч обогащения feature-set (checkpoint-first, гейты на границах фаз, prepare-only)
+
+**Date:** 2026-07-07
+**Trigger:** стройка stretch-очереди BATCH_3 после merge D-ядра (PR #117, DEC-DEV-0149) — пункт «ДАЛЬШЕ #1» файла-шва. Сборка = MDP-оркестрация: runner + команда — opus-исполнитель в worktree `ce3-wt-batch-enrich` по точному брифу, wiring-тест — sonnet-исполнитель, ревью + два фикса — main.
+**Tag:** #vision #epic-c #batch-enrich #product
+
+### Context
+Kickoff 0145 (решения г/д): completeness-loop hardening есть per-feature (`/product:complete`), но «крупная работа» из примера владельца — обогатить НАБОР FM релиза — требовала макро-шага. Cut 4 запрещает ре-имплементацию authoring F.2-F.10 внутри Workflow; решение «д» запрещает новый gate-disposition механизм (реюз L1 PA-escalate).
+
+### Decision
+1. **Новый `product/processes/batch-enrich-feature-set.mjs`** (5 фаз Plan→Enrich→Complete→Gate→Report) + `commands/product/batch-enrich.md` (Workflow({scriptPath}) + inline-fallback, паттерн consilium). 7 рельсов В КОДЕ: B1 explicit target (refusal без цели; `--all-planned` discovery логируется ДО работы); B2 checkpoint-first (урок E1) — манифест в `.product/.batch-enrich/<slug>/` ДО первого касания, слуг детерминирован из sorted-списка (без Date — harness), per-FM state-файлы = single-writer без гонки, resume со шва (verify-before-act 0093); B3 orchestrate-don't-duplicate — ENRICH-агент ИСПОЛНЯЕТ процедуру существующего `commands/product/feature.md` F.2→F.7, COMPLETE = `workflow()`-child на существующий `complete-feature.mjs` (ноль authoring-логики в скрипте); B4 гейты на границах фаз — per-item approve заменён PA-эскалацией решений (threshold/moscow/*-semantic/screen-decision/NFR [Y/D/L]/unsure) + ONE boundary-PA per FM (PA-dedup 0089, merge с прежним списком эскалаций при resume); B5 no status round-up — FM-статус НЕ переводится (F.10 = владелец), `honest_unmet` child'а verbatim; B6 no silent truncation — skip/fail per FM surfaced, батч продолжается; B7 bounded + single-writer.
+2. **FM-цикл ПОСЛЕДОВАТЕЛЬНЫЙ `for`, не `pipeline()`** — сознательное отклонение от буквы vision: конкурентные FM-цепочки гоняли бы один `.product/`-tree, product-хуки и аллокацию next PA-NNN канонического ledger (две цепочки минтят один id) — тот же single-writer рационал, что sequential RESOLVE в complete-feature. Отвергнуто: worktree-изоляция per FM (дорого + ломает canonical-PA канал).
+3. **F.8 (design) / F.9 (DA) — skip+log** (условные/опциональные, вне C-i); не-planned FM в явном списке проходит, но с громким log-флагом (explicit target = выбор владельца).
+
+### Outcome
+`npm run verify` EXIT=0 (ожидается на коммите); workflow-смоук 19/19 (вкл. model-pin гейт 0146: enrich=opus — реальное authoring-суждение, остальное sonnet, child через workflow() вне гейта); новый `batch-enrich-wiring.test.cjs` 85 ассертов (PA_CANON byte-identical к complete-feature, comment-strip техника против ложных Date-срабатываний); wiring: verify.md Step 4/4.6/9, overlay+реген карт/каталога (урок PR #102), package.json test:product. Ревью main поймало 2 зазора исполнителя: boundary-PA при resume мог перезаписать список эскалаций пустым (→ merge-инструкция), не-planned FM проходил молча (→ громкий лог). Live-прогон на ≥2 планируемых FM — pilot-gated (acceptance BATCH_3), отдельная сессия.
+
+### Lessons
+1. **Слово «pipeline()» в vision ≠ обязательство конкурентности:** если стадии пишут в один tree/ledger, single-writer `for` — правильная форма того же замысла; фиксируй отклонение явно в коде и журнале, а не молча.
+2. **Update-in-place без merge-инструкции теряет историю на resume:** идемпотентный PA-апдейт обязан явно наследовать прежний накопленный список — «перезапиши этим текстом» на втором прогоне стирает первый.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
