@@ -7781,6 +7781,28 @@ Kickoff 0145 (решения е/ж/з): Epic A дал реестр персон 
 
 ---
 
+## DEC-DEV-0152 — Wave (C∥D) stretch F1 ПОСТРОЕН: контракт autonomy-policy + skeleton-резолвер (L0/L1, floor, precedence) — БЕЗ wiring
+
+**Date:** 2026-07-07
+**Trigger:** последний stretch-пункт BATCH_3 после merge G1+G2 (PR #124, DEC-DEV-0151). Сборка — main-модель сама (семантика диспозиций = критическое решение; бриф исполнителю вышел бы длиннее кода).
+**Tag:** #vision #epic-f #autonomy #contract
+
+### Context
+Kickoff 0145 (решение «и»): F1 = контракт-спека + skeleton, wiring в orchestrator-гейты отложен до сверки полей с оркестратор-треком (причина отсрочки F1 ещё в 0136). Жёсткий констрейнт волны #3: резолвер ПОТРЕБЛЯЕТ risk-tier/readiness из `gate-risk-classifier.cjs`/`env-readiness.cjs`, не пере-выводит (иначе два расходящихся gate-policy механизма).
+
+### Decision
+1. **Контракт-док `dev/AUTONOMY_POLICY_F1_CONTRACT.md`**: сигнатура `resolve(operation_class, risk_tier, env_tier, policy, override) → {disposition, level_applied, floor_hit, why[]}`; таблица потребляемых producer-контрактов (`tier HIGH/LOW`, `readiness READY/DEGRADED/ENV_NOT_READY`, `env_tier dev/staging/prod`; absent/foreign → консервативный дефолт + why); precedence vision дословно (floor > override > pin-потолок > default_level > built-in L1); матрица L0/L1; чек-лист сверки с оркестратор-треком перед F2-wiring (enum-стабильность, probe-vs-classify, дом либы, audit-trail → run-ledger, `--autonomy=` флаг).
+2. **Skeleton `lib/autonomy-policy.cjs`** (pure fn, zero deps, no I/O; юниты 70 ассертов в `test:orchestrator`). Ключевые F1-рельсы: **floor LOCKED** — `policy.floor` из обычного конфига игнорируется громко (сужение floor = отдельный явный opt-in, не конфиг-ключ); **pin = потолок**, никогда не поднимает; **L2/L3 деградируют к L1 громко** (не построенный уровень не может тихо значить «больше auto»); **`consilium-gate` не эмитится никогда** (эмитить диспозицию без исполняющей машинерии = тихий провал); **`applyReadinessGuard` только даунгрейдит** (READY — без изменений; DEGRADED — auto→human-gate; ENV_NOT_READY — block), зеркало рельса самого env-readiness.
+3. **Размещение — repo-`lib/`** (буквальный путь vision): граница волны держит `orchestrator/` read-only (кроме согласованного D1a), а деплой-дом решается вместе с F2-wiring (кандидат `orchestrator/lib/`). **CHANGELOG сознательно не тронут** — скелет не доставляется потребителю (нет deploy-маппинга), consumer-запись поедет с F2-wiring.
+
+### Outcome
+`npm run verify` EXIT=0; юниты 70/70; counts 24/44 не тронуты. Волна E5 stretch-очередь ЗАКРЫТА: C-i (0150) → G1+G2 (0151) → F1 (0152); cuts (C-iii/G3/C-ii) остаются за BF-триггерами.
+
+### Lessons
+1. **Скелет обязан отклонять диспозиции, которые нечем исполнить:** enum vision шире реализации — честная форма «не построено» это деградация с why-записью (L2/L3→L1) и не-эмиссия (`consilium-gate`), а не «сделаем вид, что уровень есть».
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
