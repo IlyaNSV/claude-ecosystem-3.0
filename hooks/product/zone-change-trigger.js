@@ -103,9 +103,23 @@ try {
 }
 if (!diff) diff = '# (No git diff available — likely creation or file not in git)';
 
-const result = router.route(normalized, { diff, manifest });
+let result = router.route(normalized, { diff, manifest });
 
-// Fire gate: no zone, or magnitude below threshold → silent no-op.
+// ---------- G2 roster layer (participation-matrix over the zone router) ----------
+// Optional per-project .product/agent-roster.yaml. ABSENT file → loadRoster returns null →
+// resolveFiring returns the route() result UNCHANGED (byte-identical to pre-G behavior).
+// A broken/missing roster lib must NEVER block a write or silently kill the panel → fail-open.
+let rosterWarnings = [];
+try {
+  const rosterLib = require('./lib/agent-roster.cjs');
+  const roster = rosterLib.loadRoster(path.join(projectRoot, '.product', 'agent-roster.yaml'));
+  if (roster && Array.isArray(roster.warnings)) rosterWarnings = roster.warnings;
+  result = rosterLib.resolveFiring(result, roster);
+} catch (e) {
+  // roster lib unavailable / any error → proceed with the un-layered route result (fail-open)
+}
+
+// Fire gate: no zone, magnitude below threshold, or all personas dropped by roster → silent no-op.
 if (!result.fire) process.exit(0);
 
 // ---------- Append / update advisor-pending.yaml (dedup by artifact id) ----------
@@ -158,7 +172,8 @@ process.stderr.write(
   `Advisor review pending for ${fm.id} (zone: ${result.zone}, magnitude: ${result.magnitude}) — ` +
     `personas: ${result.personas.join(', ')}.\n` +
     `See .product/.pending/advisor-pending.yaml; spawn each as its canonical subagent_type ` +
-    `(not-found = STOP, never general-purpose fallback).\n`
+    `(not-found = STOP, never general-purpose fallback).\n` +
+    (rosterWarnings.length ? `Roster warnings (non-blocking): ${rosterWarnings.join('; ')}.\n` : '')
 );
 
 process.exit(0);

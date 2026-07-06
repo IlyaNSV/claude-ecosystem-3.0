@@ -7759,6 +7759,28 @@ Kickoff 0145 (решения г/д): completeness-loop hardening есть per-fe
 
 ---
 
+## DEC-DEV-0151 — Wave (C∥D) stretch G1+G2 ПОСТРОЕН: roster-конфиг + participation-matrix слоем над zone-router (Epic G минимум)
+
+**Date:** 2026-07-07
+**Trigger:** stretch-очередь BATCH_3 после merge C-i (PR #123, DEC-DEV-0150). Сборка = MDP: lib+hook+юниты — opus-исполнитель по точному брифу в worktree `ce3-wt-g-roster`, ревью — main.
+**Tag:** #vision #epic-g #roster #product
+
+### Context
+Kickoff 0145 (решения е/ж/з): Epic A дал реестр персон + хардкод-routing (`zone-router.cjs`/`zone-routing.yaml`); G-минимум добавляет слой конфигурируемости БЕЗ четвёртого firing-механизма (решение «е»: стопка над роутером, не параллель) и БЕЗ дубля пресетов D3/G4 (решение «ж»: одна реализация).
+
+### Decision
+1. **G1** — опциональный `.product/agent-roster.yaml` (per-персона `enabled/model/depth_threshold/extra_lenses` + user-пресеты). Новая dual-use либа `hooks/product/lib/agent-roster.cjs`: purpose-built парсер (техника parseManifest, без YAML-депа); merge над `DEFAULT_ROSTER` (omitted == дефолт); unknown-персона — kept + warning (тайпо не гасит реальную персону молча); malformed/unreadable — дефолты + warning, никогда throw (урок normalizePanel 0149). **Absent файл → `null`-сентинел.**
+2. **G2** — `resolveFiring(routeResult, roster)`: слой ПОВЕРХ выхода `route()`. `roster == null` → routeResult возвращается ТЕМ ЖЕ объектом (byte-identical шов — юнит ассертит и deepStrictEqual, и strictEqual против РЕАЛЬНОГО выхода роутера). Иначе: `enabled:false` → drop; `depth_threshold` только ПОДНИМАЕТ планку над зонным гейтом (thr > magnitude → drop), никогда не опускает; все выпали → `fire:false` + честный reason; `dropped[]` surfaced (no silent truncation). Wiring — `zone-change-trigger.js` между `route()` и fire-гейтом, try/catch fail-open (сломанная либа/ростер не блокирует запись и не гасит панель); roster-warnings — non-blocking строкой в stderr-сигнал.
+3. **Пресеты (D3≡G4)** — built-in `lean`/`full` + user-override в ростере; `getPreset`/`resolvePanel` экспортированы для D1b-панели, **само wiring в consilium.mjs отложено** (bring-forward: первая живая нужда пресета). G3 (панель/метрики) — CUT по kickoff.
+
+### Outcome
+`npm run verify` EXIT=0; новый `agent-roster.test.cjs` 20 блоков (в `test:product`); `zone-router.test.cjs` 17/17 без правок (поведение роутера не тронуто); counts 24/44 не тронуты (ростер = конфиг, не артефакт-тип); шаблон ростера сознательно НЕ шипается — absent==default, схема-SSOT в header либы. Live-проверка переопределения на пилоте — trigger-gated.
+
+### Lessons
+1. **«Слой над оракулом» дисциплинирует масштаб:** весь G-минимум уложился в одну либу + 10-строчную вставку в хук, потому что kickoff заранее запретил параллельный механизм; конфиг-слои начинай с вопроса «над каким существующим детерминированным выходом это стоит».
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
