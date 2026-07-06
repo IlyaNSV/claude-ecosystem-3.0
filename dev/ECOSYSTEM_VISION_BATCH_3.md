@@ -73,10 +73,10 @@
 **Acceptance:** прогон по ≥2 FM фикстуры доводит стадии, эскалирует decision, переживает обрыв (checkpoint + resume со шва).
 **Process:** `feat(product)` → 🔒 CHANGELOG + DEV_JOURNAL; verify.md.
 
-## G1+G2 минимум *(stretch; owner-дефолт (a))*
-- [ ] **G1:** `agent-roster.yaml` (или секция product.yaml): per-персона `enabled/model/depth_threshold/extra_lenses`; absent == встроенный дефолт 1:1.
-- [ ] **G2:** participation-matrix как **слой над `zone-router`** (решение «е»): `resolve(zone, magnitude, roster) → firing_set`; дефолт = текущий zone-routing 1:1; юниты.
-- [ ] Именованные пресеты состава (бывш. D3/G4, решение «ж») — если влезет: `lean/full/…`, потребляются D1b-панелью.
+## G1+G2 минимум *(stretch; owner-дефолт (a))* — **✅ ПОСТРОЕН 2026-07-07 (DEC-DEV-0151): либа+hook-wiring+юниты; live-переопределение = trigger-gated**
+- [x] **G1:** `.product/agent-roster.yaml` (per-персона `enabled/model/depth_threshold/extra_lenses`); absent == встроенный дефолт 1:1 (юнит: strictEqual-шов против реального route()).
+- [x] **G2:** participation-matrix как **слой над `zone-router`** (решение «е»): `resolveFiring(routeResult, roster) → firing_set` в `hooks/product/lib/agent-roster.cjs`, wiring fail-open в `zone-change-trigger.js`; дефолт = текущий zone-routing 1:1; юниты.
+- [x] Именованные пресеты состава (бывш. D3/G4, решение «ж»): built-in `lean/full` + user-override; `getPreset`/`resolvePanel` экспортированы — wiring в D1b-панель отложен (bring-forward: первая живая нужда пресета).
 
 **Acceptance:** без конфига поведение экосистемы байт-в-байт прежнее; с конфигом — панель/firing переопределяются детерминированно.
 **Process:** `feat(product)` → 🔒 CHANGELOG + DEV_JOURNAL; при новых артефакт-типах — 🔒 count-sweep.
