@@ -81,9 +81,9 @@
 **Acceptance:** без конфига поведение экосистемы байт-в-байт прежнее; с конфигом — панель/firing переопределяются детерминированно.
 **Process:** `feat(product)` → 🔒 CHANGELOG + DEV_JOURNAL; при новых артефакт-типах — 🔒 count-sweep.
 
-## F1 — контракт + skeleton *(stretch; coordination-gated)*
-- [ ] Контракт-док: как `resolve(operation_class, risk_tier, env_tier, policy, override) → disposition` **потребляет** `gate-risk-classifier.cjs`/`env-readiness.cjs` (не пере-выводит); сверка полей с оркестратор-треком.
-- [ ] Skeleton `lib/autonomy-policy.cjs` (pure function, L0/L1, floor-константы, юниты) — БЕЗ wiring в процессы.
+## F1 — контракт + skeleton *(stretch; coordination-gated)* — **✅ ПОСТРОЕН 2026-07-07 (DEC-DEV-0152): контракт+skeleton+70 юнитов; wiring = F2 после сверки**
+- [x] Контракт-док `dev/AUTONOMY_POLICY_F1_CONTRACT.md`: resolve() **потребляет** `gate-risk-classifier.cjs`/`env-readiness.cjs` (не пере-выводит); чек-лист сверки с оркестратор-треком (§6) — прогнать перед F2-wiring.
+- [x] Skeleton `lib/autonomy-policy.cjs` (pure function, L0/L1, floor LOCKED, precedence, `applyReadinessGuard` только-даунгрейд, юниты 70) — БЕЗ wiring в процессы; дом либы решается с F2.
 
 **Acceptance:** резолвер тестируем изолированно; wiring — следующая волна после сверки.
 
