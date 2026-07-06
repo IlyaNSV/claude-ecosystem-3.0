@@ -9,7 +9,7 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `commands/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-command-catalog.cjs`. Интерактивная версия — [ecosystem-map.html](ecosystem-map.html). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 45 команд** в 5 модулях.
+**Всего: 46 команд** в 5 модулях.
 
 ## /ecosystem:* (7)
 
@@ -25,12 +25,13 @@ doc_type: reference
 | `/ecosystem:update` | Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/product/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead. | `[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-commit]` |
 | `/ecosystem:verify` | Verify Ecosystem 3.0 installation in current project. Non-destructive health check. | — |
 
-## /product:* (21)
+## /product:* (22)
 
 Ядро ежедневной работы — D1 Discovery + D2-Behavioral
 
 | Команда | Что делает | Аргументы |
 |---|---|---|
+| `/product:batch-enrich` | Batch-enrich a SET of FMs (a release's worth) — drive each through enrichment (F.2→F.7 of P2.A) + the bounded completeness-loop, with the human approve-gate moved from per-item to PHASE BOUNDARIES realized as L1 PA-escalations (the owner ratifies from the ledger). THIN ORCHESTRATION over the existing /product:feature + /product:complete machinery — no F.2-F.10 authoring is re-implemented. CHECKPOINT-FIRST + resume (a mid-run session limit resumes cleanly). PREPARE-ONLY — the runner never transitions FM status; F.10/handoff stays the owner's. Epic C-i macro step (DEC-DEV-0145 decisions г/д). | `<FM-NNN> [<FM-NNN> ...] \| --all-planned` |
 | `/product:bg-rename` | Mass-rename BG term across all artifacts. v1 manual preview workflow (sed-suggest + IDE find-replace). Atomic apply deferred к v1.1 per DEC-DEV-0012 D.2. | `<old> <new> \| --commit <old> <new>` |
 | `/product:bg-review` | Batch review of pending BG candidates from .pending/bg-candidates.yaml. Phases 2-4 of BG extraction algorithm — classification, presentation, approval. Orchestrated by bg-extraction skill. | `[--all \| --new-terms-only \| --synonyms-only]` |
 | `/product:cascade` | Manual cascade navigation. Show pending cascade entries from .pending/cascade-pending.yaml and resolve per-entry. Detection-only (V-11 auto-fix happens automatically via cascade-check.js hook). | `<artifact-id> \| --pending \| --pending --triggered-by <id> \| --pending --revalidate \| --pending --reset` |

@@ -300,9 +300,9 @@
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">{
   "_build": {
-    "date": "2026-07-04",
-    "sha": "24893a8",
-    "commands": 45,
+    "date": "2026-07-06",
+    "sha": "8bfa984",
+    "commands": 46,
     "artifacts": 24,
     "rules": 44,
     "gates": 18,
@@ -389,6 +389,31 @@
       "dom": "D1 + D2-Behavioral",
       "blurb": "Discovery → Planning → спецификация фич → handoff. Ядро ежедневной работы.",
       "commands": [
+        {
+          "cmd": "/product:batch-enrich",
+          "id": "product:batch-enrich",
+          "module": "product",
+          "name": "batch-enrich",
+          "st": "D2B",
+          "status": "partial",
+          "desc": "Batch-enrich a SET of FMs (a release's worth) — drive each through enrichment (F.2→F.7 of P2.A) + the bounded completeness-loop, with the human approve-gate moved from per-item to PHASE BOUNDARIES realized as L1 PA-escalations (the owner ratifies from the ledger). THIN ORCHESTRATION over the existing /product:feature + /product:complete machinery — no F.2-F.10 authoring is re-implemented. CHECKPOINT-FIRST + resume (a mid-run session limit resumes cleanly). PREPARE-ONLY — the runner never transitions FM status; F.10/handoff stays the owner's. Epic C-i macro step (DEC-DEV-0145 decisions г/д).",
+          "arg": "\u003cFM-NNN> [\u003cFM-NNN> ...] | --all-planned",
+          "when": "Макро-батч по набору FM: обогащение F.2→F.7 + completeness-loop на каждую; гейты на границах фаз через PA-эскалации; checkpoint-first + resume; prepare-only (Epic C-i, DEC-DEV-0150).",
+          "tags": "батч обогащение релиз макро checkpoint autonomous",
+          "produces": [],
+          "consumes": [
+            "FM",
+            "SC",
+            "BR",
+            "LC",
+            "VC",
+            "IC",
+            "NFR",
+            "MK",
+            "NM"
+          ],
+          "source": "commands/product/batch-enrich.md"
+        },
         {
           "cmd": "/product:bg-rename",
           "id": "product:bg-rename",
@@ -1472,6 +1497,7 @@
             "product:promote-note"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:da-review",
@@ -1509,6 +1535,7 @@
             "product:promote-note"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:da-review",
@@ -1536,6 +1563,7 @@
             "product:promote-note"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:da-review",
@@ -1560,6 +1588,7 @@
             "product:feature"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:handoff"
           ]
@@ -1595,6 +1624,7 @@
             "product:feature"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:handoff"
@@ -1616,6 +1646,7 @@
             "product:promote-note"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:da-review",
@@ -1637,6 +1668,7 @@
             "product:promote-note"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:handoff",
@@ -1670,6 +1702,7 @@
             "design:start"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:handoff",
@@ -1712,6 +1745,7 @@
             "design:start"
           ],
           "consumedBy": [
+            "product:batch-enrich",
             "product:complete",
             "product:consilium",
             "product:handoff",
@@ -2695,6 +2729,10 @@
     {
       "goal": "Подготовить решение по форк-развилке жюри персон (prepare-only)",
       "cmd": "product:consilium"
+    },
+    {
+      "goal": "Обогатить набор фич релиза батчем (checkpoint + resume)",
+      "cmd": "product:batch-enrich"
     },
     {
       "goal": "Передать фичу в реализацию (boundary object)",

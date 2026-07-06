@@ -66,24 +66,24 @@
 
 ---
 
-## C-i — `batch-enrich-feature-set` *(stretch; после/с D — консилиум = decision-prep внутри стадии)*
-- [x] `product/processes/batch-enrich-feature-set.mjs`: `pipeline()` по FM релиза; стадии = тонкий агент-транспорт существующих `/product`-команд обогащения (F.2→F.10) + `complete-feature` как completeness-стадия; гейт на границе фаз (L1 PA-escalate, решение «д»); checkpoint-файл прогресса ДО запуска (урок E1: session-limit на батчах).
+## C-i — `batch-enrich-feature-set` *(stretch)* — **✅ ПОСТРОЕН 2026-07-07 (DEC-DEV-0150): раннер+команда+wiring; live-прогон ≥2 FM = pilot-gated**
+- [x] `product/processes/batch-enrich-feature-set.mjs`: цикл по FM релиза (последовательный `for`, не `pipeline()` — single-writer `.product`/PA-ledger, отклонение зафиксировано в 0150); стадии = тонкий агент-транспорт существующих `/product`-команд обогащения (F.2→F.7) + `complete-feature` как completeness-стадия через `workflow()`; гейт на границе фаз (L1 PA-escalate, решение «д»); checkpoint-файл прогресса ДО запуска (урок E1: session-limit на батчах).
 - [x] `log()` покрытие: что пропущено/отброшено — явно (no silent truncation).
 
 **Acceptance:** прогон по ≥2 FM фикстуры доводит стадии, эскалирует decision, переживает обрыв (checkpoint + resume со шва).
 **Process:** `feat(product)` → 🔒 CHANGELOG + DEV_JOURNAL; verify.md.
 
 ## G1+G2 минимум *(stretch; owner-дефолт (a))*
-- [x] **G1:** `agent-roster.yaml` (или секция product.yaml): per-персона `enabled/model/depth_threshold/extra_lenses`; absent == встроенный дефолт 1:1.
-- [x] **G2:** participation-matrix как **слой над `zone-router`** (решение «е»): `resolve(zone, magnitude, roster) → firing_set`; дефолт = текущий zone-routing 1:1; юниты.
-- [x] Именованные пресеты состава (бывш. D3/G4, решение «ж») — если влезет: `lean/full/…`, потребляются D1b-панелью.
+- [ ] **G1:** `agent-roster.yaml` (или секция product.yaml): per-персона `enabled/model/depth_threshold/extra_lenses`; absent == встроенный дефолт 1:1.
+- [ ] **G2:** participation-matrix как **слой над `zone-router`** (решение «е»): `resolve(zone, magnitude, roster) → firing_set`; дефолт = текущий zone-routing 1:1; юниты.
+- [ ] Именованные пресеты состава (бывш. D3/G4, решение «ж») — если влезет: `lean/full/…`, потребляются D1b-панелью.
 
 **Acceptance:** без конфига поведение экосистемы байт-в-байт прежнее; с конфигом — панель/firing переопределяются детерминированно.
 **Process:** `feat(product)` → 🔒 CHANGELOG + DEV_JOURNAL; при новых артефакт-типах — 🔒 count-sweep.
 
 ## F1 — контракт + skeleton *(stretch; coordination-gated)*
-- [x] Контракт-док: как `resolve(operation_class, risk_tier, env_tier, policy, override) → disposition` **потребляет** `gate-risk-classifier.cjs`/`env-readiness.cjs` (не пере-выводит); сверка полей с оркестратор-треком.
-- [x] Skeleton `lib/autonomy-policy.cjs` (pure function, L0/L1, floor-константы, юниты) — БЕЗ wiring в процессы.
+- [ ] Контракт-док: как `resolve(operation_class, risk_tier, env_tier, policy, override) → disposition` **потребляет** `gate-risk-classifier.cjs`/`env-readiness.cjs` (не пере-выводит); сверка полей с оркестратор-треком.
+- [ ] Skeleton `lib/autonomy-policy.cjs` (pure function, L0/L1, floor-константы, юниты) — БЕЗ wiring в процессы.
 
 **Acceptance:** резолвер тестируем изолированно; wiring — следующая волна после сверки.
 
