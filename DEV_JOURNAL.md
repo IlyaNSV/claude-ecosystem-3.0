@@ -7803,6 +7803,35 @@ Kickoff 0145 (решение «и»): F1 = контракт-спека + skeleto
 
 ---
 
+## DEC-DEV-0153 — Process Fabric: аудит процессной ткани + Statechart-слой межпроцессной координации (концепт + пилотное ядро)
+
+**Date:** 2026-07-07
+**Trigger:** запрос владельца: полный аудит процессов + связности/кросс-процессной коммуникации + критическая проработка идеи Statechart/ESM как поведенческого движка оркестратора (контроль + backpressure; «творческое — свободнее, механическое — жёстче»; источник идеи — внешний доклад о FSM-контроле LLM-агентов).
+**Tag:** #architecture #orchestrator #process-fabric #statechart #audit
+
+### Context
+Аудит (9 зонных ридеров → 3 opus-агрегатора → синтез; `dev/process-fabric/AUDIT_2026-07-07.md` + 3 приложения): 79 процессов в 11 доменах; **18 де-факто машин состояний, enforced-переход у 3** (LESSON, completeness-loop, gate-verdicts); 36 разрывов G01–G36; из ~19 runtime-хуков блокирует один (`lesson-gate`); состояние фрагментировано по 9 хранилищам в 4 форматах. Системный диагноз: **разрыв «сенсор→мышца»** — детерминированные хуки пишут сигналы в write-only очереди (`pending-actions.md`, 6× `*-pending.yaml`), детерминированные оракулы умеют исполнять, но между ними «LLM должен вспомнить»/человек. Обратный контур (нелинейность «результат шага инициирует пересмотр архитектуры») не замкнут нигде, кроме lesson-gate. Сквозной трейс «идея→прод» доезжает до P6 GO / частично P7; дальше spec-only (Epic E, E15-петля).
+
+### Options considered
+1. **Statechart-движок поверх всего (включая внутрипроцессный flow)** — отвергнуто: Workflow-скелеты P2–P7 уже детерминированные FSM (bounded rounds, schema-гейты); второй движок = дубль и risky rewrite (против DEC-DEV-0076 «оркеструем, не переписываем»).
+2. **XState v5 как dependency** — отвергнуто сейчас: тянет npm-dep в zero-dep слой; actor-model/parallel/history v1 не нужны; персистентность + determinism-контракт всё равно свои. Charter-формат держим XState-совместимым по духу — миграция открыта.
+3. **n8n/внешний durable-оркестратор** — отвергнуто (повторно, линия DEC-DEV-0058): durable state достижим без демона; wake — хуки/cron/сессии.
+4. **«Просто больше хуков» без движка** — отвергнуто как система (у хуков нет ни состояния, ни модели переходов; текущее состояние — предел подхода), принято как транспорт (SessionStart-инжект, прецедент rails).
+5. **Тонкий межпроцессный координатор (ПРИНЯТО): Process Fabric** — декларативные charter'ы (JSON, подсет XState-семантики; `invoke` = запуск существующего Workflow-процесса) + микро-интерпретатор `fabric-engine.cjs` (pure-core, event-sourcing events.ndjson + state.json, timestamps-as-inputs как run-ledger) + актуаторы (диспетчер run.md, хуки, pending-actions, позже cron). События — ТОЛЬКО материализация structured-результатов процессов (ingest-маппинг из run-ledger `--result-file`), никаких «LLM решил, что событие случилось». Каждая prescription проходит `lib/autonomy-policy.cjs` (это посадочное место F2-wiring; floor непробиваем by construction). Backpressure = extended state: WIP-лимиты per lane (кодифицирует FB-004) + единая приоритизированная owner-queue (главный перегруженный ресурс — внимание владельца, не машинный трафик). Манифест детерминизма DL0–DL3/H на каждый шаг каталога: чем механичнее — тем жёстче FSM-контроль; творческое — только рамка вход/выход.
+
+### Decision
+Дизайн-SSOT — `dev/process-fabric/CONCEPT.md`. Пилотное ядро (фаза 1): `orchestrator/lib/fabric-engine.cjs` + `orchestrator/charters/feature-production-line.json` (E2E фичи P3→P7 с feedback/escалation-рёбрами) + `tests/orchestrator/fabric-engine.test.cjs`. Каталог процессов `dev/process-fabric/catalog.yaml` (существующие + gap-fill из методологий, DL-классы, типы связей, события). Диспетчер-wiring и SessionStart-инжект — фаза 2 (отдельный PR); live-прогон + graduation — фаза 3 (pilot-gated).
+
+### Outcome
+Built ≠ validated: graduation-критерии в CONCEPT §9 (инстанс ≥2 сессии, машинный NO-GO→remediation→GO, owner-queue resolve). Verify-статус — в feat-коммите кода этой же ветки.
+
+### Lessons
+1. **Гипотеза владельца подтвердилась эмпирически, но зона применения — конверт, не контент:** система уже расщеплена по линии «механическое → код (65%), творческое → LLM (25%), человек (10%)»; FSM должен формализовать lifecycle/disposition/pending→resolved, НЕ шаги суждения.
+2. **Эталон уже в кодовой базе:** lesson-gate — единственный замкнутый контур (write→block→resolve); Fabric = его генерализация («детерминированный слушатель на конце очереди»), а не импорт чужой парадигмы.
+3. **ESM надстраивается НАД человекочитаемыми файлами** (markdown/PA/git), проецируя в них, — не заменяет их (иначе теряется git-дружелюбность, которую владелец ценит).
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
