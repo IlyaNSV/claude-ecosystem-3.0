@@ -1,0 +1,128 @@
+{
+  "id": "feature-production-line",
+  "version": 1,
+  "context": { "feature": null, "fm": null },
+  "initial": "handoff_ready",
+  "limits": { "lane": "orchestrator", "wip": 1 },
+  "states": {
+    "handoff_ready": {
+      "meta": { "determinism": "H", "autonomy": "human-gate" },
+      "on": {
+        "evt:line.start": { "target": "authoring", "guard": "wip_ok" }
+      }
+    },
+    "authoring": {
+      "invoke": { "process": "batch-features-to-cc-sdd" },
+      "meta": { "determinism": "DL3", "autonomy": "auto" },
+      "on": {
+        "evt:spec.authored": { "target": "fidelity_audit" },
+        "evt:spec.blocked": { "target": "escalated", "actions": ["queue_owner"] }
+      }
+    },
+    "fidelity_audit": {
+      "invoke": { "process": "audit-spec-fidelity" },
+      "meta": { "determinism": "DL2", "autonomy": "auto" },
+      "on": {
+        "evt:fidelity.impl_ready": { "target": "implementing" },
+        "evt:fidelity.product_routed": { "target": "awaiting_product", "actions": ["queue_owner"] },
+        "evt:fidelity.residual": { "target": "escalated", "actions": ["queue_owner"] }
+      }
+    },
+    "implementing": {
+      "invoke": { "process": "feature-to-tdd-impl" },
+      "meta": { "determinism": "DL2", "autonomy": "auto" },
+      "on": {
+        "evt:impl.go": { "target": "runtime_gate" },
+        "evt:impl.no_go": [
+          { "target": "remediation", "guard": "rounds_left" },
+          { "target": "escalated", "actions": ["queue_owner"] }
+        ],
+        "evt:impl.conflict": { "target": "awaiting_product", "actions": ["queue_owner"] },
+        "evt:impl.manual_verify": { "target": "escalated", "actions": ["queue_owner"] }
+      }
+    },
+    "remediation": {
+      "invoke": { "process": "validate-feature-impl" },
+      "meta": { "determinism": "DL2", "autonomy": "auto", "counter": "remediation_rounds", "max": 2 },
+      "on": {
+        "evt:impl.go": { "target": "runtime_gate" },
+        "evt:impl.no_go": [
+          { "target": "remediation", "guard": "rounds_left" },
+          { "target": "escalated", "actions": ["queue_owner"] }
+        ],
+        "evt:impl.conflict": { "target": "awaiting_product", "actions": ["queue_owner"] },
+        "evt:impl.manual_verify": { "target": "escalated", "actions": ["queue_owner"] }
+      }
+    },
+    "runtime_gate": {
+      "invoke": { "process": "runtime-smoke-readiness" },
+      "meta": { "determinism": "DL0", "autonomy": "auto" },
+      "on": {
+        "evt:runtime.ready_or_started": { "target": "done" },
+        "evt:runtime.blocked_capability": { "target": "awaiting_capability", "actions": ["queue_owner"] },
+        "evt:runtime.env_not_ready": { "target": "runtime_gate_retry" },
+        "evt:fidelity.product_routed": { "target": "awaiting_product", "actions": ["queue_owner"] }
+      }
+    },
+    "runtime_gate_retry": {
+      "meta": { "determinism": "H", "autonomy": "human-gate", "queue_kind": "gate" },
+      "on": {
+        "evt:env.up": { "target": "runtime_gate" }
+      }
+    },
+    "awaiting_product": {
+      "meta": { "autonomy": "human-gate", "queue_kind": "conflict" },
+      "on": {
+        "evt:pa.resolved": { "target": "implementing" }
+      }
+    },
+    "awaiting_capability": {
+      "meta": { "autonomy": "human-gate", "queue_kind": "conflict" },
+      "on": {
+        "evt:pa.resolved": { "target": "runtime_gate" }
+      }
+    },
+    "escalated": {
+      "meta": { "autonomy": "human-gate", "queue_kind": "gate" },
+      "on": {
+        "evt:owner.resume": { "target": "implementing" },
+        "evt:owner.abort": { "target": "aborted" }
+      }
+    },
+    "done": { "final": true, "actions": ["project_fm_shipped_hint"] },
+    "aborted": { "final": true }
+  },
+  "guards": {
+    "wip_ok": { "kind": "builtin", "ref": "wipOk" },
+    "rounds_left": { "kind": "builtin", "ref": "counterBelowMax" }
+  },
+  "ingest": {
+    "batch-features-to-cc-sdd": [
+      { "when": { "path": "blocked", "nonEmpty": true }, "emit": "evt:spec.blocked" },
+      { "default": true, "emit": "evt:spec.authored" }
+    ],
+    "audit-spec-fidelity": [
+      { "when": { "path": "product_routed", "nonEmpty": true }, "emit": "evt:fidelity.product_routed" },
+      { "when": { "path": "residual", "nonEmpty": true }, "emit": "evt:fidelity.residual" },
+      { "when": { "path": "impl_ready", "nonEmpty": true }, "emit": "evt:fidelity.impl_ready" }
+    ],
+    "feature-to-tdd-impl": [
+      { "when": { "path": "conflicts", "nonEmpty": true }, "emit": "evt:impl.conflict" },
+      { "when": { "path": "go_gate", "eq": "GO" }, "emit": "evt:impl.go" },
+      { "when": { "path": "go_gate", "eq": "NO-GO" }, "emit": "evt:impl.no_go" },
+      { "when": { "path": "go_gate", "eq": "MANUAL_VERIFY_REQUIRED" }, "emit": "evt:impl.manual_verify" }
+    ],
+    "validate-feature-impl": [
+      { "when": { "path": "conflicts", "nonEmpty": true }, "emit": "evt:impl.conflict" },
+      { "when": { "path": "result", "eq": "GO" }, "emit": "evt:impl.go" },
+      { "when": { "path": "result", "eq": "NO-GO" }, "emit": "evt:impl.no_go" },
+      { "when": { "path": "result", "eq": "MANUAL_VERIFY_REQUIRED" }, "emit": "evt:impl.manual_verify" }
+    ],
+    "runtime-smoke-readiness": [
+      { "when": { "path": "verdict", "eq": "BLOCKED_ON_CAPABILITY" }, "emit": "evt:runtime.blocked_capability" },
+      { "when": { "path": "verdict", "eq": "ENV_NOT_READY" }, "emit": "evt:runtime.env_not_ready" },
+      { "when": { "path": "verdict", "in": ["READY_TO_SMOKE"] }, "emit": "evt:runtime.ready_or_started" },
+      { "when": { "path": "verdict", "eq": "NOT_STARTABLE" }, "emit": "evt:fidelity.product_routed" }
+    ]
+  }
+}
