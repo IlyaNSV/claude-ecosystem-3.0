@@ -1,0 +1,1948 @@
+# Process Catalog — Ecosystem 3.0 (DEC-DEV-0153, 2026-07-07)
+#
+# СНАПШОТ-РЕЕСТР процессов экосистемы: иерархия домен→процесс→шаг, детерминизм-классы,
+# события-исходы и межпроцессные связи с фактической надёжностью механизма.
+# НЕ SSOT шагов (SSOT остаются processes.md / orchestrator SPEC / командные файлы /
+# process-graph.overlay.json) — это координационный реестр под Process Fabric (charters).
+# Источник: 4 доменных генератора аудит-волны (structured output), курирование main-сессией:
+#   - оркестраторная серия переименована P1..P7 → P1o..P7o (канон process-graph.overlay.json;
+#     снимает коллизию с продуктовыми P4=cascade / P5=periodic);
+#   - дубли слиты (PATCH-cut→patch-cut, MEMORY-sync→memory-sync);
+#   - кросс-ссылки нормализованы alias-таблицей; цели вне каталога помечены external: true
+#     (модули/роли/артефакты/скрипты — легитимные не-процессные адресаты).
+#
+# Шкала детерминизма (CONCEPT.md §7):
+#   DL0 — детерминированный скрипт; DL1 — процедурный LLM (точный бриф);
+#   DL2 — judgment LLM (ревью/классификация); DL3 — творческий LLM (авторинг/discovery);
+#   H — человеческое решение (approve/merge/floor).
+# origin: existing (канонический ID сохранён) | gap-fill (из методологии, под реальный разрыв).
+# reliability связей: enforced | prompted | human-memory | missing | proposed (gap-fill).
+
+meta:
+  generated: "2026-07-07"
+  total_processes: 94
+  external_link_targets: ["OD8-product", "artifact-catalog", "changelog-consumer", "consilium-synth.cjs", "coverage-oracle.cjs", "deep-research", "gate-risk-classifier", "main-branch-merge", "process-triggers-CLAUDE", "prod-deploy-op", "session-close", "workflow-agent-spawn", "workflow-syntax-smoke"]
+
+domains:
+  d1-discovery:  # 5 процессов
+    - id: "P1A"
+      name: "P1.A — Discovery Session"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL3"
+      autonomy_default: "human-gate"
+      purpose: "От идеи продукта до Discovery-базы (PS/MR/CA/SEG/VP/HYP + glossary) — Quick (30-60м) или Deep (2-4ч), паттерн draft→iterate→approve на каждом шаге."
+      triggers:
+        - { kind: "command", ref: "/product:init [--deep|--continue]" }
+      emits: ["evt:ps.approved", "evt:mr.approved", "evt:ca.approved", "evt:seg.approved", "evt:vp.approved", "evt:hyp.testing"]
+      steps:
+        - { id: "D1.1", name: "Problem Discovery: 5-8 вопросов → draft PS → iterate", determinism: "DL2", executor: "main-llm" }
+        - { id: "G1", name: "Approve PS → active (🟠 Strategic per-item)", determinism: "H", executor: "human" }
+        - { id: "D1.2", name: "Market Research (Quick: web searches; Deep: subagent market-researcher, spec-only)", determinism: "DL3", executor: "main-llm / agent(market-researcher, NOT IMPLEMENTED — spec-only, Deep mode нефункционален)" }
+        - { id: "D1.3", name: "Competitive Analysis (Deep: subagent competitor-analyst, spec-only)", determinism: "DL3", executor: "main-llm / agent(competitor-analyst, NOT IMPLEMENTED — spec-only)" }
+        - { id: "D1.4", name: "Segment & JTBD synthesis из PS+MR+CA → G4 per-SEG approve", determinism: "DL3", executor: "main-llm" }
+        - { id: "DRC", name: "🔁 Discovery Review Checkpoint: bundle-approve MR+CA (🟡 Standard batch)", determinism: "H", executor: "human" }
+        - { id: "D1.5", name: "Hypothesis Formulation (SEG+VP+MR → 3-5 HYP) → G5 → status=testing", determinism: "DL3", executor: "main-llm" }
+        - { id: "D1.5z", name: "BG extraction финальный проход по всем артефактам сессии", determinism: "DL1", executor: "script(bg-extractor.js) + main-llm presentation" }
+      links:
+        - { to: "P1B", type: "sequence", mechanism: "текстовое 'Next: /product:plan' в конце сессии", reliability: "prompted" }
+        - { to: "BG", type: "invoke", mechanism: "hook bg-extractor.js PostToolUse на каждый Write/Edit в .product/", reliability: "enforced" }
+        - { to: "APPROVE", type: "invoke", mechanism: "G1/G4/G4a/G5/DRC используют общий approve-gate механизм", reliability: "enforced" }
+        - { to: "P4", type: "cascade", mechanism: "cascade-check.js на approve (V-11 bi-dir auto-fix)", reliability: "enforced" }
+        - { to: "NEW-d1-discovery-pivot-protocol", type: "escalation", mechanism: "PS — корень cascade-таблицы ('PS изменён → ALL'); реального pivot-протокола пока нет", reliability: "missing" }
+    - id: "P1B"
+      name: "P1.B — Planning Session"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "От завершённого Discovery до MVP scope + Roadmap + RL-001 + FM-скелетов, per-artifact approve без нумерованных гейтов."
+      triggers:
+        - { kind: "command", ref: "/product:plan" }
+        - { kind: "upstream-done", ref: "P1A" }
+      emits: ["evt:mvp.approved", "evt:rm.approved", "evt:rl.approved", "evt:fm.skeleton-created"]
+      steps:
+        - { id: "D1.6", name: "MVP Scope: primary HYP + MoSCoW priorities → MVP approve", determinism: "DL2", executor: "main-llm" }
+        - { id: "D1.7", name: "Product Roadmap draft (3-6 мес горизонт) → RM approve", determinism: "DL3", executor: "main-llm" }
+        - { id: "D1.8", name: "Release Planning: RL-001 + per-FM skeleton approve (has_ui/priority/HYP link)", determinism: "DL2", executor: "main-llm" }
+        - { id: "D1.9", name: "Feature Prioritization (continuous dialog через /product:status)", determinism: "H", executor: "human" }
+      links:
+        - { to: "P1A", type: "conditional", mechanism: "skill проверяет PS/MR/CA active + ≥1 SEG/VP/HYP; при провале — refuse с текстовым suggest /product:init", reliability: "enforced" }
+        - { to: "P2A", type: "sequence", mechanism: "текстовое 'Next: /product:feature FM-001' в конце сессии", reliability: "prompted" }
+        - { to: "APPROVE", type: "invoke", mechanism: "per-artifact approve MVP/RM/RL/FM-skeleton", reliability: "enforced" }
+        - { to: "BG", type: "invoke", mechanism: "hook bg-extractor.js на каждый save", reliability: "enforced" }
+    - id: "NEW-d1-discovery-pivot-protocol"
+      name: "Pivot Protocol (persevere/pivot)"
+      origin: "gap-fill"
+      methodology_source: "Lean Startup (Ries) — persevere/pivot decision + pivot taxonomy"
+      status: "proposed"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Формализовать /product:init --pivot, сейчас зарезервированный флаг без описанного поведения (processes.md: '(future, Q-11)'). Без протокола pivot не отличим от 'начать discovery с нуля' и теряет trace к invalidated HYP/PS истории."
+      triggers:
+        - { kind: "human", ref: "/product:init --pivot" }
+        - { kind: "event", ref: "evt:hyp.invalidated (повторный/primary)" }
+      emits: ["evt:pivot.triggered", "evt:pivot.completed"]
+      steps:
+        - { id: "PV.trigger", name: "Trigger detect: репитативная HYP invalidation / MVP non-achievement", determinism: "DL2", executor: "human + main-llm review evidence" }
+        - { id: "PV.classify", name: "PS delta classification: cosmetic reword vs true pivot (target-segment/problem-reframe/zoom)", determinism: "DL2", executor: "main-llm" }
+        - { id: "PV.cascade", name: "Full-tree re-derivation scope (переиспользует существующую таблицу 'PS изменён → ALL')", determinism: "DL1", executor: "script(cascade-check.js reuse) + main-llm" }
+        - { id: "PV.approve", name: "Human strategic re-approve новой PS", determinism: "H", executor: "human" }
+        - { id: "PV.archive", name: "Archive superseded chain с rationale (git history + decision journal, не silent overwrite)", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "P1A", type: "invoke", mechanism: "предлагается: переиспользует D1.1-D1.5 машинерию, но как delta против существующей PS, не с нуля", reliability: "proposed" }
+        - { to: "P4", type: "cascade", mechanism: "PS-changed cascade row уже существует в таблице; pivot-специфичный full-tree confirm flow отсутствует", reliability: "proposed" }
+        - { to: "NEW-d1-discovery-hyp-validation-loop", type: "escalation", mechanism: "повторная HYP invalidation должна естественно триггерить рассмотрение pivot", reliability: "proposed" }
+    - id: "NEW-d1-discovery-hyp-validation-loop"
+      name: "HYP Validation Loop (Build-Measure-Learn)"
+      origin: "gap-fill"
+      methodology_source: "Lean Startup — Build-Measure-Learn experiment loop"
+      status: "proposed"
+      determinism_dominant: "H"
+      autonomy_default: "human-gate"
+      purpose: "HYP-* переходит draft→testing (G5), но переход в validated/invalidated/deferred — целиком ручная команда /product:hyp --status без measurement cadence или автотриггера переоценки."
+      triggers:
+        - { kind: "schedule", ref: "предлагаемый periodic re-check, сейчас отсутствует" }
+        - { kind: "human", ref: "ручной review" }
+      emits: ["evt:hyp.validated", "evt:hyp.invalidated", "evt:hyp.deferred"]
+      steps:
+        - { id: "HL.design", name: "Формализация measurement cadence + источника инструментации (пороги уже заданы на G5)", determinism: "DL2", executor: "main-llm" }
+        - { id: "HL.measure", name: "Measure реальный usage/conversion сигнал (нет автоматизированного источника — D5 ~5%)", determinism: "H", executor: "human (в будущем — script, когда появится D5 tooling)" }
+        - { id: "HL.compare", name: "Compare vs threshold", determinism: "DL0", executor: "script (once measurement source exists)" }
+        - { id: "HL.transition", name: "Status transition + mandatory supporting data", determinism: "DL1", executor: "main-llm via /product:hyp --status" }
+      links:
+        - { to: "P1B", type: "feedback", mechanism: "HYP status change должен каскадировать в MVP.primary_hypothesis (уже есть в cascade-таблице), но нет автотриггера пере-оценки MVP", reliability: "proposed" }
+        - { to: "NEW-d1-discovery-pivot-protocol", type: "escalation", mechanism: "invalidated primary HYP — естественный pivot-триггер", reliability: "proposed" }
+        - { to: "NEW-d1-discovery-feedback-intake", type: "data-feed", mechanism: "шагу measure нужен реальный usage/feedback сигнал как вход — сейчас отсутствует (D5 stub)", reliability: "missing" }
+    - id: "NEW-d1-discovery-feedback-intake"
+      name: "User Feedback Intake (D5-front, lightweight)"
+      origin: "gap-fill"
+      methodology_source: "Continuous Discovery Habits (Torres) / Kanban intake queue"
+      status: "proposed"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "P3 Feedback Integration заявлен out-of-scope v1; фидбэк от пилота вручную дописывается в артефакты без формальной точки входа 'кто-то сказал что-то о продукте → куда это класть'."
+      triggers:
+        - { kind: "human", ref: "ad-hoc — support/pilot conversation" }
+      emits: ["evt:feedback.intake-logged", "evt:feedback.routed-hyp", "evt:feedback.routed-pivot-candidate"]
+      steps:
+        - { id: "FI.capture", name: "Capture raw feedback item (support ticket / user comment / pilot observation)", determinism: "DL1", executor: "main-llm (реюз NOTE-capture template)" }
+        - { id: "FI.triage", name: "Triage: confirms / contradicts / net-new signal против active HYP/PS/SEG", determinism: "DL2", executor: "main-llm" }
+        - { id: "FI.route", name: "Route: confirms→HYP-loop evidence; contradicts→pivot candidate; net-new→NOTE/backlog", determinism: "DL2", executor: "main-llm" }
+        - { id: "FI.log", name: "Append-only intake record для traceability", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "NOTE", type: "invoke", mechanism: "net-new сигналы становятся NOTE-* через существующий note-capture.md template — переиспользование, без нового типа артефакта", reliability: "proposed" }
+        - { to: "NEW-d1-discovery-hyp-validation-loop", type: "data-feed", mechanism: "подтверждающий feedback заполняет отсутствующий шаг 'measure' HYP-цикла", reliability: "proposed" }
+        - { to: "P3p", type: "escalation", mechanism: "закрывает ровно тот gap, который P3p явно оставляет открытым (D5 stub)", reliability: "proposed" }
+  d2b-spec:  # 15 процессов
+    - id: "P2A"
+      name: "P2.A — Feature Definition (Enrichment)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Обогащение FM-скелета до полной поведенческой спецификации (SC/BR/LC/IC/NFR/VC/RPM), готовой к handoff."
+      triggers:
+        - { kind: "command", ref: "/product:feature <FM-id>" }
+        - { kind: "upstream-done", ref: "P1B|P2B" }
+      emits: ["evt:sc.approved", "evt:br.approved", "evt:br.da-required", "evt:lc.auto-approved", "evt:ic.approved", "evt:ic.da-required", "evt:nfr.active", "evt:nfr.declined", "evt:nfr.pending", "evt:vc.approved", "evt:rpm.updated", "evt:fm.in-progress"]
+      steps:
+        - { id: "F.2", name: "Scenario Authoring: 2-4 SC на фичу, per-SC approve", determinism: "DL3", executor: "main-llm" }
+        - { id: "F.3", name: "Business Rule Extraction из SC steps, per-BR approve", determinism: "DL2", executor: "main-llm" }
+        - { id: "F.4", name: "Entity Lifecycle Derivation (🟢 auto-approve eligible при confidence high)", determinism: "DL1", executor: "main-llm" }
+        - { id: "F.5", name: "Invariant Check Identification, human подтверждает абсолютность правила", determinism: "DL2", executor: "main-llm" }
+        - { id: "F.5a", name: "NFR Review two-phase (Ask/Define), sanity-range guardrails", determinism: "DL2", executor: "main-llm" }
+        - { id: "F.6", name: "Verification Criteria (Given/When/Then), 🟢 auto-approve eligible", determinism: "DL1", executor: "main-llm" }
+        - { id: "F.7", name: "Role & Permission Model update", determinism: "DL1", executor: "main-llm" }
+        - { id: "F.10", name: "FM transition planned→in-progress, DoR check всех downstream", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "DA", type: "conditional", mechanism: "hook br-change-trigger.js/ic-change-trigger.js пишет da-pending.yaml + stderr; сессия должна САМА заметить сигнал и заспавнить Agent(product-devils-advocate)", reliability: "prompted" }
+        - { to: "P2.5", type: "parallel", mechanism: "F.8 gateway: если has_ui=true, LLM должен параллельно запустить Design Module", reliability: "prompted" }
+        - { to: "HO", type: "sequence", mechanism: "F.10 DoR pass разблокирует /product:handoff (текстовый Next-сигнал; сам DoR-чек внутри handoff generator — enforced)", reliability: "prompted" }
+        - { to: "P4", type: "cascade", mechanism: "approve каждого артефакта триггерит cascade-check.js", reliability: "enforced" }
+        - { to: "APPROVE", type: "invoke", mechanism: "каждый SC/BR/LC/IC/VC/RPM approve использует общий approve-gate (вкл. 🟢 auto-approve ветку)", reliability: "enforced" }
+        - { to: "B1", type: "data-feed", mechanism: "FM + embedded артефакты — прямой субстрат, который читает/пишет completeness-oracle.cjs", reliability: "enforced" }
+    - id: "P2B"
+      name: "P2.B — Feature Definition (Creation)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Создание фичи «снизу» из свободного текстового описания: D1-alignment check + FM-скелет, затем продолжение как enrichment."
+      triggers:
+        - { kind: "command", ref: "/product:feature \"<описание>\"" }
+      emits: ["evt:fm.skeleton-created"]
+      steps:
+        - { id: "F.0", name: "Idea parsing: SEG/JTBD/гипотеза из свободного текста", determinism: "DL2", executor: "main-llm" }
+        - { id: "F.0a", name: "D1-alignment check: есть ли подходящий SEG/HYP/VP? 🟡 warning, не блок", determinism: "DL2", executor: "main-llm" }
+        - { id: "F.0b", name: "FM skeleton creation, human approves → FM planned", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "P2A", type: "sequence", mechanism: "F.1-F.10 продолжаются в той же команде/сессии как обычный enrichment", reliability: "enforced" }
+        - { to: "P1A", type: "conditional", mechanism: "F.0a может спровоцировать mini-D1.4 (новый SEG), если ни один existing не подходит", reliability: "prompted" }
+    - id: "DA"
+      name: "Product DA Review (adaptive-depth)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Adversarial review бизнес-артефактов в изолированном контексте (builder/critic separation), single subagent invocation сам выбирает глубину анализа."
+      triggers:
+        - { kind: "hook", ref: "br-change-trigger.js / ic-change-trigger.js (P-RULE-01/02, adaptive)" }
+        - { kind: "command", ref: "/product:da-review FM-<NNN>|RL-<NNN>" }
+        - { kind: "event", ref: "HO.--with-da-review (SlashCommand tool call)" }
+      emits: ["evt:da.findings-critical", "evt:da.findings-important", "evt:da.findings-clean", "evt:da.dismissed"]
+      steps:
+        - { id: "DA.classify", name: "Классификация git diff → cosmetic | significant + rationale (~30с)", determinism: "DL2", executor: "agent(product-devils-advocate)" }
+        - { id: "DA.cosmetic", name: "Quick consistency check (~5м, один блок findings)", determinism: "DL2", executor: "agent(product-devils-advocate)" }
+        - { id: "DA.full", name: "Full 6-lens review (~20-30м): scalability/reliability/edge cases/security/alternatives/user assumptions", determinism: "DL2", executor: "agent(product-devils-advocate, model: claude-opus)" }
+        - { id: "DA.findings", name: "Findings 3-tier запись (.product/.da-findings/)", determinism: "DL1", executor: "agent(product-devils-advocate)" }
+        - { id: "DA.reception", name: "Human: Act on / Defer / Dismiss (dismiss обязателен rationale в journal)", determinism: "H", executor: "human" }
+      links:
+        - { to: "P2A", type: "escalation", mechanism: "hook пишет .pending/da-pending.yaml + stderr; сессия должна сама заметить и заспавнить subagent — recurring regression, explicit anti-pattern #10 в feature-session.md (LLM скатывается в general-purpose)", reliability: "prompted" }
+        - { to: "HO", type: "blocking-gate", mechanism: "--with-da-review критические находки блокируют генерацию handoff", reliability: "enforced" }
+        - { to: "LESSON", type: "feedback", mechanism: "dismissed/deferred finding, позже оказавшийся ошибкой, — один из event-driven входов /product:lesson", reliability: "prompted" }
+    - id: "APPROVE"
+      name: "Approve Gate (механика)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Что происходит на любом approve: стандартный путь (Critical/Strategic/Standard) или auto-approve (🟢 Confirmation)."
+      triggers:
+        - { kind: "human", ref: "'approve' в диалоге на любом draft-артефакте" }
+      emits: ["evt:artifact.approved", "evt:artifact.auto-approved", "evt:artifact.blocked"]
+      steps:
+        - { id: "AP.branch", name: "Tier review? 🟢 Confirmation + confidence high + чистая валидация → auto; иначе стандартный", determinism: "DL1", executor: "main-llm" }
+        - { id: "AP.validate", name: "Inline validation applicable V-* per tier; blocking failed → stop, draft", determinism: "DL0", executor: "hook(artifact-validate.js)" }
+        - { id: "AP.transition", name: "Status transition draft→active, version++, updated timestamp", determinism: "DL1", executor: "main-llm" }
+        - { id: "AP.bg", name: "BG extraction запуск", determinism: "DL0", executor: "hook(bg-extractor.js)" }
+        - { id: "AP.cascade", name: "Cascade check: identify dependents, предложить bundle", determinism: "DL0", executor: "hook(cascade-check.js)" }
+        - { id: "AP.journal", name: "Decision journal entry (Strategic/Critical)", determinism: "DL1", executor: "main-llm" }
+        - { id: "AP.auto", name: "Auto-approve ветка: авто-transition + revert-command доступна", determinism: "DL1", executor: "main-llm (self-check по псевдокоду confidence+validation)" }
+      links:
+        - { to: "P4", type: "invoke", mechanism: "шаг 4 диспатчит cascade check", reliability: "enforced" }
+        - { to: "BG", type: "invoke", mechanism: "шаг 3 диспатчит BG extraction", reliability: "enforced" }
+        - { to: "DA", type: "conditional", mechanism: "если артефакт BR/IC — параллельно br/ic-change-trigger.js пишет da-pending", reliability: "enforced" }
+    - id: "BG"
+      name: "BG Extraction (continuous)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Непрерывное извлечение бизнес-терминов из артефактов: 4 фазы + mass-rename + orphan detection."
+      triggers:
+        - { kind: "hook", ref: "bg-extractor.js PostToolUse Write/Edit .product/**/*.md" }
+        - { kind: "command", ref: "/product:bg-review, /product:bg-rename" }
+      emits: ["evt:bg.candidate-pending", "evt:bg.term-added", "evt:bg.mass-renamed"]
+      steps:
+        - { id: "BG.p1", name: "Candidate Extraction: bold-термины + capitalized phrases - stoplist - тех-термины", determinism: "DL0", executor: "hook(bg-extractor.js)" }
+        - { id: "BG.p2", name: "Classification: new-term/existing-term/possible-synonym/abandoned-candidate", determinism: "DL1", executor: "main-llm" }
+        - { id: "BG.p3", name: "Batched Presentation (после approve / /product:status / старт сессии)", determinism: "DL1", executor: "main-llm" }
+        - { id: "BG.p4", name: "Human Approval per-term: Y/edit/reject/merge/keep", determinism: "H", executor: "human" }
+        - { id: "BG.rename", name: "Mass-rename: preview → approve → apply (atomic apply НЕ реализован, ручной sed/IDE)", determinism: "DL1", executor: "main-llm (preview) + human (ручной apply, --commit только финализирует)" }
+        - { id: "BG.orphan", name: "Orphan term detection (пустой used_in) → deprecate/delete", determinism: "DL1", executor: "main-llm via /product:cleanup" }
+      links:
+        - { to: "APPROVE", type: "invoke", mechanism: "Phase 4 per-term решения используют ту же human-approve семантику; quiet-draft mode может отложить surfacing", reliability: "human-memory" }
+        - { to: "P4", type: "cascade", mechanism: "после rename — V-11/V-08 cascade re-check", reliability: "enforced" }
+    - id: "P4"
+      name: "P4 — Cascade Consistency (continuous)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Каскадная согласованность, интегрирована в каждый approve gate. v1: V-11 auto-fix инлайн, остальное — pending + ручной разбор."
+      triggers:
+        - { kind: "hook", ref: "cascade-check.js on approve" }
+        - { kind: "command", ref: "/product:cascade <artifact-id> [--pending --revalidate]" }
+      emits: ["evt:cascade.bundle-pending", "evt:cascade.applied", "evt:cascade.rolled-back"]
+      steps:
+        - { id: "P4.identify", name: "Identify dependents через forward-driven map по bi-dir refs (V-11)", determinism: "DL0", executor: "hook(cascade-check.js)" }
+        - { id: "P4.bfs", name: "BFS traversal: Critical→Strategic→Standard→Confirmation priority", determinism: "DL1", executor: "main-llm (skill cascade-validator.md)" }
+        - { id: "P4.reval", name: "Per-dependent re-validation applicable rules", determinism: "DL2", executor: "main-llm" }
+        - { id: "P4.collect", name: "Collect changes: status transitions, requires_review flags", determinism: "DL1", executor: "main-llm" }
+        - { id: "P4.present", name: "Present bundle + human approve ([Y]es all/[P]er-item/[N]o rollback)", determinism: "H", executor: "human" }
+        - { id: "P4.apply", name: "Apply atomic (всё или ничего; rollback при failure)", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "APPROVE", type: "invoke", mechanism: "вызывается как шаг 4 каждого approve", reliability: "enforced" }
+        - { to: "DA", type: "escalation", mechanism: "IC/BR в каскаде требуют P-RULE DA review", reliability: "prompted" }
+        - { to: "HO", type: "feedback", mechanism: "product-handoff-gate.js предупреждает о hash-дрейфе saved-артефакт vs embedded в handoff (non-blocking)", reliability: "enforced" }
+        - { to: "P4", type: "sequence", mechanism: "полный BFS auto-fix для non-V11 правил deferred v1.1; сейчас detection-only", reliability: "missing" }
+    - id: "P5"
+      name: "P5 — Periodic Review (partial)"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "auto"
+      purpose: "Само-аудит согласованности + мета-линтер. P5.A покрыт P4 (continuous); P5.B Actuality Refresh явно не проектируется в v1 (нет триггера)."
+      triggers:
+        - { kind: "command", ref: "/product:drift-check, /product:patterns, /product:cleanup [--dry-run|--pending-hygiene]" }
+      emits: ["evt:drift.flagged", "evt:patterns.flagged", "evt:cleanup.orphans-found"]
+      steps:
+        - { id: "P5.drift", name: "Drift-check (C1): direction alignment vs PS/primary HYP/MVP", determinism: "DL2", executor: "main-llm (10-20% заявленный false-positive rate)" }
+        - { id: "P5.patterns", name: "Patterns meta-linter (C4): 11 anti-pattern категорий", determinism: "DL2", executor: "main-llm" }
+        - { id: "P5.cleanup", name: "Cleanup: V-15 orphan detection + delete confirmation", determinism: "DL1", executor: "main-llm + human(delete confirm 'type delete')" }
+      links:
+        - { to: "P1A", type: "feedback", mechanism: "drift-check читает PS/HYP-primary/MVP как anchor; on-demand, не scheduled", reliability: "prompted" }
+        - { to: "BG", type: "invoke", mechanism: "cleanup делегирует orphan sweep BG-терминов (V-15)", reliability: "enforced" }
+    - id: "P3p"
+      name: "P3 — Feedback Integration (STUB v1)"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Out-of-scope v1 (D5 ~5% покрытия). Overlay конфлирует этот STUB с C3 validation-tune — сам SSOT-оверлей не различает 'тюнинг правил валидации' и 'реальный user-feedback от продукта'."
+      triggers:
+        - { kind: "command", ref: "/product:validation-tune" }
+      emits: ["evt:validation.tune-proposed", "evt:feedback.escalated-systemic"]
+      steps:
+        - { id: "P3.tune", name: "Validation-tune (C3): AI предлагает project-local подстройку с evidence", determinism: "DL2", executor: "main-llm" }
+        - { id: "P3.escalate", name: "Системный дефект? → эскалация в /ecosystem:meta-feedback", determinism: "DL2", executor: "main-llm" }
+        - { id: "P3.manual", name: "Ручное дописывание артефактов вместо реального feedback pipeline (текущая практика)", determinism: "H", executor: "human" }
+      links:
+        - { to: "NEW-d1-discovery-feedback-intake", type: "feedback", mechanism: "P3p явно оставляет открытым D5 user-feedback pipeline; gap-fill процесс предложен именно для этого", reliability: "missing" }
+        - { to: "NEW-d1-discovery-hyp-validation-loop", type: "feedback", mechanism: "HYP invalidation сейчас не имеет автотриггера ни в какой feedback-процесс", reliability: "missing" }
+    - id: "HO"
+      name: "Handoff Generation (boundary object)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Генерация универсального 13-секционного handoff для FM с embedded excerpts + SHA-256 hashes для drift-detection. DoR draft (3 блокера) / production (8 блокеров)."
+      triggers:
+        - { kind: "command", ref: "/product:handoff <FM-id> [--mode draft|production] [--with-da-review]" }
+      emits: ["evt:handoff.ready", "evt:handoff.blocked", "evt:handoff.stale"]
+      steps:
+        - { id: "HO.dor", name: "DoR gate: draft (partial) / production (ready); --with-da-review pre-gen DA", determinism: "DL1", executor: "main-llm" }
+        - { id: "HO.assemble", name: "Assemble 13 секций: embedded excerpts FM/SC/BR/LC/VC/IC/NFR + §10 UI + BG", determinism: "DL1", executor: "main-llm" }
+        - { id: "HO.hash", name: "SHA-256 hashing body каждого артефакта → artifact_hashes", determinism: "DL0", executor: "script(hooks/product/lib/hash.js)" }
+      links:
+        - { to: "DA", type: "conditional", mechanism: "--with-da-review вызывает /product:da-review через реальный SlashCommand tool call; critical findings блокируют", reliability: "enforced" }
+        - { to: "P4", type: "feedback", mechanism: "product-handoff-gate.js warn-only на hash drift", reliability: "enforced" }
+        - { to: "P3o", type: "sequence", mechanism: "handoff.md потребляется Integrator-адаптером или Orchestrator P3 batch-features-to-cc-sdd; вызов ручной, ничего не auto-триггерит", reliability: "human-memory" }
+    - id: "B1"
+      name: "Completeness-loop (Epic B)"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL0"
+      autonomy_default: "human-gate"
+      purpose: "Bounded wave loop, доводящий D1-D2B спецификацию одной фичи до handoff-DoR-достаточной полноты: детерминированный oracle стоп-сигнал + гетерогенные persona-ревьюеры на гэпах."
+      triggers:
+        - { kind: "command", ref: "/product:complete <FM-NNN>" }
+      emits: ["evt:complete.wave-stopped", "evt:complete.escalated", "evt:complete.honest-unmet", "evt:complete.personas-incomplete"]
+      steps:
+        - { id: "B1.parse", name: "Parse + validate: FM-NNN обязателен, --max-waves/--dry-run", determinism: "DL0", executor: "script(command parser)" }
+        - { id: "B1.dispatch", name: "Dispatch Workflow complete-feature.mjs", determinism: "DL0", executor: "script(Workflow product/processes/complete-feature.mjs)" }
+        - { id: "B1.oracle", name: "Deterministic scoring vs τ=DoR (completeness-oracle.cjs)", determinism: "DL0", executor: "script(completeness-oracle.cjs, gap-classifier.cjs)" }
+        - { id: "B1.persona", name: "Persona review по зонам гэпов (architect/qa/ux-advisor, canonical subagent_type, no general-purpose fallback)", determinism: "DL2", executor: "agent(architect-advisor|qa-advisor|ux-advisor, model: claude-opus)" }
+        - { id: "B1.autofix", name: "Auto-resolve консервативный (surface + escalate by default, v1)", determinism: "DL1", executor: "main-llm" }
+        - { id: "B1.escalate", name: "Escalate real decisions в канонический pending-actions ledger", determinism: "DL1", executor: "script(run-ledger.cjs) + main-llm" }
+      links:
+        - { to: "P2A", type: "data-feed", mechanism: "читает/пишет FM + embedded SC/BR/LC/VC/IC/NFR/MK/NM напрямую", reliability: "enforced" }
+        - { to: "EpicD-consilium", type: "escalation", mechanism: "fork-shaped (≥2 option) решения, эскалированные в pending-actions ledger, подхватываются /product:consilium", reliability: "enforced" }
+        - { to: "BG", type: "invoke", mechanism: "delegated_closeout вызывает /product:bg-review как advisory-only verdict (никогда не флипает stop-verdict)", reliability: "enforced" }
+        - { to: "VALIDATE", type: "invoke", mechanism: "delegated_closeout вызывает /product:validate как advisory-only verdict", reliability: "enforced" }
+    - id: "EpicD-consilium"
+      name: "Consilium (Epic D, product-side)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "human-gate"
+      purpose: "Decision-preparation jury на уже эскалированной fork-shaped (≥2 опций) pending-action; гетерогенное жюри персон + детерминированный синтез. PREPARE-ONLY, никогда не закрывает PA."
+      triggers:
+        - { kind: "command", ref: "/product:consilium <PA-NNN> [--feature FM-NNN]" }
+        - { kind: "upstream-done", ref: "B1 (escalation) или другой источник PA" }
+      emits: ["evt:consilium.recommendation-ready"]
+      steps:
+        - { id: "D1c.parse", name: "Parse + validate: PA-NNN обязателен", determinism: "DL0", executor: "script(command parser)" }
+        - { id: "D1c.dispatch", name: "Dispatch Workflow consilium.mjs", determinism: "DL0", executor: "script(Workflow product/processes/consilium.mjs)" }
+        - { id: "D1c.score", name: "Persona scoring независимо (architect+qa, +ux если UI-scope)", determinism: "DL2", executor: "agent(architect-advisor|qa-advisor|ux-advisor)" }
+        - { id: "D1c.synth", name: "Детерминированная агрегация (matrix/rank/hard-soft-veto) + запись рекомендации в ту же PA", determinism: "DL0", executor: "script(consilium-synth.cjs --panel)" }
+      links:
+        - { to: "B1", type: "data-feed", mechanism: "потребляет PA, созданный эскалацией completeness-loop (общий канонический pending-actions ledger)", reliability: "enforced" }
+        - { to: "APPROVE", type: "escalation", mechanism: "рекомендация пишется обратно в PA; owner ratification — реальный гейт, вне этой команды (PREPARE-ONLY design)", reliability: "enforced" }
+    - id: "EpicCi-batch-enrich"
+      name: "Batch-enrich (Epic C-i macro)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "human-gate"
+      purpose: "Release-level thin orchestration: SET FM через enrichment (F.2→F.7) + bounded completeness-loop, approve-gate перемещён на phase-boundary PA-эскалации."
+      triggers:
+        - { kind: "command", ref: "/product:batch-enrich <FM-NNN ...>|--all-planned" }
+      emits: ["evt:batch.phase-boundary-escalated", "evt:batch.resumed"]
+      steps:
+        - { id: "Ci.parse", name: "Parse targets: явный список FM-NNN или --all-planned; пустой target → refuse", determinism: "DL0", executor: "script(command parser)" }
+        - { id: "Ci.dispatch", name: "Dispatch Workflow batch-enrich-feature-set.mjs", determinism: "DL0", executor: "script(Workflow)" }
+        - { id: "Ci.enrich", name: "ENRICH stage: выполняет процедуру feature.md F.2→F.7 (без реимплементации)", determinism: "DL2", executor: "main-llm (тот же F.2-F.7 из P2A)" }
+        - { id: "Ci.complete", name: "COMPLETE stage: делегирует complete-feature.mjs через workflow()", determinism: "DL0", executor: "script(Workflow)" }
+        - { id: "Ci.boundary", name: "Phase-boundary PA escalation + checkpoint-first resume", determinism: "DL1", executor: "script(run-ledger) + main-llm" }
+      links:
+        - { to: "P2A", type: "invoke", mechanism: "ENRICH stage буквально исполняет commands/product/feature.md enrichment-процедуру — не реимплементация", reliability: "enforced" }
+        - { to: "B1", type: "invoke", mechanism: "COMPLETE stage делегирует complete-feature.mjs per FM через workflow()", reliability: "enforced" }
+        - { to: "EpicD-consilium", type: "cascade", mechanism: "phase-boundary решения ложатся PA-эскалациями, резолвятся через /product:consilium", reliability: "enforced" }
+    - id: "NOTE"
+      name: "Note capture & promotion (D3)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Catch-all NOTE-* артефакт (вне dependency graph) для ad-hoc идей, промотируемый по требованию в структурированный тип с explicit TBD полями."
+      triggers:
+        - { kind: "human", ref: "ad-hoc jot в любой момент" }
+        - { kind: "command", ref: "/product:promote-note <NOTE-id> to <TYPE>" }
+      emits: ["evt:note.captured", "evt:note.promoted"]
+      steps:
+        - { id: "NOTE.capture", name: "Freeform jot записывается как NOTE-*", determinism: "DL1", executor: "main-llm" }
+        - { id: "NOTE.classify", name: "Классификация целевого типа (FM/SC/BR/IC/NFR/HYP)", determinism: "DL2", executor: "main-llm" }
+        - { id: "NOTE.promote", name: "Promote с explicit TBD fields per-type template", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "P2A", type: "data-feed", mechanism: "промотированный артефакт входит в обычный draft→active pipeline своего целевого типа", reliability: "enforced" }
+        - { to: "BG", type: "invoke", mechanism: "промотированный артефакт триггерит обычный bg-extractor scan", reliability: "enforced" }
+    - id: "LESSON"
+      name: "Self-correction (LESSON-*, DEC-DEV-0062)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Атомарный find→fix→verify→record цикл при self-detected ошибке ИИ; non-deferrable, write-ahead log; вне dependency graph/cascade by design."
+      triggers:
+        - { kind: "human", ref: "нет — самодетекция ошибки ассистентом" }
+        - { kind: "hook", ref: "lesson-gate.js (Stop), lesson-presence-gate.js (PreToolUse/UserPromptSubmit)" }
+      emits: ["evt:lesson.opened", "evt:lesson.closed", "evt:lesson.withdrawn"]
+      steps:
+        - { id: "LE.detect", name: "Self-detect ошибку (any-time mandate)", determinism: "DL2", executor: "main-llm" }
+        - { id: "LE.fix", name: "Атомарный fix применяется немедленно (не откладывается)", determinism: "DL2", executor: "main-llm" }
+        - { id: "LE.record", name: "Write-ahead LESSON-* запись до продолжения другой работы", determinism: "DL1", executor: "main-llm" }
+        - { id: "LE.gate", name: "Verify + gate check на закрытие сессии", determinism: "DL0", executor: "hook(lesson-gate.js Stop / lesson-presence-gate.js PreToolUse)" }
+      links:
+        - { to: "DA", type: "feedback", mechanism: "dismissed/deferred DA finding, позже оказавшийся ошибкой, — один из триггеров", reliability: "prompted" }
+        - { to: "APPROVE", type: "feedback", mechanism: "validation-fail / cascade findings — дополнительные event-driven входы", reliability: "prompted" }
+    - id: "VALIDATE"
+      name: "On-demand validation runner"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Batch-прогон всех V-01..V-16 + V-H-01..11 + V-LE-01..05, tier-aware, с auto-fix V-11 и auto-purge stale pending."
+      triggers:
+        - { kind: "command", ref: "/product:validate [--deep]" }
+      emits: ["evt:validate.blocking-fail", "evt:validate.clean", "evt:validate.warnings"]
+      steps:
+        - { id: "VAL.tier", name: "Resolve validation_tier из .claude/product.yaml", determinism: "DL0", executor: "script(config read)" }
+        - { id: "VAL.scan", name: "Glob + parse frontmatter по .product/ per hardcoded rule table", determinism: "DL1", executor: "main-llm (skill validation-runner.md)" }
+        - { id: "VAL.check", name: "Прогон правил: механические (DL0-подобные) + семантические (V-07/V-14a judgment)", determinism: "DL2", executor: "main-llm" }
+        - { id: "VAL.report", name: "Report + auto-purge stale pending queues", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "APPROVE", type: "invoke", mechanism: "та же таблица правил используется inline на approve gate (подмножество per tier); catalog↔runner sync linter не построен (self-admitted gap §11 validation.md)", reliability: "human-memory" }
+        - { to: "HO", type: "invoke", mechanism: "DoR-чек handoff переиспользует V-H-* реализации", reliability: "enforced" }
+  d2d-design:  # 3 процессов
+    - id: "P2.5"
+      name: "P2.5 — Design Module (has_ui)"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Условный (has_ui=true) под-модуль: Design Package (MK), обновление DS, построение NM, обновление AM. 6 шагов Brief→Export."
+      triggers:
+        - { kind: "upstream-done", ref: "P2A (F.8 has_ui=true)" }
+        - { kind: "command", ref: "/design:start <FM-id>" }
+      emits: ["evt:mk.approved", "evt:design.brief-ready"]
+      steps:
+        - { id: "D.1", name: "Design Brief Generation из SC+BR+LC+BG+RPM (🟡 review)", determinism: "DL3", executor: "main-llm" }
+        - { id: "D.2", name: "Screen Generation — первый variant экранов (🟠 gate)", determinism: "DL3", executor: "agent(screen-generator) — SPEC-ONLY, файла agents/design/screen-generator.md НЕТ; реально исполняется inline через stitch-workflow.md/open-design-workflow.md без заявленного subagent" }
+        - { id: "D.3", name: "Iterative Refinement до approve (deadlock protection 7 iterations)", determinism: "DL2", executor: "main-llm" }
+        - { id: "D.4", name: "Component State Matrix — checklist покрытия состояний (🟢)", determinism: "DL1", executor: "main-llm" }
+        - { id: "D.5", name: "Artifact Generation: MK как Design Package, DS auto-extract, NM, AM update (🟠)", determinism: "DL2", executor: "main-llm + hook(app-map-cascade.js)" }
+        - { id: "D.6", name: "Export for handoff: MK/DS snapshot/NM готовы для embed", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "P2A", type: "parallel", mechanism: "F.8 gateway спавнит параллельно с F.2-F.7", reliability: "prompted" }
+        - { to: "HO", type: "data-feed", mechanism: "D.6 export встраивает MK/DS/NM в handoff §10", reliability: "enforced" }
+        - { to: "AM", type: "cascade", mechanism: "D.5 save триггерит hook app-map-cascade.js → AM drift queue", reliability: "enforced" }
+        - { to: "NEW-d2d-design-usability-audit", type: "feedback", mechanism: "нет существующего триггера; V-MK-04/06 (tab order/touch targets) automation ❌ невозможна per validation.md", reliability: "missing" }
+    - id: "AM"
+      name: "App Map (derived overview)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "auto"
+      purpose: "Derived whole-product screen/flow map из FM+NM+SC+LC/BR+HYP/PS; light validation (V-AM-*), опциональный HTML walker."
+      triggers:
+        - { kind: "hook", ref: "app-map-cascade.js on MK/FM/NM save" }
+        - { kind: "command", ref: "/design:map [--html]" }
+      emits: ["evt:am.updated", "evt:am.drift-queued"]
+      steps:
+        - { id: "AM.scan", name: "Scan upstream sources", determinism: "DL0", executor: "hook(app-map-scan.js)" }
+        - { id: "AM.build", name: "Build flow graph + LLM синтез screen/flow map", determinism: "DL1", executor: "script(app-map-flow.js) + main-llm" }
+        - { id: "AM.cascade", name: "Drift detection (не validation rule — отдельный cascade-сигнал)", determinism: "DL0", executor: "hook(app-map-cascade.js)" }
+        - { id: "AM.render", name: "HTML walker render (--html)", determinism: "DL0", executor: "script(app-map-html.js, app-map-thumbs.js, app-map-viewer.js)" }
+      links:
+        - { to: "P2.5", type: "data-feed", mechanism: "производная от MK/NM/SC/LC/BR/HYP/PS, произведённых D.1-D.6", reliability: "enforced" }
+        - { to: "HO", type: "data-feed", mechanism: "AM overview доступен для embed reference в handoff §10/11 UI-секции", reliability: "enforced" }
+    - id: "NEW-d2d-design-usability-audit"
+      name: "Design Usability & Accessibility Audit (manual, periodic)"
+      origin: "gap-fill"
+      methodology_source: "Double Diamond — Deliver phase 'test with users' + WCAG-lite accessibility checklist"
+      status: "proposed"
+      determinism_dominant: "H"
+      autonomy_default: "human-gate"
+      purpose: "V-MK-04 (tab order) и V-MK-06 (touch targets) явно помечены automation ❌ невозможна в validation.md, но нет владельца-процесса, который бы систематически прогонял их перед handoff."
+      triggers:
+        - { kind: "upstream-done", ref: "P2.5 (D.5/D.6 nearing export)" }
+        - { kind: "human", ref: "periodic manual review" }
+      emits: ["evt:usability.audit-flagged", "evt:usability.audit-clean"]
+      steps:
+        - { id: "UA.scope", name: "Select scope: MK-* set near D.6 export или periodic full-product sweep", determinism: "DL1", executor: "main-llm" }
+        - { id: "UA.walk", name: "Manual walkthrough против checklist (tab order, touch targets, states, contrast)", determinism: "H", executor: "human, или agent(ux-advisor) как proxy-ревьюер" }
+        - { id: "UA.log", name: "Log findings как NOTE-* или прямые MK revision requests", determinism: "DL1", executor: "main-llm" }
+        - { id: "UA.track", name: "Track resolution перед production-mode handoff", determinism: "DL0", executor: "предлагается: hook в HO.dor как non-blocking checklist item" }
+      links:
+        - { to: "P2.5", type: "feedback", mechanism: "findings возвращаются в D.3 Iterative Refinement как ещё один revision round", reliability: "proposed" }
+        - { to: "HO", type: "conditional", mechanism: "могло бы гейтить production-mode DoR так же, как --with-da-review для бизнес-логики; сейчас отсутствует", reliability: "proposed" }
+        - { to: "NOTE", type: "invoke", mechanism: "findings логируются через существующий NOTE-capture, не требуют нового типа артефакта", reliability: "proposed" }
+  d2t-arch:  # 4 процессов
+    - id: "P1o"
+      name: "orchestrator-init"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Сбор runtime-контекста Оркестратора + resume после /compact + проверка что cc-sdd active; инвокается каждым P2-P7. Существует только как skill orchestrator-init.md — отдельного .mjs процесса P1 НЕТ (gap #8)."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run (pre-flight)" }
+        - { kind: "upstream-done", ref: "invoked by P2..P7" }
+      emits: ["evt:orchestrator-init.context-ready", "evt:orchestrator-init.cc-sdd-missing"]
+      steps:
+        - { id: "P1.s1", name: "gather-context (handoffs/specs/zones)", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "P1.s2", name: "verify cc-sdd active в active-tools.yaml", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "P1.s3", name: "zone-coverage-check", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "P1.s4", name: "resume-after-compact", determinism: "DL2", executor: "agent(sonnet)" }
+      links:
+        - { to: "P3o", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "P5o", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+    - id: "P2o"
+      name: "decide-architecture-foundation"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Консилиум-гейт на нерешённом архитектурном форке: жюри ×3 приора (velocity/fidelity/integrity, независимо без cross-talk) → детерминир. синтез (matrix+rank+veto+soft-veto) → tradeoff-нарратив + DRAFT DEC владельцу. Никогда не авто-решает, не правит specs, не закрывает PA (FB-LR-07). Live dogfood S7 PA-040/042 pending."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run decide-architecture-foundation --fork <PA-NNN>" }
+        - { kind: "event", ref: "evt:impl.conflict-escalated (cross-spec fork из P4/P6)" }
+      emits: ["evt:arch.recommended", "evt:arch.split", "evt:arch.no-clean-pick", "evt:arch.under-specified"]
+      steps:
+        - { id: "P2.s1", name: "Brief — lift форка из PA (verbatim excerpt)", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "P2.s2", name: "Consilium — 3× jury скорят опции независимо", determinism: "DL2", executor: "agent(opus x3 parallel)" }
+        - { id: "P2.s3", name: "Synthesize — matrix+rank+veto+soft-veto", determinism: "DL0", executor: "script(consilium-synth.cjs)" }
+        - { id: "P2.s4", name: "Integration-pass — distributed must-not-ship (surfacing-only)", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "P2.s5", name: "Recommend — mechanical write PROPOSAL+DRAFT DEC в PA", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "P2.s6", name: "Ratify — владелец ратифицирует", determinism: "H", executor: "human" }
+      links:
+        - { to: "P1o", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "P3o", type: "conditional", mechanism: "human", reliability: "human-memory" }
+        - { to: "consilium-synth.cjs", type: "invoke", mechanism: "script", reliability: "enforced", external: true }
+    - id: "P3o"
+      name: "batch-features-to-cc-sdd"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Оборачивает cc-sdd kiro-spec-batch: программный мост handoff→brief.md/roadmap (замена kiro-discovery) + детерминир. L3-гейты (C-07 preflight, coverage-oracle). Live: вызывается ли kiro-spec-batch из Workflow-agent() — открытый вопрос, есть fallback."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run batch-features-to-cc-sdd --feature FM-NNN|--all" }
+      emits: ["evt:spec.generated", "evt:spec.coverage-incomplete", "evt:spec.blocked", "evt:spec.cross-spec-conflict"]
+      steps:
+        - { id: "P3.s1", name: "Init — orchestrator-init, cc-sdd active?", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "P3.s2", name: "Steering — делегирует kiro-steering (стек=human-gate)", determinism: "DL1", executor: "agent(sonnet, delegate kiro-steering)" }
+        - { id: "P3.s3", name: "Bridge — C-07 preflight adapter --verify-only + brief.md write", determinism: "DL0", executor: "script(handoff-to-ccsdd.js) + agent(sonnet)" }
+        - { id: "P3.s4", name: "Author — kiro-spec-batch (волны+dispatch+cross-spec+fix)", determinism: "DL3", executor: "agent(external cc-sdd)" }
+        - { id: "P3.s5", name: "Coverage — coverage-oracle (anti-self-report)", determinism: "DL0", executor: "script(coverage-oracle.cjs)" }
+        - { id: "P3.s6", name: "Commit — selective git add .kiro/specs+steering", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "P1o", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "EXT-cc-sdd-spec-batch", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "P4o", type: "sequence", mechanism: "prompted", reliability: "prompted" }
+        - { to: "run-ledger", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+        - { to: "INT-adapter-lifecycle", type: "data-feed", mechanism: "script", reliability: "enforced" }
+    - id: "EXT-cc-sdd-spec-batch"
+      name: "kiro-spec-batch (external cc-sdd)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL3"
+      autonomy_default: "auto"
+      purpose: "Внешний зрелый инструмент (Integrator-managed): генерит спеки волнами + dispatch субагентов + 10-точечный cross-spec consistency review + 3-раундовый fix-loop. Оркестратор ВЫЗЫВАЕТ (не дублирует). L2-judgment вне нашего контроля."
+      triggers:
+        - { kind: "upstream-done", ref: "P3 Author phase" }
+      emits: ["evt:extspec.authored", "evt:extspec.cross-spec-fixed"]
+      steps:
+        - { id: "EXTsb.s1", name: "wave-dispatch — генерация спеков по волнам", determinism: "DL3", executor: "agent(external cc-sdd)" }
+        - { id: "EXTsb.s2", name: "cross-spec review (10-точечный) + fix-loop", determinism: "DL2", executor: "agent(external cc-sdd)" }
+        - { id: "EXTsb.s3", name: "emit specs (.kiro/specs/*)", determinism: "DL1", executor: "agent(external cc-sdd)" }
+      links:
+        - { to: "P3o", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+  d3-delivery:  # 11 процессов
+    - id: "P5o"
+      name: "feature-to-tdd-impl"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "auto"
+      purpose: "Тонкий native dispatch-FSM: гонит tasks.md фичи в код через TDD-луп, ЛИФТЯ kiro-impl/review/debug/verify шаблоны в прогоне (kiro disable-model-invocation). Net-new: gate-risk-classifier (рационирует HIGH/LOW reviewer) + §6 capability detect + durable скелет. Live: nested kiro-гейты из Workflow-agent() — открытый вопрос."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run feature-to-tdd-impl --feature <slug>" }
+        - { kind: "upstream-done", ref: "evt:spec.faithful (P4 impl_ready)" }
+      emits: ["evt:impl.done", "evt:impl.blocked", "evt:impl.concern", "evt:impl.conflict-escalated", "evt:impl.capability-blocked"]
+      steps:
+        - { id: "P5.s1", name: "Plan — classify HIGH/LOW (gate-risk-classifier) + DAG", determinism: "DL1", executor: "agent(sonnet) + script(gate-risk-classifier.cjs)" }
+        - { id: "P5.s2", name: "§6-detect — capability-probe disposition (BLOCK→OD7 await)", determinism: "DL0", executor: "script(capability-probe.cjs)" }
+        - { id: "P5.s3", name: "Implement — lifted TDD RED→GREEN→REFACTOR, per-task sequential single-writer git", determinism: "DL2", executor: "agent(opus, lifted kiro-impl)" }
+        - { id: "P5.s4", name: "Gate — HIGH→independent reviewer / LOW→inline-verify; block-discretion (transient→retry / conflict→ESCALATE)", determinism: "DL2", executor: "agent(opus) + script(remediation-guard.cjs)" }
+        - { id: "P5.s5", name: "Verify-completion — fresh evidence + selective commit + mark [x]", determinism: "DL2", executor: "agent(opus, lifted kiro-verify)" }
+        - { id: "P5.s6", name: "Validate — делегирует feature-gate в P6 (workflow(), fallback inline)", determinism: "DL2", executor: "agent(opus)" }
+      links:
+        - { to: "P1o", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "P6o", type: "invoke", mechanism: "workflow()", reliability: "enforced" }
+        - { to: "EXT-cc-sdd-impl-loop", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "OD7", type: "escalation", mechanism: "prompted", reliability: "human-memory" }
+        - { to: "OD8-product", type: "escalation", mechanism: "prompted", reliability: "human-memory", external: true }
+        - { to: "run-ledger", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "run-ledger"
+      name: "run-ledger observability"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL0"
+      autonomy_default: "auto"
+      purpose: "Per-run детерминир. журнал наблюдаемости (VC-087/134): start ДО launch (crashed run оставляет trace), finish с duration/status/model_map (извлечён из .mjs source). built+unit-tested, но live-прогон в пилоте НЕ подтверждён (built ≠ validated, VC-127). Trace-нога Substrate Graduation Gate компонент 2."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run (dispatcher §Run ledger)" }
+        - { kind: "upstream-done", ref: "любой P2..P7 launch/return" }
+      emits: ["evt:run.started", "evt:run.finished", "evt:run.crashed"]
+      steps:
+        - { id: "rl.s1", name: "start — run.json status:running ДО Workflow launch", determinism: "DL0", executor: "script(run-ledger.cjs)" }
+        - { id: "rl.s2", name: "launch — dispatcher запускает Workflow (bracket)", determinism: "DL1", executor: "main-llm (dispatcher)" }
+        - { id: "rl.s3", name: "finish — finished_at/duration/status/model_map", determinism: "DL0", executor: "script(run-ledger.cjs)" }
+        - { id: "rl.s4", name: "append — ledger.ndjson идемпотентно по run_id", determinism: "DL0", executor: "script(run-ledger.cjs)" }
+      links:
+        - { to: "P2A", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "OD7"
+      name: "capability request→await→resume (§6)"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Командный канал Orchestrator→Integrator на недостающую capability (tool/MCP/role-agent/skill/env/secret). Detect-leg (capability-probe.cjs disposition) built; async await→resume протокол — ГИПОТЕЗА (OD7 SPEC), НЕ implemented: P5/P7 пишут capability-spec в PA и стоп, реального resume-триггера нет (gap #2)."
+      triggers:
+        - { kind: "event", ref: "evt:impl.capability-blocked (P5)" }
+        - { kind: "event", ref: "evt:smoke.blocked-on-capability (P7)" }
+      emits: ["evt:capability.requested", "evt:capability.blocked", "evt:capability.satisfied"]
+      steps:
+        - { id: "OD7.s1", name: "enumerate — external_capabilities манифеста фичи", determinism: "DL0", executor: "script(capability-probe.cjs)" }
+        - { id: "OD7.s2", name: "disposition — tier+dev_stand_in → SATISFIED/DEFERRED/BLOCK", determinism: "DL0", executor: "script(capability-probe.cjs)" }
+        - { id: "OD7.s3", name: "emit-request — capability-spec (OD5) в pending-actions.md, route integrator|product", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "OD7.s4", name: "await — Integrator обеспечивает capability [substrate-gated, не построен]", determinism: "H", executor: "human" }
+        - { id: "OD7.s5", name: "resume — возобновить P5/P7 [MISSING — ручной re-run]", determinism: "H", executor: "human" }
+      links:
+        - { to: "INT-add", type: "escalation", mechanism: "prompted", reliability: "human-memory" }
+        - { to: "P5o", type: "feedback", mechanism: "human", reliability: "missing" }
+        - { to: "P7o", type: "feedback", mechanism: "human", reliability: "missing" }
+    - id: "EXT-cc-sdd-impl-loop"
+      name: "kiro-impl/review/debug/verify (external cc-sdd)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL3"
+      autonomy_default: "auto"
+      purpose: "Зрелый TDD-контроллер cc-sdd (disable-model-invocation → P5 ЛИФТИТ шаблоны, не вызывает напрямую). implementer/reviewer/debugger/verify-completion как lifted prompts. L2-judgment вне нашего контроля."
+      triggers:
+        - { kind: "upstream-done", ref: "P5 Implement/Gate/Verify phases" }
+      emits: ["evt:extimpl.task-done", "evt:extimpl.rejected", "evt:extimpl.blocked"]
+      steps:
+        - { id: "EXTil.s1", name: "implementer — TDD RED→GREEN→REFACTOR authoring", determinism: "DL3", executor: "agent(external cc-sdd, lifted)" }
+        - { id: "EXTil.s2", name: "reviewer — adversarial independent review", determinism: "DL2", executor: "agent(external cc-sdd, lifted)" }
+        - { id: "EXTil.s3", name: "debugger — bounded debug round", determinism: "DL2", executor: "agent(external cc-sdd, lifted)" }
+        - { id: "EXTil.s4", name: "verify-completion — fresh evidence, do-not-rubber-stamp", determinism: "DL2", executor: "agent(external cc-sdd, lifted)" }
+      links:
+        - { to: "P5o", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "NEW-d3-delivery-provisioning"
+      name: "runtime-provisioning"
+      origin: "gap-fill"
+      methodology_source: "SRE / Infrastructure-as-Code"
+      status: "spec-only"
+      determinism_dominant: "DL1"
+      autonomy_default: "floor"
+      purpose: "Оснастить runtime-инфру (контейнеры/DB/сеть/секреты-store) под run/deploy (SPEC §6 PROVISION schema). Substrate-precondition: Integrator D3-runtime tooling (не существует). Закрывает разрыв между P7 READY_TO_SMOKE и живым deploy."
+      triggers:
+        - { kind: "event", ref: "evt:capability.blocked (OD7 provisioning-request)" }
+        - { kind: "upstream-done", ref: "evt:impl.go (P6)" }
+      emits: ["evt:provision.ready", "evt:provision.failed"]
+      steps:
+        - { id: "prov.s1", name: "read-infra-spec (из arch DEC / NFR)", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "prov.s2", name: "plan-resources", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "prov.s3", name: "apply-IaC", determinism: "DL0", executor: "script(IaC runner)" }
+        - { id: "prov.s4", name: "verify-provisioned (reuse env-readiness)", determinism: "DL0", executor: "script(env-readiness.cjs)" }
+        - { id: "prov.s5", name: "register-endpoints", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "OD7", type: "data-feed", mechanism: "proposed", reliability: "proposed" }
+        - { to: "INT-add", type: "invoke", mechanism: "proposed", reliability: "missing" }
+        - { to: "NEW-d3-delivery-deploy-to-stage", type: "data-feed", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d3-delivery-test-infra-bringup"
+      name: "test-infra bring-up"
+      origin: "gap-fill"
+      methodology_source: "SRE / Continuous Delivery (ephemeral environments)"
+      status: "spec-only"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Поднять эфемерный тест-субстрат (docker-compose DB/Redis) чтобы suites+smoke гнались на реальных швах, не mock; кормит env-readiness READY (снимает ENV_NOT_READY у P6/P7). Substrate-precondition: Integrator D3-runtime."
+      triggers:
+        - { kind: "event", ref: "evt:impl.manual-verify (readiness=ENV_NOT_READY)" }
+        - { kind: "upstream-done", ref: "перед P6 suite / P7 boot" }
+      emits: ["evt:testinfra.ready", "evt:testinfra.failed"]
+      steps:
+        - { id: "ti.s1", name: "read-compose-manifest", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "ti.s2", name: "bring-up-services", determinism: "DL0", executor: "script(compose up)" }
+        - { id: "ti.s3", name: "wait-healthy (reuse env-readiness)", determinism: "DL0", executor: "script(env-readiness.cjs)" }
+        - { id: "ti.s4", name: "seed-fixtures", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "ti.s5", name: "teardown", determinism: "DL0", executor: "script(compose down)" }
+      links:
+        - { to: "P6o", type: "data-feed", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P7o", type: "data-feed", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d3-delivery-migration-management"
+      name: "migration-management"
+      origin: "gap-fill"
+      methodology_source: "Continuous Delivery (database migration / evolutionary DB)"
+      status: "spec-only"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Apply/rollback DB-миграций как часть deploy; закрывает RUN 01 missing-migration 500 failure-class (эмпирически наблюдался). Substrate-precondition: Integrator D3-runtime + provisioned DB."
+      triggers:
+        - { kind: "upstream-done", ref: "evt:provision.ready / перед deploy-to-stage" }
+      emits: ["evt:migration.applied", "evt:migration.failed", "evt:migration.rolled-back"]
+      steps:
+        - { id: "mig.s1", name: "detect-pending-migrations", determinism: "DL0", executor: "script(migrate status)" }
+        - { id: "mig.s2", name: "validate-dry-run", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "mig.s3", name: "apply", determinism: "DL0", executor: "script(migrate up)" }
+        - { id: "mig.s4", name: "verify-schema", determinism: "DL0", executor: "script" }
+        - { id: "mig.s5", name: "rollback-on-fail", determinism: "DL0", executor: "script(migrate down)" }
+      links:
+        - { to: "NEW-d3-delivery-deploy-to-stage", type: "sequence", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P7o", type: "feedback", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d3-delivery-ci-pipeline"
+      name: "CI-pipeline provision & gate"
+      origin: "gap-fill"
+      methodology_source: "Continuous Delivery / DORA (continuous integration)"
+      status: "spec-only"
+      determinism_dominant: "DL1"
+      autonomy_default: "floor"
+      purpose: "Продукт-side CI (build+test+lint gate на каждый change до merge/deploy) — аналог ecosystem verify.yml, но для строящегося продукта. Блокирующий гейт перед deploy. Substrate-precondition: CI runner (GitHub Actions) — Integrator/env."
+      triggers:
+        - { kind: "hook", ref: "on push / PR" }
+        - { kind: "upstream-done", ref: "evt:spec.generated (P3) / repo init" }
+      emits: ["evt:ci.green", "evt:ci.red"]
+      steps:
+        - { id: "ci.s1", name: "author-pipeline-config", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "ci.s2", name: "wire-gates (build/test/lint)", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "ci.s3", name: "run-on-push", determinism: "DL0", executor: "script(CI runner)" }
+        - { id: "ci.s4", name: "report-status", determinism: "DL0", executor: "script" }
+        - { id: "ci.s5", name: "block-on-red", determinism: "DL0", executor: "script(branch protection)" }
+      links:
+        - { to: "NEW-d3-delivery-deploy-to-stage", type: "blocking-gate", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P5o", type: "feedback", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d3-delivery-deploy-to-stage"
+      name: "deploy-to-stage"
+      origin: "gap-fill"
+      methodology_source: "Continuous Delivery (deployment pipeline)"
+      status: "spec-only"
+      determinism_dominant: "DL1"
+      autonomy_default: "floor"
+      purpose: "Deploy GO'd + smoke-ready билда в staging-окружение. Центральный процесс Epic E после P7. Substrate-precondition: Integrator D3-runtime tooling (SPEC §8 parks deploy/P7). Autonomy floor: staging auto, prod-таргет human-gate."
+      triggers:
+        - { kind: "upstream-done", ref: "evt:smoke.starts (P7 READY_TO_SMOKE + boot STARTS)" }
+      emits: ["evt:deploy.succeeded", "evt:deploy.failed"]
+      steps:
+        - { id: "dep.s1", name: "assemble-artifact (build image/bundle)", determinism: "DL1", executor: "agent(sonnet) + script" }
+        - { id: "dep.s2", name: "select-target-stage", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "dep.s3", name: "execute-deploy", determinism: "DL0", executor: "script(deploy runner)" }
+        - { id: "dep.s4", name: "health-check", determinism: "DL0", executor: "script(probe)" }
+        - { id: "dep.s5", name: "disclose (mock/degraded)", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "NEW-d3-delivery-provisioning", type: "invoke", mechanism: "proposed", reliability: "proposed" }
+        - { to: "NEW-d3-delivery-migration-management", type: "invoke", mechanism: "proposed", reliability: "proposed" }
+        - { to: "NEW-d4-qa-post-deploy-smoke", type: "data-feed", mechanism: "proposed", reliability: "proposed" }
+        - { to: "NEW-d3-delivery-rollback-release", type: "compensation", mechanism: "proposed", reliability: "proposed" }
+        - { to: "INT-add", type: "invoke", mechanism: "proposed", reliability: "missing" }
+    - id: "NEW-d3-delivery-release-cut"
+      name: "production release-cut"
+      origin: "gap-fill"
+      methodology_source: "Continuous Delivery (release management)"
+      status: "spec-only"
+      determinism_dominant: "H"
+      autonomy_default: "human-gate"
+      purpose: "Production release-cut из validated staging (version/changelog/tag/promote to prod). Единственный необратимый шаг Epic E → prod = human-gate (владелец, зеркалит autoflow «merge в main — всегда владелец»). Substrate-precondition: Integrator D3-runtime + все QA-гейты green."
+      triggers:
+        - { kind: "upstream-done", ref: "evt:smoke.passed + evt:perf.pass + evt:security.clean" }
+        - { kind: "human", ref: "владелец инициирует cut" }
+      emits: ["evt:release.cut", "evt:release.held"]
+      steps:
+        - { id: "rc.s1", name: "assemble-release-notes", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "rc.s2", name: "version-bump", determinism: "DL0", executor: "script" }
+        - { id: "rc.s3", name: "owner-approval (prod gate)", determinism: "H", executor: "human" }
+        - { id: "rc.s4", name: "tag + promote to prod", determinism: "DL0", executor: "script(promote)" }
+        - { id: "rc.s5", name: "announce", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "NEW-d3-delivery-rollback-release", type: "compensation", mechanism: "proposed", reliability: "proposed" }
+        - { to: "NEW-d4-qa-slo-monitoring", type: "data-feed", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d3-delivery-rollback-release"
+      name: "rollback-release"
+      origin: "gap-fill"
+      methodology_source: "DORA / SRE (fast recovery, MTTR, rollback)"
+      status: "spec-only"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Быстрый откат failed deploy/release к last-good (MTTR — recovery). Compensation-процесс для deploy/release/smoke-fail. Substrate-precondition: Integrator D3-runtime + versioned deploy artifacts."
+      triggers:
+        - { kind: "event", ref: "evt:deploy.failed" }
+        - { kind: "event", ref: "evt:smoke.failed" }
+        - { kind: "event", ref: "evt:slo.breached" }
+      emits: ["evt:rollback.completed", "evt:rollback.failed"]
+      steps:
+        - { id: "rb.s1", name: "detect-failure-signal", determinism: "DL0", executor: "script(monitor)" }
+        - { id: "rb.s2", name: "decide-rollback", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "rb.s3", name: "execute-rollback", determinism: "DL0", executor: "script(rollback)" }
+        - { id: "rb.s4", name: "verify-restored", determinism: "DL0", executor: "script(probe)" }
+        - { id: "rb.s5", name: "post-mortem-note", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "NEW-d3-delivery-deploy-to-stage", type: "compensation", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P5o", type: "escalation", mechanism: "proposed", reliability: "proposed" }
+  d4-qa:  # 7 процессов
+    - id: "P4o"
+      name: "audit-spec-fidelity"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "auto"
+      purpose: "Pre-impl fidelity-гейт МЕЖДУ P3 и P5: сгенерированный spec vs .product ground truth. Два детерминир. оракула (trace-integrity + design→tasks coverage) + LLM semantic auditor + triage (spec-fix+re-audit / product-route OD8 / coverage-gap)."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run audit-spec-fidelity --feature <slug>" }
+        - { kind: "upstream-done", ref: "evt:spec.generated (P3)" }
+      emits: ["evt:spec.faithful", "evt:spec.fixed", "evt:spec.product-routed", "evt:spec.coverage-gap", "evt:spec.residual-drift"]
+      steps:
+        - { id: "P4.s1", name: "Init — resolve features, оракулы present", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "P4.s2", name: "Trace-oracle — spec-ref ⊆ .product (dangling=fabrication)", determinism: "DL0", executor: "script(fidelity-oracle.cjs)" }
+        - { id: "P4.s3", name: "Design-coverage — design→tasks (unmounted-module gap)", determinism: "DL0", executor: "script(design-coverage-oracle.cjs)" }
+        - { id: "P4.s4", name: "Audit — semantic (value-mismatch/stale/weakened) + route+severity", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "P4.s5", name: "Triage — verify-finding-before-act (order-aware) → spec-fix+re-audit ≤2 / product-route / coverage-gap→spec", determinism: "DL2", executor: "agent(opus)" }
+      links:
+        - { to: "P5o", type: "conditional", mechanism: "prompted", reliability: "prompted" }
+        - { to: "P3o", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+        - { to: "OD8-product", type: "escalation", mechanism: "prompted", reliability: "human-memory", external: true }
+        - { to: "run-ledger", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "P6o"
+      name: "validate-feature-impl"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "auto"
+      purpose: "Feature-level GO/NO-GO гейт после impl — видит cross-task швы (метод построенный task A но не подключённый task B), чего per-task review P5 не видит. Mechanical (suite+build) + 3 валидатора (RA-8/9/10) + verify-finding + bounded remediation. GO синтезируется ДЕТЕРМИНИРОВАННО."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run validate-feature-impl --feature <slug>" }
+        - { kind: "upstream-done", ref: "P5 workflow() delegation / evt:impl.done" }
+      emits: ["evt:impl.go", "evt:impl.no-go", "evt:impl.manual-verify", "evt:impl.conflict-escalated", "evt:impl.residual-defect"]
+      steps:
+        - { id: "P6.s1", name: "Mechanical — env-readiness probe → suite+build → classify-failures; readiness⊥verdict axis", determinism: "DL0", executor: "script(env-readiness.cjs)" }
+        - { id: "P6.s2", name: "Validate — 3×opus (RA-8 coverage/RA-9 design/RA-10 integration); dropped-slot re-spawn≤2→degrade", determinism: "DL2", executor: "agent(opus x3 parallel)" }
+        - { id: "P6.s3", name: "Verify-findings — order-aware vs baseline sha", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "P6.s4", name: "Remediate — sequential ≤3, remediation-guard escalate conflicts (never self-resolve)", determinism: "DL2", executor: "agent(opus) + script(remediation-guard.cjs)" }
+        - { id: "P6.s5", name: "Synthesize — GO iff green∧no-unresolved∧no-escalated∧not-degraded; ENV_NOT_READY⇒MANUAL_VERIFY", determinism: "DL0", executor: "main-llm (в теле .mjs)" }
+      links:
+        - { to: "P7o", type: "sequence", mechanism: "prompted", reliability: "prompted" }
+        - { to: "P5o", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+        - { to: "P2o", type: "escalation", mechanism: "prompted", reliability: "human-memory" }
+        - { to: "OD8-product", type: "escalation", mechanism: "prompted", reliability: "human-memory", external: true }
+        - { to: "coverage-oracle.cjs", type: "invoke", mechanism: "script", reliability: "enforced", external: true }
+        - { to: "run-ledger", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "P7o"
+      name: "runtime-smoke-readiness"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "floor"
+      purpose: "Runtime-smoke гейт после P6 GO: «стартует ли dev-сервер?» (RUN 01: 223 теста зелёные + boot→500). READINESS-нога (детерминир. verdict) built+unit-tested; EXECUTION-нога (живой boot+диагностика) SUBSTRATE-GATED — ждёт Integrator D3-runtime."
+      triggers:
+        - { kind: "command", ref: "/orchestrator:run runtime-smoke-readiness --feature <slug>" }
+        - { kind: "upstream-done", ref: "evt:impl.go (P6)" }
+      emits: ["evt:smoke.ready", "evt:smoke.starts", "evt:smoke.fails-to-start", "evt:smoke.blocked-on-capability", "evt:smoke.not-startable"]
+      steps:
+        - { id: "P7.s1", name: "Assess — runtime-readiness (run-target+§6 boot-caps+env → verdict)", determinism: "DL0", executor: "script(runtime-readiness.cjs)" }
+        - { id: "P7.s2", name: "Branch — BLOCKED→§6 OD7 / NOT_STARTABLE→PA Product / ENV_NOT_READY→transient (boot НЕ запускаем)", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "P7.s3", name: "Boot — живой boot + capture-don't-fix диагностика (failure-taxonomy) [substrate-gated]", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "P7.s4", name: "Report — disclosures «green boot ≠ proof»", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "OD7", type: "escalation", mechanism: "prompted", reliability: "human-memory" }
+        - { to: "OD8-product", type: "escalation", mechanism: "prompted", reliability: "human-memory", external: true }
+        - { to: "P5o", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+        - { to: "NEW-d3-delivery-deploy-to-stage", type: "sequence", mechanism: "proposed", reliability: "proposed" }
+        - { to: "run-ledger", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "NEW-d4-qa-performance-verification"
+      name: "performance-verification"
+      origin: "gap-fill"
+      methodology_source: "DORA / SRE (performance testing, NFR verification)"
+      status: "spec-only"
+      determinism_dominant: "DL2"
+      autonomy_default: "floor"
+      purpose: "Верифицировать NFR perf-бюджеты (latency/throughput/saturation) против deployed билда до prod-promote. Блокирующий QA-гейт перед release-cut. Substrate-precondition: развёрнутый staging (deploy-to-stage) + load-tool."
+      triggers:
+        - { kind: "upstream-done", ref: "evt:deploy.succeeded" }
+      emits: ["evt:perf.pass", "evt:perf.regressed"]
+      steps:
+        - { id: "perf.s1", name: "derive-perf-targets-from-NFR", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "perf.s2", name: "run-load-test", determinism: "DL0", executor: "script(load runner)" }
+        - { id: "perf.s3", name: "collect-metrics", determinism: "DL0", executor: "script" }
+        - { id: "perf.s4", name: "judge-vs-budget", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "perf.s5", name: "route-regressions", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "NEW-d3-delivery-release-cut", type: "blocking-gate", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P5o", type: "feedback", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d4-qa-security-verification"
+      name: "security-verification"
+      origin: "gap-fill"
+      methodology_source: "DevSecOps / SRE (shift-left security)"
+      status: "spec-only"
+      determinism_dominant: "DL2"
+      autonomy_default: "floor"
+      purpose: "Security review/scan (deps/secrets/SAST) до prod; материализует Substrate Graduation Gate компонент #4 (security review, partial). Блокирующий гейт перед release-cut; high-sev → human-gate. Substrate-precondition: scan-tooling (Integrator)."
+      triggers:
+        - { kind: "upstream-done", ref: "evt:impl.go (P6) / перед release-cut" }
+        - { kind: "schedule", ref: "периодический re-scan" }
+      emits: ["evt:security.clean", "evt:security.findings"]
+      steps:
+        - { id: "sec.s1", name: "dependency + secret scan", determinism: "DL0", executor: "script(scanner)" }
+        - { id: "sec.s2", name: "SAST", determinism: "DL1", executor: "agent(sonnet) + script" }
+        - { id: "sec.s3", name: "triage-findings", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "sec.s4", name: "judge-severity + gate", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "sec.s5", name: "route-fixes / escalate high-sev", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "NEW-d3-delivery-release-cut", type: "blocking-gate", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P5o", type: "escalation", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P2A", type: "data-feed", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d4-qa-post-deploy-smoke"
+      name: "post-deploy synthetic smoke"
+      origin: "gap-fill"
+      methodology_source: "SRE (synthetic monitoring / smoke tests in staging)"
+      status: "spec-only"
+      determinism_dominant: "DL2"
+      autonomy_default: "floor"
+      purpose: "Post-deploy синтетик-smoke против live-endpoint развёрнутого билда (P7 runtime-smoke, расширенный на deployed target). Решает promote-vs-rollback. Substrate-precondition: deploy-to-stage выполнен."
+      triggers:
+        - { kind: "upstream-done", ref: "evt:deploy.succeeded" }
+      emits: ["evt:smoke.passed", "evt:smoke.failed"]
+      steps:
+        - { id: "pds.s1", name: "resolve-deployed-endpoint", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "pds.s2", name: "run-synthetic-checks", determinism: "DL0", executor: "script(synthetic)" }
+        - { id: "pds.s3", name: "classify-failure (reuse RUN 01 taxonomy)", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "pds.s4", name: "decide-promote/rollback", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "pds.s5", name: "disclose", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "NEW-d3-delivery-release-cut", type: "blocking-gate", mechanism: "proposed", reliability: "proposed" }
+        - { to: "NEW-d3-delivery-rollback-release", type: "cascade", mechanism: "proposed", reliability: "proposed" }
+    - id: "NEW-d4-qa-slo-monitoring"
+      name: "SLO / observability monitoring"
+      origin: "gap-fill"
+      methodology_source: "DORA / SRE (SLO, error budgets, observability)"
+      status: "spec-only"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Wire SLO/observability (error-rate/latency/saturation) + alert-on-breach post-release; замыкает «держится ли продукт в prod» — temporal-контур после cut. Substrate-precondition: Integrator D3-runtime + observability stack (prod)."
+      triggers:
+        - { kind: "schedule", ref: "continuous evaluation" }
+        - { kind: "upstream-done", ref: "evt:release.cut" }
+      emits: ["evt:slo.healthy", "evt:slo.breached"]
+      steps:
+        - { id: "slo.s1", name: "define-SLOs-from-NFR", determinism: "DL2", executor: "agent(opus)" }
+        - { id: "slo.s2", name: "wire-instrumentation", determinism: "DL1", executor: "agent(sonnet)" }
+        - { id: "slo.s3", name: "collect + evaluate (continuous)", determinism: "DL0", executor: "script(monitor)" }
+        - { id: "slo.s4", name: "alert-on-breach", determinism: "DL0", executor: "script(alerting)" }
+        - { id: "slo.s5", name: "route-incident", determinism: "DL1", executor: "agent(sonnet)" }
+      links:
+        - { to: "NEW-d3-delivery-rollback-release", type: "cascade", mechanism: "proposed", reliability: "proposed" }
+        - { to: "P5o", type: "feedback", mechanism: "proposed", reliability: "proposed" }
+  d5-ops:  # 10 процессов
+    - id: "ECO-bootstrap"
+      name: "/ecosystem:bootstrap — greenfield install"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Установить Ecosystem 3.0 в проект (12 Steps): env→clone/merge→.product skeleton→env/settings/hooks→MCP→product.yaml/CLAUDE.md→git init→verify. Множественные human gates; no auto-commit / no MCP без approve."
+      triggers:
+        - { kind: "command", ref: "/ecosystem:bootstrap" }
+        - { kind: "human", ref: "once per project после global install" }
+      emits: ["evt:bootstrap.installed", "evt:hooks.registered", "evt:mcp.installed"]
+      steps:
+        - { id: "s1", name: "env verification (git/node/npm/claude)", determinism: "DL0", executor: "script(bash)" }
+        - { id: "s2", name: "analyze .claude/ state decision-tree", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "permissions pre-stage allowlist", determinism: "H", executor: "human" }
+        - { id: "s4", name: "clone/copy + filter never-copy + cp -rn merge", determinism: "DL0", executor: "script(bash)" }
+        - { id: "s5", name: ".product/ skeleton + settings/hooks-register + gitignore", determinism: "DL1", executor: "main-llm" }
+        - { id: "s6", name: "MCP per-tool install (per-MCP approve)", determinism: "H", executor: "human" }
+        - { id: "s7", name: "product.yaml + CLAUDE.md gen (placeholder subst)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s8", name: "git init + final verify via status + ready-prompt", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "INT-adapter-lifecycle", type: "data-feed", mechanism: "script", reliability: "enforced" }
+        - { to: "ECO-verify", type: "sequence", mechanism: "prompted", reliability: "prompted" }
+    - id: "ECO-update"
+      name: "/ecosystem:update — sync к upstream HEAD main"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "human-gate"
+      purpose: "Синхронизировать ecosystem-зоны из upstream main с двухуровневой wipe-protection (L1 fs backup, L2 git safety commit) и namespace-aware sync (preserve third-party + project-state)."
+      triggers:
+        - { kind: "command", ref: "/ecosystem:update [--dry-run|--force|--no-backup]" }
+      emits: ["evt:update.synced", "evt:update.dry-run", "evt:backup.created"]
+      steps:
+        - { id: "s1", name: "detect install signature (3 обязательных файла)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "Level-1 fs backup + external paths (.kiro/.beads)", determinism: "DL0", executor: "script(bash/ps)" }
+        - { id: "s3", name: "Level-2 git safety commit footprint (scoped, skip-never-abort)", determinism: "DL0", executor: "script" }
+        - { id: "s4", name: "compute changeset + dry-run/confirm gate", determinism: "DL1", executor: "human" }
+        - { id: "s5", name: "namespace-aware sync (managed re-sync, third-party preserve)", determinism: "DL0", executor: "script" }
+        - { id: "s6", name: "obsolete contamination removal (closed-list) + backfill PA", determinism: "DL0", executor: "script" }
+        - { id: "s7", name: "re-stamp ecosystem_version + re-derive hooks merge-preserve", determinism: "DL0", executor: "script" }
+        - { id: "s8", name: "cleanup temp + integrity verify + summary", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "INT-adapter-lifecycle", type: "data-feed", mechanism: "script", reliability: "enforced" }
+        - { to: "INT-update", type: "cascade", mechanism: "prompted", reliability: "human-memory" }
+    - id: "ECO-verify"
+      name: "/ecosystem:verify — non-destructive health check"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Read-only health-check (10 шагов): dirs/files/counts/marker-freshness/config-drift/env-keys/integrator-git-state/LESSON-gate self-check. Все count/marker шаги — baseline snapshot, НЕ hard contract."
+      triggers:
+        - { kind: "command", ref: "/ecosystem:verify" }
+      emits: ["evt:verify.healthy", "evt:verify.drift-flagged"]
+      steps:
+        - { id: "s1", name: "core directories + critical files table", determinism: "DL0", executor: "main-llm" }
+        - { id: "s2", name: "artifact/command counts baseline", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "orchestrator/product .mjs marker freshness grep", determinism: "DL0", executor: "script(grep)" }
+        - { id: "s4", name: "config consistency + ecosystem_version drift", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: ".env keys presence (no-print) + integrator/git state", determinism: "DL0", executor: "main-llm" }
+        - { id: "s6", name: "LESSON-* gate self-check + summary", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "NEW-d5-ops-incident-lite", type: "escalation", mechanism: "prompted", reliability: "proposed" }
+    - id: "PA-protocol"
+      name: "/ecosystem:pending-actions — PA journal contour"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "floor"
+      purpose: "Единый журнал pending user-actions: много producers (scope-guard hook enforced, research/install skills prompted, bootstrap sentinel, update backfill), один read-command; резолюция — human-memory."
+      triggers:
+        - { kind: "command", ref: "/ecosystem:pending-actions" }
+        - { kind: "hook", ref: "scope-guard append" }
+      emits: ["evt:pa.recorded", "evt:pa.viewed", "evt:pa.resolved"]
+      steps:
+        - { id: "s1", name: "producers append PA-NNN (hook / skills)", determinism: "DL0", executor: "script/main-llm" }
+        - { id: "s2", name: "bootstrap init sentinel PA-000 + update backfill", determinism: "DL0", executor: "script" }
+        - { id: "s3", name: "/ecosystem:pending-actions read + filter status/source/limit", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "human resolves entry manually", determinism: "H", executor: "human" }
+      links:
+        - { to: "INT-scope-guard", type: "data-feed", mechanism: "hook", reliability: "enforced" }
+    - id: "ECO-meta-feedback"
+      name: "/ecosystem:meta-feedback — upstream systemic feedback"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Захватить systemic feedback (oracle: reproduces in any project?), записать UF-NNN в feedback-outbox, доставить (local/push/issue). Capture — Phase 1 shipped; receiving-side automation (feedback-intake.js) DEFERRED."
+      triggers:
+        - { kind: "event", ref: "escalation ← /product:validation-tune Mode A (SYSTEMIC)" }
+        - { kind: "human", ref: "Mode B" }
+      emits: ["evt:feedback.systemic", "evt:feedback.delivered"]
+      steps:
+        - { id: "s1", name: "capture systemic observation", determinism: "DL3", executor: "main-llm" }
+        - { id: "s2", name: "oracle verify systemic vs project-local (evidence)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "append UF-NNN в .product/.upstream/feedback-outbox.md", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "delivery local / --push / --issue", determinism: "DL0", executor: "script(git/gh)" }
+      links:
+        - { to: "NEW-d5-ops-feedback-triage", type: "data-feed", mechanism: "human", reliability: "missing" }
+    - id: "ECO-enable-d7-audit"
+      name: "/ecosystem:enable-d7-audit — opt-in SessionEnd hook"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "human-gate"
+      purpose: "Зарегистрировать SessionEnd session-audit.js в пилоте, который пишет маркеры в ecosystem-repo audit-index.md через hardcoded absolute path (fragile). Disable не implemented."
+      triggers:
+        - { kind: "command", ref: "/ecosystem:enable-d7-audit" }
+        - { kind: "human", ref: "once per pilot" }
+      emits: ["evt:d7audit.enabled"]
+      steps:
+        - { id: "s1", name: "confirm context ≠ ecosystem self", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "resolve ecosystem repo root (flag/спросить)", determinism: "DL1", executor: "human" }
+        - { id: "s3", name: "read/init settings.local.json + idempotency grep", determinism: "DL0", executor: "main-llm" }
+        - { id: "s4", name: "inject SessionEnd hook abs-path", determinism: "DL0", executor: "script" }
+        - { id: "s5", name: "selftest + report", determinism: "DL0", executor: "main-llm" }
+      links:
+        - { to: "NEW-d5-ops-feedback-triage", type: "data-feed", mechanism: "hook", reliability: "prompted" }
+    - id: "NEW-d5-ops-monitoring-intake"
+      name: "Observability / runtime-signal intake"
+      origin: "gap-fill"
+      methodology_source: "SRE / DORA observability"
+      status: "proposed"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Закрыть отсутствие единого агрегатора runtime-сигналов: 6+ pending-очередей разрознены, нет health-дайджеста/телеметрии по пилоту."
+      triggers:
+        - { kind: "schedule", ref: "daily (proposed)" }
+        - { kind: "hook", ref: "SessionStart (proposed)" }
+      emits: ["evt:health.snapshot", "evt:health.anomaly"]
+      steps:
+        - { id: "s1", name: "schedule / SessionStart trigger", determinism: "DL0", executor: "hook/cron(proposed)" }
+        - { id: "s2", name: "collect pending queues + journal + verify status", determinism: "DL0", executor: "script" }
+        - { id: "s3", name: "aggregate health snapshot", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "detect anomalies / thresholds", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "surface digest / emit alert", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "NEW-d5-ops-incident-lite", type: "escalation", mechanism: "dispatcher", reliability: "proposed" }
+        - { to: "ECO-verify", type: "data-feed", mechanism: "script", reliability: "proposed" }
+    - id: "NEW-d5-ops-incident-lite"
+      name: "Incident-response-lite"
+      origin: "gap-fill"
+      methodology_source: "SRE incident management (lite)"
+      status: "proposed"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Закрыть отсутствие определённого пути «что-то сломалось в пилоте» (broken adapter, failed verify, rollback): triage→mitigate→root-cause→postmortem."
+      triggers:
+        - { kind: "event", ref: "evt:verify.drift-flagged | evt:install.rolled-back | evt:health.anomaly" }
+      emits: ["evt:incident.mitigated", "evt:incident.postmortem"]
+      steps:
+        - { id: "s1", name: "trigger on failure event", determinism: "DL0", executor: "dispatcher(proposed)" }
+        - { id: "s2", name: "triage severity + scope", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "mitigate / rollback (invoke update-rollback / integrator repair)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "root-cause → DEV_JOURNAL", determinism: "DL2", executor: "human" }
+        - { id: "s5", name: "postmortem lesson → LESSON-*", determinism: "DL2", executor: "main-llm" }
+      links:
+        - { to: "ECO-update", type: "invoke", mechanism: "prompted", reliability: "proposed" }
+        - { to: "NEW-d5-ops-backup-restore-lite", type: "compensation", mechanism: "script", reliability: "proposed" }
+    - id: "NEW-d5-ops-feedback-triage"
+      name: "Feedback intake / reconciliation (D5, P3p полноценный)"
+      origin: "gap-fill"
+      methodology_source: "Lean Startup / DevOps feedback triage"
+      status: "proposed"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Закрыть gap: receiving-side automation meta-feedback deferred (feedback-intake.js DEC-DEV-0097 не построен); intake/reconciliation UF-NNN + audit-index держится на human-memory."
+      triggers:
+        - { kind: "schedule", ref: "periodic reconciliation (proposed)" }
+        - { kind: "upstream-done", ref: "session-audit accumulation" }
+      emits: ["evt:feedback.triaged", "evt:feedback.backlogged"]
+      steps:
+        - { id: "s1", name: "scan feedback-outbox UF-NNN + audit-index markers", determinism: "DL0", executor: "script(feedback-intake.js proposed)" }
+        - { id: "s2", name: "dedup + cluster по теме", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "classify systemic / project-local / noise", determinism: "DL2", executor: "main-llm" }
+        - { id: "s4", name: "route to DEC-DEV backlog или drop", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "reconcile applied vs pending", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "ECO-meta-feedback", type: "data-feed", mechanism: "script", reliability: "proposed" }
+    - id: "NEW-d5-ops-backup-restore-lite"
+      name: "Backup/restore drill (DR-lite)"
+      origin: "gap-fill"
+      methodology_source: "SRE backup / DR-lite"
+      status: "proposed"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Дополнить ECO-update wipe-protection (L1/L2 существуют внутри update): нет restore-drill и периодического снапшота pilot-state вне update-flow."
+      triggers:
+        - { kind: "schedule", ref: "weekly (proposed)" }
+        - { kind: "event", ref: "pre-risky-op" }
+      emits: ["evt:backup.snapshot", "evt:restore.completed"]
+      steps:
+        - { id: "s1", name: "schedule / pre-risky-op trigger", determinism: "DL0", executor: "cron(proposed)" }
+        - { id: "s2", name: "snapshot .product/ + .claude/integrator state", determinism: "DL0", executor: "script" }
+        - { id: "s3", name: "verify snapshot integrity", determinism: "DL0", executor: "script" }
+        - { id: "s4", name: "on-demand restore", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: "prune old snapshots (retention)", determinism: "DL0", executor: "script" }
+      links:
+        - { to: "ECO-update", type: "temporal", mechanism: "script", reliability: "proposed" }
+  d6-governance:  # 10 процессов
+    - id: "process-gate"
+      name: "Process-gate (commit-msg blocking)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "human-gate"
+      purpose: "Единственный по-настоящему принуждающий D7-механизм: блокировать коммит, если нарушен process-контракт (count-drift / CHANGELOG на consumer-zone feat/fix / DEV_JOURNAL на fix/DEC-DEV)."
+      triggers:
+        - { kind: "hook", ref: "commit-msg git-hook (install-pre-commit.sh, per-checkout)" }
+      emits: ["evt:gate.commit-blocked", "evt:gate.commit-passed"]
+      steps:
+        - { id: "s1", name: "Parse тип коммита (feat/fix/DEC-DEV-ref)", determinism: "DL0", executor: "script(scripts/process-gate.js)" }
+        - { id: "s2", name: "Check count-drift через check-counts.js", determinism: "DL0", executor: "script(scripts/check-counts.js)" }
+        - { id: "s3", name: "Check CHANGELOG-запись на consumer-zone feat/fix", determinism: "DL0", executor: "script(scripts/process-gate.js)" }
+        - { id: "s4", name: "Check DEV_JOURNAL-запись на fix/DEC-DEV", determinism: "DL0", executor: "script(scripts/process-gate.js)" }
+        - { id: "s5", name: "Block (exit 1) или pass; байпас [skip-process-gate]", determinism: "DL0", executor: "script(scripts/process-gate.js)" }
+      links:
+        - { to: "dec-dev-journal", type: "blocking-gate", mechanism: "hook", reliability: "enforced" }
+        - { to: "changelog-consumer", type: "blocking-gate", mechanism: "hook", reliability: "enforced", external: true }
+        - { to: "count-sweep", type: "invoke", mechanism: "script", reliability: "enforced" }
+    - id: "count-sweep"
+      name: "Count-sweep (check-counts.js)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "auto"
+      purpose: "Реконсилировать заявленные счётчики артефактов/правил против ground-truth файловой системы; exit 0/1/2 для гейта."
+      triggers:
+        - { kind: "command", ref: "npm run check-counts" }
+        - { kind: "hook", ref: "process-gate.js (commit-msg)" }
+        - { kind: "upstream-done", ref: "patch-cut Step 4" }
+      emits: ["evt:counts.reconciled", "evt:counts.drift-detected"]
+      steps:
+        - { id: "s1", name: "Count файлов docs/pmo/artifacts/*.md (минус README)", determinism: "DL0", executor: "script(scripts/check-counts.js)" }
+        - { id: "s2", name: "Parse число правил из validation.md", determinism: "DL0", executor: "script(scripts/check-counts.js)" }
+        - { id: "s3", name: "Scan live-доки (README/ROADMAP/CLAUDE/docs/commands/skills), исключая archive", determinism: "DL0", executor: "script(scripts/check-counts.js)" }
+        - { id: "s4", name: "Reconcile + exit code", determinism: "DL0", executor: "script(scripts/check-counts.js)" }
+      links:
+        - { to: "process-gate", type: "blocking-gate", mechanism: "script", reliability: "enforced" }
+        - { to: "artifact-catalog", type: "data-feed", mechanism: "script", reliability: "enforced", external: true }
+    - id: "dec-dev-journal"
+      name: "DEC-DEV journaling"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Записать архитектурное решение / root-cause / scope-cut в DEV_JOURNAL (Context/Options/Decision/Outcome/Lessons); наличие принуждается process-gate."
+      triggers:
+        - { kind: "event", ref: "нетривиальное решение / баг-фикс / scope-change" }
+        - { kind: "hook", ref: "process-gate (наличие записи на fix/DEC-DEV)" }
+      emits: ["evt:dec.logged", "evt:dec.number-collision"]
+      steps:
+        - { id: "s1", name: "Detect trigger (tradeoff ≥2 вариантов / root-cause / scope-cut / spec-adjust)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Allocate next номер — next-dec-dev.js (НЕ атомарно, race-condition)", determinism: "DL0", executor: "script(scripts/next-dec-dev.js)" }
+        - { id: "s3", name: "Author entry Context/Options/Decision/Outcome/Lessons", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Commit (process-gate проверяет наличие)", determinism: "DL0", executor: "main-llm" }
+      links:
+        - { to: "process-gate", type: "blocking-gate", mechanism: "hook", reliability: "enforced" }
+        - { to: "autoflow-status-sync", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+        - { to: "pattern-promotion", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+    - id: "F1-autonomy-resolve"
+      name: "Autonomy Policy resolver (F1)"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Детерминированно вычислить диспозицию автономии operation по precedence (floor>override>pin>default>builtin); громко деградировать несуществующие уровни; НЕ эмитить то, что нечем исполнить."
+      triggers:
+        - { kind: "event", ref: "вызов из реального гейта (F2 wiring НЕ построен)" }
+      emits: ["evt:autonomy.resolved", "evt:autonomy.floor-hit", "evt:autonomy.level-degraded"]
+      steps:
+        - { id: "s1", name: "Read operation_class / risk_tier / env_tier / policy / override", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
+        - { id: "s2", name: "Apply precedence floor>per-invocation-override>per-process-pin>project-default>builtin(L1)", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
+        - { id: "s3", name: "Degrade L2/L3 → L1 ГРОМКО (safe-fallback)", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
+        - { id: "s4", name: "Emit {disposition, level_applied, floor_hit, why[]}", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
+        - { id: "s5", name: "Write audit-trail (planned — F2 wiring, run-ledger кандидат)", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
+      links:
+        - { to: "gate-risk-classifier", type: "data-feed", mechanism: "script", reliability: "proposed", external: true }
+        - { to: "prod-deploy-op", type: "blocking-gate", mechanism: "script", reliability: "proposed", external: true }
+        - { to: "run-ledger", type: "data-feed", mechanism: "script", reliability: "proposed" }
+    - id: "autoflow-status-sync"
+      name: "Autoflow git-цикл + status/memory sync"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Гнать git-цикл (branch→journal→merge→commit→push→PR) и обновление ROADMAP 'Где мы сейчас' + memory без отдельных команд; СТОП перед merge в main (владелец)."
+      triggers:
+        - { kind: "event", ref: "завершена логическая единица (фича/фикс доведён)" }
+      emits: ["evt:autoflow.pr-ready", "evt:autoflow.status-updated", "evt:autoflow.merged"]
+      steps:
+        - { id: "s1", name: "Detect завершённую логическую единицу (verify/smoke зелёный)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Branch + обновить DEV_JOURNAL/CHANGELOG ДО коммита (иначе gate отобьёт)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "fetch + merge origin/main, склейка accumulation-конфликтов", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Scoped conventional commit (только свои файлы)", determinism: "DL0", executor: "main-llm" }
+        - { id: "s5", name: "push + gh pr create (dangerouslyDisableSandbox)", determinism: "DL0", executor: "main-llm" }
+        - { id: "s6", name: "СТОП перед merge — 'PR #N готов', merge выполняет владелец", determinism: "H", executor: "human" }
+      links:
+        - { to: "memory-sync", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "main-branch-merge", type: "blocking-gate", mechanism: "human", reliability: "human-memory", external: true }
+        - { to: "process-gate", type: "blocking-gate", mechanism: "hook", reliability: "enforced" }
+    - id: "mdp-delegation"
+      name: "Model Delegation Policy"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Выбрать модель субагента по 5 осям (worst-of, качество приоритет); компенсировать дешёвый тир точным брифом; обязательно ревьюить вывод дешёвых тиров main-моделью."
+      triggers:
+        - { kind: "event", ref: "перед КАЖДЫМ делегированием (Agent tool / workflow agent())" }
+      emits: ["evt:mdp.tier-selected", "evt:mdp.output-reviewed", "evt:mdp.defect-caught"]
+      steps:
+        - { id: "s1", name: "Score 5 осей S/D/R/C/J (молча)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Tier = worst-of по осям (haiku/sonnet/opus/main)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "Написать precise brief (контракты/факты/anti-pattern warnings)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Delegate agent() с явно пиннутой model", determinism: "DL0", executor: "main-llm" }
+        - { id: "s5", name: "Review вывода haiku/sonnet main-моделью (спот-чек, не пересказ)", determinism: "DL2", executor: "main-llm" }
+      links:
+        - { to: "workflow-agent-spawn", type: "invoke", mechanism: "prompted", reliability: "prompted", external: true }
+        - { to: "workflow-syntax-smoke", type: "blocking-gate", mechanism: "script", reliability: "enforced", external: true }
+    - id: "lesson-gate"
+      name: "LESSON gate"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL0"
+      autonomy_default: "human-gate"
+      purpose: "Блокировать закрытие сессии при открытых LESSON-маркерах; громко сигналить если LESSON_GATE_MODE понижен до warn/off."
+      triggers:
+        - { kind: "hook", ref: "Stop (strict) + PreToolUse (warn)" }
+      emits: ["evt:lesson.session-blocked", "evt:lesson.warned"]
+      steps:
+        - { id: "s1", name: "Detect открытые LESSON-маркеры", determinism: "DL0", executor: "script(hooks/lesson-gate.js)" }
+        - { id: "s2", name: "Block session Stop если открыты (strict-default)", determinism: "DL0", executor: "script(hooks/lesson-gate.js)" }
+        - { id: "s3", name: "Warn на PreToolUse/UserPromptSubmit (presence-gate, warn→strict pending DEC-DEV-0062)", determinism: "DL0", executor: "script(hooks/lesson-presence-gate.js)" }
+        - { id: "s4", name: "Surface downgrade громко если LESSON_GATE_MODE=warn/off", determinism: "DL0", executor: "script(hooks/lesson-gate.js)" }
+      links:
+        - { to: "session-close", type: "blocking-gate", mechanism: "hook", reliability: "enforced", external: true }
+    - id: "meta-feedback"
+      name: "Meta-feedback (upstream systemic capture)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Захватить systemic-проблему экосистемы (воспроизводится в любом проекте) в outbox UF-NNN; доставить в ecosystem-repo; приёмная сторона feedback-intake.js дедуплицирует (CAPTURE, DON'T FIX)."
+      triggers:
+        - { kind: "event", ref: "escalation из validation-tune (Mode A SYSTEMIC)" }
+        - { kind: "human", ref: "Mode B human-initiated" }
+      emits: ["evt:metafeedback.captured", "evt:metafeedback.delivered", "evt:metafeedback.intake-deduped"]
+      steps:
+        - { id: "s1", name: "Capture systemic issue", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Verify systemic vs project-local — oracle 'reproduces in any project?' (нужен evidence)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Append UF-NNN в .product/.upstream/feedback-outbox.md", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Deliver local / --push / --issue", determinism: "DL0", executor: "human" }
+        - { id: "s5", name: "Intake + dedupe ecosystem-side (feedback-intake.js)", determinism: "DL0", executor: "script(scripts/feedback-intake.js)" }
+      links:
+        - { to: "validation-tune", type: "escalation", mechanism: "prompted", reliability: "prompted" }
+        - { to: "NEW-d7-meta-pilot-feedback-harvest", type: "data-feed", mechanism: "script", reliability: "proposed" }
+        - { to: "dec-dev-journal", type: "feedback", mechanism: "human", reliability: "human-memory" }
+    - id: "validation-tune"
+      name: "Validation-tune (feedback contour split)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Разложить пришедший validation-фидбэк на project-local (тюнинг локальной рубрики) vs systemic (эскалация в meta-feedback); DEC-DEV-0090. Технически product-command, но governance feedback-контур."
+      triggers:
+        - { kind: "event", ref: "validation feedback от пилота" }
+      emits: ["evt:valtune.tuned", "evt:valtune.escalated-systemic"]
+      steps:
+        - { id: "s1", name: "Receive validation feedback", determinism: "H", executor: "human" }
+        - { id: "s2", name: "Classify project-local vs systemic (oracle question)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Tune project rubric локально ИЛИ escalate → meta-feedback", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "meta-feedback", type: "escalation", mechanism: "prompted", reliability: "prompted" }
+        - { to: "dec-dev-journal", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+    - id: "NEW-d6-governance-decision-review-cadence"
+      name: "DEC-DEV Decision-review cadence"
+      origin: "gap-fill"
+      methodology_source: "PMBOK-lite lessons-learned + DORA/DevOps retrospective"
+      status: "proposed"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Периодическая ретроспектива DEC-DEV: 150+ записей копятся, никто не ревизит держался ли Outcome/Lessons; ловить reversed/stale решения и кормить ими паттерны/конвенции."
+      triggers:
+        - { kind: "schedule", ref: "каденс (per-phase / периодически)" }
+      emits: ["evt:decreview.completed", "evt:decreview.decision-reversed-flagged"]
+      steps:
+        - { id: "s1", name: "Sample recent DEC-DEV entries (окно/выборка)", determinism: "DL0", executor: "script(dev/meta-improvement/scripts)" }
+        - { id: "s2", name: "Assess did-outcome-hold против текущего кода/практики", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Flag reversed / stale / superseded решения", determinism: "DL2", executor: "main-llm" }
+        - { id: "s4", name: "Feed lessons → pattern-promotion / conventions / spec-drift", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "dec-dev-journal", type: "data-feed", mechanism: "prompted", reliability: "proposed" }
+        - { to: "pattern-promotion", type: "feedback", mechanism: "prompted", reliability: "proposed" }
+        - { to: "spec-drift-sweep", type: "feedback", mechanism: "prompted", reliability: "proposed" }
+  d7-meta:  # 11 процессов
+    - id: "phase-kickoff"
+      name: "Phase Kickoff readiness-gate"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Readiness-gate ПЕРЕД Phase N: снять архитектурную неопределённость, разрешить ambiguity, отрезать scope до старта имплементации."
+      triggers:
+        - { kind: "command", ref: "прогони phase-kickoff.md для Phase N" }
+        - { kind: "upstream-done", ref: "phase-closure Phase N-1" }
+      emits: ["evt:kickoff.readiness-pass", "evt:kickoff.readiness-fail", "evt:kickoff.dec-dev-logged"]
+      steps:
+        - { id: "s1", name: "Architectural readiness — 'что бы я угадывал начав писать сейчас' по каждому deliverable", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Ambiguity sweep — naming/state/edge-cases/cross-mechanism контракты", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Spec drift sweep — grep старых терминов по репо", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Static-context budget audit — замер always-on контекста (>20% рост = вынести в lazy)", determinism: "DL0", executor: "script(dev/meta-improvement/scripts)" }
+        - { id: "s5", name: "Scope discipline — cuttable scope, что отрезать в v1_1_backlog", determinism: "H", executor: "human" }
+        - { id: "s6", name: "Plan refinement — sub-phase decomposition + smoke placeholder + READINESS skeleton + ROADMAP", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "spec-drift-sweep", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "dec-dev-journal", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+        - { to: "phase-closure", type: "sequence", mechanism: "human", reliability: "human-memory" }
+    - id: "phase-closure"
+      name: "Phase Closure hygiene-ритуал"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "≤60мин hygiene ПОСЛЕ имплементации: doc-health, bootstrap-verify, hook-smoke, built≠validated, archive, memory-sync — перед следующим readiness-gate."
+      triggers:
+        - { kind: "upstream-done", ref: "implementation Phase N complete" }
+      emits: ["evt:closure.applied", "evt:closure.debt-flagged", "evt:closure.findings-logged"]
+      steps:
+        - { id: "s1", name: "Pre-flight blocking-gate — все sub-phase коммиты смёржены, CHANGELOG/DEV_JOURNAL есть, git чист", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "Documentation health + consistency check (grep статус-снапшотов, manifest↔processes↔SPEC)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Bootstrap install/update verification — реальный re-bootstrap пилота (интерактивная сессия)", determinism: "H", executor: "human" }
+        - { id: "s4", name: "Hook runtime smoke — verify-hooks.js (синтаксис+runtime каждого hooks/*.js)", determinism: "DL0", executor: "script(dev/meta-improvement/scripts/verify-hooks.js)" }
+        - { id: "s5", name: "'built ≠ validated' — разделить built и runtime-validated; долг >2 deferred-smoke = стоп", determinism: "DL2", executor: "main-llm" }
+        - { id: "s6", name: "Cleanup/archive + count verification (check-counts) + Memory MCP sync", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "count-sweep", type: "invoke", mechanism: "script", reliability: "enforced" }
+        - { to: "memory-sync", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "ECO-bootstrap", type: "cascade", mechanism: "human", reliability: "human-memory" }
+        - { to: "phase-kickoff", type: "sequence", mechanism: "human", reliability: "human-memory" }
+    - id: "patch-cut"
+      name: "Patch Cut — нарезка версии"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "≤15мин нарезка именованной версии из CHANGELOG [Unreleased] + git tag, готовой к доставке в пилот через /ecosystem:update."
+      triggers:
+        - { kind: "event", ref: "перед доставкой в пилот / live-прогоном" }
+      emits: ["evt:patch.cut", "evt:patch.delivered"]
+      steps:
+        - { id: "s1", name: "Выбор bump patch/minor", determinism: "H", executor: "human" }
+        - { id: "s2", name: "Нарезка CHANGELOG ([Unreleased]→[X.Y.Z] + новый пустой)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "Обновление ROADMAP маркеров", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Count-drift sweep — check-counts.js реконсилятор", determinism: "DL0", executor: "script(dev/meta-improvement/scripts/check-counts.js)" }
+        - { id: "s5", name: "git tag + push", determinism: "DL0", executor: "main-llm" }
+        - { id: "s6", name: "Доставка /ecosystem:update + verify-update.sh/.ps1", determinism: "DL1", executor: "human" }
+      links:
+        - { to: "count-sweep", type: "invoke", mechanism: "script", reliability: "enforced" }
+        - { to: "ECO-update", type: "sequence", mechanism: "human", reliability: "human-memory" }
+    - id: "live-run-validation"
+      name: "Live-run Validation (dogfood)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Валидация нетривиальной доработки экосистемы на ЖИВОМ пилоте с executor/reviewer separation; снятие 'pending runtime smoke'."
+      triggers:
+        - { kind: "upstream-done", ref: "доработка построена + статический smoke зелёный" }
+      emits: ["evt:liverun.validated", "evt:liverun.regression-found", "evt:liverun.pending-cleared"]
+      steps:
+        - { id: "s1", name: "Выбор класса A (спонтанность, контаминация критична) / B (механика/гейт)", determinism: "H", executor: "human" }
+        - { id: "s2", name: "DELIVERY — merge+push+update в пилот, wipe-protection check, baseline", determinism: "DL0", executor: "main-llm" }
+        - { id: "s3", name: "PROMPT — операторская задача в свежую сессию пилота (не называть тестируемое)", determinism: "DL3", executor: "agent(operator/pilot-session)" }
+        - { id: "s4", name: "WATCH-SHEET/RUBRIC — рубрика у reviewer, не у исполнителя", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "Grade пост-фактум по транскрипту (sensitivity+specificity)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s6", name: "Журнал прогона + DEC-DEV если нетривиально", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "ECO-update", type: "cascade", mechanism: "human", reliability: "human-memory" }
+        - { to: "run-ledger", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+        - { to: "dec-dev-journal", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+        - { to: "NEW-d7-meta-debt-triage", type: "backpressure", mechanism: "prompted", reliability: "proposed" }
+    - id: "session-audit"
+      name: "Session Audit v2 pipeline"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Из сессий пилота извлечь conformance-находки: capture→classify→audit→journal→patch-synth→человеческий гейт; NO auto-fix (только измеряет/предлагает)."
+      triggers:
+        - { kind: "hook", ref: "SessionEnd в пилоте (opt-in /ecosystem:enable-d7-audit)" }
+        - { kind: "command", ref: "/meta:audit-smoke --phase=N | --classify" }
+      emits: ["evt:audit.pending-captured", "evt:audit.finding-clustered", "evt:audit.patch-candidate-drafted", "evt:audit.dispositioned"]
+      steps:
+        - { id: "s1", name: "Capture — SessionEnd hook пишет Pending-маркер в audit-index.md (detect-only, идемпотентно)", determinism: "DL0", executor: "script(hooks/session-audit.js)" }
+        - { id: "s2", name: "Classify-zone — детерминированный мультилейбл-скоринг зон по сигналам транскрипта", determinism: "DL0", executor: "script(scripts/classify.js)" }
+        - { id: "s3", name: "Effect-probe — git diff в окне сессии, touched .product/**, standalone-валидатор", determinism: "DL0", executor: "script(scripts/effect-probe.js)" }
+        - { id: "s4", name: "Per-session audit — claude -p, единственная точка субъективной оценки", determinism: "DL2", executor: "agent(claude -p / session-audit prompt)" }
+        - { id: "s5", name: "Cluster-journal — накопительный ndjson, кластеризация находок across сессий", determinism: "DL0", executor: "script(scripts/audit-journal.js)" }
+        - { id: "s6", name: "Patch-synth — ≥3 инстанса → adversarial-verify (≥3 скептик-линзы) → patch candidate", determinism: "DL2", executor: "agent(scripts/patch-synth.js)" }
+        - { id: "s7", name: "Человеческий гейт [Y/N/E/D] — accept/reject/edit/defer", determinism: "H", executor: "human" }
+      links:
+        - { to: "ECO-enable-d7-audit", type: "data-feed", mechanism: "hook", reliability: "prompted" }
+        - { to: "dec-dev-journal", type: "escalation", mechanism: "human", reliability: "human-memory" }
+        - { to: "NEW-d7-meta-debt-triage", type: "data-feed", mechanism: "prompted", reliability: "proposed" }
+    - id: "memory-sync"
+      name: "Memory Sync"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Синхронизировать persistent memory с DEV_JOURNAL/ROADMAP/CHANGELOG; выровнять date-markers; держать записи tight."
+      triggers:
+        - { kind: "hook", ref: "memory-drift-reminder PostToolUse:Bash (warn)" }
+        - { kind: "event", ref: "статус-несущие файлы коммичены за сессию" }
+      emits: ["evt:memory.synced", "evt:memory.drift-detected"]
+      steps:
+        - { id: "s1", name: "Detect drift — warn-хук memory-drift-reminder (detect-only, event-gated на статус-файлы)", determinism: "DL0", executor: "script(hooks/memory-drift-reminder.js)" }
+        - { id: "s2", name: "Diff статус-файлов vs memory-entries", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "Update затронутых memory-entries + MEMORY.md индекс", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Align date-markers CLAUDE.md ↔ ROADMAP 'Последнее обновление'", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: "Tighten entries (раздутое → архивная запись)", determinism: "DL2", executor: "main-llm" }
+      links:
+        - { to: "phase-closure", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+        - { to: "dec-dev-journal", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "rails-work-history"
+      name: "Rails / work-history проекция"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "auto"
+      purpose: "Проекция git log → RAILS.md (что/сколько/с каким исходом трогали X); авто-инжект сводки на старте сессии."
+      triggers:
+        - { kind: "hook", ref: "SessionStart (тумблер RAILS_AUTOGEN=0)" }
+      emits: ["evt:rails.regenerated", "evt:rails.skill-candidate-flagged", "evt:rails.churn-loop-flagged"]
+      steps:
+        - { id: "s1", name: "Project git-log → rails-rollup.ndjson", determinism: "DL0", executor: "script(scripts/rails-build.js)" }
+        - { id: "s2", name: "Собрать area-facets + artifact-ID facets + DEC-DEV catalog", determinism: "DL0", executor: "script(scripts/rails-build.js)" }
+        - { id: "s3", name: "Detect skill-candidates (identical bodies) + churn-loops (вернувшийся byte-state)", determinism: "DL0", executor: "script(scripts/rails-build.js)" }
+        - { id: "s4", name: "Inject компактную сводку в контекст сессии (additionalContext)", determinism: "DL0", executor: "script(hooks/rails-session-start.js)" }
+      links:
+        - { to: "phase-kickoff", type: "data-feed", mechanism: "hook", reliability: "prompted" }
+    - id: "spec-drift-sweep"
+      name: "Spec Drift Sweep"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Перед kickoff/после рефактора: найти и починить stale-ссылки на переименованные термины по всему репо."
+      triggers:
+        - { kind: "event", ref: "рефактор с риском stale-ссылок" }
+        - { kind: "upstream-done", ref: "phase-kickoff step spec-drift" }
+      emits: ["evt:drift.swept", "evt:drift.stale-refs-found"]
+      steps:
+        - { id: "s1", name: "Identify renamed/deprecated terms", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Grep репо на старые термины", determinism: "DL0", executor: "main-llm" }
+        - { id: "s3", name: "Fix stale-refs prerequisite-коммитом", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "phase-kickoff", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "dec-dev-journal", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+    - id: "pattern-promotion"
+      name: "Pattern Library promotion"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Накапливать реюзабельные паттерны решений; промотировать provisional→validated при 3+ инстансах; кодифицировать в CLAUDE.md."
+      triggers:
+        - { kind: "event", ref: "architectural decision повторяется" }
+      emits: ["evt:pattern.instance-logged", "evt:pattern.promoted"]
+      steps:
+        - { id: "s1", name: "Capture pattern instance при architectural decision", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "Track instance count (3+ = порог промоушена)", determinism: "DL0", executor: "main-llm" }
+        - { id: "s3", name: "Promote provisional→validated через DEC-DEV entry", determinism: "DL2", executor: "human" }
+        - { id: "s4", name: "Codify validated pattern в root CLAUDE.md", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "dec-dev-journal", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+        - { to: "process-triggers-CLAUDE", type: "feedback", mechanism: "human", reliability: "human-memory", external: true }
+    - id: "NEW-d7-meta-debt-triage"
+      name: "Deferred/Tech-debt Triage"
+      origin: "gap-fill"
+      methodology_source: "Kanban (WIP/backlog aging) + DevOps/SRE debt management"
+      status: "proposed"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Регулярно разбирать накопленный долг (deferred-smoke планы, D7_DEADWEIGHT_CLEANUP, висящие patch-candidates), закрывая разрыв 'built≠validated', который D7 фиксирует но не закрывает."
+      triggers:
+        - { kind: "schedule", ref: "каденс (per-phase / периодически)" }
+        - { kind: "event", ref: "долг >2 deferred-smoke планов (VC-127 порог)" }
+      emits: ["evt:debt.triaged", "evt:debt.item-closed", "evt:debt.threshold-breached"]
+      steps:
+        - { id: "s1", name: "Gather inventory — grep dev/deferred + SMOKE_TEST_PLAN + patch-candidates + gates", determinism: "DL0", executor: "script(dev/meta-improvement/scripts)" }
+        - { id: "s2", name: "Classify по возрасту/риску/триггеру", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Decide close / defer-with-trigger / drop", determinism: "H", executor: "human" }
+        - { id: "s4", name: "Schedule bring-forward триггеры + обновить статус", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "live-run-validation", type: "backpressure", mechanism: "prompted", reliability: "proposed" }
+        - { to: "session-audit", type: "data-feed", mechanism: "prompted", reliability: "proposed" }
+        - { to: "autoflow-status-sync", type: "escalation", mechanism: "human", reliability: "proposed" }
+    - id: "NEW-d7-meta-pilot-feedback-harvest"
+      name: "Pilot Feedback Harvest ритуал"
+      origin: "gap-fill"
+      methodology_source: "Lean Startup (build-measure-learn) + DevOps feedback loop"
+      status: "proposed"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Регулярно прогонять feedback-intake (сейчас скрипт есть, но триггер запуска — human-memory): забрать outbox+FB-ledger+audit-journal, дедуплицировать, разложить на systemic/local."
+      triggers:
+        - { kind: "schedule", ref: "каденс" }
+        - { kind: "event", ref: "накоплены пилот-сессии / outbox-записи" }
+      emits: ["evt:feedback.harvested", "evt:feedback.deduped", "evt:feedback.routed"]
+      steps:
+        - { id: "s1", name: "Pull outbox + Orchestrator FB-ledger + audit-journal.ndjson", determinism: "DL0", executor: "script(dev/meta-improvement/scripts/feedback-intake.js)" }
+        - { id: "s2", name: "Dedupe vs DEV_JOURNAL (ported/likely-ported/open)", determinism: "DL0", executor: "script(scripts/feedback-intake.js)" }
+        - { id: "s3", name: "Triage systemic vs project-local", determinism: "DL2", executor: "main-llm" }
+        - { id: "s4", name: "Route → dec-dev-journal / patch-candidate", determinism: "H", executor: "human" }
+      links:
+        - { to: "meta-feedback", type: "data-feed", mechanism: "script", reliability: "proposed" }
+        - { to: "run-ledger", type: "data-feed", mechanism: "script", reliability: "proposed" }
+        - { to: "dec-dev-journal", type: "feedback", mechanism: "human", reliability: "proposed" }
+  x-capability:  # 14 процессов
+    - id: "INT-research"
+      name: "/integrator:research — read-only research + approve gate"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Исследовать инструмент под потребность PMO-зоны, дать сравнительный отчёт и явное user-решение; НИКОГДА не устанавливать сам (hard approve gate усилён после инцидента pilot 2026-05-27)."
+      triggers:
+        - { kind: "command", ref: "/integrator:research <need>" }
+        - { kind: "event", ref: "evt:gaps.identified" }
+      emits: ["evt:research.shortlisted", "evt:research.approved", "evt:research.deferred"]
+      steps:
+        - { id: "s1", name: "session-marker + PMO zone id", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "discovery через MCP-stack (Context7/GitHub/Firecrawl/Brave/Exa, fallback Web)", determinism: "DL2", executor: "agent(sonnet/tool-researcher)" }
+        - { id: "s3", name: "shortlist filter (stack fit/maturity/license/maintenance)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s4", name: "профилирование кандидатов", determinism: "DL2", executor: "agent(sonnet/tool-researcher)" }
+        - { id: "s5", name: "comparison table + explicit confidence C2", determinism: "DL2", executor: "main-llm" }
+        - { id: "s6", name: "hard approve gate (STOP, silence != consent)", determinism: "H", executor: "human" }
+        - { id: "s7", name: "cache research + journal DEC-INT-RESEARCH", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "INT-gaps", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+        - { to: "INT-add", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+    - id: "INT-scan"
+      name: "/integrator:scan — environment baseline"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Non-destructive снимок окружения (owned/user-customizations/unknown) в baseline.yaml перед модифицирующими действиями."
+      triggers:
+        - { kind: "command", ref: "/integrator:scan" }
+        - { kind: "upstream-done", ref: "pre INT-add/update (SPEC §13.1, условно в impl)" }
+      emits: ["evt:scan.baseline-written", "evt:scan.conflict-detected"]
+      steps:
+        - { id: "s1", name: "session-marker", determinism: "DL0", executor: "main-llm" }
+        - { id: "s2", name: "lazy-init .claude/integrator skeleton", determinism: "DL0", executor: "script(scan.md bash)" }
+        - { id: "s3", name: "scan зон (hooks/commands/agents/skills/settings/.mcp/package)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "classify owned/user/unknown (guess purpose, no auto-guess без confirm)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "detect потенциальных конфликтов по known catalog", determinism: "DL1", executor: "main-llm" }
+        - { id: "s6", name: "write baseline.yaml + report + cleanup marker", determinism: "DL0", executor: "main-llm" }
+      links:
+        - { to: "INT-add", type: "data-feed", mechanism: "script", reliability: "enforced" }
+        - { to: "INT-update", type: "data-feed", mechanism: "script", reliability: "enforced" }
+    - id: "INT-add"
+      name: "/integrator:add — 6-стадийная установка"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Установить внешний инструмент за 6 стадий (profile→propose+approve→install→configure→contract→verify) с rollback при smoke-fail; Stage6 smoke на синтетическом фикстуре (граница DEC-DEV-0040 Q3)."
+      triggers:
+        - { kind: "command", ref: "/integrator:add <tool>" }
+        - { kind: "event", ref: "evt:research.approved" }
+      emits: ["evt:tool.installed", "evt:contract.verified", "evt:install.rolled-back", "evt:tooldocs.generated"]
+      steps:
+        - { id: "s1", name: "pre-flight lazy-init + session-context marker", determinism: "DL0", executor: "script(add.md bash)" }
+        - { id: "s2", name: "Stage1 Profile (YAML профиль + UX report)", determinism: "DL3", executor: "agent(sonnet/tool-profiler)" }
+        - { id: "s3", name: "Stage2 Propose + hard approve gate y/n/details", determinism: "H", executor: "human" }
+        - { id: "s4", name: "Stage3 Install per source-type (npm/mcp/git/binary/docker)", determinism: "DL0", executor: "script(bash/node)" }
+        - { id: "s5", name: "Stage4 Configure active-tools/pmo-mapping + rescan", determinism: "DL1", executor: "main-llm" }
+        - { id: "s6", name: "Stage5 Contract design + adapter instance", determinism: "DL3", executor: "agent(opus/contract-designer)" }
+        - { id: "s7", name: "Stage6 Verify smoke + tool-docs + journal (или rollback)", determinism: "DL0", executor: "script(node adapter --verify-only)" }
+      links:
+        - { to: "INT-scan", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "INT-adapter-lifecycle", type: "blocking-gate", mechanism: "script", reliability: "enforced" }
+        - { to: "INT-contract-journal", type: "invoke", mechanism: "prompted", reliability: "enforced" }
+        - { to: "NEW-x-capability-result-ingest", type: "data-feed", mechanism: "prompted", reliability: "missing" }
+    - id: "INT-update"
+      name: "/integrator:update — version bump + drift repair"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL1"
+      autonomy_default: "floor"
+      purpose: "Обновить версию инструмента и починить drift контракта (v1 = minimum viable drift detection; full schema-aware deferred Phase 7). NEVER touch .product/."
+      triggers:
+        - { kind: "command", ref: "/integrator:update <tool> [version|--repair|--check-only]" }
+      emits: ["evt:tool.updated", "evt:drift.detected", "evt:update.broken"]
+      steps:
+        - { id: "s1", name: "pre-flight marker + target version resolution", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "Stage1 Backup state + adapter metadata snapshot", determinism: "DL0", executor: "script(bash)" }
+        - { id: "s3", name: "Stage2 Install new version (skip в --repair)", determinism: "DL0", executor: "script(bash/node)" }
+        - { id: "s4", name: "Stage3 Drift D1 semver / D2 schema-version local / D3 body diff + breaking-vs-cosmetic", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "Stage4 Contract repair (REPAIR MODE)", determinism: "DL3", executor: "agent(opus/contract-designer)" }
+        - { id: "s6", name: "Stage5 Verify smoke + regen tool-docs (preserve manual блоки)", determinism: "DL0", executor: "script(node adapter --verify-only)" }
+      links:
+        - { to: "INT-adapter-lifecycle", type: "cascade", mechanism: "script", reliability: "enforced" }
+        - { to: "ECO-update", type: "data-feed", mechanism: "prompted", reliability: "human-memory" }
+    - id: "INT-remove"
+      name: "/integrator:remove — destructive removal"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Удалить инструмент с impact-анализом (contracts/PMO-zones/handoffs), hard confirm, backup+uninstall и очисткой состояния; orphaned handoff — только warning."
+      triggers:
+        - { kind: "command", ref: "/integrator:remove <tool> [--confirm]" }
+      emits: ["evt:tool.removed", "evt:handoff.orphaned", "evt:zone.uncovered"]
+      steps:
+        - { id: "s1", name: "Stage1 Locate (idempotent no-op если отсутствует)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "Stage2 Impact analysis + read affected handoffs frontmatter", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Stage3 Confirmation gate y/n", determinism: "H", executor: "human" }
+        - { id: "s4", name: "Stage4 Backup + uninstall per source", determinism: "DL0", executor: "script(bash)" }
+        - { id: "s5", name: "Stage5 State cleanup (promote/uncover/remove CNT/adapter)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s6", name: "journal + orphan-warning summary", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "NEW-x-capability-stale-refresh", type: "cascade", mechanism: "prompted", reliability: "human-memory" }
+    - id: "INT-observe"
+      name: "/integrator:map|status|journal — read-only overview"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Read-only обзор: PMO coverage table (map), health overview (status, <2с), просмотр двухуровневого журнала DEC-INT (journal) + next-actions."
+      triggers:
+        - { kind: "command", ref: "/integrator:map | /integrator:status | /integrator:journal" }
+      emits: ["evt:coverage.reported", "evt:health.reported", "evt:journal.viewed"]
+      steps:
+        - { id: "s1", name: "scope-marker (только для scope-guard)", determinism: "DL0", executor: "main-llm" }
+        - { id: "s2", name: "map: process×tool×confidence×evidence×contracts table", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "status: health overview + suggested next actions", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "journal: parse DEC-INT-NNNN + filter + insights", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: "recommendations (recent issues интерпретация)", determinism: "DL2", executor: "main-llm" }
+      links:
+        - { to: "INT-research", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+    - id: "INT-gaps"
+      name: "/integrator:gaps — непокрытые PMO-зоны"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "auto"
+      purpose: "Вычислить needed−covered зоны из .product/features|releases и рекомендовать research; единственное место, читающее .product/ напрямую; explicit anti-padding."
+      triggers:
+        - { kind: "command", ref: "/integrator:gaps" }
+      emits: ["evt:gaps.identified", "evt:coverage.gap-critical"]
+      steps:
+        - { id: "s1", name: "read .product/features + releases (needed zones)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "read active-tools + pmo-mapping (covered zones)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "compute needed − covered = gaps", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "criticality judgment (critical/important/nice/out-of-scope)", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "recommend /integrator:research", determinism: "DL2", executor: "main-llm" }
+      links:
+        - { to: "INT-research", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+    - id: "INT-scope-guard"
+      name: "session-marker + scope-guard (warn-only wiring)"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Сигнализировать активную Integrator-команду (.session-context.json TTL 1h) и предупреждать при попытке писать в forbidden paths (.product/.kiro/docs/pmo); никогда не блокирует (DEC-DEV-0047)."
+      triggers:
+        - { kind: "hook", ref: "PreToolUse Bash|Write|Edit|NotebookEdit" }
+        - { kind: "command", ref: "start/end любой из 9 команд" }
+      emits: ["evt:scope.violation-warned", "evt:pa.recorded"]
+      steps:
+        - { id: "s1", name: "команда пишет .session-context.json (Step0)", determinism: "DL0", executor: "main-llm" }
+        - { id: "s2", name: "scope-guard.js fires только при marker (иначе no-op)", determinism: "DL0", executor: "script(hooks/integrator/scope-guard.js)" }
+        - { id: "s3", name: "regex-sniffer детект forbidden path (не AST)", determinism: "DL0", executor: "script(scope-guard.js)" }
+        - { id: "s4", name: "stderr warn + append PA-NNN dedup", determinism: "DL0", executor: "script(scope-guard.js)" }
+        - { id: "s5", name: "cleanup marker (Final) / TTL auto-expiry", determinism: "DL0", executor: "main-llm" }
+      links:
+        - { to: "PA-protocol", type: "data-feed", mechanism: "hook", reliability: "enforced" }
+    - id: "INT-contract-journal"
+      name: "Contract registry + decision journal autolog"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "auto"
+      purpose: "Вести CNT-реестр (contract-designer) и двухуровневый журнал (structured DEC-INT в командах + #auto autolog journal-hook PostToolUse, dedup + retention >500→archive)."
+      triggers:
+        - { kind: "hook", ref: "PostToolUse Bash|Write|Edit|NotebookEdit" }
+        - { kind: "upstream-done", ref: "Final-блок команд add/update/remove/research" }
+      emits: ["evt:contract.created", "evt:journal.logged"]
+      steps:
+        - { id: "s1", name: "contract-designer создаёт CNT-NNN.yaml+.md", determinism: "DL3", executor: "agent(opus/contract-designer)" }
+        - { id: "s2", name: "команда пишет structured DEC-INT-NNNN entry", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "journal-hook autolog #auto (path/bash фильтр, incidental-npx exclusion)", determinism: "DL0", executor: "script(hooks/integrator/journal-hook.js)" }
+        - { id: "s4", name: "dedup by (action+subject+minute) + retention archive", determinism: "DL0", executor: "script(journal-hook.js)" }
+    - id: "INT-adapter-lifecycle"
+      name: "Adapter tri-location lifecycle"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL0"
+      autonomy_default: "auto"
+      purpose: "Управлять адаптером через три локации (repo canonical → .claude/adapters reference → .claude/integrator/adapters instance) с metadata-header и обязательным verify-mode (DEC-DEV-0040 Q1)."
+      triggers:
+        - { kind: "upstream-done", ref: "ECO-bootstrap/ECO-update reference sync" }
+        - { kind: "event", ref: "INT-add Stage5 / INT-update Stage4" }
+      emits: ["evt:adapter.instantiated", "evt:adapter.repaired", "evt:adapter.verified"]
+      steps:
+        - { id: "s1", name: "repo canonical adapter (author, line-based parse, Node stdlib)", determinism: "H", executor: "human" }
+        - { id: "s2", name: "bootstrap/update deploy reference в .claude/adapters + .sync-metadata", determinism: "DL0", executor: "script(bootstrap/update)" }
+        - { id: "s3", name: "add создаёт instance + инжектирует metadata header", determinism: "DL0", executor: "script(add Stage5)" }
+        - { id: "s4", name: "update drift-repair re-instantiate reference/custom", determinism: "DL0", executor: "script(update Stage4)" }
+        - { id: "s5", name: "verify-mode --verify-only --fixture smoke", determinism: "DL0", executor: "script(node adapter.js)" }
+      links:
+        - { to: "ECO-bootstrap", type: "data-feed", mechanism: "script", reliability: "enforced" }
+        - { to: "ECO-update", type: "data-feed", mechanism: "script", reliability: "enforced" }
+    - id: "INT-maint"
+      name: "/integrator:{verify,debug,replace,docs} — maintenance/export"
+      origin: "existing"
+      status: "spec-only"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Maintenance+export группа: verify (все контракты/smoke), debug (вход confidence-downgrade), replace (SPEC §3.2/§7.5, файла нет), docs (bulk export). Команд на диске НЕТ (Phase 7); implemented-команды уже ссылаются на них → UX-разрыв."
+      triggers:
+        - { kind: "command", ref: "/integrator:verify|debug|replace|docs (не построены)" }
+      emits: ["evt:maint.verified", "evt:confidence.downgraded", "evt:tool.replaced"]
+      steps:
+        - { id: "s1", name: "verify: все контракты валидны + smoke-passing + pmo-mapping актуален", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "debug: найти systematic issues → confidence downgrade", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "replace: tool swap + data migration strategy", determinism: "DL2", executor: "main-llm" }
+        - { id: "s4", name: "docs: bulk export tool-docs для Orchestrator", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "ECO-meta-feedback", type: "feedback", mechanism: "human", reliability: "missing" }
+    - id: "NEW-x-capability-dependency-cadence"
+      name: "Периодический dependency/version drift cadence"
+      origin: "gap-fill"
+      methodology_source: "DevOps / Dependabot cadence"
+      status: "proposed"
+      determinism_dominant: "DL1"
+      autonomy_default: "floor"
+      purpose: "Закрыть отсутствие автоматического периодического чека версий установленных tools (drift-check.js SessionStart — missing; update только вручную)."
+      triggers:
+        - { kind: "schedule", ref: "weekly cron (proposed)" }
+        - { kind: "command", ref: "/integrator:deps-check (proposed)" }
+      emits: ["evt:deps.outdated", "evt:deps.current"]
+      steps:
+        - { id: "s1", name: "schedule/manual trigger", determinism: "DL0", executor: "script(cron/CLI)" }
+        - { id: "s2", name: "enumerate active-tools versions", determinism: "DL0", executor: "script" }
+        - { id: "s3", name: "query upstream latest", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "diff installed vs latest + semver risk", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: "queue update-рекомендации / invoke INT-update --check-only", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "INT-update", type: "invoke", mechanism: "cron", reliability: "proposed" }
+        - { to: "INT-scan", type: "data-feed", mechanism: "script", reliability: "proposed" }
+    - id: "NEW-x-capability-stale-refresh"
+      name: "Integrator-side handoff staleness refresh"
+      origin: "gap-fill"
+      methodology_source: "SRE freshness / actuality refresh (P5.B)"
+      status: "proposed"
+      determinism_dominant: "DL0"
+      autonomy_default: "floor"
+      purpose: "Закрыть gap: integrator-side пересчёт handoff-hash не автоматизирован (drift-guard живёт только на product-side product-handoff-gate.js); нет SessionStart drift-check."
+      triggers:
+        - { kind: "hook", ref: "SessionStart (proposed)" }
+        - { kind: "event", ref: "evt:handoff.orphaned" }
+      emits: ["evt:handoff.stale", "evt:handoff.fresh"]
+      steps:
+        - { id: "s1", name: "trigger SessionStart / pre-add", determinism: "DL0", executor: "hook(drift-check.js proposed)" }
+        - { id: "s2", name: "enumerate handoffs ref изменённых артефактов", determinism: "DL0", executor: "script" }
+        - { id: "s3", name: "recompute SHA vs artifact_hashes", determinism: "DL0", executor: "script(lib/hash.js)" }
+        - { id: "s4", name: "flag stale + queue PA / regenerate", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: "signal Product /product:handoff --regenerate", determinism: "DL1", executor: "main-llm" }
+      links:
+        - { to: "PA-protocol", type: "data-feed", mechanism: "prompted", reliability: "proposed" }
+    - id: "NEW-x-capability-result-ingest"
+      name: "External-tool output → back into ecosystem"
+      origin: "gap-fill"
+      methodology_source: "DevOps feedback loop / Continuous Delivery"
+      status: "proposed"
+      determinism_dominant: "DL1"
+      autonomy_default: "human-gate"
+      purpose: "Закрыть главный разрыв: цепочка Product→handoff→adapter→external tool однонаправленна; результат внешнего инструмента (.kiro/specs/*/spec.json) не возвращается в .product/. Финальную FSM-проводку замыкания проектирует main-сессия/Orchestrator — здесь только доменная data-feed способность."
+      triggers:
+        - { kind: "event", ref: "evt:contract.verified / external tool run complete" }
+      emits: ["evt:impl.produced", "evt:handoff.consumed"]
+      steps:
+        - { id: "s1", name: "detect external-tool output", determinism: "DL0", executor: "script" }
+        - { id: "s2", name: "parse produced artifacts/status", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "map back to FM/handoff", determinism: "DL2", executor: "main-llm" }
+        - { id: "s4", name: "write signal / emit impl-ready", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: "human review gate", determinism: "H", executor: "human" }
+      links:
+        - { to: "INT-add", type: "data-feed", mechanism: "prompted", reliability: "proposed" }
+  x-release:  # 1 процессов
+    - id: "AUTOFLOW-git"
+      name: "Autoflow git-цикл"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL1"
+      autonomy_default: "floor"
+      purpose: "Гнать git-цикл (branch→journal/changelog→merge origin→scoped commit→push→PR) сам на завершении логической единицы; STOP перед merge — владелец. Поведенческий контракт (DEC-DEV-0100), enforcement — process-gate/pre-commit."
+      triggers:
+        - { kind: "upstream-done", ref: "логическая единица завершена, verify green" }
+        - { kind: "hook", ref: "commit-msg process-gate / pre-commit" }
+      emits: ["evt:unit.committed", "evt:pr.opened", "evt:merge.awaiting-owner"]
+      steps:
+        - { id: "s1", name: "detect logical-unit-done + verify green", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "branch <type>/<scope>-<slug> from main", determinism: "DL0", executor: "script(git)" }
+        - { id: "s3", name: "update DEV_JOURNAL/CHANGELOG per triggers BEFORE commit", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "fetch + merge origin/main, склейка accumulation-конфликтов", determinism: "DL1", executor: "main-llm" }
+        - { id: "s5", name: "scoped conventional commit (только свои файлы)", determinism: "DL0", executor: "script(git)" }
+        - { id: "s6", name: "push + gh pr create (sandbox off)", determinism: "DL0", executor: "script(git/gh)" }
+        - { id: "s7", name: "STOP before merge — «PR #N готов»", determinism: "H", executor: "human" }
+      links:
+        - { to: "AUTOFLOW-git", type: "blocking-gate", mechanism: "human", reliability: "enforced" }
+        - { to: "memory-sync", type: "feedback", mechanism: "prompted", reliability: "prompted" }
+        - { to: "patch-cut", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+  x-research:  # 3 процессов
+    - id: "guided-research"
+      name: "Guided Research orchestrator"
+      origin: "existing"
+      status: "partial"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "/ecosystem:research: co-form brief → заморозить usefulness-metrics контракт → скептический research-loop bounded by DoR → anti-hype фильтр → синтез с verdict, гейтимый контрактом."
+      triggers:
+        - { kind: "command", ref: "/ecosystem:research <вопрос>" }
+      emits: ["evt:research.brief-frozen", "evt:research.synthesis-passed", "evt:research.shortfall", "evt:research.cached"]
+      steps:
+        - { id: "s1", name: "Intake — co-form brief, batch ≤6 вопросов, confirm-before-search", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Metrics contract — Tier-1 hard gates + Tier-2 weights + min_aggregate; freeze до retrieval", determinism: "DL1", executor: "main-llm" }
+        - { id: "s3", name: "Skeptical research loop bounded by Definition-of-Ready", determinism: "DL3", executor: "main-llm" }
+        - { id: "s4", name: "Anti-hype filter per-claim", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "Score + synthesize — PASS/PARTIAL/SHORTFALL", determinism: "DL2", executor: "main-llm" }
+        - { id: "s6", name: "Approve gate — STOP, silence not consent", determinism: "H", executor: "human" }
+        - { id: "s7", name: "Optional cache (~7-day staleness)", determinism: "DL0", executor: "main-llm" }
+      links:
+        - { to: "research-intake", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "anti-hype-filter", type: "invoke", mechanism: "prompted", reliability: "prompted" }
+        - { to: "deep-research", type: "conditional", mechanism: "prompted", reliability: "prompted", external: true }
+    - id: "research-intake"
+      name: "Research Intake (Pillars A+B)"
+      parent: "guided-research"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "human-gate"
+      purpose: "Совместно (с человеком ИЛИ AI) сформировать точный Research Brief и upfront usefulness-metrics контракт, гейтящий финальный синтез."
+      triggers:
+        - { kind: "upstream-done", ref: "guided-research Step 1" }
+      emits: ["evt:intake.brief-formed", "evt:intake.contract-set"]
+      steps:
+        - { id: "s1", name: "Co-form Research Brief — batch ≤6 вопросов", determinism: "DL2", executor: "main-llm" }
+        - { id: "s2", name: "Confirm-before-search (silence is not consent)", determinism: "H", executor: "human" }
+        - { id: "s3", name: "Set usefulness-metrics contract (Tier-1/Tier-2 + stakes)", determinism: "DL1", executor: "main-llm" }
+        - { id: "s4", name: "Freeze контракт до retrieval", determinism: "DL0", executor: "main-llm" }
+      links:
+        - { to: "anti-hype-filter", type: "sequence", mechanism: "prompted", reliability: "prompted" }
+        - { to: "guided-research", type: "data-feed", mechanism: "prompted", reliability: "prompted" }
+    - id: "anti-hype-filter"
+      name: "Anti-hype Filter (Pillar D)"
+      parent: "guided-research"
+      origin: "existing"
+      status: "shipped"
+      determinism_dominant: "DL2"
+      autonomy_default: "auto"
+      purpose: "Механически отфильтровать harvested claims (SIFT + provenance tiers + hype-scan + keep/DEMOTE/drop с audit-trail) ПЕРЕД входом в синтез."
+      triggers:
+        - { kind: "upstream-done", ref: "harvested claims перед синтезом" }
+      emits: ["evt:antihype.claims-filtered", "evt:antihype.claim-demoted", "evt:antihype.claim-dropped"]
+      steps:
+        - { id: "s1", name: "Atomize claims", determinism: "DL1", executor: "main-llm" }
+        - { id: "s2", name: "SIFT + provenance tiers", determinism: "DL2", executor: "main-llm" }
+        - { id: "s3", name: "Hype-signal scan", determinism: "DL2", executor: "main-llm" }
+        - { id: "s4", name: "Triangulate + faithfulness check", determinism: "DL2", executor: "main-llm" }
+        - { id: "s5", name: "keep / DEMOTE / drop с audit-trail", determinism: "DL2", executor: "main-llm" }
+      links:
+        - { to: "guided-research", type: "blocking-gate", mechanism: "prompted", reliability: "prompted" }
