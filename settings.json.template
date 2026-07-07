@@ -27,11 +27,12 @@
     "deny": []
   },
   "hooks": {
-    "_comment": "Starts empty. /ecosystem:bootstrap Step 6b scans hooks/<module>/manifest.yaml files and auto-registers entries here. User-added hooks are preserved on re-run (merge-by-command-string). Event keys are pre-seeded empty so Step 6b appends into an existing array (proven path) instead of creating a brand-new top-level key. LESSON-* (DEC-DEV-0062) adds the first Stop/PreToolUse/UserPromptSubmit hooks; Process Fabric (DEC-DEV-0154) adds the first SessionStart hook (session-fabric-status.js).",
+    "_comment": "Starts empty. /ecosystem:bootstrap Step 6b scans hooks/<module>/manifest.yaml files and auto-registers entries here. User-added hooks are preserved on re-run (merge-by-command-string). Event keys are pre-seeded empty so Step 6b appends into an existing array (proven path) instead of creating a brand-new top-level key. LESSON-* (DEC-DEV-0062) adds the first Stop/PreToolUse/UserPromptSubmit hooks; Process Fabric (DEC-DEV-0154) adds the first SessionStart hook (session-fabric-status.js); subagent-watchdog (DEC-DEV-0159) adds the first SubagentStop hook.",
     "PostToolUse": [],
     "PreToolUse": [],
     "Stop": [],
     "UserPromptSubmit": [],
-    "SessionStart": []
+    "SessionStart": [],
+    "SubagentStop": []
   }
 }

@@ -7963,6 +7963,31 @@ Recon (sonnet Explore) сравнил ID-множества: **drift уже сл
 
 ---
 
+## DEC-DEV-0159 — G05/G06: subagent-watchdog — первый SubagentStop-хук; детерминированный сенсор над pending-очередями и каноничностью персон
+
+**Date:** 2026-07-07
+**Trigger:** автономный quick-wins прогон (EXECUTION_ROADMAP §«Параллельная дорожка»); gaps G05 (pending-очередь write-only: спавн ревьюера держится на памяти оркестратора, записи тихо стираются — live-инцидент `1ff552c0c6b4`/DEC-DEV-0038 #1) + G06 (recurring S8 P1 regression: персона-бриф исполняется под general-purpose вместо канонического типа; фиксировался ≥3 раза — 0038/0043/patch-candidate C).
+
+### Context
+Прежний hard-enforcement был отвергнут в DEC-DEV-0064 с формулировкой «PostToolUse не видит subagent_type» — верно, но SubagentStop ВИДИТ: контракт верифицирован по официальной доке (payload несёт `agent_type`+`agent_id`; `transcript_path` — транскрипт главной сессии; matcher фильтрует по типу агента; exit 2 заставляет субагента ПРОДОЛЖИТЬ — поэтому осознанно warn-only/exit 0). Событие SubagentStop не использовалось нигде в экосистеме (0 из 5 незадействованных типов — аудит §1). R4 (ПОЧЕМУ harness отвечает «agent not found») по-прежнему сознательно не трогается — три прежние точки решения откладывали его до live-harness verification; watchdog не чинит регистрацию, он ДЕТЕКТИРУЕТ факт подмены post-hoc.
+
+### Options considered
+1. Штамповать consumed_at прямо в pending-yaml — отвергнуто: форматтеры триггер-хуков whitelist'ят поля при re-emit (см. `formatDaEntriesYaml`), чужой ключ молча стирается при следующей перезаписи; расширять три shipped-хука ради этого — не smallest mechanism.
+2. Sidecar-state watchdog'а `.product/.pending/.watchdog-state.json` (ПРИНЯТО) — producer-файлы не мутируются вообще; ключ (artifact, queued_at) ⇒ re-queue артефакта автоматически сбрасывает потребление (новое изменение = новое ревью-обязательство); warn-once на wipe (запись после предупреждения выбрасывается).
+3. Демон/watcher над очередью — отвергнуто (среда не-демоническая; прецедент 2b PA-моста: слушатель = детерминированный хук на событии).
+
+### Decision
+`hooks/product/subagent-watchdog.js` — один файл, три pronga (manifest: SubagentStop ""/Stop ""/PostToolUse Write|Edit): (а) **G06** — завершившийся general-purpose/claude, чей spawn-prompt (последний Task с этим subagent_type в хвосте транскрипта главной сессии, shape-tolerant парс до 1MB) матчит маркеры персона-брифа → громкий stderr «S8 P1 REGRESSION, ревью НЕ валидно, respawn каноническим типом, not-found → STOP» (anti-patterns #9/#10 остаются prompt-слоем, watchdog — слой детекции); (б) **G05-позитив** — завершившаяся каноническая персона → artifact-ID из её spawn-prompt штампуются consumed в sidecar + stderr-подтверждение; (в) **G05-wipe** — на каждом событии reconcile state↔очереди: запись исчезла без consumed → громкий stderr (сигнатура инцидента), исчезла с consumed → тихая уборка; (г) **Stop** — незакрытые обязательства на закрытии сессии → напоминание (очередь переживает сессию, spawn-намерение — нет). Rollout: warn-only (lesson-gate остаётся единственным blocking), fail-open всюду, тумблер `SUBAGENT_WATCHDOG=0`. Riders: `settings.json.template` pre-seed `"SubagentStop": []` (прецедент 2c), первый SubagentStop-хук экосистемы.
+
+### Outcome
+5 smoke-кейсов (G06-warn / consume-stamp / non-persona-silence / Stop-reminder / wipe-detect) — все зелёные с первого прогона; hook-smoke 36→41/0; полный verify EXIT=0. Обзорных доков, перечисляющих хуки поимённо, нет (проверено grep'ом) — sweep не требуется; gen-map хуки не харвестит.
+
+### Lessons
+1. «Хук не может это видеть» — утверждение про КОНКРЕТНОЕ событие, не про hook-слой вообще: отвергнутый в 0064 enforcement оказался возможен ровно потому, что смотрели на PostToolUse, а не на SubagentStop. При отклонении механизма фиксируй, к какому событию относился аргумент.
+2. Чужой формат с whitelist-re-emit — не место для твоего состояния: sidecar собственного владения дешевле и безопаснее расширения трёх производителей.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 

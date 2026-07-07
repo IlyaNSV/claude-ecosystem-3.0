@@ -101,6 +101,17 @@ hooks:
         matcher: "Write|Edit"
     description: "Zone→profile-persona router for the Autonomous Pipeline completeness-loop (DEC-DEV-0098, Epic A / A2). Filters internally to .product/ artifacts; matches the changed file to a zone via zone-router.cjs + zone-routing.yaml; computes git diff against HEAD (best-effort) → deterministic magnitude (cosmetic vs significant). When a persona fires (zone matched AND magnitude >= threshold) → appends/updates .product/.pending/advisor-pending.yaml (dedup by artifact id — idempotent re-run per LOOP_READINESS_AUDIT §5.3) + stderr signal so the orchestrating skill spawns each heterogeneous persona (architect-advisor/qa-advisor/ux-advisor) as its canonical subagent_type (not-found = STOP, never general-purpose fallback). Magnitude gate keeps the panel off trivial edits (Epic A anti-token-burn rail). Hook does not spawn a subagent itself — only signals (same contract as br/ic-change-trigger). Non-blocking, exit 0 always; fail-open if the router is unavailable."
 
+  - id: subagent-watchdog
+    file: subagent-watchdog.js
+    events:
+      - type: SubagentStop
+        matcher: ""
+      - type: Stop
+        matcher: ""
+      - type: PostToolUse
+        matcher: "Write|Edit"
+    description: "Deterministic watchdog over the pending-review queues + canonical persona spawns (DEC-DEV-0159; closes audit gaps G05/G06). SubagentStop: a canonical persona (product-devils-advocate / architect-advisor / qa-advisor / ux-advisor) finishing records consumption of the artifact ids from its spawn prompt into the sidecar .product/.pending/.watchdog-state.json (producer yamls never mutated — their formatters whitelist fields); a persona/DA brief that ran under general-purpose/claude → loud stderr S8 P1 regression warning (review NOT valid, respawn canonical, G06). Stop: unconsumed pending entries at session close → stderr reminder (spawn-intent dies with the session, queue does not — G05). PostToolUse (Write|Edit on da/advisor-pending.yaml): entry disappeared without recorded consumption → loud stderr (incident class 1ff552c0c6b4 / DEC-DEV-0038 #1). Warn-only (exit 0 always — lesson-gate stays the only blocking hook), fail-open, env SUBAGENT_WATCHDOG=0 silences. First SubagentStop hook in the ecosystem."
+
   - id: worktree-enter-guard
     file: worktree-enter-guard.js
     events:

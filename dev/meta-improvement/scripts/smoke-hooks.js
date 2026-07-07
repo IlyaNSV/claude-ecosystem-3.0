@@ -647,6 +647,148 @@ const TEST_CASES = [
     },
     expectStdoutIncludes: /hookSpecificOutput.*additionalContext.*smoke-fabric-inst/,
   },
+
+  // ── subagent-watchdog.js (DEC-DEV-0159, G05/G06) ─────────────────────────────
+  // Deterministic watchdog over the pending-review queues + canonical persona spawns.
+  // Sidecar state lives in .product/.pending/.watchdog-state.json; each case resets it
+  // and rewrites the queue fixtures wholesale (cases from br/ic-change-trigger above may
+  // have appended entries to the shared da-pending.yaml).
+  // 5 cases: G06 substitution warn · consume-stamp · non-persona silence ·
+  // Stop unconsumed reminder · G05 wipe detection.
+  {
+    hook: 'hooks/product/subagent-watchdog.js',
+    label: 'g06-substitution-warned',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: {
+      hook_event_name: 'SubagentStop',
+      agent_type: 'general-purpose',
+      agent_id: 'smoke-agent-1',
+      transcript_path: path.join(TMP_DIR, 'watchdog-transcript-gp.jsonl'),
+    },
+    setup: (ctx) => {
+      const pending = path.join(ctx.tmpProduct, '.pending');
+      fs.mkdirSync(pending, { recursive: true });
+      try { fs.rmSync(path.join(pending, '.watchdog-state.json'), { force: true }); } catch (_e) { /* ok */ }
+      fs.writeFileSync(path.join(pending, 'da-pending.yaml'), 'entries:\n', 'utf-8');
+      fs.writeFileSync(path.join(pending, 'advisor-pending.yaml'), 'entries:\n', 'utf-8');
+      fs.writeFileSync(
+        path.join(ctx.tmpDir, 'watchdog-transcript-gp.jsonl'),
+        JSON.stringify({
+          type: 'assistant',
+          message: { content: [{ type: 'tool_use', name: 'Task', input: {
+            subagent_type: 'general-purpose',
+            prompt: 'DA review BR-027 — прочитай agents/product/devils-advocate.md и прими роль (Mode: adaptive)',
+          } }] },
+        }) + '\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /S8 P1 REGRESSION[\s\S]*general-purpose/,
+  },
+  {
+    hook: 'hooks/product/subagent-watchdog.js',
+    label: 'g05-consume-stamped',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: {
+      hook_event_name: 'SubagentStop',
+      agent_type: 'product-devils-advocate',
+      agent_id: 'smoke-agent-2',
+      transcript_path: path.join(TMP_DIR, 'watchdog-transcript-da.jsonl'),
+    },
+    setup: (ctx) => {
+      const pending = path.join(ctx.tmpProduct, '.pending');
+      fs.mkdirSync(pending, { recursive: true });
+      try { fs.rmSync(path.join(pending, '.watchdog-state.json'), { force: true }); } catch (_e) { /* ok */ }
+      fs.writeFileSync(
+        path.join(pending, 'da-pending.yaml'),
+        'entries:\n  - artifact: BR-027\n    artifact_type: business-rule\n    mode: adaptive\n    queued_at: 2026-07-07T10:00:00.000Z\n',
+        'utf-8'
+      );
+      fs.writeFileSync(path.join(pending, 'advisor-pending.yaml'), 'entries:\n', 'utf-8');
+      fs.writeFileSync(
+        path.join(ctx.tmpDir, 'watchdog-transcript-da.jsonl'),
+        JSON.stringify({
+          type: 'assistant',
+          message: { content: [{ type: 'tool_use', name: 'Task', input: {
+            subagent_type: 'product-devils-advocate',
+            prompt: 'Adaptive DA review of BR-027 per da-pending entry.',
+          } }] },
+        }) + '\n',
+        'utf-8'
+      );
+    },
+    expectStderrIncludes: /consumed BR-027/,
+  },
+  {
+    hook: 'hooks/product/subagent-watchdog.js',
+    label: 'non-persona-agent-silent',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: {
+      hook_event_name: 'SubagentStop',
+      agent_type: 'Explore',
+      agent_id: 'smoke-agent-3',
+      transcript_path: path.join(TMP_DIR, 'watchdog-transcript-explore.jsonl'),
+    },
+    setup: (ctx) => {
+      const pending = path.join(ctx.tmpProduct, '.pending');
+      fs.mkdirSync(pending, { recursive: true });
+      try { fs.rmSync(path.join(pending, '.watchdog-state.json'), { force: true }); } catch (_e) { /* ok */ }
+      fs.writeFileSync(path.join(pending, 'da-pending.yaml'), 'entries:\n', 'utf-8');
+      fs.writeFileSync(path.join(pending, 'advisor-pending.yaml'), 'entries:\n', 'utf-8');
+      fs.writeFileSync(
+        path.join(ctx.tmpDir, 'watchdog-transcript-explore.jsonl'),
+        JSON.stringify({
+          type: 'assistant',
+          message: { content: [{ type: 'tool_use', name: 'Task', input: {
+            subagent_type: 'Explore', prompt: 'Find all usages of zone-router across the repo.',
+          } }] },
+        }) + '\n',
+        'utf-8'
+      );
+    },
+    expectStderrAbsent: /subagent-watchdog/,
+  },
+  {
+    hook: 'hooks/product/subagent-watchdog.js',
+    label: 'stop-unconsumed-reminder',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'Stop' },
+    setup: (ctx) => {
+      const pending = path.join(ctx.tmpProduct, '.pending');
+      fs.mkdirSync(pending, { recursive: true });
+      try { fs.rmSync(path.join(pending, '.watchdog-state.json'), { force: true }); } catch (_e) { /* ok */ }
+      fs.writeFileSync(
+        path.join(pending, 'da-pending.yaml'),
+        'entries:\n  - artifact: BR-042\n    artifact_type: business-rule\n    queued_at: 2026-07-07T11:00:00.000Z\n',
+        'utf-8'
+      );
+      fs.writeFileSync(path.join(pending, 'advisor-pending.yaml'), 'entries:\n', 'utf-8');
+    },
+    expectStderrIncludes: /unconsumed pending review[\s\S]*BR-042/,
+  },
+  {
+    hook: 'hooks/product/subagent-watchdog.js',
+    label: 'g05-wipe-detected',
+    filePath: path.join(TMP_PRODUCT, '.pending', 'da-pending.yaml'),
+    payloadExtra: { hook_event_name: 'PostToolUse' },
+    setup: (ctx) => {
+      const pending = path.join(ctx.tmpProduct, '.pending');
+      fs.mkdirSync(pending, { recursive: true });
+      // State remembers an UNCONSUMED BR-042; the queue file no longer contains it.
+      fs.writeFileSync(
+        path.join(pending, '.watchdog-state.json'),
+        JSON.stringify({
+          'da-pending.yaml': {
+            'BR-042': { queued_at: '2026-07-07T11:00:00.000Z', seen_at: '2026-07-07T11:00:01.000Z' },
+          },
+        }) + '\n',
+        'utf-8'
+      );
+      fs.writeFileSync(path.join(pending, 'da-pending.yaml'), 'entries:\n', 'utf-8');
+      fs.writeFileSync(path.join(pending, 'advisor-pending.yaml'), 'entries:\n', 'utf-8');
+    },
+    expectStderrIncludes: /G05[\s\S]*BR-042[\s\S]*restore/,
+  },
 ];
 
 // Patterns в stderr that signal real bugs (vs benign log).
