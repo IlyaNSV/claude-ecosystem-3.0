@@ -36,8 +36,9 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 > **Auto-loaded операционный индекс: ситуация → что я (harness) обязан сделать.** Это
 > SSOT-указатель; детали ритуалов — в `dev/meta-improvement/checklists/*`. Строки 🔒
 > **принуждаются** блокирующим `commit-msg` gate (`process-gate.js`, DEC-DEV-0083) — обойти
-> можно только осознанно через `[skip-process-gate]` в сообщении коммита. Установить gate:
-> `bash dev/meta-improvement/scripts/install-pre-commit.sh`.
+> можно только осознанно через `[skip-process-gate]` в сообщении коммита. Gate ставится
+> автоматически при `npm install` (npm `prepare` → `install-git-hooks.cjs`, DEC-DEV-0157);
+> вручную: `bash dev/meta-improvement/scripts/install-pre-commit.sh`.
 
 | Когда я делаю это… | …обязан (в том же / связанном коммите) | Деталь |
 |---|---|---|

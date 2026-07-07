@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "description": "Dev tooling for Ecosystem 3.0 — hook smoke runner + optional eslint. Not published; not bootstrapped to user projects (excluded by /ecosystem:bootstrap never-copy zone).",
   "scripts": {
+    "prepare": "node dev/meta-improvement/scripts/install-git-hooks.cjs --best-effort",
     "smoke:hooks": "node dev/meta-improvement/scripts/smoke-hooks.js",
     "smoke:hooks:verbose": "node dev/meta-improvement/scripts/smoke-hooks.js --verbose",
     "lint:hooks": "eslint hooks/",
