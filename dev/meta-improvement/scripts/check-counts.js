@@ -10,10 +10,13 @@
  *   - artifact types = (# of docs/pmo/artifacts/*.md) − 1 (README.md)
  *   - validation rules = SSOT number parsed from docs/pmo/validation.md ("N активных правил")
  *
- * Then scans LIVE docs (docs/, commands/, skills/, root README/ROADMAP/CLAUDE) for stated
- * counts and flags any that disagree with ground truth. Historical zones (dev/, _archive,
- * audit-reports, patch-candidates, DEV_JOURNAL, CHANGELOG) are NOT scanned — they legitimately
- * contain old numbers.
+ * Then scans LIVE docs (docs/, commands/, skills/, root README/ROADMAP/CLAUDE, templates/) for
+ * stated counts and flags any that disagree with ground truth. templates/ is included because
+ * its files are consumer-zone: they get instantiated verbatim into every new pilot project at
+ * bootstrap, so stale counts there are live drift, not history — they must track ground truth,
+ * not the project's historical numbers. Historical zones (dev/, _archive, audit-reports,
+ * patch-candidates, DEV_JOURNAL, CHANGELOG) are NOT scanned — they legitimately contain old
+ * numbers.
  *
  * Usage:
  *   node dev/meta-improvement/scripts/check-counts.js            # human report
@@ -56,7 +59,7 @@ function rulesGroundTruth() {
 
 // ─── Live-doc scan ───────────────────────────────────────────────────────────
 
-const SCAN_ROOTS = ['README.md', 'ROADMAP.md', 'CLAUDE.md', 'docs', 'commands', 'skills'];
+const SCAN_ROOTS = ['README.md', 'ROADMAP.md', 'CLAUDE.md', 'docs', 'commands', 'skills', 'templates'];
 const EXCLUDE = /(^|[\\/])(_archive|node_modules|\.git|audit-reports|patch-candidates)([\\/]|$)/;
 
 function walk(rel, acc) {
@@ -66,7 +69,7 @@ function walk(rel, acc) {
   const st = fs.statSync(abs);
   if (st.isDirectory()) {
     for (const child of fs.readdirSync(abs)) walk(path.join(rel, child), acc);
-  } else if (abs.endsWith('.md')) {
+  } else if (abs.endsWith('.md') || abs.endsWith('.md.template')) {
     acc.push(rel);
   }
 }

@@ -110,7 +110,7 @@ External implementation   → via Integrator adapter to cc-sdd/Kiro/etc.
 
 1. **Assistant-led, human-approved** (DEC-P13). AI drafts, human approves via explicit gates.
 2. **Tool-agnostic** for D2-Tech and D3-D6 (DEC-A06). External tools replaceable through Integrator.
-3. **Draft → iterate → approve** pattern for all 23 artifact types.
+3. **Draft → iterate → approve** pattern for all 24 artifact types.
 4. **Tier-aware validation**: in `pilot` tier, only 🔴 Blocking rules run inline. Others queued for `/product:status` and approve gates.
 5. **Drift detection**: `confidence:` in frontmatter, `/product:drift-check`, `/product:patterns`, `/product:validation-tune` — active protection against AI's tendency to lose coherence over long sessions.
 6. **Self-contained handoff**: universal markdown for any external tool, via adapter in Integrator.
@@ -221,8 +221,8 @@ For detailed info, browse `.claude/docs/`:
 - `.claude/README.md` — ecosystem overview
 - `.claude/docs/pmo/pmo-map.md` — PMO map (D1-D6 domains)
 - `.claude/docs/pmo/processes.md` — P1-P5 process methodology
-- `.claude/docs/pmo/validation.md` — 33 validation rules + 2 process rules
-- `.claude/docs/pmo/artifacts/README.md` — 23 artifact types catalog
+- `.claude/docs/pmo/validation.md` — 44 validation rules + 2 process rules
+- `.claude/docs/pmo/artifacts/README.md` — 24 artifact types catalog
 - `.claude/docs/product-module/SPEC.md` — Product Module detailed spec
 - `.claude/docs/product-module/handoff-spec.md` — handoff format
 - `.claude/docs/design-module/SPEC.md` — Design Module (conditional)
