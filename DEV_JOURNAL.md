@@ -7913,6 +7913,31 @@ fabric-engine 23/23 (+5 PA-тестов), fabric-dispatcher-wiring 11/11, hook-s
 
 ---
 
+## DEC-DEV-0157 — G23: process-gate ставится автоматически (npm `prepare` → node-установщик); `.sh` стал тонкой обёрткой
+
+**Date:** 2026-07-07
+**Trigger:** автономный quick-wins прогон (EXECUTION_ROADMAP §«Параллельная дорожка»); gap G23 — `.git/hooks` не версионируется, блокирующий D7-гейт существовал только там, где вручную вспомнили `install-pre-commit.sh` → свежий клон жил вообще без enforcement.
+
+### Context
+Весь D7-enforcement (count drift / CHANGELOG / DEV_JOURNAL — process-gate.js; hook-smoke — pre-commit) держался на ручном ритуале установки. fragile-enforcement класс из APPENDIX-B.
+
+### Options considered
+1. Только докстрока «не забудь установить» — отвергнуто: это и есть текущее состояние, G23 ровно об этом.
+2. npm `prepare` + node-установщик `install-git-hooks.cjs` (ПРИНЯТО) — husky-паттерн без зависимости: `prepare` срабатывает на каждом `npm install`/`npm ci`; реализация одна, кроссплатформенная (whole-repo тулинг и так node); `--best-effort` для prepare (не-репо/огрызок тарбола → warn + exit 0, npm install никогда не ломается), strict для ручного запуска.
+3. Переписать bash-установщик и вызывать его из prepare — отвергнуто: на Windows npm-скрипт с bash хрупок; две реализации (bash SSOT + node-мост) — drift-риск. Вместо этого инверсия: node = SSOT, `install-pre-commit.sh` — тонкая обёртка (документированная точка входа CLAUDE.md продолжает работать).
+
+### Decision
+Новый `dev/meta-improvement/scripts/install-git-hooks.cjs`: worktree-safe (`git rev-parse --git-path hooks`, честен к `core.hooksPath`), идемпотентен (идентичный таргет → no-op), differing-таргет бэкапится; ставит оба хука (pre-commit ← pre-commit.sh, commit-msg ← commit-msg.sh — контракт DEC-DEV-0023/0083 без изменений). `package.json` scripts += `"prepare"`. CLAUDE.md «Установить gate» обновлён (авто при npm install; вручную — прежняя команда).
+
+### Outcome
+4 сценария проверены: живой репо (prepare обновил устаревшие ранее установленные хуки — content-сравнение работает), вне репо best-effort exit 0 / strict exit 1, свежий git-init клон получает оба хука. Остаточный риск (осознанный): дев, который клонировал и НИ РАЗУ не запускал `npm install`, гейта по-прежнему не имеет — но это уже пересечение с CI (verify на Linux гоняет job'ы независимо от локальных хуков).
+
+### Lessons
+1. Fragile-enforcement закрывается перехватом СУЩЕСТВУЮЩЕГО ритуала (npm install все и так делают), а не добавлением нового («запусти ещё и вот это» — не работает по определению G23).
+2. При двух реализациях одной логики на разных языках — инвертируй в «одна реализация + тонкая обёртка», а не «мост поверх обеих».
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 
