@@ -7859,6 +7859,34 @@ Built ≠ validated: graduation-критерии в CONCEPT §9 (инстанс 
 
 ---
 
+## DEC-DEV-0155 — Process Fabric фаза 2 (2b+2c): PA-мост замыкает обратный контур G03/G04 + первый shipped SessionStart-хук; 2e срезан
+
+**Date:** 2026-07-07
+**Trigger:** продолжение фазы 2 по `dev/process-fabric/EXECUTION_ROADMAP.md` (2b PA-мост + 2c SessionStart-инжект); исполнение — два opus-субагента по MDP (точные брифы, развязанные файловые зоны), ревью диффов main-моделью.
+**Tag:** #orchestrator #process-fabric #pa-bridge #hooks #sessionstart
+
+### Context
+После 2a human-gate останавливал линию только во внутренней owner-queue Fabric (JSON) — вне канонического PA-канала владельца; резолюция требовала ручного tick с ручным подбором события. SessionStart-хуков в shipped-манифестах не было вовсе (0 из 5 неиспользуемых событийных типов — аудит §1); возвращающаяся сессия реконструировала «где мы» по хвостам доков.
+
+### Options considered
+1. **PA-write промпт-инструкцией диспетчеру** — отвергнуто: снова «LLM должен вспомнить» — ровно класс разрыва (c) аудита; CONCEPT §4.4 прямо отдаёт запись engine-shell.
+2. **Engine-shell пишет PA + `pa-scan` читает резолюцию (ПРИНЯТО)** — детерминированный слушатель на ОБОИХ концах очереди (lesson-gate-паттерн, поднятый на межпроцессную ткань).
+3. **Демон/файл-watcher на PA** — отвергнуто: среда не-демоническая; резолюция = явный tick (`pa-scan --tick`) диспетчером/владельцем, консистентно с «движок тикают».
+
+### Decision
+**2b (PA-мост).** Applied-тик, паркующий инстанс в human-gate-состоянии, зеркалит каноническую PA-запись (schema `user-action-tracker.md`; маркеры `fabric-instance`/`fabric-state`/`resume-event` в Details — машинный контракт; дедуп по (instance, state, pending); create-if-absent с PA-000 sentinel; `init` не спамит — диспетчер сразу тикает line.start). `resume-event` выводится детерминированно из charter `on{}` (`evt:pa.*` → `evt:owner.resume` → `evt:env.up` → первый ключ). Новая подкоманда **`pa-scan [--tick]`**: Status done → тикнуть resume-event (идемпотентные скипы: инстанс исчез / уже ушёл из состояния / charter не держит событие); **dismissed → surfaced only** (abort vs resume — решение владельца, не машины). PA — shell-side-effect ВНЕ event-sourcing: `replay` воспроизводит state.json бит-в-бит независимо. Escalated-гейт auto-resume по done-флипу ратифицирован: это ровно graduation-критерий (c) «human-gate через owner-queue разрешён и продолжил инстанс».
+**2c (SessionStart-инжект).** `hooks/orchestrator/session-fabric-status.js` + `manifest.yaml` — **первый shipped SessionStart-хук экосистемы**: warn-only (exit 0 всегда, 15s timeout, тумблер `FABRIC_STATUS_INJECT=0`), read-only шелл `fabric status`, инжект `additionalContext` (инстансы + топ-5 owner-queue, cap 8k), no-op без fabric-state (в dev-репо inert). Сопутствующие однострочники: `settings.json.template` pre-seed `"SessionStart": []` (прецедент LESSON-* для Stop/PreToolUse/UPS), `update.md` regex ecosystem-owned хуков += `orchestrator` (прецедент `design/` Phase 6).
+**2e (charter №2 product-front) — СРЕЗАН этой волной:** расширение слоя до прохождения graduation противоречит substrate-дисциплине DEC-DEV-0148 (built ≠ validated); профит федерации owner-queue появляется только с live product-front прогонами, которых до пилота нет. Отложен до фазы 4 по эмпирическому триггеру.
+
+### Outcome
+fabric-engine 23/23 (+5 PA-тестов), fabric-dispatcher-wiring 11/11, hook-smoke 34→36/0, полный `npm run verify` зелёный. Обратный контур G03/G04 замкнут детерминированно end-to-end: гейт → PA(pending) → владелец флипает done → `pa-scan --tick` → линия продолжена. Фаза 2 построена целиком (2a+2d PR #129; 2b+2c этот PR); дальше — фаза 3 live-валидация на пилоте (graduation gate).
+
+### Lessons
+1. **Оба конца очереди должны быть детерминированными:** write-only PA и был G03; мост полон только парой «engine-write + pa-scan-read» — одно направление без второго оставляет разрыв «сенсор→мышца».
+2. **Развязка файловых зон в брифах** позволила двум opus-агентам работать параллельно в одном checkout без конфликтов; право исполнителя на мотивированное отклонение (MDP п.5) сработало дважды — оба отклонения были однострочниками с прецедентами и приняты на ревью.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 

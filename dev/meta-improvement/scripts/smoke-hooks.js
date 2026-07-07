@@ -594,6 +594,59 @@ const TEST_CASES = [
     expectStdoutAbsent: /permissionDecision/,
     expectStderrIncludes: /LESSON GATE \(reminder\)/,
   },
+
+  // ---------- session-fabric-status (DEC-DEV-0154 / Process Fabric phase 2 · 2c) ----------
+  // The ecosystem's first shipped SessionStart hook. It reads only payload.cwd, walks up
+  // to the project root (dir containing .claude/), and — IFF <root>/.claude/orchestrator/
+  // fabric/ exists — shells the read-only engine `status` and injects a compact summary
+  // via hookSpecificOutput.additionalContext. 2 cases:
+  //   1. no fabric dir → silent no-op (empty stdout, no additionalContext)
+  //   2. fixture fabric-root (1 instance state.json + owner-queue.json) → additionalContext
+  //      carrying the instance id
+  // cwd defaults to TMP_DIR (which the runner seeds with .claude/), so root resolves to it.
+  {
+    hook: 'hooks/orchestrator/session-fabric-status.js',
+    label: 'no-fabric-dir-no-op',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart' },
+    setup: (ctx) => {
+      // Defensive: ensure the fabric dir is absent regardless of case ordering.
+      try { fs.rmSync(path.join(ctx.tmpDir, '.claude', 'orchestrator', 'fabric'), { recursive: true, force: true }); } catch (_e) { /* absent ok */ }
+    },
+    expectStdoutAbsent: /additionalContext/,
+  },
+  {
+    hook: 'hooks/orchestrator/session-fabric-status.js',
+    label: 'fabric-status-injected',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart' },
+    setup: (ctx) => {
+      const fabric = path.join(ctx.tmpDir, '.claude', 'orchestrator', 'fabric');
+      const inst = path.join(fabric, 'smoke-fabric-inst');
+      fs.mkdirSync(inst, { recursive: true });
+      fs.writeFileSync(
+        path.join(inst, 'state.json'),
+        JSON.stringify({
+          instance: 'smoke-fabric-inst',
+          charter_id: 'feature-production-line',
+          state: 'implementing',
+          subject: 'smoke-subject',
+          seq: 3,
+        }),
+        'utf-8'
+      );
+      fs.writeFileSync(
+        path.join(fabric, 'owner-queue.json'),
+        JSON.stringify([
+          { at: '2026-07-07T10:00:00.000Z', instance: 'smoke-fabric-inst', state: 'runtime_gate', kind: 'gate', priority: 2, source: 'feature-production-line' },
+        ]),
+        'utf-8'
+      );
+    },
+    expectStdoutIncludes: /hookSpecificOutput.*additionalContext.*smoke-fabric-inst/,
+  },
 ];
 
 // Patterns в stderr that signal real bugs (vs benign log).

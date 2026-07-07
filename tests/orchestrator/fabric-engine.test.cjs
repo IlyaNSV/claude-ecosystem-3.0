@@ -15,7 +15,9 @@
  *   - --autonomy per-invocation override (env.override → F1 resolve; floor still wins; DEC-DEV-0154);
  *   - replay == snapshot;
  *   - unknown event → rejected, never throws;
- *   - unparseable --at → clean exit 2.
+ *   - unparseable --at → clean exit 2;
+ *   - PA bridge (phase 2b): a human-gate tick mirrors a canonical PA entry (create-if-absent,
+ *     dedup on re-park, none on rejected/init), and pa-scan resumes done PAs / surfaces dismissed.
  *
  * Node stdlib only; run with `node tests/orchestrator/fabric-engine.test.cjs`.
  */
@@ -58,6 +60,10 @@ function cli(args) {
   }
 }
 function readState(base, id) { return JSON.parse(fs.readFileSync(path.join(base, id, 'state.json'), 'utf8')); }
+// PA journal lives under the temp base-root (via --pa-file below) so a human-gate tick never writes
+// outside the sandbox — the default path (root/../../pending-actions.md) is a real-deploy concern.
+function paFile(base) { return path.join(base, 'pending-actions.md'); }
+function readPa(base) { try { return fs.readFileSync(paFile(base), 'utf8'); } catch (_e) { return null; } }
 
 const AT = '2026-07-07T10:00:00.000Z';
 
@@ -67,12 +73,28 @@ function initInstance(base, subject, at) {
   return r.json.instance;
 }
 function tick(base, id, event, at) {
-  return cli(['tick', '--instance', id, '--event', event, '--charter', CHARTER, '--at', at || AT, '--base-root', base]);
+  return cli(['tick', '--instance', id, '--event', event, '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base)]);
 }
 function ingest(base, id, proc, result, at, runId) {
-  const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result), '--charter', CHARTER, '--at', at || AT, '--base-root', base];
+  const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result), '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base)];
   if (runId) args.push('--run-id', runId);
   return cli(args);
+}
+function paScan(base, extra) {
+  return cli(['pa-scan', '--at', AT, '--charter', CHARTER, '--base-root', base, '--pa-file', paFile(base), ...(extra || [])]);
+}
+/** reachImplementing → ingest conflicts ⇒ parks the instance in awaiting_product (a human gate). */
+function reachAwaitingProduct(base, subject) {
+  const id = reachImplementing(base, subject);
+  assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { conflicts: ['c'] }).json.ticks[0].to, 'awaiting_product');
+  return id;
+}
+/** Flip a PA entry's Status in the journal file (simulates the owner acting on it). */
+function setPaStatus(base, paId, status) {
+  const f = paFile(base);
+  const text = fs.readFileSync(f, 'utf8');
+  const re = new RegExp(`(## ${paId} —[\\s\\S]*?\\*\\*Status:\\*\\* )\\w+`);
+  fs.writeFileSync(f, text.replace(re, `$1${status}`));
 }
 /** init → line.start → spec.authored → impl_ready ⇒ leaves the instance in `implementing`. */
 function reachImplementing(base, subject) {
@@ -357,6 +379,86 @@ test('CLI unparseable --at → clean exit 2', () => {
   const r = cli(['init', '--charter', CHARTER, '--subject', 'FM-X', '--at', 'not-a-date', '--base-root', base]);
   assert.strictEqual(r.code, 2, 'must exit 2 on a bad timestamp');
   assert.ok(/parseable ISO/.test(r.stderr), `stderr should explain: ${r.stderr}`);
+});
+
+// ==== PA bridge (phase 2b) =======================================================================
+
+test('PA bridge: entering a human gate creates pending-actions.md with a canonical PA-001', () => {
+  const base = mkTmp();
+  assert.strictEqual(readPa(base), null, 'no PA journal exists before any human gate');
+  const id = reachImplementing(base, 'FM-PA');
+  const conflict = ingest(base, id, 'feature-to-tdd-impl', { conflicts: ['c'] });
+  assert.strictEqual(conflict.json.ticks[0].to, 'awaiting_product', 'conflict routes to the human gate');
+  assert.strictEqual(conflict.json.ticks[0].pa, 'PA-001', 'the applied tick report echoes the appended PA id');
+
+  const text = readPa(base);
+  assert.ok(text, 'the human gate must create the journal (create-if-absent)');
+  assert.ok(/^## PA-000 — Sentinel/m.test(text), 'sentinel PA-000 present so the counter starts at 1');
+  assert.ok(/^## PA-001 —/m.test(text), 'the fabric gate is the first real entry (PA-001)');
+  assert.ok(/\*\*Status:\*\* pending/.test(text), 'appended pending (Status is the owner to flip)');
+  assert.ok(/\*\*Source:\*\* orchestrator/.test(text), 'Source is orchestrator');
+  assert.ok(new RegExp(`\\*\\*Created:\\*\\* ${AT.replace(/\./g, '\\.')}`).test(text), 'Created == the --at input');
+  assert.ok(new RegExp(`^fabric-instance: ${id}$`, 'm').test(text), 'machine marker: fabric-instance');
+  assert.ok(/^fabric-state: awaiting_product$/m.test(text), 'machine marker: fabric-state');
+  assert.ok(/^resume-event: evt:pa\.resolved$/m.test(text), 'machine marker: resume-event (charter-derived)');
+});
+
+test('PA bridge: re-parking the same line at the same gate does not duplicate the PA (dedup)', () => {
+  const base = mkTmp();
+  const id = reachAwaitingProduct(base, 'FM-DEDUP');          // PA-001 pending
+  // resume then re-conflict → re-enters awaiting_product; PA-001 is still pending ⇒ dedup, no PA-002.
+  assert.strictEqual(tick(base, id, 'evt:pa.resolved').json.to, 'implementing');
+  const re = ingest(base, id, 'feature-to-tdd-impl', { conflicts: ['c'] });
+  assert.strictEqual(re.json.ticks[0].to, 'awaiting_product', 'the line re-parks at the same gate');
+  assert.strictEqual(re.json.ticks[0].pa, undefined, 'no new PA is appended on the deduped re-entry');
+  const count = (readPa(base).match(/^## PA-\d+ — fabric line parked/gm) || []).length;
+  assert.strictEqual(count, 1, 'exactly one fabric PA entry survives the re-park');
+});
+
+test('PA bridge: a rejected tick writes no PA and creates no journal', () => {
+  const base = mkTmp();
+  const id = initInstance(base, 'FM-REJ');                    // sits in handoff_ready (a human gate)
+  const r = tick(base, id, 'evt:does-not-exist');            // unknown event → rejected no-op
+  assert.strictEqual(r.json.applied, false, 'the tick is a rejected no-op');
+  assert.strictEqual(readPa(base), null, 'a rejected tick must not touch pending-actions.md');
+});
+
+test('PA bridge: pa-scan is inert while pending, ready+ticks on done, then idempotent', () => {
+  const base = mkTmp();
+  const id = reachAwaitingProduct(base, 'FM-SCAN');           // PA-001 pending
+
+  const pending = paScan(base);
+  assert.strictEqual(pending.code, 0);
+  assert.strictEqual(pending.json.scanned.length, 1, 'the fabric PA is scanned');
+  assert.strictEqual(pending.json.ready.length, 0, 'a pending PA is not yet actionable');
+
+  setPaStatus(base, 'PA-001', 'done');                        // the owner resolves the item
+  const doneScan = paScan(base);
+  assert.strictEqual(doneScan.json.ready.length, 1, 'a done PA on a still-parked instance is ready');
+  assert.strictEqual(doneScan.json.ready[0].instance, id);
+  assert.strictEqual(doneScan.json.ready[0].event, 'evt:pa.resolved');
+  assert.strictEqual(doneScan.json.ticked.length, 0, 'without --tick nothing fires');
+
+  const ticked = paScan(base, ['--tick']);
+  assert.strictEqual(ticked.json.ticked.length, 1);
+  assert.strictEqual(ticked.json.ticked[0].to, 'implementing', 'the resume-event un-parks the line');
+  assert.strictEqual(readState(base, id).state, 'implementing');
+
+  const again = paScan(base, ['--tick']);
+  assert.strictEqual(again.json.ready.length, 0, 'the instance left the gate → repeated pa-scan is a no-op');
+  assert.strictEqual(again.json.ticked.length, 0);
+});
+
+test('PA bridge: a dismissed fabric PA is surfaced, never auto-ticked', () => {
+  const base = mkTmp();
+  const id = reachAwaitingProduct(base, 'FM-DIS');
+  setPaStatus(base, 'PA-001', 'dismissed');
+  const r = paScan(base, ['--tick']);
+  assert.strictEqual(r.json.ready.length, 0, 'dismissed is never ready');
+  assert.strictEqual(r.json.ticked.length, 0, 'dismissed is never ticked');
+  assert.strictEqual(r.json.surfaced.length, 1);
+  assert.ok(/dismissed/.test(r.json.surfaced[0].reason), 'the surfaced reason names the dismissal');
+  assert.strictEqual(readState(base, id).state, 'awaiting_product', 'a dismissed scan leaves the state parked');
 });
 
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);

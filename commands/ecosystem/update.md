@@ -770,7 +770,7 @@ Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in S
    - Group by `(event, matcher)` pair
    - Build command entries: `node .claude/hooks/<module>/<file>`
 4. **Identify and preserve non-ecosystem hook entries** (third-party tool injections):
-   - **Pattern (primary):** entry `command` matching regex `^node \.claude/hooks/(product|integrator|ecosystem|design)/` → ecosystem-owned → re-derived from manifests. Everything else → preserved verbatim.
+   - **Pattern (primary):** entry `command` matching regex `^node \.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/` → ecosystem-owned → re-derived from manifests. Everything else → preserved verbatim. (`orchestrator/` added with the first orchestrator hook — Process Fabric SessionStart injector, DEC-DEV-0154; same convention as the `design/` prefix landing with Phase 6 hooks.)
    - **Audit-only (optional):** if `.claude/integrator/active-tools.yaml` exists и parseable, cross-reference preserved entries against `tools[*].claude_primitives[]` где `type: hook` — label preserved entries owning-tool в print confirmation. Does NOT gate merge — pattern (primary) — единственный решающий критерий.
 5. **Merge logic** (per `(event, matcher)` pair):
    - Union: ecosystem-derived entries + preserved non-ecosystem entries

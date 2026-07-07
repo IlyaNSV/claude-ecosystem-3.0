@@ -338,6 +338,129 @@ function initialSnapshot(charter, instanceId, subject, iso) {
   };
 }
 
+// ---- PA bridge (phase 2b) — projecting human gates into pending-actions.md (pure part) ----------
+//
+// WHY (CONCEPT §4.4): a human-gate prescription is the fabric asking for the OWNER's attention. The
+// engine has no daemon, so it mirrors the gate into the canonical `.claude/pending-actions.md` (the
+// existing OD7 owner channel), giving the parked line ONE durable, listable surface instead of only
+// run.md prose. The owner flips the entry's Status → and the resume is a plain machine tick. These
+// helpers are pure (charter/text/prescription in, values out); the FS side lives in the shell.
+
+/** A prescription that needs the owner: an explicit human-gate, or an invoke floored to human-gate. */
+function isHumanGatePrescription(p) {
+  if (!p) return false;
+  if (p.kind === 'human-gate') return true;
+  return p.kind === 'run-process' && p.disposition === 'human-gate';
+}
+
+/**
+ * resume-event for a parked state, derived DETERMINISTICALLY from the charter's on{} keys:
+ *   1) the first key starting with "evt:pa." (the canonical PA-resolution event), else
+ *   2) "evt:owner.resume" if handled, else
+ *   3) "evt:env.up" if handled, else
+ *   4) the first on{} key (last-resort; a human-gate state always declares ≥1 handler).
+ * This is the ONE event pa-scan ticks when the owner resolves the PA, hence the pa-first ordering:
+ * evt:pa.resolved un-parks the awaiting_* gates, evt:owner.resume the escalated gate, evt:env.up the
+ * substrate-down retry gate. Returns null only for a handler-less state (never a real human gate).
+ */
+function deriveResumeEvent(charter, state) {
+  const on = (((charter.states || {})[state] || {}).on) || {};
+  const keys = Object.keys(on);
+  const pa = keys.find((k) => k.indexOf('evt:pa.') === 0);
+  if (pa) return pa;
+  if (on['evt:owner.resume']) return 'evt:owner.resume';
+  if (on['evt:env.up']) return 'evt:env.up';
+  return keys[0] || null;
+}
+
+/** One-line owner instruction, keyed by parked state (queue_kind is the fallback discriminator). */
+function paActionLine(state, queueKind, resumeEvent) {
+  switch (state) {
+    case 'awaiting_product':
+      return 'Resolve the routed product/spec item, then flip this PA to done to resume the line.';
+    case 'awaiting_capability':
+      return 'Provision the missing capability (tool / MCP / secret), then flip this PA to done to resume.';
+    case 'escalated':
+      return 'Escalated gate: flip to done to resume the line, or dismiss to handle abort/resume manually.';
+    case 'runtime_gate_retry':
+      return 'Bring the runtime substrate back up, then flip this PA to done to re-probe readiness.';
+    default:
+      return `Resolve the ${queueKind || 'gate'} on the parked line, then flip this PA to done (resume: ${resumeEvent}).`;
+  }
+}
+
+/**
+ * Render ONE canonical PA-NNN entry (schema per skills/ecosystem/user-action-tracker.md). The
+ * `fabric-instance` / `fabric-state` / `resume-event` marker lines inside **Details** are the
+ * machine contract pa-scan parses back — one marker per line, verbatim. Pure (string builder).
+ */
+function renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent) {
+  const subject = snapshot.subject == null ? '(no subject)' : snapshot.subject;
+  const action = paActionLine(snapshot.state, queueKind, resumeEvent);
+  const details = [
+    `The \`${snapshot.charter_id}\` line for subject \`${subject}\` reached the human gate`,
+    `\`${snapshot.state}\` and cannot proceed autonomously (autonomy-policy → human-gate). Once the`,
+    'blocking item is resolved, flip **Status:** to `done` and run',
+    `\`fabric-engine.cjs pa-scan --at <ISO-now> --tick\` (or tick \`${resumeEvent}\` manually).`,
+  ].join('\n');
+  return [
+    `## PA-${id} — fabric line parked — ${snapshot.state}`,
+    '',
+    '**Status:** pending',
+    `**Created:** ${at}`,
+    '**Source:** orchestrator',
+    `**Trigger:** fabric ${snapshot.instance}`,
+    `**Action required:** ${action}`,
+    '',
+    '**Details:**',
+    '',
+    details,
+    '',
+    `fabric-instance: ${snapshot.instance}`,
+    `fabric-state: ${snapshot.state}`,
+    `resume-event: ${resumeEvent}`,
+    '',
+    `**Blocking:** fabric line ${subject} (instance ${snapshot.instance})`,
+    '',
+  ].join('\n');
+}
+
+/** Highest PA-NNN in the journal text (−1 if none, so the PA-000 sentinel yields next id = 1). */
+function maxPaId(text) {
+  let max = -1;
+  const re = /^## PA-(\d+)\b/gm;
+  let m;
+  while ((m = re.exec(text)) !== null) max = Math.max(max, Number(m[1]));
+  return max;
+}
+
+/**
+ * Parse the PA journal into entries carrying the fabric markers (+ current Status). One entry spans
+ * from its `## PA-NNN` header to the next such header; markers are matched anywhere inside. Entries
+ * without a `fabric-instance` marker come back with instance:null (non-fabric PAs the caller skips).
+ * Pure (text → array); the caller decides ready/surfaced from status + on-disk state.
+ */
+function parsePaEntries(text) {
+  const heads = [];
+  const re = /^## PA-(\d+)\b/gm;
+  let m;
+  while ((m = re.exec(text)) !== null) heads.push({ id: Number(m[1]), start: m.index });
+  const entries = [];
+  for (let i = 0; i < heads.length; i += 1) {
+    const end = i + 1 < heads.length ? heads[i + 1].start : text.length;
+    const block = text.slice(heads[i].start, end);
+    const pick = (rx) => { const r = block.match(rx); return r ? r[1].trim() : null; };
+    entries.push({
+      pa: `PA-${String(heads[i].id).padStart(3, '0')}`,
+      status: ((pick(/^\*\*Status:\*\*\s*(\w+)/m)) || '').toLowerCase() || null,
+      instance: pick(/^fabric-instance:\s*(.+)$/m),
+      state: pick(/^fabric-state:\s*(.+)$/m),
+      event: pick(/^resume-event:\s*(.+)$/m),
+    });
+  }
+  return entries;
+}
+
 // ===========================================================================
 // FS SHELL — the only place that touches disk. Thin over the pure core.
 // ===========================================================================
@@ -467,11 +590,85 @@ function applyEffects(root, snapshot, at, effects) {
   }
 }
 
+// ---- PA bridge (phase 2b) — FS side -------------------------------------------------------------
+
+/** Canonical PA journal: <project>/.claude/pending-actions.md — two levels up from the fabric root
+ *  (deploy layout .claude/orchestrator/fabric → .claude/pending-actions.md). `explicit` (--pa-file)
+ *  overrides it (tests + non-standard layouts). */
+function defaultPaFile(root) { return path.resolve(root, '..', '..', 'pending-actions.md'); }
+function paFilePath(root, explicit) { return explicit ? path.resolve(explicit) : defaultPaFile(root); }
+
+/**
+ * Create the journal with header + PA-000 sentinel if absent (mirrors bootstrap Step 6c so the
+ * counter starts at PA-001). In a deployed project bootstrap already made this file; create-if-
+ * absent only fires in fresh/test contexts. The sentinel is dismissed and load-bearing — its
+ * HTML comment warns against deletion — so PA-NNN never collides at 0.
+ */
+function ensurePaFile(paFile, at) {
+  if (fs.existsSync(paFile)) return;
+  fs.mkdirSync(path.dirname(paFile), { recursive: true });
+  fs.writeFileSync(paFile, [
+    '# Pending User Actions',
+    '',
+    '> Ecosystem-wide journal of actions that only the user can do. Auto-managed by ecosystem',
+    '> skills + hooks (the Process Fabric engine projects human gates here — phase 2b).',
+    '> Status workflow: pending → done | dismissed. Manual edits are fine; keep schema intact.',
+    '',
+    '<!-- PA-000 sentinel ensures counter starts at 1 — do not delete -->',
+    '',
+    '## PA-000 — Sentinel (do not delete)',
+    '',
+    '**Status:** dismissed',
+    `**Created:** ${at}`,
+    '**Source:** ecosystem',
+    '**Trigger:** fabric-engine (auto-init)',
+    '**Action required:** none (placeholder so PA-NNN counter starts at 1)',
+    '',
+    '**Blocking:** none.',
+    '',
+  ].join('\n'));
+}
+
+/**
+ * Tail-append a canonical PA-NNN entry for a human-gate `snapshot`, UNLESS an identical PENDING
+ * entry already exists (same fabric-instance + fabric-state) — that dedup makes a repeated ingest/
+ * tick that re-parks the same line at the same gate idempotent. Never mutates existing entries
+ * (Status is the owner's to flip). Returns { appended, pa } or { appended:false, deduped }.
+ */
+function appendFabricPa(paFile, charter, snapshot, at) {
+  const resumeEvent = deriveResumeEvent(charter, snapshot.state);
+  if (!resumeEvent) return { appended: false, reason: 'no resume-event on state' };
+  const queueKind = (((charter.states || {})[snapshot.state] || {}).meta || {}).queue_kind || 'gate';
+
+  ensurePaFile(paFile, at);
+  const text = fs.readFileSync(paFile, 'utf8');
+  const dup = parsePaEntries(text).some(
+    (e) => e.instance === snapshot.instance && e.state === snapshot.state && e.status === 'pending');
+  if (dup) return { appended: false, deduped: true };
+
+  const id = String(maxPaId(text) + 1).padStart(3, '0');
+  const block = renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent);
+  fs.appendFileSync(paFile, (text.endsWith('\n') ? '\n' : '\n\n') + block);
+  return { appended: true, pa: `PA-${id}` };
+}
+
+/** Project a human-gate prescription into the PA journal. Side-effect ONLY — not event-sourced,
+ *  so `replay` (which never calls the shell) reproduces state.json bit-for-bit regardless. */
+function maybeAppendFabricPa(paFile, charter, snapshot, at, prescription) {
+  if (!isHumanGatePrescription(prescription)) return null;
+  return appendFabricPa(paFile, charter, snapshot, at);
+}
+
 /**
  * Apply ONE event to an instance on disk. Rejected / guard-failed events are NO-OPS: reported in
  * the return value but NOT persisted (see the determinism contract). Returns a report object.
+ *
+ * `paFile` (raw --pa-file value or undefined) is resolved against `root`: when an APPLIED tick lands
+ * the instance in a human-gate state, the shell mirrors that gate into pending-actions.md (phase 2b).
+ * init never reaches here (it writes the initial handoff_ready snapshot directly), so the initial
+ * human gate is not spammed — the dispatcher immediately ticks evt:line.start out of it.
  */
-function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomyOverride) {
+function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomyOverride, paFile) {
   const snap = readJsonSafe(statePath(root, id));
   if (!snap) throw new Error(`no such instance: ${id}`);
   const env = shellEnv(root, charter, id);
@@ -491,7 +688,12 @@ function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomy
   appendEvent(root, id, evRecord);
   applyEffects(root, next, at, effects);
 
-  return { instance: id, event: eventName, from: snap.state, to: next.state, applied: true, why, effects, prescription: prescribe(charter, next, env) };
+  const prescription = prescribe(charter, next, env);
+  const pa = maybeAppendFabricPa(paFilePath(root, paFile), charter, next, at, prescription);
+
+  const report = { instance: id, event: eventName, from: snap.state, to: next.state, applied: true, why, effects, prescription };
+  if (pa && pa.appended) report.pa = pa.pa;
+  return report;
 }
 
 /** Replay events.ndjson back into a snapshot and (optionally) diff against state.json. */
@@ -548,6 +750,8 @@ function parseArgs(argv) {
       case '--at': a.at = next(); break;
       case '--autonomy': a.autonomy = next(); break;
       case '--base-root': a.baseRoot = next(); break;
+      case '--pa-file': a.paFile = next(); break;
+      case '--tick': a.tick = true; break;
       case '--all': a.all = true; break;
       default: break;
     }
@@ -590,9 +794,14 @@ function printHelp() {
     '  → transition + persist + emit the next prescription (stdout JSON).',
     'status [--all] [--base-root <dir>]   → instances, states, prioritised owner-queue.',
     'replay --instance <id> [--charter <f>]   → rebuild state from events; diff vs state.json (exit 2 on mismatch).',
+    'pa-scan --at <ISO> [--pa-file <p>] [--tick] [--base-root <dir>] [--charter <f>]',
+    '  → resolution half of the PA bridge: find fabric PA entries the owner set to done and, with',
+    '    --tick, fire their resume-event to un-park the line; dismissed entries are only surfaced.',
     '',
     'init/ingest/tick also take --autonomy <L0|L1> — per-invocation F1 override for the emitted',
     'prescription (tighten/restore the level; the floor is never crossable, invalid levels ignored loudly).',
+    'tick/ingest/pa-scan take --pa-file <path> to override the canonical .claude/pending-actions.md',
+    'target — an APPLIED tick into a human-gate state mirrors the gate there as a PA-NNN (phase 2b).',
     'Timestamps are INPUTS (--at ISO), stamped by the dispatcher. Instance-id is deterministic',
     '(<date>-<charter>-<subject>-<base36 suffix>, no Math.random). Exit 0 ok · 2 usage/internal.',
   ].join('\n') + '\n');
@@ -634,7 +843,7 @@ function cmdTick(args) {
   if (!snap) { console.error(`ERROR: no such instance: ${args.instance}`); process.exit(2); }
   const charter = loadCharter(args.charter, snap.charter_id);
   const payload = readPayload(args);
-  const report = applyEventFS(root, charter, args.instance, args.event, payload, args.at, args.runId, args.autonomy);
+  const report = applyEventFS(root, charter, args.instance, args.event, payload, args.at, args.runId, args.autonomy, args.paFile);
   out(report);
   process.exit(0);
 }
@@ -659,7 +868,7 @@ function cmdIngest(args) {
   const emitted = applyIngest(charter, args.process, result);
   const ticks = [];
   for (const eventName of emitted) {
-    ticks.push(applyEventFS(root, charter, args.instance, eventName, undefined, args.at, runId, args.autonomy));
+    ticks.push(applyEventFS(root, charter, args.instance, eventName, undefined, args.at, runId, args.autonomy, args.paFile));
   }
   out({ instance: args.instance, process: args.process, run_id: runId, deduped: false, emitted, ticks });
   process.exit(0);
@@ -690,6 +899,66 @@ function cmdReplay(args) {
   process.exit(ok ? 0 : 2);
 }
 
+/**
+ * pa-scan — the RESOLUTION half of the PA bridge (phase 2b). Reads pending-actions.md, finds the
+ * fabric-marked entries the owner has acted on, and (with --tick) resumes the corresponding parked
+ * lines by firing their recorded resume-event — closing the G03/G04 feedback loop deterministically.
+ *
+ *   Status done + instance still parked in fabric-state + charter still handles resume-event → ready.
+ *   Status dismissed → surfaced (never auto-ticked — abort vs resume is the owner's call).
+ *   instance gone / already left the state → skipped (idempotency of a repeated pa-scan).
+ * Each instance's charter is resolved by its own charter_id (multi-charter safe); --charter is a
+ * fallback path. JSON {scanned, ready, surfaced, ticked}; exit 0 (or 2 on a bad --at).
+ */
+function cmdPaScan(args) {
+  requireAt(args.at);
+  const root = fabricRoot(args.baseRoot);
+  const paFile = paFilePath(root, args.paFile);
+  let text = '';
+  try { text = fs.readFileSync(paFile, 'utf8'); } catch (_e) { text = ''; }
+  const entries = parsePaEntries(text).filter((e) => e.instance && e.state && e.event);
+
+  const resolveCharter = (charterId) => {
+    try { return loadCharter(null, charterId); }
+    catch (_e) { return loadCharter(args.charter, null); }
+  };
+
+  const scanned = [];
+  const ready = [];
+  const surfaced = [];
+  for (const e of entries) {
+    scanned.push({ pa: e.pa, instance: e.instance, state: e.state, event: e.event, status: e.status });
+    if (e.status === 'dismissed') {
+      surfaced.push({ pa: e.pa, instance: e.instance, state: e.state,
+        reason: 'dismissed — resolve manually (abort vs resume — за владельцем)' });
+      continue;
+    }
+    if (e.status !== 'done') continue;                 // pending / other → not actionable yet
+    const snap = readJsonSafe(statePath(root, e.instance));
+    if (!snap) continue;                               // instance gone → skip
+    if (snap.state !== e.state) continue;              // already left the gate → idempotent skip
+    let charter;
+    try { charter = resolveCharter(snap.charter_id); } catch (_e2) { continue; }
+    const on = (((charter.states || {})[snap.state] || {}).on) || {};
+    if (!Object.prototype.hasOwnProperty.call(on, e.event)) continue; // charter no longer resumes here
+    ready.push({ pa: e.pa, instance: e.instance, state: e.state, event: e.event });
+  }
+
+  const ticked = [];
+  if (args.tick) {
+    for (const r of ready) {
+      const snap = readJsonSafe(statePath(root, r.instance));
+      if (!snap) continue;
+      let charter;
+      try { charter = resolveCharter(snap.charter_id); } catch (_e) { continue; }
+      const rep = applyEventFS(root, charter, r.instance, r.event, undefined, args.at, undefined, args.autonomy, args.paFile);
+      ticked.push({ pa: r.pa, instance: r.instance, event: r.event, from: rep.from, to: rep.to, applied: rep.applied, prescription: rep.prescription });
+    }
+  }
+  out({ scanned, ready, surfaced, ticked });
+  process.exit(0);
+}
+
 function main() {
   const sub = process.argv[2];
   if (sub === '--help' || sub === '-h' || !sub) { printHelp(); process.exit(sub ? 0 : 2); }
@@ -702,8 +971,9 @@ function main() {
       case 'ingest': return cmdIngest(args);
       case 'status': return cmdStatus(args);
       case 'replay': return cmdReplay(args);
+      case 'pa-scan': return cmdPaScan(args);
       default:
-        console.error(`ERROR: unknown subcommand "${sub}" (expected init | ingest | tick | status | replay)`);
+        console.error(`ERROR: unknown subcommand "${sub}" (expected init | ingest | tick | status | replay | pa-scan)`);
         process.exit(2);
     }
   } catch (e) {
@@ -736,10 +1006,20 @@ module.exports = {
   resolveDisposition,
   prescribe,
   initialSnapshot,
+  // PA bridge (phase 2b) — pure helpers
+  isHumanGatePrescription,
+  deriveResumeEvent,
+  paActionLine,
+  renderFabricPaBlock,
+  maxPaId,
+  parsePaEntries,
   // shell (exported for integration/tests)
   fabricRoot,
   loadCharter,
   computeLaneCounts,
   applyEventFS,
   replayInstance,
+  paFilePath,
+  appendFabricPa,
+  maybeAppendFabricPa,
 };
