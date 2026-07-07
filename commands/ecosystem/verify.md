@@ -52,6 +52,7 @@ Count per namespace:
 - `.claude/commands/orchestrator/*.md` — expect 1+ (run — dispatches processes P2–P7; only deploy/rollback deferred)
 - `.claude/commands/ecosystem/*.md` — expect 7 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
 - `.claude/product/processes/*.mjs` — expect 3 (complete-feature — the completeness-loop Workflow wave-runner, DEC-DEV-0142; consilium — the decision-prep jury for escalated fork-shaped decision-PAs, DEC-DEV-0145; batch-enrich-feature-set — the C-i macro batch driver, DEC-DEV-0150; new top-level runtime dir mirroring `.claude/orchestrator/processes/`)
+- `.claude/orchestrator/charters/*.json` — expect 1+ (feature-production-line — the Process Fabric inter-process line charter; engine `.claude/orchestrator/lib/fabric-engine.cjs` + co-located `autonomy-policy.cjs`, DEC-DEV-0153/0154)
 
 Report counts + note what's expected for current ROADMAP phase.
 

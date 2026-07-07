@@ -12,6 +12,7 @@
  *   - ingest mapping across every result branch (P3–P7);
  *   - ingest idempotency (a seen run_id is a no-op);
  *   - floor non-crossability (operation_class=prod_deploy → human-gate under autonomy='auto');
+ *   - --autonomy per-invocation override (env.override → F1 resolve; floor still wins; DEC-DEV-0154);
  *   - replay == snapshot;
  *   - unknown event → rejected, never throws;
  *   - unparseable --at → clean exit 2.
@@ -167,6 +168,41 @@ test('floor is non-crossable: prod_deploy → human-gate even with charter auton
   // an ordinary invoke state under L1×dev resolves to auto
   const q = prescribe(charter, { state: 'authoring', subject: 's', instance: 'i' }, { limits: { env_tier: 'dev' }, policy: {} });
   assert.strictEqual(q.disposition, 'auto');
+});
+
+test('--autonomy override: L0 tightens a dev HIGH step to human-gate; floor stays non-crossable', () => {
+  const { resolveDisposition } = lib;
+  const meta = { autonomy: 'auto', operation_class: 'process-step', risk: 'HIGH' };
+  const base = { limits: { env_tier: 'dev' }, policy: {} };
+  assert.strictEqual(resolveDisposition(meta, base).disposition, 'auto', 'L1 default: non-floor dev → auto');
+  assert.strictEqual(resolveDisposition(meta, Object.assign({}, base, { override: 'L0' })).disposition,
+    'human-gate', 'L0 override: HIGH×dev → human-gate');
+  // floor beats a permissive override
+  const floorMeta = { autonomy: 'auto', operation_class: 'prod_deploy' };
+  const fl = resolveDisposition(floorMeta, Object.assign({}, base, { override: 'L1' }));
+  assert.strictEqual(fl.disposition, 'human-gate');
+  assert.strictEqual(fl.floor_hit, true, 'floor is not crossable by override');
+  // an invalid override is ignored LOUDLY (F1 why-entry), disposition unchanged
+  const bad = resolveDisposition(meta, Object.assign({}, base, { override: 'L9' }));
+  assert.strictEqual(bad.disposition, 'auto');
+  assert.ok(bad.why.some((w) => /override "L9"/.test(w)), `why[] must name the ignored override: ${JSON.stringify(bad.why)}`);
+});
+
+test('CLI --autonomy L0 flows through tick to the emitted prescription', () => {
+  const base = mkTmp();
+  const id = initInstance(base, 'FM-OV');
+  const r = cli(['tick', '--instance', id, '--event', 'evt:line.start', '--charter', CHARTER,
+    '--at', AT, '--base-root', base, '--autonomy', 'L0']);
+  assert.strictEqual(r.json.to, 'authoring');
+  assert.strictEqual(r.json.prescription.kind, 'run-process');
+  assert.strictEqual(r.json.prescription.disposition, 'human-gate',
+    'authoring (risk defaults HIGH) under an L0 override must human-gate');
+  // control: the same tick without the flag resolves to auto under L1×dev
+  const base2 = mkTmp();
+  const id2 = initInstance(base2, 'FM-OV2');
+  const q = cli(['tick', '--instance', id2, '--event', 'evt:line.start', '--charter', CHARTER,
+    '--at', AT, '--base-root', base2]);
+  assert.strictEqual(q.json.prescription.disposition, 'auto');
 });
 
 test('prescribe emits kind:human-gate + paEntry for a human-gate (non-invoke) state', () => {

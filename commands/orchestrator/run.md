@@ -1,6 +1,6 @@
 ---
 description: Run an Orchestrator PMO process end-to-end as an in-harness Workflow. First increment ships P3 batch-features-to-cc-sdd (route Product handoffs into cc-sdd specs). Reads handoffs + tool-docs; delegates spec generation to cc-sdd's kiro-spec-batch; gates with a content-fidelity preflight and an independent coverage oracle.
-argument-hint: "<process> [--feature FM-NNN ...] [--all] [--no-stack-gate]"
+argument-hint: "<process> [--feature FM-NNN ...] [--all] [--no-stack-gate] [--fabric] [--autonomy L0|L1]"
 ---
 
 # /orchestrator:run
@@ -280,6 +280,69 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
 > of truth for per-agent detail** (prompts, transcripts, tokens); the ledger is the
 > durable, greppable **summary** over it, not a replacement. A human/agent may still
 > write feedback journals or checkpoints under `runs/` alongside it.
+
+### Process Fabric (inter-process line coordination — DEC-DEV-0154)
+
+The fabric (`.claude/orchestrator/lib/fabric-engine.cjs`; design SSOT `dev/process-fabric/CONCEPT.md`)
+is the durable INTER-process statechart: it tracks a feature's whole production line
+(P3 → P4 → P5/P6 → P7) across sessions and prescribes the next step. The engine never calls
+an LLM and never launches anything itself — YOU (the dispatcher) are its actuator. Same
+clock discipline as the ledger: every fabric call takes a dispatcher-stamped `--at "<ISO-now>"`.
+Every prescription's disposition has been resolved through the autonomy-policy (F1) — the
+floor (prod_deploy / destructive / spend_money / provision_real_secret) is not overridable;
+`--autonomy L0|L1` on this command is forwarded to each fabric call as `--autonomy <level>`
+(a per-invocation override; it can tighten to L0 or restore L1, never cross the floor).
+
+**Starting a line (opt-in, `--fabric`)** — when the user asks for a fabric-tracked line,
+BEFORE the first process of the line (usually P3):
+
+```
+node .claude/orchestrator/lib/fabric-engine.cjs init \
+  --charter .claude/orchestrator/charters/feature-production-line.json \
+  --subject <feature-slug> --at "<ISO-now>"
+node .claude/orchestrator/lib/fabric-engine.cjs tick \
+  --instance <instance-id> --event evt:line.start --at "<ISO-now>"
+```
+
+A REJECTED `evt:line.start` (guard `wip_ok` failed) is backpressure, not an error: the
+orchestrator lane already has a live line (FB-004 — one orchestrator workflow per repo).
+Do NOT force a second line; finish or abort the running one first (`status` shows it).
+
+**After every `run-ledger finish`** — feed the SAME result file into the fabric:
+
+1. `node .claude/orchestrator/lib/fabric-engine.cjs status` → is there a non-final instance
+   whose `subject` matches this run's feature slug(s)? None → done (no line tracks this feature).
+2. For each matching instance:
+
+```
+node .claude/orchestrator/lib/fabric-engine.cjs ingest \
+  --instance <instance-id> --process <process> \
+  --result-file <same-file-as-finish> --at "<ISO-now>" --run-id "$RUN_ID"
+```
+
+   Idempotent by `--run-id`: re-running a crashed bracket never double-ticks.
+3. **Act on the printed prescription:**
+   - `kind: run-process` + `disposition: auto` → run the prescribed process next, as its own
+     full bracket (ledger `start` → `Workflow({…})` → ledger `finish` → fabric `ingest`),
+     sequentially (FB-004) — this is the machine-driven continuation of the line;
+   - `disposition: human-gate` / `kind: human-gate` → the gate is already in the prioritised
+     owner-queue (`status` shows it); surface it to the user and STOP the line here — never
+     run past a human gate. (The pending-actions.md projection is the PA bridge — phase 2b.)
+   - `kind: none` + `final: true` → the line is complete; say so in the run summary.
+4. `rejected` ticks (unknown event / guards failed) are deliberate no-ops — report the `why[]`,
+   do not retry blindly and do not hand-edit `state.json` (events.ndjson is the source of truth).
+
+**Resuming a parked line** — when the owner resolves the blocking item, tick the matching
+event and follow the new prescription: `evt:pa.resolved` (a resolved Product/capability PA),
+`evt:env.up` (substrate back up), `evt:owner.resume` / `evt:owner.abort` (an escalated gate):
+
+```
+node .claude/orchestrator/lib/fabric-engine.cjs tick \
+  --instance <instance-id> --event <evt:…> --at "<ISO-now>"
+```
+
+`replay --instance <id>` rebuilds the state from `events.ndjson` and diffs it against
+`state.json` (exit 2 on mismatch) — the recovery/audit tool after a crashed session.
 
 ## Autonomy & gates (SPEC §6/§7)
 

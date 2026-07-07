@@ -7833,6 +7833,32 @@ Built ≠ validated: graduation-критерии в CONCEPT §9 (инстанс 
 
 ---
 
+## DEC-DEV-0154 — Process Fabric фаза 2 (2a+2d): диспетчер-актуатор в run.md + закрытие F2-сверки F1 (дом либы, `--autonomy` override)
+
+**Date:** 2026-07-07
+**Trigger:** команда владельца «приступаем к фазе 2» по `dev/process-fabric/EXECUTION_ROADMAP.md` (2a диспетчер-wiring + 2d F2-сверка — этот PR; 2b PA-мост + 2c SessionStart-инжект — следующий).
+**Tag:** #orchestrator #process-fabric #wiring #autonomy #deployment
+
+### Context
+Ядро Fabric built ≠ validated (DEC-DEV-0153); первый актуатор — диспетчер `run.md`. Recon стыков вскрыл две дыры доставки: (а) `fabric-engine` требовал `../../lib/autonomy-policy.cjs`, а корневой `lib/` не имеет деплой-маппинга — bootstrap bulk-copy его кладёт, но `/ecosystem:update` root-`lib/` НЕ синкает никогда → в user-проекте require бьётся/дрейфует после первого update (класс DEC-DEV-0088 «partial sync», только by-design); (б) примеры-перечисления `update.md` не знали `charters/` (managed) и `fabric/` (preserved state) — код синка динамический (`ls` upstream-детей), но перечисления load-bearing для LLM-исполнителя update, а fabric-state не был в явном wipe-protection списке (принцип «состояние пилота не вайпим»).
+
+### Options considered
+1. **Дом либы: оставить repo-`lib/` + добавить root-`lib/` в синк-списки update.md** — отвергнуто: новый managed-корень ради одного файла + ещё один класс в namespace-семантике.
+2. **Переезд в `orchestrator/lib/` рядом с потребителем (ПРИНЯТО)** — рейдит существующий namespace-синк `{processes,lib,charters}`; `require('./autonomy-policy.cjs')` стабилен в обоих layout (repo-root и `.claude/`); ровно кандидат, названный F1-контрактом §6.
+3. **Шим-реэкспорт на старом пути** — отвергнут: потребителей два (движок+юниты), оба обновлены; мёртвый шим сам остался бы вне доставки.
+
+### Decision
+**2a.** Секция «Process Fabric (inter-process line coordination)» в `run.md` ПОСЛЕ run-ledger-wiring: opt-in `--fabric` (init по deployed-пути charter'а + `tick evt:line.start`; rejected start документирован как FB-004 backpressure, не ошибка), `ingest` тем же `--result-file` и `$RUN_ID`, что и `finish` (идемпотентность моста), маршрутизация prescriptions (auto → продолжение полного bracket-цикла ledger start→Workflow→finish→ingest; human-gate → owner-queue + STOP, PA-проекция = 2b; final → закрытие линии), resume-события (`evt:pa.resolved`/`evt:env.up`/`evt:owner.resume|abort`), `replay` как recovery-инструмент. **2d.** Чек-лист F1 §6 закрыт по всем 6 пунктам (зафиксировано в самом контракте): fabric-уровень риска — из charter `meta.risk` (authored, default HIGH), per-task `classifyTask` остаётся в P5; readiness входит **событиями** ingest, не disposition-guard'ом; `env_tier` — из `fabric/limits.json`; дом либы — переезд (выше); audit-trail `why[]` — `events.ndjson`; `--autonomy` — end-to-end (`run.md` frontmatter → CLI `init|ingest|tick --autonomy` → `env.override` → 5-й аргумент `resolve()`; floor непробиваем — юнит). Плюс новый wiring-тест `fabric-dispatcher-wiring.test.cjs` (11 asserts): lockstep run.md ↔ charter ↔ update.md ↔ require-граф движка (ingest-ключи диспетчеризуемы; resume-события существуют в charter; `charters/` шипается, `fabric/` защищён; policy co-located, stale-копия в repo-`lib/` запрещена).
+
+### Outcome
+Юниты: autonomy-policy 70 ✓, fabric-engine 16→18 ✓ (+override pure/CLI), новый wiring 11 ✓; полный `npm run verify` — до конца цепочки (puppeteer-смоуки skip как обычно в этом env). `run.md` — первый живой актуатор Fabric; у F1 появился транзитивно живой потребитель-путь (prescription → диспетчер). Доставка выровнена: verify.md Step 4 считает `charters/*.json`; catalog.yaml executor-пути обновлены.
+
+### Lessons
+1. **«Дом либы» — деплой-контракт, не вкусовщина:** файл вне managed-namespace доезжает bootstrap'ом, но умирает на первом `/ecosystem:update`. Require-граф новой либы сверяй со списками update.md ДО релиза — теперь это держит детерминированный assert (co-located require + запрет stale-копии).
+2. **Динамический код синка ≠ достаточно:** прозу update.md исполняет LLM, перечисления в ней load-bearing — обязаны зеркалить факт (`charters/`, `fabric/`), иначе wipe-protection живёт только в удаче.
+
+---
+
 ```markdown
 ## DEC-DEV-NNNN — <one-line title>
 

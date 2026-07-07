@@ -1,4 +1,4 @@
-# Process Catalog — Ecosystem 3.0 (DEC-DEV-0153, 2026-07-07)
+﻿# Process Catalog — Ecosystem 3.0 (DEC-DEV-0153, 2026-07-07)
 #
 # СНАПШОТ-РЕЕСТР процессов экосистемы: иерархия домен→процесс→шаг, детерминизм-классы,
 # события-исходы и межпроцессные связи с фактической надёжностью механизма.
@@ -1237,11 +1237,11 @@ domains:
         - { kind: "event", ref: "вызов из реального гейта (F2 wiring НЕ построен)" }
       emits: ["evt:autonomy.resolved", "evt:autonomy.floor-hit", "evt:autonomy.level-degraded"]
       steps:
-        - { id: "s1", name: "Read operation_class / risk_tier / env_tier / policy / override", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
-        - { id: "s2", name: "Apply precedence floor>per-invocation-override>per-process-pin>project-default>builtin(L1)", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
-        - { id: "s3", name: "Degrade L2/L3 → L1 ГРОМКО (safe-fallback)", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
-        - { id: "s4", name: "Emit {disposition, level_applied, floor_hit, why[]}", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
-        - { id: "s5", name: "Write audit-trail (planned — F2 wiring, run-ledger кандидат)", determinism: "DL0", executor: "script(lib/autonomy-policy.cjs)" }
+        - { id: "s1", name: "Read operation_class / risk_tier / env_tier / policy / override", determinism: "DL0", executor: "script(orchestrator/lib/autonomy-policy.cjs)" }
+        - { id: "s2", name: "Apply precedence floor>per-invocation-override>per-process-pin>project-default>builtin(L1)", determinism: "DL0", executor: "script(orchestrator/lib/autonomy-policy.cjs)" }
+        - { id: "s3", name: "Degrade L2/L3 → L1 ГРОМКО (safe-fallback)", determinism: "DL0", executor: "script(orchestrator/lib/autonomy-policy.cjs)" }
+        - { id: "s4", name: "Emit {disposition, level_applied, floor_hit, why[]}", determinism: "DL0", executor: "script(orchestrator/lib/autonomy-policy.cjs)" }
+        - { id: "s5", name: "Write audit-trail (planned — F2 wiring, run-ledger кандидат)", determinism: "DL0", executor: "script(orchestrator/lib/autonomy-policy.cjs)" }
       links:
         - { to: "gate-risk-classifier", type: "data-feed", mechanism: "script", reliability: "proposed", external: true }
         - { to: "prod-deploy-op", type: "blocking-gate", mechanism: "script", reliability: "proposed", external: true }
