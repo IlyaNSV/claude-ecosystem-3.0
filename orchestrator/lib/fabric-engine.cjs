@@ -15,7 +15,8 @@
  *   — it is the policeman and the navigator: it ingests MATERIALISED events from process results
  *   (structured JSON the dispatcher already writes to the run-ledger), deterministically computes
  *   the transition, persists instance state, and PRESCRIBES the next step with a disposition drawn
- *   from lib/autonomy-policy.cjs (F1). Backpressure = extended state (WIP-limits per lane + one
+ *   from ./autonomy-policy.cjs (F1; co-located in orchestrator/lib/ since DEC-DEV-0154 so the
+ *   update-sync delivers both together). Backpressure = extended state (WIP-limits per lane + one
  *   prioritised owner-queue).
  *
  * DETERMINISM CONTRACT (same discipline as run-ledger.cjs):
@@ -39,7 +40,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const autonomyPolicy = require(path.join(__dirname, '..', '..', 'lib', 'autonomy-policy.cjs'));
+const autonomyPolicy = require(path.join(__dirname, 'autonomy-policy.cjs'));
 
 const FABRIC_ENGINE_VERSION = 1;
 
@@ -263,6 +264,8 @@ function applyIngest(charter, processName, resultJson) {
  *   risk_tier       ← stateMeta.risk           || 'HIGH'   (conservative; consumed, not re-derived)
  *   env_tier        ← env.limits.env_tier       || 'dev'
  *   policy          ← env.policy                || {}
+ *   override        ← env.override              (per-invocation --autonomy flag; F1 precedence:
+ *                     floor > override > pin > default — an invalid level is ignored LOUDLY by F1)
  * The floor (prod_deploy/destructive/…) is non-crossable in autonomy-policy, so a floor class
  * yields human-gate REGARDLESS of the charter's meta.autonomy='auto' — Fabric cannot code past it.
  */
@@ -272,7 +275,8 @@ function resolveDisposition(stateMeta, env) {
   const riskTier = meta.risk || 'HIGH';
   const envTier = (env && env.limits && env.limits.env_tier) || 'dev';
   const policy = (env && env.policy) || {};
-  return autonomyPolicy.resolve(operationClass, riskTier, envTier, policy, undefined);
+  const override = (env && env.override) || undefined;
+  return autonomyPolicy.resolve(operationClass, riskTier, envTier, policy, override);
 }
 
 /**
@@ -467,10 +471,11 @@ function applyEffects(root, snapshot, at, effects) {
  * Apply ONE event to an instance on disk. Rejected / guard-failed events are NO-OPS: reported in
  * the return value but NOT persisted (see the determinism contract). Returns a report object.
  */
-function applyEventFS(root, charter, id, eventName, payload, at, runId) {
+function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomyOverride) {
   const snap = readJsonSafe(statePath(root, id));
   if (!snap) throw new Error(`no such instance: ${id}`);
   const env = shellEnv(root, charter, id);
+  if (autonomyOverride) env.override = autonomyOverride;
   const { next, effects, why } = transition(charter, snap, eventName, payload, env);
   const applied = next.state !== snap.state || next.seq !== snap.seq;
 
@@ -541,6 +546,7 @@ function parseArgs(argv) {
       case '--result-file': a.resultFile = next(); break;
       case '--run-id': a.runId = next(); break;
       case '--at': a.at = next(); break;
+      case '--autonomy': a.autonomy = next(); break;
       case '--base-root': a.baseRoot = next(); break;
       case '--all': a.all = true; break;
       default: break;
@@ -585,6 +591,8 @@ function printHelp() {
     'status [--all] [--base-root <dir>]   → instances, states, prioritised owner-queue.',
     'replay --instance <id> [--charter <f>]   → rebuild state from events; diff vs state.json (exit 2 on mismatch).',
     '',
+    'init/ingest/tick also take --autonomy <L0|L1> — per-invocation F1 override for the emitted',
+    'prescription (tighten/restore the level; the floor is never crossable, invalid levels ignored loudly).',
     'Timestamps are INPUTS (--at ISO), stamped by the dispatcher. Instance-id is deterministic',
     '(<date>-<charter>-<subject>-<base36 suffix>, no Math.random). Exit 0 ok · 2 usage/internal.',
   ].join('\n') + '\n');
@@ -612,6 +620,7 @@ function cmdInit(args) {
   applyEffects(root, snap, args.at, initEffects);
 
   const env = shellEnv(root, charter, id);
+  if (args.autonomy) env.override = args.autonomy;
   out({ instance: id, state: snap.state, prescription: prescribe(charter, snap, env) });
   process.exit(0);
 }
@@ -625,7 +634,7 @@ function cmdTick(args) {
   if (!snap) { console.error(`ERROR: no such instance: ${args.instance}`); process.exit(2); }
   const charter = loadCharter(args.charter, snap.charter_id);
   const payload = readPayload(args);
-  const report = applyEventFS(root, charter, args.instance, args.event, payload, args.at, args.runId);
+  const report = applyEventFS(root, charter, args.instance, args.event, payload, args.at, args.runId, args.autonomy);
   out(report);
   process.exit(0);
 }
@@ -650,7 +659,7 @@ function cmdIngest(args) {
   const emitted = applyIngest(charter, args.process, result);
   const ticks = [];
   for (const eventName of emitted) {
-    ticks.push(applyEventFS(root, charter, args.instance, eventName, undefined, args.at, runId));
+    ticks.push(applyEventFS(root, charter, args.instance, eventName, undefined, args.at, runId, args.autonomy));
   }
   out({ instance: args.instance, process: args.process, run_id: runId, deduped: false, emitted, ticks });
   process.exit(0);

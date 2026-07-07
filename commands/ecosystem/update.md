@@ -202,7 +202,7 @@ rm -rf .claude-ecosystem-tmp/.git
 - `.claude/design.yaml` (if exists) — per-project Design Module config (DEC-DEV-0052 / Phase 6 1.4.0); preserved verbatim per «not в Step 5 root-file allowlist» semantics — same treatment как `settings.local.json` (auto-init via `/design:start` на первой UI FM; user edits never wiped by upgrade)
 - `.claude/pending-actions.md` (if exists) — ecosystem-wide PA journal (DEC-DEV-0047 / patch 1.3.3); user entries preserved verbatim; init backfilled in Step 5b if missing
 - `.claude/integrator/` (если exists) — Integrator project state
-- `.claude/orchestrator/{registries,ledger,runs}/` (если exists) — Orchestrator per-project state (preserved as non-managed children; `processes/`+`lib/` ARE re-synced)
+- `.claude/orchestrator/{registries,ledger,runs,fabric}/` (если exists) — Orchestrator per-project state incl. Process Fabric instances/owner-queue (preserved as non-managed children; `processes/`+`lib/`+`charters/` ARE re-synced)
 - `.claude/.env` (если exists; usually .env at project root) — secrets
 - `.claude/projects/`, `todos/`, `statsig/`, `shell-snapshots/`, `ide/`, `plugins/` — Claude Code auto-files
 - `.product/` — entire (outside `.claude/`)
@@ -214,11 +214,11 @@ Subdirs split into two classes:
 
 | Subdir class | Subdirs | Semantics |
 |---|---|---|
-| **Namespace-aware** (third-party OR project-state children possible) | `commands/`, `skills/`, `agents/`, `hooks/`, `orchestrator/`, `product/` | Manage только ecosystem-owned namespaces (discovered dynamically from `.claude-ecosystem-tmp/<subdir>/` immediate children — e.g. `{product, integrator, ecosystem, design}` for `skills/`; `{processes, lib}` for `orchestrator/`; `{processes}` for `product/`). Non-managed children preserved untouched — both **third-party** (e.g. `.claude/skills/kiro-*/` от cc-sdd) and **Orchestrator project-state** (`.claude/orchestrator/{registries,ledger,runs}/`, generated per-project — never shipped upstream, so always preserved). |
+| **Namespace-aware** (third-party OR project-state children possible) | `commands/`, `skills/`, `agents/`, `hooks/`, `orchestrator/`, `product/` | Manage только ecosystem-owned namespaces (discovered dynamically from `.claude-ecosystem-tmp/<subdir>/` immediate children — e.g. `{product, integrator, ecosystem, design}` for `skills/`; `{processes, lib, charters}` for `orchestrator/`; `{processes}` for `product/`). Non-managed children preserved untouched — both **third-party** (e.g. `.claude/skills/kiro-*/` от cc-sdd) and **Orchestrator project-state** (`.claude/orchestrator/{registries,ledger,runs,fabric}/`, generated per-project — never shipped upstream, so always preserved). |
 | **Flat** (no third-party expected) | `docs/`, `templates/`, `adapters/` | Full subdir sync (delete obsolete + copy fresh). Если third-party tool пишет сюда — он breaks ecosystem convention; not supported. |
 
 **Per namespace-aware subdir:**
-- **Managed namespaces:** immediate children of `.claude-ecosystem-tmp/<subdir>/` (e.g. для `skills/`: `ecosystem/`, `integrator/`, `product/` + `design/` post-Phase-6; для `orchestrator/`: `processes/`, `lib/` + the `README.md` flat file; для `product/`: `processes/`).
+- **Managed namespaces:** immediate children of `.claude-ecosystem-tmp/<subdir>/` (e.g. для `skills/`: `ecosystem/`, `integrator/`, `product/` + `design/` post-Phase-6; для `orchestrator/`: `processes/`, `lib/`, `charters/` + the `README.md` flat file; для `product/`: `processes/`).
 - **To re-sync:** for each managed namespace N, compute diff `.claude/<subdir>/N` vs `.claude-ecosystem-tmp/<subdir>/N` (add/remove/update files inside N).
 - **Preserved (untouched):** any other children of `.claude/<subdir>/` (third-party namespaces или flat files). Не trim'ятся, не overwrite'ятся.
 
@@ -516,8 +516,8 @@ foreach ($subdir in $namespaceAwareSubdirs) {
 **Examples in current downstream:**
 - `.claude/skills/{ecosystem,integrator,product}/` — re-derived from upstream
 - `.claude/skills/kiro-*/` (17 cc-sdd dirs, если переустановлены) — **preserved untouched** ✓ (regression of pre-1.3.5 behavior где `rm -rf .claude/skills` уничтожал их)
-- `.claude/orchestrator/{processes,lib}/` — re-derived from upstream (Workflow scripts + deterministic helpers — what `/orchestrator:run` executes)
-- `.claude/orchestrator/{registries,ledger,runs}/` (если created by a prior run) — **preserved untouched** ✓ (project-state, never shipped upstream)
+- `.claude/orchestrator/{processes,lib,charters}/` — re-derived from upstream (Workflow scripts + deterministic helpers + Process Fabric charters — what `/orchestrator:run` executes)
+- `.claude/orchestrator/{registries,ledger,runs,fabric}/` (если created by a prior run) — **preserved untouched** ✓ (project-state incl. fabric instance `events.ndjson`/`state.json`/`owner-queue.json`, never shipped upstream)
 - `.claude/product/processes/` — re-derived from upstream (Workflow wave-runner for the completeness-loop — what `/product:complete` executes; DEC-DEV-0142). No project-state children — `product/` has nothing analogous to `orchestrator/{registries,ledger,runs}/` to preserve.
 
 #### 5.2 Flat subdirs (`docs/`, `templates/`, `adapters/`)

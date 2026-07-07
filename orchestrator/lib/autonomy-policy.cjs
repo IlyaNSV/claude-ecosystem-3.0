@@ -13,12 +13,13 @@
  *   - F1 implements L0/L1 ONLY. L2/L3 (consilium-gate + confidence threshold +
  *     human-fallback) are F2 — a requested L2/L3 here DEGRADES to L1 semantics with a
  *     loud why-entry (safe-fallback: never a blind auto in a level that is not built).
- *   - NOT WIRED into any process or gate (kickoff «и»: wiring needs a field-контракт
- *     sweep with the orchestrator track first — the reason F1 was deferred in 0136).
- *     Consequently there is no deployment mapping for this file yet; its home is the
- *     repo-level lib/ (the vision's literal path) until the F2 wiring decides the
- *     deployed location. Same-inputs → same-disposition; the returned why[] chain IS
- *     the audit-trail seed (persisting it is wiring, not resolving).
+ *   - WIRED (F2 seed, DEC-DEV-0154): consumed by orchestrator/lib/fabric-engine.cjs
+ *     (Process Fabric prescriptions). Home is orchestrator/lib/ — co-located with its
+ *     consumer so the existing `/ecosystem:update` orchestrator `lib/` namespace sync
+ *     delivers it to user projects (the repo-level lib/ home of the F1 skeleton wave had
+ *     NO deployment mapping — the §6 checklist item resolved by DEC-DEV-0154).
+ *     Same-inputs → same-disposition; the returned why[] chain IS
+ *     the audit-trail seed (fabric persists the transition-level why[] in events.ndjson).
  *
  * CONSUMES, NEVER RE-DERIVES (wave hard-constraint #3, dev/ECOSYSTEM_VISION_BATCH_3.md §0):
  *   - risk_tier ∈ {HIGH, LOW} — the OUTPUT of orchestrator/lib/gate-risk-classifier.cjs

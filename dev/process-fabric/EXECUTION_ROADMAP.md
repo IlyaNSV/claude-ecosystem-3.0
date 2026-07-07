@@ -17,15 +17,17 @@
 
 ## Фаза 2 — wiring (1-2 PR, порядок внутри фазы)
 
-1. **2a. Диспетчер-wiring** — в `commands/orchestrator/run.md` после `run-ledger finish`:
-   `fabric ingest --process <name> --result-file <r.json> --at <ISO>` → полученные prescriptions
-   исполнять при `disposition=auto` (run-process), human-gate → PA. Отдельный PR (живой диспетчер).
+1. ✅ **2a. Диспетчер-wiring** (DEC-DEV-0154) — секция «Process Fabric» в `run.md` после
+   `run-ledger finish`: opt-in `--fabric` (init+`evt:line.start`, rejected = FB-004 backpressure),
+   `ingest` тем же result-file/`$RUN_ID`, маршрутизация prescriptions (auto→bracket-цикл,
+   human-gate→owner-queue+STOP, final→закрытие), resume-события; wiring-тест 11 asserts.
 2. **2b. PA-мост** — human-gate-prescription дописывает строку в `pending-actions.md` (канал OD7);
    резолюция PA → `fabric tick --event evt:pa.resolved`. Замыкает первый обратный контур (G03/G04).
 3. **2c. SessionStart-инжект** — warn-only хук «fabric status: инстансы + top owner-queue»
    (образец `dev/meta-improvement/hooks/rails-session-start.js`).
-4. **2d. F2-сверка** — чек-лист `dev/AUTONOMY_POLICY_F1_CONTRACT.md` §6 (enum-стабильность tier,
-   дом либы, audit-trail `why[]`→events.ndjson, `--autonomy=` флаг); зафиксировать DEC-DEV.
+4. ✅ **2d. F2-сверка** (DEC-DEV-0154) — чек-лист F1 §6 закрыт по всем 6 пунктам (см. контракт):
+   дом либы = `orchestrator/lib/` (деплой-фикс), `--autonomy` end-to-end, `why[]`→events.ndjson,
+   risk из charter-meta, readiness событиями, env_tier из limits.json.
 5. **2e (cuttable).** Charter №2 product-front (P1→P2→HO) — федерация owner-queue на воронку.
 
 MDP: 2a/2d — main-модель; 2b/2c — opus-исполнитель + main-ревью. Гейты: process-gate потребует

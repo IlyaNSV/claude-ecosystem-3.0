@@ -11,7 +11,7 @@
 const assert = require('assert');
 const path = require('path');
 
-const lib = require(path.join(__dirname, '..', '..', 'lib', 'autonomy-policy.cjs'));
+const lib = require(path.join(__dirname, '..', '..', 'orchestrator', 'lib', 'autonomy-policy.cjs'));
 const { resolve, resolveLevel, applyReadinessGuard, DEFAULT_FLOOR, BUILT_IN_DEFAULT_LEVEL } = lib;
 
 let passed = 0;

@@ -1,9 +1,10 @@
 # F1 — контракт autonomy-policy резолвера (Epic F, skeleton-фаза)
 
-> **Статус:** contract-спека + skeleton, **БЕЗ wiring** (kickoff DEC-DEV-0145, решение «и»:
-> wiring в orchestrator-гейты требует сверки с оркестратор-треком — причина отсрочки F1 в 0136).
-> **Skeleton:** [`lib/autonomy-policy.cjs`](../lib/autonomy-policy.cjs) (pure fn, юниты
-> `tests/orchestrator/autonomy-policy.test.cjs`). **Vision-SSOT:** `dev/ECOSYSTEM_VISION.md`
+> **Статус:** contract-спека + **первый wiring** (Process Fabric: fabric-engine прогоняет
+> disposition каждой prescription через `resolve()`, DEC-DEV-0153; сверка §6 закрыта
+> DEC-DEV-0154). **Либа:** [`orchestrator/lib/autonomy-policy.cjs`](../orchestrator/lib/autonomy-policy.cjs)
+> (pure fn, юниты `tests/orchestrator/autonomy-policy.test.cjs`; дом — рядом с потребителем,
+> см. §6 п.4). **Vision-SSOT:** `dev/ECOSYSTEM_VISION.md`
 > §Epic F (enum L0-L3, floor, precedence — locked владельцем 2026-06-23). Построен DEC-DEV-0152.
 
 ## 1. Сигнатура и объём F1
@@ -76,12 +77,23 @@ autonomy:                      # .claude/product.yaml — absent == L1 1:1 (пр
 
 Skeleton принимает этот срез как plain-объект `policy` (парс/валидация YAML — wiring-фаза).
 
-## 6. Сверка с оркестратор-треком (checklist перед F2-wiring)
+## 6. Сверка с оркестратор-треком (checklist перед F2-wiring) — ЗАКРЫТ DEC-DEV-0154
 
-- [ ] `classifyTask().tier` — стабильность enum `HIGH/LOW` + где в P5 доступен результат на момент гейта.
-- [ ] `env-readiness` probe vs classify-failures: какой из двух режимов кормит guard в каждом гейте.
-- [ ] Ось `env_tier`: маппинг на orchestrator §7 env_tiers + §6-bis provisioning-tier (floor-класс `provision_real_secret`).
-- [ ] Дом либы: сейчас repo-`lib/` (буквальный путь vision; граница волны — `orchestrator/` read-only);
-      деплой-маппинг решается с F2-wiring (кандидат: `orchestrator/lib/` рядом с потребителями).
-- [ ] Audit-trail: куда персистится `why[]` (кандидат: run-ledger `runs/<id>/`, DEC-DEV-0147).
-- [ ] `--autonomy=` флаг на `/orchestrator:run` и продуктовых макро-командах (Epic C) — параметр → `override`.
+- [x] `classifyTask().tier` — enum `HIGH/LOW` стабилен; **fabric-уровень risk НЕ берёт runtime-classifyTask**:
+      charter-автор задаёт `meta.risk` per-state (absent → консервативно `HIGH`); per-task
+      classifyTask остаётся внутри P5 (два уровня не смешиваются — конверт vs шаг).
+- [x] `env-readiness` probe: на fabric-уровне readiness входит **событиями** charter-ingest
+      (`evt:runtime.env_not_ready` и т.п., из полей результатов), НЕ disposition-guard'ом;
+      `applyReadinessGuard` остаётся для будущих гейтов-потребителей уровня процесса.
+- [x] Ось `env_tier`: `fabric/limits.json → env_tier` (дефолт `dev`), маппинг на orchestrator §7;
+      floor-классы (`prod_deploy`, `provision_real_secret`) держат human-gate независимо от env_tier.
+- [x] Дом либы: **`orchestrator/lib/` рядом с потребителем** (DEC-DEV-0154). Repo-`lib/` не имел
+      деплой-маппинга (bootstrap bulk-copy — да, но `/ecosystem:update` синкает только
+      orchestrator `{processes,lib,charters}` namespaces) — require из fabric-engine ломался бы
+      в user-проекте после первого update.
+- [x] Audit-trail: transition-level `why[]` (включая guard-цепочку) персистится в
+      `fabric/<instance>/events.ndjson`; prescription-`why[]` детерминированно перевычислим из
+      state+charter (не дублируется на диск).
+- [x] `--autonomy=` флаг: есть на `/orchestrator:run` (frontmatter) и на fabric CLI
+      (`init|ingest|tick --autonomy <L0|L1>` → per-invocation `override` в `resolve()`);
+      floor непробиваем (юнит). Продуктовые макро-команды (Epic C) — при их F2-wiring.
