@@ -1,0 +1,34 @@
+# Hook registration manifest — Orchestrator Module
+#
+# Schema documented in hooks/product/manifest.yaml header. Auto-read by
+# /ecosystem:bootstrap Step 6b (and /ecosystem:update) to register hooks in
+# <project>/.claude/settings.json.
+#
+# Schema:
+#   version: <int>                     # manifest format version (currently 1)
+#   module: <string>                   # identifier, e.g., "product", "design", "integrator", "orchestrator"
+#   hooks: [ ... ]                     # list of hook registrations
+#     - id: <string>                   # unique within module (no spaces, kebab-case)
+#       file: <filename>               # file in this same directory
+#       events:                        # can register same file under multiple events
+#         - type: <event-name>         # PostToolUse | PreToolUse | UserPromptSubmit | Stop | SessionStart | SessionEnd | PreCompact | Notification | SubagentStop
+#           matcher: <string>          # tool name regex, or "" for event types without tools
+#       description: <string>          # human-readable purpose
+#       enabled_when: <string>         # optional: "always" | "has_ui" | ...; default "always"
+#
+# Process Fabric wiring (DEC-DEV-0154; dev/process-fabric/EXECUTION_ROADMAP.md §2c).
+# The ecosystem's FIRST shipped SessionStart hook (SessionStart is a tool-less event →
+# matcher: ""). settings.json.template already pre-seeds the SessionStart key empty, so
+# bootstrap Step 6b appends into an existing array (see its "new top-level event key" note).
+
+version: 1
+module: orchestrator
+
+hooks:
+  - id: fabric-session-status
+    file: session-fabric-status.js
+    events:
+      - type: SessionStart
+        matcher: ""
+    description: "SessionStart injector of Process Fabric status (DEC-DEV-0154, roadmap §2c). If the project carries live fabric state (.claude/orchestrator/fabric/), shells the read-only `fabric-engine.cjs status` and injects a compact additionalContext summary — active instances + top ≤5 of the prioritised owner-queue — so a returning session re-enters the inter-process line without running `fabric status` by hand. Warn-only, read-only, exit 0 ALWAYS; every error swallowed. No-op when there is no fabric dir (incl. the ecosystem-dev repo), when the engine is absent, or when instances AND owner-queue are both empty. Instant OFF via env FABRIC_STATUS_INJECT=0. Contract mirrors dev/meta-improvement/hooks/rails-session-start.js."
+    enabled_when: always

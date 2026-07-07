@@ -327,7 +327,9 @@ node .claude/orchestrator/lib/fabric-engine.cjs ingest \
      sequentially (FB-004) — this is the machine-driven continuation of the line;
    - `disposition: human-gate` / `kind: human-gate` → the gate is already in the prioritised
      owner-queue (`status` shows it); surface it to the user and STOP the line here — never
-     run past a human gate. (The pending-actions.md projection is the PA bridge — phase 2b.)
+     run past a human gate. The engine has ALSO already projected the gate into the canonical
+     `pending-actions.md` as a `PA-NNN` entry (carrying `fabric-instance` / `fabric-state` /
+     `resume-event` markers) — point the owner at it via `/ecosystem:pending-actions`.
    - `kind: none` + `final: true` → the line is complete; say so in the run summary.
 4. `rejected` ticks (unknown event / guards failed) are deliberate no-ops — report the `why[]`,
    do not retry blindly and do not hand-edit `state.json` (events.ndjson is the source of truth).
@@ -340,6 +342,13 @@ event and follow the new prescription: `evt:pa.resolved` (a resolved Product/cap
 node .claude/orchestrator/lib/fabric-engine.cjs tick \
   --instance <instance-id> --event <evt:…> --at "<ISO-now>"
 ```
+
+When the owner flips a fabric PA's **Status** to `done` in `pending-actions.md`, you can let the
+engine resume the line for you instead of hand-picking the event: `node
+.claude/orchestrator/lib/fabric-engine.cjs pa-scan --at "<ISO-now>" --tick` scans the PA journal,
+matches each resolved fabric-PA back to its parked instance, and ticks the recorded `resume-event`
+(the manual tick above stays a valid path). A `dismissed` PA is only *surfaced* — abort vs resume is
+the owner's call — never auto-ticked.
 
 `replay --instance <id>` rebuilds the state from `events.ndjson` and diffs it against
 `state.json` (exit 2 on mismatch) — the recovery/audit tool after a crashed session.

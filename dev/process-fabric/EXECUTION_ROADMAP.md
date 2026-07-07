@@ -11,7 +11,7 @@
 |---|---|---|
 | 0 | Merge PR #128 (владелец) | ✅ 2026-07-07 |
 | 1 | Ядро: fabric-engine + charter + 16 юнитов | ✅ built (≠ validated) |
-| 2 | Wiring в живую машинерию | ⬜ следующая билд-сессия |
+| 2 | Wiring в живую машинерию | ✅ built 2026-07-07 (2a+2d PR #129, 2b+2c PR #130; 2e срезан → фаза 4) |
 | 3 | Live-валидация = graduation gate | ⬜ pilot-gated, после фазы 2 |
 | 4 | Расширение | ⬜ строго после graduation, по триггерам |
 
@@ -21,14 +21,16 @@
    `run-ledger finish`: opt-in `--fabric` (init+`evt:line.start`, rejected = FB-004 backpressure),
    `ingest` тем же result-file/`$RUN_ID`, маршрутизация prescriptions (auto→bracket-цикл,
    human-gate→owner-queue+STOP, final→закрытие), resume-события; wiring-тест 11 asserts.
-2. **2b. PA-мост** — human-gate-prescription дописывает строку в `pending-actions.md` (канал OD7);
-   резолюция PA → `fabric tick --event evt:pa.resolved`. Замыкает первый обратный контур (G03/G04).
-3. **2c. SessionStart-инжект** — warn-only хук «fabric status: инстансы + top owner-queue»
-   (образец `dev/meta-improvement/hooks/rails-session-start.js`).
+2. ✅ **2b. PA-мост** (DEC-DEV-0155) — engine-shell зеркалит human-gate канонической PA-записью
+   (маркеры fabric-instance/state/resume-event, дедуп) + `pa-scan [--tick]` резолюция (done→tick,
+   dismissed→surfaced). Первый обратный контур (G03/G04) замкнут end-to-end машинно.
+3. ✅ **2c. SessionStart-инжект** (DEC-DEV-0155) — `hooks/orchestrator/session-fabric-status.js`
+   + manifest (первый shipped SessionStart); warn-only, read-only, тумблер FABRIC_STATUS_INJECT=0.
 4. ✅ **2d. F2-сверка** (DEC-DEV-0154) — чек-лист F1 §6 закрыт по всем 6 пунктам (см. контракт):
    дом либы = `orchestrator/lib/` (деплой-фикс), `--autonomy` end-to-end, `why[]`→events.ndjson,
    risk из charter-meta, readiness событиями, env_tier из limits.json.
-5. **2e (cuttable).** Charter №2 product-front (P1→P2→HO) — федерация owner-queue на воронку.
+5. ✂ **2e — СРЕЗАН** (DEC-DEV-0155): расширение до graduation противоречит substrate-дисциплине
+   0148 (built ≠ validated); charter №2 product-front → фаза 4, по live-триггеру federation-нужды.
 
 MDP: 2a/2d — main-модель; 2b/2c — opus-исполнитель + main-ревью. Гейты: process-gate потребует
 CHANGELOG (consumer-zone) + DEV_JOURNAL.
