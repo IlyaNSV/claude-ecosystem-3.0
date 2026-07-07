@@ -1,5 +1,5 @@
 ---
-description: On-demand validation runner — executes V-01..V-16 + V-H-01..V-H-11 catalog. Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4 (V-H-11 added post-review per R5/B1 fix-up).
+description: On-demand validation runner — executes the artifact (V-01..V-18) + handoff (V-H-01..V-H-11) + lesson (V-LE-01..05) catalog; V-MK-*/V-AM-* — acknowledged skips (см. таблицы). Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4 (V-H-11 added post-review per R5/B1 fix-up).
 ---
 
 # Validation Runner — Phase 4 skill
@@ -11,7 +11,7 @@ Loaded by `/product:validate` command. Executes validation rules across `.produc
 **Hardcode list approach** (not parser of `validation.md` catalog):
 - Markdown catalog `.claude/docs/pmo/validation.md` — human-readable spec, source of truth для rule semantics
 - This skill — implementation source of truth для runtime behavior
-- Drift между catalog и runner manually monitored; v1.1 candidate: catalog↔runner sync linter
+- Drift между catalog и runner отлавливается детерминированно в dev-репо экосистемы: линтер `check-validation-sync.cjs` в `npm run verify` сравнивает ID-множества (каталог ↔ таблицы ниже + `catalog-sync:acknowledged`-маркеры) — DEC-DEV-0158, G19. В user-проект файлы приезжают уже сверенными
 
 **Rationale:** at ~25 rules в v1, hardcode проще + надёжнее, чем хрупкий markdown parser. Linter добавится когда правил станет 100+ или drift реально проявится (DEC-DEV-0030 lesson #2).
 
@@ -32,7 +32,7 @@ Read `.claude/product.yaml.validation_tier`:
 |---|---|---|
 | `pilot` (bootstrap default) | 🔴 Blocking | 🟡 Warning, 🔵 Info |
 | `mvp` | 🔴 + 🟡 | 🔵 Info |
-| `full` | All 25 rules | (none) |
+| `full` | All runner-implemented rules | (none) |
 
 С `--deep` flag override: effective tier = `full` regardless of product.yaml.
 
@@ -45,7 +45,7 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 
 ## Rule catalog (hardcoded)
 
-### V-01..V-16 — Artifact validation
+### V-01..V-18 — Artifact validation
 
 | Rule | Severity | Artifacts | Check method | Description |
 |---|---|---|---|---|
@@ -64,8 +64,9 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 | V-14a | 🟡 Warning | BR | parameter compare across BR pairs (same category + entity, conflicting numeric/enum) | Parametric BR conflict |
 | V-15 | 🟡 Warning | all | graph: no incoming refs from active artifacts | Orphan artifacts detection |
 | V-16 | varies | FM, NFR | tier × `nfr_status` × high_risk matrix (см. ниже) | NFR Review status tracking |
+| V-18 | 🟡 Warning | IC, BR, SC | per-type frontmatter schema per `docs/pmo/artifacts/<TYPE>.md`: значение `type`, обязательные per-type поля, scalar-enum'ы (v1 scope IC/BR/SC; зеркалит inline-check `artifact-validate.js`, override-aware) | Per-type frontmatter schema conformance (IC/BR/SC) |
 
-V-13 dropped per `validation.md §0` → process rule P-RULE-01 (см. agents/product/devils-advocate.md adaptive-depth).
+V-13 dropped per `validation.md §0` → process rule P-RULE-01 (см. agents/product/devils-advocate.md adaptive-depth). V-17 перемещён в Integrator namespace (V-I-*, future) per `validation.md §0`.
 
 ### V-16 NFR severity matrix (special — conditional logic per `validation.md §5.1`)
 
@@ -144,6 +145,8 @@ V-H-11 пересекается с V-16 (artifact-level NFR tracking): V-16 пр
 
 ### V-MK-* — Skipped в Phase 4 (per DEC-DEV-0028 D.4)
 
+<!-- catalog-sync:acknowledged V-MK-01 V-MK-02 V-MK-03 V-MK-04 V-MK-05 V-MK-06 V-MK-07 V-MK-08 reason="Design module conditional Phase 6; documented skip per DEC-DEV-0028 D.4 — silent skip + graceful note, never fake pass" -->
+
 V-MK-01..V-MK-08 не shipped в Phase 4 — Design module conditional Phase 6.
 
 - **Silent skip** при общей validation (default flow): runner просто mimo, не emits findings, не учитывает в counts.
@@ -154,6 +157,12 @@ V-MK-01..V-MK-08 не shipped в Phase 4 — Design module conditional Phase 6.
   
   To activate: /design:start <FM-id> (Phase 6) → re-run /product:validate.
   ```
+
+### V-AM-* — Inline-only (Design hook), не в on-demand runner
+
+<!-- catalog-sync:acknowledged V-AM-frontmatter V-AM-id V-AM-module-ref V-AM-nm-ref reason="реализованы inline-хуком hooks/design/design-artifact-validate.js на каждом AM save (DEC-DEV-0066); on-demand прогон не shipped — semantics V-MK-класса: silent skip + graceful note" -->
+
+V-AM-frontmatter / V-AM-id / V-AM-module-ref / V-AM-nm-ref (App Map derived-обзор, `validation.md §5.3b`) исполняются **inline-хуком** `hooks/design/design-artifact-validate.js` на каждом сохранении AM (DEC-DEV-0066) — on-demand исполнение в runner не shipped. Semantics как у V-MK-*: **silent skip** в общем прогоне; explicit `--rule V-AM-<slug>` → graceful note («executed inline by design-artifact-validate.js on AM save; on-demand run not implemented»). Никогда не «✅ pass» без реальной проверки.
 
 ### V-LE-01..05 — LESSON validation (corrective lessons, DEC-DEV-0062)
 
@@ -279,7 +288,7 @@ Actionable next:
 
 ## Anti-patterns
 
-1. **Не парсить `validation.md` программно.** Это — human-readable spec, не parsable source. Catalog updates → manual mirror в этом skill. Drift detection — v1.1 candidate.
+1. **Не парсить `validation.md` программно для ИСПОЛНЕНИЯ правил.** Это — human-readable spec, не runtime source. Catalog updates → manual mirror в этом skill; синхронность ID-множеств держит линтер `check-validation-sync.cjs` в dev-репо (`npm run verify`, DEC-DEV-0158) — новое правило каталога без строки таблицы / `catalog-sync:acknowledged`-маркера здесь роняет verify.
 
 2. **Не дублировать checks в hooks.** `artifact-validate.js` (inline) — single artifact на save; этот skill — full catalog on-demand. Different scopes, не overlap (но обе share auto-purge pattern per DEC-DEV-0023 F5).
 
@@ -294,6 +303,7 @@ Actionable next:
 ## Related
 
 - Catalog spec: `.claude/docs/pmo/validation.md` (44 rules + 2 process rules)
+- Sync linter (dev-репо экосистемы, не деплоится): `dev/meta-improvement/scripts/check-validation-sync.cjs` (G19, DEC-DEV-0158)
 - Companion command: `.claude/commands/product/validate.md`
 - Inline hook (Phase 2): `.claude/hooks/product/artifact-validate.js`
 - Pending state: `.product/.pending/validation-pending.yaml`

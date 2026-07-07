@@ -51,7 +51,7 @@
 
 | Namespace | Префикс | Покрытие | Кол-во |
 |---|---|---|---|
-| Artifact validation | V-01..V-16 | Интегральная проверка артефактов `.product/` | 15 |
+| Artifact validation | V-01..V-18 | Интегральная проверка артефактов `.product/` (без V-13/V-17 — см. §0) | 16 |
 | Handoff validation | V-H-01..V-H-11 | Структурная целостность handoff.md | 11 |
 | Design validation | V-MK-01..V-MK-08 | UI spec completeness (conditional has_ui) | 8 |
 | Lesson validation | V-LE-01..V-LE-05 | Corrective LESSON-* артефакты (DEC-DEV-0062) | 5 |
@@ -958,7 +958,7 @@ Actionable: /product:validate --fix (auto-fixes where possible: V-11 bi-dir refs
 - [x] **V-16 NFR Review status tracking** — Phase 4.C runner encodes severity matrix conditionally per `nfr_status × product_tier × high_risk` (OQ-03 closed; NFR artifact активен)
 - [x] **Command `/product:cleanup`** для V-15 (orphan detection, default) + `--pending-hygiene` flag (cascade revalidate + validation-pending purge + da-pending stale flag) — Phase 4.G shipped per DEC-DEV-0027 (skill `cleanup-detector.md` + command `cleanup.md`)
 - [ ] **Fixture tests** на real `.product/` snapshots (regression coverage) — v1.1+ candidate
-- [ ] **Catalog↔runner sync linter** (drift detection между этим документом и `validation-runner.md` hardcoded table) — v1.1+ candidate при росте rules count >100 или first observed drift
+- [x] **Catalog↔runner sync linter** (drift detection между этим документом и `validation-runner.md` hardcoded tables) — shipped per DEC-DEV-0158 (G19): `dev/meta-improvement/scripts/check-validation-sync.cjs` в `npm run verify`; trigger «first observed drift» сработал (V-18 + V-AM-* отсутствовали в раннере молча). ID-множества: каталог (`#### V-…` заголовки) ↔ таблицы раннера + `catalog-sync:acknowledged`-маркеры; плюс внутрикаталожные инварианты (prose-итог, namespace-таблица §0)
 - [ ] **V-MK-01..V-MK-08** реализация — Phase 6 conditional (Design Module)
 - [ ] **V-I-*** правила через Integrator при `/integrator:add <tool>` — Phase 5+
 
