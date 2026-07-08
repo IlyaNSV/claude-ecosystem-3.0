@@ -7988,6 +7988,35 @@ Recon (sonnet Explore) сравнил ID-множества: **drift уже сл
 
 ---
 
+## DEC-DEV-0161 — Factory Conductor MVP: пульт оркестрации параллельных интерактивных Claude Code сессий на VM
+
+**Date:** 2026-07-08
+**Trigger:** запрос владельца «сделаем MVP инициативы Factory Conductor + инструкцию». Инициатива была зафиксирована как отложенная (память `project_factory_conductor_initiative`, дизайн одобрен 2026-07-08 после трёхсторонней разведки).
+**Tag:** #orchestration #factory #tmux #mvp
+
+### Context
+У экосистемы есть Orchestrator для **headless** Workflow-агентов, но не было ручки на второй половине фабрики — долгоживущих **интерактивных** `claude`-TUI сессиях, которые solo-dev разворачивает на VM. Нужен тонкий пульт: запускать/вести N параллельных сессий «как человек» (несколько терминалов), со сбором логов и расширяемостью. Субстрат — VM `Ubuntu-ClaudeCode` (tmux 3.4, Node 22, claude в `~/.local/bin`).
+
+### Options considered
+1. **tmux + тонкий Node-пульт `factory.cjs`, worktree/полосу, состояние через hooks** (ПРИНЯТО) — официального API «инъекция ввода в чужую интерактивную сессию» нет, только tmux/PTY; hooks Claude Code (SessionStart/UserPromptSubmit/Stop) дают состояние без парсинга экрана; run-ledger уже есть — переиспользуем как журнал; worktree/полосу держит single-writer инвариант FB-004.
+2. **Agent Teams** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) — официальный аналог, но experimental (нет resume тиммейтов, ~5-6 предел, 1 team/сессия). Отложено: сам построен на tmux → миграция при созревании лёгкая.
+3. **Node+bash без tmux (спавн headless `-p`)** — отвергнуто: теряется интерактивность и наблюдаемость владельцем из GUI; запрос был именно про «как человек с несколькими экранами».
+
+### Decision
+`dev/factory-conductor/factory.cjs` (650+ строк, stdlib-only, без LLM) + README. Полоса (lane) = tmux-сессия `cf-<lane>` в своём git worktree (`~/projects/lanes/<lane>`, ветка `lane/<lane>`). Команды: `spawn` (worktree + hooks-settings + tmux + ledger-start + опц. авто-промпт), `send` (`--text`/`--file`→FACTORY-BRIEF.md), `peek`, `status`/`list` (таблица state/branch/ahead/dirty), `harvest` (скролбэк + git-съём + ledger-finish), `stop` (`/exit`→kill, mini-harvest, `--rm-worktree` с сохранением ветки). Состояние снимается **хуками** (Stop→маркер `idle`, UserPromptSubmit→снятие), не парсингом. Живёт в `dev/` (не consumer-zone) до live-валидации на пилоте.
+
+### Outcome
+Live-смоук на VM (пилот `my-first-test`), 2 параллельные полосы, полный цикл: spawn → pre-trust → авто-промпт → busy → интерактивный send/peek → idle(Stop-hook) → harvest → stop --rm-worktree. Ledger забрекетил оба прогона (dur:516s/302s, verdict harvested), ветки `lane/*` сохранены, worktrees сняты. Три бага найдены и починены в ходе смоука (см. Lessons). Тестовые артефакты вычищены.
+
+### Lessons
+1. **Trust-диалог блокирует хуки.** Свежий worktree — незнакомая папка; TUI встаёт на folder-trust, SessionStart не срабатывает, `started`-маркер не появляется (90s timeout авто-промпта). Фикс: `preTrustWorktree` пишет `hasTrustDialogAccepted` в `~/.claude.json` до запуска. Гонка с параллельным `claude` (перезапись `~/.claude.json`) осознанно принята — окно крошечное, fallback = оператор жмёт Enter.
+2. **capture-pane нужна живая сессия — harvest ДО kill.** Исходно `stop` глушил сессию, потом мини-harvest → скролбэк терялся. Переставил mini-harvest перед `/exit`.
+3. **Stale-маркеры полосы обманывают `started`-wait** при повторном использовании имени полосы — `spawn` теперь чистит `started/idle/session_id` перед стартом.
+4. **Родительская директория worktree** (`~/projects/lanes/`) может не существовать на первом спавне — `mkdirSync` recursive перед `git worktree add`.
+5. ITP из глобального CLAUDE.md наследуется сессиями VM — на неоднозначном промпте модель уходит в уточняющее меню; это фича Claude, оператор отвечает `send`. Давать предмет действия в промпте явно.
+
+---
+
 ## DEC-DEV-0160 — G32: аллокатор DEC-DEV — скан локальных веток + claims-резервация в git-common-dir
 
 **Date:** 2026-07-07
