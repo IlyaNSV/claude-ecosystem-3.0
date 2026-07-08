@@ -645,7 +645,10 @@ const TEST_CASES = [
         'utf-8'
       );
     },
-    expectStdoutIncludes: /hookSpecificOutput.*additionalContext.*smoke-fabric-inst/,
+    // hookEventName ОБЯЗАТЕЛЕН в hookSpecificOutput — без него Claude Code отбрасывает весь
+    // payload (live-дефект Fabric фазы 3, DEC-DEV-0162: smoke проверял форму JSON, но не
+    // контракт харнесса, и инжект молча терялся на реальной сессии).
+    expectStdoutIncludes: /hookSpecificOutput.*hookEventName":"SessionStart.*additionalContext.*smoke-fabric-inst/,
   },
 
   // ── subagent-watchdog.js (DEC-DEV-0159, G05/G06) ─────────────────────────────
