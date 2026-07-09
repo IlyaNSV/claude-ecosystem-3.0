@@ -72,9 +72,13 @@ function initInstance(base, subject, at) {
   assert.strictEqual(r.code, 0, `init failed: ${r.stderr || r.stdout}`);
   return r.json.instance;
 }
-function tick(base, id, event, at) {
-  return cli(['tick', '--instance', id, '--event', event, '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base)]);
+function tick(base, id, event, at, extra) {
+  return cli(['tick', '--instance', id, '--event', event, '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base), ...(extra || [])]);
 }
+// A bare tick of a process-RESULT event (an ingest-emit of the state's invoked process) is refused by
+// the DEF-3 bracket guard. Unit fixtures that drive the machine directly through such events (bounded
+// remediation, replay) carry this conscious-override flag; real dispatch routes them via `ingest`.
+const FORCE_FIXTURE = ['--force-manual', 'unit-test fixture'];
 function ingest(base, id, proc, result, at, runId) {
   const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result), '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base)];
   if (runId) args.push('--run-id', runId);
@@ -307,11 +311,11 @@ test('CLI P7 NOT_STARTABLE routes out of runtime_gate (no dead-end stall)', () =
 test('CLI bounded remediation: 2 no_go rounds, escalate on the third', () => {
   const base = mkTmp();
   const id = reachImplementing(base, 'FM-REM');
-  assert.strictEqual(tick(base, id, 'evt:impl.no_go').json.to, 'remediation'); // round 1
+  assert.strictEqual(tick(base, id, 'evt:impl.no_go', null, FORCE_FIXTURE).json.to, 'remediation'); // round 1
   assert.strictEqual(readState(base, id).counters.remediation_rounds, 1);
-  assert.strictEqual(tick(base, id, 'evt:impl.no_go').json.to, 'remediation'); // round 2 (self-loop)
+  assert.strictEqual(tick(base, id, 'evt:impl.no_go', null, FORCE_FIXTURE).json.to, 'remediation'); // round 2 (self-loop)
   assert.strictEqual(readState(base, id).counters.remediation_rounds, 2);
-  const third = tick(base, id, 'evt:impl.no_go'); // rounds_left fails → escalated
+  const third = tick(base, id, 'evt:impl.no_go', null, FORCE_FIXTURE); // rounds_left fails → escalated
   assert.strictEqual(third.json.to, 'escalated');
   assert.ok(third.json.effects.some((e) => e.kind === 'queue_owner'), 'escalation queues the owner');
 
@@ -324,8 +328,8 @@ test('CLI bounded remediation: 2 no_go rounds, escalate on the third', () => {
   // `escalated`, a non-final state) to prove NO-GO→remediation→GO works machine-side.
   const base2 = mkTmp();
   const id2 = reachImplementing(base2, 'FM-REM2');
-  assert.strictEqual(tick(base2, id2, 'evt:impl.no_go').json.to, 'remediation');
-  assert.strictEqual(tick(base2, id2, 'evt:impl.go').json.to, 'runtime_gate');
+  assert.strictEqual(tick(base2, id2, 'evt:impl.no_go', null, FORCE_FIXTURE).json.to, 'remediation');
+  assert.strictEqual(tick(base2, id2, 'evt:impl.go', null, FORCE_FIXTURE).json.to, 'runtime_gate');
 });
 
 test('CLI wip-guard: second instance on the orchestrator lane is rejected, why explains', () => {
@@ -365,8 +369,8 @@ test('CLI ingest idempotency: a seen run_id is a no-op', () => {
 test('CLI replay reproduces the persisted snapshot exactly', () => {
   const base = mkTmp();
   const id = reachImplementing(base, 'FM-RE');
-  tick(base, id, 'evt:impl.no_go'); // → remediation (an event with a counter increment)
-  tick(base, id, 'evt:impl.go');     // → runtime_gate
+  tick(base, id, 'evt:impl.no_go', null, FORCE_FIXTURE); // → remediation (an event with a counter increment)
+  tick(base, id, 'evt:impl.go', null, FORCE_FIXTURE);     // → runtime_gate
 
   const r = cli(['replay', '--instance', id, '--charter', CHARTER, '--base-root', base]);
   assert.strictEqual(r.code, 0, `replay mismatch: ${JSON.stringify(r.json)}`);
@@ -379,6 +383,50 @@ test('CLI unparseable --at → clean exit 2', () => {
   const r = cli(['init', '--charter', CHARTER, '--subject', 'FM-X', '--at', 'not-a-date', '--base-root', base]);
   assert.strictEqual(r.code, 2, 'must exit 2 on a bad timestamp');
   assert.ok(/parseable ISO/.test(r.stderr), `stderr should explain: ${r.stderr}`);
+});
+
+// ==== DEF-3 bracket guard ========================================================================
+
+test('DEF-3 guard: a bare tick of an ingest-mapped process result is refused (exit 2)', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-GUARD');   // state = implementing (invoke feature-to-tdd-impl)
+  const r = tick(base, id, 'evt:impl.go');           // evt:impl.go is an ingest-emit of the invoked process
+  assert.strictEqual(r.code, 2, 'a bare ingest-mapped tick must exit 2');
+  assert.ok(/feature-to-tdd-impl/.test(r.stderr), `stderr names the invoked process: ${r.stderr}`);
+  assert.ok(/--force-manual/.test(r.stderr), `stderr points at the --force-manual escape: ${r.stderr}`);
+  assert.strictEqual(readState(base, id).state, 'implementing', 'the refused tick is a no-op');
+});
+
+test('DEF-3 guard: --force-manual applies the tick and stamps a forced-manual audit marker in the event', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-FORCE');
+  const r = tick(base, id, 'evt:impl.go', null, ['--force-manual', 'reason text']);
+  assert.strictEqual(r.code, 0, `a forced tick must succeed: ${r.stderr}`);
+  assert.strictEqual(r.json.to, 'runtime_gate', 'the forced tick applies the real transition');
+  // the marker must LIVE in events.ndjson (audit survives beyond stdout), not merely be printed
+  const events = fs.readFileSync(path.join(base, id, 'events.ndjson'), 'utf8');
+  assert.ok(/forced-manual: reason text/.test(events), `the forced-manual marker must be in the event log: ${events}`);
+  // and replay stays bit-for-bit consistent — the marker is an event-sourced audit note, not state
+  const rep = cli(['replay', '--instance', id, '--charter', CHARTER, '--base-root', base]);
+  assert.strictEqual(rep.code, 0, `replay must stay consistent after a forced tick: ${JSON.stringify(rep.json)}`);
+  assert.strictEqual(rep.json.ok, true);
+});
+
+test('DEF-3 guard: --force-manual with an empty reason is refused (exit 2)', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-EMPTY');
+  const r = tick(base, id, 'evt:impl.go', null, ['--force-manual', '']);
+  assert.strictEqual(r.code, 2, 'an empty force-manual reason must exit 2');
+  assert.ok(/--force-manual/.test(r.stderr) && /reason/.test(r.stderr), `stderr must demand a reason: ${r.stderr}`);
+  assert.strictEqual(readState(base, id).state, 'implementing', 'still a no-op');
+});
+
+test('DEF-3 guard: a resume event outside the ingest map still ticks freely (regression)', () => {
+  const base = mkTmp();
+  const id = reachAwaitingProduct(base, 'FM-RESUME');  // parked in awaiting_product (a human gate, no invoke)
+  const r = tick(base, id, 'evt:pa.resolved');          // resume event, NOT an ingest-emit → must pass through
+  assert.strictEqual(r.code, 0, `a resume tick must not be blocked by the guard: ${r.stderr}`);
+  assert.strictEqual(r.json.to, 'implementing', 'the resume un-parks the line exactly as before');
 });
 
 // ==== PA bridge (phase 2b) =======================================================================
