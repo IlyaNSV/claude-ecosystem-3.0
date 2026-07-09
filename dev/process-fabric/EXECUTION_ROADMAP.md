@@ -12,8 +12,8 @@
 | 0 | Merge PR #128 (владелец) | ✅ 2026-07-07 |
 | 1 | Ядро: fabric-engine + charter + 16 юнитов | ✅ built (≠ validated) |
 | 2 | Wiring в живую машинерию | ✅ built 2026-07-07 (2a+2d PR #129, 2b+2c PR #130; 2e срезан → фаза 4) |
-| 3 | Live-валидация = graduation gate | 🟡 **PARTIAL** 2026-07-08 (VM-пилот, DEC-DEV-0162): G-A ✓, G-C ✓, **G-B pending** — [GRADE_REPORT](FABRIC_PHASE3_GRADE_REPORT.md) |
-| 4 | Расширение | ⬜ строго после graduation, по триггерам |
+| 3 | Live-валидация = graduation gate | ✅ **условный GO** 2026-07-10 (добор G-B, DEC-DEV-0162/0163): G-A ✓, G-B ✓ (с оговорками), G-C ✓×4 — [GRADE_REPORT](FABRIC_PHASE3_GRADE_REPORT.md); условия: merge bracket-guard PR + upstream-долг DEF-4/ANOM-5 + ветка `runtime_gate_retry`/`evt:env.up` live-невалидирована; **формальное объявление graduation — владелец** |
+| 4 | Расширение | ⬜ после объявления graduation владельцем, по триггерам |
 
 ## Фаза 2 — wiring (1-2 PR, порядок внутри фазы)
 
@@ -39,8 +39,9 @@ CHANGELOG (consumer-zone) + DEV_JOURNAL.
 
 По `dev/meta-improvement/checklists/live-run-validation.md` (класс B). Критерии (CONCEPT §9):
 - [x] инстанс `feature-production-line` прожил ≥2 сессии с restore из state.json — ✅ 2026-07-08 (G-A);
-- [ ] минимум один NO-GO→remediation→GO прошёл машинно — **pending** (G-B): линия ушла в
-      conflict-escalation (арх-развилка PA-051); добор после владельческой ратификации;
+- [x] минимум один NO-GO→remediation→GO прошёл машинно — ✅ 2026-07-10 добор (G-B): инстанс №2,
+      seq5 `impl.no_go`→remediation (P6-брекет NO-GO) → conflict-гейт PA-054/055 (реальная находка)
+      → owner Resolution 2 → P6 re-gate GO → seq8 `impl.go`; все переходы ingest/run_id-backed;
 - [x] один human-gate через owner-queue разрешён и продолжил инстанс — ✅ PA-045 → `pa-scan --tick` (G-C).
 Долг run-ledger live-прогона закрыт (R10). Артефакты прогона: BRIEF / REVIEW_HANDOFF / GRADE_REPORT
 рядом; DEC-DEV-0162 (вкл. live-дефект DEF-1 SessionStart-инжектора — починен `c8cbf9d`).
