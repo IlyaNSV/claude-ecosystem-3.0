@@ -129,9 +129,49 @@ ssh -p 2222 -i C:\Users\pw201\.ssh\vm-claude-factory -o BatchMode=yes cc-dev@127
   настройки не трогаются.
 - Merge полос в main — вручную, сериализованно (инвариант FB-004 держит оператор).
 
-## Дорожная карта после MVP
+## Дорожная карта после MVP — с чего продолжать
 
-Фаза 2: `events.jsonl` (полный поток hook-событий), harvest-агрегация N полос через
-`consilium-synth.cjs`, feedback-outbox. Фаза 3: OTEL-дашборд, интеграция с Fabric
-`limits.json`, миграция на Agent Teams при его созревании (см. память
-`project_factory_conductor_initiative`).
+> **Точка входа для будущей сессии.** MVP (spawn/send/peek/status/harvest/stop)
+> построен и live-провалидирован 2 полосами (DEC-DEV-0161, main `20bb912`). Ниже —
+> упорядоченный след «что дальше», первым идёт следующий шаг.
+
+### Следующий шаг (Фаза 2 — наблюдаемость и агрегация)
+
+1. **`events.jsonl` — полный поток hook-событий полосы.** Сейчас хуки пишут только
+   маркеры-файлы (`started`/`idle`/`session_id`, last-write-wins). Добавить в
+   генерируемый `settings.json` аппенд каждого события (с `session_id`, timestamp,
+   тип) в `~/.factory/lanes/<lane>/events.jsonl` — durable timeline, а не только
+   «последнее состояние». *DoD:* `status` умеет показать «сколько промптов /
+   когда последний Stop» из events, не только mtime маркера.
+2. **harvest-агрегация N полос через `consilium-synth.cjs`.** `harvest` уже пишет
+   `harvest-*.json` (commits/dirty/diffstat/transcript) на полосу. Добавить
+   команду `factory synth <lane...>` — свести несколько harvest-записей в один
+   сравнительный отчёт (переиспользовать `orchestrator/lib/consilium-synth.cjs`).
+   *DoD:* два независимых прогона одной задачи → один свод с расхождениями.
+3. **feedback-outbox.** Замкнуть на существующий meta-feedback outbox паттерн:
+   findings из полос → в очередь на разбор оператором.
+
+### Позже (Фаза 3 — масштаб и интеграция)
+
+- OTEL-дашборд поверх транскриптов (`~/.claude/projects/<slug>/*.jsonl`).
+- Интеграция с Process Fabric `limits.json` (единый диспетчер лимитов после его
+  graduation) — сейчас лимит 2–3 полос держит оператор вручную.
+- Миграция tmux-субстрата на **Agent Teams** при его выходе из experimental
+  (нет resume тиммейтов / 1 team на сессию — блокеры на 2026-07-08).
+
+### Backlog нюансов из live-смоука (мелкие, не блокеры)
+
+- **Упрочнить pre-trust против гонки** `~/.claude.json`: параллельный `claude`
+  может перезаписать патч. Вариант — ретрай патча + проверка после старта, или
+  файловый лок на запись `~/.claude.json`.
+- **Многострочный `send`** — сейчас `--text` схлопывает `\n` в пробел (TUI сабмитит
+  по Enter). Обходной путь есть (`--file`), но tmux paste-buffer
+  (`load-buffer`+`paste-buffer`) дал бы настоящий многострочный ввод.
+- **Алиас `attach`** (`factory attach <lane>` → `tmux attach -t cf-<lane>`) для
+  удобства владельца из GUI.
+- **`status` не отличает «idle после ответа» от «idle = задача сделана»** — это
+  сознательное ограничение MVP (контроль за оператором), но events.jsonl из шага 1
+  даст материал для эвристики.
+
+Дизайн-контекст и разведка (Agent Teams / Claude Squad / лимиты) — память
+`project_factory_conductor_initiative`; решение и lessons — DEV_JOURNAL DEC-DEV-0161.
