@@ -8070,3 +8070,26 @@ What to remember next time.
 **Numbering:** continuous, no gaps. Start each new entry with next NNNN.
 
 **When to add an entry:** default yes for architectural choices, rejected alternatives, root causes of bugs, things that turned out different from plan. Default no for: typo fixes, doc reformatting, dependency bumps.
+
+## DEC-DEV-0162 — Fabric фаза 3: live-прогон graduation-гейта на VM-пилоте + первый live-дефект (SessionStart-инжектор терял payload)
+
+**Date:** 2026-07-08
+**Trigger:** EXECUTION_ROADMAP фаза 3 (pilot-gated graduation gate, CONCEPT §9); запрос владельца «ты за пультом» — оператор ведёт прогон с хоста промптами, executor = сессии пилота на VM, судья = независимый opus-субагент.
+
+### Context
+Первый live-прогон Process Fabric на пилоте `my-first-test` (VM Ubuntu-ClaudeCode, основной checkout — fabric-state живёт в рабочем дереве, worktree-полосы Conductor'а его не видят). Протокол: `live-run-validation.md` класс B, инстанцирован пре-регистрированными артефактами `dev/process-fabric/FABRIC_PHASE3_LIVE_RUN_BRIEF.md` (сценарий+промпты verbatim, коммит ДО прогона) + `FABRIC_PHASE3_REVIEW_HANDOFF.md` (рубрика судьи, исполнителю не показывалась). Доставка: `/ecosystem:update` (аддитивный, до upstream `20bb912`), verify Healthy.
+
+### Decision(s)
+1. **Субъект линии — FM-006** (единственная маленькая фича без kiro-спеки: честный полный путь authoring→impl; FM-004 отклонена — UI+NFR, слишком крупная для валидации механики).
+2. **Гейты отыгрывать средой и файловым PA-мостом, не подсказками** (класс B): парковку S1 на естественном product-гейте (P4 поймал 2 реальных LOW-дрейфа BR-081) разрешили канонически — флип PA-045→done в файле + `pa-scan --tick` в свежей сессии.
+3. **Арх-развилку PA-051 (SIDE A materialize vs SIDE B derive-on-read) от лица владельца НЕ решать** — выбран consilium PREPARE-ONLY (жюри готовит DRAFT DEC, ратификация владельца). Отвергнуто «выбрать сторону самому»: подлинно владельческое решение, и выбор ради добора критерия G-B был бы подгонкой прогона под судейский интерес (executor/judge separation).
+4. **Live-дефект №1 чинить сразу в этом же PR**: `session-fabric-status.js` отдавал `hookSpecificOutput` БЕЗ обязательного `hookEventName: "SessionStart"` → Claude Code отбрасывал весь payload («Hook JSON output validation failed»), fabric-инжект был мёртв с рождения и невидим (без живого инстанса хук молчит; первый старт С инстансом = S2 прогона). Фикс однострочный + smoke-кейс ужесточён (`hookEventName` теперь обязателен в выводе).
+
+### Outcome
+Линия прожила S1+S2 (два restore), прошла P3→P4→гейт→P5 (19/19 тасков, ~6ч, покоммитный TDD) → `impl.conflict` → parked `awaiting_product` c PA-051/PA-052; консилиум выдал Side-B strong-CONDITIONAL. Механика: `replay` exit 0, run-id уникальны и совпадают ledger↔events, 6/6 событий со штампами `--at`, FB-004 backpressure подтверждён на копии стейта (`applied:false`, `wipOk: 1<1 → false`). Критерии CONCEPT §9: **G-A ✓, G-C ✓, G-B pending** (P5 кончился conflict'ом, не no_go; remediation-стейт не входился — добор после владельческой ратификации PA-051). Полный грейд судьи + вердикт — `dev/process-fabric/FABRIC_PHASE3_GRADE_REPORT.md`.
+
+### Lessons
+1. **Smoke, который проверяет форму вывода, но не контракт потребителя, пропускает мёртвый канал целиком** — hook-smoke был 41/0, а инжект никогда не работал. Контракт харнесса (обязательные поля hook-JSON) должен быть закодирован в assert'ах.
+2. **Условно-молчащие хуки (нет субстрата → exit 0) не валидируются доставкой**: дефект всплывает только при первом появлении субстрата в проде. Для таких хуков smoke-фикстура «субстрат есть» обязательна (она была — но с мягким assert'ом, см. урок 1).
+3. **Естественные гейты богаче срежиссированных**: оба human-gate прогона (BR-081 drift, PA-051 fork) пришли из реальных дефектов канона/спеки — docker-рычаг из сценария не понадобился вовсе.
+4. Пульт-грабли VM-оркестрации (ghost-подсказки TUI, busy-признаки фоновых Workflow, base64-промпты) — зафиксированы в брифе, кандидаты в будущий пульт-скилл.

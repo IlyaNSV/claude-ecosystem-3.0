@@ -78,10 +78,13 @@ if (instances.length === 0 && queue.length === 0) process.exit(0);
 const context = buildContext(instances, queue);
 if (!context) process.exit(0);
 
-// Per Claude Code SessionStart contract: hookSpecificOutput.additionalContext
-// (must be valid JSON on stdout; exit 0; keep well under the 10k-char cap).
+// Per Claude Code SessionStart contract: hookSpecificOutput MUST carry
+// hookEventName: 'SessionStart' alongside additionalContext — without it the
+// harness rejects the whole payload («missing required field "hookEventName"»,
+// live-дефект Fabric фазы 3, DEC-DEV-0162) and the inject is silently dropped.
+// (Valid JSON on stdout; exit 0; keep well under the 10k-char cap.)
 process.stdout.write(JSON.stringify({
-  hookSpecificOutput: { additionalContext: context },
+  hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context },
 }));
 process.exit(0);
 
