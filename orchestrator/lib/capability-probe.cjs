@@ -150,7 +150,11 @@ function surface(items, envHas) {
   const has = typeof envHas === 'function' ? envHas : () => false;
   const out = [];
   for (const item of items || []) {
-    const present = !!(item.secret_env && has(item.secret_env));
+    // DEC-DEV-0174 (DEF-OD7-1): the predicate may return a SOURCE label ('process-env' | '.env' |
+    // '.env.local') instead of a bare boolean — truthiness drives `present` exactly as before, the
+    // label is surfaced as `env_source` (a plain-true predicate reads as 'process-env').
+    const src = item.secret_env ? has(item.secret_env) : false;
+    const present = !!src;
     const d = dispositionFor(item, present);
     const routes = [];
     if (d.disposition !== DISPOSITION.SATISFIED) routes.push(ROUTE.INTEGRATOR);   // access
@@ -164,19 +168,21 @@ function surface(items, envHas) {
       tier: item.tier || null,
       dev_stand_in: item.dev_stand_in || null,
       present,
+      env_source: present ? (typeof src === 'string' ? src : 'process-env') : null,
       disposition: d.disposition,
       provider_choice_pending: d.provider_choice_pending,
       zone: 'external-capability',
       routes,
       surface: surfaceWorthy,
-      rationale: rationaleFor(item, d, present),
+      rationale: rationaleFor(item, d, src),
     });
   }
   return out;
 }
 
-function rationaleFor(item, d, present) {
-  if (present) return `${item.secret_env} present — access satisfied.`;
+function rationaleFor(item, d, src) {
+  const present = !!src;
+  if (present) return `${item.secret_env} present (${typeof src === 'string' ? src : 'process-env'}) — access satisfied.`;
   if (d.disposition === DISPOSITION.EXPECTED_ABSENT_BUT_DEFERRED) {
     return `${item.secret_env || item.capability} absent; dev stand-in "${item.dev_stand_in}" covers ${item.tier || 'dev'} — must be real before ${item.tier || 'staging/prod'}. Tracking, not a blocking request now.`;
   }
@@ -198,6 +204,61 @@ function summarize(surfaced) {
     deferred: by.EXPECTED_ABSENT_BUT_DEFERRED,
     satisfied: by.SATISFIED,
     provider_choices,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Presence sources (DEC-DEV-0174, DEF-OD7-1). The OD7 live run (DEC-DEV-0173)
+// proved process.env alone is a false-positive BLOCK machine: the pilot's
+// runtime loads `.env` via dotenv, so a secret can be fully provisioned yet
+// invisible to a probe spawned without it in the environment — the line parked
+// on a capability it actually had. Presence is therefore read from process.env
+// FIRST, then `.env`, then `.env.local` under --root. Read-only; only PRESENCE
+// is reported, a secret's value never leaves this function.
+// ---------------------------------------------------------------------------
+/**
+ * dotenv-lite parse (pure): KEY=VALUE lines; `# comment` and blank lines skipped;
+ * an `export ` prefix is tolerated; surrounding quotes are stripped. Only keys
+ * with a NON-EMPTY value are returned (an empty assignment is NOT presence —
+ * same rule as the process.env check below). No interpolation, no multi-line
+ * values — deliberately minimal, presence is all the probe needs.
+ */
+function parseEnvFileText(text) {
+  const vars = {};
+  for (const line of String(text == null ? '' : text).replace(/\r\n/g, '\n').split('\n')) {
+    const t = line.trim();
+    if (!t || t.startsWith('#')) continue;
+    const m = t.replace(/^export\s+/, '').match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m) continue;
+    const val = unquote(m[2]);
+    if (val) vars[m[1]] = val;
+  }
+  return vars;
+}
+
+/** Read the dotenv presence sources under `root` (a missing/unreadable file is simply skipped). */
+function readEnvFiles(root) {
+  const sources = [];
+  for (const name of ['.env', '.env.local']) {
+    let text = null;
+    try { text = fs.readFileSync(path.join(root || '.', name), 'utf8'); } catch (_e) { continue; }
+    sources.push({ source: name, vars: parseEnvFileText(text) });
+  }
+  return sources;
+}
+
+/**
+ * Presence predicate for surface(): name → 'process-env' | '.env' | '.env.local' | false.
+ * process.env wins (a live export overrides a file), then the files in order.
+ */
+function envPresence(root) {
+  const files = readEnvFiles(root);
+  return (name) => {
+    if (Object.prototype.hasOwnProperty.call(process.env, name) && !!process.env[name]) return 'process-env';
+    for (const f of files) {
+      if (Object.prototype.hasOwnProperty.call(f.vars, name)) return f.source;
+    }
+    return false;
   };
 }
 
@@ -247,8 +308,10 @@ function printHelp() {
     'USAGE:  node capability-probe.cjs --feature FM-002 [--root .]',
     '        node capability-probe.cjs --file path/to/FM.md',
     '',
-    '→ JSON { capabilities:[{capability,secret_env,disposition,routes,surface,...}], summary }',
+    '→ JSON { capabilities:[{capability,secret_env,present,env_source,disposition,routes,surface,...}], summary }',
     'Disposition is DETERMINISTIC from the manifest (tier + dev_stand_in + env presence).',
+    'Presence sources (DEC-DEV-0174): process.env, then `.env`, then `.env.local` under --root',
+    '(non-empty values only; env_source discloses which source satisfied the secret).',
     'An absent secret with NO dev stand-in ⇒ BLOCK (the OD7 await is a deferred S7 leg).',
   ].join('\n') + '\n');
 }
@@ -275,7 +338,8 @@ function main() {
     console.error(`ERROR: cannot read ${file}: ${e.message}`); process.exit(2);
   }
   const items = extractManifest(fm);
-  const surfaced = surface(items, (name) => Object.prototype.hasOwnProperty.call(process.env, name) && !!process.env[name]);
+  // DEC-DEV-0174 (DEF-OD7-1): presence = process.env ∪ .env ∪ .env.local (see envPresence above).
+  const surfaced = surface(items, envPresence(args.root));
   process.stdout.write(JSON.stringify({
     capability_schema_version: CAPABILITY_SCHEMA_VERSION,
     feature: args.feature || path.basename(file),
@@ -301,4 +365,7 @@ module.exports = {
   dispositionFor,
   surface,
   summarize,
+  parseEnvFileText,
+  readEnvFiles,
+  envPresence,
 };

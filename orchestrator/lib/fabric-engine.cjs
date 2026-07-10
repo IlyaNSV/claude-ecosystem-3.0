@@ -686,6 +686,22 @@ function applyEffects(root, snapshot, at, effects) {
 function defaultPaFile(root) { return path.resolve(root, '..', '..', 'pending-actions.md'); }
 function paFilePath(root, explicit) { return explicit ? path.resolve(explicit) : defaultPaFile(root); }
 
+/** Run-ledger summary file for a fabric root — the sibling `runs/` dir in the deploy layout
+ *  (.claude/orchestrator/fabric → .claude/orchestrator/runs/ledger.ndjson, run-ledger.cjs's own
+ *  default). `explicit` (--ledger-file) overrides it (tests + non-standard layouts). */
+function defaultLedgerFile(root) { return path.resolve(root, '..', 'runs', 'ledger.ndjson'); }
+function ledgerFilePath(root, explicit) { return explicit ? path.resolve(explicit) : defaultLedgerFile(root); }
+
+/** True iff ledger.ndjson carries a line whose run_id === runId (unparseable lines are skipped;
+ *  a missing/unreadable ledger has NO runs — the guard fails closed). */
+function ledgerHasRun(file, runId) {
+  let raw;
+  try { raw = fs.readFileSync(file, 'utf8'); } catch (_e) { return false; }
+  return raw.split('\n').some((l) => {
+    try { return JSON.parse(l).run_id === runId; } catch (_e) { return false; }
+  });
+}
+
 /**
  * Create the journal with header + PA-000 sentinel if absent (mirrors bootstrap Step 6c so the
  * counter starts at PA-001). In a deployed project bootstrap already made this file; create-if-
@@ -858,6 +874,7 @@ function parseArgs(argv) {
       case '--force-manual': a.forceManual = next(); break;
       case '--base-root': a.baseRoot = next(); break;
       case '--pa-file': a.paFile = next(); break;
+      case '--ledger-file': a.ledgerFile = next(); break;
       case '--tick': a.tick = true; break;
       case '--all': a.all = true; break;
       default: break;
@@ -895,16 +912,23 @@ function printHelp() {
     '',
     'init   --charter <f> --subject <id> --at <ISO> [--base-root <dir>]',
     '  → create instance (state.json + events.ndjson@init); echo instance-id + initial prescription.',
-    'ingest --instance <id> --process <name> (--result <json>|--result-file <p>) --at <ISO> [--run-id <r>] [--charter <f>]',
+    'ingest --instance <id> --process <name> (--result <json>|--result-file <p>) --at <ISO> --run-id <r>',
+    '       [--charter <f>] [--ledger-file <p>] [--force-manual <reason>]',
     '  → materialise the result into ≤1 event, then tick it. Idempotent: a seen --run-id is a no-op.',
+    '    DEF-OD7-2 bracket guard: --run-id is REQUIRED and must exist in the run-ledger',
+    '    (default <fabric-root>/../runs/ledger.ndjson; override --ledger-file) — a result from a run',
+    '    the ledger never saw (raw Workflow, no bracket) is refused; --force-manual "<PA-NNN: reason>"',
+    '    consciously overrides (audit-stamped, PA must already exist in pending-actions.md).',
     '    A charter ingest rule may carry payloadPath (dot-path): the resolved slice of the result rides',
     '    the emitted event into events.ndjson and, if the tick parks a human gate, into the PA-record',
     '    (capability-spec / event data the owner or Integrator provisions before resuming the line).',
     'tick   --instance <id> --event <evt:…> [--payload <json>] --at <ISO> [--charter <f>] [--force-manual <reason>]',
     '  → transition + persist + emit the next prescription (stdout JSON). DEF-3 guard: a process-RESULT',
     '    event (an ingest-emit of the state\'s invoked process) is REFUSED bare — route it through the',
-    '    bracket + `ingest --run-id`; --force-manual "<PA-NNN: reason>" consciously overrides (audit-',
-    '    stamped; the reason MUST reference a PA entry that already exists in pending-actions.md).',
+    '    bracket + `ingest --run-id`. ANOM-OD7-2 guard: an `evt:owner.*` OWNER-decision event is also',
+    '    REFUSED bare — the sanctioned path is the owner\'s PA flip + `pa-scan --tick`. For both,',
+    '    --force-manual "<PA-NNN: reason>" consciously overrides (audit-stamped; the reason MUST',
+    '    reference a PA entry that already exists in pending-actions.md).',
     'status [--all] [--base-root <dir>]   → instances, states, prioritised LIVE owner-queue plus',
     '    owner_queue_stale. Read-only: staleness is reported, NOT pruned (the write-path self-prunes).',
     'replay --instance <id> [--charter <f>]   → rebuild state from events; diff vs state.json (exit 2 on mismatch).',
@@ -948,6 +972,57 @@ function cmdInit(args) {
   process.exit(0);
 }
 
+/**
+ * Shared --force-manual escape validation (judge rec #4; reused by BOTH tick guards and the ingest
+ * bracket-guard, DEC-DEV-0174): the escape must be dearer than the honest path. Requires the flag to
+ * be PRESENT with a non-empty reason, the reason to reference a PA-id (/PA-\d{3,}/), and that PA to
+ * already exist in pending-actions.md. `refusalLines` is the guard-specific explanation printed when
+ * the flag is absent. Returns the validated reason (audit-stamped into the event's why[] by
+ * applyEventFS); exits 2 on any failure.
+ */
+function requireForceManual(args, root, refusalLines) {
+  const forcedPresent = Object.prototype.hasOwnProperty.call(args, 'forceManual');
+  const reason = typeof args.forceManual === 'string' ? args.forceManual.trim() : '';
+  if (!forcedPresent) {
+    console.error(refusalLines.join('\n'));
+    process.exit(2);
+  }
+  if (!reason) {
+    console.error('ERROR: --force-manual requires a non-empty "<reason>" (audit trail for the bypassed guard)');
+    process.exit(2);
+  }
+  // rec #4: the reason must reference a PA-id AND that PA must exist in pending-actions.md.
+  const paRefMatch = reason.match(/PA-(\d{3,})/);
+  if (!paRefMatch) {
+    console.error([
+      `ERROR: --force-manual reason must reference a PA-id (matching /PA-\\d{3,}/), got "${reason}".`,
+      '       First record the manual intervention as a pending-action in pending-actions.md,',
+      '       then retry:  --force-manual "PA-NNN: <why>".',
+    ].join('\n'));
+    process.exit(2);
+  }
+  const paRef = paRefMatch[0];
+  const paNum = Number(paRefMatch[1]);
+  const paPath = paFilePath(root, args.paFile);
+  let paText = null;
+  try { paText = fs.readFileSync(paPath, 'utf8'); } catch (_e) { paText = null; }
+  const paHeaderNums = new Set();
+  if (paText !== null) {
+    const paHeadRe = /^## PA-(\d+)\b/gm;
+    let hm;
+    while ((hm = paHeadRe.exec(paText)) !== null) paHeaderNums.add(Number(hm[1]));
+  }
+  if (!paHeaderNums.has(paNum)) {
+    console.error([
+      `ERROR: --force-manual references ${paRef}, but it was not found in ${paPath}.`,
+      '       Record the manual intervention there first as a PA entry (## PA-NNN — …,',
+      '       **Status:** pending), then retry:  --force-manual "PA-NNN: <why>".',
+    ].join('\n'));
+    process.exit(2);
+  }
+  return reason;
+}
+
 function cmdTick(args) {
   if (!args.instance) { console.error('ERROR: tick needs --instance <id>'); process.exit(2); }
   if (!args.event) { console.error('ERROR: tick needs --event <evt:…>'); process.exit(2); }
@@ -962,67 +1037,44 @@ function cmdTick(args) {
   // (run-ledger start → run the process → run-ledger finish → `fabric-engine ingest --run-id`, which
   // materialises the result into this very event). A bare `tick` skips the run-ledger and the Workflow.
   // Refuse it unless the operator consciously forces a manual run with an audited reason that
-  // REFERENCES a real pending-action (judge rec #4): the escape must be dearer than the honest path —
-  // the reason must carry a PA-id (/PA-\d{3,}/) AND that PA must already exist in pending-actions.md.
-  // NOTE: only cmdTick enforces this — cmdIngest / pa-scan reach applyEventFS through the sanctioned
-  // path, and replay never routes through here (replayInstance rebuilds straight from events.ndjson).
+  // REFERENCES a real pending-action (judge rec #4, validated by requireForceManual).
+  // NOTE: pa-scan reaches applyEventFS through the sanctioned path (a PA the OWNER flipped), and
+  // replay never routes through here (replayInstance rebuilds straight from events.ndjson). cmdIngest
+  // carries its own twin bracket-guard on the run-ledger side (DEF-OD7-2, DEC-DEV-0174).
   let forcedManual = null;
   const invoke = ((charter.states || {})[snap.state] || {}).invoke;
   const invoked = invoke && invoke.process;
+  let ingestMapped = false;
   if (invoked) {
     const rules = (charter.ingest || {})[invoked];
     const emitted = Array.isArray(rules) ? rules.map((r) => r.emit).filter(Boolean) : [];
-    if (emitted.indexOf(args.event) !== -1) {
-      const forcedPresent = Object.prototype.hasOwnProperty.call(args, 'forceManual');
-      const reason = typeof args.forceManual === 'string' ? args.forceManual.trim() : '';
-      if (!forcedPresent) {
-        console.error([
-          `ERROR: event "${args.event}" is an ingest-mapped result of process "${invoked}"`,
-          `       (invoked by state "${snap.state}") — it must NOT be tick'd bare (DEF-3 guard).`,
-          '       A process result enters the fabric through the full bracket:',
-          `         run-ledger start → run "${invoked}" → run-ledger finish → fabric-engine ingest --run-id <r>`,
-          '       (ingest materialises the result into this event itself). Bare tick bypasses the',
-          '       run-ledger and the Workflow, so it is refused. For a deliberate manual run, first record',
-          '       the intervention as a PA entry in pending-actions.md, then pass',
-          '         --force-manual "PA-NNN: <reason>"   (the reason is stamped into the event as an audit marker).',
-        ].join('\n'));
-        process.exit(2);
-      }
-      if (!reason) {
-        console.error(`ERROR: --force-manual requires a non-empty "<reason>" (audit trail for the bypassed bracket on "${args.event}")`);
-        process.exit(2);
-      }
-      // rec #4: the reason must reference a PA-id AND that PA must exist in pending-actions.md.
-      const paRefMatch = reason.match(/PA-(\d{3,})/);
-      if (!paRefMatch) {
-        console.error([
-          `ERROR: --force-manual reason must reference a PA-id (matching /PA-\\d{3,}/), got "${reason}".`,
-          '       First record the manual intervention as a pending-action in pending-actions.md,',
-          '       then retry:  --force-manual "PA-NNN: <why>".',
-        ].join('\n'));
-        process.exit(2);
-      }
-      const paRef = paRefMatch[0];
-      const paNum = Number(paRefMatch[1]);
-      const paPath = paFilePath(root, args.paFile);
-      let paText = null;
-      try { paText = fs.readFileSync(paPath, 'utf8'); } catch (_e) { paText = null; }
-      const paHeaderNums = new Set();
-      if (paText !== null) {
-        const paHeadRe = /^## PA-(\d+)\b/gm;
-        let hm;
-        while ((hm = paHeadRe.exec(paText)) !== null) paHeaderNums.add(Number(hm[1]));
-      }
-      if (!paHeaderNums.has(paNum)) {
-        console.error([
-          `ERROR: --force-manual references ${paRef}, but it was not found in ${paPath}.`,
-          '       Record the manual intervention there first as a PA entry (## PA-NNN — …,',
-          '       **Status:** pending), then retry:  --force-manual "PA-NNN: <why>".',
-        ].join('\n'));
-        process.exit(2);
-      }
-      forcedManual = reason;
-    }
+    ingestMapped = emitted.indexOf(args.event) !== -1;
+  }
+  if (ingestMapped) {
+    forcedManual = requireForceManual(args, root, [
+      `ERROR: event "${args.event}" is an ingest-mapped result of process "${invoked}"`,
+      `       (invoked by state "${snap.state}") — it must NOT be tick'd bare (DEF-3 guard).`,
+      '       A process result enters the fabric through the full bracket:',
+      `         run-ledger start → run "${invoked}" → run-ledger finish → fabric-engine ingest --run-id <r>`,
+      '       (ingest materialises the result into this event itself). Bare tick bypasses the',
+      '       run-ledger and the Workflow, so it is refused. For a deliberate manual run, first record',
+      '       the intervention as a PA entry in pending-actions.md, then pass',
+      '         --force-manual "PA-NNN: <reason>"   (the reason is stamped into the event as an audit marker).',
+    ]);
+  } else if (/^evt:owner\./.test(args.event)) {
+    // ANOM-OD7-2 guard (DEC-DEV-0174): an `evt:owner.*` event is an OWNER-decision — the executor
+    // must not project it on the owner's behalf (the OD7 live run had the executor tick
+    // evt:owner.abort itself, translating an owner decision it merely witnessed). The sanctioned
+    // path is an owner ACT: the owner flips the gate's PA entry and pa-scan --tick fires the
+    // resume-event. A manual owner.* tick must point at the PA that RECORDS the owner's decision.
+    forcedManual = requireForceManual(args, root, [
+      `ERROR: event "${args.event}" is an OWNER-decision event — the executor must not tick it`,
+      '       on the owner\'s behalf (ANOM-OD7-2 guard). The sanctioned path is an owner act:',
+      '       the owner flips the gate\'s PA entry to done, then `pa-scan --tick` fires the',
+      '       resume-event. For a manual owner decision (abort / close / out-of-band resume),',
+      '       first record the owner\'s decision as/in a PA entry in pending-actions.md, then pass',
+      '         --force-manual "PA-NNN: <owner decision>"   (audit-stamped into the event).',
+    ]);
   }
 
   const payload = readPayload(args);
@@ -1040,11 +1092,35 @@ function cmdIngest(args) {
   if (!snap) { console.error(`ERROR: no such instance: ${args.instance}`); process.exit(2); }
   const charter = loadCharter(args.charter, snap.charter_id);
 
-  // Idempotency: a run-id already present in the log ⇒ skip the whole ingest (no-op, exit 0).
+  // Idempotency FIRST: a run-id already present in the log ⇒ skip the whole ingest (no-op, exit 0).
+  // Ordered before the bracket-guard on purpose: a repeat of an already-recorded run (including a
+  // previously force-manual'd one) stays a clean no-op instead of re-litigating the guard.
   const runId = args.runId || null;
   if (runId) {
     const seen = readEvents(root, args.instance).some((ev) => ev.run_id === runId);
     if (seen) { out({ instance: args.instance, process: args.process, run_id: runId, deduped: true, emitted: [], ticks: [] }); process.exit(0); }
+  }
+
+  // DEF-OD7-2 bracket guard (DEC-DEV-0174) — the ingest-side twin of tick's DEF-3 guard. The OD7
+  // live run (DEC-DEV-0173) proved the hole: a P5 launched as a raw Workflow handed ingest a run_id
+  // the run-ledger had never seen (wf_c6a17829-426) and it was ACCEPTED — the bracket contract
+  // (run-ledger start → run → finish → ingest --run-id) was enforceable on the tick side only.
+  // A result now enters the fabric only with a ledger-backed run_id; --force-manual "PA-NNN: …" is
+  // the audited escape (same rec#4 contract as tick — the PA must already exist).
+  const ledgerFile = ledgerFilePath(root, args.ledgerFile);
+  let forcedManual = null;
+  if (!runId || !ledgerHasRun(ledgerFile, runId)) {
+    forcedManual = requireForceManual(args, root, [
+      runId
+        ? `ERROR: --run-id "${runId}" is not in the run-ledger (${ledgerFile}) — ingest refused (DEF-OD7-2 bracket guard).`
+        : `ERROR: ingest without --run-id — refused (DEF-OD7-2 bracket guard; ledger: ${ledgerFile}).`,
+      '       A process result enters the fabric only through the full bracket:',
+      '         run-ledger start → run the process → run-ledger finish → fabric-engine ingest --run-id <r>',
+      '       A run_id the run-ledger never saw means the process ran OUTSIDE the bracket (e.g. a raw',
+      '       Workflow invocation) — route the run through the dispatcher so the bracket is cut.',
+      '       For a deliberate manual ingest, first record the intervention as a PA entry in',
+      '       pending-actions.md, then pass  --force-manual "PA-NNN: <reason>"   (audit-stamped).',
+    ]);
   }
 
   const result = readResult(args);
@@ -1054,7 +1130,7 @@ function cmdIngest(args) {
   const emits = ingestEmits(charter, args.process, result);
   const ticks = [];
   for (const em of emits) {
-    ticks.push(applyEventFS(root, charter, args.instance, em.event, em.payload, args.at, runId, args.autonomy, args.paFile));
+    ticks.push(applyEventFS(root, charter, args.instance, em.event, em.payload, args.at, runId, args.autonomy, args.paFile, forcedManual));
   }
   out({ instance: args.instance, process: args.process, run_id: runId, deduped: false, emitted: emits.map((e) => e.event), ticks });
   process.exit(0);
@@ -1210,6 +1286,8 @@ module.exports = {
   applyEventFS,
   replayInstance,
   paFilePath,
+  ledgerFilePath,
+  ledgerHasRun,
   appendFabricPa,
   maybeAppendFabricPa,
   appendOwnerQueue,

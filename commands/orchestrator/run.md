@@ -321,6 +321,11 @@ node .claude/orchestrator/lib/fabric-engine.cjs ingest \
 ```
 
    Idempotent by `--run-id`: re-running a crashed bracket never double-ticks.
+   **Bracket-guarded (DEF-OD7-2, DEC-DEV-0174):** `ingest` refuses a `--run-id` the run-ledger
+   has never seen (and an ingest without one) — a result from a raw `Workflow(...)` launched
+   outside the `start`/`finish` bracket does NOT enter the fabric. Cut the bracket first; the
+   audited escape for a deliberate manual ingest is `--force-manual "PA-NNN: <reason>"` with a
+   PA entry that already exists in `pending-actions.md`.
 3. **Act on the printed prescription:**
    - `kind: run-process` + `disposition: auto` → run the prescribed process next, as its own
      full bracket (ledger `start` → `Workflow({…})` → ledger `finish` → fabric `ingest`),
@@ -342,7 +347,8 @@ node .claude/orchestrator/lib/fabric-engine.cjs ingest \
 
 **Resuming a parked line** — when the owner resolves the blocking item, tick the matching
 event and follow the new prescription: `evt:pa.resolved` (a resolved Product/capability PA),
-`evt:env.up` (substrate back up), `evt:owner.resume` / `evt:owner.abort` (an escalated gate):
+`evt:env.up` (substrate back up), `evt:owner.resume` / `evt:owner.abort` / `evt:owner.close`
+(an escalated gate):
 
 ```
 node .claude/orchestrator/lib/fabric-engine.cjs tick \
@@ -355,6 +361,14 @@ engine resume the line for you instead of hand-picking the event: `node
 matches each resolved fabric-PA back to its parked instance, and ticks the recorded `resume-event`
 (the manual tick above stays a valid path). A `dismissed` PA is only *surfaced* — abort vs resume is
 the owner's call — never auto-ticked.
+
+**Owner-decision events are the owner's to initiate (ANOM-OD7-2 guard, DEC-DEV-0174).** A bare
+manual tick of any `evt:owner.*` event is refused — the executor must not project an owner decision
+it merely witnessed. The sanctioned path is the PA flip + `pa-scan --tick` above. For a decision the
+PA flip cannot express (`evt:owner.abort` after a dismissal, `evt:owner.close` when the owner
+split/deferred the remaining work and closes the line without runtime — terminal
+`closed_without_runtime`), make sure the owner's decision is recorded in a PA entry, then tick with
+`--force-manual "PA-NNN: <owner decision>"` (audit-stamped into the event).
 
 **OD7 mid-process resume is the normal bracket re-run — nothing special to restore.** After a
 capability gate resolves (`awaiting_capability_impl` → `evt:pa.resolved` → `implementing`), the

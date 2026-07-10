@@ -1,6 +1,6 @@
 {
   "id": "feature-production-line",
-  "version": 2,
+  "version": 3,
   "context": { "feature": null, "fm": null },
   "initial": "handoff_ready",
   "limits": { "lane": "orchestrator", "wip": 1 },
@@ -93,11 +93,13 @@
       "meta": { "autonomy": "human-gate", "queue_kind": "gate" },
       "on": {
         "evt:owner.resume": { "target": "implementing" },
-        "evt:owner.abort": { "target": "aborted" }
+        "evt:owner.abort": { "target": "aborted" },
+        "evt:owner.close": { "target": "closed_without_runtime" }
       }
     },
     "done": { "final": true, "actions": ["project_fm_shipped_hint"] },
-    "aborted": { "final": true }
+    "aborted": { "final": true },
+    "closed_without_runtime": { "final": true }
   },
   "guards": {
     "wip_ok": { "kind": "builtin", "ref": "wipOk" },
@@ -118,7 +120,8 @@
       { "when": { "path": "capability_blocked", "nonEmpty": true }, "emit": "evt:impl.blocked_capability", "payloadPath": "capability_blocked" },
       { "when": { "path": "go_gate", "eq": "GO" }, "emit": "evt:impl.go" },
       { "when": { "path": "go_gate", "eq": "NO-GO" }, "emit": "evt:impl.no_go" },
-      { "when": { "path": "go_gate", "eq": "MANUAL_VERIFY_REQUIRED" }, "emit": "evt:impl.manual_verify" }
+      { "when": { "path": "go_gate", "eq": "MANUAL_VERIFY_REQUIRED" }, "emit": "evt:impl.manual_verify" },
+      { "when": { "path": "blocked", "nonEmpty": true }, "emit": "evt:impl.manual_verify" }
     ],
     "validate-feature-impl": [
       { "when": { "path": "conflicts", "nonEmpty": true }, "emit": "evt:impl.conflict" },
