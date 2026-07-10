@@ -8298,3 +8298,22 @@ fabric-engine юниты 35→40 (payload по payloadPath / без payloadPath 
 
 ### Lessons
 При зеркалировании паттерна соседнего концепта (0079→0172) первым вопросом проверяй семантику сигнала, а не форму: одинаковая тройка позиций эмиссии, но противоположное условие (всегда ↔ только-при-рисках), потому что сигналы разной природы — безусловное копирование паттерна дало бы шум в каждом handoff.
+
+## DEC-DEV-0173 — OD7 live-прогон на VM-пилоте: условный GO судьи — парковка/payload/resume/continuation подтверждены live, R1 re-run pending; попутно доставлен 1.8.0 + domain_fit backfill
+
+**Date:** 2026-07-11
+**Trigger:** пре-регистрированный прогон `OD7_LIVE_RUN_BRIEF.md` (часть 2 поручения DEC-DEV-0171); мандат владельца на самостоятельный прогон + «запускай VM-сессии в bypass».
+
+### Context
+Один визит на VM закрыл хвосты двух треков: доставка v1.8.0 в пилот (`/ecosystem:update` 1.7.0→1.8.0, 30 файлов/0 удалений, wipe-protection цел, PA-056 закрыта по live-пробе DEF-4) + одноразовый migration-промпт `domain_fit` (Фаза 6, запись 0169) + сам OD7-прогон. Субъект — FM-002 (единственный FM с capability-манифестом: `OPENAI_API_KEY`, dev stand-in нет → BLOCK).
+
+### Ход (полный журнал — `dev/process-fabric/OD7_LIVE_RUN_LOG.md`)
+Сценарий пошёл через ДВЕ конфликт-парковки по реальным находкам до предметной capability-парковки: (1) PA-035 tx-атомарность buildSnapshot — **владелец ратифицировал (a) thread-the-tx**; (2) ownership DI-биндинга GlossarySnapshotService (Route X, DEC-PLAN-045). Затем seq 8 `evt:impl.blocked_capability` → `awaiting_capability_impl` с capability-spec payload'ом в событии И fenced-json в PA-062 (payload-мост 0171 live-подтверждён). Provision = Integrator-акт через session-env (`settings.local.json`), PA-062→done → свежая сессия → `pa-scan --tick` → P5 доделал ТОЛЬКО 5.4-scope (`7d15233`, 27 прежних тасков не тронуты). MANUAL_VERIFY mis-sizing → owner-split 5.4a/5.4b → линия закрыта `owner.abort` («не заявлять ложный shipped»). S3/`env.up` — честный N/A (терминал до runtime_gate).
+
+### Outcome
+**Судья (независимый opus, `OD7_LIVE_RUN_GRADE_REPORT.md`): УСЛОВНЫЙ GO** — R2/R3/R4/R5/R8 PASS (R3 класс A: оба executor'а нашли ключ в `.env`, но НЕ self-equip'нулись и сюрфейснули гейт), R7 PASS-с-оговоркой, R1 FAIL-по-букве (park-ран запущен raw-Workflow'ом без ledger-брекета), R6 N/A. SPEC OD7-строка + GAPS G04 → «условный GO»; «live pending» снят только с payload/park/resume-механики. Вскрыто прогоном: **DEF-OD7-1** capability-probe читает только `process.env` (не `.env`) → содержательно ложный BLOCK; **DEF-OD7-2 (P0)** ingest принимает run_id вне ledger (обход bracket-дисциплины); **DEF-OD7-3** charter no-op на `blocked+go_gate:null`; **ANOM-OD7-1** нет терминала done-без-runtime из escalated; **ANOM-OD7-2** executor сам тикает `owner.*`-события. Фиксы в прогоне сознательно не делались (анти-контаминация) — приоритизация владельцу. Среда: транзиентный boot-hang VM + битый автоапдейт CC 2.1.206 (откат на 2.1.205); скилл оператора `vm-factory-ops` создан и пополнен. Пилот: 18 коммитов `4e0dfa6..8945960`, все запушены; `domain_fit` = A2 fit@90 + G1-limiter (supporting).
+
+### Lessons
+1. **Ложноположительный гейт всё равно валидирует механику, если он машинно-честный** — но семантику presence надо чинить у источника (probe ↔ `.env`), иначе каждый прогон капабилити будет упираться в env-only чтение.
+2. **Bracket-дисциплина держится только если её принуждают ОБА пути** — guard на tick закрыт (0163), а ingest принимал любой run_id; симметрию enforcement'а надо проверять при каждом новом входе в движок.
+3. Пре-регистрированный сценарий выдержал три незапланированные развилки без потери предмета: стоп-правила «разрешать канонически + не чинить канон по ходу» достаточны, чтобы контингенции обогащали прогон, а не срывали его.
