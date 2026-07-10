@@ -26,6 +26,12 @@ printf '{"command":"/integrator:update","started_at":"%s"}\n' "$(date -u +%Y-%m-
 
 If tool not in `.claude/integrator/active-tools.yaml` → not installed, suggest `/integrator:add`. Exit.
 
+**Refresh environment baseline (SPEC §13.1 — scan is Always-before any modifying action, G18):**
+invoke `/integrator:scan` to refresh `.claude/integrator/baseline.yaml` before mutating anything.
+Scan is read-only and cheap; a stale baseline hides user-zone changes made since the last scan,
+so conflict/namespace checks below would run against fiction. Skip only in `--check-only` mode
+if the baseline is fresher than the current session.
+
 Determine **target version**:
 - `<target-version>` in `$ARGUMENTS` → that exact version
 - Else → query upstream registry for latest (npm: `npm view <pkg> version`; MCP: registry; git: `git ls-remote --tags`)

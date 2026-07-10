@@ -889,9 +889,17 @@ Never copied (correctly skipped from upstream):
 
 What's next?
   [1] /ecosystem:verify — confirm health post-update
-  [2] cat .claude/CHANGELOG.md — see what's new в this update
-  [3] If issues: rollback (см. ниже)
+  [2] /integrator:update --repair — ONLY if .claude/integrator/active-tools.yaml exists:
+      adapters/ was just full-synced (reference adapters advanced), so installed adapter
+      INSTANCES may now lag the reference — run the same-version drift-repair to reconcile (G17)
+  [3] cat .claude/CHANGELOG.md — see what's new в this update
+  [4] If issues: rollback (см. ниже)
 ```
+
+**Line [2] is conditional:** include it in the rendered summary only when
+`.claude/integrator/active-tools.yaml` exists (a project without installed tools has no
+adapter instances to drift). This closes the G17 seam: the repair path is surfaced by the
+very command that moved the reference adapters, not left to human memory.
 
 ## Error handling
 

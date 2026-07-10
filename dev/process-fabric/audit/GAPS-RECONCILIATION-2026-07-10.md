@@ -15,9 +15,9 @@
 
 | Статус | Сколько | Какие |
 |---|---|---|
-| ✅ **Закрыт машинно** | 6 | G05 G06 G19 G20 G23 G32 |
-| 🟡 **Частично закрыт / существенно сужен** | 8 | G03 G04 G07 G09 G10 G11 G12 G13 |
-| ⬜ **Открыт** | 22 | G01 G02 G08 G14–G18 G21 G22 G24–G31 G33–G36 |
+| ✅ **Закрыт** | 9 | G05 G06 G19 G20 G23 G32 (машинно) + G18 G33 G35 (doc-drift quick-wins, DEC-DEV-0170) |
+| 🟡 **Частично закрыт / существенно сужен** | 10 | G03 G04 G07 G09 G10 G11 G12 G13 + G17 G21 (DEC-DEV-0170) |
+| ⬜ **Открыт** | 17 | G01 G02 G08 G14–G16 G22 G24–G31 G34 G36 |
 
 Ключевой сдвиг: диагноз аудита «между сенсором и мышцей стоит человек» для **fabric-tracked
 линии P3→P7 снят** — PA-мост + bracket-guard + owner-queue дают замкнутый машинный контур
@@ -62,7 +62,7 @@
 **Пост-обязательство №4 (параллельные инициативы аудита; recon 2026-07-10 подтвердил — ничего из этого не появилось):**
 - **G14** `commands/integrator/{verify,debug,replace,docs}.md` — файлов нет (Integrator Phase-7), живые ссылки на них остаются битыми; **G15** confidence-downgrade lifecycle без точки входа (зависит от G14); **G16** `hooks/integrator/{drift-check,contract-validate}.js` — файлов нет.
 - **G36** субагенты market-researcher / competitor-analyst / screen-generator — файлов нет, Deep Discovery нефункционален.
-- Doc-дрейфы: **G17** (update→repair без хука), **G18** (`integrator:scan` не вызывается из update/remove — grep пуст), **G21** (Product/Design SPEC не знают Epic A/B/D), **G33** (`verify.md:50` ручной baseline «~22» параллельно с автогенерируемым `02-commands.md`), **G35** (`disable-d7-audit` — файла нет, есть только enable).
+- ~~Doc-дрейфы G17/G18/G33/G35~~ — **закрыты/сужены DEC-DEV-0170** (см. таблицы выше): G18 — `integrator/update.md` Pre-flight теперь вызывает scan (SPEC §13.1 строка replace промаркирована Phase-7); G33 — ручной baseline в `verify.md` Step 4/summary заменён сверкой с генерируемым `02-commands.md`; G35 — мёртвая ссылка `disable-d7-audit` заменена честным «команда сознательно не существует»; **G17 частично** — `/ecosystem:update` Step 8 сёрфейсит условный next-step `/integrator:update --repair` (prompted; детерминированный hook = G16, Phase-7); **G21 частично** — баннеры пост-spec расширений в Product/Design SPEC (двусторонний дрейф промаркирован; вписывание в тело SPEC — отдельный doc-трек).
 - **G24** session-audit opt-in per-pilot + хардкод-путь.
 
 **D7-гигиена / без активного трека (заносится в backlog, владелец приоритизирует):**
@@ -77,10 +77,12 @@
 
 ## Короткий ответ
 
-Из 36 разрывов аудита **6 закрыты машинно** (G05/G06 watchdog, G19 линтер, G20 шаблон,
-G23 auto-install гейта, G32 атомарный аллокатор), **8 частично закрыты Fabric'ом** — для
-fabric-tracked линии P3→P7 контур «сенсор→мышца» замкнут (PA-мост, bracket-guard,
-owner-queue, live-подтверждено), **22 открыты**: Tier-0 (G01 Epic E, G02 result-ingest) —
-отдельные substrate-gated треки; G08/G28/G29 — кандидаты фазы 4 по live-триггерам;
-G14–G18/G21/G24/G33/G35/G36 — пост-обязательство №4; G22/G25–G27/G30/G31/G34 — backlog
+Из 36 разрывов аудита (после доборов 2026-07-10, DEC-DEV-0168/0170) **9 закрыты** (машинно:
+G05/G06 watchdog, G19 линтер, G20 шаблон, G23 auto-install гейта, G32 атомарный аллокатор;
+doc-drift: G18 scan-в-update, G33 сверка с генерируемым каталогом, G35 честное отсутствие
+команды), **10 частично** — для fabric-tracked линии P3→P7 контур «сенсор→мышца» замкнут
+(PA-мост + самоочистка owner-queue, bracket-guard c PA-валидируемым эскейпом, live-подтверждено)
++ G17 prompted-repair / G21 баннеры дрейфа, **17 открыты**: Tier-0 (G01 Epic E, G02
+result-ingest) — отдельные substrate-gated треки; G08/G28/G29 — кандидаты фазы 4 по
+live-триггерам; G14–G16/G24/G36 — пост-обязательство №4; G22/G25–G27/G30/G31/G34 — backlog
 D7-гигиены на приоритизацию владельцем.
