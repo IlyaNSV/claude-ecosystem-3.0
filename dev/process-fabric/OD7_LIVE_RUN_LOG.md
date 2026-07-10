@@ -49,8 +49,14 @@
 - Ожидание: pa-scan --tick → implementing → P5 ре-ран (FM-003-проводка Route X + порт (a) + tx-client + воркер + тесты; час+) → §6 BLOCK по ключу → **`evt:impl.blocked_capability` → `awaiting_capability_impl` + payload fenced-json в PA** (R1/R2).
 - **~20:00Z — executor s3 НЕЗАВИСИМО вскрыл DEF-OD7-1** («ключ уже в .env, probe читает process.env → ложный BLOCK») и поднял меню: (1) свести ключ в session-env и бежать до GO / (2) запустить как есть — гарантированная парковка awaiting_capability_impl / (3) держать линию. **Ответ оператора: (2)** — парковка и есть предмет прогона; реализационная работа рана не пропадает (продолжение проверит R5). Подтверждение спонтанной находки дефекта вторым независимым executor'ом — усиливает DEF-OD7-1.
 
+- **20:10:03Z — OD7-ПАРКОВКА СОСТОЯЛАСЬ (seq 8): `evt:impl.blocked_capability` → `awaiting_capability_impl`.** Payload = полный capability-spec (secret_env/provider/tier/disposition BLOCK/routes Integrator) в САМОМ событии И fenced-json-блоком в **PA-062** + канонические маркеры (instance/state/resume-event) — **payload-мост 0171 live-подтверждён (R2)**. Нюанс R1: событие несёт `run_id wf_c6a17829-…` (Workflow-id), в ledger третьего брекета НЕТ (far6eo/fbl7fc — два предыдущих) — диспетчер s3 запустил P5 без run-ledger-обрамления; материал судье. Реализация 5.4 до парковки НЕ выполнялась (checkbox `[ ]`, 27 прежних `[x]` — чистый базис R5); единственный коммит — бухгалтерия парковки `743cd78`.
+
 ### S2 — resolve + resume (capability, предмет OD7)
-- Provision (что/когда): · флип PA→done: · старт сессии: · события:
+- **Provision (Integrator-акт, ~20:25Z):** `OPENAI_API_KEY` прокинут в session-env через `.claude/settings.local.json` env-блок (gitignored подтверждён; значение = реальный ключ из `.env` пилота, ключ хоста не покидал VM). Канал выбран по семантике probe (process.env) — прямое замыкание канала из брифа с поправкой на DEF-OD7-1.
+- **Флип PA-062 → done** с резолюцией (коммит пилота `721300a`, запушен).
+- **Докер-рычаг S3 взведён (~20:28Z):** VM-side watcher (`/tmp/od7-docker-lever.sh`, pid 96927) уронит `mft-postgres`/`mft-redis` строго ПОСЛЕ появления `evt:impl.go` (P5-тестам субстрат ещё нужен; P7 должен честно увидеть ENV_NOT_READY). Пре-регистрированная механика S3 брифа.
+- **Старт S2-сессии: 2026-07-10T20:29:57Z**, tmux `od7-s4`, bypass, свежая, промпт S2 verbatim. Статуслайн VM отрисовывается (просьба владельца выполнена по ходу).
+- События: _(ожидается pa-scan --tick → evt:pa.resolved → implementing → полный P5 → R5-проверка)_
 
 ### S3 — runtime_gate_retry / evt:env.up (бонус, по достижимости)
 - Статус:
