@@ -608,6 +608,26 @@ product_class:
   source: unset                            # discovery | manual | inferred
   notes: ""
 
+# Domain fit (DEC-DEV-0169) — filled during D1.0b Discovery via
+# skills/product/domain-fit.md. The ONLY class-based gate: registry aggregate score
+# vs threshold (default 75); owner override always legal and recorded in `decision`.
+# Absent/unset == pre-0169 behavior 1:1 (soft migration, product_class precedent).
+# Concept: docs/pmo/domain-expertise.md · data: docs/pmo/domain-expertise-registry.md
+domain_fit:
+  subcategory: unset                       # registry ID A1..P4 | `unmapped`
+  subcategory_label: ""
+  score: unset                             # registry aggregate (lookup, never recomputed)
+  threshold: 75                            # gate threshold; owner-only override
+  verdict: unset                           # fit | conditional-fit | misfit | unmapped
+  decision: unset                          # proceed | proceed-with-risks | adapted | aborted
+  limiters: ""
+  hybrid_components: []                    # optional; [{subcategory, score, role}]
+  confidence: unset                        # high | medium | low
+  source: unset                            # discovery | manual
+  registry_version: unset
+  assessed_at: unset
+  notes: ""                                # REQUIRED if unmapped or decision != proceed
+
 # Confidence (C2 modification)
 confidence_required_at_approve: true
 

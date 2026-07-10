@@ -29,7 +29,25 @@ Load `.claude/skills/product/product-class.md` (mode `discovery`). Один во
 - Быстрый шаг (~1-2 мин). Если форма ещё не ясна — `confidence: low` + best-guess; уточнить
   позже через `/product:init --continue` или backfill-промпт.
 
-Не gate. После записи — переход к D1.1.
+Не gate. После записи — переход к D1.0b.
+
+### D1.0b Domain Fit Assessment (гейт)
+
+Load `.claude/skills/product/domain-fit.md` (mode `discovery`). Классификация идеи до
+подкатегории реестра доменной экспертизы (96 позиций, по ядру ценности; `archetype` из
+D1.0 — подсказка) → подтверждение пользователем (один вопрос) → lookup совокупного балла
+→ вердикт по порогу (дефолт 75) → запись блока `domain_fit` в `.claude/product.yaml`.
+
+- **Единственный класс-гейт** (DEC-DEV-0169, в отличие от advisory D1.0): балл ниже
+  порога останавливает Discovery до явного решения владельца — `adapted` (перекроить
+  идею → переоценка) / `proceed-with-risks` (ограничители фиксируются письменно) /
+  `aborted`. Override всегда легален; `unmapped` (домен вне реестра) не блокирует —
+  деградирует в advisory.
+- **НЕ пишет в PS** — только в `product.yaml`.
+- Fit-случай — одна строка подтверждения, без паузы (~1 мин).
+
+При `decision: aborted` — session state сохранить, Discovery завершить (не продолжать
+к D1.1). Иначе — переход к D1.1.
 
 ### D1.1 Problem Discovery → G1
 
@@ -171,7 +189,7 @@ started_at: <timestamp>
 project: <project_name>
 language: <from product.yaml>
 
-current_step: D1.0 | D1.1 | D1.2 | D1.3 | D1.4 | D1.4a | D1.5 | D1.5z | complete
+current_step: D1.0 | D1.0b | D1.1 | D1.2 | D1.3 | D1.4 | D1.4a | D1.5 | D1.5z | complete
 last_completed_step: <prior step or null>
 
 last_approved_gates:
@@ -202,7 +220,8 @@ progress_percent: <0-100>
 
 | Момент | current_step → | last_approved_gates += | pending_drafts |
 |---|---|---|---|
-| product_class set (D1.0) | D1.1 | — (не gate) | — |
+| product_class set (D1.0) | D1.0b | — (не gate) | — |
+| domain_fit set (D1.0b) | D1.1 (или complete при `decision: aborted`) | — (гейт, но решение в `product.yaml.domain_fit`, не в списке gates) | — |
 | approve PS (G1) | D1.2 | G1/PS | — |
 | MR draft готов | D1.3 | — | += MR |
 | CA draft готов | D1.4 | — | += CA |
