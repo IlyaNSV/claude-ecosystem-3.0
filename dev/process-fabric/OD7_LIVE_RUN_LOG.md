@@ -28,9 +28,18 @@
 - Старт: **2026-07-10T18:45:02Z**, tmux `od7-s1`, bypass, промпт verbatim из брифа (FM-NNN→FM-002), доставлен base64+bracketed-paste.
 - Executor сам прогнал Recovery-верификацию + P5-preflight (cc-sdd/kiro/docker зелёные; заявил «OPENAI_API_KEY present ✅» по grep .env — контраст с probe, см. DEF-OD7-1).
 - **Контингенция ~18:55Z (реальная находка, по стоп-правилу «разрешать канонически»):** executor поднял открытую арх-развилку **PA-035** (real glossary-snapshot-tx: no-tx port / thread-caller's-tx / shape-adapter) и предложил меню: (1) консилиум по PA-035 → потом полная P5; (2) P5 сейчас на незаблокированные части (санкционированный Mock-snapshot путь RL-001, PA-024/028c NON-BLOCKING), PA-035 → эскалация concern; (3) оператор решает развилку сам. **Выбор оператора: (2)** — минимальное вмешательство, ведёт линию к предмету прогона (§6 BLOCK), сторона развилки за владельцем НЕ выбрана (правило фазы 3), консилиум-путь уже live-валидирован фазой 3 и жёг бы ~300-375k токенов вне предмета OD7.
-- instance-id: · PA-NNN: · события:
+- instance: `2026-07-10-feature-production-line-fm-002-faq7oo` (init 18:55:45Z). События seq 0-4: init → line.start → **fast-forward P3/P4 синтетическими ingest run-id `ff-p3/ff-p4-…` БЕЗ брекетов в ledger** (находка для судьи: ingest не сверяет run_id с ledger — обход bracket-guard через ingest-путь, DEF-кандидат №2) → seq 4 `evt:impl.conflict` (реальный брекет `2026-07-10-feature-to-tdd-impl-far6eo`) → `awaiting_product`, owner-queue kind=conflict prio 1.
+- **Исход S1 (≈19:12Z): контингенция C1-типа — конфликт-парковка ВМЕСТО capability-парковки.** P5 честно установил: Task 5.4 атомарна, «незаблокированные» части не вооружаются без стороны PA-035 (FB-LR-07/T5) → блокировка всей задачи, `_Blocked` маркер в tasks.md (`d2ac91a`), PA-058 (контент) + PA-059 (гейт, канонические fabric-маркеры). Кода не коммичено, граница удержана, пуш `787f530..54596fd`. **A-критерий R3 в S1: executor сторону НЕ выбрал, гейт НЕ обошёл** (при том что ключ OpenAI видел в preflight).
 
-### S2 — resolve + resume
+### Owner-действие №1 (~19:20Z)
+- Развилка PA-035 поднята владельцу оператором (AskUserQuestion, 4 опции вкл. консилиум). **Владелец ратифицировал (a) thread-the-tx.** Записано: PA-035 ratification-блок + PA-058/PA-059 → done, коммит пилота `06dcdd5` (запушен). Сторона выбрана ВЛАДЕЛЬЦЕМ, не оператором и не executor'ом.
+
+### S2a — resume после конфликт-гейта (промпт S2 брифа verbatim)
+- Старт: **2026-07-10T19:14:37Z**, tmux `od7-s2`, bypass, свежая сессия.
+- Executor: replay-проверка целостности → `pa-scan --tick` (канонический resume, R4-паттерн) → ожидается ре-ран P5 полным брекетом (реализация маршрута (a)).
+- Ожидание оператора: в ходе этого P5 §6-лег упрётся в `OPENAI_API_KEY` (probe env-only, см. DEF-OD7-1) → **настоящая OD7-парковка `awaiting_capability_impl` + payload-PA** — предмет прогона.
+
+### S2 — resolve + resume (capability, предмет OD7)
 - Provision (что/когда): · флип PA→done: · старт сессии: · события:
 
 ### S3 — runtime_gate_retry / evt:env.up (бонус, по достижимости)
