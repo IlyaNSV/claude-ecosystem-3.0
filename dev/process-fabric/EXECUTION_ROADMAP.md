@@ -79,11 +79,14 @@ history, XState-миграция, D7-charter.
    G11/G12/G13), открыто 22 с роутингом: Tier-0 (G01/G02) — substrate-gated треки; G08/G28/G29 —
    кандидаты фазы 4; G14–G18/G21/G24/G33/G35/G36 — п.4 ниже; G22/G25–G27/G30/G31/G34 —
    backlog D7-гигиены на приоритизацию владельцем.
-3. [ ] **Upstream-долг graduation-прогона** (условие судьи №2): **DEF-4** — P7 probe
-   false-negative на pnpm-monorepo (root package.json → NOT_STARTABLE short-circuit; PA-056
-   open → ecosystem) · **ANOM-5** — owner-queue append-only без dequeue (stale-гейты
-   terminal-инстансов = false-positive owner-сигнал). Плюс рекомендация судьи №4 (не блокер):
-   `--force-manual` reason ссылается на PA + валидируется.
+3. [x] **Upstream-долг graduation-прогона** — ✅ 2026-07-10 (DEC-DEV-0168): **DEF-4** — P7 probe
+   получил workspace-скан (pnpm-workspace.yaml + npm `workspaces`, `--app`-пин, disclosure на
+   происхождение/неоднозначность; enum вердиктов нетронут; юниты 21→30) · **ANOM-5** — owner-queue
+   самоочищается на write-path (`dequeueOwnerEntries` + дедуп append), `status` read-only показывает
+   `owner_queue_stale` отдельно · `--force-manual` требует существующую PA-ссылку в reason
+   (юниты fabric-engine 27→35). PA-056 пилота закрывается следующей доставкой; ветка
+   `runtime_gate_retry`/`evt:env.up` остаётся live-невалидированной (теперь не маскируется DEF-4) —
+   проверится естественным live-триггером.
 4. [ ] **Незавершённые параллельные инициативы, попутно выявленные аудитом** (не Fabric-зона,
    не потерять): OD7 await→resume не построен целиком · Integrator Phase-7 команды spec-only
    при живых ссылках на них (G14–G16) · Deep Discovery / screen-generator субагенты spec-only

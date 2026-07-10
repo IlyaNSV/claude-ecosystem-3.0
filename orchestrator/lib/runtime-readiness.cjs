@@ -36,6 +36,17 @@
  *   deploy/provisioning round-trip, need Integrator D3-runtime tooling that does not
  *   exist yet — they are deferred (Epic E preconditions; SPEC §8 parks deploy/P7).
  *
+ * DEF-4 — WORKSPACE / MONOREPO RUN TARGETS (DEC-DEV-0168, PA-056):
+ *   The root package.json is NOT the only source of a run target. A live graduation run hit
+ *   a pnpm-monorepo whose dev scripts live in `apps/<pkg>/package.json` — the root declares none,
+ *   so the old single-manifest probe short-circuited to a FALSE NOT_STARTABLE. Fix (additive,
+ *   soft-migration — absence of the new fields == old behaviour 1:1): when the root manifest
+ *   declares no run target, the CLI scans workspace packages (pnpm-workspace.yaml + root
+ *   `workspaces`) and detectWorkspaceRunTargets() ranks the candidates deterministically. The
+ *   pure assessReadiness() takes optional origin/candidates/scan-notes and DISCLOSES a
+ *   workspace-sourced target, ambiguity across >1 candidate (pin with --app <dir>), and any
+ *   honest glob-parse limitation. The verdict enum is UNCHANGED.
+ *
  * Like env-readiness.cjs / capability-probe.cjs: an agent runs this via Bash and RELAYS
  * its JSON — the Workflow script may not touch FS / child_process (DEC-DEV-0073 §D.1).
  * Node stdlib only; cross-platform.
@@ -95,6 +106,52 @@ function detectRunTarget(manifest) {
   return null;
 }
 
+// Priority rank of a detectRunTarget source (lower = higher priority): an explicit
+// dev_command / runtime.command outranks a scripts.<key>, and scripts follow DEV_SCRIPT_KEYS order.
+function sourceRank(source) {
+  if (source === 'dev_command') return 0;
+  if (source === 'runtime.command') return 1;
+  const m = /^scripts\.(.+)$/.exec(source || '');
+  if (m) {
+    const idx = DEV_SCRIPT_KEYS.indexOf(m[1]);
+    return 2 + (idx >= 0 ? idx : DEV_SCRIPT_KEYS.length);
+  }
+  return 99;
+}
+
+// ---------------------------------------------------------------------------
+// Pure workspace run-target detection (no FS) — DEF-4 (DEC-DEV-0168).
+// Input: [{ dir, manifest }] where dir is a POSIX-relative workspace-package path.
+// For each manifest, run detectRunTarget(); a package with no bootable target is skipped.
+// Output: deterministically-sorted candidates [{ command, source, cwd }] where
+//   source = `workspace:<dir>#<original source>`, cwd = dir.
+// Sort: source priority (dev_command/runtime.command > scripts, then DEV_SCRIPT_KEYS order);
+//   ties broken lexicographically by dir.
+// ---------------------------------------------------------------------------
+function detectWorkspaceRunTargets(workspaces) {
+  const list = Array.isArray(workspaces) ? workspaces : [];
+  const candidates = [];
+  for (const ws of list) {
+    if (!ws || typeof ws !== 'object') continue;
+    const dir = String(ws.dir || '');
+    const t = detectRunTarget(ws.manifest);
+    if (!t) continue;
+    candidates.push({
+      command: t.command,
+      source: `workspace:${dir}#${t.source}`,
+      cwd: dir,
+      _rank: sourceRank(t.source),
+    });
+  }
+  candidates.sort((a, b) => {
+    if (a._rank !== b._rank) return a._rank - b._rank;
+    if (a.cwd < b.cwd) return -1;
+    if (a.cwd > b.cwd) return 1;
+    return 0;
+  });
+  return candidates.map(({ _rank, ...c }) => c);
+}
+
 // ---------------------------------------------------------------------------
 // Pure capability lens: which surfaced §6 items BLOCK a boot.
 // A BLOCK disposition (absent secret, no dev stand-in) is a hard boot blocker.
@@ -142,6 +199,10 @@ function assessReadiness(input) {
   const envReadiness = inp.envReadiness || 'unknown';
   const p6Verdict = inp.p6Verdict || null;
   const capabilitiesUnknown = !!inp.capabilitiesUnknown;   // §6 probe could not resolve the feature/manifest (≠ "feature has no caps")
+  // DEF-4 (DEC-DEV-0168) — optional workspace inputs; absent == old behaviour bit-for-bit.
+  const runTargetOrigin = inp.runTargetOrigin === 'workspace' ? 'workspace' : 'root';
+  const runTargetCandidates = Array.isArray(inp.runTargetCandidates) ? inp.runTargetCandidates : [];
+  const workspaceScanNotes = Array.isArray(inp.workspaceScanNotes) ? inp.workspaceScanNotes : [];
 
   const blocking = bootBlockingCaps(capabilities);
   const deferred = deferredCaps(capabilities);
@@ -175,6 +236,18 @@ function assessReadiness(input) {
   if (envReadiness === READINESS.DEGRADED) {
     disclosures.push('env substrate readiness is DEGRADED (an unprobed dependency) — a green boot is indicative, not proof.');
   }
+  // DEF-4 (DEC-DEV-0168) workspace disclosures — orthogonal to the verdict.
+  if (hasRunTarget && runTargetOrigin === 'workspace') {
+    const cwd = (runTarget && runTarget.cwd) || '(unknown)';
+    disclosures.push(`run target found in workspace "${cwd}" — the root package.json declares none of its own (monorepo).`);
+  }
+  if (runTargetCandidates.length > 1) {
+    const listed = runTargetCandidates.map((c) => `${c.command} @ ${c.cwd}`).join(', ');
+    disclosures.push(`multiple workspace run targets found (${listed}) — the first was auto-selected; pin explicitly with --app <dir>.`);
+  }
+  for (const note of workspaceScanNotes) {
+    if (note) disclosures.push(String(note));
+  }
   // FAIL-LOUD, NOT FAIL-OPEN: if the §6 capability probe could not resolve the named feature /
   // manifest, P7 assessed boot-readiness WITHOUT capability disposition — a hard boot-blocking
   // capability may be hidden, so a green readiness MUST disclose the gap (never a silent clean READY).
@@ -190,6 +263,7 @@ function assessReadiness(input) {
     smoke_attemptable: verdict === VERDICT.READY_TO_SMOKE,
     capabilities_unknown: capabilitiesUnknown,
     run_target: runTarget,
+    run_target_candidates: runTargetCandidates,
     requests,
     disclosures,
     routes: requests.length
@@ -205,10 +279,12 @@ function assessReadiness(input) {
 function smokePlan(opts) {
   const o = opts && typeof opts === 'object' ? opts : {};
   const command = o.command || null;
+  const cwd = o.cwd || null;                            // DEF-4: the workspace-package dir to boot in (null = repo root)
   const healthCheck = o.healthCheck || null;            // e.g. "GET http://localhost:3000/health"
   const bootWindowSec = Number.isFinite(o.bootWindowSec) ? o.bootWindowSec : 30;
   return {
     command,
+    cwd,
     boot_window_sec: bootWindowSec,
     success_signals: [
       'process stays up past the boot window (no immediate exit / crash loop)',
@@ -247,6 +323,77 @@ function summarize(assessment) {
 function readManifest(root) {
   const file = path.join(root || '.', 'package.json');
   try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_e) { return null; }
+}
+
+// ---------------------------------------------------------------------------
+// DEF-4 workspace scan (FS lives here only) — DEC-DEV-0168.
+// Collect workspace-package globs from pnpm-workspace.yaml + the root package.json
+// `workspaces` (array OR { packages: [...] }), expand the supported pattern classes,
+// and read each package.json. Returns { workspaces:[{dir,manifest}], notes:[] }.
+// ---------------------------------------------------------------------------
+
+// Minimal pnpm-workspace.yaml parse (no YAML lib): collect the `- '<glob>'` list items
+// under a top-level `packages:` key. Deliberately narrow — honest limitations become notes.
+function parsePnpmWorkspaceGlobs(text) {
+  const globs = [];
+  let inPackages = false;
+  for (const line of String(text).split(/\r?\n/)) {
+    if (/^packages:\s*(#.*)?$/.test(line)) { inPackages = true; continue; }
+    if (!inPackages) continue;
+    const m = /^\s*-\s*['"]?([^'"#]+?)['"]?\s*(?:#.*)?$/.exec(line);
+    if (m) { globs.push(m[1].trim()); continue; }
+    // a non-blank line that is not a list item at column 0 closes the block
+    if (/^\S/.test(line)) inPackages = false;
+  }
+  return globs;
+}
+
+// Expand one workspace glob into POSIX-relative dirs. Supports a literal path and a
+// single-level trailing `/*` (one readdir); `!` / `**` patterns are skipped with a note.
+function expandWorkspaceGlob(root, pattern, notes) {
+  const p = String(pattern || '').trim();
+  if (!p) return [];
+  if (p.includes('!') || p.includes('**')) {
+    notes.push(`glob "${p}" not expanded (unsupported pattern class)`);
+    return [];
+  }
+  if (p.endsWith('/*')) {
+    const base = p.slice(0, -2);
+    let entries;
+    try { entries = fs.readdirSync(path.join(root, base), { withFileTypes: true }); } catch (_e) { return []; }
+    return entries.filter((e) => e.isDirectory()).map((e) => (base ? `${base}/${e.name}` : e.name));
+  }
+  return [p];   // literal path (a dir with no package.json is silently dropped below)
+}
+
+function readWorkspaceManifests(root) {
+  const base = root || '.';
+  const notes = [];
+  const globs = [];
+
+  try {
+    const y = fs.readFileSync(path.join(base, 'pnpm-workspace.yaml'), 'utf8');
+    globs.push(...parsePnpmWorkspaceGlobs(y));
+  } catch (_e) { /* absent — fine */ }
+
+  const rootPkg = readManifest(base);
+  if (rootPkg && rootPkg.workspaces) {
+    const w = rootPkg.workspaces;
+    if (Array.isArray(w)) globs.push(...w);
+    else if (w && typeof w === 'object' && Array.isArray(w.packages)) globs.push(...w.packages);
+  }
+
+  const seen = new Set();
+  const workspaces = [];
+  for (const g of globs) {
+    for (const dir of expandWorkspaceGlob(base, g, notes)) {
+      if (seen.has(dir)) continue;                 // dedup by dir
+      seen.add(dir);
+      const manifest = readManifest(path.join(base, dir));
+      if (manifest) workspaces.push({ dir, manifest });   // a dir with no package.json is silently skipped
+    }
+  }
+  return { workspaces, notes };
 }
 
 // Returns { capabilities, unresolved, reason }. A genuine probe FAILURE (require throws,
@@ -294,6 +441,7 @@ function parseArgs(argv) {
       case '--help': case '-h': a.help = true; break;
       case '--feature': a.feature = next(); break;
       case '--root': a.root = next(); break;
+      case '--app': a.app = next(); break;        // DEF-4: pin an explicit workspace-package dir
       case '--env': a.env = next(); break;        // READY | DEGRADED | ENV_NOT_READY
       case '--p6': a.p6 = next(); break;          // GO | NO-GO | MANUAL_VERIFY
       default: break;
@@ -307,9 +455,12 @@ function printHelp() {
     'runtime-readiness.cjs — Orchestrator P7: is a runtime smoke ATTEMPTABLE, and if',
     'not, why (+ the §6 request to emit)? (DEC-DEV-0120).',
     '',
-    'USAGE:  node runtime-readiness.cjs --feature FM-002 [--root .] [--env READY] [--p6 GO]',
+    'USAGE:  node runtime-readiness.cjs --feature FM-002 [--root .] [--env READY] [--p6 GO] [--app apps/web]',
     '',
-    '→ JSON { verdict, smoke_attemptable, run_target, requests:[…], disclosures:[…], plan }',
+    '--app <dir> pins a workspace-package dir (DEF-4 monorepo); else the root manifest is used,',
+    'and if it declares no run target the workspace packages are scanned (pnpm + npm forms).',
+    '',
+    '→ JSON { verdict, smoke_attemptable, run_target, run_target_candidates:[…], requests:[…], disclosures:[…], plan }',
     'verdict ∈ READY_TO_SMOKE | BLOCKED_ON_CAPABILITY | ENV_NOT_READY | NOT_STARTABLE.',
     'A boot-blocking BLOCK capability ⇒ BLOCKED_ON_CAPABILITY (the OD7 await is deferred).',
   ].join('\n') + '\n');
@@ -320,17 +471,43 @@ function main() {
   if (args.help) { printHelp(); process.exit(0); }
 
   const manifest = readManifest(args.root);
-  const runTarget = detectRunTarget(manifest);
+  let runTarget = detectRunTarget(manifest);
+  let runTargetOrigin = 'root';
+  let runTargetCandidates = [];
+  let workspaceScanNotes = [];
+
+  if (args.app) {
+    // DEF-4: explicit pin of a workspace package (FS read scoped to <root>/<app>).
+    const appManifest = readManifest(path.join(args.root, args.app));
+    const t = detectRunTarget(appManifest);
+    runTargetOrigin = 'workspace';
+    runTarget = t ? { command: t.command, source: `workspace:${args.app}#${t.source}`, cwd: args.app } : null;
+    runTargetCandidates = runTarget ? [runTarget] : [];
+  } else if (!runTarget) {
+    // DEF-4: root declares no run target — scan workspace packages (pnpm + npm forms).
+    const scan = readWorkspaceManifests(args.root);
+    workspaceScanNotes = scan.notes;
+    const candidates = detectWorkspaceRunTargets(scan.workspaces);
+    if (candidates.length) {
+      runTarget = candidates[0];                 // deterministic first after sort
+      runTargetOrigin = 'workspace';
+      runTargetCandidates = candidates;
+    }
+  }
+
   const cap = capabilitiesFor(args.feature, args.root);
   const assessment = assessReadiness({
     runTarget,
+    runTargetOrigin,
+    runTargetCandidates,
+    workspaceScanNotes,
     capabilities: cap.capabilities,
     capabilitiesUnknown: cap.unresolved,        // §6 probe could not resolve → loud disclosure, never a silent clean READY
     envReadiness: args.env || 'unknown',
     p6Verdict: args.p6 || null,
   });
   const plan = assessment.smoke_attemptable
-    ? smokePlan({ command: runTarget && runTarget.command })
+    ? smokePlan({ command: runTarget && runTarget.command, cwd: runTarget && runTarget.cwd })
     : null;
 
   process.stdout.write(JSON.stringify({
@@ -354,6 +531,8 @@ module.exports = {
   ROUTE,
   DEV_SCRIPT_KEYS,
   detectRunTarget,
+  detectWorkspaceRunTargets,
+  readWorkspaceManifests,
   bootBlockingCaps,
   deferredCaps,
   buildRequests,

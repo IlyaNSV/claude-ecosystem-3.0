@@ -568,10 +568,57 @@ function shellEnv(root, charter, selfId) {
   };
 }
 
+/**
+ * Append a park into the owner-queue, UNLESS an identical entry (same instance + state + kind) already
+ * sits there — that dedup makes a repeated park of the same line at the same gate idempotent (ANOM-5,
+ * companion to the write-path prune below). Never touches the file when the entry is a duplicate.
+ */
 function appendOwnerQueue(root, entry) {
   const q = readJsonSafe(ownerQueuePath(root)) || [];
+  const dup = q.some((e) => e.instance === entry.instance && e.state === entry.state && e.kind === entry.kind);
+  if (dup) return;
   q.push(entry);
   writeJson(ownerQueuePath(root), q);
+}
+
+/**
+ * Prune the owner-queue on the WRITE-PATH (ANOM-5). Drops (a) entries of THIS instance whose parked
+ * `state` no longer matches its currentState (the line has left the gate — including a move to a
+ * terminal state) and (b) global orphans: entries of ANY instance that no longer has a state.json
+ * (the instance was removed). Writes the file ONLY if something was actually dropped. Called from
+ * applyEventFS right after the new snapshot is persisted and BEFORE applyEffects, so a fresh park into
+ * the NEW gate is appended AFTER the prune and is never removed by its own tick. Side-effect only —
+ * NOT event-sourced (like the PA bridge), so replay stays bit-for-bit (replayInstance never routes
+ * through the shell). This is the write-path counterpart of the read-only reconcileOwnerQueue.
+ */
+function dequeueOwnerEntries(root, instanceId, currentState) {
+  const q = readJsonSafe(ownerQueuePath(root));
+  if (!Array.isArray(q) || q.length === 0) return;
+  const kept = q.filter((e) => {
+    if (e.instance === instanceId) return e.state === currentState;   // (a) this line left the gate
+    return fs.existsSync(statePath(root, e.instance));                // (b) global orphan (instance gone)
+  });
+  if (kept.length !== q.length) writeJson(ownerQueuePath(root), kept);
+}
+
+/**
+ * Read-only liveness split of the owner-queue for `status` (ANOM-5). An entry is LIVE when its
+ * instance still exists AND is still parked in the entry's state; otherwise it is STALE, tagged with a
+ * reason ('instance gone' | 'left state <s>'). Reads FS but WRITES NOTHING — `status` is invoked by the
+ * SessionStart hook and must stay side-effect-free; the actual self-pruning is the write-path's job
+ * (dequeueOwnerEntries). Returns { live, stale }.
+ */
+function reconcileOwnerQueue(root) {
+  const q = readJsonSafe(ownerQueuePath(root)) || [];
+  const live = [];
+  const stale = [];
+  for (const entry of q) {
+    const snap = readJsonSafe(statePath(root, entry.instance));
+    if (!snap) { stale.push(Object.assign({}, entry, { reason: 'instance gone' })); continue; }
+    if (snap.state !== entry.state) { stale.push(Object.assign({}, entry, { reason: `left state ${entry.state}` })); continue; }
+    live.push(entry);
+  }
+  return { live, stale };
 }
 
 /** Apply the shell-side effects of an applied transition (owner-queue writes). Notes are inert. */
@@ -668,10 +715,14 @@ function maybeAppendFabricPa(paFile, charter, snapshot, at, prescription) {
  * init never reaches here (it writes the initial handoff_ready snapshot directly), so the initial
  * human gate is not spammed — the dispatcher immediately ticks evt:line.start out of it.
  *
- * `forcedManual` (a non-empty reason string, set ONLY by cmdTick's DEF-3 bracket guard) stamps a
+ * `forcedManual` (a PA-referencing reason string, set + validated ONLY by cmdTick's DEF-3 bracket
+ * guard — it must carry a PA-id that already exists in pending-actions.md) stamps a
  * `forced-manual: <reason>` marker into the event's why[] so the deliberate bare-tick bypass is
  * audited IN the events.ndjson record (not just on stdout). why[] is not read during replay — the
  * rebuilt snapshot ignores it — so the marker is replay-neutral (state.json stays bit-for-bit).
+ *
+ * As part of persisting an applied transition the shell also self-prunes the owner-queue
+ * (dequeueOwnerEntries, ANOM-5): the just-vacated gate's entry for this line, plus any global orphans.
  */
 function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomyOverride, paFile, forcedManual) {
   const snap = readJsonSafe(statePath(root, id));
@@ -688,6 +739,10 @@ function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomy
 
   next.updated_at = at || snap.updated_at;
   writeJson(statePath(root, id), next);
+  // ANOM-5: self-prune the owner-queue on the write-path BEFORE applyEffects re-parks the new gate —
+  // drop this line's stale gate entries (it just left the gate) + any global orphans. Ordered here so
+  // the fresh park below survives its own tick.
+  dequeueOwnerEntries(root, id, next.state);
   const evRecord = { seq: next.seq, at: at || null, event: eventName, from: snap.state, to: next.state, why, effects };
   if (payload !== undefined && payload !== null) evRecord.payload = payload;
   if (runId) evRecord.run_id = runId;
@@ -800,8 +855,10 @@ function printHelp() {
     'tick   --instance <id> --event <evt:…> [--payload <json>] --at <ISO> [--charter <f>] [--force-manual <reason>]',
     '  → transition + persist + emit the next prescription (stdout JSON). DEF-3 guard: a process-RESULT',
     '    event (an ingest-emit of the state\'s invoked process) is REFUSED bare — route it through the',
-    '    bracket + `ingest --run-id`; --force-manual "<reason>" consciously overrides (audit-stamped).',
-    'status [--all] [--base-root <dir>]   → instances, states, prioritised owner-queue.',
+    '    bracket + `ingest --run-id`; --force-manual "<PA-NNN: reason>" consciously overrides (audit-',
+    '    stamped; the reason MUST reference a PA entry that already exists in pending-actions.md).',
+    'status [--all] [--base-root <dir>]   → instances, states, prioritised LIVE owner-queue plus',
+    '    owner_queue_stale. Read-only: staleness is reported, NOT pruned (the write-path self-prunes).',
     'replay --instance <id> [--charter <f>]   → rebuild state from events; diff vs state.json (exit 2 on mismatch).',
     'pa-scan --at <ISO> [--pa-file <p>] [--tick] [--base-root <dir>] [--charter <f>]',
     '  → resolution half of the PA bridge: find fabric PA entries the owner set to done and, with',
@@ -856,9 +913,11 @@ function cmdTick(args) {
   // charter.ingest — must NOT be tick'd bare. Its contract (run.md kind:run-process) is a full bracket
   // (run-ledger start → run the process → run-ledger finish → `fabric-engine ingest --run-id`, which
   // materialises the result into this very event). A bare `tick` skips the run-ledger and the Workflow.
-  // Refuse it unless the operator consciously forces a manual run with an audited reason. NOTE: only
-  // cmdTick enforces this — cmdIngest / pa-scan reach applyEventFS through the sanctioned path, and
-  // replay never routes through here (replayInstance rebuilds straight from events.ndjson).
+  // Refuse it unless the operator consciously forces a manual run with an audited reason that
+  // REFERENCES a real pending-action (judge rec #4): the escape must be dearer than the honest path —
+  // the reason must carry a PA-id (/PA-\d{3,}/) AND that PA must already exist in pending-actions.md.
+  // NOTE: only cmdTick enforces this — cmdIngest / pa-scan reach applyEventFS through the sanctioned
+  // path, and replay never routes through here (replayInstance rebuilds straight from events.ndjson).
   let forcedManual = null;
   const invoke = ((charter.states || {})[snap.state] || {}).invoke;
   const invoked = invoke && invoke.process;
@@ -875,13 +934,43 @@ function cmdTick(args) {
           '       A process result enters the fabric through the full bracket:',
           `         run-ledger start → run "${invoked}" → run-ledger finish → fabric-engine ingest --run-id <r>`,
           '       (ingest materialises the result into this event itself). Bare tick bypasses the',
-          '       run-ledger and the Workflow, so it is refused. For a deliberate manual run, pass',
-          '         --force-manual "<reason>"   (the reason is stamped into the event as an audit marker).',
+          '       run-ledger and the Workflow, so it is refused. For a deliberate manual run, first record',
+          '       the intervention as a PA entry in pending-actions.md, then pass',
+          '         --force-manual "PA-NNN: <reason>"   (the reason is stamped into the event as an audit marker).',
         ].join('\n'));
         process.exit(2);
       }
       if (!reason) {
         console.error(`ERROR: --force-manual requires a non-empty "<reason>" (audit trail for the bypassed bracket on "${args.event}")`);
+        process.exit(2);
+      }
+      // rec #4: the reason must reference a PA-id AND that PA must exist in pending-actions.md.
+      const paRefMatch = reason.match(/PA-(\d{3,})/);
+      if (!paRefMatch) {
+        console.error([
+          `ERROR: --force-manual reason must reference a PA-id (matching /PA-\\d{3,}/), got "${reason}".`,
+          '       First record the manual intervention as a pending-action in pending-actions.md,',
+          '       then retry:  --force-manual "PA-NNN: <why>".',
+        ].join('\n'));
+        process.exit(2);
+      }
+      const paRef = paRefMatch[0];
+      const paNum = Number(paRefMatch[1]);
+      const paPath = paFilePath(root, args.paFile);
+      let paText = null;
+      try { paText = fs.readFileSync(paPath, 'utf8'); } catch (_e) { paText = null; }
+      const paHeaderNums = new Set();
+      if (paText !== null) {
+        const paHeadRe = /^## PA-(\d+)\b/gm;
+        let hm;
+        while ((hm = paHeadRe.exec(paText)) !== null) paHeaderNums.add(Number(hm[1]));
+      }
+      if (!paHeaderNums.has(paNum)) {
+        console.error([
+          `ERROR: --force-manual references ${paRef}, but it was not found in ${paPath}.`,
+          '       Record the manual intervention there first as a PA entry (## PA-NNN — …,',
+          '       **Status:** pending), then retry:  --force-manual "PA-NNN: <why>".',
+        ].join('\n'));
         process.exit(2);
       }
       forcedManual = reason;
@@ -926,10 +1015,13 @@ function cmdStatus(args) {
     const s = readJsonSafe(statePath(root, id)) || {};
     return { instance: id, state: s.state, charter_id: s.charter_id, seq: s.seq, subject: s.subject };
   });
-  const queue = (readJsonSafe(ownerQueuePath(root)) || [])
+  // Read-only liveness split (ANOM-5): status NEVER writes the queue (SessionStart-hook contract).
+  // Live entries are prioritised as before; stale ones are surfaced (never hidden) under owner_queue_stale.
+  const { live, stale } = reconcileOwnerQueue(root);
+  const queue = live
     .slice()
     .sort((a, b) => (a.priority - b.priority) || String(a.at).localeCompare(String(b.at)));
-  out({ instances, owner_queue: queue, limits: readLimits(root) });
+  out({ instances, owner_queue: queue, owner_queue_stale: stale, limits: readLimits(root) });
   process.exit(0);
 }
 
@@ -1068,4 +1160,7 @@ module.exports = {
   paFilePath,
   appendFabricPa,
   maybeAppendFabricPa,
+  appendOwnerQueue,
+  dequeueOwnerEntries,
+  reconcileOwnerQueue,
 };
