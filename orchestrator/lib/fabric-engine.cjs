@@ -667,13 +667,19 @@ function maybeAppendFabricPa(paFile, charter, snapshot, at, prescription) {
  * the instance in a human-gate state, the shell mirrors that gate into pending-actions.md (phase 2b).
  * init never reaches here (it writes the initial handoff_ready snapshot directly), so the initial
  * human gate is not spammed — the dispatcher immediately ticks evt:line.start out of it.
+ *
+ * `forcedManual` (a non-empty reason string, set ONLY by cmdTick's DEF-3 bracket guard) stamps a
+ * `forced-manual: <reason>` marker into the event's why[] so the deliberate bare-tick bypass is
+ * audited IN the events.ndjson record (not just on stdout). why[] is not read during replay — the
+ * rebuilt snapshot ignores it — so the marker is replay-neutral (state.json stays bit-for-bit).
  */
-function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomyOverride, paFile) {
+function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomyOverride, paFile, forcedManual) {
   const snap = readJsonSafe(statePath(root, id));
   if (!snap) throw new Error(`no such instance: ${id}`);
   const env = shellEnv(root, charter, id);
   if (autonomyOverride) env.override = autonomyOverride;
   const { next, effects, why } = transition(charter, snap, eventName, payload, env);
+  if (forcedManual) why.push(`forced-manual: ${forcedManual}`);
   const applied = next.state !== snap.state || next.seq !== snap.seq;
 
   if (!applied) {
@@ -749,6 +755,7 @@ function parseArgs(argv) {
       case '--run-id': a.runId = next(); break;
       case '--at': a.at = next(); break;
       case '--autonomy': a.autonomy = next(); break;
+      case '--force-manual': a.forceManual = next(); break;
       case '--base-root': a.baseRoot = next(); break;
       case '--pa-file': a.paFile = next(); break;
       case '--tick': a.tick = true; break;
@@ -790,8 +797,10 @@ function printHelp() {
     '  → create instance (state.json + events.ndjson@init); echo instance-id + initial prescription.',
     'ingest --instance <id> --process <name> (--result <json>|--result-file <p>) --at <ISO> [--run-id <r>] [--charter <f>]',
     '  → materialise the result into ≤1 event, then tick it. Idempotent: a seen --run-id is a no-op.',
-    'tick   --instance <id> --event <evt:…> [--payload <json>] --at <ISO> [--charter <f>]',
-    '  → transition + persist + emit the next prescription (stdout JSON).',
+    'tick   --instance <id> --event <evt:…> [--payload <json>] --at <ISO> [--charter <f>] [--force-manual <reason>]',
+    '  → transition + persist + emit the next prescription (stdout JSON). DEF-3 guard: a process-RESULT',
+    '    event (an ingest-emit of the state\'s invoked process) is REFUSED bare — route it through the',
+    '    bracket + `ingest --run-id`; --force-manual "<reason>" consciously overrides (audit-stamped).',
     'status [--all] [--base-root <dir>]   → instances, states, prioritised owner-queue.',
     'replay --instance <id> [--charter <f>]   → rebuild state from events; diff vs state.json (exit 2 on mismatch).',
     'pa-scan --at <ISO> [--pa-file <p>] [--tick] [--base-root <dir>] [--charter <f>]',
@@ -842,8 +851,45 @@ function cmdTick(args) {
   const snap = readJsonSafe(statePath(root, args.instance));
   if (!snap) { console.error(`ERROR: no such instance: ${args.instance}`); process.exit(2); }
   const charter = loadCharter(args.charter, snap.charter_id);
+
+  // DEF-3 bracket guard: a PROCESS RESULT event — one the current state's invoked process emits via
+  // charter.ingest — must NOT be tick'd bare. Its contract (run.md kind:run-process) is a full bracket
+  // (run-ledger start → run the process → run-ledger finish → `fabric-engine ingest --run-id`, which
+  // materialises the result into this very event). A bare `tick` skips the run-ledger and the Workflow.
+  // Refuse it unless the operator consciously forces a manual run with an audited reason. NOTE: only
+  // cmdTick enforces this — cmdIngest / pa-scan reach applyEventFS through the sanctioned path, and
+  // replay never routes through here (replayInstance rebuilds straight from events.ndjson).
+  let forcedManual = null;
+  const invoke = ((charter.states || {})[snap.state] || {}).invoke;
+  const invoked = invoke && invoke.process;
+  if (invoked) {
+    const rules = (charter.ingest || {})[invoked];
+    const emitted = Array.isArray(rules) ? rules.map((r) => r.emit).filter(Boolean) : [];
+    if (emitted.indexOf(args.event) !== -1) {
+      const forcedPresent = Object.prototype.hasOwnProperty.call(args, 'forceManual');
+      const reason = typeof args.forceManual === 'string' ? args.forceManual.trim() : '';
+      if (!forcedPresent) {
+        console.error([
+          `ERROR: event "${args.event}" is an ingest-mapped result of process "${invoked}"`,
+          `       (invoked by state "${snap.state}") — it must NOT be tick'd bare (DEF-3 guard).`,
+          '       A process result enters the fabric through the full bracket:',
+          `         run-ledger start → run "${invoked}" → run-ledger finish → fabric-engine ingest --run-id <r>`,
+          '       (ingest materialises the result into this event itself). Bare tick bypasses the',
+          '       run-ledger and the Workflow, so it is refused. For a deliberate manual run, pass',
+          '         --force-manual "<reason>"   (the reason is stamped into the event as an audit marker).',
+        ].join('\n'));
+        process.exit(2);
+      }
+      if (!reason) {
+        console.error(`ERROR: --force-manual requires a non-empty "<reason>" (audit trail for the bypassed bracket on "${args.event}")`);
+        process.exit(2);
+      }
+      forcedManual = reason;
+    }
+  }
+
   const payload = readPayload(args);
-  const report = applyEventFS(root, charter, args.instance, args.event, payload, args.at, args.runId, args.autonomy, args.paFile);
+  const report = applyEventFS(root, charter, args.instance, args.event, payload, args.at, args.runId, args.autonomy, args.paFile, forcedManual);
   out(report);
   process.exit(0);
 }
