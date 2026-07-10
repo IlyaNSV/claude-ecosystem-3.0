@@ -68,13 +68,17 @@ history, XState-миграция, D7-charter.
 > в активный work-order. Порядок 1→2 (док до gaps-сверки: сверка обновит тот же док);
 > 3 и 4 — независимые, по мере окон.
 
-1. [ ] **Consumer-док Fabric** — docs/orchestrator-module или guide-слой: что такое charter,
-   как читать owner-queue/status, как добавить процесс; обновление `docs/MAP.md`/BPMN-карты
-   из catalog/charters.
-2. [ ] **Gaps аудита — сверка реестра G01–G36** ([`audit/APPENDIX-B`](audit/APPENDIX-B-gap-analysis.md)):
-   что Fabric закрыл фактически, что осталось; Tier-0 (Epic E, E15/G02 external→`.product/`
-   result-ingest) — отдельные треки, substrate-gated. Учесть уже закрытое параллельной
-   дорожкой: G20/G23/G19/G05-G06/G32 (см. выше).
+1. [x] **Consumer-док Fabric** — ✅ 2026-07-10 (DEC-DEV-0166, PR #144): guide-слой —
+   [`docs/guide/07-fabric.md`](../../docs/guide/07-fabric.md) (how-to оператора) + wiring
+   (guide/README роутер+роли, 05-implementation §6, `docs/MAP.md` authorities+ORC-нода,
+   orchestrator/README). Полная интеграция catalog/charters в `gen-process-map`/BPMN —
+   сознательно фаза 4 (см. DEC-DEV-0166).
+2. [x] **Gaps аудита — сверка реестра G01–G36** — ✅ 2026-07-10 (DEC-DEV-0167):
+   [`audit/GAPS-RECONCILIATION-2026-07-10.md`](audit/GAPS-RECONCILIATION-2026-07-10.md) —
+   закрыто машинно 6 (G05/G06/G19/G20/G23/G32), частично Fabric'ом 8 (G03/G04/G07/G09/G10/
+   G11/G12/G13), открыто 22 с роутингом: Tier-0 (G01/G02) — substrate-gated треки; G08/G28/G29 —
+   кандидаты фазы 4; G14–G18/G21/G24/G33/G35/G36 — п.4 ниже; G22/G25–G27/G30/G31/G34 —
+   backlog D7-гигиены на приоритизацию владельцем.
 3. [ ] **Upstream-долг graduation-прогона** (условие судьи №2): **DEF-4** — P7 probe
    false-negative на pnpm-monorepo (root package.json → NOT_STARTABLE short-circuit; PA-056
    open → ecosystem) · **ANOM-5** — owner-queue append-only без dequeue (stale-гейты
