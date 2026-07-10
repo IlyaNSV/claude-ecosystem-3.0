@@ -217,8 +217,11 @@ test('--autonomy override: L0 tightens a dev HIGH step to human-gate; floor stay
 test('CLI --autonomy L0 flows through tick to the emitted prescription', () => {
   const base = mkTmp();
   const id = initInstance(base, 'FM-OV');
+  // --pa-file is REQUIRED here: L0 turns authoring into a human-gate, whose PA-projection would
+  // otherwise land in defaultPaFile(root) = <base>/../../pending-actions.md — filesystem root on
+  // a Linux tmpdir (EACCES, the standing CI failure) and stray litter on Windows (silent pass).
   const r = cli(['tick', '--instance', id, '--event', 'evt:line.start', '--charter', CHARTER,
-    '--at', AT, '--base-root', base, '--autonomy', 'L0']);
+    '--at', AT, '--base-root', base, '--autonomy', 'L0', '--pa-file', paFile(base)]);
   assert.strictEqual(r.json.to, 'authoring');
   assert.strictEqual(r.json.prescription.kind, 'run-process');
   assert.strictEqual(r.json.prescription.disposition, 'human-gate',
@@ -227,7 +230,7 @@ test('CLI --autonomy L0 flows through tick to the emitted prescription', () => {
   const base2 = mkTmp();
   const id2 = initInstance(base2, 'FM-OV2');
   const q = cli(['tick', '--instance', id2, '--event', 'evt:line.start', '--charter', CHARTER,
-    '--at', AT, '--base-root', base2]);
+    '--at', AT, '--base-root', base2, '--pa-file', paFile(base2)]);
   assert.strictEqual(q.json.prescription.disposition, 'auto');
 });
 
