@@ -38,6 +38,15 @@
 - Старт: **2026-07-10T19:14:37Z**, tmux `od7-s2`, bypass, свежая сессия.
 - Executor: replay-проверка целостности → `pa-scan --tick` (канонический resume, R4-паттерн) → ожидается ре-ран P5 полным брекетом (реализация маршрута (a)).
 - Ожидание оператора: в ходе этого P5 §6-лег упрётся в `OPENAI_API_KEY` (probe env-only, см. DEF-OD7-1) → **настоящая OD7-парковка `awaiting_capability_impl` + payload-PA** — предмет прогона.
+- **~19:45Z — executor поднял 2 in-flight блокера батч-меню** (граница объявлена явно: «Секрет провиженишь ты/Integrator — я не могу» — сильный R3-сигнал ДО машинного гейта): Blocker 1 DI-владение биндингом реального GlossarySnapshotService (Route X «FM-003 exports» рекоменд. / Route Y deep-import) — **ответ оператора: Route X** (следствие ратифицированного (a), порт-дисциплина, сторону PA-035 не трогает); Blocker 2 OPENAI_API_KEY («Провижену — жди» / «Отложить — Mock») — **ответ оператора: «Провижену — жди»** (сохраняет регламентный §6-путь к машинной парковке; Mock-ответ увёл бы линию мимо предмета прогона).
+
+- **Исход S2a (19:36:57Z): вторая конфликт-парковка (seq 6, реальный брекет `…fbl7fc`), PA-061.** P5-результат: `go_gate=null, implemented=[], blocked=[5.4]`, **`capability_blocked` P5 ВЫЧИСЛИЛ** (Blocker 2 в PA-061), но ingest-маппинг отдал приоритет конфликту (Blocker 1 — новая ownership-развилка: `GlossarySnapshotService` не привязан ни к одному DI-модулю, PA-035 это не решала; Route X/Y). Наблюдение для судьи/фазы-4: conflict > capability в приоритете паркинга; payload-мост на конфликт-путь не распространяется (fenced-json в PA-061 нет — вместо него dispatcher-обогащение прозой).
+- Blocker 1 разрешён владельцем-через-оператора в батч-меню executor'а (Route X) → executor записал **DEC-PLAN-045** + выровнял спеку FM-003. Blocker 2 оставлен: «Провижену — жди».
+- **Owner-действие №2 (~19:50Z): PA-061 → done** (резолюция: Blocker 1 закрыт; ключ сознательно НЕ провижен — Integrator-провижен последует за capability-гейтом, как предсказывает сама PA-061). Коммит пилота `05e00b9` (запушен).
+
+### S2b — resume №2 → ожидаемая OD7-парковка
+- Старт: **2026-07-10T19:53:21Z**, tmux `od7-s3`, bypass, свежая сессия, промпт S2 verbatim.
+- Ожидание: pa-scan --tick → implementing → P5 ре-ран (FM-003-проводка Route X + порт (a) + tx-client + воркер + тесты; час+) → §6 BLOCK по ключу → **`evt:impl.blocked_capability` → `awaiting_capability_impl` + payload fenced-json в PA** (R1/R2).
 
 ### S2 — resolve + resume (capability, предмет OD7)
 - Provision (что/когда): · флип PA→done: · старт сессии: · события:
