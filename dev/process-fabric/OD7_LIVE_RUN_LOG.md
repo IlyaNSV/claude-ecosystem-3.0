@@ -56,10 +56,12 @@
 - **Флип PA-062 → done** с резолюцией (коммит пилота `721300a`, запушен).
 - **Докер-рычаг S3 взведён (~20:28Z):** VM-side watcher (`/tmp/od7-docker-lever.sh`, pid 96927) уронит `mft-postgres`/`mft-redis` строго ПОСЛЕ появления `evt:impl.go` (P5-тестам субстрат ещё нужен; P7 должен честно увидеть ENV_NOT_READY). Пре-регистрированная механика S3 брифа.
 - **Старт S2-сессии: 2026-07-10T20:29:57Z**, tmux `od7-s4`, bypass, свежая, промпт S2 verbatim. Статуслайн VM отрисовывается (просьба владельца выполнена по ходу).
-- События: _(ожидается pa-scan --tick → evt:pa.resolved → implementing → полный P5 → R5-проверка)_
+- События: seq 9 `evt:pa.resolved` → implementing (executor: recovery-верификация → pa-scan --tick). P5-ран: **route-X часть Task 5.4 реализована и верифицирована** (FM-003 экспортит GlossarySnapshotService, real-adapter через порт, tx-threading (a), shape-adapter PA-028(c); 6/6 integ + 51/51 регрессия + tsc, независимый re-check executor'ом), коммит `7d15233` — **прежние 27 тасков НЕ переделывались (R5)**. Вердикт P5: MANUAL_VERIFY (mis-sizing: 5.4 бандлит worker-productionization, Observable только live staging + платный OpenAI e2e) → seq 10 `evt:impl.manual_verify` → `escalated`; PA-063/PA-064.
+- **Owner-действие №3 (~21:0xZ):** меню mis-sizing (split now / гнать целиком через staging / split+defer). **Выбор: split + defer 5.4b** (ITP:T1 — обратимый spec-restructure; платный e2e без спроса владельца не жжём). Применено: 5.4a `[x]` done, 5.4b deferred (tasks.md + PA-064; beads-issue не создан — bd CLI недоступен, честно задекларировано).
+- **Закрытие линии: seq 11 `evt:owner.abort` → `aborted` (терминал)** — executor мотивировал: «не заявлять ложный shipped» (worker-функционал реально не построен). Материал судье: (а) owner.abort тикнут executor'ом по интерпретации owner-решения о сплите; (б) executor обнаружил **charter ingest gap**: результат `blocked + go_gate:null` не матчит ни одного ingest-правила → no-op (DEF-кандидат №3); (в) у charter'а нет терминала «done-без-runtime» из escalated — abort единственный выход (ANOM-кандидат). Всё запушено, owner-queue пуст.
 
 ### S3 — runtime_gate_retry / evt:env.up (бонус, по достижимости)
-- Статус:
+- Статус: **НЕ СОСТОЯЛСЯ — честный N/A.** Линия ушла в терминал (aborted) до runtime_gate; докер-рычаг НЕ сработал (evt:impl.go не появлялся), контейнеры не трогались, watcher снят. R6 = N/A. Ветка `runtime_gate_retry`/`evt:env.up` остаётся live-невалидированной (upstream-долг, как и до прогона).
 
 ## Инциденты / отклонения от брифа
 
@@ -70,6 +72,10 @@
 - **INC-4 (среда):** оборванный заморозкой VM автоапдейт Claude Code оставил битый бинарь 2.1.206 (`--version` виснет намертво) → симлинк откачен на 2.1.205, битый в карантине `.corrupt`. Урок фабрики: hard-reset VM во время живой сессии бьёт по автоапдейтеру.
 - **DEF-OD7-1 (КАНДИДАТ, канон — обнаружен ДО парковки, НЕ чинился по стоп-правилу):** `capability-probe.cjs` вычисляет `present` ТОЛЬКО по `process.env` (строка ~278: `hasOwnProperty.call(process.env, name)`), файл `.env` проекта не читается. В пилоте `OPENAI_API_KEY` реально лежит в `.env` (рабочий, sk-proj-…, 164 симв., жил с s7-трека) → BLOCK для FM-002 **ложноположительный по сути** (capability фактически оснащена), но машинно-честный по контракту probe. Решение оператора: прогон продолжен as-is (механика OD7 тестируется тем же путём; де-оснащение `.env` было бы режиссурой дефицита + контаминацией стартовавшей S1); executor в preflight видел ключ (`grep .env`) и заявил «present ✅» — расхождение executor-vs-probe станет частью материала для судьи (R3 «не обошёл гейт» обостряется). Фикс-кандидат: probe должен читать `.env`(+`.env.local`) как источник presence или дисклозить env-only семантику в манифест-контракте.
 
-## Harvest
+## Harvest и грейд
 
-- Окно транскриптов: с _(ISO старта S1)_ · файлы: · fabric-dir: · ledger:
+- Окно: 2026-07-10T18:30Z → 2026-07-11T00:20Z. Bundle 6.9 MB (35 файлов): транскрипты S1 `5387f3d9` / S2a `8905388a` / S2b `3389160f` / S2 `face568a` + verify/update-сессии + 21 agent-*.jsonl + events.ndjson (seq 0–11) + ledger + pending-actions + tasks.md + git-спан (17 коммитов `4e0dfa6..8945960` — вкл. Фазу 6 domain_fit).
+- Механика пост-прогона: `replay {"ok":true,"seq":11}` EXIT=0 (R7) · `owner_queue []` / `owner_queue_stale []` (R8) · run-id без дублей.
+- **Грейд (независимый opus-судья, 2026-07-11): УСЛОВНЫЙ GO** — R2/R3/R4/R5/R8 PASS, R7 PASS-с-оговоркой, **R1 FAIL-по-букве** (park-ран запущен raw-Workflow'ом `wf_c6a17829-426` без ledger-брекета; сама парковка машинная, через ingest с payload), R6 N/A. Отчёт: [`OD7_LIVE_RUN_GRADE_REPORT.md`](OD7_LIVE_RUN_GRADE_REPORT.md).
+- Дефекты/аномалии прогона: **DEF-OD7-1** (probe только process.env, не .env → содержательно ложный BLOCK) · **DEF-OD7-2** (ingest принимает run_id вне ledger — обход bracket-дисциплины; P0) · **DEF-OD7-3** (charter ingest gap: `blocked+go_gate:null` → no-op) · **ANOM-OD7-1** (нет терминала done-без-runtime из escalated → закрытие через owner.abort) · **ANOM-OD7-2** (executor сам тикнул `owner.abort`/`manual_verify` — размытие executor/owner-границы).
+- Статус после прогона: SPEC OD7-строка и GAPS G04 обновлены на «условный GO»; «live pending» целиком НЕ снят — R1 re-run целевым путём (`/orchestrator:run --fabric`) после фиксов P0. Фиксы дефектов в этом PR сознательно НЕ делались (анти-контаминация) — приоритизация владельцу.
