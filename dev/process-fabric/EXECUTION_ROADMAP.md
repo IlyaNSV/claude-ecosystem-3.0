@@ -12,8 +12,8 @@
 | 0 | Merge PR #128 (владелец) | ✅ 2026-07-07 |
 | 1 | Ядро: fabric-engine + charter + 16 юнитов | ✅ built (≠ validated) |
 | 2 | Wiring в живую машинерию | ✅ built 2026-07-07 (2a+2d PR #129, 2b+2c PR #130; 2e срезан → фаза 4) |
-| 3 | Live-валидация = graduation gate | ✅ **условный GO** 2026-07-10 (добор G-B, DEC-DEV-0162/0163): G-A ✓, G-B ✓ (с оговорками), G-C ✓×4 — [GRADE_REPORT](FABRIC_PHASE3_GRADE_REPORT.md); условия: merge bracket-guard PR + upstream-долг DEF-4/ANOM-5 + ветка `runtime_gate_retry`/`evt:env.up` live-невалидирована; **формальное объявление graduation — владелец** |
-| 4 | Расширение | ⬜ после объявления graduation владельцем, по триггерам |
+| 3 | Live-валидация = graduation gate | ✅ **GRADUATED — объявлено владельцем 2026-07-10** (DEC-DEV-0165). Основание: условный GO судьи (G-A ✓, G-B ✓ с оговорками, G-C ✓×4 — [GRADE_REPORT](FABRIC_PHASE3_GRADE_REPORT.md), DEC-DEV-0162/0163); условия судьи выполнены/зафиксированы: bracket-guard в main (PR #141 `cc58e65`), DEF-4/ANOM-5 = upstream-долг (см. пост-обязательства), ветка `runtime_gate_retry`/`evt:env.up` честно помечена live-невалидированной |
+| 4 | Расширение | ⬜ **разблокирована** graduation'ом 2026-07-10; старт — строго по эмпирическим триггерам ниже |
 
 ## Фаза 2 — wiring (1-2 PR, порядок внутри фазы)
 
@@ -45,7 +45,8 @@ CHANGELOG (consumer-zone) + DEV_JOURNAL.
 - [x] один human-gate через owner-queue разрешён и продолжил инстанс — ✅ PA-045 → `pa-scan --tick` (G-C).
 Долг run-ledger live-прогона закрыт (R10). Артефакты прогона: BRIEF / REVIEW_HANDOFF / GRADE_REPORT
 рядом; DEC-DEV-0162 (вкл. live-дефект DEF-1 SessionStart-инжектора — починен `c8cbf9d`).
-До прохождения G-B Fabric не расширять.
+Ограничение «до прохождения G-B Fabric не расширять» снято graduation'ом 2026-07-10 (все три
+критерия закрыты); расширение — фаза 4, по триггерам.
 
 ## Фаза 4 — расширение (по эмпирическим триггерам)
 
@@ -55,20 +56,33 @@ history, XState-миграция, D7-charter.
 
 ## Параллельная дорожка — быстрые победы вне Fabric (AUDIT §6; независимые мелкие PR)
 
-- [ ] Фикс шаблона счётчиков 23/33→24/44 (G20 — тиражируется в каждый пилот; самый дешёвый/срочный)
-- [ ] SubagentStop-watchdog (G05/G06 — подмена канонического DA-агента)
-- [ ] Линтер catalog↔runner (G19) · expires_at-sweeper (G28) · install-pre-commit в bootstrap (G23)
+- [x] Фикс шаблона счётчиков 23/33→24/44 (G20) — ✅ DEC-DEV-0156, PR #131
+- [x] SubagentStop-watchdog (G05/G06) — ✅ DEC-DEV-0159, PR #134
+- [x] Линтер catalog↔runner (G19) — ✅ DEC-DEV-0158, PR #133 · install-pre-commit → авто-установка
+      npm prepare (G23) — ✅ DEC-DEV-0157, PR #132
+- [ ] expires_at-sweeper (G28) — единственный остаток очереди AUDIT §6
 
-## Пост-завершение (обязательства, зафиксированы в памяти)
+## Пост-graduation обязательства — 🟢 ОТКРЫТЫ 2026-07-10 (DEC-DEV-0165)
 
-1. **Документация по сделанному** — после graduation: consumer-док Fabric (docs/orchestrator-module
-   или guide-слой: что такое charter, как читать owner-queue/status, как добавить процесс),
-   обновление `docs/MAP.md`/BPMN-карты из catalog/charters.
-2. **Gaps аудита** — вернуться к реестру G01–G36 ([`audit/APPENDIX-B`](audit/APPENDIX-B-gap-analysis.md)):
+> Graduation объявлен владельцем → обязательства переведены из «зафиксированы в памяти»
+> в активный work-order. Порядок 1→2 (док до gaps-сверки: сверка обновит тот же док);
+> 3 и 4 — независимые, по мере окон.
+
+1. [ ] **Consumer-док Fabric** — docs/orchestrator-module или guide-слой: что такое charter,
+   как читать owner-queue/status, как добавить процесс; обновление `docs/MAP.md`/BPMN-карты
+   из catalog/charters.
+2. [ ] **Gaps аудита — сверка реестра G01–G36** ([`audit/APPENDIX-B`](audit/APPENDIX-B-gap-analysis.md)):
    что Fabric закрыл фактически, что осталось; Tier-0 (Epic E, E15/G02 external→`.product/`
-   result-ingest) — отдельные треки, substrate-gated.
-3. **Незавершённые параллельные инициативы, попутно выявленные аудитом** (не Fabric-зона, не потерять):
-   OD7 await→resume не построен целиком · Integrator Phase-7 команды spec-only при живых ссылках
-   на них (G14–G16) · Deep Discovery / screen-generator субагенты spec-only (G36) · P3p-путаница
-   SSOT-оверлея · doc-дрейфы G17–G21/G33/G35 · ≥3 deferred-smoke плана (порог substrate-graduation
-   уже превышен) · session-audit opt-in хрупкость (G24) · DEC-DEV аллокатор не атомарен (G32).
+   result-ingest) — отдельные треки, substrate-gated. Учесть уже закрытое параллельной
+   дорожкой: G20/G23/G19/G05-G06/G32 (см. выше).
+3. [ ] **Upstream-долг graduation-прогона** (условие судьи №2): **DEF-4** — P7 probe
+   false-negative на pnpm-monorepo (root package.json → NOT_STARTABLE short-circuit; PA-056
+   open → ecosystem) · **ANOM-5** — owner-queue append-only без dequeue (stale-гейты
+   terminal-инстансов = false-positive owner-сигнал). Плюс рекомендация судьи №4 (не блокер):
+   `--force-manual` reason ссылается на PA + валидируется.
+4. [ ] **Незавершённые параллельные инициативы, попутно выявленные аудитом** (не Fabric-зона,
+   не потерять): OD7 await→resume не построен целиком · Integrator Phase-7 команды spec-only
+   при живых ссылках на них (G14–G16) · Deep Discovery / screen-generator субагенты spec-only
+   (G36) · P3p-путаница SSOT-оверлея · doc-дрейфы G17–G21/G33/G35 · ≥3 deferred-smoke плана
+   (порог substrate-graduation уже превышен) · session-audit opt-in хрупкость (G24).
+   ~~DEC-DEV аллокатор не атомарен (G32)~~ — закрыт DEC-DEV-0160, PR #135.
