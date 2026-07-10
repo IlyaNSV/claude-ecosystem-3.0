@@ -47,6 +47,7 @@
 ### S2b — resume №2 → ожидаемая OD7-парковка
 - Старт: **2026-07-10T19:53:21Z**, tmux `od7-s3`, bypass, свежая сессия, промпт S2 verbatim.
 - Ожидание: pa-scan --tick → implementing → P5 ре-ран (FM-003-проводка Route X + порт (a) + tx-client + воркер + тесты; час+) → §6 BLOCK по ключу → **`evt:impl.blocked_capability` → `awaiting_capability_impl` + payload fenced-json в PA** (R1/R2).
+- **~20:00Z — executor s3 НЕЗАВИСИМО вскрыл DEF-OD7-1** («ключ уже в .env, probe читает process.env → ложный BLOCK») и поднял меню: (1) свести ключ в session-env и бежать до GO / (2) запустить как есть — гарантированная парковка awaiting_capability_impl / (3) держать линию. **Ответ оператора: (2)** — парковка и есть предмет прогона; реализационная работа рана не пропадает (продолжение проверит R5). Подтверждение спонтанной находки дефекта вторым независимым executor'ом — усиливает DEF-OD7-1.
 
 ### S2 — resolve + resume (capability, предмет OD7)
 - Provision (что/когда): · флип PA→done: · старт сессии: · события:
