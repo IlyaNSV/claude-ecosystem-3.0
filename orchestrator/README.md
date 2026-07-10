@@ -43,13 +43,21 @@ orchestrator/
 │   ├── audit-spec-fidelity.mjs        # P4 — pre-impl fidelity-гейт (spec vs .product)
 │   ├── validate-feature-impl.mjs      # P6 — feature GO-gate (suite+build + 3 валидатора)
 │   └── runtime-smoke-readiness.mjs    # P7 — «стартует ли dev?» readiness-гейт (boot=substrate-gated)
+├── charters/                       # Process Fabric: декларативные statechart'ы линий (JSON)
+│   └── feature-production-line.json   # сквозная линия фичи P3→P7 (DEC-DEV-0153)
 └── lib/                            # детерминированные хелперы (.cjs, Node stdlib)
     ├── coverage-oracle.cjs            # P1-1 независимый ID-coverage оракул (P3; backbone RA-8)
     ├── fidelity-oracle.cjs            # P4 trace-integrity (spec-refs ⊆ .product ground-truth)
     ├── gate-risk-classifier.cjs       # P0-2 предикат тяжести гейта HIGH/LOW (P5)
     ├── capability-probe.cjs           # §6 detect-leg: disposition external_capabilities (P5; DEC-DEV-0117)
     ├── runtime-readiness.cjs          # P7 readiness-ядро: run-target + §6 boot-caps + env → verdict (DEC-DEV-0120)
-    └── consilium-synth.cjs            # P2 синтез-ядро: matrix + rank + veto-по-blocking → recommendation (DEC-DEV-0129)
+    ├── consilium-synth.cjs            # P2 синтез-ядро: matrix + rank + veto-по-blocking → recommendation (DEC-DEV-0129)
+    ├── design-coverage-oracle.cjs     # T4 design→tasks coverage гейт (P6; DEC-DEV-0095)
+    ├── remediation-guard.cjs          # T5 guardrails починочного раунда (P6; DEC-DEV-0096)
+    ├── env-readiness.cjs              # env-probe субстрата (P6/P7; DEC-DEV-0092/0112)
+    ├── run-ledger.cjs                 # durable run-журнал: bracket start/finish вокруг каждого прогона (DEC-DEV-0147)
+    ├── fabric-engine.cjs              # Process Fabric: event-sourced интерпретатор charter'ов (DEC-DEV-0153)
+    └── autonomy-policy.cjs            # F1 autonomy-resolver (floor); потребляется fabric-prescriptions (DEC-DEV-0154)
 
 skills/orchestrator/                # регламент-методология (lazy-loaded)
 ├── orchestrator-init.md            # P1 — сбор контекста + resume после /compact
@@ -70,7 +78,18 @@ agents/orchestrator/                # пусто — роли делегиров
 ```
 
 Эти артефакты бутстрапятся в `.claude/` пользователя как и прочие модули. Per-project
-state Оркестратора (run-журналы, ledger, реестры) — `.claude/orchestrator/` в проекте.
+state Оркестратора (run-журналы, ledger, реестры, fabric-инстансы) — `.claude/orchestrator/`
+в проекте.
+
+## Process Fabric — межпроцессная линия (validated 2026-07-10)
+
+Поверх процессов P1–P7 живёт **Process Fabric** — durable statechart линии фичи между
+сессиями (opt-in `--fabric` у `/orchestrator:run`): charter (`charters/*.json`) + движок
+`lib/fabric-engine.cjs` (event-sourcing, prescriptions через F1, WIP-backpressure, PA-мост
+человеческих гейтов). Движок не вызывает LLM и ничего не запускает сам — актуатор = диспетчер.
+Руководство оператора — [`docs/guide/07-fabric.md`](../docs/guide/07-fabric.md); контракт
+диспетчера — `commands/orchestrator/run.md` §«Process Fabric»; дизайн-SSOT —
+`dev/process-fabric/CONCEPT.md`.
 
 ## P3 `batch-features-to-cc-sdd` — поток
 

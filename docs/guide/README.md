@@ -51,6 +51,7 @@ doc_type: navigation
 | **спроектировать UI** фичи | [`04-ui-design.md`](04-ui-design.md) |
 | превратить **handoff в код** | [`05-implementation.md`](05-implementation.md) |
 | понять, **почему меня заблокировали** / что значит `NO-GO` | [`06-gates.md`](06-gates.md) |
+| узнать, **где стоит линия фичи** между сессиями / что ждёт моего решения | [`07-fabric.md`](07-fabric.md) |
 | найти **нужную команду** | [`02-commands.md`](02-commands.md) · [ecosystem-map.html](ecosystem-map.html) |
 | **увидеть все процессы** целиком (BPMN) | [ecosystem-processes.html](ecosystem-processes.html) |
 | вспомнить, **что за артефакт** `PS`/`FM`/`BR`… | [`03-glossary.md`](03-glossary.md) (словарь) |
@@ -80,6 +81,7 @@ doc_type: navigation
 | [`04-ui-design.md`](04-ui-design.md) | How-to | Design Module (`has_ui`): когда включается, поток D.1→D.6, что производит | ✅ v1 |
 | [`05-implementation.md`](05-implementation.md) | How-to | От handoff к коду: Integrator + Orchestrator (P3→P6), как читать вердикт `GO/NO-GO × readiness × conflicts` | ✅ v1 |
 | [`06-gates.md`](06-gates.md) | Explanation · How-to | Почему тебя останавливают (approve / DA / refusal / вердикт) — гейты как страховка + что делать | ✅ v1 |
+| [`07-fabric.md`](07-fabric.md) | How-to · Explanation | Process Fabric: линия фичи P3→P7 между сессиями — charter, `status`/owner-queue, PA-мост, как добавить процесс | ✅ v1 |
 | [`02-commands.md`](02-commands.md) | Reference | Каталог всех команд «когда что» — **генерируется** из frontmatter (`gen:catalog`), не дрейфует | ✅ gen |
 | [`03-glossary.md`](03-glossary.md) | Reference | Словарь: 24 артефакта (ID · название · ревью · родословная, по доменам) + сквозные термины — **генерируется** из спеков + overlay | ✅ gen |
 

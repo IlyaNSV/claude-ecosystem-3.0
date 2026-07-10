@@ -8129,3 +8129,23 @@ run.md требует исполнять prescription `kind: run-process` пол
 ### Lessons
 1. **«Зелёный на одной ОС» ≠ зелёный:** environment-coupled путь (up-двойной resolve от tmpdir) дал молчаливый pass на Windows и падение на Linux — расхождение вскрылось только CI-прогоном.
 2. Тест, который пишет за пределы своей tmp-песочницы, — дефект независимо от исхода assert'ов; литтер-чек (`два уровня выше tmpdir`) — дешёвый маркер этого класса.
+
+## DEC-DEV-0166 — Consumer-док Process Fabric: посадка в guide-слой (07-fabric.md), а не в docs/orchestrator-module
+
+**Date:** 2026-07-10
+**Trigger:** пост-graduation обязательство №1 (EXECUTION_ROADMAP §«Пост-graduation обязательства», открыто DEC-DEV-0165); запрос владельца «начинай consumer-док».
+
+### Context
+После graduation у Fabric не было ни одного consumer-facing упоминания: grep по `docs/orchestrator-module/SPEC.md`, `orchestrator/README.md`, `docs/guide/**`, `docs/README.md` — ноль вхождений «fabric». Вся документация жила в dev-слое (`dev/process-fabric/`, не деплоится) + контракте диспетчера (`run.md`, читает LLM, не человек).
+
+### Options considered
+1. ✅ **`docs/guide/07-fabric.md`** (USER-слой, How-to · Explanation) — обязательство сформулировано в задачах оператора («как читать owner-queue/status», «как добавить процесс»), а guide — именно слой «как делать работу» с готовой дисциплиной против дрейфа (`check:doctype`: anti-orphan + сверка таблицы ролей README). Точка входа через роутер «Я хочу…» и §6 в `05-implementation.md` (естественное продолжение: Fabric = следующий шаг после «прогнал процесс руками»).
+2. **`docs/orchestrator-module/FABRIC.md`** (REFERENCE-слой рядом со SPEC) — отвергнуто как основное место: SPEC-слой читают при проектировании, а не при операционной работе; дублировал бы CONCEPT.md (дизайн-SSOT остаётся в dev/process-fabric). Reference-потребность закрыта короткой секцией-указателем в `orchestrator/README.md`.
+
+### Decision(s)
+1. Новый `docs/guide/07-fabric.md`: понятия (charter/инстанс/событие/prescription/owner-queue/WIP), запуск линии, чтение status, PA-мост (done→`pa-scan --tick`), страховки (bracket-guard/`--force-manual`/идемпотентность/floor/`replay`), чеклист добавления процесса (ingest по фактическим полям result-файла — правило из CONCEPT §10 «charter-дрейф»), честные границы (validated 2026-07-10; runtime-ветка и P7-monorepo-probe — нет).
+2. **Обязательство «обновление MAP/BPMN из catalog/charters» скоуплено:** `docs/MAP.md` получил Fabric-указатель в авторитеты + актуализацию ORC-узла (стоял stale «P3-P6 built»); полная интеграция catalog/charters в `gen-process-map` — это фаза 4 EXECUTION_ROADMAP (расширение по триггеру), в док-обязательство не втягивается.
+3. Попутный drift-фикс: дерево `orchestrator/README.md` отставало на 6 файлов lib/ + charters/ — дополнено (иначе новый док ссылался бы на README с дырами).
+
+### Outcome
+Guide вырос 7→8 доков, `check:doctype` зелёный; CHANGELOG `[Unreleased] Added` (consumer-zone). Пост-обязательство №1 закрыто; следующее по порядку — №2 gaps-сверка G01–G36.
