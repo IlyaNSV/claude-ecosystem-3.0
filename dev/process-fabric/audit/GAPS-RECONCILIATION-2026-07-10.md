@@ -39,13 +39,13 @@
 
 | # | Что закрыто | Что осталось → куда роутится |
 |---|---|---|
-| G03 | Для fabric-tracked линий PA-канал получил слушателя end-to-end: human-gate → каноническая PA-запись + owner-queue, `pa-scan [--tick]` (done→tick, dismissed→surfaced), SessionStart-инжект статуса (DEC-DEV-0155; live: PA-045, критерий G-C) | PA-трафик **вне** fabric-инстансов (эскалации P2–P7 без `--fabric`, product-routed drifts) — по-прежнему write-only. Оговорка ANOM-5 (owner-queue append-only, без dequeue → stale false-positive) → **пост-обяз. №3** |
+| G03 | Для fabric-tracked линий PA-канал получил слушателя end-to-end: human-gate → каноническая PA-запись + owner-queue, `pa-scan [--tick]` (done→tick, dismissed→surfaced), SessionStart-инжект статуса (DEC-DEV-0155; live: PA-045, критерий G-C). Оговорка ANOM-5 закрыта тем же днём: owner-queue самоочищается на write-path, `status` показывает stale отдельно (DEC-DEV-0168) | PA-трафик **вне** fabric-инстансов (эскалации P2–P7 без `--fabric`, product-routed drifts) — по-прежнему write-only |
 | G04 | Generic await→resume для fabric-линии работает: parked-состояния + resume-события + PA-мост (live: `awaiting_product` PA-051/052 → консилиум → resume, DEC-DEV-0162) | OD7 capability-request await→resume (P5/P7 после решения Integrator) как таковой не построен → **пост-обяз. №4** |
 | G07 | Сегмент P3→P7 накрыт state-machine: charter `feature-production-line` + prescriptions + инжект статуса — «пропущенный шаг» теперь виден машинно | Product-сегмент (init→plan→feature→handoff) — всё ещё текстовые «Next:»; charter №2 product-front срезан (2e) → **фаза 4 по live-триггеру** |
 | G09 | Orphan-статус снят: первый живой потребитель `autonomy-policy.cjs` = fabric-engine (`fabric-engine.cjs:43`), `--autonomy L0\|L1` сквозной в `run.md`; чек-лист F1 §6 закрыт 6/6 (DEC-DEV-0154) | Полное F2-wiring (автономия на всех гейтах экосистемы) — отдельный vision-трек, coordination-gated |
-| G10 | Live-прогон 0162 снял «не подтверждён живьём»: P3 `batch-features-to-cc-sdd` → P4 (поймал 2 реальных LOW-дрейфа BR-081) → P5 (19/19 тасков, run-id-backed) → P6×2 NO-GO→GO (добор G-B, 0163) на пилоте FM-006 | P7 probe DEF-4 (false-negative на pnpm-monorepo, PA-056) → **пост-обяз. №3**; ветка `runtime_gate_retry`/`evt:env.up` честно live-невалидирована |
+| G10 | Live-прогон 0162 снял «не подтверждён живьём»: P3 `batch-features-to-cc-sdd` → P4 (поймал 2 реальных LOW-дрейфа BR-081) → P5 (19/19 тасков, run-id-backed) → P6×2 NO-GO→GO (добор G-B, 0163) на пилоте FM-006. DEF-4 закрыт: P7 probe сканирует workspaces (DEC-DEV-0168) | Ветка `runtime_gate_retry`/`evt:env.up` честно live-невалидирована (более не маскируется DEF-4 — проверится естественным триггером) |
 | G11 | Для fabric-tracked прогонов появился детерминированный след: `ingest` требует result-file + `--run-id`, bracket-guard отбивает голый tick (exit 2), подделка видна post-hoc (события без run_id / ledger без брекетов / нереалистичные интервалы — урок 0163) | Runtime-доказательства «агент реально запустил .cjs» вне fabric-линии нет — prompted как был |
-| G12 | bracket-guard DEF-3 (DEC-DEV-0163, PR #141): для fabric-tracked линий брекет ledger start→finish→ingest **принудителен**, эскейп `--force-manual` аудируем в `why[]`; live-долг run-ledger закрыт (R10) | Вне `--fabric` wiring остаётся поведенческим контрактом. Рекомендация судьи: `--force-manual` reason → ссылка на PA + валидация → **пост-обяз. №3** |
+| G12 | bracket-guard DEF-3 (DEC-DEV-0163, PR #141): для fabric-tracked линий брекет ledger start→finish→ingest **принудителен**, эскейп `--force-manual` аудируем в `why[]`; live-долг run-ledger закрыт (R10). Рекомендация судьи выполнена: reason эскейпа обязан ссылаться на существующую PA (DEC-DEV-0168) | Вне `--fabric` wiring остаётся поведенческим контрактом |
 | G13 | Уточнение факта аудита: читатель заявлен — `commands/orchestrator/run.md:2` «Reads handoffs + tool-docs»; P3 живьём прогнан | Чтение prompted (LLM-инструкция), машинного подтверждения потребления tool-docs нет |
 
 ## ⬜ Открыто — с роутингом
@@ -73,7 +73,7 @@
 - **G34** guard резолвимости путей INFORMATION-MAP — скрипта нет (grep по scripts/ и workflows/ пуст).
 
 **Upstream-долг graduation-прогона** (не G-номера, но из той же сверки): DEF-4 + ANOM-5 +
-`--force-manual` reason→PA — уже оформлены как пост-обязательство №3.
+`--force-manual` reason→PA — ✅ закрыт тем же днём (DEC-DEV-0168, пост-обязательство №3).
 
 ## Короткий ответ
 

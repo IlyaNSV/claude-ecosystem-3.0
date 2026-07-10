@@ -25,7 +25,7 @@ const { execFileSync } = require('node:child_process');
 const LIB_PATH = path.join(__dirname, '..', '..', 'orchestrator', 'lib', 'runtime-readiness.cjs');
 const lib = require(LIB_PATH);
 const {
-  detectRunTarget, bootBlockingCaps, deferredCaps, buildRequests,
+  detectRunTarget, detectWorkspaceRunTargets, bootBlockingCaps, deferredCaps, buildRequests,
   assessReadiness, smokePlan, summarize, capabilitiesFor, VERDICT, READINESS, ROUTE,
 } = lib;
 
@@ -256,6 +256,149 @@ test('CLI seam: a BLOCK external_capabilities manifest flows to BLOCKED_ON_CAPAB
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+});
+
+// === DEF-4: workspace / monorepo run targets (DEC-DEV-0168) ===================
+
+// (a) pure detectWorkspaceRunTargets — sort / priority / skip packages with no target
+test('detectWorkspaceRunTargets: sorts by source priority then dir; skips packages with no bootable target', () => {
+  const wss = [
+    { dir: 'apps/zeta', manifest: { scripts: { dev: 'vite' } } },
+    { dir: 'apps/alpha', manifest: { scripts: { dev: 'vite' } } },
+    { dir: 'apps/lib', manifest: { scripts: { build: 'tsc' } } },   // no boot target ⇒ skipped
+    { dir: 'apps/api', manifest: { dev_command: 'make run' } },      // higher-priority source
+  ];
+  const cands = detectWorkspaceRunTargets(wss);
+  assert.strictEqual(cands.length, 3, 'the no-target package is dropped');
+  // dev_command outranks scripts.dev regardless of dir order
+  assert.deepStrictEqual(cands[0], { command: 'make run', source: 'workspace:apps/api#dev_command', cwd: 'apps/api' });
+  // equal source rank (scripts.dev) ⇒ lexicographic by dir
+  assert.strictEqual(cands[1].cwd, 'apps/alpha');
+  assert.strictEqual(cands[2].cwd, 'apps/zeta');
+  assert.strictEqual(cands[1].source, 'workspace:apps/alpha#scripts.dev');
+  assert.strictEqual(cands[1].command, 'npm run dev');
+});
+
+// (b) assessReadiness origin='workspace' ⇒ disclosure
+test('assessReadiness: runTargetOrigin=workspace discloses the monorepo-sourced target', () => {
+  const a = assessReadiness({
+    runTarget: { command: 'npm run dev', source: 'workspace:apps/web#scripts.dev', cwd: 'apps/web' },
+    runTargetOrigin: 'workspace',
+    capabilities: [],
+    envReadiness: READINESS.READY,
+  });
+  assert.strictEqual(a.verdict, VERDICT.READY_TO_SMOKE);
+  assert.ok(a.disclosures.some((d) => /workspace "apps\/web"/.test(d)), 'the workspace origin must be disclosed');
+});
+
+// (c) >1 candidate ⇒ disclosure listing all + --app hint
+test('assessReadiness: >1 run-target candidate discloses all candidates + suggests --app', () => {
+  const cands = [
+    { command: 'npm run dev', source: 'workspace:apps/api#scripts.dev', cwd: 'apps/api' },
+    { command: 'npm run dev', source: 'workspace:apps/web#scripts.dev', cwd: 'apps/web' },
+  ];
+  const a = assessReadiness({
+    runTarget: cands[0],
+    runTargetOrigin: 'workspace',
+    runTargetCandidates: cands,
+    capabilities: [],
+    envReadiness: READINESS.READY,
+  });
+  assert.deepStrictEqual(a.run_target_candidates, cands);
+  assert.ok(
+    a.disclosures.some((d) => /--app/.test(d) && /apps\/api/.test(d) && /apps\/web/.test(d)),
+    'all candidates + the --app pin hint must be disclosed',
+  );
+});
+
+// (d) no workspace inputs ⇒ no new disclosures, run_target_candidates=[] (bit-for-bit regression)
+test('assessReadiness: no workspace inputs ⇒ run_target_candidates=[] and no new disclosures (regression)', () => {
+  const a = assessReadiness({ runTarget: { command: 'npm run dev' }, capabilities: [], envReadiness: READINESS.READY, p6Verdict: 'GO' });
+  assert.deepStrictEqual(a.run_target_candidates, [], 'defaults to an empty candidate list');
+  assert.strictEqual(a.disclosures.length, 0, 'a root-origin single-target clean run adds no workspace disclosures');
+});
+
+// (e) CLI: pnpm-workspace scan finds apps/web ⇒ READY_TO_SMOKE, run_target.cwd === 'apps/web'
+test('CLI: pnpm-workspace scan of a root with no dev scripts finds apps/web ⇒ READY_TO_SMOKE with cwd', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p7-ws-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'root', scripts: { test: 'jest' } }));
+    fs.writeFileSync(path.join(tmp, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n");
+    const web = path.join(tmp, 'apps', 'web');
+    fs.mkdirSync(web, { recursive: true });
+    fs.writeFileSync(path.join(web, 'package.json'), JSON.stringify({ scripts: { dev: 'vite' } }));
+    const out = JSON.parse(execFileSync('node', [LIB_PATH, '--root', tmp, '--env', 'READY'], { encoding: 'utf8' }));
+    assert.strictEqual(out.verdict, VERDICT.READY_TO_SMOKE, 'a workspace-sourced target must clear the false NOT_STARTABLE');
+    assert.strictEqual(out.run_target.cwd, 'apps/web');
+    assert.strictEqual(out.run_target.command, 'npm run dev');
+    assert.ok(out.plan && out.plan.cwd === 'apps/web', 'the boot plan carries the workspace cwd');
+    assert.ok(out.disclosures.some((d) => /workspace/.test(d)), 'the workspace origin is disclosed');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+// (f) two apps with dev scripts ⇒ deterministic lexicographic pick + 2 candidates
+test('CLI: two workspace apps with dev scripts ⇒ deterministic lexicographic pick + run_target_candidates.length===2', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p7-ws2-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'root' }));
+    fs.writeFileSync(path.join(tmp, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n");
+    for (const name of ['web', 'api']) {
+      const d = path.join(tmp, 'apps', name);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify({ scripts: { dev: `${name}-dev` } }));
+    }
+    const out = JSON.parse(execFileSync('node', [LIB_PATH, '--root', tmp, '--env', 'READY'], { encoding: 'utf8' }));
+    assert.strictEqual(out.verdict, VERDICT.READY_TO_SMOKE);
+    assert.strictEqual(out.run_target.cwd, 'apps/api', 'the lexicographically-first app wins deterministically');
+    assert.strictEqual(out.run_target_candidates.length, 2);
+    assert.ok(out.disclosures.some((d) => /--app/.test(d)), 'ambiguity across >1 candidate is disclosed with --app');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+// (g) --app pins a specific workspace package (overriding the auto-pick)
+test('CLI: --app pins a specific workspace package over the auto-selected one', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p7-app-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'root' }));
+    fs.writeFileSync(path.join(tmp, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n");
+    for (const name of ['web', 'api']) {
+      const d = path.join(tmp, 'apps', name);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify({ scripts: { dev: `${name}-dev` } }));
+    }
+    // auto-pick would be apps/api (lexicographic); --app apps/web must override it
+    const out = JSON.parse(execFileSync('node', [LIB_PATH, '--root', tmp, '--app', 'apps/web', '--env', 'READY'], { encoding: 'utf8' }));
+    assert.strictEqual(out.verdict, VERDICT.READY_TO_SMOKE);
+    assert.strictEqual(out.run_target.cwd, 'apps/web');
+    assert.strictEqual(out.run_target.command, 'npm run dev');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+// (h) monorepo with no workspace manifests and no root scripts ⇒ NOT_STARTABLE (DEF-4 neighbor unbroken)
+test('CLI: a repo with no workspace manifests and no root run target ⇒ NOT_STARTABLE (DEF-4 neighbor case unbroken)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p7-none-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'root', scripts: { test: 'jest' } }));
+    const out = JSON.parse(execFileSync('node', [LIB_PATH, '--root', tmp, '--env', 'READY'], { encoding: 'utf8' }));
+    assert.strictEqual(out.verdict, VERDICT.NOT_STARTABLE, 'no run target anywhere is still NOT_STARTABLE');
+    assert.strictEqual(out.plan, null);
+    assert.deepStrictEqual(out.run_target_candidates, []);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+// (i) npm-form root package.json workspaces:['packages/*'] is scanned too
+test('CLI: npm-form root workspaces:[packages/*] is scanned as well as pnpm', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p7-npm-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'root', workspaces: ['packages/*'] }));
+    const d = path.join(tmp, 'packages', 'server');
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify({ scripts: { start: 'node index.js' } }));
+    const out = JSON.parse(execFileSync('node', [LIB_PATH, '--root', tmp, '--env', 'READY'], { encoding: 'utf8' }));
+    assert.strictEqual(out.verdict, VERDICT.READY_TO_SMOKE);
+    assert.strictEqual(out.run_target.cwd, 'packages/server');
+    assert.strictEqual(out.run_target.command, 'npm run start');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);

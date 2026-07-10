@@ -8189,6 +8189,27 @@ Guide вырос 7→8 доков, `check:doctype` зелёный; CHANGELOG `[U
 1. **Сверка реестра против репо дешевле и честнее сверки против памяти:** 3 из 20 recon-фактов уточнили бы «уверенное» знание (G13 reader существовал в run.md изначально — аудит-агрегатор его не увидел; G28 expires_at уже проверяется inline при чтении — sweeper нужен только для проактивности; watchdog G05/G06 сам декларирует какие gaps закрывает — самодокументирующийся фикс упрощает будущие сверки).
 2. Паттерн «закрывашка объявляет свой gap-номер в заголовке файла» (subagent-watchdog.js) стоит копеек при написании и делает reconciliation greppable — кандидат в конвенцию для будущих gap-фиксов.
 
+## DEC-DEV-0168 — Upstream-долг graduation-прогона закрыт: DEF-4 workspace-скан P7-probe, ANOM-5 самоочистка owner-queue, --force-manual требует PA-ссылку
+
+**Date:** 2026-07-10
+**Trigger:** пост-graduation обязательство №3 (открыто DEC-DEV-0165; условие судьи №2 «DEF-4/ANOM-5 = upstream-долг» + рекомендация №4); мандат владельца «мёржи и продолжай самостоятельно».
+
+### Context
+Три дыры, вскрытые живым graduation-прогоном (FABRIC_PHASE3_GRADE_REPORT): (1) **DEF-4** — `runtime-readiness.cjs` читал только корневой `package.json`, на pnpm-monorepo пилота (dev-скрипты в `apps/*`) выдавал ложный `NOT_STARTABLE` short-circuit до env-пробы — это заблокировало критерий R2 и оставило ветку `runtime_gate_retry`/`evt:env.up` live-невалидированной (PA-056 open → ecosystem); (2) **ANOM-5** — `appendOwnerQueue` только пушил, dequeue не существовал → 5 stale-записей terminal-инстансов = ложные owner-сигналы в `status`/SessionStart-инжекте, реконсилировали вручную; (3) `--force-manual` принимал любую непустую причину — эскейп был дешевле честного пути (урок 0163 §3 требовал обратного).
+
+### Decision(s)
+1. **DEF-4 — workspace-скан, enum вердиктов нетронут** (soft-миграция): чистая `detectWorkspaceRunTargets()` (детерминированный ранг: источник → лексикографика dir) + CLI-скан `pnpm-workspace.yaml`/npm `workspaces` (литерал + одноуровневый `/*`; `!`/`**` пропускаются с disclosure-нотой — честное ограничение вместо тихой полноты) + `--app <dir>` пин + disclosure на workspace-происхождение и неоднозначность. Отвергнуто: новый вердикт AMBIGUOUS (ломает enum-контракт потребителей run.md §P7) и полный glob-движок (не нужен для фактических форм: пилот = `apps/*`).
+2. **ANOM-5 — prune на write-path, status строго read-only**: `dequeueOwnerEntries()` в `applyEventFS` после персиста снапшота и ДО `applyEffects` (свежий парк в новый гейт переживает собственный tick) — выкидывает записи ушедшей линии + глобальных сирот; дедуп на append. `status` НЕ пишет (его зовёт SessionStart-хук — read-only контракт задокументирован) — read-only split `reconcileOwnerQueue()` → `owner_queue` (живые) + `owner_queue_stale` (с reason, не прячем). Отвергнуто: prune из `status` (сломал бы read-only контракт хука) и event-sourcing очереди (owner-queue — shell-side проекция, как PA-мост; replay бит-в-бит нетронут).
+3. **`--force-manual "PA-NNN: <why>"`**: причина обязана нести PA-id и он обязан существовать в pa-file (числовое сравнение заголовков `## PA-NNN` — без zero-padding-ловушек). Эскейп теперь дороже честного пути: сначала PA-запись о вмешательстве, потом обход. Тест-фикстуры переведены на seed-PA.
+4. **Сборка по MDP**: два opus-исполнителя параллельно по точным брифам (файлы не пересекались), main-ревью обоих диффов до коммита; контрактные решения (enum freeze, read-only status, порядок prune/applyEffects) зафиксированы в брифах заранее.
+
+### Outcome
+`runtime-readiness.cjs` юниты 21→30, `fabric-engine.cjs` 27→35, полный verify EXIT=0. Риды: `docs/guide/07-fabric.md` (§4 самоочистка очереди, §6 PA-ссылка эскейпа, §8 остаток честных границ сужен), CHANGELOG `[Unreleased] Fixed`. Пост-обязательство №3 закрыто в EXECUTION_ROADMAP; PA-056 пилота закрывается при следующей доставке (`/ecosystem:update`). Остаток №3-класса: ветка `runtime_gate_retry`/`evt:env.up` по-прежнему live-невалидирована — теперь её ничто не маскирует, проверится естественным live-триггером.
+
+### Lessons
+1. **«Условие судьи → work-order → фикс» работает как конвейер только если долг записан с точным root-cause на месте** — DEF-4/ANOM-5 были зафиксированы в GRADE_REPORT с файлами и механизмом, фикс собрался за один заход без ре-форензики.
+2. Read-only контракт потребителя (SessionStart-хук → `status`) — жёсткое ограничение на месте фикса: самоочистку пришлось разнести на write-path + read-only split. Проверяй, КТО зовёт команду, прежде чем добавлять ей side-effect.
+
 ## DEC-DEV-0169 — Слой доменной экспертизы: гейт Domain Fit (D1.0b) на входе идеи, реестр 96 подкатегорий, порог 75
 
 **Date:** 2026-07-10
