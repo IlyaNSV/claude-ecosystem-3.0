@@ -213,6 +213,14 @@ auto_approve_confirmation_artifacts:
 
 **Последовательность:**
 
+0. **D1.0 Product Classification → D1.0b Domain Fit Assessment** (быстрые пре-шаги; пишут в `product.yaml`, не в артефакты)
+   - D1.0: архетип + фасеты → блок `product_class` (advisory, не gate — DEC-DEV-0079)
+   - D1.0b: классификация идеи по реестру доменной экспертизы (96 подкатегорий, по ядру
+     ценности) → совокупный балл vs порог 75 → блок `domain_fit`. **Единственный
+     класс-гейт**: ниже порога — стоп до решения владельца (adapted / proceed-with-risks /
+     aborted; override легален и фиксируется — DEC-DEV-0169). `decision: aborted`
+     завершает Discovery.
+
 1. **D1.1 Problem Discovery**
    - Ассистент задаёт 5-8 уточняющих вопросов (контекст, масштаб, alternatives)
    - Формирует draft PS

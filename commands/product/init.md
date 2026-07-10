@@ -71,6 +71,7 @@ bg_synonym_warnings: 0
 
 next_steps:
   - D1.0 Product Classification (product.yaml; advisory, not a gate)
+  - D1.0b Domain Fit Assessment (product.yaml; GATE — registry score vs threshold 75, owner override)
   - D1.1 Problem Discovery → G1
 
 progress_percent: 0
@@ -84,6 +85,7 @@ progress_percent: 0
 
 Load `discovery-session.md`. It handles:
 - D1.0 Product Classification (writes `product_class` to `product.yaml`; advisory, not a gate — DEC-DEV-0079)
+- D1.0b Domain Fit Assessment (writes `domain_fit` to `product.yaml`; **gate**: registry lookup vs threshold 75, owner override recorded; `decision: aborted` ends the session — DEC-DEV-0169)
 - D1.1 Problem Discovery (G1 approve)
 - D1.2 Market Research (queued for Discovery Review Checkpoint — A2 modification)
 - D1.3 Competitive Analysis (queued for DRC)
@@ -106,6 +108,7 @@ When all gates passed + BG extraction done:
   Discovery Session complete.
   Artifacts created:
     ✓ product_class (product.yaml: <archetype>)
+    ✓ domain_fit (product.yaml: <subcategory> <score>/100, <verdict>)
     ✓ PS (problem.md)
     ✓ MR (market-research.md, <N> sources, credibility med-high)
     ✓ CA (competitive-analysis.md, <N> competitors)
