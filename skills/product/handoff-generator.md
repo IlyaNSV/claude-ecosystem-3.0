@@ -94,6 +94,13 @@ Parse FM.frontmatter (через Read + manual YAML parse):
 целиком** (receiver выводит форму сам, как до 0079). Это derive из SSOT `product.yaml` —
 не переписывать, не угадывать.
 
+**И блок `domain_fit`** (DEC-DEV-0172). Эмиссия — только когда receiver'у есть что знать:
+блок присутствует И `verdict != unset` И `limiters` непуст (типовой случай —
+`decision: proceed-with-risks`). Тогда — echo в §1 строку `Domain fit:` + во frontmatter
+блок `domain_fit` + bullet в §12 (см. Step 8/Step 9). Иначе (блок отсутствует / `fit` с
+пустыми `limiters` / unset) — все три позиции **опускаются целиком**: чистый fit не несёт
+downstream-сигнала. Derive из SSOT `product.yaml`; вердикт/баллы не пересчитывать.
+
 ### Step 3: Drift detection (если file exists)
 
 Если `.product/handoffs/FM-<NNN>-handoff.md` already exists:
@@ -278,7 +285,7 @@ Sections в фиксированном порядке:
 
 | # | Section | Required | Content |
 |---|---|---|---|
-| 1 | Executive Summary | MUST | FM title, SEG primary + JTBD, primary HYP с thresholds, RL, has_ui, **Product class** (если != unset — advisory: `<archetype> (<runtime_locus>/<interface>/<distribution>)`), dependencies, 2-3 sentence description |
+| 1 | Executive Summary | MUST | FM title, SEG primary + JTBD, primary HYP с thresholds, RL, has_ui, **Product class** (если != unset — advisory: `<archetype> (<runtime_locus>/<interface>/<distribution>)`), **Domain fit** (только если `limiters` непуст — advisory: `<subcategory> <score>/100, <decision>; за скобками: <limiters>`), dependencies, 2-3 sentence description |
 | 2 | Business Context | MUST | FM full body + SEG excerpt + VP statement + HYP statement+thresholds |
 | 3 | Terminology | MUST | BG excerpt filtered к terms used в embedded artifacts (table format) |
 | 4 | Role & Permission Model | MUST | RPM filtered к roles в SC.actors + actions matrix |
@@ -508,6 +515,13 @@ product_class:                            # DEC-DEV-0079 — derived from produc
   distribution: saas
   data_sensitivity: pii                   # optional
 
+domain_fit:                               # DEC-DEV-0172 — derived from product.yaml; OMIT whole block если limiters пуст / verdict=unset / блока нет
+  subcategory: J2                         # registry ID (docs/pmo/domain-expertise-registry.md)
+  score: 68                               # registry aggregate at assessment time
+  verdict: conditional-fit
+  decision: proceed-with-risks
+  limiters: "<что за скобками handoff — из product.yaml.domain_fit.limiters, verbatim>"
+
 target_adapter: "universal"
 target_tool: null
 target_tool_version: null
@@ -537,6 +551,7 @@ updated: <YYYY-MM-DD>
 - ❌ `passed_rules`, `validation_passed_list` → canonical = `validation_rules_passed` (array of V-* IDs)
 - ❌ `failed_rules`, `validation_failed_list` → canonical = `validation_rules_failed`
 - ❌ `product_type`, `class`, `product_category` → canonical = `product_class` (block; DEC-DEV-0079; derive из `product.yaml`, не переписывать; OMIT whole block если `archetype=unset`)
+- ❌ `domain`, `fit`, `domain_score`, `risks` → canonical = `domain_fit` (block; DEC-DEV-0172; derive из `product.yaml`, не переписывать/не пересчитывать; OMIT whole block если `limiters` пуст / `verdict=unset` / блока нет)
 
 **Filename slug rule** (per `docs/product-module/handoff-spec.md §4 Naming convention`): `<FM-id>-handoff.md` для feature-level (e.g., `FM-001-handoff.md`); `<RL-id>-handoff.md` для release-level (deferred к v1.1+). Никаких суффиксов c version-номером в filename — версии preserved через git history.
 
