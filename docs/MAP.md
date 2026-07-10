@@ -7,6 +7,7 @@
 > - Артефакты (24 типа) и их зависимости → [docs/pmo/artifacts/README.md](pmo/artifacts/README.md)
 > - Процессы P1-P5 → [docs/pmo/processes.md](pmo/processes.md) · Правила валидации → [docs/pmo/validation.md](pmo/validation.md)
 > - Модули → [docs/product-module/SPEC.md](product-module/SPEC.md), [docs/design-module/SPEC.md](design-module/SPEC.md), [docs/integrator-module/SPEC.md](integrator-module/SPEC.md)
+> - Process Fabric (межпроцессная линия фичи, cross-session) → [docs/guide/07-fabric.md](guide/07-fabric.md) (оператор) · [dev/process-fabric/CONCEPT.md](../dev/process-fabric/CONCEPT.md) (дизайн-SSOT)
 > - Статус «где мы сейчас» → [ROADMAP.md](../ROADMAP.md#где-мы-сейчас) (единственный источник)
 >
 > **Freshness-модель:** диаграммы coarse-grained (уровень модулей/доменов, не строк) — дрейфуют медленно. Обновлять только при изменении топологии модулей или набора доменов, не каждую фазу. Mermaid-блоки (текст, git-diffable, рендерятся в GitHub и в Obsidian-vault).
@@ -46,7 +47,7 @@ flowchart LR
     end
     HO --> D2T
 
-    ORC["Orchestrator Module<br/>P3-P6 built · запуск D3-D6"]
+    ORC["Orchestrator Module<br/>P1-P7 + Process Fabric<br/>запуск D3-D6"]
     ORC -. оркеструет .-> EXT
     D6["D6 · Meta: Ecosystem Governance<br/>Integrator Module + человек"]
     EXT --- D6
