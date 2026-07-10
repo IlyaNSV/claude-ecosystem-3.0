@@ -18,10 +18,12 @@
  */
 
 const assert = require('node:assert');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const lib = require(path.join(__dirname, '..', '..', 'orchestrator', 'lib', 'capability-probe.cjs'));
-const { parseManifestItem, extractManifest, dispositionFor, surface, summarize, DISPOSITION, ROUTE } = lib;
+const { parseManifestItem, extractManifest, dispositionFor, surface, summarize, parseEnvFileText, envPresence, DISPOSITION, ROUTE } = lib;
 
 let passed = 0;
 function test(name, fn) {
@@ -121,6 +123,60 @@ test('surface: a BLOCK routes Integrator; a deferred+TBD routes both Integrator 
   assert.ok(s[0].surface, 'a BLOCK must surface');
   assert.strictEqual(s[1].disposition, DISPOSITION.EXPECTED_ABSENT_BUT_DEFERRED);
   assert.deepStrictEqual(s[1].routes, [ROUTE.INTEGRATOR, ROUTE.PRODUCT], 'deferred + undecided provider routes both');
+});
+
+test('surface: env_source discloses WHICH source satisfied the secret (DEC-DEV-0174, DEF-OD7-1)', () => {
+  const items = [
+    { capability: 'llm', secret_env: 'OPENAI_API_KEY', provider: 'OpenAI', tier: 'prod', dev_stand_in: '' },
+    { capability: 'billing', secret_env: 'STRIPE_SECRET_KEY', provider: 'Stripe', tier: 'prod', dev_stand_in: '' },
+  ];
+  // a source-labelled predicate (what envPresence returns): the first secret sits in `.env`
+  const s = surface(items, (n) => (n === 'OPENAI_API_KEY' ? '.env' : false));
+  assert.strictEqual(s[0].present, true, 'a dotenv-sourced secret is PRESENT (no false-positive BLOCK)');
+  assert.strictEqual(s[0].disposition, DISPOSITION.SATISFIED);
+  assert.strictEqual(s[0].env_source, '.env', 'env_source carries the satisfying source');
+  assert.ok(/\.env/.test(s[0].rationale), 'the rationale discloses the source');
+  assert.strictEqual(s[1].env_source, null, 'an absent secret has no env_source');
+  // a plain-boolean predicate (old injected style) keeps working and reads as process-env
+  const b = surface([items[0]], (n) => n === 'OPENAI_API_KEY');
+  assert.strictEqual(b[0].present, true);
+  assert.strictEqual(b[0].env_source, 'process-env');
+});
+
+test('parseEnvFileText: dotenv-lite — comments/blank/export tolerated, quotes stripped, empty value ≠ presence', () => {
+  const vars = parseEnvFileText([
+    '# a comment',
+    '',
+    'OPENAI_API_KEY=sk-proj-abc123',
+    'export QUOTED="with spaces"',
+    "SINGLE='single'",
+    'EMPTY=',
+    'ALSO_EMPTY=""',
+    'not a var line',
+    '1BAD=starts-with-digit',
+  ].join('\n'));
+  assert.strictEqual(vars.OPENAI_API_KEY, 'sk-proj-abc123');
+  assert.strictEqual(vars.QUOTED, 'with spaces');
+  assert.strictEqual(vars.SINGLE, 'single');
+  assert.ok(!('EMPTY' in vars), 'an empty assignment is not presence');
+  assert.ok(!('ALSO_EMPTY' in vars), 'an empty quoted assignment is not presence');
+  assert.ok(!('1BAD' in vars), 'an invalid key is skipped');
+});
+
+test('envPresence: process.env wins, then .env, then .env.local; absent everywhere ⇒ false (FS-level)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'capprobe-'));
+  fs.writeFileSync(path.join(root, '.env'), 'FROM_DOTENV=x\nSHADOWED=file-value\n');
+  fs.writeFileSync(path.join(root, '.env.local'), 'FROM_LOCAL=y\n');
+  process.env.SHADOWED = 'proc-value';
+  try {
+    const has = envPresence(root);
+    assert.strictEqual(has('SHADOWED'), 'process-env', 'a live export wins over the file');
+    assert.strictEqual(has('FROM_DOTENV'), '.env');
+    assert.strictEqual(has('FROM_LOCAL'), '.env.local');
+    assert.strictEqual(has('NOWHERE_TO_BE_FOUND'), false);
+  } finally {
+    delete process.env.SHADOWED;
+  }
 });
 
 test('summarize: counts blocking / deferred / satisfied + provider choices', () => {

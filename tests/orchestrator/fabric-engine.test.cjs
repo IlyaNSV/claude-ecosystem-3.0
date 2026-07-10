@@ -24,6 +24,13 @@
  *   - payload bridge (DEC-DEV-0171): ingestEmits carries a payloadPath slice onto the event (applyIngest
  *     stays event-names); the slice lands FULL in events.ndjson and, on a human-gate park, in the
  *     PA-record as fenced json (truncated >2000, markers intact); a rule without payloadPath is inert.
+ *   - DEF-OD7-2 ingest bracket-guard (DEC-DEV-0174): ingest requires a ledger-backed --run-id (no
+ *     run-id / non-ledger run-id refused); --force-manual "PA-NNN: …" is the audited escape; dedup
+ *     runs BEFORE the guard so a recorded run stays a no-op on repeat.
+ *   - charter v3 (DEC-DEV-0174): P5 `blocked + go_gate:null` maps to evt:impl.manual_verify
+ *     (DEF-OD7-3, precedence-safe under go_gate/conflicts); evt:owner.close → closed_without_runtime
+ *     terminal (ANOM-OD7-1); a bare evt:owner.* tick is refused, pa-scan stays the owner-act path
+ *     (ANOM-OD7-2).
  *
  * Node stdlib only; run with `node tests/orchestrator/fabric-engine.test.cjs`.
  */
@@ -96,9 +103,19 @@ function tick(base, id, event, at, extra) {
 // The reason must reference a PA-id present in the pa-file (rec #4) — tests using this MUST first call
 // seedPaFixture(base) so PA-001 exists in the base's pending-actions.md.
 const FORCE_FIXTURE = ['--force-manual', 'PA-001: unit-test fixture'];
+// DEF-OD7-2 bracket guard (DEC-DEV-0174): ingest requires a run_id the run-ledger has seen. The
+// ledger lives in the temp base (via --ledger-file, like --pa-file) and the ingest() helper seeds a
+// fixture line per call — auto-generating a unique run-id unless the test pins one explicitly.
+function ledgerFile(base) { return path.join(base, 'ledger.ndjson'); }
+function seedLedger(base, runId) {
+  fs.appendFileSync(ledgerFile(base),
+    JSON.stringify({ run_ledger_version: 1, run_id: runId, process: 'fixture', status: 'finished' }) + '\n');
+}
+let runFixtureSeq = 0;
 function ingest(base, id, proc, result, at, runId) {
-  const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result), '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base)];
-  if (runId) args.push('--run-id', runId);
+  const rid = runId || `run-fixture-${(runFixtureSeq += 1)}`;
+  seedLedger(base, rid);
+  const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result), '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base), '--ledger-file', ledgerFile(base), '--run-id', rid];
   return cli(args);
 }
 function paScan(base, extra) {
@@ -474,8 +491,10 @@ test('owner-queue: reaching a terminal state clears the line\'s queued entries',
   // manual_verify parks the line in escalated (queues the owner)
   assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'MANUAL_VERIFY_REQUIRED' }).json.ticks[0].to, 'escalated');
   assert.strictEqual(readOwnerQueue(base).length, 1, 'escalated queued the owner');
-  // owner aborts → terminal 'aborted'; the write-path prunes the stale escalated entry
-  assert.strictEqual(tick(base, id, 'evt:owner.abort').json.to, 'aborted');
+  // owner aborts → terminal 'aborted'; the write-path prunes the stale escalated entry.
+  // ANOM-OD7-2 guard (DEC-DEV-0174): an owner.* tick must reference the owner's decision PA —
+  // the escalated park just appended PA-001, so the fixture points at it.
+  assert.strictEqual(tick(base, id, 'evt:owner.abort', null, ['--force-manual', 'PA-001: owner abort decision (unit fixture)']).json.to, 'aborted');
   assert.strictEqual(readOwnerQueue(base).length, 0, 'the terminal move cleared the queued entry');
 });
 
@@ -558,6 +577,121 @@ test('force-manual: a valid, existing PA reference applies the tick and stamps t
   assert.strictEqual(r.json.to, 'runtime_gate', 'the forced tick applies the real transition');
   assert.ok(r.json.why.some((w) => w === 'forced-manual: PA-001: manual recovery'),
     `why[] must carry the forced-manual marker: ${JSON.stringify(r.json.why)}`);
+});
+
+// ==== DEF-OD7-2 ingest bracket-guard (DEC-DEV-0174) ==============================================
+
+test('ingest guard: a run_id the run-ledger never saw is refused (exit 2), state untouched', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-RAWWF');
+  // deliberately NO seedLedger — the 0173 live-run hole: a raw-Workflow run id handed to ingest
+  const r = cli(['ingest', '--instance', id, '--process', 'feature-to-tdd-impl',
+    '--result', JSON.stringify({ go_gate: 'GO' }), '--charter', CHARTER, '--at', AT,
+    '--base-root', base, '--pa-file', paFile(base), '--ledger-file', ledgerFile(base),
+    '--run-id', 'wf-raw-426']);
+  assert.strictEqual(r.code, 2, `a non-ledger run_id must exit 2: ${r.stdout}`);
+  assert.ok(/DEF-OD7-2/.test(r.stderr) && /run-ledger/.test(r.stderr),
+    `stderr must name the bracket guard and the ledger: ${r.stderr}`);
+  assert.strictEqual(readState(base, id).state, 'implementing', 'the refused ingest is a no-op');
+});
+
+test('ingest guard: ingest WITHOUT --run-id is refused (exit 2) — the bracket is not optional', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-NORID');
+  const r = cli(['ingest', '--instance', id, '--process', 'feature-to-tdd-impl',
+    '--result', JSON.stringify({ go_gate: 'GO' }), '--charter', CHARTER, '--at', AT,
+    '--base-root', base, '--pa-file', paFile(base), '--ledger-file', ledgerFile(base)]);
+  assert.strictEqual(r.code, 2, `an ingest without --run-id must exit 2: ${r.stdout}`);
+  assert.ok(/without --run-id/.test(r.stderr), `stderr must name the missing run-id: ${r.stderr}`);
+  assert.strictEqual(readState(base, id).state, 'implementing', 'the refused ingest is a no-op');
+});
+
+test('ingest guard: --force-manual (existing PA) applies the ingest, stamps the marker; repeat dedups', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-FORCEIN');
+  seedPaFixture(base);
+  const args = ['ingest', '--instance', id, '--process', 'feature-to-tdd-impl',
+    '--result', JSON.stringify({ go_gate: 'GO' }), '--charter', CHARTER, '--at', AT,
+    '--base-root', base, '--pa-file', paFile(base), '--ledger-file', ledgerFile(base),
+    '--run-id', 'wf-raw-427'];
+  const r = cli(args.concat(['--force-manual', 'PA-001: deliberate manual ingest']));
+  assert.strictEqual(r.code, 0, `a valid PA-referencing force must apply: ${r.stderr}`);
+  assert.strictEqual(r.json.ticks[0].to, 'runtime_gate');
+  assert.ok(r.json.ticks[0].why.some((w) => w === 'forced-manual: PA-001: deliberate manual ingest'),
+    `the tick's why[] must carry the audit marker: ${JSON.stringify(r.json.ticks[0].why)}`);
+  // dedup runs BEFORE the guard: the recorded run_id short-circuits even without --force-manual
+  const dup = cli(args);
+  assert.strictEqual(dup.code, 0, `a repeated forced ingest must no-op, not re-litigate the guard: ${dup.stderr}`);
+  assert.strictEqual(dup.json.deduped, true);
+});
+
+test('ingest guard: a ledger-backed run_id passes without --force-manual (the honest path)', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-HONEST');
+  seedLedger(base, 'run-honest-1');
+  const r = cli(['ingest', '--instance', id, '--process', 'feature-to-tdd-impl',
+    '--result', JSON.stringify({ go_gate: 'GO' }), '--charter', CHARTER, '--at', AT,
+    '--base-root', base, '--pa-file', paFile(base), '--ledger-file', ledgerFile(base),
+    '--run-id', 'run-honest-1']);
+  assert.strictEqual(r.code, 0, `a bracketed run must ingest freely: ${r.stderr}`);
+  assert.strictEqual(r.json.ticks[0].to, 'runtime_gate');
+  assert.ok(!r.json.ticks[0].why.some((w) => /forced-manual/.test(w)), 'no audit marker on the honest path');
+});
+
+// ==== charter v3: blocked+go_gate:null fallback (DEF-OD7-3) + owner terminals (ANOM-OD7-1/2) =====
+
+test('charter: P5 blocked + go_gate:null maps to evt:impl.manual_verify (DEF-OD7-3 ingest gap closed)', () => {
+  // the REAL 0173 live-run shape: nothing implemented, every task blocked, the gate never ran →
+  // pre-fix this matched NO rule (no-op) and the park had to be emitted by hand (events seq 10 why).
+  const realP5AllBlocked = { feature: 'FM-1', implemented: [], blocked: ['5.4'], concerns: [], conflicts: [], findings: [], go_gate: null, readiness: 'READY' };
+  assert.deepStrictEqual(applyIngest(charter, 'feature-to-tdd-impl', realP5AllBlocked), ['evt:impl.manual_verify']);
+  // precedence: an explicit go_gate verdict still wins over the blocked fallback…
+  assert.deepStrictEqual(applyIngest(charter, 'feature-to-tdd-impl', { blocked: ['x'], go_gate: 'GO' }), ['evt:impl.go']);
+  // …and a conflict still wins over everything
+  assert.deepStrictEqual(applyIngest(charter, 'feature-to-tdd-impl', { blocked: ['x'], conflicts: ['c'], go_gate: null }), ['evt:impl.conflict']);
+});
+
+test('charter: end-to-end blocked+go_gate:null ingest parks the line in escalated (owner-queued)', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-BLKNULL');
+  const r = ingest(base, id, 'feature-to-tdd-impl', { implemented: [], blocked: ['5.4'], go_gate: null });
+  assert.strictEqual(r.json.emitted[0], 'evt:impl.manual_verify');
+  assert.strictEqual(r.json.ticks[0].to, 'escalated');
+  assert.strictEqual(readOwnerQueue(base).length, 1, 'the park queued the owner');
+});
+
+test('ANOM-OD7-2 guard: a bare tick of an evt:owner.* decision event is refused (exit 2)', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-OWNG');
+  assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'MANUAL_VERIFY_REQUIRED' }).json.ticks[0].to, 'escalated');
+  const r = tick(base, id, 'evt:owner.abort');
+  assert.strictEqual(r.code, 2, `a bare owner.* tick must exit 2: ${r.stdout}`);
+  assert.ok(/OWNER-decision/.test(r.stderr) && /pa-scan/.test(r.stderr),
+    `stderr must explain the owner-act path: ${r.stderr}`);
+  assert.strictEqual(readState(base, id).state, 'escalated', 'the refused owner tick is a no-op');
+});
+
+test('ANOM-OD7-1: evt:owner.close (PA-referenced) reaches the closed_without_runtime terminal', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-CLOSE');
+  // parks in escalated → the PA bridge appends PA-001, which RECORDS the owner's decision
+  assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'MANUAL_VERIFY_REQUIRED' }).json.ticks[0].to, 'escalated');
+  const r = tick(base, id, 'evt:owner.close', null, ['--force-manual', 'PA-001: owner split the task → close without runtime']);
+  assert.strictEqual(r.code, 0, `a PA-referenced owner.close must apply: ${r.stderr}`);
+  assert.strictEqual(r.json.to, 'closed_without_runtime');
+  assert.strictEqual(r.json.prescription.final, true, 'closed_without_runtime is terminal');
+  assert.strictEqual(readOwnerQueue(base).length, 0, 'the terminal move cleared the queued entry');
+});
+
+test('ANOM-OD7-2: pa-scan --tick (the owner-act path) still resumes escalated without --force-manual', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-OWNRES');
+  assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'MANUAL_VERIFY_REQUIRED' }).json.ticks[0].to, 'escalated');
+  setPaStatus(base, 'PA-001', 'done');                        // the owner's act
+  const r = paScan(base, ['--tick']);
+  assert.strictEqual(r.json.ticked.length, 1, `pa-scan must fire the resume: ${JSON.stringify(r.json)}`);
+  assert.strictEqual(r.json.ticked[0].to, 'implementing', 'evt:owner.resume fires via the sanctioned PA flip');
+  assert.strictEqual(readState(base, id).state, 'implementing');
 });
 
 // ==== PA bridge (phase 2b) =======================================================================
@@ -687,9 +821,11 @@ function initFix(base, charterPath, subject) {
   return r.json.instance;
 }
 function ingestFix(base, charterPath, id, proc, result, runId) {
+  const rid = runId || `run-fixture-${(runFixtureSeq += 1)}`;
+  seedLedger(base, rid);
   const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result),
-    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base)];
-  if (runId) args.push('--run-id', runId);
+    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base),
+    '--ledger-file', ledgerFile(base), '--run-id', rid];
   return cli(args);
 }
 function readEventsFix(base, id) {
@@ -728,8 +864,10 @@ test('(c) CLI ingest --result-file parks a human gate; payload lands in events.n
   const requests = [{ capability: 'mcp:stripe', why: 'charge API' }];
   const resultFile = path.join(base, 'result.json');
   fs.writeFileSync(resultFile, JSON.stringify({ requests }));
+  seedLedger(base, 'run-cap-1');
   const r = cli(['ingest', '--instance', id, '--process', 'probe-caps', '--result-file', resultFile,
-    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base)]);
+    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base),
+    '--ledger-file', ledgerFile(base), '--run-id', 'run-cap-1']);
   assert.strictEqual(r.code, 0, `ingest failed: ${r.stderr || r.stdout}`);
   assert.strictEqual(r.json.emitted[0], 'evt:caps.needed');
   assert.strictEqual(r.json.ticks[0].to, 'awaiting_capability', 'the payloadPath rule parks the line at the human gate');
@@ -757,8 +895,10 @@ test('(d) an oversized payload is truncated in the PA-record but full in events.
   for (let i = 0; i < 80; i += 1) requests.push({ capability: `mcp:tool-${i}`, why: 'x'.repeat(40) });
   const resultFile = path.join(base, 'big.json');
   fs.writeFileSync(resultFile, JSON.stringify({ requests }));
+  seedLedger(base, 'run-cap-big');
   const r = cli(['ingest', '--instance', id, '--process', 'probe-caps', '--result-file', resultFile,
-    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base)]);
+    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base),
+    '--ledger-file', ledgerFile(base), '--run-id', 'run-cap-big']);
   assert.strictEqual(r.code, 0, `ingest failed: ${r.stderr || r.stdout}`);
   assert.strictEqual(r.json.ticks[0].to, 'awaiting_capability');
   const pa = readPa(base);
