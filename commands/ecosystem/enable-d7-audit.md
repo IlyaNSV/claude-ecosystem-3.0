@@ -127,7 +127,7 @@ See dev/meta-improvement/checklists/audit-smoke-workflow.md (in the ecosystem re
 
 ## Disabling
 
-Remove the hook entry manually from `.claude/settings.local.json`, or run `/ecosystem:disable-d7-audit` (not implemented in 4.1 — manual removal works).
+Remove the hook entry manually from `.claude/settings.local.json` — that is the supported disable path. A dedicated `/ecosystem:disable-d7-audit` command deliberately does not exist (opt-in is rare enough that a one-line manual edit beats shipping + maintaining a command; G35).
 
 ## Anti-actions
 

@@ -5,6 +5,14 @@
 > **Закрывает:** DEC-A08 (Product Assistant как отдельный agent), DEC-P13 (универсальный паттерн), DEC-ART01..11 (каталог), все итерации 1-9.
 > **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, validation-tune, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
 > **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones) · [pmo/processes.md](../pmo/processes.md) (P1-P5 methodology) · [pmo/validation.md](../pmo/validation.md) (V-* rules) · [pmo/artifacts/](../pmo/artifacts/) (24 типа) · [handoff-spec.md](handoff-spec.md) (handoff format) · [integrator-module/SPEC.md](../integrator-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules)
+>
+> ⚠ **Пост-spec расширения (Vision, Epic A/B/C/D) — построены, но в тело этого SPEC НЕ вписаны (G21):**
+> персона-ревьюеры `architect-advisor`/`qa-advisor`/`ux-advisor` + zone-router и agent-roster
+> (DEC-DEV-0098/0151) · completeness-loop `/product:complete` с оракулом и durable wave-runner'ом
+> (DEC-DEV-0098/0142) · decision-жюри `/product:consilium <PA-NNN>` (DEC-DEV-0145) · макро-батч
+> `/product:batch-enrich` (DEC-DEV-0150). SSOT их поведения — `commands/product/*.md` + CHANGELOG
+> + [docs/guide/02-commands.md](../guide/02-commands.md); не делай вывода «нет в SPEC ⇒ нет в модуле».
+> Интеграция в тело SPEC — отдельный doc-трек.
 
 ## 1. Philosophy & Role
 

@@ -45,22 +45,25 @@ If count differs, list missing or unexpected files.
 
 ### Step 4: Commands available
 
-Count per namespace:
-- `.claude/commands/integrator/*.md` — expect 9 (research, map, gaps, status, journal, scan, add, remove, update)
-- `.claude/commands/product/*.md` — may be 0 or more (Phase 2+; current baseline ~22, incl. `complete` + `consilium` + `batch-enrich`)
-- `.claude/commands/design/*.md` — may be 0 or more (Phase 6; current baseline 7)
-- `.claude/commands/orchestrator/*.md` — expect 1+ (run — dispatches processes P2–P7; only deploy/rollback deferred)
-- `.claude/commands/ecosystem/*.md` — expect 7 (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
-- `.claude/product/processes/*.mjs` — expect 3 (complete-feature — the completeness-loop Workflow wave-runner, DEC-DEV-0142; consilium — the decision-prep jury for escalated fork-shaped decision-PAs, DEC-DEV-0145; batch-enrich-feature-set — the C-i macro batch driver, DEC-DEV-0150; new top-level runtime dir mirroring `.claude/orchestrator/processes/`)
-- `.claude/orchestrator/charters/*.json` — expect 1+ (feature-production-line — the Process Fabric inter-process line charter; engine `.claude/orchestrator/lib/fabric-engine.cjs` + co-located `autonomy-policy.cjs`, DEC-DEV-0153/0154)
+**Expected command counts are DERIVED, not hardcoded (G33):** the generated command catalog
+`.claude/docs/guide/02-commands.md` is auto-synced from the same `commands/**` frontmatter at
+every cut (`gen-command-catalog.cjs`, drift-gated by `gen:catalog:check` in the repo's verify) —
+it IS the per-version expectation. For each namespace (`ecosystem`, `integrator`, `product`,
+`design`, `orchestrator`): count `/{namespace}:` command rows in the catalog vs `*.md` files in
+`.claude/commands/<namespace>/` and report both numbers. A mismatch = the deploy and the catalog
+came from different versions (re-run `/ecosystem:update`) or files were locally added/removed.
 
-Report counts + note what's expected for current ROADMAP phase.
+If the catalog file is absent (pre-guide-layer install) — report raw per-namespace counts
+without expectations and note the missing catalog.
 
-> **Note (DEC-DEV-0082):** these per-namespace counts are a **baseline snapshot as of the
-> current ecosystem version**, not a hard contract — new commands land between cuts. A mismatch
-> may mean drift in **this list** (it wasn't refreshed when a command was added) as easily as a
-> defective install. Investigate which before raising a ❌; an *extra* command vs. this baseline
-> is almost never a fault.
+Runtime dirs (not commands, no catalog row — keep the structural minimums):
+- `.claude/product/processes/*.mjs` — expect 3+ (complete-feature DEC-DEV-0142; consilium DEC-DEV-0145; batch-enrich-feature-set DEC-DEV-0150)
+- `.claude/orchestrator/charters/*.json` — expect 1+ (feature-production-line — Process Fabric; engine `.claude/orchestrator/lib/fabric-engine.cjs` + co-located `autonomy-policy.cjs`, DEC-DEV-0153/0154)
+
+> **Note (DEC-DEV-0082, revised by G33 fix):** the old hand-maintained per-namespace number list
+> lived here in parallel with the generated catalog and silently drifted (e.g. «~22» product
+> commands). It is gone — the catalog is the single expectation source. An *extra* local command
+> vs the catalog is almost never a fault; a *missing* one usually is.
 
 ### Step 4.5: Orchestrator gate-contract freshness (delivery spot-check)
 
@@ -197,13 +200,13 @@ LESSON-* GATE (DEC-DEV-0062)
   ✓ lesson-gate.js registered (Stop, strict)
   ✓ lesson-presence-gate.js registered (PreToolUse+UPS, warn)
 
-COMMANDS
-  ✓ integrator/:   9           (research, map, gaps, status, journal, scan, add, remove, update)
-  ✓ product/:      22          (Phase 2+ — init, feature, da-review, validate, complete, consilium, batch-enrich, ...)
-  ✓ design/:       7           (Phase 6 — start, iterate, map, system, export, migrate, status)
-  ✓ orchestrator/: 1           (run — first increment; P2/P4/P6/P7 deferred)
-  ✓ ecosystem/:    7           (bootstrap, verify, update, pending-actions, enable-d7-audit, meta-feedback, research)
-  ✓ product/processes: 3       (complete-feature — completeness-loop wave-runner, DEC-DEV-0142; consilium — decision-prep jury, DEC-DEV-0145; batch-enrich-feature-set — C-i macro batch driver, DEC-DEV-0150)
+COMMANDS (deployed vs generated catalog 02-commands.md — Step 4 / G33)
+  ✓ integrator/:   <n> = catalog <n>
+  ✓ product/:      <n> = catalog <n>
+  ✓ design/:       <n> = catalog <n>
+  ✓ orchestrator/: <n> = catalog <n>
+  ✓ ecosystem/:    <n> = catalog <n>
+  ✓ product/processes: 3+       (complete-feature DEC-DEV-0142; consilium DEC-DEV-0145; batch-enrich-feature-set DEC-DEV-0150)
 
 ORCHESTRATOR CONTRACT (delivery spot-check — DEC-DEV-0101/0102/0104)
   ✓ validators_incomplete + committed_under_non_ready   (validate-feature-impl.mjs)

@@ -1,5 +1,11 @@
 # Design Module — Спецификация
 
+> ⚠ **Двусторонний spec↔impl дрейф (G21/G36), не устранён — только промаркирован:**
+> (1) *код впереди SPEC:* персона `ux-advisor` (Epic A, DEC-DEV-0098) ревьюит design-зону через
+> zone-router/agent-roster — в теле SPEC её нет; SSOT — `agents/product/ux-advisor.md` + CHANGELOG.
+> (2) *SPEC впереди кода:* субагент `screen-generator` (DEC-I06, §ниже) описан, но файл агента
+> НЕ существует (G36) — Deep-режимы, ссылающиеся на него, нефункциональны до отдельного трека.
+
 > **Статус:** v1.1 (2026-05-27) — pre-Phase-6 architectural addendum (Claude Design + IR groundwork; DEC-DEV-0048). Базовая v1.0 — 2026-04-18.
 > **Роль:** условный sub-module Product Module — отвечает за D2-B04 (UX/UI Design) только когда FM.has_ui=true. Итеративный процесс создания UI-макетов через AI + внешний design tool.
 > **Закрывает:** DEC-A10, DEC-A12, DEC-I03 (Stitch primary), DEC-ART09 (MK как Design Package), DEC-ART10 (DS, NM), DEC-P11, DEC-P12, DEC-I06 (subagent screen-generator).

@@ -1153,8 +1153,9 @@ Orchestrator в будущем будет читать этот файл и по
 
 ### 13.1. Когда запускается
 
-- **Всегда** перед `/integrator:add` (pre-install check)
-- **Всегда** перед `/integrator:update`, `/integrator:replace`
+- **Всегда** перед `/integrator:add` (pre-install check; add.md — scan-if-baseline-absent + re-scan после установки)
+- **Всегда** перед `/integrator:update` (update.md Pre-flight — refresh baseline; G18 закрыт)
+- **Всегда** перед `/integrator:replace` — *Phase-7: команда replace ещё не реализована (G14)*
 - **При первом запуске** любой команды в проекте (snapshot baseline)
 - **Вручную** через `/integrator:scan` (добавлена 13-я команда)
 
