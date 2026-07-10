@@ -21,6 +21,9 @@
  *   - owner-queue (ANOM-5): the write-path self-prunes a line's stale gate entry on leaving/terminal
  *     + global orphans, append is deduped, and `status` is a read-only live/stale split (proven by bytes);
  *   - --force-manual (rec #4): the reason must reference a PA-id that already exists in the pa-file.
+ *   - payload bridge (DEC-DEV-0171): ingestEmits carries a payloadPath slice onto the event (applyIngest
+ *     stays event-names); the slice lands FULL in events.ndjson and, on a human-gate park, in the
+ *     PA-record as fenced json (truncated >2000, markers intact); a rule without payloadPath is inert.
  *
  * Node stdlib only; run with `node tests/orchestrator/fabric-engine.test.cjs`.
  */
@@ -635,6 +638,150 @@ test('PA bridge: a dismissed fabric PA is surfaced, never auto-ticked', () => {
   assert.strictEqual(r.json.surfaced.length, 1);
   assert.ok(/dismissed/.test(r.json.surfaced[0].reason), 'the surfaced reason names the dismissal');
   assert.strictEqual(readState(base, id).state, 'awaiting_product', 'a dismissed scan leaves the state parked');
+});
+
+// ==== payload bridge: ingest → event → PA-record (DEC-DEV-0171) ==================================
+//
+// Minimal, self-contained charter fixture (NOT orchestrator/charters/*, per the work-order): two
+// live states — an invoke `probing` (initial, so init never spams a human gate) and a human-gate
+// `awaiting_capability` with an evt:pa.resolved resume-event — plus an ingest rule whose FIRST branch
+// carries a payloadPath (`requests`) and a payloadPath-less `default` branch. Written into the temp
+// base-root so nothing escapes the sandbox; passed via --charter <file> like the existing helpers.
+const PAYLOAD_CHARTER = {
+  id: 'payload-line',
+  version: 1,
+  context: {},
+  initial: 'probing',
+  states: {
+    probing: {
+      invoke: { process: 'probe-caps' },
+      meta: { autonomy: 'auto' },
+      on: {
+        'evt:caps.needed': { target: 'awaiting_capability', actions: ['queue_owner'] },
+        'evt:caps.ok': { target: 'done' },
+      },
+    },
+    awaiting_capability: {
+      meta: { autonomy: 'human-gate', queue_kind: 'conflict' },
+      on: { 'evt:pa.resolved': { target: 'probing' } },
+    },
+    done: { final: true },
+  },
+  guards: {},
+  ingest: {
+    'probe-caps': [
+      { when: { path: 'requests', nonEmpty: true }, emit: 'evt:caps.needed', payloadPath: 'requests' },
+      { default: true, emit: 'evt:caps.ok' },
+    ],
+  },
+};
+function setupPayloadFixture() {
+  const base = mkTmp();
+  const charterPath = path.join(base, 'payload-line.json');
+  fs.writeFileSync(charterPath, JSON.stringify(PAYLOAD_CHARTER, null, 2));
+  return { base, charterPath };
+}
+function initFix(base, charterPath, subject) {
+  const r = cli(['init', '--charter', charterPath, '--subject', subject, '--at', AT, '--base-root', base]);
+  assert.strictEqual(r.code, 0, `init failed: ${r.stderr || r.stdout}`);
+  return r.json.instance;
+}
+function ingestFix(base, charterPath, id, proc, result, runId) {
+  const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result),
+    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base)];
+  if (runId) args.push('--run-id', runId);
+  return cli(args);
+}
+function readEventsFix(base, id) {
+  return fs.readFileSync(path.join(base, id, 'events.ndjson'), 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+}
+
+test('(a) ingestEmits carries payload by payloadPath; applyIngest stays event-names (regression)', () => {
+  const { ingestEmits, applyIngest } = lib;
+  const result = { requests: [{ capability: 'mcp:stripe' }], noise: 1 };
+  assert.deepStrictEqual(
+    ingestEmits(PAYLOAD_CHARTER, 'probe-caps', result),
+    [{ event: 'evt:caps.needed', payload: [{ capability: 'mcp:stripe' }] }],
+    'the matching rule emits {event, payload} with the payloadPath slice');
+  // the backward-compatible wrapper returns the SAME event name, no payload leakage
+  assert.deepStrictEqual(applyIngest(PAYLOAD_CHARTER, 'probe-caps', result), ['evt:caps.needed']);
+});
+
+test('(b) a rule without payloadPath emits no payload key + writes no payload field to events.ndjson', () => {
+  const { ingestEmits } = lib;
+  const emitted = ingestEmits(PAYLOAD_CHARTER, 'probe-caps', {}); // default branch → evt:caps.ok, no payloadPath
+  assert.deepStrictEqual(emitted, [{ event: 'evt:caps.ok' }]);
+  assert.ok(!('payload' in emitted[0]), 'no payload key when the rule has no payloadPath (bit-for-bit pre-0171)');
+  // and end-to-end: the event persisted to events.ndjson carries no payload field
+  const { base, charterPath } = setupPayloadFixture();
+  const id = initFix(base, charterPath, 'CAP-NOPL');
+  const r = ingestFix(base, charterPath, id, 'probe-caps', {});
+  assert.strictEqual(r.code, 0, `ingest failed: ${r.stderr || r.stdout}`);
+  assert.strictEqual(r.json.ticks[0].to, 'done');
+  const ev = readEventsFix(base, id).find((e) => e.event === 'evt:caps.ok');
+  assert.ok(!('payload' in ev), 'the persisted event has no payload key when the rule lacks payloadPath');
+});
+
+test('(c) CLI ingest --result-file parks a human gate; payload lands in events.ndjson + the PA-record', () => {
+  const { base, charterPath } = setupPayloadFixture();
+  const id = initFix(base, charterPath, 'CAP-1');
+  const requests = [{ capability: 'mcp:stripe', why: 'charge API' }];
+  const resultFile = path.join(base, 'result.json');
+  fs.writeFileSync(resultFile, JSON.stringify({ requests }));
+  const r = cli(['ingest', '--instance', id, '--process', 'probe-caps', '--result-file', resultFile,
+    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base)]);
+  assert.strictEqual(r.code, 0, `ingest failed: ${r.stderr || r.stdout}`);
+  assert.strictEqual(r.json.emitted[0], 'evt:caps.needed');
+  assert.strictEqual(r.json.ticks[0].to, 'awaiting_capability', 'the payloadPath rule parks the line at the human gate');
+  // events.ndjson carries the FULL payload slice
+  const parkEv = readEventsFix(base, id).find((e) => e.event === 'evt:caps.needed');
+  assert.deepStrictEqual(parkEv.payload, requests, 'events.ndjson carries the payload slice');
+  // the PA-record fences the payload as json AND keeps all three machine markers verbatim
+  const pa = readPa(base);
+  assert.ok(/\*\*Payload \(capability-spec \/ event data\):\*\*/.test(pa), 'PA-record has the Payload section header');
+  assert.ok(/```json/.test(pa), 'PA-record fences the payload as json');
+  assert.ok(/mcp:stripe/.test(pa), 'the payload data is inside the PA-record');
+  assert.ok(new RegExp(`^fabric-instance: ${id}$`, 'm').test(pa), 'fabric-instance marker intact');
+  assert.ok(/^fabric-state: awaiting_capability$/m.test(pa), 'fabric-state marker intact');
+  assert.ok(/^resume-event: evt:pa\.resolved$/m.test(pa), 'resume-event marker intact');
+  // replay stays bit-for-bit (payload is event-sourced but transition-neutral)
+  const rep = cli(['replay', '--instance', id, '--charter', charterPath, '--base-root', base]);
+  assert.strictEqual(rep.code, 0, `replay must stay consistent: ${JSON.stringify(rep.json)}`);
+  assert.strictEqual(rep.json.ok, true);
+});
+
+test('(d) an oversized payload is truncated in the PA-record but full in events.ndjson; markers intact', () => {
+  const { base, charterPath } = setupPayloadFixture();
+  const id = initFix(base, charterPath, 'CAP-BIG');
+  const requests = [];
+  for (let i = 0; i < 80; i += 1) requests.push({ capability: `mcp:tool-${i}`, why: 'x'.repeat(40) });
+  const resultFile = path.join(base, 'big.json');
+  fs.writeFileSync(resultFile, JSON.stringify({ requests }));
+  const r = cli(['ingest', '--instance', id, '--process', 'probe-caps', '--result-file', resultFile,
+    '--charter', charterPath, '--at', AT, '--base-root', base, '--pa-file', paFile(base)]);
+  assert.strictEqual(r.code, 0, `ingest failed: ${r.stderr || r.stdout}`);
+  assert.strictEqual(r.json.ticks[0].to, 'awaiting_capability');
+  const pa = readPa(base);
+  assert.ok(/payload truncated; full copy lives in events\.ndjson/.test(pa), 'the oversized payload is truncated in the PA-record');
+  // the machine markers survive the truncation (they render after the truncated json body)
+  assert.ok(new RegExp(`^fabric-instance: ${id}$`, 'm').test(pa), 'fabric-instance marker intact after truncation');
+  assert.ok(/^fabric-state: awaiting_capability$/m.test(pa), 'fabric-state marker intact after truncation');
+  assert.ok(/^resume-event: evt:pa\.resolved$/m.test(pa), 'resume-event marker intact after truncation');
+  // events.ndjson still carries the FULL untruncated payload
+  const parkEv = readEventsFix(base, id).find((e) => e.event === 'evt:caps.needed');
+  assert.strictEqual(parkEv.payload.length, 80, 'events.ndjson carries the FULL untruncated payload');
+});
+
+test('(e) a repeated ingest with the same run-id is a no-op even with a payloadPath rule (dedup regression)', () => {
+  const { base, charterPath } = setupPayloadFixture();
+  const id = initFix(base, charterPath, 'CAP-IDEM');
+  const first = ingestFix(base, charterPath, id, 'probe-caps', { requests: [{ capability: 'mcp:x' }] }, 'run-P');
+  assert.strictEqual(first.json.deduped, false);
+  assert.strictEqual(readState(base, id).state, 'awaiting_capability');
+  const dup = ingestFix(base, charterPath, id, 'probe-caps', { requests: [{ capability: 'mcp:y' }] }, 'run-P');
+  assert.strictEqual(dup.json.deduped, true, 'a seen run_id short-circuits the whole ingest');
+  assert.deepStrictEqual(dup.json.emitted, []);
+  assert.strictEqual(readState(base, id).state, 'awaiting_capability', 'state unchanged by the duplicate');
 });
 
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
