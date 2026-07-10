@@ -172,6 +172,10 @@ discovery, перф-бенчмарк NFR, compliance-матрица — выво
   проект с уже пройденным Discovery; переоценка после bump'а версии реестра или пивота).
 - **MVP-скоупинг / NFR-review** — `limiters` из блока служат явным напоминанием, какие
   части продукта экосистема ведёт, а какие за скобками (advisory, читается по месту).
+- **Handoff** (DEC-DEV-0172) — `skills/product/handoff-generator.md` читает блок и, **только
+  если `limiters` непуст**, эмитит строку `Domain fit:` в §1 + frontmatter-блок `domain_fit`
+  + bullet в §12 (receiver видит, что осознанно за скобками поведенческого контура). Чистый
+  fit не эмитится — нет downstream-сигнала. См. `handoff-spec.md §1/§5/§12`.
 
 ## 8. Связанное
 
@@ -180,5 +184,6 @@ discovery, перф-бенчмарк NFR, compliance-матрица — выво
 - Discovery-интеграция: `skills/product/discovery-session.md` (D1.0b)
 - SSOT-локация блока: `commands/ecosystem/bootstrap.md` Step 7 (`product.yaml`)
 - Соседний концепт (форма, не домен): `docs/pmo/product-class-taxonomy.md`
+- Handoff-проброс: `docs/product-module/handoff-spec.md §1/§5/§12` + `skills/product/handoff-generator.md` (DEC-DEV-0172)
 - Исходная оценка (dev-zone): `dev/universality-assessment/REPORT.md`
-- Решение: `DEV_JOURNAL.md` DEC-DEV-0169
+- Решения: `DEV_JOURNAL.md` DEC-DEV-0169 (слой+гейт), DEC-DEV-0172 (handoff-проброс + migration-промпт)
