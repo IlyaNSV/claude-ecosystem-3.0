@@ -8258,3 +8258,24 @@ Gaps-сверка (DEC-DEV-0167) вывела кластер дешёвых doc-
 ### Lessons
 1. **Класс «два параллельных источника ожиданий» лечится удалением одного, а не линтером между ними** — G33 повторил урок G19 наоборот: там каталог↔runner несводимы (семантика в коде) и нужен линтер; здесь рукописный список был чистым дубликатом генерируемого — правильный фикс = коллапс на один источник.
 2. Мёртвую ссылку на «будущую команду» дешевле всего закрыть решением «команды сознательно НЕ будет» — если оно честно верно; не всякий gap закрывается стройкой.
+
+## DEC-DEV-0171 — OD7 await→resume построен через Process Fabric: payload-мост ingest→PA, парковка P5 на §6 BLOCK, resume = идемпотентный брекет-ре-ран
+
+**Date:** 2026-07-10
+**Trigger:** поручение владельца «берись за OD7 await→resume, после — упор на подготовку самостоятельного live-тестирования в VM» (первый крупный трек корзины №4).
+
+### Context
+OD7 (SPEC Orchestrator, RUN 01) — гипотеза async-протокола `request→await-fix→resume` для границы Orch↔Integrator: LLM-диспетчер, наткнувшись на отсутствующую capability, склонен «поглотить границу» и чинить инфраструктуру сам. Request-половина жила (P7 requests[], P5 §6 detect-leg 0117, PA-записи), await→resume — нет (gap G04). Recon вскрыл три факта, определившие дизайн: (1) P5 УЖЕ идемпотентен — план-стадия фильтрует `!t.done && !t.blocked` по чекбоксам tasks.md, т.е. mid-process resume = обычный ре-ран брекета без спец-механики; (2) charter уже держит `awaiting_capability` для P7 с resume в runtime_gate; (3) ingest движка выбрасывал данные результата — capability-spec не доезжал до PA/owner-queue, владелец видел «линия стоит», но не ЧТО провижнить.
+
+### Options considered
+1. **ScheduleWakeup-ожидание внутри сессии** (как в исходной SPEC-гипотезе) — отвергнуто: capability-grant занимает часы/дни, await обязан переживать сессии; durable-парковка Fabric уже это делает.
+2. **Workflow resumeFromRunId для mid-process восстановления** — отвергнуто: same-session-only контракт харнесса, кросс-сессионный OD7 на нём не построить.
+3. ✅ **Fabric-парковка + payload-мост + идемпотентный ре-ран:** (a) движок — опциональный `payloadPath` в ingest-правиле charter'а (срез result'а → payload события → fenced-json в PA-записи гейта, транкация 2000 симв., маркеры pa-scan целы; `ingestEmits()` новая, `applyIngest` — совместимая обёртка); (b) charter v2 — `awaiting_capability_impl` (resume → implementing), `evt:impl.blocked_capability`, payloadPath на P5/P7 capability-правилах; (c) P5 — поле `capability_blocked` (только disposition BLOCK; deferred stand-ins не паркуют). Resume: PA→done → pa-scan --tick → prescription → полный брекет, P5 продолжает с недоделанных тасков.
+
+### Outcome
+fabric-engine юниты 35→40 (payload по payloadPath / без payloadPath бит-в-бит / e2e PA c fenced-json + replay 0 / транкация / run-id дедуп), wiring 11 + P5-wiring 13 зелёные, verify EXIT=0. Доки: run.md (§human-gate capability + §resume «ничего специального восстанавливать не нужно»), SPEC OD7-строка → «построено, live pending», 07-fabric.md §4, GAPS-RECONCILIATION G04. Сборка по MDP: opus-исполнитель на движок по брифу с зафиксированными контрактами, charter/P5/доки — main. **Подготовка live-теста (часть 2 поручения):** пре-регистрированы `OD7_LIVE_RUN_BRIEF.md` (сценарий S1-S3: парковка на реальном BLOCK → provision+resume → бонус-ветка runtime_gate_retry/evt:env.up, промпты verbatim, стоп-правила оператора) + `OD7_LIVE_RUN_REVIEW_HANDOFF.md` (рубрика R1-R8, класс B + A-критерий границы R3); VM проверена live (ssh ok, uptime 2ч45м, пилот `4e0dfa6`, fabric-инстансы терминальные).
+
+### Lessons
+1. **Ищи существующую идемпотентность прежде чем строить resume-механику:** tasks.md-чекбоксы + фильтр плана уже давали «продолжить с места остановки» — OD7 свёлся к парковке и мосту данных, а не к чекпойнт-инфраструктуре. Recon-факт №2 сэкономил самый дорогой кусок дизайна.
+2. Тест-регэксп по форме кода (`concerns` рядом с `go_gate` через `key: value`-строки) ломается от невинного многострочного комментария в return-объекте — комментарии к полям такого объекта держи однострочными trailing или выноси над statement.
+3. `EXIT=$?` после пайпа с `tail` измеряет tail, а не команду — при проверке verify бери exit-код до пайпа (`; echo` внутри той же команды до tail) или `grep -c "SOME FAILED"`.

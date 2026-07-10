@@ -1,6 +1,6 @@
 {
   "id": "feature-production-line",
-  "version": 1,
+  "version": 2,
   "context": { "feature": null, "fm": null },
   "initial": "handoff_ready",
   "limits": { "lane": "orchestrator", "wip": 1 },
@@ -38,6 +38,7 @@
           { "target": "escalated", "actions": ["queue_owner"] }
         ],
         "evt:impl.conflict": { "target": "awaiting_product", "actions": ["queue_owner"] },
+        "evt:impl.blocked_capability": { "target": "awaiting_capability_impl", "actions": ["queue_owner"] },
         "evt:impl.manual_verify": { "target": "escalated", "actions": ["queue_owner"] }
       }
     },
@@ -82,6 +83,12 @@
         "evt:pa.resolved": { "target": "runtime_gate" }
       }
     },
+    "awaiting_capability_impl": {
+      "meta": { "autonomy": "human-gate", "queue_kind": "conflict" },
+      "on": {
+        "evt:pa.resolved": { "target": "implementing" }
+      }
+    },
     "escalated": {
       "meta": { "autonomy": "human-gate", "queue_kind": "gate" },
       "on": {
@@ -108,6 +115,7 @@
     ],
     "feature-to-tdd-impl": [
       { "when": { "path": "conflicts", "nonEmpty": true }, "emit": "evt:impl.conflict" },
+      { "when": { "path": "capability_blocked", "nonEmpty": true }, "emit": "evt:impl.blocked_capability", "payloadPath": "capability_blocked" },
       { "when": { "path": "go_gate", "eq": "GO" }, "emit": "evt:impl.go" },
       { "when": { "path": "go_gate", "eq": "NO-GO" }, "emit": "evt:impl.no_go" },
       { "when": { "path": "go_gate", "eq": "MANUAL_VERIFY_REQUIRED" }, "emit": "evt:impl.manual_verify" }
@@ -119,7 +127,7 @@
       { "when": { "path": "result", "eq": "MANUAL_VERIFY_REQUIRED" }, "emit": "evt:impl.manual_verify" }
     ],
     "runtime-smoke-readiness": [
-      { "when": { "path": "verdict", "eq": "BLOCKED_ON_CAPABILITY" }, "emit": "evt:runtime.blocked_capability" },
+      { "when": { "path": "verdict", "eq": "BLOCKED_ON_CAPABILITY" }, "emit": "evt:runtime.blocked_capability", "payloadPath": "requests" },
       { "when": { "path": "verdict", "eq": "ENV_NOT_READY" }, "emit": "evt:runtime.env_not_ready" },
       { "when": { "path": "verdict", "in": ["READY_TO_SMOKE"] }, "emit": "evt:runtime.ready_or_started" },
       { "when": { "path": "verdict", "eq": "NOT_STARTABLE" }, "emit": "evt:fidelity.product_routed" }

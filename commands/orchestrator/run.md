@@ -330,6 +330,12 @@ node .claude/orchestrator/lib/fabric-engine.cjs ingest \
      run past a human gate. The engine has ALSO already projected the gate into the canonical
      `pending-actions.md` as a `PA-NNN` entry (carrying `fabric-instance` / `fabric-state` /
      `resume-event` markers) — point the owner at it via `/ecosystem:pending-actions`.
+     **Capability gates (OD7, DEC-DEV-0171):** when the parked state is `awaiting_capability`
+     (P7 boot-blocker) or `awaiting_capability_impl` (P5 §6 BLOCK), the ingest carried the
+     capability-spec as the event payload — the PA entry embeds it verbatim (what to provision,
+     `secret_env`, routes Integrator/Product), so the resolution side needs no re-forensics.
+     Do NOT self-equip or mock the capability — provisioning is the Integrator's (access) or
+     the owner's (provider choice, OD8) move.
    - `kind: none` + `final: true` → the line is complete; say so in the run summary.
 4. `rejected` ticks (unknown event / guards failed) are deliberate no-ops — report the `why[]`,
    do not retry blindly and do not hand-edit `state.json` (events.ndjson is the source of truth).
@@ -349,6 +355,15 @@ engine resume the line for you instead of hand-picking the event: `node
 matches each resolved fabric-PA back to its parked instance, and ticks the recorded `resume-event`
 (the manual tick above stays a valid path). A `dismissed` PA is only *surfaced* — abort vs resume is
 the owner's call — never auto-ticked.
+
+**OD7 mid-process resume is the normal bracket re-run — nothing special to restore.** After a
+capability gate resolves (`awaiting_capability_impl` → `evt:pa.resolved` → `implementing`), the
+new prescription re-invokes `feature-to-tdd-impl` as an ordinary full bracket. The process is
+resume-safe by construction: its plan stage reads `tasks.md` checkbox state and filters tasks
+already `done` — so the line CONTINUES from the blocked tasks (now unblocked by the granted
+capability), it does not restart from scratch. Same for `awaiting_capability` → `runtime_gate`:
+P7's readiness probe is cheap and re-assesses from zero. This closes the OD7
+`request → await-fix → resume` loop end-to-end (SPEC OD7 — was a RUN 01 hypothesis).
 
 `replay --instance <id>` rebuilds the state from `events.ndjson` and diffs it against
 `state.json` (exit 2 on mismatch) — the recovery/audit tool after a crashed session.

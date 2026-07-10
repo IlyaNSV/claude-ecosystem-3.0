@@ -230,16 +230,31 @@ function transition(charter, snapshot, event, payload, env) {
 // ---- ingest: materialise result JSON into events (pure) -----------------------------------------
 
 /**
- * applyIngest(charter, processName, resultJson) → [eventName] (0 or 1).
+ * ingestEmits(charter, processName, resultJson) → [{event, payload}] (0 or 1) (DEC-DEV-0171).
  * Rules charter.ingest[processName] are checked IN ORDER; the FIRST matching rule emits its ONE
  * event (not every matching rule). `default:true` is an unconditional fallback. Predicates:
  * when.nonEmpty (present & non-empty), when.eq (===), when.in (membership) over when.path.
+ *
+ * PAYLOAD BRIDGE (DEC-DEV-0171): a rule MAY carry an optional `payloadPath` (dot-path, resolved by
+ * getPath) — a slice of the result (e.g. §6 capability-requests from P7 `requests[]`) that rides the
+ * emitted event through to the human-gate PA-record, so the owner/Integrator see WHAT to provision,
+ * not merely THAT the line parked. `payload` is present on the emitted object ONLY when payloadPath
+ * is set AND getPath yields a value !== undefined; otherwise the object has no `payload` key at all —
+ * bit-for-bit the pre-0171 shape. This keeps a rule without payloadPath identical to old behaviour.
  */
-function applyIngest(charter, processName, resultJson) {
+function ingestEmits(charter, processName, resultJson) {
   const rules = ((charter.ingest || {})[processName]);
   if (!Array.isArray(rules)) return [];
+  const emitFor = (rule) => {
+    const o = { event: rule.emit };
+    if (rule.payloadPath) {
+      const p = getPath(resultJson, rule.payloadPath);
+      if (p !== undefined) o.payload = p;
+    }
+    return o;
+  };
   for (const rule of rules) {
-    if (rule.default === true) return [rule.emit];
+    if (rule.default === true) return [emitFor(rule)];
     const w = rule.when;
     if (!w || !Object.prototype.hasOwnProperty.call(w, 'path')) continue;
     const val = getPath(resultJson, w.path);
@@ -251,9 +266,18 @@ function applyIngest(charter, processName, resultJson) {
     } else if (Object.prototype.hasOwnProperty.call(w, 'in')) {
       match = Array.isArray(w.in) && w.in.indexOf(val) !== -1;
     }
-    if (match) return [rule.emit];
+    if (match) return [emitFor(rule)];
   }
   return [];
+}
+
+/**
+ * applyIngest(charter, processName, resultJson) → [eventName] (0 or 1). Backward-compatible wrapper
+ * over ingestEmits (DEC-DEV-0171): units call it directly for event NAMES only. Signature + return
+ * are unchanged (the payload bridge rides ingestEmits, which cmdIngest consumes).
+ */
+function applyIngest(charter, processName, resultJson) {
+  return ingestEmits(charter, processName, resultJson).map((e) => e.event);
 }
 
 // ---- disposition + prescription (pure; consumes F1 autonomy-policy) -----------------------------
@@ -393,8 +417,15 @@ function paActionLine(state, queueKind, resumeEvent) {
  * Render ONE canonical PA-NNN entry (schema per skills/ecosystem/user-action-tracker.md). The
  * `fabric-instance` / `fabric-state` / `resume-event` marker lines inside **Details** are the
  * machine contract pa-scan parses back — one marker per line, verbatim. Pure (string builder).
+ *
+ * PAYLOAD BRIDGE (DEC-DEV-0171): when `payload` is present (non-null/undefined) — the ingest slice a
+ * charter rule carried via payloadPath (e.g. capability-requests) — a fenced-json **Payload** section
+ * is inserted AFTER the textual details and BEFORE the machine markers, so the markers stay verbatim
+ * on their own lines and pa-scan still parses them. The serialised JSON is truncated at 2000 chars
+ * (with a pointer to events.ndjson for the full copy) so a large payload never bloats the journal —
+ * truncation only ever cuts the json body, never a marker line.
  */
-function renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent) {
+function renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent, payload) {
   const subject = snapshot.subject == null ? '(no subject)' : snapshot.subject;
   const action = paActionLine(snapshot.state, queueKind, resumeEvent);
   const details = [
@@ -403,7 +434,7 @@ function renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent) {
     'blocking item is resolved, flip **Status:** to `done` and run',
     `\`fabric-engine.cjs pa-scan --at <ISO-now> --tick\` (or tick \`${resumeEvent}\` manually).`,
   ].join('\n');
-  return [
+  const lines = [
     `## PA-${id} — fabric line parked — ${snapshot.state}`,
     '',
     '**Status:** pending',
@@ -415,6 +446,15 @@ function renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent) {
     '**Details:**',
     '',
     details,
+  ];
+  if (payload !== undefined && payload !== null) {
+    let json = JSON.stringify(payload, null, 2);
+    let truncated = false;
+    if (json.length > 2000) { json = json.slice(0, 2000); truncated = true; }
+    lines.push('', '**Payload (capability-spec / event data):**', '', '```json', json, '```');
+    if (truncated) lines.push('… (payload truncated; full copy lives in events.ndjson of the instance)');
+  }
+  lines.push(
     '',
     `fabric-instance: ${snapshot.instance}`,
     `fabric-state: ${snapshot.state}`,
@@ -422,7 +462,8 @@ function renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent) {
     '',
     `**Blocking:** fabric line ${subject} (instance ${snapshot.instance})`,
     '',
-  ].join('\n');
+  );
+  return lines.join('\n');
 }
 
 /** Highest PA-NNN in the journal text (−1 if none, so the PA-000 sentinel yields next id = 1). */
@@ -680,9 +721,11 @@ function ensurePaFile(paFile, at) {
  * Tail-append a canonical PA-NNN entry for a human-gate `snapshot`, UNLESS an identical PENDING
  * entry already exists (same fabric-instance + fabric-state) — that dedup makes a repeated ingest/
  * tick that re-parks the same line at the same gate idempotent. Never mutates existing entries
- * (Status is the owner's to flip). Returns { appended, pa } or { appended:false, deduped }.
+ * (Status is the owner's to flip). `payload` (DEC-DEV-0171, optional) is the ingest slice carried by
+ * the parking event — rendered as a fenced-json **Payload** section. Returns { appended, pa } or
+ * { appended:false, deduped }.
  */
-function appendFabricPa(paFile, charter, snapshot, at) {
+function appendFabricPa(paFile, charter, snapshot, at, payload) {
   const resumeEvent = deriveResumeEvent(charter, snapshot.state);
   if (!resumeEvent) return { appended: false, reason: 'no resume-event on state' };
   const queueKind = (((charter.states || {})[snapshot.state] || {}).meta || {}).queue_kind || 'gate';
@@ -694,16 +737,17 @@ function appendFabricPa(paFile, charter, snapshot, at) {
   if (dup) return { appended: false, deduped: true };
 
   const id = String(maxPaId(text) + 1).padStart(3, '0');
-  const block = renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent);
+  const block = renderFabricPaBlock(id, at, snapshot, queueKind, resumeEvent, payload);
   fs.appendFileSync(paFile, (text.endsWith('\n') ? '\n' : '\n\n') + block);
   return { appended: true, pa: `PA-${id}` };
 }
 
 /** Project a human-gate prescription into the PA journal. Side-effect ONLY — not event-sourced,
- *  so `replay` (which never calls the shell) reproduces state.json bit-for-bit regardless. */
-function maybeAppendFabricPa(paFile, charter, snapshot, at, prescription) {
+ *  so `replay` (which never calls the shell) reproduces state.json bit-for-bit regardless. `payload`
+ *  (DEC-DEV-0171) is the parking event's ingest slice, forwarded into the rendered PA-record. */
+function maybeAppendFabricPa(paFile, charter, snapshot, at, prescription, payload) {
   if (!isHumanGatePrescription(prescription)) return null;
-  return appendFabricPa(paFile, charter, snapshot, at);
+  return appendFabricPa(paFile, charter, snapshot, at, payload);
 }
 
 /**
@@ -750,7 +794,8 @@ function applyEventFS(root, charter, id, eventName, payload, at, runId, autonomy
   applyEffects(root, next, at, effects);
 
   const prescription = prescribe(charter, next, env);
-  const pa = maybeAppendFabricPa(paFilePath(root, paFile), charter, next, at, prescription);
+  // DEC-DEV-0171: the parking event's payload (an ingest payloadPath slice) rides into the PA-record.
+  const pa = maybeAppendFabricPa(paFilePath(root, paFile), charter, next, at, prescription, payload);
 
   const report = { instance: id, event: eventName, from: snap.state, to: next.state, applied: true, why, effects, prescription };
   if (pa && pa.appended) report.pa = pa.pa;
@@ -852,6 +897,9 @@ function printHelp() {
     '  → create instance (state.json + events.ndjson@init); echo instance-id + initial prescription.',
     'ingest --instance <id> --process <name> (--result <json>|--result-file <p>) --at <ISO> [--run-id <r>] [--charter <f>]',
     '  → materialise the result into ≤1 event, then tick it. Idempotent: a seen --run-id is a no-op.',
+    '    A charter ingest rule may carry payloadPath (dot-path): the resolved slice of the result rides',
+    '    the emitted event into events.ndjson and, if the tick parks a human gate, into the PA-record',
+    '    (capability-spec / event data the owner or Integrator provisions before resuming the line).',
     'tick   --instance <id> --event <evt:…> [--payload <json>] --at <ISO> [--charter <f>] [--force-manual <reason>]',
     '  → transition + persist + emit the next prescription (stdout JSON). DEF-3 guard: a process-RESULT',
     '    event (an ingest-emit of the state\'s invoked process) is REFUSED bare — route it through the',
@@ -1000,12 +1048,15 @@ function cmdIngest(args) {
   }
 
   const result = readResult(args);
-  const emitted = applyIngest(charter, args.process, result);
+  // DEC-DEV-0171: ingestEmits carries an optional payloadPath slice per emitted event; that payload is
+  // threaded into applyEventFS (→ events.ndjson + the human-gate PA-record). `emitted` in the output
+  // stays an array of event-NAME strings (bit-for-bit the pre-0171 CLI contract).
+  const emits = ingestEmits(charter, args.process, result);
   const ticks = [];
-  for (const eventName of emitted) {
-    ticks.push(applyEventFS(root, charter, args.instance, eventName, undefined, args.at, runId, args.autonomy, args.paFile));
+  for (const em of emits) {
+    ticks.push(applyEventFS(root, charter, args.instance, em.event, em.payload, args.at, runId, args.autonomy, args.paFile));
   }
-  out({ instance: args.instance, process: args.process, run_id: runId, deduped: false, emitted, ticks });
+  out({ instance: args.instance, process: args.process, run_id: runId, deduped: false, emitted: emits.map((e) => e.event), ticks });
   process.exit(0);
 }
 
@@ -1140,6 +1191,7 @@ module.exports = {
   entryEffects,
   entryCounters,
   transition,
+  ingestEmits,
   applyIngest,
   resolveDisposition,
   prescribe,

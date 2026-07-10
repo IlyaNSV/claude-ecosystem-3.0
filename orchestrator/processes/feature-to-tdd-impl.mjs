@@ -564,12 +564,19 @@ if (implemented.length) {
   log('skipping GO-gate: no tasks implemented')
 }
 
+// DEC-DEV-0171 (OD7 await→resume) — `capability_blocked` below: the HARD blockers only, §6 items
+// with disposition BLOCK (no access, no dev stand-in). The fabric charter parks the line on this
+// field (evt:impl.blocked_capability → awaiting_capability_impl) and carries it as the event payload
+// into the gate's PA entry, so the Integrator sees WHAT to provision. Deferred stand-ins stay in
+// `capabilities`/`concerns` — they do not park the line. Resume = the normal bracket re-run: the
+// plan stage already skips tasks checked done in tasks.md, so the line continues, not restarts.
 return {
   feature: FEATURE,
   implemented: implemented.map((t) => t.id),
   blocked: blockedTasks,
   concerns,                       // FB-013 (DEC-DEV-0081 fix #1): deferred-capability flags, propagated not dropped
   capabilities: capabilityItems,  // DEC-DEV-0117 (§6 detect-leg): proactively-detected external-capability gaps (disposition/routes), surfaced pre-flight + disclosed at GO
+  capability_blocked: capabilityItems.filter((c) => c && c.disposition === 'BLOCK'),  // DEC-DEV-0171 (OD7): hard §6 blockers — parks the fabric line
   conflicts: conflicts.concat((go && go.conflicts) || []),   // DEC-DEV-0096 (T5, FB-LR-07) impl-time escalations ⊕ DEC-DEV-0104 (FB-LR-19) the P6 gate's escalated conflicts. impl-time entries {task, conflict_class, detail}; gate entries {validator, ref, kind, conflict_class, masked}. (Was impl-time only → e.g. Run C glossary returned conflicts:[] despite the gate escalating 2 cross-spec conflicts.)
   findings: (go && go.findings) || [],               // DEC-DEV-0104 (FB-LR-19): surface the gate's findings in the envelope (was captured in `go` but dropped at return → a NO-GO carried no machine-readable reason)
   go_gate: go && go.result,
