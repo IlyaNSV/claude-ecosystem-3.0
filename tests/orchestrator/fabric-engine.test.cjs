@@ -18,6 +18,9 @@
  *   - unparseable --at → clean exit 2;
  *   - PA bridge (phase 2b): a human-gate tick mirrors a canonical PA entry (create-if-absent,
  *     dedup on re-park, none on rejected/init), and pa-scan resumes done PAs / surfaces dismissed.
+ *   - owner-queue (ANOM-5): the write-path self-prunes a line's stale gate entry on leaving/terminal
+ *     + global orphans, append is deduped, and `status` is a read-only live/stale split (proven by bytes);
+ *   - --force-manual (rec #4): the reason must reference a PA-id that already exists in the pa-file.
  *
  * Node stdlib only; run with `node tests/orchestrator/fabric-engine.test.cjs`.
  */
@@ -64,6 +67,15 @@ function readState(base, id) { return JSON.parse(fs.readFileSync(path.join(base,
 // outside the sandbox — the default path (root/../../pending-actions.md) is a real-deploy concern.
 function paFile(base) { return path.join(base, 'pending-actions.md'); }
 function readPa(base) { try { return fs.readFileSync(paFile(base), 'utf8'); } catch (_e) { return null; } }
+// owner-queue.json lives directly under the base-root (fabricRoot(base)/owner-queue.json).
+function readOwnerQueue(base) {
+  try { return JSON.parse(fs.readFileSync(path.join(base, 'owner-queue.json'), 'utf8')); } catch (_e) { return []; }
+}
+// Seed a minimal PA journal so a --force-manual "PA-001: …" fixture passes the rec#4 validation
+// (the reason must reference a PA-id that already exists in pending-actions.md).
+function seedPaFixture(base) {
+  fs.writeFileSync(paFile(base), '## PA-001 — fixture\n\n**Status:** pending\n');
+}
 
 const AT = '2026-07-07T10:00:00.000Z';
 
@@ -78,7 +90,9 @@ function tick(base, id, event, at, extra) {
 // A bare tick of a process-RESULT event (an ingest-emit of the state's invoked process) is refused by
 // the DEF-3 bracket guard. Unit fixtures that drive the machine directly through such events (bounded
 // remediation, replay) carry this conscious-override flag; real dispatch routes them via `ingest`.
-const FORCE_FIXTURE = ['--force-manual', 'unit-test fixture'];
+// The reason must reference a PA-id present in the pa-file (rec #4) — tests using this MUST first call
+// seedPaFixture(base) so PA-001 exists in the base's pending-actions.md.
+const FORCE_FIXTURE = ['--force-manual', 'PA-001: unit-test fixture'];
 function ingest(base, id, proc, result, at, runId) {
   const args = ['ingest', '--instance', id, '--process', proc, '--result', JSON.stringify(result), '--charter', CHARTER, '--at', at || AT, '--base-root', base, '--pa-file', paFile(base)];
   if (runId) args.push('--run-id', runId);
@@ -314,6 +328,7 @@ test('CLI P7 NOT_STARTABLE routes out of runtime_gate (no dead-end stall)', () =
 test('CLI bounded remediation: 2 no_go rounds, escalate on the third', () => {
   const base = mkTmp();
   const id = reachImplementing(base, 'FM-REM');
+  seedPaFixture(base);
   assert.strictEqual(tick(base, id, 'evt:impl.no_go', null, FORCE_FIXTURE).json.to, 'remediation'); // round 1
   assert.strictEqual(readState(base, id).counters.remediation_rounds, 1);
   assert.strictEqual(tick(base, id, 'evt:impl.no_go', null, FORCE_FIXTURE).json.to, 'remediation'); // round 2 (self-loop)
@@ -331,6 +346,7 @@ test('CLI bounded remediation: 2 no_go rounds, escalate on the third', () => {
   // `escalated`, a non-final state) to prove NO-GO→remediation→GO works machine-side.
   const base2 = mkTmp();
   const id2 = reachImplementing(base2, 'FM-REM2');
+  seedPaFixture(base2);
   assert.strictEqual(tick(base2, id2, 'evt:impl.no_go', null, FORCE_FIXTURE).json.to, 'remediation');
   assert.strictEqual(tick(base2, id2, 'evt:impl.go', null, FORCE_FIXTURE).json.to, 'runtime_gate');
 });
@@ -372,6 +388,7 @@ test('CLI ingest idempotency: a seen run_id is a no-op', () => {
 test('CLI replay reproduces the persisted snapshot exactly', () => {
   const base = mkTmp();
   const id = reachImplementing(base, 'FM-RE');
+  seedPaFixture(base);
   tick(base, id, 'evt:impl.no_go', null, FORCE_FIXTURE); // → remediation (an event with a counter increment)
   tick(base, id, 'evt:impl.go', null, FORCE_FIXTURE);     // → runtime_gate
 
@@ -403,12 +420,13 @@ test('DEF-3 guard: a bare tick of an ingest-mapped process result is refused (ex
 test('DEF-3 guard: --force-manual applies the tick and stamps a forced-manual audit marker in the event', () => {
   const base = mkTmp();
   const id = reachImplementing(base, 'FM-FORCE');
-  const r = tick(base, id, 'evt:impl.go', null, ['--force-manual', 'reason text']);
+  seedPaFixture(base);
+  const r = tick(base, id, 'evt:impl.go', null, ['--force-manual', 'PA-001: reason text']);
   assert.strictEqual(r.code, 0, `a forced tick must succeed: ${r.stderr}`);
   assert.strictEqual(r.json.to, 'runtime_gate', 'the forced tick applies the real transition');
   // the marker must LIVE in events.ndjson (audit survives beyond stdout), not merely be printed
   const events = fs.readFileSync(path.join(base, id, 'events.ndjson'), 'utf8');
-  assert.ok(/forced-manual: reason text/.test(events), `the forced-manual marker must be in the event log: ${events}`);
+  assert.ok(/forced-manual: PA-001: reason text/.test(events), `the forced-manual marker must be in the event log: ${events}`);
   // and replay stays bit-for-bit consistent — the marker is an event-sourced audit note, not state
   const rep = cli(['replay', '--instance', id, '--charter', CHARTER, '--base-root', base]);
   assert.strictEqual(rep.code, 0, `replay must stay consistent after a forced tick: ${JSON.stringify(rep.json)}`);
@@ -430,6 +448,113 @@ test('DEF-3 guard: a resume event outside the ingest map still ticks freely (reg
   const r = tick(base, id, 'evt:pa.resolved');          // resume event, NOT an ingest-emit → must pass through
   assert.strictEqual(r.code, 0, `a resume tick must not be blocked by the guard: ${r.stderr}`);
   assert.strictEqual(r.json.to, 'implementing', 'the resume un-parks the line exactly as before');
+});
+
+// ==== owner-queue write-path prune + read-only status (ANOM-5) ===================================
+
+test('owner-queue: parking queues an entry; resuming off the gate self-prunes it (write-path)', () => {
+  const base = mkTmp();
+  const id = reachAwaitingProduct(base, 'FM-OQ');            // parks in awaiting_product, queues owner
+  let q = readOwnerQueue(base);
+  assert.strictEqual(q.length, 1, 'the park queued exactly one owner entry');
+  assert.strictEqual(q[0].instance, id);
+  assert.strictEqual(q[0].state, 'awaiting_product');
+  // resume off the gate → the write-path drops the now-stale entry (it left the gate)
+  assert.strictEqual(tick(base, id, 'evt:pa.resolved').json.to, 'implementing');
+  q = readOwnerQueue(base);
+  assert.strictEqual(q.length, 0, 'leaving the gate self-prunes the entry on the write-path');
+});
+
+test('owner-queue: reaching a terminal state clears the line\'s queued entries', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-TERM');
+  // manual_verify parks the line in escalated (queues the owner)
+  assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'MANUAL_VERIFY_REQUIRED' }).json.ticks[0].to, 'escalated');
+  assert.strictEqual(readOwnerQueue(base).length, 1, 'escalated queued the owner');
+  // owner aborts → terminal 'aborted'; the write-path prunes the stale escalated entry
+  assert.strictEqual(tick(base, id, 'evt:owner.abort').json.to, 'aborted');
+  assert.strictEqual(readOwnerQueue(base).length, 0, 'the terminal move cleared the queued entry');
+});
+
+test('owner-queue: a removed instance\'s orphan entry is swept by another line\'s write-path tick', () => {
+  const base = mkTmp();
+  const idA = reachAwaitingProduct(base, 'FM-ORPH-A');       // A parks at awaiting_product, queues owner
+  assert.strictEqual(readOwnerQueue(base).length, 1);
+  // the instance is deleted out from under the queue → its entry is now a global orphan
+  fs.rmSync(path.join(base, idA), { recursive: true, force: true });
+  // any OTHER line's applied write-path tick sweeps the orphan (the lane is free now A is gone)
+  const idB = initInstance(base, 'FM-ORPH-B');
+  assert.strictEqual(tick(base, idB, 'evt:line.start').json.to, 'authoring');
+  assert.strictEqual(readOwnerQueue(base).length, 0, 'the orphan of the removed instance was swept');
+});
+
+test('owner-queue: a repeated park of the same (instance,state,kind) is deduped, not duplicated', () => {
+  const base = mkTmp();
+  const entry = { at: AT, instance: 'inst-d', state: 'escalated', kind: 'gate', priority: 2, source: 'x' };
+  lib.appendOwnerQueue(base, entry);
+  lib.appendOwnerQueue(base, Object.assign({}, entry, { at: '2026-07-08T00:00:00.000Z' })); // same instance+state+kind
+  const q = readOwnerQueue(base);
+  assert.strictEqual(q.length, 1, 'the duplicate park was suppressed');
+});
+
+test('status is read-only: stale entries surface under owner_queue_stale, file bytes unchanged', () => {
+  const base = mkTmp();
+  const id = reachAwaitingProduct(base, 'FM-STALE');         // one live entry at awaiting_product
+  const oqPath = path.join(base, 'owner-queue.json');
+  const live = JSON.parse(fs.readFileSync(oqPath, 'utf8'));
+  // hand-craft two stale rows next to the live one (status must NOT prune them — that is write-path work)
+  const doctored = live.concat([
+    { at: AT, instance: id, state: 'escalated', kind: 'gate', priority: 2, source: 'feature-production-line' },   // wrong state → left state
+    { at: AT, instance: 'ghost-instance', state: 'awaiting_product', kind: 'conflict', priority: 1, source: 'x' }, // no state.json → instance gone
+  ]);
+  fs.writeFileSync(oqPath, JSON.stringify(doctored, null, 2) + '\n');
+  const beforeBytes = fs.readFileSync(oqPath);
+  const beforeMtime = fs.statSync(oqPath).mtimeMs;
+
+  const st = cli(['status', '--base-root', base]);
+  assert.strictEqual(st.code, 0);
+  assert.strictEqual(st.json.owner_queue.length, 1, 'only the live entry is in owner_queue');
+  assert.strictEqual(st.json.owner_queue[0].state, 'awaiting_product');
+  assert.strictEqual(st.json.owner_queue_stale.length, 2, 'both stale rows are surfaced (nothing hidden)');
+  assert.ok(st.json.owner_queue_stale.some((e) => e.instance === id && /left state escalated/.test(e.reason)),
+    'the same-instance/wrong-state row is tagged "left state <s>"');
+  assert.ok(st.json.owner_queue_stale.some((e) => e.instance === 'ghost-instance' && /instance gone/.test(e.reason)),
+    'the missing-instance row is tagged "instance gone"');
+  // PROOF status wrote nothing: exact bytes + mtime unchanged
+  assert.ok(beforeBytes.equals(fs.readFileSync(oqPath)), 'status must not rewrite owner-queue.json (read-only)');
+  assert.strictEqual(fs.statSync(oqPath).mtimeMs, beforeMtime, 'owner-queue.json mtime unchanged (no write)');
+});
+
+// ==== --force-manual PA-reference validation (judge rec #4) =======================================
+
+test('force-manual: a reason with no PA reference is refused (exit 2)', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-NOPA');
+  const r = tick(base, id, 'evt:impl.go', null, ['--force-manual', 'no pa ref']);
+  assert.strictEqual(r.code, 2, 'a reason without a PA-id must exit 2');
+  assert.ok(/PA-id/.test(r.stderr), `stderr must demand a PA reference: ${r.stderr}`);
+  assert.strictEqual(readState(base, id).state, 'implementing', 'the refused tick is a no-op');
+});
+
+test('force-manual: a PA reference absent from pending-actions.md is refused (exit 2)', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-GHOSTPA');
+  seedPaFixture(base);                                        // seeds PA-001 only
+  const r = tick(base, id, 'evt:impl.go', null, ['--force-manual', 'PA-999: x']);
+  assert.strictEqual(r.code, 2, 'a PA-id absent from the journal must exit 2');
+  assert.ok(/PA-999/.test(r.stderr) && /not.*found/.test(r.stderr), `stderr must name the missing PA: ${r.stderr}`);
+  assert.strictEqual(readState(base, id).state, 'implementing', 'the refused tick is a no-op');
+});
+
+test('force-manual: a valid, existing PA reference applies the tick and stamps the audit marker', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-VALIDPA');
+  seedPaFixture(base);
+  const r = tick(base, id, 'evt:impl.go', null, ['--force-manual', 'PA-001: manual recovery']);
+  assert.strictEqual(r.code, 0, `a valid PA-referencing force must apply: ${r.stderr}`);
+  assert.strictEqual(r.json.to, 'runtime_gate', 'the forced tick applies the real transition');
+  assert.ok(r.json.why.some((w) => w === 'forced-manual: PA-001: manual recovery'),
+    `why[] must carry the forced-manual marker: ${JSON.stringify(r.json.why)}`);
 });
 
 // ==== PA bridge (phase 2b) =======================================================================
