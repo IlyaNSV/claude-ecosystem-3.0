@@ -1628,6 +1628,31 @@ Quick mode D1.2/D1.3 давно рабочий (skills `market-research-protocol
 1. **«Точка входа без исполнителя» — это класс-(e) долг, который тихо врёт пользователю.** `--deep` парсился, mode-selection предлагал Deep, скилл говорил «spawn market-researcher» — но spawn упал бы «agent not found». Spec-only фича, на которую ссылается рабочая обвязка, хуже отсутствующей: она обещает и не держит. Закрытие = построить исполнителя + сделать spawn actionable (brief+контракт), а не просто уронить файл.
 2. **Read-only субагент + writer-в-main — не случайность, а инвариант экосистемы.** Тот же выбор, что в completeness-loop advisors: субагент, пишущий в `.product/` напрямую, обходит event-gated PostToolUse-хуки родительской сессии (BG-extraction, validation, session-state). Правильный шов — субагент возвращает контент, main пишет и триггерит хуки. Зафиксировано в промптах агентов и в скилле явно, чтобы будущий рефактор не «оптимизировал» это, дав агенту Write.
 
+## DEC-DEV-0187 — G21 закрыт: Vision-эпики A/B/C/D/G вписаны в тело Product/Design SPEC (сняты дрейф-баннеры), оставлен честный G36-баннер
+
+**Date:** 2026-07-11
+**Trigger:** остаток G21 из DEC-DEV-0170 («промаркировать, не вписывать» — частично): построенные Vision-эпики жили в SPEC-ах только как дрейф-баннеры «этот SPEC не описывает X, см. Y». Явное поручение — полноценно вписать при содержательной ревизии SPEC.
+
+### Context
+0170 (quick-win) поставил в Product/Design SPEC баннеры «пост-spec расширения построены, но в тело не вписаны», указав SSOT на `commands/*` + CHANGELOG + `02-commands.md`, и отложил вписывание в отдельный doc-трек. Это и есть трек. Вписывались ТОЛЬКО фактически построенные эпики (сверка с кодом, не с планами): Epic A (zone-router `hooks/product/zone-router.cjs` + `zone-routing.yaml` + hook `zone-change-trigger.js` + персоны `architect-advisor`/`qa-advisor` в `agents/product/`, `ux-advisor` в `agents/design/`), Epic B (completeness-loop: `/product:complete` + `completeness-oracle.cjs` + `gap-classifier.cjs` + runner `complete-feature.mjs`), Epic C-i (`/product:batch-enrich` + runner), Epic D (`/product:consilium` + `consilium-synth.cjs --panel`), Epic G (roster-слой `agent-roster.cjs`).
+
+### Решение (документационная ревизия — НЕ spec-change поведения; нормативные контракты не тронуты)
+1. **Product SPEC — баннер снят полностью, эпики вписаны в тело:** заголовочный ⚠-баннер заменён на pointer-строку «v1.x Autonomous Pipeline extensions → секции»; новая **§2.4** (архитектура машинерии: oracle + zone-router + roster + consilium + runners + рельс каноничности персон); **§3.2** обогащён `/product:complete`; новая **§3.2b** (`/product:consilium`, `/product:batch-enrich`); новая **§5.4** (три profile-персоны); новая **§6.8** (`zone-change-trigger.js`). Описательные счётчики обновлены под факт (commands 20→22, subagents +3 персоны, hooks 8→12) — **check-counts их не сторожит** (гейт только 24 типа артефактов / 44 правила; см. ниже).
+2. **Design SPEC — баннер РАСЩЕПЛЁН:** половина «код впереди SPEC» (`ux-advisor`) снята и вписана (§2.1/§5.2/§6-нота); половина «SPEC впереди кода» (`screen-generator`, G36) **оставлена честным баннером** — файл `agents/design/screen-generator.md` реально не существует, §5.1 помечен «НЕ построен (G36), спецификация ниже — целевой контракт». Это ровно «оставь баннер там, где эпик построен частично/не построен».
+3. **Исправлен факт-дефект самого баннера 0170:** он указывал SSOT персоны как `agents/product/ux-advisor.md` — файл лежит в `agents/design/ux-advisor.md` (persona namespace-Design, роутится Product-хуком по зоне `mockups`). Вписано с верным путём.
+4. **Integrator SPEC — не тронут:** G21-баннера там нет (единственный «расширени»-матч — DEC-DEV-0060 capability scope-нота, к эпикам A/B/C/D отношения не имеет).
+5. **F1 (autonomy-policy) — сознательно вне scope:** Epic F, зона Orchestrator, в Product/Design баннерах не фигурировал. Отмечен одной строкой в pointer-блоке Product SPEC как «здесь не описан». Побочно замечено (не действовал): header `orchestrator/lib/autonomy-policy.cjs` заявляет «WIRED (F2 seed, DEC-DEV-0154)» — т.е. брифовое «F1 без wiring» устарело; это Orchestrator-SPEC долг, вне G21.
+
+### Нормативные контракты — почему не тронуты
+Вписывание — документационное (описание уже-построенного). Ни один canonical field / артефакт-тип / validation-правило не изменён. Счётчики команд/хуков/субагентов, которые я обновил, **не** входят в сторожимые `check-counts.js` (он сверяет только `24 типа артефактов` = число `docs/pmo/artifacts/*.md` минус README, и `44 активных правил` из `validation.md`). Никаких фраз «N типов артефактов / N validation rules» с новыми числами не вводил → `check-counts.js` зелёный, counts 24/44 без изменений.
+
+### Outcome
+2 файла (`docs/product-module/SPEC.md`, `docs/design-module/SPEC.md`). `check-counts.js` зелёный; `npm run verify` EXIT=0; spec-drift-sweep grep на снятые баннеры/переименованные секции чист. CHANGELOG `[Unreleased] ### Modified`. GAPS: G21 → закрыт (было «частично» 0170); G36 остаётся открытым (честно, screen-generator не построен).
+
+### Lessons
+1. **«Промаркировать» и «вписать» — две разные единицы работы; баннер честен как временный указатель, но накапливает долг.** 0170 сознательно отложил вписывание; долг закрылся только явным треком. Баннер-как-SSOT-указатель работает, но провоцирует вывод «нет в SPEC ⇒ есть в коде — доверяй коду», который слабее, чем связное описание в теле.
+2. **Баннер сам может дрейфовать:** 0170-баннер указывал неверный путь персоны (`agents/product/ux-advisor.md` vs фактический `agents/design/`). Маркер дрейфа, который сам не сверен с кодом, — второй слой дрейфа. При вписывании всё сверялось с `ls`/`grep` по факту, не с текстом баннера.
+3. **Расщепляй двусторонний баннер по направлению дрейфа:** Design держал и «код впереди SPEC» (вписываемо), и «SPEC впереди кода» (G36, невписываемо — стройки нет). Снял только первую половину; вторую оставил суженным честным баннером. Слить их в «снято» было бы описанием непостроенного как построенного.
 
 ---
 
