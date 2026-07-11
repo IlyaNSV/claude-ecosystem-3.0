@@ -9,7 +9,7 @@ User invoked: `/integrator:update $ARGUMENTS`
 
 You are running the **version-bump + drift-repair flow** per `docs/integrator-module/SPEC.md §7.4`. Modifying command — has side effects.
 
-**Scope (DEC-DEV-0040 Q2):** Phase 5 ships update flow. Drift detection algorithm is **minimum viable** in v1 (compare metadata + adapter body diff against repo HEAD); full schema-aware drift detection deferred to Phase 7.
+**Scope (DEC-DEV-0040 Q2):** Phase 5 ships update flow. Drift detection algorithm is **minimum viable** in v1 (compare metadata + adapter body diff against repo HEAD); full schema-aware drift detection deferred to v1.1+ (Phase-7 kickoff cut, DEC-DEV-0176; the shared D1/D2/D3 lib now lives at `hooks/integrator/lib/drift-checks.cjs` — this Stage 3 stays inline for now).
 
 ## Process
 
@@ -231,7 +231,7 @@ Summary to user:
 🔍 Drift: <N contracts repaired> | <N unchanged>
 📝 Journal: DEC-INT-NNNN
 📁 Backup: .claude/integrator/backups/<ISO-timestamp>/
-🔄 Re-verify other features (manual): /integrator:verify (Phase 7, when available)
+🔄 Re-verify other features (manual): /integrator:verify
 ```
 
 ### Final: Cleanup session-context marker

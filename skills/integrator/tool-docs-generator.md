@@ -12,7 +12,7 @@ Authoritative style: `docs/integrator-module/SPEC.md §14` (read this section be
 
 - `/integrator:add <tool>` **Stage 6** — initial generation after verify smoke passes
 - `/integrator:update <tool>` **Stage 5** — refresh sections affected by version diff
-- `/integrator:docs --tool <name>` (Phase 7) — regenerate on demand
+- `/integrator:docs --tool <name>` — regenerate on demand (shipped Phase 7, DEC-DEV-0176)
 
 ## Style invariants (SPEC §14.1)
 

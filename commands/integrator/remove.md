@@ -169,7 +169,7 @@ Append to `.claude/integrator/project-journal.md`:
 2. Restore state files: `cp backups/<ts>/pmo-mapping.yaml .claude/integrator/`
 3. Restore contracts + adapters + tool-docs from backups/<ts>/
 4. Re-install tool: `/integrator:add <tool>@<exact-version>`
-5. Verify: `/integrator:verify` (Phase 7) or `/integrator:status`
+5. Verify: `/integrator:verify` or `/integrator:status`
 
 ### Lessons
 <if any — e.g., "removed because replaced by X" / "removed because pivot in scope" / "Removed prematurely; restore needed">
