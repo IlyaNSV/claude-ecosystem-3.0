@@ -61,6 +61,13 @@ When `Mode: adaptive` — single invocation, two internal steps. **No double LLM
 
 ### Step 1: Classify magnitude (~30 sec reasoning)
 
+**Deterministic depth-floor first (G30, DEC-DEV-0182):** if your brief carries
+`Depth-floor: significant`, a code-level guardrail already found a structural signal
+(creation / activation / severity-critical / entity-change / category-change) that makes
+a `cosmetic` verdict wrong. In that case classify **significant** unconditionally — do
+NOT downgrade, and note in `classification_rationale` that the depth-floor override
+applied. Only when no depth-floor is present do you make the call yourself below.
+
 Analyze the provided diff against HEAD. Classify as `cosmetic` or `significant` per these triggers (per processes.md §6.2 + validation.md §7):
 
 **Cosmetic** (→ Step 2: quick consistency check):

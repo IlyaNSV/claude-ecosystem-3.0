@@ -155,6 +155,19 @@ If fail: rollback Stage 3-5 (uninstall tool, restore baseline backup, remove CNT
 
 **Phase 5 scope reminder:** Stage 6 is the END of `/integrator:add`. Production routing (real `.product/handoffs/FM-NNN-handoff.md` → live `/kiro:spec-init`) is Orchestrator — out of this command's responsibility.
 
+### Final: Handoff staleness snapshot (G22)
+
+Now that a tool + contract are active, record a fresh handoff-staleness baseline so downstream consumers (and `/integrator:verify`) know whether the handoffs in `.product/` still match their embedded `artifact_hashes`. This closes handoff-spec §10/§13 (drift recompute "при использовании handoff Integrator'ом при add/update") — the recompute step that was previously absent.
+
+```bash
+node .claude/hooks/integrator/lib/handoff-staleness.cjs --root . --write
+```
+
+What it does (detect-only): for each `.product/handoffs/*-handoff.md` it recomputes every embedded artifact's hash from `.product/` via the Product-zone hash SSOT (`.claude/hooks/product/lib/hash.js`) and compares against the stored `artifact_hashes`. It persists the verdict to `.claude/integrator/handoff-staleness.yaml`. **Read-only w.r.t. `.product/`** — it never writes there (the `stale` flag lives in the Integrator zone, not in the handoff frontmatter). Exit is always 0.
+
+- No `.product/handoffs/` (fresh project, no handoffs yet) → no-op with a note; harmless.
+- Any handoff reported `stale` → surface it to the user and suggest `/product:handoff <FM-id> --regenerate` (regeneration is a Product Module action, not Integrator's).
+
 ### Final: Journal entry + summary
 
 Append entry to `.claude/integrator/project-journal.md` (also propagated to `~/.claude/integrator/decision-journal.md` if global lessons apply):
@@ -198,6 +211,7 @@ Append entry to `.claude/integrator/project-journal.md` (also propagated to `~/.
 - .claude/integrator/contracts/CNT-NNN.yaml + .md
 - .claude/integrator/adapters/<adapter>.js (copied + metadata injected)
 - .claude/integrator/tool-docs/<tool>.md (generated)
+- .claude/integrator/handoff-staleness.yaml (handoff drift snapshot, G22)
 - ~/.claude/integrator/tool-catalog/<tool>.yaml (full profile cached globally)
 
 ### Lessons
