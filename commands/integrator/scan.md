@@ -11,7 +11,7 @@ This protects user-created hooks, commands, agents from being silently overwritt
 ## When to run
 
 - **Manually** before `/integrator:add` if you suspect existing customizations
-- **Automatically** invoked before `/integrator:add`, `/integrator:update`, `/integrator:replace` (Integrator itself runs this)
+- **Automatically** invoked before `/integrator:add`, `/integrator:update`, `/integrator:replace` (Integrator itself runs this; `replace` is not implemented yet — cut to v1.1+ per DEC-DEV-0176)
 - **Periodically** to refresh baseline (recommended monthly)
 
 ## Process
