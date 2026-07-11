@@ -8445,3 +8445,27 @@ Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(P
 
 ### Lessons
 1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.
+
+---
+
+## DEC-DEV-0185 — Repo-wide deadweight-sweep: архивация исполненного, ротация audit-канонов, вынос личных инициатив, untrack PDF (PR-1 из 3)
+
+**Date:** 2026-07-11
+**Trigger:** запрос владельца «умная чистка репо: устаревшее/применённое — вон, инициативы — за пределы репо, канонам — компактация без потери смыслов». Метод — многоагентная инспекция (Workflow, 20 агентов: 8 полос × inventory→classify→adversarial-verify + анализ компактации), поглощает work-order `dev/deferred/D7_DEADWEIGHT_CLEANUP.md` (QUEUED c 2026-06-19) как полосу A.
+
+### Решения
+1. **Archive-not-delete по умолчанию; DELETE только по уже задокументированному правилу.** 41 audit-report (findings/fail/partial) → `dev/_archive/audit-reports/`; 8 clean>30d УДАЛЕНЫ — это retention-правило самого `audit-reports/README.md`, подтверждено владельцем (AskUserQuestion). 5 репортов адверсариальная верификация ОТБИЛА в KEEP: они — evidence открытых E1–E5 в `dev/tech-debt/PHASE_4.md` (retention: держать до закрытия блокеров). Урок конвейера: классификатор предлагал их в архив — вернул верификатор; двухстадийность окупилась.
+2. **Ротация audit-index впервые исполнена по его же §Notes:** clean/dismissed-строки (46 из 77) → `dev/_archive/audit-index-2026.md`; sentinel-пары и Pending нетронуты. Попутный дефект: mode-колонка содержит вложенный `|` (`zones:...|unknown`) — первый парсер «по номеру колонки слева» тихо пропустил 16 clean-строк; статус надо парсить ОТ КОНЦА строки. 
+3. **Разовые брифы/планы (19 шт.) → `_archive/{orchestrator,research,vision,plans,vibe-coding}/`.** Верификация подтвердила: ни один не в require/readFile/npm-scripts; все не-историчные ссылки — provenance-комменты в шапках кода (обновлены на архивные пути). `dev/research-cache/` — закрытый эксперимент самой экосистемы → архив (не вынос).
+4. **Инициативы владельца:** `dev/product-radar/` + `dev/factory-conductor/` — 0 ссылок из harness → ВЫНОС в отдельные приватные репо (решение владельца: «отдельный репо на каждую»; исполнение = PR-2). `dev/process-fabric/` вынос ОТБИТ верификатором: CONCEPT.md/EXECUTION_ROADMAP.md — живые design-SSOT (docs/MAP.md, run.md, manifest.yaml хуков, guide/07), OD7-грейды цитирует SPEC оркестратора — оставлены на месте, исторический балласт (11 файлов) → `_archive/process-fabric/`.
+5. **PDF 755 КБ (`universality-assessment`) — untrack + .gitignore:** дубль соседнего REPORT.md; бинарь в git без потребителя. Содержимое остаётся в git history.
+6. **Полосы E/F/G/H (consumer-zone, docs, orchestrator+product, tests+корень) — 100% KEEP:** сирот нет, манифесты сходятся, все тесты в verify-цепи; `.obsidian`/`HOME.md` — осознанное решение DEC-DEV-0046, не трогать. D7-механизмы (~75) — ВСЕ живые; work-order D7_DEADWEIGHT_CLEANUP помечен EXECUTED (гипотеза «мёртвые скрипты» не подтвердилась).
+7. **Компактация канонов (DEV_JOURNAL −83% / CHANGELOG −78% / ROADMAP −74% / audit-journal.ndjson = DEFER как dedup-память) — отдельный PR-3** после merge PR-1/PR-2: контракт-чек пройден (process-gate матчит имена файлов content-agnostic; единственный входящий якорь — `ROADMAP.md#где-мы-сейчас`, секция остаётся дословно).
+
+### Outcome
+PR-1: 41 move + 8 delete (audit-reports) + ротация индекса + 19 брифов + research-cache + 11 файлов process-fabric в архив; untrack PDF; spec-drift-sweep по всем перемещённым basename (ссылки в живых доках обновлены; накопительная история DEV_JOURNAL/CHANGELOG намеренно НЕ переписана — point-in-time); `dev/README.md` переписан под фактическое состояние; `check-counts` ✓ 24/44; `npm run verify` EXIT=0. Инспекция: 20 агентов, ~1.74M токенов, 0 ошибок; вердикты — в transcript workflow `wf_6d7f101f-990`.
+
+### Lessons
+1. Двухстадийная диспозиция (classify → adversarial verify) — не бюрократия: 6 из 72 не-KEEP вердиктов отменены верификатором с конкретной живой проводкой (PHASE_4.md evidence, design-SSOT process-fabric). Одностадийный классификатор порвал бы retention-контракт.
+2. Markdown-таблицы с «свободными» колонками нельзя парсить по индексу слева: вложенный `|` в значении сдвигает всё. Парсить от конца (хвост таблицы стабилен) или по sentinel-якорям.
+3. «Ссылка есть» ≠ «проводка есть»: provenance-комменты в шапках кода и упоминания в накопительной истории — не runtime-зависимости; но при переносе их всё равно надо обновлять/помечать, иначе доки врут о местоположении.

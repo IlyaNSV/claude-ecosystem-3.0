@@ -1,8 +1,18 @@
 # D7 Deadweight Cleanup — оставить только работающее и используемое
 
-> 🅀 **STATUS: QUEUED** (зарегистрировано 2026-06-19). Запускается **после** того как текущий
-> D7 process-hardening (spine + блокирующий gate + полная уборка дрейфа, DEC-DEV-0083) смёржен в
-> `main`. Это **не** bring-forward по внешнему триггеру — чистая sequencing-зависимость.
+> ✅ **STATUS: EXECUTED 2026-07-11** — исполнен как полоса A repo-wide deadweight-sweep
+> (DEC-DEV-0185): use-audit всех ~75 D7-механизмов многоагентной инспекцией
+> (inventory → classify → adversarial verify). **Вердикт: все механизмы живые (KEEP)** —
+> scripts вызываются verify-цепью/командами, hooks зарегистрированы, checklists/patterns
+> цитируются живыми доками; ни одного мёртвого скрипта не найдено. Отработано по гипотезам
+> таблицы ниже: audit-reports ротированы (41 → `_archive/audit-reports/`, clean>30d удалены
+> по retention), audit-index ротация §Notes впервые исполнена; frozen-секции SPEC.md →
+> компактация в PR-3 sweep'а; refinement-трекеры §10 — признаны COMPACT-таргетами там же.
+> Файл сохранён как исполненный work-order (историческая ценность метода use-audit).
+>
+> Изначально: 🅀 QUEUED (зарегистрировано 2026-06-19), запуск **после** D7 process-hardening
+> (spine + блокирующий gate + полная уборка дрейфа, DEC-DEV-0083) в `main`. Это **не**
+> bring-forward по внешнему триггеру — чистая sequencing-зависимость.
 >
 > **Owner:** developer + Claude (D7 self-maintenance).
 >

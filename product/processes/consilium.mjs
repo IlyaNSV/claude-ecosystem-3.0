@@ -12,7 +12,7 @@ export const meta = {
 
 /*
  * Product process D1b `consilium` — the executable form of the Epic-D generalization
- * (DEC-DEV-0145 wave (C∥D); design in dev/ECOSYSTEM_VISION_BATCH_3.md §D1b/§D2). The
+ * (DEC-DEV-0145 wave (C∥D); design in dev/_archive/vision/ECOSYSTEM_VISION_BATCH_3.md §D1b/§D2). The
  * consilium PRIMITIVE (heterogeneous jury → deterministic matrix/rank/veto synthesis) was
  * already built and live-validated as the Orchestrator P2 `decide-architecture-foundation`
  * (DEC-DEV-0129/0135). This wave GENERALIZES it to the completeness-loop's decision
