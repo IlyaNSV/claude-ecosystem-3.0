@@ -60,7 +60,7 @@
 - **G29** periodic stale-draft sweep — тот же temporal-актуатор.
 
 **Пост-обязательство №4 (параллельные инициативы аудита; recon 2026-07-10 подтвердил — ничего из этого не появилось):**
-- **G14** `commands/integrator/{verify,debug,replace,docs}.md` — файлов нет (Integrator Phase-7), живые ссылки на них остаются битыми; **G15** confidence-downgrade lifecycle без точки входа (зависит от G14); **G16** `hooks/integrator/{drift-check,contract-validate}.js` — файлов нет.
+- **G14** `commands/integrator/{verify,debug,replace,docs}.md` — файлов нет (Integrator Phase-7), живые ссылки на них остаются битыми (→ см. Дельту 2026-07-11); **G15** confidence-downgrade lifecycle без точки входа (зависит от G14) (→ см. Дельту 2026-07-11); **G16** `hooks/integrator/{drift-check,contract-validate}.js` — файлов нет (→ см. Дельту 2026-07-11).
 - **G36** субагенты market-researcher / competitor-analyst / screen-generator — файлов нет, Deep Discovery нефункционален.
 - ~~Doc-дрейфы G17/G18/G33/G35~~ — **закрыты/сужены DEC-DEV-0170** (см. таблицы выше): G18 — `integrator/update.md` Pre-flight теперь вызывает scan (SPEC §13.1 строка replace промаркирована Phase-7); G33 — ручной baseline в `verify.md` Step 4/summary заменён сверкой с генерируемым `02-commands.md`; G35 — мёртвая ссылка `disable-d7-audit` заменена честным «команда сознательно не существует»; **G17 частично** — `/ecosystem:update` Step 8 сёрфейсит условный next-step `/integrator:update --repair` (prompted; детерминированный hook = G16, Phase-7); **G21 частично** — баннеры пост-spec расширений в Product/Design SPEC (двусторонний дрейф промаркирован; вписывание в тело SPEC — отдельный doc-трек).
 - **G24** session-audit opt-in per-pilot + хардкод-путь.
@@ -86,3 +86,44 @@ doc-drift: G18 scan-в-update, G33 сверка с генерируемым ка
 result-ingest) — отдельные substrate-gated треки; G08/G28/G29 — кандидаты фазы 4 по
 live-триггерам; G14–G16/G24/G36 — пост-обязательство №4; G22/G25–G27/G30/G31/G34 — backlog
 D7-гигиены на приоритизацию владельцем.
+
+---
+
+## Дельта 2026-07-11 (после сверки)
+
+> **Аддитивный постскриптум** (существующие секции выше не переписаны — конвенция:
+> живой статус дополняется, снапшот сверки остаётся as-was). Фиксирует сдвиг по
+> Integrator Phase-7 (G14/G15/G16), случившийся ПОСЛЕ recon 2026-07-10, когда
+> пост-обязательство №4 честно отмечало «ничего из этого не появилось».
+
+**Integrator Phase-7 построен (DEC-DEV-0176, PR #156) — G14/G15/G16 закрыты:**
+
+- **G14 → закрыт на 3/4.** Построены `commands/integrator/{verify,debug,docs}.md`;
+  живые ссылки на них перестали быть битыми. Четвёртая команда — `/integrator:replace`
+  — **сознательно CUT до v1.1+** (единственный установленный D2-Tech инструмент = cc-sdd,
+  содержательный тест replace невозможен); bring-forward-триггер = **второй D2-Tech
+  инструмент в пилоте**. Мёртвые ссылки на replace аннотированы честно.
+- **G15 → закрыт.** Точка входа в confidence-downgrade lifecycle (SPEC §4.4) добавлена
+  явным шагом в `debug.md`: systematic issues → роутинг в `/product:validation-tune`
+  (propose confidence-downgrade). Зависимость от G14 снята.
+- **G16 → закрыт по существу.** Построен `hooks/integrator/drift-check.js` (SessionStart,
+  detect-only, warn-only, fail-open) + разделяемая либа `hooks/integrator/lib/drift-checks.cjs`
+  (D1 semver + D2 CONTRACT_SCHEMA_VERSION + staleness `last_audit`) — проактивный слушатель
+  дрейфа. Второй хук — `contract-validate.js` (PreToolUse) — **сознательно CUT до v1.1+**
+  (валидация спекулятивна, нет наблюдённого класса дефекта, который она ловит и который
+  пропустят drift-check+verify); bring-forward-триггер = **живой битый контракт, прошедший
+  мимо drift-check/verify**.
+
+**Runtime-валидация прогнана (DEC-DEV-0177, batch 4 смоук-планов на VM-пилоте):**
+Phase-7 живьём здоров — verify/debug/docs PASS (debug попутно нашёл живой дефект). Прогон
+вскрыл **DEF-SMK-1**: drift-оси D1/D2/D3 хука/либы были **слепы на реальной схеме
+active-tools.yaml** — парсер ждал поле `adapter`, которого в реальной форме нет (связь
+tool→adapter живёт в `CNT-*.yaml` `transformation.script`); staleness-нога при этом работала
+live. Юниты дефект не ловили — фикстуры были самодельной формы.
+
+**DEF-SMK-1 пофикшен (DEC-DEV-0178, PR #163):** adapter-резолв переведён на скан CNT-контрактов
+(канон, не новое поле) + страховочная `(unattributed)`-сетка; юниты подняты на РЕАЛЬНОЙ форме
+схемы (24→33). Тем самым drift-контур G16 стал видеть дрейф на реальном пилоте.
+
+Итог по пост-обязательству №4: **G14/G15/G16 закрыты** (G14 — 3/4, replace осознанно
+отложен); открытыми в №4 остаются **G24** и **G36** (Deep Discovery субагенты).
