@@ -651,6 +651,63 @@ const TEST_CASES = [
     expectStdoutIncludes: /hookSpecificOutput.*hookEventName":"SessionStart.*additionalContext.*smoke-fabric-inst/,
   },
 
+  // ---------- drift-check (DEC-DEV-0176 / Integrator Phase 7) ----------
+  // SessionStart, detect-only, warn-only. No-op unless the project carries
+  // Integrator state (.claude/integrator/active-tools.yaml). 2 cases:
+  //   1. no active-tools.yaml → silent no-op (no additionalContext)
+  //   2. fixture with a drifted adapter (schema 2→1) + stale audit → additionalContext
+  //      naming the tool + pointing at /integrator:verify.
+  {
+    hook: 'hooks/integrator/drift-check.js',
+    label: 'no-integrator-state-no-op',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart' },
+    setup: (ctx) => {
+      // Defensive: ensure Integrator state is absent regardless of case ordering.
+      try { fs.rmSync(path.join(ctx.tmpDir, '.claude', 'integrator', 'active-tools.yaml'), { force: true }); } catch (_e) { /* absent ok */ }
+    },
+    expectStdoutAbsent: /additionalContext/,
+  },
+  {
+    hook: 'hooks/integrator/drift-check.js',
+    label: 'drift-injected',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart' },
+    setup: (ctx) => {
+      const intgAdapters = path.join(ctx.tmpDir, '.claude', 'integrator', 'adapters');
+      const refAdapters = path.join(ctx.tmpDir, '.claude', 'adapters');
+      fs.mkdirSync(intgAdapters, { recursive: true });
+      fs.mkdirSync(refAdapters, { recursive: true });
+      const adapter = (schema, body, header) => [
+        "'use strict';",
+        `/** header ${header}\n * @target_tool_version: ^2.1.0\n */`,
+        `const CONTRACT_SCHEMA_VERSION = ${schema};`,
+        `function transformToInput() { return '${body}'; }`,
+        'module.exports = { transformToInput };',
+        '',
+      ].join('\n');
+      // reference schema=2 body=new; installed schema=1 body=old → D2+D3 drift.
+      fs.writeFileSync(path.join(refAdapters, 'smoke-drift-adapter.js'), adapter(2, 'new', 'ref'), 'utf8');
+      fs.writeFileSync(path.join(intgAdapters, 'smoke-drift-adapter.js'), adapter(1, 'old', 'ins'), 'utf8');
+      fs.writeFileSync(
+        path.join(ctx.tmpDir, '.claude', 'integrator', 'active-tools.yaml'),
+        [
+          'tools:',
+          '  - name: smoke-tool',
+          '    version_installed: 2.1.0',
+          '    target_tool_version: "^2.1.0"',
+          '    adapter: smoke-drift-adapter',
+          '    last_audit: 2020-01-01',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+    },
+    expectStdoutIncludes: /hookEventName":"SessionStart[\s\S]*additionalContext[\s\S]*smoke-tool[\s\S]*integrator:verify/,
+  },
+
   // ── subagent-watchdog.js (DEC-DEV-0159, G05/G06) ─────────────────────────────
   // Deterministic watchdog over the pending-review queues + canonical persona spawns.
   // Sidecar state lives in .product/.pending/.watchdog-state.json; each case resets it

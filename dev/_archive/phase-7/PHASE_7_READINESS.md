@@ -10,7 +10,13 @@
 
 ## Status banner
 
-🟡 **Skeleton — kickoff pending.** Created по Phase 6 closure (DEC-DEV-0053). Real content emerges от architectural kickoff session.
+🟢 **READY — kickoff executed inline 2026-07-11 (DEC-DEV-0176).** SSOT решений/cuts/плана — запись DEC-DEV-0176 в DEV_JOURNAL (10 решений, 6 ambiguity-резолюций, 6 cuts, sub-phases A-G). Ниже — только дельты к skeleton; проза решений здесь НЕ дублируется (pointer-collapse).
+
+Kickoff-итог (сводка):
+- **Committed:** `commands/integrator/{verify,debug,docs}.md` + `hooks/integrator/drift-check.js` (SessionStart, detect-only, warn-only) + либа `hooks/integrator/lib/drift-checks.cjs` (D1/D2/D3 по local-only модели DEC-DEV-0045) + wiring (overlay ×3, manifest, `tests/integrator/`, каталог/карта regen).
+- **CUT → v1.1+:** `/integrator:replace` (trigger: 2-й D2-Tech инструмент) · `contract-validate.js` (trigger: живой битый контракт мимо drift-check/verify) · `verify --light`/periodic · profile-drift + cross-tool drift · `debug-protocol` skill (инлайн в debug.md) · рефактор update.md на либу.
+- **Уже построено соседними фазами (НЕ deliverables Phase 7):** скиллы `drift-detection.md` + `tool-docs-generator.md` (Phase 5), механика D1/D2/D3 (update.md Stage 3, DEC-DEV-0045), UX-транскрипт debug (SPEC §7.3).
+- G14 → закрывается на 3/4 (replace аннотирован честно); G15 → закрывается (debug = точка входа confidence-downgrade); G16 → частично (drift-check да, contract-validate cut).
 
 Prerequisite chain status:
 - ✅ Phase 5 implementation + runtime smoke + closure (DEC-DEV-0041/0044/0045) — 1.3.0/1.3.1/1.3.2
@@ -51,10 +57,10 @@ Open prerequisite work blocks (non-blocking для kickoff itself, но context 
 | Phase 6 closure done | ✅ DEC-DEV-0053 (2026-05-28) | no |
 | Phase 6 runtime smoke | ⏳ deferred — orthogonal scope | no |
 | Patch 1.3.x runtime smoke | ⏳ deferred — orthogonal scope | no |
-| Phase 7 architectural questions enumerated | ❌ skeleton — kickoff populates | NOT YET |
-| Phase 7 scope cuts identified | ❌ skeleton | NOT YET |
+| Phase 7 architectural questions enumerated | ✅ DEC-DEV-0176 (10 решений + 6 ambiguity) | no |
+| Phase 7 scope cuts identified | ✅ DEC-DEV-0176 (6 cuts, >50% поверхности) | no |
 
-**Conclusion:** Phase 6 + patches prerequisites закрыты. Phase 7 architectural decisions & scope cuts — pending kickoff session.
+**Conclusion:** все prerequisites закрыты; kickoff выполнен inline 2026-07-11 → implementation по sub-phases A-G (DEC-DEV-0176 Plan).
 
 ---
 

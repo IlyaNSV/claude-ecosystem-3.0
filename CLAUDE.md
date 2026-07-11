@@ -27,7 +27,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 - `dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
 - `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
 - `dev/gates/PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 (next pilot session); `dev/_archive/phase-6/PHASE_6_READINESS.md` archived
-- `dev/gates/PHASE_7_READINESS.md` — skeleton; Integrator maintenance + verify/debug/docs scope
+- `dev/gates/PHASE_7_SMOKE_TEST_PLAN.md` — Phase 7 runtime smoke S1-S5 (next VM-визит); фаза BUILT 2026-07-11 (DEC-DEV-0176), readiness archived → `dev/_archive/phase-7/`
 - `dev/gates/S_LE_LESSON_GATE_SMOKE.md` — LESSON-* gate runtime contracts (S-LE); hard-prereq перед переводом `lesson-presence-gate.js` PreToolUse warn→strict (next pilot session, DEC-DEV-0062)
 - `dev/deferred/D7_DEADWEIGHT_CLEANUP.md` — 🅀 QUEUED maintenance work-order: прунинг D7 до работающего+используемого. Sequencing-триггер: D7 process-hardening (DEC-DEV-0083) смёржен в `main`
 

@@ -1,18 +1,19 @@
 ---
-description: Minimum-viable drift detection between installed adapter instance and pilot-local reference adapter, used by /integrator:update Stage 3. Three heuristics (D1 semver / D2 schema / D3 body diff) — all local-only post DEC-DEV-0044 tri-location refinement. Full schema-aware drift deferred to Phase 7.
+description: Minimum-viable drift detection between installed adapter instance and pilot-local reference adapter, used by /integrator:update Stage 3. Three heuristics (D1 semver / D2 schema / D3 body diff) — all local-only post DEC-DEV-0044 tri-location refinement. Full schema-aware drift deferred to v1.1+ (Phase-7 cut, DEC-DEV-0176).
 ---
 
 # Drift Detection — Skill for Integrator
 
 Detect drift between an **installed adapter instance** (in `.claude/integrator/adapters/`) and **two reference points**: the upstream tool version and the **pilot-local reference adapter** (`.claude/adapters/<adapter>.js`, synced from ecosystem repo via `/ecosystem:update`).
 
-> **v1 scope (per DEC-DEV-0040 + Phase 5 plan, refined DEC-DEV-0044):** three heuristics, no semantic analysis. **All comparisons are local-only** — no cross-repo git access needed. Drift comparison subject = pilot reference vs pilot instance (both in `.claude/`). `@source_ref` is audit-only (tracks ecosystem commit at install time via `.sync-metadata.yaml`), not used as drift primary key. Full type-aware diff (e.g., consumer input shape comparison) → Phase 7.
+> **v1 scope (per DEC-DEV-0040 + Phase 5 plan, refined DEC-DEV-0044):** three heuristics, no semantic analysis. **All comparisons are local-only** — no cross-repo git access needed. Drift comparison subject = pilot reference vs pilot instance (both in `.claude/`). `@source_ref` is audit-only (tracks ecosystem commit at install time via `.sync-metadata.yaml`), not used as drift primary key. Full type-aware diff (e.g., consumer input shape comparison) → v1.1+ (Phase-7 cut, DEC-DEV-0176).
 
 ## When invoked
 
 - `/integrator:update <tool>` Stage 3 — primary use
 - `/integrator:debug` — when contract failure suspected as version drift
-- Future `/integrator:verify --light` (Phase 7) — periodic drift check
+- `/integrator:verify` — zone health-check; drift axis runs the shared lib `hooks/integrator/lib/drift-checks.cjs` (Phase 7, DEC-DEV-0176). `--light` periodic mode — cut to v1.1+
+- `drift-check.js` SessionStart hook — proactive listener over the same lib (Phase 7)
 
 ## Three checks (D1, D2, D3)
 
@@ -146,11 +147,11 @@ Next actions:
 6. **Cross-repo git diff for D3 (legacy approach, removed DEC-DEV-0044).** Original spec used `git diff <source_ref> HEAD -- adapters/<adapter>.js` which assumed pilot's git == ecosystem's git. In tri-location pattern this is wrong: `@source_ref` is ecosystem commit (read from `.sync-metadata.yaml`), not pilot's HEAD. D3 now does header-stripped local file comparison instead. `@source_ref` is audit-only.
 7. **Comparing pilot-instance against ecosystem-repo directly.** Pilot has no path to ecosystem repo's `adapters/`. Reference layer is `.claude/adapters/`; that's the comparison target.
 
-## Limits of v1 detection (deferred to Phase 7)
+## Limits of v1 detection (deferred to v1.1+ — Phase-7 cut, DEC-DEV-0176)
 
-- **Consumer input shape diff.** v1 compares adapter body; doesn't compare actual JSON output shape against consumer's expected schema. Phase 7 may parse tool docs for declared input shape and assert.
+- **Consumer input shape diff.** v1 compares adapter body; doesn't compare actual JSON output shape against consumer's expected schema. A future version may parse tool docs for declared input shape and assert (v1.1+).
 - **Producer artifact format drift.** If `handoff-spec.md` evolves (new required section), v1 won't catch unless reference adapter is also updated and triggers D2 schema bump. Coupling adapter↔producer is implicit.
-- **Multi-adapter contracts.** v1 assumes 1 adapter per contract. Multi-adapter (e.g., split pipeline) → defer Phase 7.
+- **Multi-adapter contracts.** v1 assumes 1 adapter per contract. Multi-adapter (e.g., split pipeline) → defer v1.1+.
 
 ## Cross-reference
 

@@ -7,7 +7,13 @@
 #   - Phase 5.F: journal-hook (PostToolUse, every modifying integrator action — per DEC-DEV-0040 Q6)
 #   - Patch 1.3.3 / DEC-DEV-0047 B-2: scope-guard (PreToolUse, warn-only)
 #
-# Phase 7 candidates (Maintenance group): drift-check (SessionStart), contract-validate (PreToolUse).
+# Phase 7 (Maintenance group):
+#   - drift-check (SessionStart) — SHIPPED Phase 7 (DEC-DEV-0176 dec. 6).
+#   - contract-validate (PreToolUse) — CUT to v1.1+ (DEC-DEV-0176 dec. 7): PreToolUse
+#     contract validation is speculative (no observed defect class it catches that
+#     drift-check + /integrator:verify miss; "block" semantics are barred by the
+#     warn-only convention anyway). Bring-forward trigger: a live broken contract
+#     that slips past both drift-check and verify.
 
 version: 1
 module: integrator
@@ -19,6 +25,11 @@ hooks:
       - type: PostToolUse
         matcher: "Bash|Write|Edit|NotebookEdit"
     description: "Autologs every modifying Integrator action (per DEC-DEV-0040 Q6) to .claude/integrator/project-journal.md. Internal filter: paths matching .claude/integrator/{active-tools.yaml, pmo-mapping.yaml, contracts/CNT-*.yaml|md, adapters/*.js, tool-docs/*.md, baseline.yaml} OR Bash commands matching npx|npm install|adapter execution. Dedup by (action+subject+minute) prevents cascade-save spam (DEC-DEV-0023 lesson). Retention: archives oldest half to _archive/journal-<YYYY-MM>.md when > 500 entries. Never blocks tool execution; stderr-only on internal errors."
+  - id: drift-check
+    file: drift-check.js
+    events:
+      - type: SessionStart
+    description: "Proactive Integrator adapter-drift listener (DEC-DEV-0176 dec. 6, closes gap G16). SessionStart, detect-only, warn-only. No-op unless the project carries Integrator state (.claude/integrator/active-tools.yaml) — inert in non-Integrator projects incl. the ecosystem-dev repo. Runs the shared local-only drift lib (hooks/integrator/lib/drift-checks.cjs): D1 semver (declared @target_tool_version vs recorded version_installed), D2 CONTRACT_SCHEMA_VERSION (pilot reference .claude/adapters/<a>.js vs installed instance .claude/integrator/adapters/<a>.js — tri-location DEC-DEV-0044, NEVER cross-repo), D3 header-stripped body diff of those two files, and last_audit staleness (>90d or absent). If any tool drifts/goes stale → injects a compact one-line-per-tool note via additionalContext (hookEventName required per DEC-DEV-0162) pointing at /integrator:verify + /integrator:update --repair. Clean state → silent (no per-session noise). Env toggle INTEGRATOR_DRIFT_CHECK=0. No network; fail-open (any throw → stderr, exit 0); never writes user files."
   - id: scope-guard
     file: scope-guard.js
     events:

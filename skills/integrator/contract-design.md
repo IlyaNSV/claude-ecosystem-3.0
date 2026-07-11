@@ -6,7 +6,7 @@ description: How to design a contract (CNT-*.yaml/.md) between two tools and ins
 
 Design a structured contract between a **producer** (artifact-emitting tool/module) and a **consumer** (artifact-consuming tool) — and instantiate the adapter script that performs the transformation.
 
-> **Manual in v1 (per ROADMAP Phase 5 risk note + DEC-DEV-0040).** Generation algorithm formalizes later (Phase 7+) once 2-3 adapters are written by hand and patterns emerge. Don't try to over-generalize from a single example.
+> **Manual in v1 (per ROADMAP Phase 5 risk note + DEC-DEV-0040).** Generation algorithm formalizes later (v1.1+; not part of shipped Phase 7 — DEC-DEV-0176) once 2-3 adapters are written by hand and patterns emerge. Don't try to over-generalize from a single example.
 
 ## When invoked
 

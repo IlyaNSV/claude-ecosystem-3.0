@@ -1018,9 +1018,9 @@ Orchestrator в будущем будет читать этот файл и по
 | Группа | Возможности | Ecosystem phase |
 |---|---|---|
 | **Read-only** | `/integrator:research`, `:map`, `:gaps`, `:status`, `:journal`, `:scan`; skills research-protocol + tool-profiling; subagent tool-researcher | Phase 1 ✅ |
-| **Installation** | `/integrator:add`, `:remove`, `:replace`; skills installation-protocol + contract-design; journal hook | Phase 5 |
-| **Maintenance** | `/integrator:verify`, `:debug`; drift-detection skill + hook | Phase 7 |
-| **Export для Orchestrator** | `/integrator:docs`; tool-docs generator | Phase 7 |
+| **Installation** | `/integrator:add`, `:remove`, `:replace`; skills installation-protocol + contract-design; journal hook | Phase 5 ✅ (`:replace` — cut v1.1+, DEC-DEV-0176; trigger: 2-й D2-Tech инструмент) |
+| **Maintenance** | `/integrator:verify`, `:debug`; drift-detection skill + drift-check hook | Phase 7 ✅ (DEC-DEV-0176) |
+| **Export для Orchestrator** | `/integrator:docs`; tool-docs generator | Phase 7 ✅ (DEC-DEV-0176) |
 
 **Открытый вопрос (Phase 5 kickoff):** `/integrator:update` — ROADMAP относит его к Phase 5 (вместе с Installation, acceptance «detects drift»), историческая группировка модуля — к Maintenance. Финальное размещение подтверждается на kickoff (см. `dev/PHASE_5_READINESS.md` §C.6).
 
@@ -1096,8 +1096,9 @@ Orchestrator в будущем будет читать этот файл и по
 │   └── drift-detection.md
 └── hooks/integrator/
     ├── journal-hook.js                # PostToolUse — журналирование решений
-    ├── drift-check.js                 # SessionStart — drift detection
-    ├── contract-validate.js           # PreToolUse — блокировки контрактов
+    ├── drift-check.js                 # SessionStart — drift detection (shipped Phase 7, DEC-DEV-0176; detect-only/warn-only)
+    ├── lib/drift-checks.cjs           # разделяемая D1/D2/D3+staleness либа (hook + /integrator:verify CLI-seam)
+    ├── contract-validate.js           # PreToolUse — CUT v1.1+ (DEC-DEV-0176; trigger: живой битый контракт мимо drift-check/verify; warn-only конвенция исключает «блокировки»)
     └── manifest.yaml                  # auto-registration (см. hooks/product/manifest.yaml)
 ```
 
