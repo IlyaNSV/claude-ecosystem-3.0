@@ -21,7 +21,7 @@
  *     Same-inputs → same-disposition; the returned why[] chain IS
  *     the audit-trail seed (fabric persists the transition-level why[] in events.ndjson).
  *
- * CONSUMES, NEVER RE-DERIVES (wave hard-constraint #3, dev/ECOSYSTEM_VISION_BATCH_3.md §0):
+ * CONSUMES, NEVER RE-DERIVES (wave hard-constraint #3, dev/_archive/vision/ECOSYSTEM_VISION_BATCH_3.md §0):
  *   - risk_tier ∈ {HIGH, LOW} — the OUTPUT of orchestrator/lib/gate-risk-classifier.cjs
  *     (classifyTask().tier). This lib never inspects task text or markers itself —
  *     two diverging gate-policy mechanisms is exactly what the constraint forbids.

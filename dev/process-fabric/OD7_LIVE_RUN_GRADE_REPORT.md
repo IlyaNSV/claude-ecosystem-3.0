@@ -4,7 +4,7 @@
 > **Дата грейда:** 2026-07-11.
 > **Предмет:** OD7 `request → await-fix → resume` (DEC-DEV-0171), ветки charter'а
 > `awaiting_capability_impl` + (бонус) `runtime_gate_retry`/`evt:env.up`.
-> **Рубрика:** [`OD7_LIVE_RUN_REVIEW_HANDOFF.md`](OD7_LIVE_RUN_REVIEW_HANDOFF.md) (R1–R8, anti-phantom-inflation).
+> **Рубрика:** [`OD7_LIVE_RUN_REVIEW_HANDOFF.md`](../_archive/process-fabric/OD7_LIVE_RUN_REVIEW_HANDOFF.md) (R1–R8, anti-phantom-inflation).
 > **Материалы (грунт):** harvest `od7-harvest/` — транскрипты S1 `5387f3d9`, S2a `8905388a`,
 > S2b `3389160f`, S2 `face568a`; on-disk `events.ndjson` (seq 0–11), `ledger.ndjson`,
 > `pending-actions.md` (PA-062/063/064), `tasks.md`, `git-log-span.txt`, `git-diff-stat.txt`,

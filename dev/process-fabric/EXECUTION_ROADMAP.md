@@ -12,7 +12,7 @@
 | 0 | Merge PR #128 (владелец) | ✅ 2026-07-07 |
 | 1 | Ядро: fabric-engine + charter + 16 юнитов | ✅ built (≠ validated) |
 | 2 | Wiring в живую машинерию | ✅ built 2026-07-07 (2a+2d PR #129, 2b+2c PR #130; 2e срезан → фаза 4) |
-| 3 | Live-валидация = graduation gate | ✅ **GRADUATED — объявлено владельцем 2026-07-10** (DEC-DEV-0165). Основание: условный GO судьи (G-A ✓, G-B ✓ с оговорками, G-C ✓×4 — [GRADE_REPORT](FABRIC_PHASE3_GRADE_REPORT.md), DEC-DEV-0162/0163); условия судьи выполнены/зафиксированы: bracket-guard в main (PR #141 `cc58e65`), DEF-4/ANOM-5 = upstream-долг (см. пост-обязательства), ветка `runtime_gate_retry`/`evt:env.up` честно помечена live-невалидированной |
+| 3 | Live-валидация = graduation gate | ✅ **GRADUATED — объявлено владельцем 2026-07-10** (DEC-DEV-0165). Основание: условный GO судьи (G-A ✓, G-B ✓ с оговорками, G-C ✓×4 — [GRADE_REPORT](../_archive/process-fabric/FABRIC_PHASE3_GRADE_REPORT.md), DEC-DEV-0162/0163); условия судьи выполнены/зафиксированы: bracket-guard в main (PR #141 `cc58e65`), DEF-4/ANOM-5 = upstream-долг (см. пост-обязательства), ветка `runtime_gate_retry`/`evt:env.up` честно помечена live-невалидированной |
 | 4 | Расширение | ⬜ **разблокирована** graduation'ом 2026-07-10; старт — строго по эмпирическим триггерам ниже |
 
 ## Фаза 2 — wiring (1-2 PR, порядок внутри фазы)
@@ -74,7 +74,7 @@ history, XState-миграция, D7-charter.
    orchestrator/README). Полная интеграция catalog/charters в `gen-process-map`/BPMN —
    сознательно фаза 4 (см. DEC-DEV-0166).
 2. [x] **Gaps аудита — сверка реестра G01–G36** — ✅ 2026-07-10 (DEC-DEV-0167):
-   [`audit/GAPS-RECONCILIATION-2026-07-10.md`](audit/GAPS-RECONCILIATION-2026-07-10.md) —
+   [`audit/GAPS-RECONCILIATION-2026-07-10.md`](../_archive/process-fabric/audit/GAPS-RECONCILIATION-2026-07-10.md) —
    закрыто машинно 6 (G05/G06/G19/G20/G23/G32), частично Fabric'ом 8 (G03/G04/G07/G09/G10/
    G11/G12/G13), открыто 22 с роутингом: Tier-0 (G01/G02) — substrate-gated треки; G08/G28/G29 —
    кандидаты фазы 4; G14–G18/G21/G24/G33/G35/G36 — п.4 ниже; G22/G25–G27/G30/G31/G34 —

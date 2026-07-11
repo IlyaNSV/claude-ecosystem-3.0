@@ -77,6 +77,9 @@ For solo dev — fresh session = available substitute для absent code reviewe
    - `README.md` Quick Start / status — references current?
    - `CLAUDE.md` § «Где мы сейчас» (если есть) — current?
    - `dev/gates/PHASE_<N+1>_READINESS.md` status banner — отражает что Phase N completed?
+   - **Ротация ROADMAP (CONVENTIONS §5.1, DEC-DEV-0185):** развёрнутый блок ЗАКРЫТОЙ фазы →
+     `dev/_archive/roadmap/` дословно + строка в pointer-таблице «Фазы …»; секцию «Где мы сейчас»
+     не трогать НИКОГДА (SSOT + входящие якоря `#где-мы-сейчас`).
 
 2. **Cross-doc mentions of completed phase** — grep:
    ```bash

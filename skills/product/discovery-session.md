@@ -61,19 +61,48 @@ Load `.claude/skills/product/problem-discovery.md`. Output: `.product/problem.md
 
 ### D1.2 Market Research (Quick) OR Deep subagent
 
-Load `.claude/skills/product/market-research-protocol-quick.md` в Quick mode, OR spawn `market-researcher` subagent в Deep.
+**Quick mode (default):** Load `.claude/skills/product/market-research-protocol-quick.md` and run the research inline. (Unchanged — this is the 1:1 behavior when no `--deep`.)
 
-**A2 modification:** MR draft **queued для Discovery Review Checkpoint**, не отдельный G2 gate. Session continues to D1.3.
+**Deep mode (`--deep`):** spawn the `market-researcher` subagent (`subagent_type: "market-researcher"`) with an isolated-context brief, instead of running the Quick protocol inline:
 
-Output: `.product/market-research.md` в draft с `[оценочно]` tags на findings без hard evidence.
+```
+PS summary: <the approved PS — problem, target users, context>
+Industry / domain: <from PS / product.yaml>
+Geography / market: <primary market>
+Language of primary market: <EN | RU | ...>
+Product class (advisory): <product_class.archetype from D1.0, if set>
+Available MCP servers: <which of Firecrawl / Brave / Exa / Sequential Thinking responded (Step 3 check)>
+Specific gaps to close (optional): <if the user flagged a dimension>
+```
+
+The subagent is **read-only** and returns (a) the MR draft body and (b) a research-meta summary — it does NOT write files. **The main session writes** the returned body to `.product/market-research.md` with `status: draft` (so `product-artifact-validate.js` + `bg-extractor.js` PostToolUse hooks fire here and BG candidates get queued). Surface the research-meta (`sources_count`, `credibility_distribution`, `gaps_acknowledged`) when framing the DRC.
+
+If the MCP research stack is incomplete (Firecrawl/Exa missing), don't fake Deep — downgrade to Quick explicitly with a one-line warning (per Anti-patterns §3). If the harness reports «Agent type 'market-researcher' not found», that is a loud setup error — surface it, do not silently role-adopt via `general-purpose`.
+
+**A2 modification (both modes):** MR draft **queued для Discovery Review Checkpoint**, не отдельный G2 gate. Session continues to D1.3.
+
+Output (both modes): `.product/market-research.md` в draft с `[оценочно]` tags на findings без hard evidence.
 
 ### D1.3 Competitive Analysis (Quick) OR Deep subagent
 
-Load `.claude/skills/product/competitive-analysis-protocol-quick.md` или spawn `competitor-analyst`.
+**Quick mode (default):** Load `.claude/skills/product/competitive-analysis-protocol-quick.md` and run inline. (Unchanged — 1:1 when no `--deep`.)
 
-**A2 modification:** CA draft **queued для DRC**. Session continues.
+**Deep mode (`--deep`):** spawn the `competitor-analyst` subagent (`subagent_type: "competitor-analyst"`) after (or in parallel with) `market-researcher`, with an isolated-context brief:
 
-Output: `.product/competitive-analysis.md` в draft.
+```
+PS summary: <the approved PS>
+MR draft: <the D1.2 MR draft body, so the landscape is grounded in current behavior + barriers>
+Known competitors (optional): <any names the user gave; the subagent may extend>
+Domain / category: <for search phrasing>
+Dev-focused: <yes/no — enables GitHub repo signal>
+Available MCP servers: <which of Exa / Firecrawl / GitHub / Brave / Sequential Thinking responded>
+```
+
+Same contract as D1.2: the subagent is **read-only** and returns the CA draft body + research-meta; **the main session writes** it to `.product/competitive-analysis.md` with `status: draft`. Same MCP-fallback and agent-not-found handling as D1.2.
+
+**A2 modification (both modes):** CA draft **queued для DRC**. Session continues.
+
+Output (both modes): `.product/competitive-analysis.md` в draft.
 
 ### D1.4 Segment & JTBD → G4 per-SEG
 

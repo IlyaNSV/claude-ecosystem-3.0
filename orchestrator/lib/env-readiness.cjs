@@ -2,7 +2,7 @@
 /**
  * env-readiness.cjs — deterministic substrate-readiness probe + suite-failure
  * classifier for the Orchestrator P5/P6 gate-outcome contract (DEC-DEV-0092,
- * N+2 increment; work-order dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
+ * N+2 increment; work-order dev/_archive/orchestrator/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
  *
  * WHY THIS EXISTS (live-run B, FB-LR-02 / FB-LR-04 / FB-LR-09 — DEC-DEV-0091):
  *   P6's mechanical layer conflated a DOWN substrate (Docker/Postgres/Redis not
