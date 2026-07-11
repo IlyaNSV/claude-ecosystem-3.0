@@ -6,8 +6,8 @@
 > scripts вызываются verify-цепью/командами, hooks зарегистрированы, checklists/patterns
 > цитируются живыми доками; ни одного мёртвого скрипта не найдено. Отработано по гипотезам
 > таблицы ниже: audit-reports ротированы (41 → `_archive/audit-reports/`, clean>30d удалены
-> по retention), audit-index ротация §Notes впервые исполнена; frozen-секции SPEC.md →
-> компактация в PR-3 sweep'а; refinement-трекеры §10 — признаны COMPACT-таргетами там же.
+> по retention), audit-index ротация §Notes впервые исполнена; frozen-секции SPEC.md и refinement-трекеры §10 —
+> low-prio COMPACT-таргеты, сознательно оставлены (их шапки уже переадресуют истину в CLAUDE.md/CONVENTIONS).
 > Файл сохранён как исполненный work-order (историческая ценность метода use-audit).
 >
 > Изначально: 🅀 QUEUED (зарегистрировано 2026-06-19), запуск **после** D7 process-hardening
