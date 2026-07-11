@@ -67,6 +67,7 @@ const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const ORACLE = A.oracle || '.claude/orchestrator/lib/coverage-oracle.cjs'
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs' // DEC-DEV-0092: readiness-axis backbone
 const REMEDIATION_GUARD = A.remediationGuard || '.claude/orchestrator/lib/remediation-guard.cjs' // DEC-DEV-0096: remediation-discretion backbone (T5)
+const AUTONOMY_LIB = A.autonomyLib || '.claude/orchestrator/lib/autonomy-policy.cjs' // DEC-DEV-0193 (F2): disposition-resolver CLI seam (the harness cannot require() a lib — DEC-DEV-0073 §D.1)
 const VALIDATION = A.validationCommands || {}                    // {test, build, smoke} discovered by P5/preflight
 const SOURCE = A.source || ''                                    // optional .product handoff for the coverage-oracle backbone
 const CONCERNS = A.concerns || []                                // FB-013: deferred-capability flags forwarded from P5
@@ -215,6 +216,19 @@ const REMEDIATE_SCHEMA = {
     conflict_detail: { type: 'string' },               // for a cross-spec/design conflict: which specs/requirements/design decisions disagree + the route
     unilateral: { type: 'boolean' },                   // remediated:true self-check — did the fix resolve a contradiction by picking a side? (FB-LR-07 anti-mask)
     note: { type: 'string' },
+  },
+}
+
+// DEC-DEV-0193 (F2): the autonomy disposition envelope relayed from the autonomy-policy CLI seam
+// (applyReadinessGuard ∘ resolve). Shape mirrors autonomy-policy.resolve()'s return.
+const AUTONOMY_SCHEMA = {
+  type: 'object',
+  required: ['disposition'],
+  properties: {
+    disposition: { type: 'string' },                   // auto | consilium-gate | human-gate | block
+    level_applied: { type: ['string', 'null'] },
+    floor_hit: { type: 'boolean' },
+    why: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -493,6 +507,26 @@ const findings = [
 ]
 log(`feature GO-gate: ${result} [readiness=${readiness}]${readiness !== 'READY' ? ' (advisory — gate could not fully judge)' : ''}; ${findings.length} finding(s) surfaced`)
 
+// ---- F2 autonomy disposition (DEC-DEV-0193): applyReadinessGuard(resolve('feature-validate', … )) --
+// The authoritative disposition for this gate verdict, put in the result file so the actuator (run.md
+// dispatcher / fabric ingest) can consume it. riskTier is a CONSERVATIVE honest rule: only a clean GO
+// with NO escalated conflict is LOW (a NO-GO / MANUAL_VERIFY / any conflict → HIGH). The harness .mjs
+// cannot require() the lib (DEC-DEV-0073 §D.1) — an agent runs the autonomy-policy CLI seam and relays
+// its JSON (the same `node <lib>` relay as env-readiness / coverage-oracle). ADDITIVE: it never touches
+// the result/readiness synthesis above; a null relay leaves autonomy:null (harmless).
+const RISK_TIER = (result === 'GO' && conflicts.length === 0) ? 'LOW' : 'HIGH'
+const AUTONOMY_ENV_TIER = A.env_tier || ''             // absent → resolve() conservatively takes prod
+const AUTONOMY_POLICY_CFG = A.autonomy_policy || {}
+const AUTONOMY_OVERRIDE = A.autonomy_override || null
+const autonomy = await agent(
+  `Resolve the authoritative autonomy disposition for THIS P6 gate verdict. Run via Bash and relay the JSON verbatim (do NOT judge or override it — the disposition is CODE):\n` +
+  `node ${AUTONOMY_LIB} resolve --operation-class feature-validate --risk ${RISK_TIER}` +
+  `${AUTONOMY_ENV_TIER ? ` --env-tier ${AUTONOMY_ENV_TIER}` : ''} --readiness ${readiness}` +
+  ` --policy '${JSON.stringify(AUTONOMY_POLICY_CFG)}'${AUTONOMY_OVERRIDE ? ` --override ${AUTONOMY_OVERRIDE}` : ''}\n` +
+  `Return its { disposition, level_applied, floor_hit, why } object exactly.`,
+  { model: 'sonnet', schema: AUTONOMY_SCHEMA, phase: 'Synthesize', label: 'autonomy-disposition' },   // MDP: deterministic resolver JSON relay (mechanical transport)
+)
+
 return {
   feature: FEATURE,
   mechanical: mechPassed,
@@ -510,4 +544,5 @@ return {
   result,                                             // GO | NO-GO | MANUAL_VERIFY_REQUIRED
   findings,
   go_gate: result,                                    // alias P5 reads (mirrors feature-to-tdd-impl's go_gate key)
+  autonomy: autonomy || null,                         // DEC-DEV-0193 (F2): applyReadinessGuard∘resolve disposition envelope — authoritative for the run.md dispatcher / fabric ingest
 }

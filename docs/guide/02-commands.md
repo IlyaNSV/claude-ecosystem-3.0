@@ -94,5 +94,5 @@ doc_type: reference
 
 | Команда | Что делает | Аргументы |
 |---|---|---|
-| `/orchestrator:run` | Run an Orchestrator PMO process end-to-end as an in-harness Workflow. First increment ships P3 batch-features-to-cc-sdd (route Product handoffs into cc-sdd specs). Reads handoffs + tool-docs; delegates spec generation to cc-sdd's kiro-spec-batch; gates with a content-fidelity preflight and an independent coverage oracle. | `<process> [--feature FM-NNN ...] [--all] [--no-stack-gate] [--fabric] [--autonomy L0\|L1]` |
+| `/orchestrator:run` | Run an Orchestrator PMO process end-to-end as an in-harness Workflow. First increment ships P3 batch-features-to-cc-sdd (route Product handoffs into cc-sdd specs). Reads handoffs + tool-docs; delegates spec generation to cc-sdd's kiro-spec-batch; gates with a content-fidelity preflight and an independent coverage oracle. | `<process> [--feature FM-NNN ...] [--all] [--no-stack-gate] [--fabric] [--autonomy L0\|L1\|L2\|L3]` |
 

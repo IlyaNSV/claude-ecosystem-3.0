@@ -91,9 +91,21 @@ test('the classifier is conservative: an unmatched class defaults to content (no
 test('returns the P5 contract keys incl. conflicts + findings', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'implemented', 'blocked', 'concerns', 'capabilities', 'conflicts', 'findings', 'go_gate', 'readiness']) {
+  for (const key of ['feature', 'implemented', 'blocked', 'concerns', 'capabilities', 'conflicts', 'findings', 'go_gate', 'readiness', 'autonomy']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
+});
+
+test('F2 autonomy disposition wired: resolve seam relayed + carried in the return (DEC-DEV-0193)', () => {
+  assert(/AUTONOMY_LIB\b/.test(SRC) && /autonomy-policy\.cjs/.test(SRC), 'autonomy-policy CLI seam path not wired');
+  assert(/resolve --operation-class impl-continuation/.test(SRC), 'P5 does not resolve the impl-continuation disposition via the CLI seam');
+  assert(/--readiness \$\{ENVELOPE_READINESS\}/.test(SRC), 'the resolved disposition is not readiness-guarded on the envelope readiness');
+  // riskTier is conservative: clean GO ∧ no conflict ∧ no hard §6 capability-block = LOW
+  assert(/RISK_TIER\s*=\s*\(CONFLICTS_FOR_RISK\.length === 0 && CAP_BLOCKED_FOR_RISK\.length === 0/.test(SRC),
+    'riskTier rule not the conservative GO∧no-conflict∧no-capability-block rule');
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /autonomy:\s*autonomy\s*\|\|\s*null/.test(m[0]), 'return envelope does not carry the autonomy disposition');
+  assert(/DEC-DEV-0193/.test(SRC), 'DEC-DEV-0193 not referenced');
 });
 
 test('the envelope surfaces the P6 gate conflicts + findings, not just impl-time ones (DEC-DEV-0104, FB-LR-19)', () => {

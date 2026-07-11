@@ -10,9 +10,9 @@
  *       > project default_level > ecosystem built-in (L1)
  *     resolve(operation_class, risk_tier, env_tier, policy, override)
  *       → { disposition ∈ {auto | human-gate | block}, level_applied, floor_hit, why[] }
- *   - F1 implements L0/L1 ONLY. L2/L3 (consilium-gate + confidence threshold +
- *     human-fallback) are F2 — a requested L2/L3 here DEGRADES to L1 semantics with a
- *     loud why-entry (safe-fallback: never a blind auto in a level that is not built).
+ *   - F2 (DEC-DEV-0193) implements L0-L3. L2/L3 route the staging/prod cells to
+ *     `consilium-gate` (Epic D jury + confidence threshold τ + human-fallback); the floor
+ *     remains non-crossable and its classes are human-gate FIRST (never consilium-gate).
  *   - WIRED (F2 seed, DEC-DEV-0154): consumed by orchestrator/lib/fabric-engine.cjs
  *     (Process Fabric prescriptions). Home is orchestrator/lib/ — co-located with its
  *     consumer so the existing `/ecosystem:update` orchestrator `lib/` namespace sync
@@ -33,9 +33,20 @@
  * THE SINGLE LLM-JUDGMENT BOUNDARY (vision §Epic F): the content of a consilium verdict
  * (F2). The disposition DECISION is code — this file.
  *
- * Node stdlib only, zero deps, no I/O — require()-able from anywhere, unit-tested by
- * tests/orchestrator/autonomy-policy.test.cjs.
+ * Node stdlib only, zero deps. The PURE resolver (resolve / resolveLevel / applyReadinessGuard /
+ * confidenceFromSynth / applyConsiliumVerdict / parseAutonomyConfig) does NO I/O — require()-able
+ * from anywhere, unit-tested by tests/orchestrator/autonomy-policy.test.cjs. Only loadAutonomyPolicy()
+ * and the CLI seam touch the FS.
+ *
+ * F2 (DEC-DEV-0193): L2/L3 are now BUILT. resolve() emits `consilium-gate` on the staging/prod
+ * cells of L2/L3 (L3 ≡ L2 until F3); the consilium verdict is folded back by applyConsiliumVerdict
+ * (confidence ≥ τ → auto, else human-fallback). The floor stays non-crossable — a floor class is
+ * human-gate + floor_hit FIRST, consilium-gate is never emitted on it. product.yaml `autonomy:` is
+ * parsed by parseAutonomyConfig/loadAutonomyPolicy (named profiles default=L1 / autonomous=L3).
  */
+
+const fs = require('fs');
+const path = require('path');
 
 const POLICY_SCHEMA_VERSION = 1;
 
@@ -46,9 +57,10 @@ const LEVELS = ['L0', 'L1', 'L2', 'L3'];
 const LEVEL_ORDER = { L0: 0, L1: 1, L2: 2, L3: 3 };
 const BUILT_IN_DEFAULT_LEVEL = 'L1'; // ecosystem built-in (vision: дефолт новых проектов = L1)
 
-/** Dispositions F1 can emit. `consilium-gate` exists in the vision enum but is F2-only —
- * this skeleton NEVER emits it (no consilium machinery to honor it would be a silent gap). */
-const DISPOSITIONS = ['auto', 'human-gate', 'block'];
+/** Dispositions the resolver can emit (vision §Epic F enum). `consilium-gate` is emitted on the
+ * L2/L3 staging/prod cells (F2, DEC-DEV-0193) — the Epic D jury + threshold gate; it is NEVER
+ * emitted on a floor class (floor is human-gate + floor_hit, checked first). */
+const DISPOSITIONS = ['auto', 'consilium-gate', 'human-gate', 'block'];
 
 /**
  * FLOOR (предохранитель необратимости) — operation classes that are ALWAYS human-gated,
@@ -126,13 +138,8 @@ function resolveLevel(policy, override, processName) {
     }
   }
 
-  // F1 implements L0/L1 only — L2/L3 degrade to L1 semantics, LOUDLY (safe-fallback:
-  // an unbuilt level must not silently mean "more auto"; F2 builds the consilium gate).
-  if (level === 'L2' || level === 'L3') {
-    why.push(`${level} requested but the consilium gate is F2 (not built) — degraded to L1 semantics (human-fallback, never blind auto)`);
-    level = 'L1';
-  }
-
+  // F2 (DEC-DEV-0193): L2/L3 are BUILT — returned verbatim (no more degradation to L1). resolve()
+  // maps them onto the consilium-gate matrix; L3 ≡ L2 semantics until F3 (prod segment, Epic E).
   return { level, why };
 }
 
@@ -153,14 +160,14 @@ function resolveLevel(policy, override, processName) {
  *                    invoking process for pin lookup (or pass opts via policy.process).
  *   override         'L0'..'L3' | undefined — the per-invocation --autonomy= flag.
  *
- * → { disposition: 'auto'|'human-gate'|'block', level_applied, floor_hit, why: [string] }
+ * → { disposition: 'auto'|'consilium-gate'|'human-gate'|'block', level_applied, floor_hit, why: [string] }
  *
- * Disposition matrix (F1, L0/L1 — the contract doc carries the table with rationale):
- *   floor class                → human-gate, always (floor_hit: true)
- *   L0: auto  iff LOW × dev    (человек на всех 🟠+🔴; auto только на заведомо-зелёном)
- *   L1: auto  iff dev          (человек на необратимом/staging+; auto на обратимом/dev —
- *                               irreversibility beyond env is carried by the floor classes)
- *   staging/prod               → human-gate at both levels (F1 has no consilium to gate them)
+ * Disposition matrix (F2, L0-L3 — the contract doc carries the table with rationale):
+ *   floor class                → human-gate, always (floor_hit: true) — checked FIRST, never consilium
+ *   L0: auto iff LOW × dev; HIGH/staging/prod → human-gate (человек на всех 🟠+🔴)
+ *   L1: auto iff dev (staging/prod → human-gate; irreversibility is carried by the floor classes)
+ *   L2/L3: auto on dev (as L1); staging/prod → consilium-gate (Epic D jury + τ + human-fallback).
+ *          L3 ≡ L2 here until F3 (prod segment, Epic E) — noted loudly in why[].
  *
  * Pure: same inputs → same disposition. The why[] chain is replayable (audit-trail seed).
  */
@@ -201,19 +208,35 @@ function resolve(operationClass, riskTier, envTier, policy, override) {
   const level = lv.level;
   const whyAll = why.concat(lv.why);
 
-  // ---- the F1 disposition matrix (L0/L1) ------------------------------------------------------
+  // ---- the F2 disposition matrix (L0-L3) ------------------------------------------------------
+  // L3 ≡ L2 in this matrix (F3 differentiates the prod segment, Epic E) — noted loudly.
+  let effLevel = level;
+  if (level === 'L3') {
+    whyAll.push('L3 requested — equals L2 semantics until F3 (prod segment, Epic E); floor unchanged');
+    effLevel = 'L2';
+  }
+
   let disposition;
-  if (env !== 'dev') {
-    disposition = 'human-gate';
-    whyAll.push(`${level} × ${env}: staging+ is human-gated in F1 (no consilium gate below F2)`);
-  } else if (level === 'L0') {
-    disposition = tier === 'LOW' ? 'auto' : 'human-gate';
-    whyAll.push(`L0 × dev × ${tier}: auto only on LOW (человек на всех 🟠+🔴)`);
+  if (env === 'dev') {
+    if (effLevel === 'L0') {
+      disposition = tier === 'LOW' ? 'auto' : 'human-gate';
+      whyAll.push(`L0 × dev × ${tier}: auto only on LOW (человек на всех 🟠+🔴)`);
+    } else {
+      // L1/L2 (and L3→L2): auto on dev; irreversible operation classes are already caught by the
+      // floor above, so a non-floor dev operation is the reversible case.
+      disposition = 'auto';
+      whyAll.push(`${level} × dev × ${tier}: auto on the reversible/dev side (floor classes already human-gated)`);
+    }
+  } else if (effLevel === 'L2') {
+    // L2/L3 × staging/prod: the consilium gate (Epic D jury + τ + human-fallback). The verdict is
+    // folded back by applyConsiliumVerdict; the floor already returned human-gate above, so a
+    // consilium-gate is only ever emitted on a NON-floor operation.
+    disposition = 'consilium-gate';
+    whyAll.push(`${level} × ${env}: consilium-gate (Epic D jury + threshold + human-fallback; floor stays human)`);
   } else {
-    // L1 (the built-in default): auto on dev; irreversible operation classes are already
-    // caught by the floor above, so a non-floor dev operation is the reversible case.
-    disposition = 'auto';
-    whyAll.push(`L1 × dev × ${tier}: auto on the reversible/dev side (floor classes already human-gated)`);
+    // L0/L1 × staging/prod: human-gate (no consilium at these levels).
+    disposition = 'human-gate';
+    whyAll.push(`${level} × ${env}: staging+ is human-gated at ${level} (no consilium gate below L2)`);
   }
 
   return { disposition, level_applied: level, floor_hit: false, why: whyAll };
@@ -255,6 +278,187 @@ function applyReadinessGuard(envelope, readiness) {
   return Object.assign({}, e, { why });
 }
 
+// ---- consilium verdict folding (F2, DEC-DEV-0193) ----------------------------------------------
+
+/**
+ * confidenceFromSynth(synthResult) — deterministic map of a consilium-synth.cjs result's strength
+ * to a [0,1] confidence: strong → 1.0, split → 0.5, none → 0.0. A non-object / unknown strength → 0.0
+ * (conservative — an unreadable verdict is no confidence). recommended_soft_vetoed is already demoted
+ * to `split` by the synth, so this never double-counts it.
+ */
+function confidenceFromSynth(synthResult) {
+  if (!synthResult || typeof synthResult !== 'object') return 0.0;
+  switch (synthResult.strength) {
+    case 'strong': return 1.0;
+    case 'split': return 0.5;
+    case 'none': return 0.0;
+    default: return 0.0;
+  }
+}
+
+/**
+ * applyConsiliumVerdict(envelope, synthResult, gateCfg) — fold an Epic D jury verdict back into a
+ * `consilium-gate` disposition (vision §Epic F "consilium-gate with safe-fallback"):
+ *   - envelope.disposition !== 'consilium-gate' → returned UNCHANGED (only the gate cell is folded).
+ *   - τ = gateCfg.confidence_threshold when finite, else 0.8 (vision default).
+ *   - confidence = confidenceFromSynth(synthResult).
+ *   - confidence ≥ τ AND synthResult.recommended != null → 'auto' (the jury cleared the gate).
+ *   - else → 'human-gate' (safe-fallback: a weak/split/none verdict is a HUMAN gate, never a blind
+ *     auto — "agents instead of a human" degrades safely, it does not fall into prod).
+ * Never throws. The floor is unreachable here (a floor class never carries a consilium-gate).
+ */
+function applyConsiliumVerdict(envelope, synthResult, gateCfg) {
+  const e = envelope || {};
+  if (e.disposition !== 'consilium-gate') return e;
+  const why = (e.why || []).slice();
+  const tau = gateCfg && Number.isFinite(gateCfg.confidence_threshold) ? gateCfg.confidence_threshold : 0.8;
+  const confidence = confidenceFromSynth(synthResult);
+  const recommended = synthResult && typeof synthResult === 'object' && synthResult.recommended != null
+    ? synthResult.recommended : null;
+  if (confidence >= tau && recommended != null) {
+    why.push(`consilium verdict: confidence ${confidence} ≥ τ ${tau} on recommended "${recommended}" → auto (Epic D jury cleared the gate)`);
+    return Object.assign({}, e, { disposition: 'auto', consilium: { confidence, threshold: tau, recommended }, why });
+  }
+  why.push(`consilium verdict: confidence ${confidence} < τ ${tau}${recommended == null ? ' (no recommended option — split/none/veto-set)' : ` on "${recommended}"`} → human-gate (safe-fallback, never blind auto)`);
+  return Object.assign({}, e, { disposition: 'human-gate', consilium: { confidence, threshold: tau, recommended }, why });
+}
+
+// ---- product.yaml `autonomy:` config parse (F2, DEC-DEV-0193) -----------------------------------
+
+function unquoteScalar(s) {
+  return String(s == null ? '' : s).trim().replace(/^["'](.*)["']$/, '$1');
+}
+
+/** Parse an inline `{ k: v, k2: v2 }` map (the vision config uses the inline form). null if not one. */
+function parseInlineMap(val) {
+  const m = /^\{(.*)\}$/.exec(String(val == null ? '' : val).trim());
+  if (!m) return null;
+  const out = {};
+  for (const pair of m[1].split(',')) {
+    const idx = pair.indexOf(':');
+    if (idx === -1) continue;
+    const k = pair.slice(0, idx).trim();
+    const v = pair.slice(idx + 1).trim();
+    if (k) out[k] = v;
+  }
+  return out;
+}
+
+/**
+ * parseAutonomyConfig(yamlText) — extract the `.claude/product.yaml` `autonomy:` block into a policy
+ * object `{ default_level?, process_overrides?, consilium_gate?:{confidence_threshold?, panel?},
+ * profile?, why[] }`. NO js-yaml dep — a line state-machine scoped to the autonomy block (technique
+ * mirrors hooks/product/lib/agent-roster.cjs parseRoster). Semantics (vision §Epic F, locked):
+ *   - profile: default → base default_level L1; profile: autonomous → base L3 (Vision Locked);
+ *     an explicit default_level OVERRIDES the profile base (noted in why[]).
+ *   - floor: is IGNORED loudly (FLOOR_LOCKED — the F1 hard rail; shrinking the floor is a separate
+ *     explicit opt-in, never an ordinary config key).
+ *   - consilium_gate: { confidence_threshold (0..1; junk → ignored), panel (string) } (inline or block).
+ *   - invalid levels / junk → tolerant ignore + why; NO autonomy block → {} (absent == built-in L1,
+ *     1:1 — the product_class soft-migration precedent). Never throws.
+ */
+function parseAutonomyConfig(yamlText) {
+  if (typeof yamlText !== 'string') return {};
+  const lines = yamlText.split(/\r?\n/);
+  let start = -1;
+  for (let i = 0; i < lines.length; i += 1) {
+    if (/^autonomy:\s*$/.test(lines[i].replace(/\s+#.*$/, ''))) { start = i; break; }
+  }
+  if (start === -1) return {};
+
+  const why = [];
+  const indentOf = (s) => s.match(/^\s*/)[0].length;
+  let baseIndent = null;
+  let sub = null; // 'consilium_gate' | 'process_overrides' | null
+  let explicitDefault;
+  let profileDefault; // 'L1' | 'L3'
+  let profileName;
+  const processOverrides = {};
+  const consiliumGate = {};
+
+  const applyConsiliumGateKV = (key, val) => {
+    if (key === 'confidence_threshold') {
+      const n = Number(unquoteScalar(val));
+      if (Number.isFinite(n) && n >= 0 && n <= 1) consiliumGate.confidence_threshold = n;
+      else why.push(`autonomy.consilium_gate.confidence_threshold "${val}" is not a number in [0,1] — ignored`);
+    } else if (key === 'panel') {
+      const p = unquoteScalar(val);
+      if (p) consiliumGate.panel = p;
+    }
+  };
+  const applyProcessOverrideKV = (key, val) => {
+    const lvl = unquoteScalar(val);
+    if (isLevel(lvl)) processOverrides[key] = lvl;
+    else why.push(`autonomy.process_overrides.${key} "${val}" is not a valid level — ignored`);
+  };
+
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i].replace(/\s+#.*$/, '');
+    if (line.trim() === '') continue;
+    const indent = indentOf(line);
+    if (indent === 0) break; // next top-level key → autonomy block ends
+    if (baseIndent === null) baseIndent = indent;
+
+    if (indent <= baseIndent) {
+      sub = null;
+      const kv = /^\s*([A-Za-z_][\w-]*):\s*(.*)$/.exec(line);
+      if (!kv) continue;
+      const key = kv[1];
+      const val = kv[2].trim();
+      if (key === 'default_level') {
+        const v = unquoteScalar(val);
+        if (isLevel(v)) explicitDefault = v;
+        else why.push(`autonomy.default_level "${val}" is not a valid level (${LEVELS.join('/')}) — ignored`);
+      } else if (key === 'profile') {
+        profileName = unquoteScalar(val);
+        if (profileName === 'default') profileDefault = 'L1';
+        else if (profileName === 'autonomous') profileDefault = 'L3';
+        else why.push(`autonomy.profile "${val}" is not a known profile (default/autonomous) — ignored`);
+      } else if (key === 'floor') {
+        why.push('autonomy.floor is IGNORED (FLOOR_LOCKED): the built-in floor is a hard rail; shrinking/replacing it is a separate explicit opt-in, never an ordinary config key');
+      } else if (key === 'consilium_gate') {
+        const inline = parseInlineMap(val);
+        if (inline) { for (const [k, v] of Object.entries(inline)) applyConsiliumGateKV(k, v); sub = null; }
+        else sub = 'consilium_gate';
+      } else if (key === 'process_overrides') {
+        const inline = parseInlineMap(val);
+        if (inline) { for (const [k, v] of Object.entries(inline)) applyProcessOverrideKV(k, v); sub = null; }
+        else sub = 'process_overrides';
+      }
+    } else {
+      const kv = /^\s*([A-Za-z_][\w.-]*):\s*(.*)$/.exec(line);
+      if (!kv) continue;
+      if (sub === 'consilium_gate') applyConsiliumGateKV(kv[1], kv[2].trim());
+      else if (sub === 'process_overrides') applyProcessOverrideKV(kv[1], kv[2].trim());
+    }
+  }
+
+  const out = {};
+  if (explicitDefault !== undefined && profileDefault !== undefined && explicitDefault !== profileDefault) {
+    why.push(`autonomy.default_level ${explicitDefault} overrides profile "${profileName}" base ${profileDefault}`);
+  }
+  const effectiveDefault = explicitDefault !== undefined ? explicitDefault : profileDefault;
+  if (effectiveDefault !== undefined) out.default_level = effectiveDefault;
+  if (profileName !== undefined) out.profile = profileName;
+  if (Object.keys(processOverrides).length) out.process_overrides = processOverrides;
+  if (Object.keys(consiliumGate).length) out.consilium_gate = consiliumGate;
+  // Attach why[] only when non-empty so an empty `autonomy:` block returns {} (1:1 with absent).
+  if (why.length) out.why = why;
+  return out;
+}
+
+/**
+ * loadAutonomyPolicy(root) — read `<root>/.claude/product.yaml` and parse its `autonomy:` block.
+ * Fail-tolerant: a missing/unreadable file → {} (absent == built-in L1, 1:1). The ONLY FS in this
+ * module besides the CLI seam.
+ */
+function loadAutonomyPolicy(root) {
+  let text;
+  try { text = fs.readFileSync(path.join(root || '.', '.claude', 'product.yaml'), 'utf8'); }
+  catch (_e) { return {}; }
+  return parseAutonomyConfig(text);
+}
+
 module.exports = {
   POLICY_SCHEMA_VERSION,
   LEVELS,
@@ -267,4 +471,110 @@ module.exports = {
   resolveLevel,
   resolve,
   applyReadinessGuard,
+  confidenceFromSynth,
+  applyConsiliumVerdict,
+  parseAutonomyConfig,
+  loadAutonomyPolicy,
 };
+
+// ---------------------------------------------------------------------------
+// CLI seam (FS + loadAutonomyPolicy live here only). Two subcommands (DEC-DEV-0193):
+//   resolve           — resolve() (+ optional applyReadinessGuard) → JSON. The P5/P6 live-caller
+//                       seam: the harness .mjs cannot require() this lib (DEC-DEV-0073 §D.1), so a
+//                       process agent runs this via Bash and relays the disposition into its result.
+//   resolve-consilium — applyConsiliumVerdict() → JSON. The run.md dispatcher's consilium-gate
+//                       actuator (fold an Epic D jury verdict back into a disposition).
+// Exit 0 ok · 2 usage/error.
+// ---------------------------------------------------------------------------
+function cliParse(argv) {
+  const a = {};
+  for (let i = 0; i < argv.length; i += 1) {
+    const t = argv[i];
+    const next = () => argv[(i += 1)];
+    switch (t) {
+      case '--help': case '-h': a.help = true; break;
+      case '--operation-class': a.operationClass = next(); break;
+      case '--risk': a.risk = next(); break;
+      case '--env-tier': a.envTier = next(); break;
+      case '--policy': a.policy = next(); break;
+      case '--policy-file': a.policyFile = next(); break;
+      case '--override': a.override = next(); break;
+      case '--readiness': a.readiness = next(); break;
+      case '--envelope': a.envelope = next(); break;
+      case '--envelope-file': a.envelopeFile = next(); break;
+      case '--synth': a.synth = next(); break;
+      case '--synth-file': a.synthFile = next(); break;
+      case '--threshold': a.threshold = next(); break;
+      default: break;
+    }
+  }
+  return a;
+}
+
+function cliReadJson(inline, file, label) {
+  if (file != null) {
+    try { return JSON.parse(fs.readFileSync(path.resolve(file), 'utf8')); }
+    catch (e) { throw new Error(`cannot read/parse --${label}-file: ${(e && e.message) || e}`); }
+  }
+  if (inline != null) {
+    try { return JSON.parse(inline); }
+    catch (e) { throw new Error(`--${label} is not valid JSON: ${(e && e.message) || e}`); }
+  }
+  return undefined;
+}
+
+function cliHelp() {
+  process.stdout.write([
+    'autonomy-policy.cjs — Epic F disposition resolver (F1+F2, DEC-DEV-0193).',
+    '',
+    'USAGE:',
+    '  node autonomy-policy.cjs resolve --operation-class <c> --risk <HIGH|LOW> [--env-tier <dev|staging|prod>]',
+    '        [--policy <json>|--policy-file <p>] [--override <L0|L1|L2|L3>] [--readiness <READY|DEGRADED|ENV_NOT_READY>]',
+    '     → resolve() (then applyReadinessGuard when --readiness is given) as JSON. The P5/P6 live-caller seam.',
+    '  node autonomy-policy.cjs resolve-consilium --envelope <json>|--envelope-file <p> --synth <json>|--synth-file <p>',
+    '        [--threshold <0..1>]',
+    '     → applyConsiliumVerdict() as JSON (fold an Epic D jury verdict into a consilium-gate disposition).',
+    '',
+    'Exit 0 ok · 2 usage/error. The floor is never crossable; invalid levels are ignored loudly.',
+  ].join('\n') + '\n');
+}
+
+function cliMain() {
+  const sub = process.argv[2];
+  const a = cliParse(process.argv.slice(3));
+  if (a.help || sub === '--help' || sub === '-h' || sub === 'help') { cliHelp(); process.exit(0); }
+
+  if (sub === 'resolve') {
+    let policy;
+    try { policy = cliReadJson(a.policy, a.policyFile, 'policy'); }
+    catch (e) { process.stderr.write(`autonomy-policy: ${e.message}\n`); process.exit(2); }
+    let envelope = resolve(a.operationClass, a.risk, a.envTier, policy || {}, a.override);
+    if (a.readiness != null) envelope = applyReadinessGuard(envelope, a.readiness);
+    process.stdout.write(JSON.stringify(envelope, null, 2) + '\n');
+    process.exit(0);
+  }
+
+  if (sub === 'resolve-consilium') {
+    let envelope;
+    let synth;
+    try {
+      envelope = cliReadJson(a.envelope, a.envelopeFile, 'envelope');
+      synth = cliReadJson(a.synth, a.synthFile, 'synth');
+    } catch (e) { process.stderr.write(`autonomy-policy: ${e.message}\n`); process.exit(2); }
+    if (envelope === undefined) {
+      process.stderr.write('autonomy-policy: resolve-consilium needs --envelope or --envelope-file\n');
+      process.exit(2);
+    }
+    const gateCfg = a.threshold != null && Number.isFinite(Number(a.threshold))
+      ? { confidence_threshold: Number(a.threshold) } : undefined;
+    process.stdout.write(JSON.stringify(applyConsiliumVerdict(envelope, synth, gateCfg), null, 2) + '\n');
+    process.exit(0);
+  }
+
+  cliHelp();
+  process.exit(2);
+}
+
+if (require.main === module) {
+  cliMain();
+}
