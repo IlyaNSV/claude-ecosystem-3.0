@@ -691,15 +691,35 @@ const TEST_CASES = [
       // reference schema=2 body=new; installed schema=1 body=old → D2+D3 drift.
       fs.writeFileSync(path.join(refAdapters, 'smoke-drift-adapter.js'), adapter(2, 'new', 'ref'), 'utf8');
       fs.writeFileSync(path.join(intgAdapters, 'smoke-drift-adapter.js'), adapter(1, 'old', 'ins'), 'utf8');
+      // DEF-SMK-1: real pilot form — active-tools carries NO `adapter` field; the
+      // tool→adapter link lives in a CNT contract (consumer + transformation.script).
       fs.writeFileSync(
         path.join(ctx.tmpDir, '.claude', 'integrator', 'active-tools.yaml'),
         [
           'tools:',
           '  - name: smoke-tool',
-          '    version_installed: 2.1.0',
+          '    version_installed: "2.1.0"',
+          '    source: npm',
           '    target_tool_version: "^2.1.0"',
-          '    adapter: smoke-drift-adapter',
           '    last_audit: 2020-01-01',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+      const contractsDir = path.join(ctx.tmpDir, '.claude', 'integrator', 'contracts');
+      fs.mkdirSync(contractsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(contractsDir, 'CNT-900.yaml'),
+        [
+          'contract:',
+          '  id: CNT-900',
+          '  name: "smoke fixture"',
+          '  producer: product-module',
+          '  consumer: smoke-tool',
+          '  status: active',
+          'transformation:',
+          '  type: adapter_script',
+          '  script: .claude/integrator/adapters/smoke-drift-adapter.js',
           '',
         ].join('\n'),
         'utf8'

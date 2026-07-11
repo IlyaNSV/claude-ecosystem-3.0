@@ -331,6 +331,7 @@ Check presence of:
 - `.claude/docs/product-module/SPEC.md`
 - `.claude/templates/project/CLAUDE.md.template`
 - `.claude/adapters/handoff-to-ccsdd.js` (reference for `/integrator:add cc-sdd` Stage 5 — REUSE per DEC-DEV-0040 Q1)
+- `.claude/adapters/fixtures/FM-FIXTURE-001-handoff.md` (adapter contract-test fixture — deploy from the clone's `tests/fixtures/FM-FIXTURE-*.md` if missing: `mkdir -p .claude/adapters/fixtures && cp .claude-ecosystem-tmp/tests/fixtures/FM-FIXTURE-*.md .claude/adapters/fixtures/`; DEC-DEV-0178, smoke-batch finding — Stage-6 verify previously referenced a repo-only path the project never received)
 
 **Stamp `.claude/adapters/.sync-metadata.yaml`** (per DEC-DEV-0044 — tri-location pattern audit trail) — needed by `contract-designer` subagent to populate `@source_ref` in installed adapter instances:
 

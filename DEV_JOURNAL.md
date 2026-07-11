@@ -8429,3 +8429,19 @@ Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(P
 
 ### Outcome-дополнение (флип, тот же день)
 Владелец принял рекомендацию судьи: **`lesson-presence-gate.js` (PRONG B, PreToolUse) флипнут warn→strict по умолчанию** (дефолт в хуке + manifest-description + CHANGELOG [Unreleased] Changed; hook-smoke 43/43 — strict-кейсы 0143 покрывают новый дефолт, warn-кейс задаёт env явно). S-LE-чеклист архивирован по его же §«На PASS» (`dev/_archive/s-le/`), указатели обновлены; S-LE.1 задокументирован как known CC-runtime-caveat (не блокер). Откат без кода: `LESSON_GATE_MODE=warn`.
+
+## DEC-DEV-0178 — Follow-up фиксы smoke-batch: DEF-SMK-1 (adapter-резолв через CNT-контракты), ложный C-03 (whitelist v1.x), деплой тест-фикстуры адаптера
+
+**Date:** 2026-07-11
+**Trigger:** мандат владельца «Делай follow-up фиксы: DEF-SMK-1 + C-03 + фикстура» (дефекты вскрыты batch-прогоном, DEC-DEV-0177).
+
+### Решения
+1. **DEF-SMK-1 — резолв через контракты, не новое поле.** Альтернатива «добавить поле `adapter` в схему active-tools + backfill» отвергнута: связь tool→adapter УЖЕ канонично живёт в `CNT-*.yaml` (`consumer` + `transformation.script`) — второй носитель породил бы дрейф двух источников. Либа сканирует контракты (толерантно, обе вложенности `consumer`/`contract.consumer`; вклад только `type: adapter_script`), объединяет с legacy-полем, multi-adapter сводит worst-of, а непривязанные пары reference↔instance проверяет страховочной строкой `(unattributed)` — контракты, которые парсер не осилил, не делают дрейф невидимым. JSON-форма выхода сохранена (контракт `verify.md`).
+2. **C-03 — whitelist до `v1.x`, не «добавить v1.5-v1.9».** Перечисление миноров повторило бы граблю на каждом релизе. Основание расширения — live-факт прогона: Stage-6 контракт-тест прошёл против РЕАЛЬНОГО v1.6-handoff (DEC-INT-0014), а структурная защита от вложенных §10 — monotonic guard (0073) + блокирующий C-07. Мажор (v2+) остаётся warning до ре-верификации. Instance пилота получит фикс через `/integrator:update cc-sdd --repair` после доставки.
+3. **Фикстура — деплой-шаг, не переезд файла.** Альтернатива «переместить SSOT в `adapters/fixtures/`» отвергнута: фикстуру делят три тест-съюта (`tests/adapters` + `tests/orchestrator` ×2) — переезд трогал бы их без выгоды. SSOT остаётся `tests/fixtures/`, bootstrap 2d + update Step 5.2 копируют `FM-FIXTURE-*.md` → `.claude/adapters/fixtures/`; пути в `add.md`/`update.md` обновлены с fallback'ом на реальный handoff (pre-1.10 инсталляции).
+
+### Outcome
+Сборка: DEF-SMK-1 — opus-исполнитель по фиксированному дизайну (ревью main: резолвер+регрессор спот-чек PASS); C-03 + фикстура — main. Тесты: drift-checks 24→33 (фикстуры РЕАЛЬНОЙ формы — прямое применение урока 0177 №1; регрессор «drift ловится на схеме без поля adapter»), adapters contract-test 4→5 (v1.6/v1.9 pass + v2.0 warn), hook-smoke 43/43, полный verify EXIT=0. PA-050/051 (data-hygiene пилота) — вне scope, оставлено владельцу пилот-стороной.
+
+### Lessons
+1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.

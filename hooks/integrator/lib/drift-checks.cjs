@@ -24,6 +24,21 @@
  *   staleness    — per-tool last_audit in active-tools.yaml older than 90 days
  *                  (or absent) → stale flag.
  *
+ * Adapter resolution (DEF-SMK-1, smoke-batch 2026-07-11): the tool→adapter link
+ * does NOT live in active-tools.yaml. The real pilot schema keeps it in the
+ * contracts under <root>/.claude/integrator/contracts/CNT-*.yaml — `consumer`
+ * (or `contract.consumer`) names the tool, `transformation.script` points at the
+ * adapter (`.claude/integrator/adapters/<name>.js`) when `transformation.type` is
+ * `adapter_script` (or type is absent but a script is present). We therefore
+ * resolve each tool's adapters from those contracts, UNION any legacy `adapter`
+ * field on the active-tools record (kept for backward-compat). A tool may map to
+ * >1 adapter → each axis is computed per adapter and the tool row reports the
+ * worst-of (drift > ok > skipped). Adapter files that exist in BOTH the reference
+ * and installed dirs yet are attributed to no tool are reported under a synthetic
+ * `(unattributed)` row (safety net for contracts the tolerant parser could not
+ * read). Before this fix the lib looked only at the (absent) `adapter` field, so
+ * D1/D2/D3 always skipped as "no adapter declared" — blind to real drift.
+ *
  * Detect-only. No mutation, no network. Every status ∈ 'ok' | 'drift' | 'skipped'.
  * Tolerant: a broken active-tools.yaml, a missing adapter file, or an
  * unreadable field degrades to `skipped` with a reason — it never throws out
@@ -337,6 +352,103 @@ function checkStaleness(lastAudit, now, thresholdDays) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Contract → adapter resolution (DEF-SMK-1)
+// The tool→adapter link lives in .claude/integrator/contracts/CNT-*.yaml, not in
+// active-tools.yaml. We only need three scalar paths per contract, so a tolerant
+// nested-scalar walker is enough (lists/deeper structures ignored).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Flatten a YAML-lite document to a { 'dotted.path': scalar } map. Blocks (keys
+ * with no inline value) become path prefixes; list items (`- ...`) are skipped —
+ * we only harvest the scalar leaves we care about. Tolerant: never throws.
+ */
+function parseNestedScalars(text) {
+  const out = {};
+  if (typeof text !== 'string' || text.trim() === '') return out;
+  const rawLines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const stack = []; // { indent, key }
+  for (const rl of rawLines) {
+    const stripped = stripComment(rl);
+    const t = stripped.trim();
+    if (t === '' || t === '---' || t === '...') continue;
+    if (t.startsWith('- ')) continue; // list item — not a scalar path we need
+    const indent = indentOf(stripped);
+    while (stack.length && stack[stack.length - 1].indent >= indent) stack.pop();
+    const m = t.match(/^([\w.@/-]+):\s*(.*)$/);
+    if (!m) continue;
+    const key = m[1];
+    const val = parseValue(m[2]);
+    if (val === undefined) {
+      stack.push({ indent, key }); // nested block → becomes a path prefix
+    } else {
+      const dotted = stack.map((s) => s.key).concat(key).join('.');
+      out[dotted] = val;
+    }
+  }
+  return out;
+}
+
+/** Pull { consumer, transformationType, transformationScript } from a CNT text.
+ *  Supports both the canonical nesting (`contract.consumer`, `transformation.*`)
+ *  and a flat top-level fallback. Any field may be undefined. */
+function extractContractFields(text) {
+  const flat = parseNestedScalars(text);
+  const pick = (nested, bare) => (flat[nested] != null ? flat[nested] : flat[bare]);
+  return {
+    consumer: pick('contract.consumer', 'consumer'),
+    transformationType: pick('transformation.type', 'type'),
+    transformationScript: pick('transformation.script', 'script'),
+  };
+}
+
+/** basename of a script path, tolerant of both `/` and `\` regardless of host OS. */
+function scriptBasename(scriptPath) {
+  if (!scriptPath) return null;
+  const parts = String(scriptPath).replace(/\\/g, '/').split('/');
+  return parts[parts.length - 1] || null;
+}
+
+/**
+ * Scan <root>/.claude/integrator/contracts/CNT-*.{yaml,yml} and build a map
+ * consumer(tool name) → [adapterFile...] (deduped, `.js`-suffixed basenames).
+ * Only contracts whose transformation is an adapter_script (or has a script with
+ * no explicit type) contribute. A broken/unreadable contract is skipped, never
+ * fatal. Returns an empty Map when the contracts dir is absent.
+ */
+function resolveContractAdapters(root) {
+  const map = new Map();
+  const dir = path.join(root, '.claude', 'integrator', 'contracts');
+  let files;
+  try {
+    files = fs.readdirSync(dir);
+  } catch (_) {
+    return map;
+  }
+  for (const f of files) {
+    if (!/^CNT-.*\.ya?ml$/i.test(f)) continue;
+    const text = readFileSafe(path.join(dir, f));
+    if (text == null) continue;
+    let fields;
+    try {
+      fields = extractContractFields(text);
+    } catch (_) {
+      continue; // tolerant: unparseable contract → skip (falls to unattributed net)
+    }
+    const { consumer, transformationType, transformationScript } = fields;
+    if (!consumer || !transformationScript) continue;
+    // Only adapter_script contracts declare an adapter; type absent + script → accept.
+    if (transformationType && transformationType !== 'adapter_script') continue;
+    const adapterFile = adapterFileName(scriptBasename(transformationScript));
+    if (!adapterFile) continue;
+    if (!map.has(consumer)) map.set(consumer, []);
+    const arr = map.get(consumer);
+    if (!arr.includes(adapterFile)) arr.push(adapterFile);
+  }
+  return map;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Orchestration
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -352,6 +464,39 @@ function readFileSafe(p) {
 function adapterFileName(adapter) {
   if (!adapter) return null;
   return /\.js$/.test(adapter) ? adapter : `${adapter}.js`;
+}
+
+/** List `*.js` filenames in a dir (tolerant: missing dir → []). */
+function listAdapterFiles(dir) {
+  try {
+    return fs.readdirSync(dir).filter((f) => /\.js$/i.test(f));
+  } catch (_) {
+    return [];
+  }
+}
+
+// Axis status ordering for worst-of collapse: skipped < ok < drift.
+const STATUS_RANK = { skipped: 0, ok: 1, drift: 2 };
+
+/**
+ * Collapse per-adapter results for ONE axis to a single verdict. Single adapter →
+ * the raw check result (preserves its exact detail). Multiple → worst-of by rank,
+ * detail enumerating each adapter's status.
+ * @param {Array<{af:string,res:{status:string,detail:string}}>} entries
+ */
+function reduceAxis(entries) {
+  if (!entries || entries.length === 0) {
+    return { status: 'skipped', detail: 'no adapter declared for tool' };
+  }
+  if (entries.length === 1) return entries[0].res;
+  let worst = entries[0];
+  for (const e of entries) {
+    const r = STATUS_RANK[e.res.status] == null ? 0 : STATUS_RANK[e.res.status];
+    const w = STATUS_RANK[worst.res.status] == null ? 0 : STATUS_RANK[worst.res.status];
+    if (r > w) worst = e;
+  }
+  const detail = entries.map((e) => `${e.af}=${e.res.status} (${e.res.detail})`).join('; ');
+  return { status: worst.res.status, detail: `worst-of ${entries.length} adapters — ${detail}` };
 }
 
 /**
@@ -390,35 +535,64 @@ function runDriftChecks(root, opts) {
   const refDir = path.join(root, '.claude', 'adapters');
   const insDir = path.join(root, '.claude', 'integrator', 'adapters');
 
+  // DEF-SMK-1: the real tool→adapter link lives in the contracts, not on the
+  // active-tools record. Resolve consumer(tool) → [adapters] once up front.
+  const contractMap = resolveContractAdapters(root);
+
   const tools = [];
+  const attributed = new Set(); // adapter files claimed by some tool (any source)
   let driftCount = 0;
   let staleCount = 0;
 
-  for (const rec of records) {
-    const adapterFile = adapterFileName(rec.adapter);
-    let refSource = null;
-    let insSource = null;
-    if (adapterFile) {
-      refSource = readFileSafe(path.join(refDir, adapterFile));
-      insSource = readFileSafe(path.join(insDir, adapterFile));
-    }
-
+  // Compute the D1/D2/D3 trio for a single adapter file against the two dirs.
+  function axesFor(adapterFile, rec) {
+    const refSource = readFileSafe(path.join(refDir, adapterFile));
+    const insSource = readFileSafe(path.join(insDir, adapterFile));
     // D1: prefer the declared range from active-tools; fall back to the installed
     // adapter header (that is what update.md reads when the yaml lacks it).
-    const declaredRange = rec.target_tool_version
+    const declaredRange = (rec && rec.target_tool_version)
       || (insSource && extractTargetVersion(insSource))
       || (refSource && extractTargetVersion(refSource))
       || null;
+    return {
+      d1: checkD1(declaredRange, rec && rec.version_installed),
+      d2: checkD2(refSource, insSource),
+      d3: checkD3(refSource, insSource),
+    };
+  }
 
-    const d1 = adapterFile
-      ? checkD1(declaredRange, rec.version_installed)
-      : { status: 'skipped', detail: 'no adapter declared for tool' };
-    const d2 = adapterFile
-      ? checkD2(refSource, insSource)
-      : { status: 'skipped', detail: 'no adapter declared for tool' };
-    const d3 = adapterFile
-      ? checkD3(refSource, insSource)
-      : { status: 'skipped', detail: 'no adapter declared for tool' };
+  for (const rec of records) {
+    // Adapter sources per tool: legacy `adapter` field ∪ contract-resolved,
+    // deduped by basename. The contract link is the real-world path (DEF-SMK-1).
+    const adapterFiles = [];
+    const pushAdapter = (af) => { if (af && !adapterFiles.includes(af)) adapterFiles.push(af); };
+    pushAdapter(adapterFileName(rec.adapter));
+    for (const af of (contractMap.get(rec.name) || [])) pushAdapter(af);
+    for (const af of adapterFiles) attributed.add(af);
+
+    let d1;
+    let d2;
+    let d3;
+    if (adapterFiles.length === 0) {
+      const none = { status: 'skipped', detail: 'no adapter declared for tool' };
+      d1 = { ...none };
+      d2 = { ...none };
+      d3 = { ...none };
+    } else {
+      const e1 = [];
+      const e2 = [];
+      const e3 = [];
+      for (const af of adapterFiles) {
+        const ax = axesFor(af, rec);
+        e1.push({ af, res: ax.d1 });
+        e2.push({ af, res: ax.d2 });
+        e3.push({ af, res: ax.d3 });
+      }
+      d1 = reduceAxis(e1);
+      d2 = reduceAxis(e2);
+      d3 = reduceAxis(e3);
+    }
+
     const staleness = checkStaleness(rec.last_audit, options.now, options.thresholdDays);
 
     const anyDrift = d1.status === 'drift' || d2.status === 'drift' || d3.status === 'drift';
@@ -427,11 +601,31 @@ function runDriftChecks(root, opts) {
 
     tools.push({
       tool: rec.name || rec.adapter || '(unnamed)',
-      adapter: adapterFile,
+      adapter: adapterFiles.length ? adapterFiles.join(', ') : null,
       d1,
       d2,
       d3,
       staleness,
+    });
+  }
+
+  // Unattributed pairs (safety net): adapter files present in BOTH the reference
+  // and installed dirs but claimed by no tool contract. Check D2/D3 so drift is
+  // still surfaced; staleness is n/a (no tool → no last_audit) and excluded from
+  // staleCount. Drift here DOES count toward driftCount.
+  const refFiles = new Set(listAdapterFiles(refDir));
+  for (const af of listAdapterFiles(insDir)) {
+    if (attributed.has(af) || !refFiles.has(af)) continue;
+    const ax = axesFor(af, null);
+    const anyDrift = ax.d2.status === 'drift' || ax.d3.status === 'drift';
+    if (anyDrift) driftCount += 1;
+    tools.push({
+      tool: '(unattributed)',
+      adapter: af,
+      d1: { status: 'skipped', detail: 'unattributed adapter — tool/version unknown' },
+      d2: ax.d2,
+      d3: ax.d3,
+      staleness: { stale: false, detail: 'n/a' },
     });
   }
 
@@ -514,6 +708,11 @@ if (require.main === module) {
 module.exports = {
   runDriftChecks,
   parseActiveTools,
+  parseNestedScalars,
+  extractContractFields,
+  resolveContractAdapters,
+  scriptBasename,
+  reduceAxis,
   parseValue,
   stripComment,
   extractSchemaVersion,
