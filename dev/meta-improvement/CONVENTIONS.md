@@ -87,6 +87,9 @@ dev/meta-improvement/
 ├── hooks/                       # registered in .claude/settings.local.json
 │   ├── phase-closure-reminder.js       # PostToolUse Bash — warn: phase-completion commit без closure
 │   ├── dev-journal-reminder.js         # PostToolUse Bash — warn: feat/fix commit без DEV_JOURNAL
+│   ├── memory-drift-reminder.js        # PostToolUse Bash — warn: status-file commit → memory-sync due
+│   ├── rails-session-start.js          # SessionStart — inject work-rails digest (DEC-DEV-0110)
+│   ├── d7-hygiene-reminder.js          # SessionStart — warn: stale G25/G26/G27 feedback-contour backlog (DEC-DEV-0181)
 │   └── session-audit.js                # SessionEnd marker writer (для pilot projects)
 ├── prompts/                     # Session Audit v2 auditor prompts
 ├── rubrics/                     # per-zone audit rubrics
@@ -138,6 +141,7 @@ dev/meta-improvement/
 | `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | Manual (user types invocation) |
 | `scripts/verify-update.sh` | Post-/ecosystem:update | Per update | Manual (user runs externally) |
 | `hooks/phase-closure-reminder.js` | PostToolUse on Bash matching `git commit` с phase-completion pattern | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
+| `hooks/d7-hygiene-reminder.js` | SessionStart — stale G25 audit-Pending (≥7d) / G26 open FB-ledger intake / G27 survived patch-candidate idle at `gate: pending` (≥14d) | Once per session (if any arm stale) | **Auto** (registered в .claude/settings.local.json; detect-only warn, toggle env `D7_HYGIENE_REMINDER=0`; DEC-DEV-0181) |
 | `hooks/session-audit.js` | SessionEnd in pilot project | Per session | **Auto** (registered в pilot's `.claude/settings.local.json` via `/ecosystem:enable-d7-audit`) — writes marker only, no spawn |
 | `/meta:audit-smoke` (+ `scripts/audit-smoke.js`) | Post-smoke, after N sessions in pilot accumulated markers | Once per phase smoke | Manual (developer types invocation from ecosystem repo cwd) |
 | `checklists/audit-smoke-workflow.md` | Developer reference for the smoke-then-audit ritual | Per phase | Manual (developer reads) |

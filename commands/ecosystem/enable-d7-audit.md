@@ -71,6 +71,10 @@ Construct the new entry:
 
 Replace `<ECOSYSTEM_ROOT>` with the validated absolute path. Add it under `hooks.SessionEnd[0].hooks[]`, creating intermediate objects as needed.
 
+> **On the absolute path (relocation resilience — DEC-DEV-0183).** A cross-project `SessionEnd` hook must reference the script by absolute path — the pilot has no other handle on the ecosystem repo. If the ecosystem repo later **moves**, that baked path goes stale and the hook silently never runs. Two mitigations:
+> - **Re-run this command** after any repo relocation (also noted under "When to run") — it re-points the path.
+> - **`ECOSYSTEM_ROOT` env override.** The hook resolves the repo root from `$ECOSYSTEM_ROOT` first (then cwd-walk, then its own location), and warns **loudly** (never silently) if it cannot resolve at all. Setting `ECOSYSTEM_ROOT` in your environment lets root-resolution survive a move even before you re-run. It does not, however, fix the launcher path itself — only re-running does that.
+
 Resulting shape (minimal example):
 
 ```json

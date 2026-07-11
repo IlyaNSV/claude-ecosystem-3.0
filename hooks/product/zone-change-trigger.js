@@ -27,7 +27,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 let router;
 try {
@@ -93,7 +93,10 @@ if (!fm.id) process.exit(0);
 let diff = '';
 try {
   const relForGit = path.relative(projectRoot, filePath).replace(/\\/g, '/');
-  diff = execSync(`git -C "${projectRoot}" diff HEAD -- "${relForGit}"`, {
+  // execFileSync (no shell) — projectRoot/relForGit are passed as discrete argv
+  // elements, so shell metacharacters in an artifact filename cannot inject a
+  // command (SECURITY_REVIEW_2026-07-11 finding H-1, DEC-DEV-0189).
+  diff = execFileSync('git', ['-C', projectRoot, 'diff', 'HEAD', '--', relForGit], {
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'ignore'],
     timeout: 5000,

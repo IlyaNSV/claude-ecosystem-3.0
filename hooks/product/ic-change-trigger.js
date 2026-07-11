@@ -24,7 +24,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 // ---------- Read hook input ----------
 
@@ -79,7 +79,10 @@ const icSeverity = fm.severity || '<unknown>';
 let diff = '';
 try {
   const relPath = path.relative(projectRoot, filePath).replace(/\\/g, '/');
-  diff = execSync(`git -C "${projectRoot}" diff HEAD -- "${relPath}"`, {
+  // execFileSync (no shell) — projectRoot/relPath are passed as discrete argv
+  // elements, so shell metacharacters in an artifact filename cannot inject a
+  // command (SECURITY_REVIEW_2026-07-11 finding H-1, DEC-DEV-0189).
+  diff = execFileSync('git', ['-C', projectRoot, 'diff', 'HEAD', '--', relPath], {
     encoding: 'utf-8',
     stdio: ['ignore', 'pipe', 'ignore'],
     timeout: 5000,
@@ -116,10 +119,21 @@ if (fs.existsSync(daFile)) {
   }
 }
 
+// Deterministic depth-floor guardrail (G30, DEC-DEV-0182). CODE — not the DA subagent —
+// decides whether structural signals in the diff make a `cosmetic` self-classification
+// unambiguously wrong. Absent any signal → floor null → entry identical to pre-G30.
+// Fail-open: lib missing / any error → no floor (old behavior 1:1).
+let depthFloor = { floor: null, signals: [] };
+try {
+  depthFloor = require('./lib/da-depth-floor.cjs').computeDepthFloor(diff, 'invariant-check');
+} catch (e) {
+  depthFloor = { floor: null, signals: [] };
+}
+
 // Dedup: replace pending entry для same artifact (latest diff wins)
 const filtered = existing.filter((e) => e.artifact !== icId);
 
-filtered.push({
+const entry = {
   artifact: icId,
   artifact_type: 'invariant-check',
   title: icTitle,
@@ -131,7 +145,12 @@ filtered.push({
   mode: 'adaptive',
   queued_at: now,
   diff,
-});
+};
+if (depthFloor.floor) {
+  entry.depth_floor = depthFloor.floor;
+  entry.depth_floor_signals = depthFloor.signals.join(', ');
+}
+filtered.push(entry);
 
 try {
   fs.writeFileSync(daFile, formatDaEntriesYaml(filtered));
@@ -145,6 +164,12 @@ process.stderr.write(
   `DA review pending для ${icId} (${icTitle}, severity: ${icSeverity}, status: ${icStatus}) — Mode: adaptive (P-RULE-01).\n` +
     `See .product/.pending/da-pending.yaml; orchestrator should spawn product-devils-advocate subagent с adaptive brief.\n`
 );
+if (depthFloor.floor) {
+  process.stderr.write(
+    `⚠ DEPTH-FLOOR OVERRIDE (G30): deterministic signals [${depthFloor.signals.join(', ')}] force ${icId} to depth_floor=significant. ` +
+      `A 'cosmetic' self-classification by the DA subagent is OVERRIDDEN — spawn product-devils-advocate with the FULL 6-lens brief, NOT adaptive-cosmetic.\n`
+  );
+}
 
 process.exit(0);
 
@@ -233,6 +258,8 @@ function formatDaEntriesYaml(entries) {
     if (e.trigger) lines.push(`    trigger: ${formatScalar(e.trigger)}`);
     if (e.hook) lines.push(`    hook: ${formatScalar(e.hook)}`);
     if (e.mode) lines.push(`    mode: ${formatScalar(e.mode)}`);
+    if (e.depth_floor) lines.push(`    depth_floor: ${formatScalar(e.depth_floor)}`);
+    if (e.depth_floor_signals) lines.push(`    depth_floor_signals: ${formatScalar(e.depth_floor_signals)}`);
     if (e.queued_at) lines.push(`    queued_at: ${formatScalar(e.queued_at)}`);
     if (e.diff) {
       lines.push(`    diff: |`);

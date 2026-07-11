@@ -182,6 +182,16 @@ If exit ≠ 0:
 - Offer rollback to pre-update state from `backups/<ts>/`
 - Exit with diagnostics
 
+### Final: Handoff staleness snapshot (G22)
+
+After contract repair + verify, refresh the handoff-staleness baseline. An update can advance `.product/` artifacts (or the tool) such that previously-generated handoffs no longer match their embedded `artifact_hashes`; this records that so `/integrator:verify` and future consumers see current truth. Closes handoff-spec §10/§13 (drift recompute "при использовании handoff Integrator'ом при add/update") — the step that was previously missing here.
+
+```bash
+node .claude/hooks/integrator/lib/handoff-staleness.cjs --root . --write
+```
+
+Detect-only: recomputes each `.product/handoffs/*-handoff.md` embedded hash from `.product/` via the Product-zone hash SSOT (`.claude/hooks/product/lib/hash.js`) and persists the verdict to `.claude/integrator/handoff-staleness.yaml`. **Read-only w.r.t. `.product/`** (consistent with "NEVER touch `.product/`" — the `stale` flag lives in the Integrator zone). Exit always 0. Any handoff reported `stale` → suggest `/product:handoff <FM-id> --regenerate` (a Product Module action). No handoffs → no-op with a note.
+
 ### Final: Journal entry + summary
 
 Append to `.claude/integrator/project-journal.md`:
