@@ -8445,3 +8445,41 @@ Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(P
 
 ### Lessons
 1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.
+
+---
+
+## DEC-DEV-0182 — Детерминированный depth-floor guardrail для adaptive-depth DA (закрытие G30)
+
+**Date:** 2026-07-11
+**Trigger:** G30 из аудита process-fabric (`APPENDIX-B-gap-analysis.md`): adaptive-depth-классификатор P-RULE-01/02 (DEC-DEV-0012) даёт subagent'у `product-devils-advocate` право **самому** пометить изменение BR/IC как `cosmetic` (→ quick-check, 6 линз пропускаются) или `significant` (→ full 6-lens). Это LLM-суждение без backstop: false-cosmetic на реально значимом изменении молча пропускает требуемый review. Watchdog G05/G06 (DEC-DEV-0159) страхует **факт** спавна DA, но НЕ выбранную им **глубину** — Tier-1 пункт «рефлексы ревью хрупкие».
+**Tag:** #architecture #tooling
+
+### Решения
+
+1. **Детерминированный пол, НЕ второй LLM-судья.** Ставить «ещё одного судью» над классификатором означало бы удвоить и стоимость, и точку отказа (тот же класс суждения). Вместо этого — CODE-level guardrail: чистая функция `computeDepthFloor(diff, artifactType)` сканирует **тот же** git-diff (хук его уже вычислил — cheap-to-check) набором структурных сигналов и, если хоть один сработал, поднимает пол до `significant`. Это переносит из-под LLM только **однозначные структурные** кейсы; на genuinely-ambiguous прозе adaptive-LLM остаётся хозяином. Соответствует Epic-F принципу, уже кодифицированному в `zone-router.cjs`: *disposition детерминирована; суждение — только в контенте вердикта.*
+
+2. **Сигналы — высокоточные, привязаны к перечисленным §6.2 significant-триггерам** (не «широкий значимости-детектор»): `creation` (нет версии в HEAD — синтетический diff-маркер хука), `activation` (`status:`→`active`, contract-binding момент), `severity-critical` (IC severity на/с `critical`), `entity-change` (IC `entity:`), `category-change` (BR `category:`). Все — на уровне frontmatter-полей / существования файла: правка прозы (typo/reword) их НЕ трогает → cosmetic-путь сохранён, cost-модель DEC-DEV-0012 не сломана.
+
+3. **Отвергнуто: переиспользовать `zone-router.classifyMagnitude` как пол.** Он консервативнее — любая не-whitelist content-строка → significant, т.е. и typo-фикс. Использовать его полом = форсировать full 6-lens на каждой прозаической правке = коллапс adaptive-депта в «всегда significant, кроме чистых metadata/ref-list». Это была бы переделка DA cost-модели (own DEC-DEV-0012), а не узкий guardrail. Взят precision-набор структурных сигналов.
+
+4. **Отвергнуто: детектить «statement semantic rewrite» и BR «parameter TYPE vs value-tune».** Оба недетерминируемы регуляркой: прозаический rewrite неотличим от typo (оба — §6.2 cosmetic-триггеры), а value-tune (`first_match`→`best_match`, явный §6.2 cosmetic-пример) живёт в том же `parameters:` блоке, что и type-change — generic-сигнал дал бы false-positive на документированном cosmetic. Оставлено adaptive-LLM (anti-rationalization guard агента). Это осознанная граница, не пробел.
+
+5. **absent==старое поведение 1:1.** Нет сигнала → `floor: null` → в entry ничего не добавляется, brief без `Depth-floor` → subagent классифицирует как раньше (включая свободу выбрать significant сам). Пол только **повышает**, никогда не понижает. Fail-open: `require` либы в try/catch — недоступна → пола нет.
+
+### Enforcement-модель (честно, без иллюзий)
+
+Пол вычисляется CODE **до** запуска subagent'а и штампуется в da-pending-entry (`depth_floor`/`depth_floor_signals`) + громкий stderr-override. Потребление (subagent реально идёт в full) остаётся LLM-оркестрированным — **та же** модель, что и весь DA-спавн и что zone-router magnitude-gate (код решает fire, LLM исполняет). G30 — именно про отсутствие детерминированного backstop у классификации; теперь для перечисленных структурных кейсов суждение из неё изъято.
+
+### Сознательно НЕ сделано (scope-guard)
+
+- **Пост-hoc watchdog-проверка** `depth_floor: significant` против фактической магнитуды вердикта (в `subagent-watchdog.js`) — потребовала бы захвата магнитуды ревью в `.watchdog-state.json` (расширение схемы) → scope creep во вторую подсистему. Пол ДО запуска — достаточный guardrail; пост-hoc слой — возможное будущее усиление.
+- **Новый validation-тип/правило** — сознательно нет: сдвинуло бы canonical counts (24/44) и это НЕ validation артефакта, а аннотация depth на существующей da-pending-entry. Counts не тронуты.
+
+### Outcome
+
+Либа `hooks/product/lib/da-depth-floor.cjs` + оба хука (`ic/br-change-trigger.js`: compute→stamp→override-stderr, formatter эмитит поля) + docs (`processes.md` §6.2 таблица сигналов+границы, `feature-session.md` DA-flow, `devils-advocate.md` Step 1 override, manifest ×2). Юнит-тест `tests/product/da-depth-floor.test.cjs` (15 кейсов: каждый сигнал + absent-путь typo/metadata/ref-list/value-tune + context-строки игнорируются) в `test:product`. Интеграционный smoke: creation-IC без git → `depth_floor: significant`/`signals: creation` в yaml + override-stderr, round-trip парсера чистый. `npm run verify` EXIT=0.
+
+### Lessons
+
+1. Прежде чем строить «guardrail» — grep на уже существующий детерминированный механизм того же класса: `zone-router.classifyMagnitude` уже решал «cosmetic vs significant» для persona-панели; DA-путь просто не был к нему подключён. Даже когда его форма не подошла полом (слишком консервативен), он задал и модель (код-fire/LLM-исполняет), и точную точку вычисления (тот же diff в хуке).
+2. Детерминированный пол сильнее «ещё одного судьи» ровно там, где сигнал структурный (поле/существование файла), и бесполезен там, где он семантический (проза) — честная граница важнее широкого охвата: широкий пол сломал бы cost-модель, ради которой adaptive-депт и вводился.

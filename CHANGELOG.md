@@ -10,6 +10,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Детерминированный depth-floor guardrail для adaptive-depth DA (G30, DEC-DEV-0182).** Adaptive-depth-модель P-RULE-01/02 (DEC-DEV-0012) позволяла subagent'у `product-devils-advocate` **самому** классифицировать каждое изменение BR/IC как `cosmetic` (→ quick-check) или `significant` (→ full 6-lens). Это чистое LLM-суждение без backstop: false-cosmetic на реально значимом изменении молча пропускал требуемый review (watchdog G05/G06 страхует **факт** спавна DA, но не выбранную им **глубину**). Добавлена чистая, юнит-тестированная либа `hooks/product/lib/da-depth-floor.cjs`: хуки `ic-change-trigger.js` / `br-change-trigger.js` сканируют тот же git-diff набором **структурных высокоточных** сигналов (`creation`, `activation`=status→active, `severity-critical`, `entity-change` [IC], `category-change` [BR]) и при срабатывании штампуют в da-pending-entry `depth_floor: significant` + `depth_floor_signals` и выдают громкий stderr-override; brief (`feature-session.md`) и агент (`devils-advocate.md`) обязаны при `Depth-floor: significant` идти в full 6-lens, игнорируя самоклассификацию. **Границы (сознательно НЕ детерминизировано):** «statement semantic rewrite» и BR «parameter TYPE vs value-tune» неотличимы регуляркой от документированных cosmetic-кейсов → остаются за adaptive-LLM. Пол только **повышает** глубину; **нет сигнала → нет поля → поведение 1:1 как до G30** (absent==старое). Fail-open (lib недоступна → пола нет). Юниты `tests/product/da-depth-floor.test.cjs` (15) в `test:product`; doc — `processes.md` §6.2. Consumer-zone (`hooks/` + `skills/` + `agents/`); counts без изменений (24/44 — guardrail, не новый validation-тип).
+
 ### Fixed
 
 ---
