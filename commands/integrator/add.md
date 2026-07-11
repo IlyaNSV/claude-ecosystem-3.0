@@ -116,12 +116,12 @@ For each (producer, consumer) pair this tool creates, spawn `contract-designer` 
 ```
 Producer: <e.g., product-module>
 Consumer: <tool>
-Producer artifact: <e.g., product-handoff.md, sample: tests/fixtures/FM-FIXTURE-001-handoff.md>
+Producer artifact: <e.g., product-handoff.md, sample: .claude/adapters/fixtures/FM-FIXTURE-001-handoff.md>
 Consumer input: <from tool profile inputs[]>
 Existing contracts (dedup): <list from .claude/integrator/contracts/>
 PMO zone(s) tying these tools: <from Stage 4 mapping>
 Available MCPs: <enumerate>
-Project fixture path: tests/fixtures/FM-FIXTURE-001-handoff.md
+Project fixture path: .claude/adapters/fixtures/FM-FIXTURE-001-handoff.md  (deployed by bootstrap/update, DEC-DEV-0178; if missing — pre-1.10 install — fall back to a real handoff from .product/handoffs/)
 ```
 
 For cc-sdd specifically: one pair `product-module → cc-sdd /kiro:spec-init`. Subagent will check `.claude/adapters/handoff-to-ccsdd.js` (project-local reference layer per DEC-DEV-0040 Q1 refined; deployed by `/ecosystem:bootstrap` and synced by `/ecosystem:update`), inject metadata, run `--verify-only` smoke.
@@ -141,7 +141,7 @@ Update `active-tools.yaml` + `pmo-mapping.yaml` with CNT-NNN references.
 Run adapter `--verify-only` against the project fixture:
 
 ```bash
-node .claude/integrator/adapters/<adapter>.js --verify-only --fixture tests/fixtures/FM-FIXTURE-001-handoff.md
+node .claude/integrator/adapters/<adapter>.js --verify-only --fixture .claude/adapters/fixtures/FM-FIXTURE-001-handoff.md
 echo "exit: $?"
 ```
 

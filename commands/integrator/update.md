@@ -148,7 +148,7 @@ For each contract flagged as breaking in Stage 3:
    Existing contracts (dedup): [<this CNT itself; subagent updates in place>]
    PMO zone(s) tying these tools: <from updated pmo-mapping>
    Available MCPs: <enumerate>
-   Project fixture path: tests/fixtures/FM-FIXTURE-001-handoff.md
+   Project fixture path: .claude/adapters/fixtures/FM-FIXTURE-001-handoff.md  (deployed by bootstrap/update, DEC-DEV-0178; if missing, fall back to a real handoff from .product/handoffs/)
    REPAIR MODE: yes; existing CNT-NNN at .claude/integrator/contracts/CNT-NNN.yaml; reference adapter has evolved at <new-source-ref>; user-confirmed contract repair.
    ```
 
@@ -168,7 +168,7 @@ If subagent fails → mark contract status `broken`, surface to user, do NOT pro
 Run adapter `--verify-only` against fixture for each repaired contract:
 
 ```bash
-node .claude/integrator/adapters/<adapter>.js --verify-only --fixture tests/fixtures/FM-FIXTURE-001-handoff.md
+node .claude/integrator/adapters/<adapter>.js --verify-only --fixture .claude/adapters/fixtures/FM-FIXTURE-001-handoff.md
 ```
 
 If exit 0:

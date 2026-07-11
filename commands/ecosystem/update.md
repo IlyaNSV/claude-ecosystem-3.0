@@ -531,6 +531,11 @@ for SUBDIR in docs templates adapters; do
     cp -r ".claude-ecosystem-tmp/$SUBDIR" ".claude/$SUBDIR"
   fi
 done
+# Adapter contract-test fixtures (DEC-DEV-0178, smoke-batch finding): SSOT lives in
+# the repo's tests/fixtures/ (shared with unit tests), deployed here so Stage-6
+# verify / /integrator:update Stage 5 have a canonical fixture in the project.
+mkdir -p .claude/adapters/fixtures
+cp .claude-ecosystem-tmp/tests/fixtures/FM-FIXTURE-*.md .claude/adapters/fixtures/ 2>/dev/null || true
 ```
 
 PowerShell:
@@ -545,6 +550,9 @@ foreach ($subdir in $flatSubdirs) {
     Copy-Item -Path $src -Destination $dst -Recurse
   }
 }
+# Adapter contract-test fixtures (DEC-DEV-0178): deploy from repo tests/fixtures/
+New-Item -ItemType Directory -Force ".claude\adapters\fixtures" | Out-Null
+Copy-Item ".claude-ecosystem-tmp\tests\fixtures\FM-FIXTURE-*.md" ".claude\adapters\fixtures\" -ErrorAction SilentlyContinue
 ```
 
 **Why namespace-aware split** (DEC-DEV-0051, patch 1.3.5):

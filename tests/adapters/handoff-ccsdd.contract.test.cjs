@@ -112,5 +112,23 @@ test('C-07 blocks a clobbered §5 (no SC- id) — silent fidelity loss caught', 
   assert.strictEqual(v.passed, false, 'blocking C-07 fail → contract not passed');
 });
 
+// 5 — DEF C-03 regression (DEC-DEV-0178, smoke-batch 2026-07-11): any 1.x minor is
+// accepted (the v1.4 cutoff produced FALSE warnings on 1.5+ pilots — live FM-006,
+// DEC-INT-0013); a MAJOR bump still warns until re-verified.
+test('C-03 accepts any product-module-v1.x generator; warns on v2.x', () => {
+  const raw = fs.readFileSync(path.join(FIX, 'FM-FIXTURE-001-handoff.md'), 'utf8');
+  const sections = extractSections(stripFrontmatter(raw));
+  const fm16 = { ...parseFrontmatter(raw), generator: 'product-module-v1.6.0' };
+  assert.strictEqual(checkOf(validateContract(fm16, sections), 'C-03').status, 'pass',
+    'C-03 accepts v1.6.0 (post-1.4 minor)');
+  const fm19 = { ...parseFrontmatter(raw), generator: 'product-module-v1.9' };
+  assert.strictEqual(checkOf(validateContract(fm19, sections), 'C-03').status, 'pass',
+    'C-03 accepts v1.9 (no patch suffix)');
+  const fm2 = { ...parseFrontmatter(raw), generator: 'product-module-v2.0' };
+  const v2 = validateContract(fm2, sections);
+  assert.strictEqual(checkOf(v2, 'C-03').status, 'fail', 'C-03 warns on major bump v2.0');
+  assert.strictEqual(checkOf(v2, 'C-03').level, 'warning', 'C-03 stays warning-level (non-blocking)');
+});
+
 console.log(`\n${passed} test(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);
