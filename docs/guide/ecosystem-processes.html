@@ -29,6 +29,7 @@
     color:var(--tx);border-radius:7px;padding:7px 11px;font-size:13px}
   .btn{background:var(--bg3);border:1px solid var(--line);color:var(--tx);border-radius:7px;padding:6px 11px;cursor:pointer;font-size:12.5px}
   .btn:hover{border-color:#58a6ff}
+  .btn[aria-pressed="true"]{border-color:#d2a8ff;color:#d2a8ff;background:var(--bg)}
   .layers{display:flex;gap:7px;flex-wrap:wrap;align-items:center;margin-top:8px}
   .flabel{font-size:10.5px;color:var(--tx3);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
   .lchip{font-size:12px;padding:4px 9px;border-radius:20px;background:var(--bg3);border:1px solid var(--line);
@@ -114,6 +115,8 @@
     <span class="sep" aria-hidden="true"></span>
     <button class="btn" id="groupBtn" title="Обернуть выделенные узлы в свёртываемую группу (G)">⊞ Сгруппировать</button>
     <button class="btn" id="ungroupBtn" title="Разгруппировать выделенную ad-hoc группу (U)">⊟ Разгруппировать</button>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="btn" id="pathBtn" aria-pressed="false" title="Объясни путь: кликни стартовый узел, затем цель — подсветит цепочку процессов/гейтов между ними (Esc — выйти)">🧭 Объясни путь</button>
   </div>
   <div class="layers">
     <span class="flabel">слои связей</span>
@@ -168,8 +171,8 @@
 <!-- Data island: generator replaces the single token below with JSON.stringify(DATA). -->
 <script id="proc-data" type="application/json">{
   "_build": {
-    "date": "2026-07-06",
-    "sha": "8bfa984",
+    "date": "2026-07-11",
+    "sha": "09626f7",
     "lanes": 5,
     "processes": 20,
     "steps": 108,
@@ -1745,7 +1748,7 @@
     },
     {
       "data": {
-        "id": "proc:P4",
+        "id": "proc:P4p",
         "parent": "lane:product",
         "label": "P4 · Cascade Consistency (continuous)",
         "kind": "process",
@@ -1758,12 +1761,12 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.trigger",
-        "parent": "proc:P4",
+        "id": "s:P4p:P4.trigger",
+        "parent": "proc:P4p",
         "label": "Trigger: active артефакт изменён",
         "kind": "start",
         "status": "shipped",
-        "process": "P4",
+        "process": "P4p",
         "what": "Approve новой версии / change parameters.",
         "review": "",
         "hooks": [
@@ -1776,12 +1779,12 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.identify",
-        "parent": "proc:P4",
+        "id": "s:P4p:P4.identify",
+        "parent": "proc:P4p",
         "label": "Identify dependents",
         "kind": "task",
         "status": "shipped",
-        "process": "P4",
+        "process": "P4p",
         "what": "Через bi-dir refs (V-11 гарантирует consistency).",
         "review": "",
         "hooks": [],
@@ -1794,12 +1797,12 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.bfs",
-        "parent": "proc:P4",
+        "id": "s:P4p:P4.bfs",
+        "parent": "proc:P4p",
         "label": "BFS traversal",
         "kind": "task",
         "status": "shipped",
-        "process": "P4",
+        "process": "P4p",
         "what": "В порядке priority: Critical -> Strategic -> Standard -> Confirmation.",
         "review": "",
         "hooks": [],
@@ -1810,12 +1813,12 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.reval",
-        "parent": "proc:P4",
+        "id": "s:P4p:P4.reval",
+        "parent": "proc:P4p",
         "label": "Per-dependent re-validation",
         "kind": "task",
         "status": "shipped",
-        "process": "P4",
+        "process": "P4p",
         "what": "Applicable rules per тип зависимого.",
         "review": "",
         "hooks": [],
@@ -1826,12 +1829,12 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.collect",
-        "parent": "proc:P4",
+        "id": "s:P4p:P4.collect",
+        "parent": "proc:P4p",
         "label": "Collect changes",
         "kind": "task",
         "status": "shipped",
-        "process": "P4",
+        "process": "P4p",
         "what": "Status transitions, re-approve needed, requires_review flags.",
         "review": "",
         "hooks": [],
@@ -1842,12 +1845,12 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.present",
-        "parent": "proc:P4",
+        "id": "s:P4p:P4.present",
+        "parent": "proc:P4p",
         "label": "Present bundle + human approve",
         "kind": "gateway",
         "status": "shipped",
-        "process": "P4",
+        "process": "P4p",
         "what": "[Y]es all / [P]er-item / [N]o (rollback). DA review при IC/BR в каскаде.",
         "review": "",
         "hooks": [],
@@ -1858,12 +1861,12 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.apply",
-        "parent": "proc:P4",
+        "id": "s:P4p:P4.apply",
+        "parent": "proc:P4p",
         "label": "Apply atomic",
         "kind": "task",
         "status": "shipped",
-        "process": "P4",
+        "process": "P4p",
         "what": "Всё или ничего; rollback при failure.",
         "review": "",
         "hooks": [],
@@ -1874,7 +1877,7 @@
     },
     {
       "data": {
-        "id": "proc:P5",
+        "id": "proc:P5p",
         "parent": "lane:product",
         "label": "P5 · Periodic Review (partial)",
         "kind": "process",
@@ -1887,12 +1890,12 @@
     },
     {
       "data": {
-        "id": "s:P5:P5.drift",
-        "parent": "proc:P5",
+        "id": "s:P5p:P5.drift",
+        "parent": "proc:P5p",
         "label": "Drift-check (C1)",
         "kind": "task",
         "status": "partial",
-        "process": "P5",
+        "process": "P5p",
         "what": "Артефакты ещё согласованы с PS / primary HYP / MVP-scope? Direction alignment report 🟢/🟡/🔴.",
         "review": "",
         "hooks": [],
@@ -1909,12 +1912,12 @@
     },
     {
       "data": {
-        "id": "s:P5:P5.patterns",
-        "parent": "proc:P5",
+        "id": "s:P5p:P5.patterns",
+        "parent": "proc:P5p",
         "label": "Patterns meta-linter (C4)",
         "kind": "task",
         "status": "partial",
-        "process": "P5",
+        "process": "P5p",
         "what": "Повторяющиеся анти-паттерны в .product/ (hard-coded values, missing actors, asymmetric deps, stale drafts). Информационно.",
         "review": "",
         "hooks": [],
@@ -1925,12 +1928,12 @@
     },
     {
       "data": {
-        "id": "s:P5:P5.cleanup",
-        "parent": "proc:P5",
+        "id": "s:P5p:P5.cleanup",
+        "parent": "proc:P5p",
         "label": "Cleanup (V-15 orphans)",
         "kind": "task",
         "status": "partial",
-        "process": "P5",
+        "process": "P5p",
         "what": "Поиск сирот + опц. гигиена pending-очередей.",
         "review": "",
         "hooks": [],
@@ -3405,27 +3408,27 @@
     },
     {
       "data": {
-        "id": "art:PS__s:P5:P5.drift__consumes",
+        "id": "art:PS__s:P5p:P5.drift__consumes",
         "source": "art:PS",
-        "target": "s:P5:P5.drift",
+        "target": "s:P5p:P5.drift",
         "type": "consumes",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "art:HYP__s:P5:P5.drift__consumes",
+        "id": "art:HYP__s:P5p:P5.drift__consumes",
         "source": "art:HYP",
-        "target": "s:P5:P5.drift",
+        "target": "s:P5p:P5.drift",
         "type": "consumes",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "art:MVP__s:P5:P5.drift__consumes",
+        "id": "art:MVP__s:P5p:P5.drift__consumes",
         "source": "art:MVP",
-        "target": "s:P5:P5.drift",
+        "target": "s:P5p:P5.drift",
         "type": "consumes",
         "label": ""
       }
@@ -4161,9 +4164,9 @@
     },
     {
       "data": {
-        "id": "s:APPROVE:AP.cascade__proc:P4__delegate",
+        "id": "s:APPROVE:AP.cascade__proc:P4p__delegate",
         "source": "s:APPROVE:AP.cascade",
-        "target": "proc:P4",
+        "target": "proc:P4p",
         "type": "delegate",
         "label": "запускает"
       }
@@ -4233,72 +4236,72 @@
     },
     {
       "data": {
-        "id": "s:P4:P4.trigger__s:P4:P4.identify__sequence",
-        "source": "s:P4:P4.trigger",
-        "target": "s:P4:P4.identify",
+        "id": "s:P4p:P4.trigger__s:P4p:P4.identify__sequence",
+        "source": "s:P4p:P4.trigger",
+        "target": "s:P4p:P4.identify",
         "type": "sequence",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "s:P4:P4.identify__s:P4:P4.bfs__sequence",
-        "source": "s:P4:P4.identify",
-        "target": "s:P4:P4.bfs",
+        "id": "s:P4p:P4.identify__s:P4p:P4.bfs__sequence",
+        "source": "s:P4p:P4.identify",
+        "target": "s:P4p:P4.bfs",
         "type": "sequence",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "s:P4:P4.bfs__s:P4:P4.reval__sequence",
-        "source": "s:P4:P4.bfs",
-        "target": "s:P4:P4.reval",
+        "id": "s:P4p:P4.bfs__s:P4p:P4.reval__sequence",
+        "source": "s:P4p:P4.bfs",
+        "target": "s:P4p:P4.reval",
         "type": "sequence",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "s:P4:P4.reval__s:P4:P4.collect__sequence",
-        "source": "s:P4:P4.reval",
-        "target": "s:P4:P4.collect",
+        "id": "s:P4p:P4.reval__s:P4p:P4.collect__sequence",
+        "source": "s:P4p:P4.reval",
+        "target": "s:P4p:P4.collect",
         "type": "sequence",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "s:P4:P4.collect__s:P4:P4.present__sequence",
-        "source": "s:P4:P4.collect",
-        "target": "s:P4:P4.present",
+        "id": "s:P4p:P4.collect__s:P4p:P4.present__sequence",
+        "source": "s:P4p:P4.collect",
+        "target": "s:P4p:P4.present",
         "type": "sequence",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "s:P4:P4.present__s:P4:P4.apply__sequence",
-        "source": "s:P4:P4.present",
-        "target": "s:P4:P4.apply",
+        "id": "s:P4p:P4.present__s:P4p:P4.apply__sequence",
+        "source": "s:P4p:P4.present",
+        "target": "s:P4p:P4.apply",
         "type": "sequence",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "s:P5:P5.drift__s:P5:P5.patterns__sequence",
-        "source": "s:P5:P5.drift",
-        "target": "s:P5:P5.patterns",
+        "id": "s:P5p:P5.drift__s:P5p:P5.patterns__sequence",
+        "source": "s:P5p:P5.drift",
+        "target": "s:P5p:P5.patterns",
         "type": "sequence",
         "label": ""
       }
     },
     {
       "data": {
-        "id": "s:P5:P5.patterns__s:P5:P5.cleanup__sequence",
-        "source": "s:P5:P5.patterns",
-        "target": "s:P5:P5.cleanup",
+        "id": "s:P5p:P5.patterns__s:P5p:P5.cleanup__sequence",
+        "source": "s:P5p:P5.patterns",
+        "target": "s:P5p:P5.cleanup",
         "type": "sequence",
         "label": ""
       }
@@ -6193,7 +6196,10 @@
       { selector: 'edge[type="lineage"]', style: { 'line-color':'#6e7681','target-arrow-color':'#6e7681','line-style':'dotted','width':1 } },
       { selector: 'edge.cy-expand-collapse-meta-edge', style: { 'line-color':'#586069','target-arrow-color':'#586069','width':2,'line-style':'solid','opacity':0.7 } },
       { selector: 'edge.off', style: { 'display':'none' } },
-      { selector: 'edge.ehl', style: { 'width':3,'opacity':1,'z-index':99 } }
+      { selector: 'edge.ehl', style: { 'width':3,'opacity':1,'z-index':99 } },
+      // C5 «объясни путь»: подсветка BFS-цепочки процессов/гейтов между двумя узлами
+      { selector: 'node.pathnode', style: { 'border-width':4,'border-color':'#d2a8ff' } },
+      { selector: 'edge.pathedge', style: { 'line-color':'#d2a8ff','target-arrow-color':'#d2a8ff','width':4,'opacity':1,'z-index':100,'line-style':'solid' } }
     ],
     layout: { name:'preset' }   // placeholder; defaultView() runs the real ELK async + fits on layoutstop
   });
@@ -6394,8 +6400,81 @@
       });
     });
   }
-  cy.on('tap', 'node', function(evt){ showNode(evt.target); });
-  cy.on('tap', function(evt){ if (evt.target === cy){ panel.classList.remove('open'); cy.nodes().removeClass('sel'); cy.edges().removeClass('ehl'); } });
+  // ── C5: «объясни путь» — BFS по flow-рёбрам (sequence+delegate) между двумя узлами, подсветка цепочки.
+  //    explainPath работает по СТАТИЧЕСКИМ DATA.edges (не зависит от того, что развёрнуто), поэтому
+  //    proc-level путь (напр. P1A→P6o через crossEdges) резолвится даже при свёрнутых процессах.
+  //    Двух-кликовый режим: старт → цель; переиспользует edge-highlight (класс .pathedge/.pathnode). ──
+  var _flowAdj = null;
+  function flowAdj(){
+    if (_flowAdj) return _flowAdj;
+    var adj = {};
+    DATA.edges.forEach(function(e){
+      var d = e.data;
+      if (d.type !== 'sequence' && d.type !== 'delegate') return;   // только поток/делегация, не data-рёбра
+      (adj[d.source] || (adj[d.source] = [])).push(d.target);
+    });
+    _flowAdj = adj; return adj;
+  }
+  function explainPath(from, to){
+    if (from === to) return [from];
+    var adj = flowAdj(), prev = {}; prev[from] = null;
+    var queue = [from];
+    while (queue.length){
+      var cur = queue.shift(), nbrs = adj[cur] || [];
+      for (var i = 0; i < nbrs.length; i++){
+        var nx = nbrs[i];
+        if (Object.prototype.hasOwnProperty.call(prev, nx)) continue;
+        prev[nx] = cur;
+        if (nx === to){
+          var path = [], p = to;
+          while (p != null){ path.unshift(p); p = prev[p]; }
+          return path;                                              // [from, …, to]; BFS ⇒ кратчайший
+        }
+        queue.push(nx);
+      }
+    }
+    return [];                                                      // недостижимо ⇒ пустой путь
+  }
+  function shortId(id){ return String(id).replace(/^proc:/,'').replace(/^s:[^:]+:/,'').replace(/^art:/,''); }
+  function clearPath(){ cy.nodes().removeClass('pathnode'); cy.edges().removeClass('pathedge'); }
+  function highlightPath(from, to){
+    clearPath();
+    var ids = explainPath(from, to);
+    if (ids.length < 2){ flash('Нет потока между «' + shortId(from) + '» и «' + shortId(to) + '» (рёбра поток/делегация)'); return ids; }
+    // reveal ancestors so each path node is live in the graph, затем метим узлы + связующие рёбра
+    ids.forEach(function(id){
+      var n = cy.getElementById(id);
+      if (api && n.nonempty()){ try { n.ancestors().forEach(function(a){ if (a.hasClass('cy-expand-collapse-collapsed-node')) api.expand(a); }); } catch(e){} }
+    });
+    var eles = cy.collection();
+    for (var i = 0; i < ids.length; i++){
+      var n = cy.getElementById(ids[i]);
+      n.addClass('pathnode'); eles = eles.union(n);
+      if (i > 0){
+        cy.edges().filter(function(ed){ return ed.data('source') === ids[i-1] && ed.data('target') === ids[i]; }).addClass('pathedge');
+      }
+    }
+    if (eles.nonempty()) cy.animate({ fit:{ eles: eles, padding: 70 } }, { duration: 320 });
+    flash('Путь ' + shortId(from) + ' → ' + shortId(to) + ': ' + ids.length + ' узлов');
+    return ids;
+  }
+  var pathMode = false, pathFrom = null;
+  var pathBtn = document.getElementById('pathBtn');
+  function setPathMode(on){
+    pathMode = on; pathFrom = null;
+    pathBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    clearPath();
+    if (on) flash('Режим «объясни путь»: кликни СТАРТ, затем ЦЕЛЬ (Esc — выйти)');
+  }
+  pathBtn.addEventListener('click', function(){ setPathMode(!pathMode); });
+  function pathTap(node){
+    var id = node.id();
+    if (!pathFrom){ pathFrom = id; clearPath(); node.addClass('pathnode'); flash('Старт: ' + shortId(id) + ' — теперь кликни цель'); }
+    else { highlightPath(pathFrom, id); pathFrom = null; }
+  }
+
+  cy.on('tap', 'node', function(evt){ if (pathMode){ pathTap(evt.target); return; } showNode(evt.target); });
+  cy.on('tap', function(evt){ if (evt.target === cy){ panel.classList.remove('open'); cy.nodes().removeClass('sel'); cy.edges().removeClass('ehl'); if (pathMode){ pathFrom = null; clearPath(); } } });
 
   // ── legend toggle ──
   document.getElementById('legtgl').addEventListener('click', function(){
@@ -6417,6 +6496,7 @@
     if (e.key === '/'){ e.preventDefault(); q.focus(); }
     else if (k === 'g'){ e.preventDefault(); groupSelected(); }
     else if (k === 'u'){ e.preventDefault(); ungroupTargets(); }
+    else if (e.key === 'Escape' && pathMode){ setPathMode(false); }   // C5: выйти из режима «объясни путь»
   });
 
   // ── headless test hook (безвреден в проде; используется смоуком tests/guide/procmap.smoke.mjs) ──
@@ -6426,7 +6506,8 @@
   cy.on('layoutstart', function(){ window.__layoutRunning = true; });
   cy.on('layoutstop', function(){ window.__layoutRunning = false; });
   window.__cy = cy;
-  window.__procmap = { group: groupSelected, ungroup: ungroupTargets, ungroupAll: ungroupAll, getApi: function(){ return api; }, openDoc: openDoc };
+  window.__procmap = { group: groupSelected, ungroup: ungroupTargets, ungroupAll: ungroupAll, getApi: function(){ return api; }, openDoc: openDoc,
+    explainPath: explainPath, highlightPath: highlightPath, setPathMode: setPathMode };
 
   // ── build stamp ──
   var b = DATA._build;

@@ -6,13 +6,14 @@
 > **v1 modifications:** A1 (auto-approve 🟢), A2 (Discovery Review Checkpoint), A3 (adaptive-depth DA — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier), B2 (quiet draft hooks), C1-C4 (drift mitigation: drift-check, confidence, validation-tune, patterns), D1 (handoff modes), D2 (approve_overrides), D3 (NOTE-* type).
 > **Related:** [docs/README.md](../README.md) (docs index) · [pmo/pmo-map.md](../pmo/pmo-map.md) (functional zones) · [pmo/processes.md](../pmo/processes.md) (P1-P5 methodology) · [pmo/validation.md](../pmo/validation.md) (V-* rules) · [pmo/artifacts/](../pmo/artifacts/) (24 типа) · [handoff-spec.md](handoff-spec.md) (handoff format) · [integrator-module/SPEC.md](../integrator-module/SPEC.md), [design-module/SPEC.md](../design-module/SPEC.md) (peer modules)
 >
-> ⚠ **Пост-spec расширения (Vision, Epic A/B/C/D) — построены, но в тело этого SPEC НЕ вписаны (G21):**
-> персона-ревьюеры `architect-advisor`/`qa-advisor`/`ux-advisor` + zone-router и agent-roster
-> (DEC-DEV-0098/0151) · completeness-loop `/product:complete` с оракулом и durable wave-runner'ом
-> (DEC-DEV-0098/0142) · decision-жюри `/product:consilium <PA-NNN>` (DEC-DEV-0145) · макро-батч
-> `/product:batch-enrich` (DEC-DEV-0150). SSOT их поведения — `commands/product/*.md` + CHANGELOG
-> + [docs/guide/02-commands.md](../guide/02-commands.md); не делай вывода «нет в SPEC ⇒ нет в модуле».
-> Интеграция в тело SPEC — отдельный doc-трек.
+> **v1.x — Autonomous Pipeline extensions (Epic A/B/C/D/G — вписаны в тело этого SPEC, DEC-DEV-0187):**
+> bounded completeness-loop machinery (zone→persona router + optional roster layer + deterministic
+> completeness-oracle) — §2.4; profile-persona reviewers `architect-advisor`/`qa-advisor`/`ux-advisor`
+> — §5.4; команды `/product:complete` (Epic B), `/product:consilium` (Epic D), `/product:batch-enrich`
+> (Epic C-i) — §3.2 / §3.2b; completeness-loop router hook `zone-change-trigger.js` — §6.8.
+> Поведенческий SSOT команд остаётся `commands/product/*.md` + [docs/guide/02-commands.md](../guide/02-commands.md)
+> (+ `skills/product/completeness-loop.md` для wave-контракта); архитектурный обзор — секции ниже.
+> (F1 autonomy-policy — Epic F, зона Orchestrator — здесь намеренно не описан.)
 
 ## 1. Philosophy & Role
 
@@ -105,10 +106,10 @@
 
 | Примитив | Роль | Локация |
 |---|---|---|
-| **Slash-commands** | 20 команд UX для пользователя | `.claude/commands/product/` |
-| **Skills** | ~20 methodology files, lazy-loaded per процесс | `.claude/skills/product/` |
-| **Subagents** | 3 research-heavy / isolated агента | `.claude/agents/product/` |
-| **Hooks** | 8 hooks для automation и enforcement | `.claude/hooks/product-*.js` |
+| **Slash-commands** | 22 команды UX для пользователя (вкл. Epic B/C-i/D — §3.2/§3.2b) | `.claude/commands/product/` |
+| **Skills** | ~20 methodology files, lazy-loaded per процесс (вкл. `completeness-loop.md` — Epic B wave-контракт) | `.claude/skills/product/` |
+| **Subagents** | 3 research/isolated агента + 3 profile-persona reviewers (Epic A — §5.4; `ux-advisor` живёт в `agents/design/`) | `.claude/agents/product/` |
+| **Hooks** | 12 hooks automation / enforcement / completeness-loop-routing (ключевые — §6; router — §6.8) | `.claude/hooks/product/` |
 | **Memory directory** | Долгоживущие уроки, shared между сессиями | `~/.claude/memory/product/` |
 | **Config** | Global + per-project settings | `~/.claude/product-config.yaml` + `.claude/product.yaml` |
 
@@ -153,11 +154,55 @@
 - `.kiro/`, `.planning/`, `.claude/hooks/*` не своих hooks, `.beads/`, `.stitch/` — зоны Integrator / внешних tools
 - `.claude/integrator/` — Integrator's zone
 
+### 2.4 Autonomous Pipeline machinery (v1.x — Epic A/B/C/D/G)
+
+Поверх базового «draft → iterate → approve» слоя v1.x добавил **bounded completeness-loop** —
+машинерию, которая доводит спеку фичи до handoff-DoR-достаточности без того, чтобы генератор
+сам себя оценивал. Принцип из vision §4: **диспозиция детерминирована (код), суждением остаётся
+только содержание вердикта персоны.** Части:
+
+- **Deterministic completeness-oracle** (`hooks/product/lib/completeness-oracle.cjs`, Epic B/B1) —
+  внешний стоп-сигнал: скорит готовность фичи против handoff Definition of Ready (`handoff-spec.md
+  §7`, блокеры B1-B8), выдаёт `score` + `gaps` + `ambiguities` и честно перечисляет, что он НЕ
+  вычисляет (B5/B6/B8 делегированы существующим валидаторам / `bg-extractor` — без тихой усечки).
+  τ = 1.0 над вычисленными блокерами (DoR — all-required); `met:true` никогда не читается как
+  «полностью доказано» (есть `delegated_unverified`). Спутник — `gap-classifier.cjs`: детерминированный
+  CLASSIFY + стоп-вердикт (диспозиции 🟢 loop-body auto-resolve ↔ 🔴 gate escalate; SSOT — разметка
+  в `dev/LOOP_READINESS_AUDIT.md`).
+- **Zone→persona router** (`hooks/product/zone-router.cjs` + `zone-routing.yaml`, Epic A/A2) — по
+  изменённому `.product/`-файлу детерминированно решает, какие **profile-персоны** (§5.4) должны его
+  ревьюить: персона срабатывает ⇔ файл попал в зону (`path_glob`) И магнитуда изменения ≥ порога зоны
+  (`cosmetic` < `significant`) — magnitude-гейт держит панель от прожигания токенов на тривиальных
+  правках. Гетерогенность (vision §4 кластер 2): каждая зона роутит только на персон, чей **отличный**
+  приор там ценен, — не на всю панель по умолчанию. Живёт router через PostToolUse-хук
+  `zone-change-trigger.js` (§6.8), который сигналит (не спавнит сам).
+- **Roster layer** (`hooks/product/lib/agent-roster.cjs`, Epic G MINIMUM / G1+G2) — **опциональный**
+  конфиг-слой ПОВЕРХ router'а, не замена: `.product/agent-roster.yaml` (per-persona `enabled` / `model`
+  / `depth_threshold` / `extra_lenses` + именованные пресеты `lean`/`full`). **Отсутствующий файл ==
+  встроенный дефолт → поведение бит-в-бит равно pre-G** (roster == null → `resolveFiring` возвращает
+  результат router'а без изменений). `depth_threshold` может только ПОДНЯТЬ планку срабатывания, не
+  опустить (консервативно). G3 (дашборды/метрики/ROI) — cut.
+- **Consilium jury** (Epic D) — генерализация Orchestrator-примитива P2 (`decide-architecture-foundation`)
+  на решения completeness-loop'а через `--panel`-параметризацию общего `orchestrator/lib/consilium-synth.cjs`
+  (не реимплементация агрегатора). Гетерогенное жюри персон скорит опции форк-решения независимо;
+  синтез — детерминированный код (матрица + ранг + hard/soft-veto); рекомендация пишется обратно в тот
+  же PA. **PREPARE-ONLY:** жюри рекомендует, владелец ратифицирует. Команда — `/product:consilium` (§3.2b).
+- **Runner-исполнители** (Epic B/C-i) — durable Workflow-скрипты в `product/processes/`
+  (`complete-feature.mjs`, `batch-enrich-feature-set.mjs`, `consilium.mjs`), которые оркестрирующая
+  команда диспатчит; wave-контракт (внешний стоп, cap волн, эскалация решений, no silent truncation) —
+  SSOT в `skills/product/completeness-loop.md`. Команды несут inline-fallback на прозу скилла, если
+  runner ещё не задеплоен (install до 1.7.0).
+
+**Рельс каноничности персон (везде):** каждая персона спавнится как свой канонический
+`subagent_type` (`architect-advisor`/`qa-advisor`/`ux-advisor`); дропнутая — bounded RE-SPAWN один раз;
+всё ещё null → лоуд-дисклоз (`personas_incomplete` / `panel_complete:false`). **Никогда** не откат на
+`general-purpose` — неверная линза хуже раскрытой отсутствующей.
+
 ---
 
 ## 3. Commands Catalog
 
-20 команд, сгруппированных по функциональным блокам.
+22 команды, сгруппированных по функциональным блокам.
 
 ### 3.1 Главные процессы (5)
 
@@ -238,11 +283,12 @@
 - Showing: все dependents, validation status, required updates
 - Полезно после ручного editor артефакта вне processes
 
-**`/product:complete <FM-NNN>`** (Epic B, DEC-DEV-0098)
-- **Процесс:** Bounded completeness-loop — довести спеку фичи до handoff-DoR-достаточности (внешний стоп-сигнал: `completeness-oracle` + cap волн, не самооценка генератора)
+**`/product:complete <FM-NNN> [--max-waves N] [--dry-run]`** (Epic B, DEC-DEV-0098/0142)
+- **Процесс:** Bounded completeness-loop (§2.4) — довести спеку фичи до handoff-DoR-достаточности (внешний стоп-сигнал: `completeness-oracle` + cap волн, не самооценка генератора)
 - **Входы:** FM-NNN + её `.product/` зависимости
-- **Выходы:** доведённая спека (SC/BR/VC…) при `score≥τ` ИЛИ эскалация пробелов; per-wave идемпотентно
-- **Статус:** v1 core/skeleton (auto-fix консервативный — surface + escalate по умолчанию)
+- **Выходы:** доведённая спека (SC/BR/VC…) при `score≥τ` ИЛИ эскалация пробелов в канонический pending-actions ledger; per-wave идемпотентно
+- **Механика:** диспатчит durable-runner `product/processes/complete-feature.mjs` (SSOT wave-контракта — `skills/product/completeness-loop.md`); стоп = `cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0)`; на каждую зону пробелов — гетерогенные profile-персоны (§5.4) канонического типа, без general-purpose fallback; отчёт несёт `honest_unmet` verbatim (спека ниже τ никогда не округляется до «done»)
+- **Статус:** v1 core/skeleton (auto-fix консервативный — surface + escalate по умолчанию, pending pilot-калибровки)
 
 **`/product:lesson "<...>" | --resume <id> | --withdraw <id>`** (DEC-DEV-0062)
 - **Процесс:** Атомарный find→fix→record corrective LESSON-* (фикс применён и проверен до записи)
@@ -292,6 +338,22 @@
   - Draft нового артефакта target type с derived содержимым
   - NOTE.status = promoted, NOTE.promoted_to = <new artifact id>
 - **Skill:** `note-promote.md`
+
+### 3.2b Autonomous Pipeline (2 — Epic C-i / D)
+
+**`/product:consilium <PA-NNN> [--feature FM-NNN]`** (Epic D, DEC-DEV-0145)
+- **Процесс:** Decision-preparation jury над уже эскалированным **форк-образным** решением-PA (≥2 взаимоисключающих опции) — генерализация Orchestrator-примитива P2 (§2.4)
+- **Входы:** PA-NNN с ≥2 опциями (опции lift'ятся из PA, не изобретаются; <2 опций → честный отказ)
+- **Выходы:** пакет рекомендации, вписанный **в тот же PA in place**: `recommended` + `strength` (strong/split/none) + матрица опция×персона + veto-ledger + `integration_note`
+- **Механика:** диспатчит `product/processes/consilium.mjs`; жюри гетерогенных персон (architect + qa; ux — только при UI-касании) скорит опции независимо → детерминированный синтез `consilium-synth.cjs --panel <personas>` (relayed verbatim, не пересчитывается)
+- **Статус/контракт:** **PREPARE-ONLY** — жюри рекомендует, владелец ратифицирует; команда никогда не закрывает PA, не правит спеку, не финализирует форк (auto-proceed на уверенности — F2/L2, не здесь)
+
+**`/product:batch-enrich <FM-NNN> [<FM-NNN> ...] | --all-planned`** (Epic C-i, DEC-DEV-0145)
+- **Процесс:** Макро-батч над **набором** FM (релизная порция) — прогоняет каждую через enrichment (F.2→F.7 P2.A) + bounded completeness-loop, сдвигая human approve-gate с per-item на **границы фаз** (L1 PA-эскалации)
+- **Входы:** явный список `FM-NNN` **или** `--all-planned` (discovery FM со `status: planned`; список логируется до работы — B1, без тихого расширения)
+- **Выходы:** обогащённые + доведённые спеки FM + per-FM boundary-PA со списком эскалированных решений; batch report (`processed` / `skipped` / `escalated_total` / `honest_unmet`)
+- **Механика:** THIN-оркестрация — диспатчит `product/processes/batch-enrich-feature-set.mjs`; ENRICH исполняет процедуру `feature.md`, COMPLETE делегирует `complete-feature.mjs` (ноль реимплементации F.2-F.10); checkpoint-first + resume (сессионный лимит возобновляется чисто); FM бегут **последовательно** (single-writer — параллельные цепи гоняли бы одно `.product/`-дерево и next-id PA-ledger'а)
+- **Статус/контракт:** **PREPARE-ONLY** — runner никогда не переводит статус FM (F.10 planned→in-progress — ратификация владельца); F.8/F.9 skip'аются + логируются (вне scope C-i)
 
 ### 3.3 BG / NFR Management (4)
 
@@ -400,7 +462,7 @@
 
 ## 5. Subagents
 
-3 subagent с isolated context:
+3 research/isolated subagent (§5.1-5.3) + 3 profile-persona reviewers (§5.4, Epic A). Все — isolated context (Builder/Critic separation).
 
 ### 5.1 `market-researcher` (D1.2 Deep mode)
 
@@ -427,11 +489,41 @@
 
 **Примечание:** использует existing `.claude/agents/devils-advocate.md` с business prompts (DEC-I05).
 
+### 5.4 Profile-persona reviewers (Epic A — completeness-loop)
+
+Гетерогенные profile-ревьюеры bounded completeness-loop'а (§2.4). Каждый читает спеку через **отличный
+приор** (гетерогенность — суть; однородная панель = groupthink + прожжённые токены, vision §4 кластер 2),
+в isolated context (не участвовал в авторинге), и находит **только пробелы** (`clean: true` на
+удовлетворённой линзе — не «положительный finding», урок DEC-DEV-0094). Adaptive-depth (`cosmetic` vs
+`significant`) в одном вызове. Инвоцируются zone→persona-router'ом (§2.4/§6.8) детерминированно, либо
+вручную, либо волной completeness-loop'а. Findings пишутся в `.product/.advisor-findings/<persona>-<ARTIFACT-ID>.md`
+(ASCII slug, keyed на персона+артефакт — ре-ран UPDATE'ит in place, не аппендит дубль; идемпотентность
+per LOOP_READINESS_AUDIT §5.3). Канонический `subagent_type` **всегда**; «not found» = лоуд-блокирующая
+setup-ошибка (STOP), никогда не тихий откат на `general-purpose` (теряется `model`-пин, `tools`-ограничение,
+изоляция — DEC-DEV-0064).
+
+- **`architect-advisor`** (`agents/product/architect-advisor.md`) — приор **feasibility / структурная
+  декомпозиция / технический риск / data-state**: «строится ли это как написано и как структура держится
+  downstream». Линзы: feasibility-as-specified, decomposition-seams, tech-risk & dependencies, data/state
+  modeling, integration seams (handoff-readiness). `model: opus`, tools read-only.
+- **`qa-advisor`** (`agents/product/qa-advisor.md`) — приор **тестируемость / покрытие acceptance /
+  edge-cases**: достаточно ли спека определена, чтобы её можно было проверить, и где дыры в happy/alt/error.
+  `model: opus`, tools read-only.
+- **`ux-advisor`** (`agents/design/ux-advisor.md`) — приор **usability / полнота flow / покрытие
+  состояний UI**; применяется **только к UI-несущему** scope (`has_ui`, SC с UI-шагами, MK/NM/DS,
+  component states) — иначе возвращает clean. Живёт в namespace Design-модуля (кормит D2-B04 / D.4 state
+  matrix), но роутится тем же Product-router'ом (зона `mockups`). Линзы: usability, flow-completeness,
+  state-coverage (default/hover/focus/error/disabled/loading/empty/overflow), accessibility, content,
+  consistency. См. также [design-module/SPEC.md §5.2](../design-module/SPEC.md). `model: opus`, tools read-only.
+
+Бизнес-линза (`product-devils-advocate`, §5.3) намеренно НЕ дублируется в этом router'е — она уже
+подключена через `br/ic-change-trigger`.
+
 ---
 
 ## 6. Hooks
 
-8 hooks автоматизации и enforcement (LESSON-* gate добавил первые **Stop / PreToolUse / UserPromptSubmit** хуки модуля — DEC-DEV-0062; первый блокирующий хук в экосистеме, scoped к corrective lessons):
+12 hooks автоматизации, enforcement и completeness-loop-роутинга (ниже детализированы ключевые; LESSON-* gate добавил первые **Stop / PreToolUse / UserPromptSubmit** хуки модуля — DEC-DEV-0062, первый блокирующий хук в экосистеме, scoped к corrective lessons; watchdog- и worktree-guard-хуки — warn-only, SSOT их регистрации — `hooks/product/manifest.yaml`; router — §6.8):
 
 ### 6.1 `product-artifact-validate.js` (PostToolUse) — tier-aware + quiet-mode
 
@@ -520,6 +612,14 @@
 - **Действия:** recompute hash через `hooks/product/lib/hash.js`; сравнивает с сохранёнными `artifact_hashes` во frontmatter существующих handoff
 - **Effect:** stderr warning при mismatch с suggestion `/product:handoff <FM-id> --regenerate`; не блокирует Write/Edit
 - **Reference:** V-H-04 drift detection; DEC-DEV-0025 C.1 (hash-утилита) + DEC-DEV-0031 A1 (line-based parser fix). Актуальное поведение описано в `handoff-spec.md §16`
+
+### 6.8 `zone-change-trigger.js` (PostToolUse) — completeness-loop router (Epic A / A2)
+
+- **Триггер:** Write/Edit на `.product/**/*.md`
+- **Действия:** матчит изменённый файл к зоне (`zone-router.cjs` + `zone-routing.yaml`) → git-diff против HEAD (best-effort) → детерминированная магнитуда → при срабатывании персоны (зона совпала И магнитуда ≥ порога) аппендит/обновляет `.product/.pending/advisor-pending.yaml` (dedup по artifact id — идемпотентный ре-ран) + опциональный roster-слой (`lib/agent-roster.cjs`; absent-конфиг → без изменений, бит-в-бит pre-G)
+- **Effect:** stderr-сигнал оркестрирующему скиллу — «заспавни каждую персону (§5.4) её каноническим `subagent_type`; not-found = STOP, никогда general-purpose fallback». **Хук сам subagent НЕ спавнит** — только сигналит (тот же контракт, что `br/ic-change-trigger`)
+- **Rails:** magnitude-гейт держит панель от прожигания токенов на тривиальных правках (Epic A anti-token-burn); non-blocking, exit 0 всегда; fail-open, если router недоступен
+- **Reference:** DEC-DEV-0098 (Epic A/A2), DEC-DEV-0151/0159 (roster-слой / watchdog); архитектура — §2.4
 
 ---
 
