@@ -20,7 +20,13 @@ export const meta = {
 //   priorPatterns: 'выжимка patterns/LIBRARY.md',  // для дедупа против виденного (может быть пустой)
 // }
 
-const a = args || {}
+let a = args || {}
+// Harness может передать args JSON-строкой — парсим защитно.
+if (typeof a === 'string') {
+  try { a = JSON.parse(a) } catch (e) {
+    return { error: 'args пришёл строкой и не парсится как JSON: ' + e.message }
+  }
+}
 const lanes = a.lanes || []
 if (!lanes.length) {
   return { error: 'args.lanes пуст: прочитай verticals/<v>/pack.yaml и передай lanes (см. stage-a/README.md)' }
