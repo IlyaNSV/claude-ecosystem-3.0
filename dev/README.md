@@ -13,30 +13,32 @@
 | **`tech-debt/`** | Post-closure findings по фазам | закрываются фиксом или явным defer |
 | **`v1_1_backlog.md`** | Living-список отложенного (post-MVP v1.1+) | живёт в корне `dev/`, обновляется per phase |
 | **`meta-improvement/`** | Модуль D7 (mechanisms + checklists + patterns + rubrics + scripts + audit-pipeline) | живой код, НЕ архивируется (CONVENTIONS §2) |
+| **`process-fabric/`** | Design-SSOT Process Fabric (CONCEPT + EXECUTION_ROADMAP + OD7-вердикты); исторический балласт — в `_archive/process-fabric/` | живые указатели |
 | **`scripts/`** | Вспомогательные dev-утилиты | живые |
-| **`_archive/`** | Завершённое прошлое (по фазам + session-audit-v2) | read-only история |
+| **`_archive/`** | Завершённое прошлое (по фазам + треки: orchestrator, research, vision, plans, audit-reports…) | read-only история |
 
 ## plans/
 
-- `LOCAL_DOCS_POLISH_PLAN.md` — light-touch docs polish (замена deferred Phase D)
-- `ORCHESTRATOR_DOGFOOD_PLAN.md` — эмпирический dogfood-регламент Orchestrator Module (concept v0)
-- `PILOT_RECONCILIATION_PLAN.md` — реконсиляция пилот↔экосистема (DEC-DEV-0065)
 - `TIER_2_DOC_REFORM_PLAN.md` — gated план Tier-2 doc reform (ждёт 1-2 closure)
-- `UBUNTU_PILOT_DEPLOYMENT_PLAN.md` — перенос пилота `my-first-test` на Ubuntu 24.04 (research 2026-06-15)
+
+Завершённые планы (LOCAL_DOCS_POLISH, ORCHESTRATOR_DOGFOOD, PILOT_RECONCILIATION, UBUNTU_PILOT_DEPLOYMENT, CONSOLIDATED_EXECUTION) — в [`_archive/plans/`](_archive/plans/) и [`_archive/orchestrator/`](_archive/orchestrator/) (deadweight-sweep 2026-07-11).
 
 ## gates/ — **[HARD-PREREQ]** перед стартом следующей фазы
 
 > Эти проверки перечислены в [CLAUDE.md «Перед стартом следующей phase»](../CLAUDE.md). Прогоняются на next pilot session; часть — hard-prereq.
 
-- `PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5
-- `PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 (Design Module)
-- `PHASE_7_READINESS.md` — skeleton kickoff Phase 7
-- `S_LE_LESSON_GATE_SMOKE.md` — **[HARD-PREREQ]** LESSON-* gate runtime contracts (DEC-DEV-0062) перед переводом `lesson-presence-gate.js` warn→strict
+- `PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (🟠 частично прогнан 2026-07-11; догон S2/S4/S5)
+- `PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 Design Module (🟠 частично прогнан 2026-07-11; догон S1/S3)
+- `SMOKE_BATCH_2026-07-11_BRIEF.md` — вердикты batch-прогона 2026-07-11 (§Outcome — SSOT)
+- `SUBSTRATE_GRADUATION_GATE.md` — graduation-гейт субстрата
 
 ## deferred/
 
 - `PHASE_D_IMPLEMENTATION_PLAN.md` · `PHASE_D_DOCS_WIKI_READINESS.md` · `wiki-design.md` — Phase D Wiki initiative (DEFERRED to v1.1+, DEC-DEV-0046)
+- `D7_DEADWEIGHT_CLEANUP.md` — work-order прунинга D7; исполнен repo-wide deadweight-sweep'ом 2026-07-11 (см. статус в файле)
 
 ---
 
 > **Reorg 2026-06-14:** планы/гейты/deferred-доки переехали из корня `dev/` в подпапки `plans/`/`gates/`/`deferred/`; `SESSION_AUDIT_V2_DESIGN.md` → `_archive/session-audit-v2/`. Ссылки в `DEV_JOURNAL.md` и `CHANGELOG.md` **до этой даты** намеренно сохраняют старые корневые пути (point-in-time история, не переписывается).
+>
+> **Deadweight-sweep 2026-07-11:** разовые брифы/планы оркестраторского трека, research-бейкоффы, VISION-батчи и `research-cache/` уехали в `_archive/` (подпапки `orchestrator/`, `research/`, `vision/`, `plans/`, `vibe-coding/`); 41 audit-report → `_archive/audit-reports/`, clean>30d удалены по retention-правилу; инициативы `product-radar/`+`factory-conductor/` вынесены в отдельные репо. Ссылки в накопительной истории (`DEV_JOURNAL`/`CHANGELOG`) не переписывались.

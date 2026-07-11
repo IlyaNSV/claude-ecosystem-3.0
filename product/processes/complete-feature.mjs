@@ -12,7 +12,7 @@ export const meta = {
 
 /*
  * Product process B-b `complete-feature` — the executable form of the completeness-loop
- * (DEC-DEV-0098 skill; Wave B / B-b, dev/CONSOLIDATED_EXECUTION_PLAN.md §4.1). The behavioral
+ * (DEC-DEV-0098 skill; Wave B / B-b, dev/_archive/plans/CONSOLIDATED_EXECUTION_PLAN.md §4.1). The behavioral
  * contract + the five HARD RAILS live in skills/product/completeness-loop.md (the SSOT); this
  * script is its bounded, deterministic executor. Do NOT duplicate the skill prose — read it.
  *

@@ -81,7 +81,7 @@ be rationalized.
 
 ## Examples (instances)
 
-- **P2 profiling study (DEC-DEV-0132, `dev/ORCHESTRATOR_P2_PROFILING_STUDY.md`):** 3-profiled
+- **P2 profiling study (DEC-DEV-0132, `dev/_archive/orchestrator/ORCHESTRATOR_P2_PROFILING_STUDY.md`):** 3-profiled
   jury vs 1 GP on 7 architecture forks. Pre-registered D1–D6 rubric, mechanism-neutral baseline
   contract, symmetric scrub + randomized blind key, 2 blind judges + 1 adversarial steelman.
   Surface result (GP ≥ jury) survived to a nuanced verdict only *because* step 7 caught the

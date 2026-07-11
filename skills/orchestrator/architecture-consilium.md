@@ -12,7 +12,7 @@ architecture for you.
 
 > Grounding: SPEC §3.2 (P2 slot, "scope-defining gate") + §3.3 RA-1
 > (`architecture-consilium`, priors velocity/fidelity/integrity); the ratified design
-> DEC-DEV-0127 (`dev/ORCHESTRATOR_P2_KICKOFF.md`); Vision Epic D (a consilium is a **jury**,
+> DEC-DEV-0127 (`dev/_archive/orchestrator/ORCHESTRATOR_P2_KICKOFF.md`); Vision Epic D (a consilium is a **jury**,
 > not a debate); RUN 01 E1 (`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` #129–184, the fork once run
 > by hand).
 

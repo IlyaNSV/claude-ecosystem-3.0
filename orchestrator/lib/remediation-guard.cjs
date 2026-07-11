@@ -2,7 +2,7 @@
 /**
  * remediation-guard.cjs — deterministic remediation-discretion classifier for the
  * Orchestrator P5/P6 remediation loops (DEC-DEV-0096, N+2 queue P5 / T5; work-order
- * dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
+ * dev/_archive/orchestrator/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
  *
  * WHY THIS EXISTS (live-run B+C, FB-LR-07 / FB-LR-08 — DEC-DEV-0091):
  *   Remediation agents had no codified discretion. Two failure modes were observed:

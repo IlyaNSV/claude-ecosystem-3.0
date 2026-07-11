@@ -170,6 +170,16 @@ dev/meta-improvement/
 | `dev/gates/PHASE_<N>_SMOKE_TEST_PLAN.md` | After smoke run done | `dev/_archive/phase-<N>/` |
 | Pre-Phase-N proposals (e.g., spec drafts если были) | Post-decision | `dev/_archive/phase-<N>/` |
 
+**Ротация накопительных канонов** (введена 2026-07-11, DEC-DEV-0185; файл остаётся живым — уезжает только старое СОДЕРЖИМОЕ, дословно):
+
+| Канон | Порог ротации | Что уезжает | Куда | Ритуал-носитель |
+|---|---|---|---|---|
+| `DEV_JOURNAL.md` | живой файл >~250 КБ или >~50 записей | самый старый полный месяц записей; текущий + предыдущий месяц всегда остаются | `dev/_archive/journal/DEV_JOURNAL_<период>.md` | этот § (проверять на patch-cut) |
+| `CHANGELOG.md` | >~150 КБ на cut версии | релизы старше текущего квартала; `[Unreleased]` + текущие релизы + footer остаются | `dev/_archive/changelog/CHANGELOG_<диапазон>.md` | `checklists/patch-cut.md` |
+| `ROADMAP.md` | closure фазы | развёрнутый блок закрытой фазы → строка pointer-таблицы; «Где мы сейчас» — НИКОГДА (SSOT + входящие якоря) | `dev/_archive/roadmap/` | `checklists/phase-closure.md` |
+| `audit-index.md` | rows clean/dismissed или >1 мес | Processed-строки; sentinel-пары и Pending — НИКОГДА | `dev/_archive/audit-index-<YYYY>.md` | audit-index §Notes |
+| `audit-journal.ndjson` | **DEFER** до >~500 findings / >~500 КБ | только findings с несуществующим artifact И status dismissed/patched (это dedup-память: удаление строки = потеря подавления, re-emergence осознанно принимается) | `dev/_archive/audit-journal-<YYYY>.ndjson` | этот § |
+
 ### 5.2 NEVER archive
 
 - `DEV_JOURNAL.md` — cross-session memory (per SPEC §6.4)

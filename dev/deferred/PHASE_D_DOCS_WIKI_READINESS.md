@@ -2,7 +2,7 @@
 
 > ⏸ **STATUS: DEFERRED to v1.1+ (2026-05-27)** per DEC-DEV-0046.
 >
-> **Active alternative:** [`dev/plans/LOCAL_DOCS_POLISH_PLAN.md`](../plans/LOCAL_DOCS_POLISH_PLAN.md) (Obsidian + README polish, 4-9h).
+> **Active alternative:** [`dev/_archive/plans/LOCAL_DOCS_POLISH_PLAN.md`](../plans/LOCAL_DOCS_POLISH_PLAN.md) (Obsidian + README polish, 4-9h).
 >
 > **Rationale:** phantom-audience guard fired. Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; single active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h light-touch альтернативу.
 >

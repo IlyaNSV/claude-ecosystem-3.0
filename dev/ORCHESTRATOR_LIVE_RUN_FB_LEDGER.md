@@ -5,7 +5,7 @@
 > nesting tests + a 4-lens council). Closes the pilot→ecosystem feedback loop: until this file the ~14
 > findings lived only in pilot git (`grep FB-028` over the ecosystem repo = 0 matches). Authoritative
 > decision + rationale: **[DEV_JOURNAL DEC-DEV-0091](../DEV_JOURNAL.md)**. Next-increment spec:
-> **[ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md)**.
+> **[ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](_archive/orchestrator/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md)**.
 >
 > **Discrete, not blurred** (DEC-DEV-0057 Lesson #1): each row is one finding with its own corrected
 > root-cause + route. Where the live (C-)session mis-diagnosed a finding, the **corrected** root-cause is
@@ -40,7 +40,7 @@
 | FB-LR-11 | 🟢 | A,C | `args` passed as a JSON **string** instead of an object (FB-001/002 class) | Both A sessions + C did it; the `.mjs` defensive-parse held (guard confirmed under load). | Cosmetic — guard works; note in run.md. |
 | FB-LR-12 | 🟢 | A | `kind:fabricated-trace` is a misnomer for real cross-feature owned contracts (BR-074/IC-028) | Routing + detail were correct; only the label misleads. | **FIXED (DEC-DEV-0089 rider, PR #50):** renamed `fabricated-trace` → `missing-trace-source` (emit ↔ exempt-guard ↔ wiring-test changed together; the name now points at the missing `.product` *source*, not an accusation of fabrication). |
 | FB-LR-13 | 🟢 | C | post-remediation verifier evidence text says "FINDING IS A HALLUCINATION / fabricated quotes" when the truth is "already fixed" | Same TOCTOU surface as FB-LR-03; the original finding **was** real pre-fix. | **FIXED with FB-LR-03 (T2, DEC-DEV-0093):** the `already-resolved` disposition now distinguishes "was real, fixed since baseline" from "hallucination". |
-| FB-LR-14 | ℹ️ | C | process/bookkeeping: pilot baseline branch `pre-cc-sdd-pilot` fast-forwarded to `== main` (`ee7cd0e`); the "S7" name collision (admin live-run was journaled as "S7" but canonical S7 = §6 detect-leg); merge of a MANUAL_VERIFY feature into main left only **PA-019** genuinely open (PA-017/018 resolved by code). | **Scoped (2026-06-23, multi-agent sweep):** the S7 mislabel is **pilot-side, NOT in the ecosystem repo** — every in-repo `S7` is a legitimate other meaning (Phase-4 hash smoke / Phase-6 update-compat smoke / the canonical §6 detect-leg brief `dev/ORCHESTRATOR_S7_BRIEF.md`, all STAY). The only RUN-C-to-be artifact is the pilot file `my-first-test/.claude/orchestrator/runs/S7-FEEDBACK-JOURNAL.md` (admin run `395404ba`) → rename to `RUN-C-FEEDBACK-JOURNAL.md` + reconcile `ORCHESTRATOR_S7_BRIEF.md:118`'s journal-path so the detect-leg S7 reclaims that filename. **These are pilot-repo edits → folded into the pilot re-validation session** (`dev/ORCHESTRATOR_N2_PILOT_REVALIDATION_BRIEF.md` §0.4 clean-baseline tag). The pilot memory `project_orchestrator_p6_delegation_unresolvable` (mis-attributed the delegation failure, disproved by DEC-DEV-0091/T3) is **corrected** (superseded note added). `had_trial` risk: masking mechanism now closed by T5 (DEC-DEV-0096); keep OPEN for the upstream **product** decision. |
+| FB-LR-14 | ℹ️ | C | process/bookkeeping: pilot baseline branch `pre-cc-sdd-pilot` fast-forwarded to `== main` (`ee7cd0e`); the "S7" name collision (admin live-run was journaled as "S7" but canonical S7 = §6 detect-leg); merge of a MANUAL_VERIFY feature into main left only **PA-019** genuinely open (PA-017/018 resolved by code). | **Scoped (2026-06-23, multi-agent sweep):** the S7 mislabel is **pilot-side, NOT in the ecosystem repo** — every in-repo `S7` is a legitimate other meaning (Phase-4 hash smoke / Phase-6 update-compat smoke / the canonical §6 detect-leg brief `dev/_archive/orchestrator/ORCHESTRATOR_S7_BRIEF.md`, all STAY). The only RUN-C-to-be artifact is the pilot file `my-first-test/.claude/orchestrator/runs/S7-FEEDBACK-JOURNAL.md` (admin run `395404ba`) → rename to `RUN-C-FEEDBACK-JOURNAL.md` + reconcile `ORCHESTRATOR_S7_BRIEF.md:118`'s journal-path so the detect-leg S7 reclaims that filename. **These are pilot-repo edits → folded into the pilot re-validation session** (`dev/_archive/orchestrator/ORCHESTRATOR_N2_PILOT_REVALIDATION_BRIEF.md` §0.4 clean-baseline tag). The pilot memory `project_orchestrator_p6_delegation_unresolvable` (mis-attributed the delegation failure, disproved by DEC-DEV-0091/T3) is **corrected** (superseded note added). `had_trial` risk: masking mechanism now closed by T5 (DEC-DEV-0096); keep OPEN for the upstream **product** decision. |
 
 ## N+2 re-validation findings (2026-06-25)
 
@@ -141,8 +141,8 @@
 ## N+2 gate-followups batch live-run (Fork C: G-1 / R-1 / G-2) — 2026-06-27
 
 > The owner-driven live-sweep of the N+2 **gate-followups** (DEC-DEV-0101/0102/0106) + the carried-over
-> backlog, per executor-runbook [PILOT_RUNBOOK_N2_GATE_FOLLOWUPS.md](PILOT_RUNBOOK_N2_GATE_FOLLOWUPS.md) +
-> reviewer-rubric [ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md](ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6.
+> backlog, per executor-runbook [PILOT_RUNBOOK_N2_GATE_FOLLOWUPS.md](_archive/orchestrator/PILOT_RUNBOOK_N2_GATE_FOLLOWUPS.md) +
+> reviewer-rubric [ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md](_archive/orchestrator/ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6.
 > **Fork C** = G-1 + R-1 + G-2 (G-3 / P5→P6 deferred to a real un-done feature). Graded post-hoc by the
 > layered evidence model ([[feedback_audit_evidence_layers]]) + **executor/reviewer separation**
 > ([[feedback_separate_task_from_test]]): 3 independent forensic auditors (one per run) + the reviewer's own
@@ -183,7 +183,7 @@
 ## N+2 OWED-batch live-run (Run 1/2/3) — DEC-DEV-0114 — 2026-06-29
 
 > The owner-driven live-run of the items Fork C (DEC-DEV-0111) left OWED/DEFERRED, per reviewer-rubric
-> [ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md](ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6. Graded
+> [ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md](_archive/orchestrator/ORCHESTRATOR_N2_GATE_FOLLOWUPS_LIVE_PLAN.md) §6. Graded
 > post-hoc by the layered evidence model ([[feedback_audit_evidence_layers]]: narrative + authoritative
 > `.output` envelopes + pilot git ground-truth) + executor/reviewer separation. Pilot sessions: **Run 1**
 > `ff4325b9` (`/product:complete FM-001`+`FM-006`, V-2 vehicle); **Run 2** `88615a07` (`validate-feature-impl
@@ -248,4 +248,4 @@
 | FB-LR-31 | 🟡 | P2 profiling study (`4af995d1`, DEC-DEV-0132) | **Lossy Brief-phase is the jury's bottleneck, not the jury itself.** Blind A/B: 1 GP ≥ 3-persona jury on D2 (factor coverage) / D3 (risk detection), in significant part because GP read the full raw PA while the jury read a lossy lifted-ForkBrief (verified on PA-040: the brief dropped the load-bearing fact "apps/worker already runs BullMQ" and mislabeled the worker as "NEW"). | `consilium-synth` feeds architects a lifted brief, not the raw PA; the lift is lossy and can drop/mislabel decisive facts. | **FIXED in P2 — DEC-DEV-0135 (PR #99).** Architects read the raw source_excerpt as ground truth (lossy-brief cap removed). Epic D inherits the raw-PA-to-panel rail — design input, no longer an open defect. |
 | FB-LR-32 | 🟡 | P2 profiling study (`4af995d1`, DEC-DEV-0132) | **Distributed-veto blind spot.** Independent fixed-lens scoring + a deterministic sum can miss a *distributed* must-not-ship that a single holistic pass catches. A control run flagged an in-process `sleep`-as-canon violating a HIGH-confidence pinned NFR-004 that the jury rated only "weak" and passed. | `consilium-synth` sums per-lens scores with no rule "unanimously-weak ⇒ soft-veto / re-examine"; diversity of panel ≠ integration across lenses. | **FIXED in P2 — DEC-DEV-0135 (PR #99).** consilium-synth soft-veto (>=3 flags demote strong->split) + surfacing-only integration pass close the distributed-veto blind spot. Epic D inherits. |
 
-**Disposition:** FB-LR-30 = framing-only LOW (no PR). FB-LR-31/32 are **P2 / Epic-D design inputs** — carried into the wave-2 (Autonomous Pipeline Vision) kickoff rather than fixed standalone. Full study: `dev/ORCHESTRATOR_P2_PROFILING_STUDY.md`.
+**Disposition:** FB-LR-30 = framing-only LOW (no PR). FB-LR-31/32 are **P2 / Epic-D design inputs** — carried into the wave-2 (Autonomous Pipeline Vision) kickoff rather than fixed standalone. Full study: `dev/_archive/orchestrator/ORCHESTRATOR_P2_PROFILING_STUDY.md`.

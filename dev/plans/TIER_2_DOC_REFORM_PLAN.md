@@ -44,7 +44,7 @@
    | `CLAUDE.md` | readiness-list: `dev/PHASE_D_DOCS_WIKI_READINESS.md` → `dev/deferred/...` |
    | `ROADMAP.md` (~стр. 103, Phase D блок) | 3 пути → `dev/deferred/...` |
    | `v1_1_backlog.md` | строки 408/410/421/422/423 |
-   | `LOCAL_DOCS_POLISH_PLAN.md` | relative-links 9/38/39/269/286-288 → `deferred/...` |
+   | `../_archive/plans/LOCAL_DOCS_POLISH_PLAN.md` | relative-links 9/38/39/269/286-288 → `deferred/...` |
 
    `wiki-design.md:813` уже указывает на `_archive/phase-5/` (пропатчено в Tier 1).
 3. Перед коммитом — `grep -rl` по именам файлов (исключая `_archive/`, audit-reports, append-only history), убедиться что не осталось живых битых ссылок.

@@ -295,6 +295,6 @@ phase('verify'); const gate = await agent('сверить выход с конт
 
 ## Changelog
 
-- `v0` (2026-06-02) — concept draft. Направление и scope зафиксированы DEC-DEV-0058. Эмпирические регламенты — pending dogfood (`dev/plans/ORCHESTRATOR_DOGFOOD_PLAN.md`).
+- `v0` (2026-06-02) — concept draft. Направление и scope зафиксированы DEC-DEV-0058. Эмпирические регламенты — pending dogfood (`dev/_archive/orchestrator/ORCHESTRATOR_DOGFOOD_PLAN.md`).
 - `v0.1` (2026-06-02) — коррекция границы (DEC-DEV-0060): командный канал §6 = запрос **capability** (руки/голова), не инфра-исполнения; добавлен capability self-check; OD5 уточнён до capability-spec; OD6 принят (Интегратор оснащает «голову» = role-агент/skill, role A).
 - `v1.0-draft` (2026-06-14, DEC-DEV-0073) — **dogfood RUN 01 harvest** (сессия `6dc62bc8`, `dev/ORCHESTRATOR_DOGFOOD_RUN_01.md`). §2-bis (эмпирика движка + 3 провала durability); §3.2 каталог 1→7 процессов; §3.3 таксономия 11 role-агентов; §6-bis (канал §6 не активировался ни разу — типология +env-constraint/secret, поле `route`, раздельные tier'ы, async-протокол); §7-bis (реальная раскладка автономии + re-formulation-петля); §8 пометка E2-only; OD5 уточнён, OD7–OD10 добавлены. **Не** implementation-ready: scope (OD10) и §6 на D3 — открыты.

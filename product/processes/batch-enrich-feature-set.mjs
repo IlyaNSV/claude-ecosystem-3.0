@@ -12,7 +12,7 @@ export const meta = {
 
 /*
  * Product process C-i `batch-enrich-feature-set` — the executable MACRO step of the
- * Autonomous Pipeline Vision Wave (C∥D), design in dev/ECOSYSTEM_VISION_BATCH_3.md §C-i
+ * Autonomous Pipeline Vision Wave (C∥D), design in dev/_archive/vision/ECOSYSTEM_VISION_BATCH_3.md §C-i
  * (DEC-DEV-0145 decisions г/д). The completeness-loop (complete-feature.mjs, Wave B) is the
  * PER-FEATURE hardener; this runner is the release-level driver that fans a SET of FMs
  * through enrichment + the bounded completeness-loop, moving the human approve-gate from

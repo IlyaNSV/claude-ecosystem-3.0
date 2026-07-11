@@ -70,7 +70,7 @@ DEC-DEV-0064. Новая инстанция SYSTEMIC — но это **уже п
 2026-05-26, без FIXED); DEC-DEV-0064 решение #2 (`DEV_JOURNAL.md:5118`: «R4 … НЕ трогаем — требует
 live-harness … спекулятивный bootstrap-фикс = ровно plausible-but-wrong патч, против которого
 DEC-DEV-0057 Lesson #1»). Вторая половина остатка — **отставание пилота**: пропагация 0064 в пилот = шаг 4
-плана `dev/PILOT_RECONCILIATION_PLAN.md` (DEC-DEV-0065, `DEV_JOURNAL.md:5182`), ещё не выполнен.
+плана `dev/_archive/plans/PILOT_RECONCILIATION_PLAN.md` (DEC-DEV-0065, `DEV_JOURNAL.md:5182`), ещё не выполнен.
 
 Любой патч, который мог бы предложить синтезатор, уже исчерпан:
 1. **Re-codify pattern** → избыточно (сделано 0064).
