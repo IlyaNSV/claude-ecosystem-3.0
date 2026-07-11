@@ -2,7 +2,7 @@
 /**
  * design-coverage-oracle.cjs — deterministic design→tasks structural-coverage oracle
  * for the Orchestrator P4 `audit-spec-fidelity` process (DEC-DEV-0095, N+2 queue P4 /
- * T4; work-order dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
+ * T4; work-order dev/_archive/orchestrator/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
  *
  * WHY THIS EXISTS (live-run C, FB-LR-05 / FB-019):
  *   `design.FileStructure ⊆ ⋃ tasks.boundary` was a blind spot of ALL existing oracles —

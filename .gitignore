@@ -68,3 +68,6 @@ dev/meta-improvement/rails/rails-rollup.ndjson
 /.claude/*
 !/.claude/commands/
 !/.claude/commands/**
+
+# Форматированные бинарные артефакты владельца не трекаем (дубль REPORT.md; DEC-DEV deadweight-sweep)
+dev/universality-assessment/*.pdf

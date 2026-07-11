@@ -12,7 +12,7 @@ export const meta = {
 /*
  * Orchestrator process P2 `decide-architecture-foundation` — build DEC-DEV-0129
  * (Phase 5C of the "module complete" plan; design ratified in DEC-DEV-0127, contract
- * dev/ORCHESTRATOR_P2_KICKOFF.md). Reading: SPEC §3.2 P2 / §3.3 RA-1 (the
+ * dev/_archive/orchestrator/ORCHESTRATOR_P2_KICKOFF.md). Reading: SPEC §3.2 P2 / §3.3 RA-1 (the
  * architecture-consilium role, priors velocity/fidelity/integrity); Vision Epic D
  * (consilium = jury, not consensus-debate); RUN 01 E1 (#129–184, the fork run by hand);
  * open-Q#7 (needs a DIFFERENT fork than RUN 01's stack-choice to confirm the synthesis

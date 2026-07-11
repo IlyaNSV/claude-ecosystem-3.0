@@ -35,7 +35,7 @@ DEC-DEV-0057 Lesson #1 warn against.
 > deferred)»; a fresh `**/.product/**` glob returns nothing). I therefore could NOT open the pilot artifacts
 > directly. What I verified against the live repo: the canonical spec (`docs/pmo/artifacts/IC.md`), the
 > current authoring skill (`skills/product/invariant-discovery.md`), the deployed V-18 hook
-> (`artifact-validate.js`), the reconciliation plan (`dev/plans/PILOT_RECONCILIATION_PLAN.md`), and the
+> (`artifact-validate.js`), the reconciliation plan (`dev/_archive/plans/PILOT_RECONCILIATION_PLAN.md`), and the
 > sibling refutations (`__C.md`, `__F.md`). The per-finding violation text I rely on is the cluster JSON +
 > audit-report transcript quotes, not a re-read of each pilot file.
 
@@ -96,7 +96,7 @@ explicit plan**:
   allowed set `validation|calculation|authorization|workflow|constraint|state-transition` is exactly what
   `3441931da1f1` violates), and **SC `status` off enum** (`:225` — exactly `84886f6af31c`). The header
   attributes the hook to «DEC-DEV-0064, from Session Audit cluster **D2B-behavioral::A**» (`:188-189`).
-- **Residual pilot drift has an owner:** `dev/plans/PILOT_RECONCILIATION_PLAN.md:7-8` states the design
+- **Residual pilot drift has an owner:** `dev/_archive/plans/PILOT_RECONCILIATION_PLAN.md:7-8` states the design
   intent verbatim — «Session Audit видит pilot-fork drift, но **рефьютит его («не дефект канона»)** — у
   аудита нет категории «канонизировать пилотную фичу». **Этот план — owner дрейфа.**» V-18 + the canonical
   templates sit in **Поток А** (`plan:45`, ecosystem→pilot, pilot byte-equal-behind), so they land in the

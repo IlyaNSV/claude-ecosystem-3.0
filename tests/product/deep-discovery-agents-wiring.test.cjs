@@ -42,6 +42,7 @@ function assert(cond, msg) {
 
 // ---- frontmatter helper (name/description/tools/model + read-only tool roster) ----
 function frontmatter(text) {
+  // \r? — Windows-чекаут с autocrlf отдаёт CRLF; парсер обязан быть EOL-толерантным
   const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
   if (!m) return null;
   const fm = {};

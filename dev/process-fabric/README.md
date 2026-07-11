@@ -9,13 +9,13 @@
 | Файл | Что это | Читать когда |
 |---|---|---|
 | [`EXECUTION_ROADMAP.md`](EXECUTION_ROADMAP.md) | Resume-якорь: статус фаз 0-4, шаги wiring, graduation-критерии, пост-обязательства | **продолжение работы — старт здесь** |
-| [`AUDIT_2026-07-07.md`](AUDIT_2026-07-07.md) | Сводный синтез аудита: 79 процессов, 18 де-факто FSM, 36 разрывов, диагноз | старт здесь |
-| [`audit/APPENDIX-A-process-map.md`](audit/APPENDIX-A-process-map.md) | Единый реестр процессов + матрица связности + сквозной трейс «идея→прод» | нужна карта/трейс |
-| [`audit/APPENDIX-B-gap-analysis.md`](audit/APPENDIX-B-gap-analysis.md) | 36 разрывов G01–G36 с классами и ранжированием; работающие «рефлексы» | приоритизация починки |
-| [`audit/APPENDIX-C-determinism-profile.md`](audit/APPENDIX-C-determinism-profile.md) | Детерминизм-профиль; 18 машин состояний; 9 хранилищ extended state | база под FSM-решение |
+| [`AUDIT_2026-07-07.md`](../_archive/process-fabric/AUDIT_2026-07-07.md) | Сводный синтез аудита: 79 процессов, 18 де-факто FSM, 36 разрывов, диагноз | старт здесь |
+| [`audit/APPENDIX-A-process-map.md`](../_archive/process-fabric/audit/APPENDIX-A-process-map.md) | Единый реестр процессов + матрица связности + сквозной трейс «идея→прод» | нужна карта/трейс |
+| [`audit/APPENDIX-B-gap-analysis.md`](../_archive/process-fabric/audit/APPENDIX-B-gap-analysis.md) | 36 разрывов G01–G36 с классами и ранжированием; работающие «рефлексы» | приоритизация починки |
+| [`audit/APPENDIX-C-determinism-profile.md`](../_archive/process-fabric/audit/APPENDIX-C-determinism-profile.md) | Детерминизм-профиль; 18 машин состояний; 9 хранилищ extended state | база под FSM-решение |
 | [`CONCEPT.md`](CONCEPT.md) | Архитектурный концепт Process Fabric: критический разбор, charter-формат, engine, backpressure, DL-манифест, план | дизайн-SSOT слоя |
-| [`catalog.yaml`](catalog.yaml) | Машиночитаемый каталог процессов: иерархия, шаги, DL-классы, события, связи | вход для charter'ов и карт |
-| [`CATALOG.md`](CATALOG.md) | Человекочитаемая сводка каталога | обзор |
+| [`catalog.yaml`](../_archive/process-fabric/catalog.yaml) | Машиночитаемый каталог процессов: иерархия, шаги, DL-классы, события, связи | вход для charter'ов и карт |
+| [`CATALOG.md`](../_archive/process-fabric/CATALOG.md) | Человекочитаемая сводка каталога | обзор |
 
 ## Код (consumer-zone, вне этой папки)
 

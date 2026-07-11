@@ -380,7 +380,7 @@ When picking option (v1.1):
 
 **Originally planned:** Phase D (design frozen 2026-05-26)
 **Deferred:** 2026-05-27 per DEC-DEV-0046 (phantom-audience guard)
-**Defer rationale:** Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; единственная active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h Obsidian + README polish (active alternative: `dev/plans/LOCAL_DOCS_POLISH_PLAN.md`). Audience reality check should have happened before design freeze; done now via alternatives analysis pre-implementation.
+**Defer rationale:** Pre-pilot Ecosystem 3.0 не имеет real end-user/stakeholder consumers; единственная active audience — solo dev. Непропорционально инвестировать 32-50h в 3-audience wiki когда 80% value достижимо через 4-9h Obsidian + README polish (active alternative: `dev/_archive/plans/LOCAL_DOCS_POLISH_PLAN.md`). Audience reality check should have happened before design freeze; done now via alternatives analysis pre-implementation.
 **Bring-forward trigger:** any of:
 - First real end-user feedback / ask «where do I start»
 - Stakeholder asks for shareable URL
@@ -421,7 +421,7 @@ Full Phase D wiki implementation per design freeze 2026-05-26:
 - `dev/deferred/wiki-design.md` — full design doc (§1-17)
 - `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — readiness gate (Sections A-H, DEFERRED banner)
 - `dev/deferred/PHASE_D_IMPLEMENTATION_PLAN.md` — implementation plan (DEFERRED banner)
-- `dev/plans/LOCAL_DOCS_POLISH_PLAN.md` — active alternative track
+- `dev/_archive/plans/LOCAL_DOCS_POLISH_PLAN.md` — active alternative track
 - DEC-DEV-0046 — defer decision (rationale + 5 options considered + lessons)
 
 ### Estimated effort при возврате
