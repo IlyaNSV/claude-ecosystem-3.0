@@ -74,6 +74,24 @@ Contract: exits 0 always; emits
 `{ tools: [ { tool, adapter, d1, d2, d3, staleness } ], summary: { driftCount, staleCount, checkedTools } }`.
 Map each tool's `d1/d2/d3` verdict onto the report row; any 🔴 axis → `drift`.
 
+### Step 2b: Handoff staleness (project-wide, read-only) — G22
+
+Per handoff-spec §13 ("Integrator при `/integrator:verify` проверяет, что handoff'ы актуальны"), surface whether the handoffs in `.product/` still match their embedded `artifact_hashes`.
+
+First, if a persisted snapshot exists (written by `/integrator:add` / `/integrator:update`), read it — it is the durable record G22 asks for:
+
+```bash
+cat .claude/integrator/handoff-staleness.yaml 2>/dev/null
+```
+
+Then compute a **fresh** verdict for the report (detect-only, no persist — verify keeps its single-write invariant, so pass no `--write`):
+
+```bash
+node .claude/hooks/integrator/lib/handoff-staleness.cjs --root . --json
+```
+
+Contract: exits 0 always; emits `{ handoffs: [ { handoff, feature, status, checked, stale_artifacts, missing_artifacts } ], summary: { handoffsChecked, staleCount, errorCount } }`. Recompute uses the Product-zone hash SSOT (`.claude/hooks/product/lib/hash.js`) and is **read-only w.r.t. `.product/`**. Map any `status: stale` handoff onto a finding; `errorCount>0` → note it. No `.product/handoffs/` → nothing to report (note only).
+
 ### Step 3: Report
 
 Summarise as a per-tool table, then actionable recommendations. Keep it tight — a 2-tool project yields a short report.
@@ -90,10 +108,12 @@ beads 1.2.0   ✓          1 broken   ok       —         🔴 issues
 FINDINGS
   🔴 CNT-003 (spec-tasks → beads): adapter script referenced but missing
   🟡 D3-05 mapped to 'superpowers' — not in active-tools (orphan mapping)
+  🟡 handoff FM-003-handoff.md: stale (BR-010 changed) — regenerate
 
 RECOMMENDATIONS
   broken contract  → /integrator:debug "CNT-003 broken"
   adapter drift    → /integrator:update <tool> --repair
+  stale handoff    → /product:handoff <FM-id> --regenerate  (Product Module action)
   orphan mapping   → remove the stale coverage entry, or /integrator:add <tool>
   orphan tool      → add coverage in pmo-mapping.yaml, or /integrator:remove <tool>
 
@@ -122,6 +142,7 @@ Also remove it on the early-exit path (Step 1). A stale marker triggers false-po
 | 2a | Reachability probe errors out | Mark tool `unreachable` 🔴; continue other tools |
 | 2b | Contract YAML unparseable | Mark that contract `broken` 🔴; continue |
 | 2d | `drift-checks.cjs` missing or throws | Note "drift check unavailable"; report other axes; do not fabricate a verdict |
+| 2b | `handoff-staleness.cjs` missing or throws | Note "handoff staleness check unavailable"; continue; do not fabricate a verdict |
 | 4 | `active-tools.yaml` write fails | Surface error; report is still valid (read-only findings hold) |
 
 ## Important constraints
@@ -129,5 +150,5 @@ Also remove it on the early-exit path (Step 1). A stale marker triggers false-po
 - **READ-ONLY except one write.** The `last_audit` stamp is the only mutation. This command never installs, repairs, edits contracts, or touches adapters.
 - **Be honest.** A tool that won't resolve or a contract that won't parse is reported as such — no soft-pedalling.
 - **Reachability is cheap.** Resolve/`--version`-class only; never run generating or init commands to "test" a tool.
-- **Never touch `.product/`, `.kiro/`, or `docs/pmo/`.** Verification lives entirely in the Integrator zone (`scope-guard` backs this).
+- **Never *write* `.product/`, `.kiro/`, or `docs/pmo/`.** Verification lives entirely in the Integrator zone (`scope-guard` backs this). The handoff-staleness check (Step 2b) *reads* `.product/` to recompute hashes — read-only — and persists nothing there; its snapshot lives at `.claude/integrator/handoff-staleness.yaml`.
 - `--light` / periodic scheduled verify — deferred to v1.1 (not available; do not advertise).
