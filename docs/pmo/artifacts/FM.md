@@ -53,6 +53,20 @@ external_capabilities:                     # optional; omit if the feature has n
   # tier         — provisioning tier by which REAL access must exist (dev | staging | prod)
   # dev_stand_in — how it is satisfied in dev (Mock | stub | unwired | ""); "" == no stand-in ⇒ a BLOCK
 
+# Implementation-sync result block (opt-in, DEC-DEV-0192, gap G02) — stamped by
+# `/product:impl-sync` when a feature's implementation RESULT is ingested back from the
+# external tool / Orchestrator and the FM is flipped to `shipped` (Product is the only
+# writer of `.product/`, Integrator SPEC §8.3). ABSENT == never synced == old behaviour
+# 1:1 (soft-migration, precedent product_class DEC-DEV-0079 / domain_fit DEC-DEV-0169).
+# Canonical field name is `impl_sync` ONLY — never implementation_status / impl_status /
+# sync_date / synced_on / implementation_sync.
+impl_sync:                                 # optional; present only after a synced shipped transition
+  synced_at: YYYY-MM-DD                    # when /product:impl-sync stamped this
+  gate: GO                                 # the implementation gate that justified shipped
+  run_id: "<latest GO run id | null>"      # orchestrator run that produced GO; null if shipped via fabric+external
+  evidence: [runs, fabric, external]       # which evidence sources actually fired
+  coverage_missing: 0                      # advisory handoff→spec coverage gap; omit when coverage was null
+
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
 created: YYYY-MM-DD
@@ -156,6 +170,13 @@ planned ──(start D2 enrichment)──▶ in-progress ──(handoff & implem
 - **in-progress** — хотя бы одна SC/BR создана; активно работаем с фичей
 - **shipped** — реализация завершена внешним инструментом, в production
 - **deprecated** — выпиливается; сохраняется для истории
+
+> **Кто выполняет переход в `shipped`:** команда **`/product:impl-sync`** (DEC-DEV-0192, gap G02) — обратный поток
+> реализации (external tool / Orchestrator → `.product/`). Она детерминированно собирает evidence (run-вердикты /
+> завершённые fabric-линии / external spec-каталоги), проверяет V-01 и **только по явному approve владельца**
+> переводит `in-progress → shipped` (или прыжок `planned → shipped` с пометкой), проставляя опциональный блок
+> `impl_sync`. Product — единственный писатель `.product/` (Integrator SPEC §8.3); Orchestrator/fabric оставляют
+> лишь note-prescription `project_fm_shipped_hint`, но статус не пишут.
 
 ## Examples
 

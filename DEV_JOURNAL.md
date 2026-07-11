@@ -1777,3 +1777,28 @@ What to remember next time.
 ### Lessons
 1. Урок инцидента конвертируй в тест для всего КЛАССА (все SessionStart-хуки), не только для инцидентного файла: 0162 закрепили одним кейсом на fabric-хук — рецидив пришёл через два хука, построенных позже.
 2. «Хук зелёный» ≠ «инжект дошёл»: контракт-нарушение в hookSpecificOutput фейлится на стороне харнесса без следа в exit-коде хука. Новый SessionStart-хук обязан получать smoke-кейс с assertion на `hookEventName` при рождении.
+
+## DEC-DEV-0192 — G02 result-ingest построен: `/product:impl-sync` + детерминированный evidence-сенсор `impl-evidence.cjs`
+
+**Date:** 2026-07-11
+**Trigger:** точка продолжения кампании «хвосты до PROD» (память project_campaign_prod_2026-07-11, п.2); дизайн-развилка решена владельцем заранее через AskUserQuestion: писатель = новая Product-команда с подтверждением владельца (НЕ Integrator-хук, НЕ авто-запись Orchestrator'ом).
+**Tag:** #g02 #result-ingest #product-module #reverse-flow
+
+### Context
+G02 (APPENDIX-B, Tier-0 «обратный контур отсутствует как класс»): цепь Product→handoff→adapter→external tool однонаправленная — результат имплементации не возвращался в `.product/`, `FM.status` навсегда planned/in-progress. Orchestrator по границе §8.3 писать в `.product/` не может (terminal `done` оставляет только note-prescription `project_fm_shipped_hint`).
+
+### Decision (ключевые выборы)
+1. **Сенсор/писатель разделены:** детерминированная read-only либа `hooks/product/lib/impl-evidence.cjs` (4 fail-tolerant источника evidence: runs-вердикты / fabric done / `.kiro/specs` / handoff + advisory coverage; per-FM disposition из 6 меток) + команда `commands/product/impl-sync.md` с approve-gate [Y/E/N] — «Without an explicit Y, nothing in `.product/` is modified». Отвергнутая альтернатива: auto-sync SessionStart-хуком — нарушает выбранный владельцем контур подтверждения и правило «мутирующий reap только за явным CLI» (прецедент G28/0180).
+2. **Reuse, не копия:** id-экстракторы — require `orchestrator/lib/coverage-oracle.cjs` (`extractIds`/`extractSourceIds`/`computeCoverage`); относительный путь `../../../orchestrator/lib/` резолвится и в репо, и в пилоте (`.claude/` — общий корень); отсутствие oracle = громкий fail (reuse-контракт), не тихая реимплементация.
+3. **Без нового validation-правила** (counts 24/44 нетронуты): shipped-гейт держит существующий V-01 (переход блокируется дispositions'ом `validation-blocked`, роут в `/product:feature`); coverage — advisory.
+4. **`impl_sync` — опциональный canonical-блок** (`synced_at`/`gate`/`run_id`/`evidence`/`coverage_missing`; absent == 1:1) — soft-миграция по прецеденту `product_class` 0079 / `domain_fit` 0169; anti-pattern список запрещённых имён в команде и FM.md (дисциплина DEC-DEV-0012).
+
+### Исполнение (MDP)
+Opus-исполнитель по детальному брифу; ревью main-моделью. Отклонения исполнителя приняты как обоснованные: (а) `commands/ecosystem/verify.md` не правится руками — Step 4 каталог-derived после G33-реформы, счётчик едет через `gen:catalog` (50 команд); (б) обязательная запись в `ecosystem-map.overlay.json` (иначе `gen:map:check` красный); (в) карта процессов — один узел `IMPL-SYNC` + ребро `P6o→delegate→IMPL-SYNC` без обратного ребра к P2A (цикл ломал бы монотонность C5-смоука). Ревью-фикс: `deprecated` FM получил свой счётчик в `scanProject().summary` (сумма бакетов == total; юнит 26-й).
+
+### Outcome
+Юниты 26/26 (вкл. CRLF-регрессор по уроку 0190 и reuse-liveness oracle); `npm run verify` EXIT=0; hook-smoke 47/0 (либа — не хук); counts 24/44. Live-прогон на пилоте — деferred к ближайшему VM-визиту (там есть реальные runs/fabric/`.kiro`-состояния smoke-batch'а).
+
+### Lessons
+1. Дизайн-развилки, решённые владельцем заранее (AskUserQuestion в прошлой сессии + память), снимают весь kickoff-пинг-понг: build-сессия сразу пишет бриф. Паттерн «решение вперёд, стройка потом» стоит применять для всех Tier-0 гэпов.
+2. Сводка-отчёт обязана «сходиться» (sum(buckets) == total) — иначе категория, выпавшая из счётчиков, невидимо теряется в человекочитаемом отчёте; юнит на инвариант суммы дешевле спора о том, «куда положить» новую категорию.

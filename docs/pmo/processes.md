@@ -898,6 +898,15 @@ planned ──(P2 enrichment)──▶ in-progress ──(implementation shipped
    └──(cancelled before work)──▶ deprecated
 ```
 
+**Переход `in-progress → shipped` — обратный поток (E15 reverse-flow, DEC-DEV-0192 / gap G02):** цепь
+Product→handoff→adapter→external tool однонаправленна, поэтому результат имплементации возвращается в `.product/`
+явной командой **`/product:impl-sync`**, а не автоматически. Она детерминированно собирает evidence (run-вердикты
+Orchestrator `.claude/orchestrator/runs/*`, завершённые fabric-линии, external spec-каталоги `.kiro/specs/*`,
+handoff-покрытие) через сенсор `hooks/product/lib/impl-evidence.cjs`, проверяет V-01 и **только по явному approve
+владельца** переводит FM в `shipped` (прыжок `planned → shipped` легален, но помечается), проставляя опциональный
+блок `impl_sync`. Product — единственный писатель `.product/` (Integrator SPEC §8.3); Orchestrator/fabric оставляют
+лишь note-prescription `project_fm_shipped_hint`.
+
 ### 7.4 RL
 
 ```

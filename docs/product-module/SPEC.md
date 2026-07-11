@@ -106,7 +106,7 @@
 
 | Примитив | Роль | Локация |
 |---|---|---|
-| **Slash-commands** | 22 команды UX для пользователя (вкл. Epic B/C-i/D — §3.2/§3.2b) | `.claude/commands/product/` |
+| **Slash-commands** | 23 команды UX для пользователя (вкл. Epic B/C-i/D + impl-sync reverse-flow — §3.2/§3.2b) | `.claude/commands/product/` |
 | **Skills** | ~20 methodology files, lazy-loaded per процесс (вкл. `completeness-loop.md` — Epic B wave-контракт) | `.claude/skills/product/` |
 | **Subagents** | 3 research/isolated агента + 3 profile-persona reviewers (Epic A — §5.4; `ux-advisor` живёт в `agents/design/`) | `.claude/agents/product/` |
 | **Hooks** | 12 hooks automation / enforcement / completeness-loop-routing (ключевые — §6; router — §6.8) | `.claude/hooks/product/` |
@@ -252,7 +252,7 @@
   - `--scope FM-003` — проверить только один артефакт и его dependencies
   - `--fix` — auto-fix где возможно (V-11 bi-dir)
 
-### 3.2 Поддерживающие операции (6)
+### 3.2 Поддерживающие операции (7)
 
 **`/product:status`**
 - Dashboard текущего `.product/` состояния
@@ -295,6 +295,14 @@
 - **Использование:** в момент самодетекции ошибки; inverse отложенной `.pending`-очереди
 - **Выходы:** исправленная ошибка + active LESSON-*
 - **Skill:** `lesson-capture.md`
+
+**`/product:impl-sync [FM-NNN] [--all] [--dry-run]`** (Epic E15 reverse-flow, DEC-DEV-0192, gap G02)
+- **Процесс:** Result-ingest — обратный поток имплементации (external tool / Orchestrator → `.product/`). Замыкает однонаправленную цепь Product→handoff→adapter→tool: результат реализации возвращается, и `FM.status` перестаёт навсегда висеть в planned/in-progress.
+- **Входы:** FM (или все) + детерминированное evidence с диска — run-вердикты `.claude/orchestrator/runs/*`, завершённые fabric-линии, external spec-каталоги `.kiro/specs/*`, handoff-покрытие
+- **Механика:** сенсор `hooks/product/lib/impl-evidence.cjs` (переиспользует id-экстракторы `coverage-oracle` + reconcile-паттерн parse→unify→dedupe→disposition; read-only, секретов не читает) → per-FM disposition (`ready-to-ship` / `gate-not-passed` / `validation-blocked` [V-01] / `no-evidence` / `already-shipped` / `deprecated`)
+- **Выходы:** по явному **approve владельца** [Y/E/N] — `FM.status → shipped` + опциональный canonical-блок `impl_sync` (soft-миграция: absent == поведение 1:1) + запись `DEC-SYNC` в `.product/.decisions/journal.md`. `--dry-run` останавливается на отчёте
+- **Границы:** Product — единственный писатель `.product/` (Integrator SPEC §8.3); без Y ничего не мутируется; `.kiro/` только читается; НЕ новое правило валидации (V-01 переиспользуется, coverage advisory); НЕ хук (только явная команда)
+- **Command:** `commands/product/impl-sync.md`
 
 ### 3.2a Drift mitigation (4 — v1 modifications C1-C4)
 

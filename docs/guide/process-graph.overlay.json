@@ -183,6 +183,17 @@
         {"id": "HO.end", "kind": "end", "label": "handoff.md готов", "what": "Самодостаточная передача -> любой реализатор / Orchestrator.", "alt": [{"to": "P3o", "label": "→ Orchestrator"}]}
       ]
     },
+    {
+      "id": "IMPL-SYNC", "lane": "product", "label": "Impl-Sync · result ingest (reverse-flow)", "status": "shipped",
+      "domain": "HO", "command": "product:impl-sync", "doc": "commands/product/impl-sync.md",
+      "what": "Обратный поток (E15): результат имплементации возвращается в .product/. Детерминированный сенсор impl-evidence.cjs (run-вердикты / fabric-done / external spec, переиспользует coverage-oracle id-экстракторы) + approve-gated запись FM.status->shipped + опциональный блок impl_sync. Product — единственный писатель .product/ (Integrator SPEC §8.3).",
+      "steps": [
+        {"id": "IS.collect", "kind": "task", "label": "Collect evidence (sensor)", "what": "impl-evidence.cjs: runs + fabric + external + handoff coverage. Read-only, ничего не пишет.", "consumes": ["spec", "handoff"]},
+        {"id": "IS.disposition", "kind": "gateway", "label": "Per-FM disposition", "what": "ready-to-ship / gate-not-passed / validation-blocked (V-01) / no-evidence / already-shipped / deprecated.", "rules": ["V-01"]},
+        {"id": "IS.gate", "kind": "gateway", "label": "Approve gate [Y/E/N]", "review": "strategic", "what": "Без явного Y ничего в .product/ не меняется."},
+        {"id": "IS.apply", "kind": "task", "label": "Flip FM -> shipped + impl_sync", "what": "FM.status->shipped + updated + опциональный canonical-блок impl_sync (absent==поведение 1:1). Никакие другие поля не трогаются.", "produces": ["FM"]}
+      ]
+    },
 
     {
       "id": "P3o", "lane": "orchestrator", "label": "P3 · batch-features-to-cc-sdd", "status": "shipped",
@@ -286,6 +297,7 @@
     {"from": "P3o", "to": "P4o", "type": "sequence", "label": "spec → audit"},
     {"from": "P4o", "to": "P5o", "type": "sequence", "label": "impl_ready → tdd"},
     {"from": "P5o", "to": "P6o", "type": "sequence", "label": "impl → validate"},
+    {"from": "P6o", "to": "IMPL-SYNC", "type": "delegate", "label": "impl result → .product/ ingest"},
     {"from": "INT-add", "to": "P3o", "type": "delegate", "label": "cc-sdd enables Orchestrator"},
     {"from": "ECO-setup", "to": "P1A", "type": "delegate", "label": "bootstrap enables Product"}
   ],

@@ -301,8 +301,8 @@
 <script id="map-data" type="application/json">{
   "_build": {
     "date": "2026-07-11",
-    "sha": "f5d3baa",
-    "commands": 49,
+    "sha": "339a7ac",
+    "commands": 50,
     "artifacts": 24,
     "rules": 44,
     "gates": 18,
@@ -642,6 +642,26 @@
             "BG"
           ],
           "source": "commands/product/handoff.md"
+        },
+        {
+          "cmd": "/product:impl-sync",
+          "id": "product:impl-sync",
+          "module": "product",
+          "name": "impl-sync",
+          "st": "HO",
+          "status": "shipped",
+          "desc": "Ingest implementation results back into .product/ — reconcile FM status against orchestrator run verdicts / completed fabric lines / external spec dirs, then (owner-approve-gated) flip verified features to shipped and stamp an impl_sync block. Reverse-flow of handoff (external tool → .product/). --dry-run reports only.",
+          "arg": "[FM-NNN] [--all] [--dry-run]",
+          "when": "Ingest результата реализации обратно в .product/ (external tool/Orchestrator → FM.status shipped); approve-gated.",
+          "tags": "impl sync shipped ingest reverse обратный поток",
+          "produces": [
+            "FM"
+          ],
+          "consumes": [
+            "FM",
+            "handoff"
+          ],
+          "source": "commands/product/impl-sync.md"
         },
         {
           "cmd": "/product:init",
@@ -1539,6 +1559,7 @@
             "MK"
           ],
           "producedBy": [
+            "product:impl-sync",
             "product:plan",
             "product:promote-note"
           ],
@@ -1549,6 +1570,7 @@
             "product:da-review",
             "product:feature",
             "product:handoff",
+            "product:impl-sync",
             "product:nfr-review",
             "design:map",
             "design:start"
