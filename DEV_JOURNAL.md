@@ -8445,3 +8445,27 @@ Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(P
 
 ### Lessons
 1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.
+
+---
+
+## DEC-DEV-0183 — G24: session-audit path-resolve (env-override + loud fail) + opt-in visibility (bootstrap-offer + consumption-seam signal), SessionStart-warn отвергнут как непортируемый
+
+**Date:** 2026-07-11
+**Trigger:** закрытие G24 из аудита (`dev/process-fabric/audit/APPENDIX-B-gap-analysis.md`, класс (d)+(f)): Session Audit v2 требует ручного opt-in `/ecosystem:enable-d7-audit` в каждом пилоте — пропустил и весь pipeline молчит; плюс хук «хардкодит абсолютный путь repo → тихо ломается при переезде».
+
+### Root cause (две независимые ноги)
+- **(f) Хардкод пути.** Кросс-проектный `SessionEnd`-хук регистрируется в `.claude/settings.local.json` пилота с **абсолютным** путём к `session-audit.js` (это делает `enable-d7-audit.md` Step 5). При переезде репо экосистемы этот путь протухает → `node <stale>` не находит скрипт → хук **молча** не запускается (SessionEnd не может блокировать, ошибка глохнет). Резолв repo-root ВНУТРИ скрипта уже был динамическим (cwd-walk + `__dirname`-fallback), но это не спасает, когда сам лаунчер-путь мёртв.
+- **(d) Opt-in в голове.** Аудит-pipeline включается только ручным per-pilot вызовом; забыл — маркеры не пишутся, `/meta:audit-smoke` не находит ничего и раньше печатал безликое «Pending empty after filters» без диагноза.
+
+### Решения
+1. **Leg (f) — env-override + громкий отказ + тестируемость.** `findRepoRoot` переписан на приоритет `$ECOSYSTEM_ROOT` (валидируется по CLAUDE.md+DEV_JOURNAL.md) → cwd-walk → `__dirname`-fallback → `null`. При `null` main() пишет **громкий** stderr с ремедиацией (set `ECOSYSTEM_ROOT` / re-run `enable-d7-audit`) вместо тихого skip; неверный `$ECOSYSTEM_ROOT` тоже warn'ит, не молчит. Функция вынесена из top-level (модуль обёрнут `require.main === module`) и экспортирует `findRepoRoot`/`isRepoRoot`/`buildMarkerRow` для юнит-теста (инъекция `env`/`scriptDir`/`warn` → «переехавший» кейс тестируется без спавна). Честная граница: env-override чинит РЕЗОЛВ, но не лаунчер-путь — его чинит только re-run; это явно записано в `enable-d7-audit.md`.
+2. **Leg (d) — портируемая видимость, БЕЗ принудительной глобализации.** Две тракторные ноги: (а) `bootstrap.md` Step 11.5 — явный **default-OFF** опрос «это ecosystem-dev пилот?»; только на Yes зовёт идемпотентный `/ecosystem:enable-d7-audit`. Обычные продуктовые проекты не затронуты (суть требования G24-фикса — НЕ менять поведение всех пилотов). (б) `audit-smoke.js` на пустом Pending без фильтров печатает **громкий диагноз** (opt-in не включён / путь протух после переезда + как проверить) — сигнал на consumption-seam, где разработчик как раз ждёт маркеры.
+3. **Отвергнуто: SessionStart-warn в репо экосистемы.** Бриф предлагал его как «и/или». По факту устройства dev-хуки репо регистрируются в **gitignored** `.claude/settings.local.json` (там же живёт `rails-session-start.js`) — новый SessionStart-warn не поехал бы в PR/на свежий клон, т.е. воспроизвёл бы РОВНО ту же болезнь непортируемости (G23), которую G24 и лечит. Театр вместо фикса — не строим. Portable-подмножество (bootstrap-offer + consumption-signal) закрывает (d) без этой ловушки.
+
+### Outcome
+Тесты: новый `tests/audit/session-audit-resolve.test.cjs` (7 проверок: valid cwd-walk / env-override / scriptDir-fallback / «переехавший» wrong-env→recover+warn / total-miss→null / isRepoRoot / buildMarkerRow) подключён в `test:audit`. End-to-end смоук: реальный payload через `ECOSYSTEM_ROOT` пишет маркер (exit 0); пустой Pending даёт диагноз. Полный `npm run verify` EXIT=0. Зоны: `dev/meta-improvement/hooks/session-audit.js` + `scripts/audit-smoke.js` (D7-internal, не consumer-zone) + consumer-zone `commands/ecosystem/{bootstrap,enable-d7-audit}.md`. Counts без изменений (24/44 — команды/хуки в счётчики не входят). CHANGELOG `[Unreleased] ### Fixed`.
+
+### Lessons
+1. «Хардкод абсолютного пути» у кросс-проектного хука неустраним на уровне лаунчера (пилот не имеет иной ручки на репо) — честный фикс не «убрать путь», а сделать резолв override-способным и **отказ громким**, плюс поставить сигнал на seam потребления.
+2. Проверяй ПОРТИРУЕМОСТЬ предлагаемого listener'а до постройки: если он регистрируется в gitignored-конфиге, он не переживает клон/переезд и «закрывает» гэп только на одной машине. Для гэпа-про-хрупкость это анти-фикс.
+3. Видимость opt-in дешевле и честнее всего конвертируется в сигнал там, где потребитель уже смотрит (пустой `/meta:audit-smoke`), а не новым проактивным органом с собственной регистрационной хрупкостью.

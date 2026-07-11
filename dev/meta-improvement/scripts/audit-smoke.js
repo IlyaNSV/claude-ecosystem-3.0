@@ -680,7 +680,34 @@ function main() {
   }
 
   if (sessions.length === 0) {
-    process.stdout.write('No sessions to audit (Pending empty after filters).\n');
+    // Distinguish "filtered everything out" from "the Pending section is GENUINELY
+    // empty". The latter, with no narrowing filters, is the signature of gap G24:
+    // the SessionEnd opt-in was never enabled in the pilot (or its hook path broke
+    // after the ecosystem repo relocated), so smoke sessions produced no markers.
+    // Convert that silence into a loud diagnostic instead of a bland no-op.
+    // (DEC-DEV-0183 — G24 leg (d): opt-in fragility signalled at the consumption seam.)
+    let rawPending = 0;
+    try {
+      rawPending = auditIndex.parsePending(auditIndex.readIndex(repoRoot)).length;
+    } catch { /* index read already validated earlier; best-effort */ }
+    const hadFilters = Boolean(args.since || args.target || args.sessionId || args.transcript);
+
+    if (rawPending === 0 && !hadFilters) {
+      process.stdout.write(
+        'No Pending markers in audit-index.md — nothing to audit.\n' +
+        '\n' +
+        'If you DID run smoke-test sessions in a pilot and expected markers here,\n' +
+        'the D7 SessionEnd opt-in is the likely culprit (gap G24):\n' +
+        '  1. Opt-in not enabled in the pilot → run  /ecosystem:enable-d7-audit  there.\n' +
+        '  2. Opt-in enabled but the ecosystem repo moved → the hook path in the\n' +
+        "     pilot's .claude/settings.local.json is stale. Re-run\n" +
+        '     /ecosystem:enable-d7-audit (or set env ECOSYSTEM_ROOT) to re-point it.\n' +
+        '  3. Verify: the pilot has a SessionEnd hook whose command ends with\n' +
+        '     session-audit.js, and that path resolves to THIS repo.\n'
+      );
+    } else {
+      process.stdout.write('No sessions to audit (Pending empty after filters).\n');
+    }
     process.exit(0);
   }
 

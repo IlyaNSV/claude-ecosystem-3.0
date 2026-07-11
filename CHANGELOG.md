@@ -12,6 +12,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **G24 — D7 Session Audit: хрупкий opt-in + хардкод пути хука** (DEC-DEV-0183). **(1) Path-resolve (leg f):** `session-audit.js` при переезде репо экосистемы **тихо** переставал писать маркеры (абсолютный путь хука в `settings.local.json` пилота протухал → `node` не находил скрипт). `findRepoRoot` теперь резолвит `$ECOSYSTEM_ROOT` (override) → cwd-walk → расположение самого скрипта, а при неудаче пишет **громкий** stderr с ремедиацией вместо тихого skip (неверный `$ECOSYSTEM_ROOT` тоже warn'ит). Резолвер вынесен в тестируемый модуль (юниты `tests/audit/session-audit-resolve.test.cjs`, оба кейса — валидный и «переехавший»; подключены в `test:audit`). **(2) Opt-in видимость (leg d), БЕЗ смены поведения всех пилотов:** `/ecosystem:bootstrap` получил **default-OFF** шаг 11.5 — явно предлагает включить D7-аудит только если это ecosystem-dev пилот (идемпотентный вызов `/ecosystem:enable-d7-audit`); а `/meta:audit-smoke` на пустом Pending теперь печатает **диагноз** (opt-in не включён / путь протух после переезда + как проверить) вместо безликого no-op. `enable-d7-audit.md` документирует `ECOSYSTEM_ROOT` и re-run-при-переезде. (SessionStart-warn в репо экосистемы сознательно отвергнут — dev-хуки регистрируются в gitignored-конфиге, был бы непортируем; см. DEC-DEV-0183.) Consumer-zone (`commands/ecosystem/`); counts без изменений (24/44).
+
 ---
 
 ## [1.9.1] — 2026-07-11
