@@ -23,7 +23,26 @@ doc_type: navigation
             └──────── handoff.md ────────┘
 ```
 
-Одна картинка на всё — [docs/MAP.md](../MAP.md); всё кликабельно — [ecosystem-map.html](ecosystem-map.html).
+**Анатомия одной картинкой** — четыре модуля на пайплайне D1–D6 и граница передачи:
+
+```mermaid
+flowchart LR
+    subgraph PROD["Product Module · твоя детальная зона (D1 + D2-Behavioral)"]
+        direction LR
+        D1["D1 Discovery<br/>PS·SEG·VP·HYP·MVP"] --> FM["FM<br/>мост D1→D2"] --> D2B["D2-Behavioral<br/>SC·BR·LC·VC·IC·NFR"]
+    end
+    DES["Design Module<br/>D2-UI · MK·DS·NM<br/>условно, если has_ui"]:::cond
+    D2B -. "has_ui" .-> DES
+    HO{{"handoff.md<br/>самодостаточная граница"}}
+    D2B --> HO
+    DES -. "assets" .-> HO
+    INT["Integrator<br/>подключает реализатор (cc-sdd)"]
+    ORC["Orchestrator<br/>гонит D3+ до вердикта · P3→P6<br/>GO / NO-GO / MANUAL_VERIFY"]
+    HO --> INT --> ORC
+    classDef cond stroke-dasharray:5 5;
+```
+
+_Диаграмма coarse — обновляется только при смене топологии модулей/доменов (как [docs/MAP.md](../MAP.md) «Freshness-модель»), не каждую фазу._ Глубже — [docs/MAP.md](../MAP.md) (pipeline + C4-контейнер); всё кликабельно — [ecosystem-map.html](ecosystem-map.html).
 
 ---
 

@@ -23,6 +23,8 @@ doc_type: how-to
 
 `/orchestrator:run <process>` запускает один процесс как in-harness Workflow. Порядок: **P3 → P4 → P5 → P6**.
 
+> **Почему P3–P6, а не P1–P7.** Полное семейство рантайм-процессов Orchestrator — `P1–P7` (P1 init · P2 decide-architecture · P3 batch→cc-sdd · P4 audit-fidelity · P5 tdd-impl · P6 validate-impl · P7 runtime-smoke). Оператор запускает середину — **`P3–P6`**: P1/P2 — внутренняя подготовка Orchestrator, а **P7 runtime-smoke прогоняется как детерминированная нога внутри вердикта P6**, не отдельной командой. Не путать с процессами Product `P1–P5` и семью *принципами* `P1–P7` — полная разводка осей в [`03-glossary.md`](03-glossary.md) «Оси именования».
+
 | Процесс | Что делает (по-человечески) | Что возвращает |
 |---|---|---|
 | **P3** `batch-features-to-cc-sdd` | Превращает handoffs в спеки cc-sdd (kiro-specs) | `coverage_incomplete`, `blocked` |

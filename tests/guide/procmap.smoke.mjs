@@ -103,6 +103,34 @@ try {
     && tl.orch3 < tl.orch4 && tl.orch4 < tl.orch5 && tl.orch5 < tl.orch6;
   ok(tlMono, 'processes in pipeline-timeline order (Discovery<Planning<Feature<P3o<P4o<P5o<P6o)');
 
+  // ── C5: «объясни путь» — flow-BFS (sequence+delegate) from P1A to P6o is NON-EMPTY and MONOTONIC in x
+  //    (pipeline-timeline order), reverse P6o→P1A is empty (directed). Measured on the pristine default
+  //    view where proc-nodes hold clean ELK positions. explainPath walks static DATA, so a collapsed
+  //    process still resolves. ──
+  const cpath = await page.evaluate(() => {
+    const cy = window.__cy;
+    const ids = window.__procmap.explainPath('proc:P1A', 'proc:P6o');
+    const xs = ids.map((id) => { const n = cy.getElementById(id); return n.nonempty() ? n.position('x') : NaN; });
+    let mono = ids.length >= 2;
+    for (let i = 1; i < xs.length; i++) { if (!(xs[i] >= xs[i - 1] - 1)) mono = false; }
+    const reverse = window.__procmap.explainPath('proc:P6o', 'proc:P1A');
+    return { len: ids.length, ids, mono, anyNaN: xs.some((x) => !isFinite(x)), reverseLen: reverse.length };
+  });
+  console.log(`  C5 explain-path P1A→P6o: ${cpath.ids.join(' → ')}`);
+  ok(cpath.len >= 2 && !cpath.anyNaN, `C5 explain-path P1A→P6o is non-empty (${cpath.len} nodes)`);
+  ok(cpath.mono, 'C5 explain-path P1A→P6o is monotonic in x (pipeline-timeline order)');
+  ok(cpath.reverseLen === 0, 'C5 explain-path is directed (no reverse flow P6o→P1A)');
+
+  // ── E2 consistency-fix ②: product-lane maintenance processes carry the `p` suffix (P4p/P5p) to
+  //    disambiguate from orchestrator P4o/P5o — the renamed node-ids exist, the bare ones are gone. ──
+  const ids2 = await page.evaluate(() => {
+    const cy = window.__cy;
+    const has = (id) => cy.getElementById(id).nonempty();
+    return { p4p: has('proc:P4p'), p5p: has('proc:P5p'), p4: has('proc:P4'), p5: has('proc:P5') };
+  });
+  ok(ids2.p4p && ids2.p5p, 'node-ids proc:P4p/proc:P5p present (product-lane p-suffix)');
+  ok(!ids2.p4 && !ids2.p5, 'bare node-ids proc:P4/proc:P5 removed (collision with P4o/P5o resolved)');
+
   // ── layout health (measured on the pristine default view, before any expand mutates positions):
   //    sibling MODULE lanes should not grossly overlap. ──
   const overlap = await page.evaluate(() => {
