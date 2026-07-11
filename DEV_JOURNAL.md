@@ -1802,3 +1802,27 @@ Opus-исполнитель по детальному брифу; ревью mai
 ### Lessons
 1. Дизайн-развилки, решённые владельцем заранее (AskUserQuestion в прошлой сессии + память), снимают весь kickoff-пинг-понг: build-сессия сразу пишет бриф. Паттерн «решение вперёд, стройка потом» стоит применять для всех Tier-0 гэпов.
 2. Сводка-отчёт обязана «сходиться» (sum(buckets) == total) — иначе категория, выпавшая из счётчиков, невидимо теряется в человекочитаемом отчёте; юнит на инвариант суммы дешевле спора о том, «куда положить» новую категорию.
+
+## DEC-DEV-0193 — F2 autonomy-wiring построен полностью (v1): L2/L3 consilium-gate + конфиг `autonomy:` + живые caller'ы applyReadinessGuard в P5/P6
+
+**Date:** 2026-07-11
+**Trigger:** точка продолжения кампании «хвосты до PROD» (п.3); дизайн-развилка решена владельцем заранее: «F2 = полный v1» (L2 consilium-gate + P5/P6 врезки + YAML-конфиг + профили). Vision-SSOT семантики — `dev/ECOSYSTEM_VISION.md` §Epic F (locked 2026-06-23); coordination-гейт §6 F1-контракта закрыт ранее (0154), Epic D (consilium) построен (0149).
+**Tag:** #epic-f #autonomy #orchestrator #consilium-gate
+
+### Context
+F1 (0152/0154) дал resolver L0/L1 c floor и fabric-wiring, но: L2/L3 деградировали к L1; `applyReadinessGuard` — 0 caller'ов; конфиг-слот `autonomy:` существовал только как форма в контракте (парсер не построен); профили default/autonomous — только в Vision.
+
+### Decision (ключевые выборы)
+1. **L3 ≡ L2 в resolve-матрице до F3** — с громкой why-нотой, НЕ выдуманное различие: обе оси resolver'а (risk HIGH/LOW × env dev/staging/prod) не различают L2/L3 до прод-сегмента Epic E; честнее эквивалентность с нотой, чем фиктивная семантика.
+2. **Confidence детерминированно из synth-strength**: strong→1.0, split→0.5, none→0.0 (`confidenceFromSynth`); τ default 0.8 → auto проходит только единогласное жюри полной панели (recommended_soft_vetoed уже демоутится synth'ом до split). Всё остальное → human-gate (safe-fallback Vision: «не слепой auto»). Единственное LLM-суждение — содержание вердикта жюри; решение о диспозиции — код (`applyConsiliumVerdict`, pure).
+3. **Floor непробиваем by construction**: floor-класс проверяется ПЕРВЫМ и возвращает human-gate — `consilium-gate` на floor не эмитится вовсе, `applyConsiliumVerdict` его не достигает. `autonomy.floor` в конфиге игнорируется громко (FLOOR_LOCKED, F1 hard rail не снят).
+4. **Конфиг**: `parseAutonomyConfig` — line-state-machine БЕЗ js-yaml (прецедент agent-roster.cjs), inline+block формы; профили default→L1 / autonomous→L3 (Locked), явный `default_level` перекрывает профиль с why-нотой; absent==L1 1:1 (soft-миграция product_class). Слои: product.yaml = проектный дефолт, `fabric/limits.json.policy` = fabric-локальный override (merge в `shellEnv`, бит-в-бит старое поведение без product.yaml).
+5. **P5/P6 врезки — agent-relay, не require**: harness `.mjs` не может require() либу (DEC-DEV-0073 §D.1) — отклонение исполнителя принято: у либы появился CLI-seam `resolve` (плюс `resolve-consilium` для диспетчера), P5/P6 финальной стадией relay'ят JSON (`sonnet`-пин — механический транспорт по MDP) в новое АДДИТИВНОЕ поле `autonomy` возврата; T5-закалённый синтез result/readiness не тронут ни на символ. riskTier — консервативное правило: LOW только при чистом GO без конфликтов (P5 ещё и без hard capability-блоков); env_tier absent → resolver сам берёт prod.
+6. **Границы (анти-sycophancy рельса)**: Integrator approve-gate (debug y/n) и DA per-finding review НЕ на этом контуре — захардкожены на человека; ingest-маппинг чартеров не тронут.
+
+### Outcome
+`autonomy-policy.test.cjs` 70→189 ассертов (L2/L3 матрица, floor@L2/L3, confidence-мэппинг, applyConsiliumVerdict, parseAutonomyConfig/профили, CLI round-trip); санкционированно перевёрнуты 2 старых теста, ассертившие деградацию L2/L3 (прямое следствие F2). fabric-engine 50 + dispatcher-wiring 11 + P5/P6 wiring (+1 F2 каждый) зелёные; полный `npm run verify` EXIT=0; counts 24/44. Диспетчер: run.md `--autonomy L0-L3` + секция «consilium-gate prescription» (жюри → synth → `resolve-consilium` → auto/human-gate). Live-грейд консилиум-гейта на реальной линии — pilot-gated (ближайший VM-визит и далее).
+
+### Lessons
+1. «Полный v1» без изобретений: когда двух уровней enum'а resolver не различает по имеющимся осям — честная эквивалентность с why-нотой лучше выдуманной семантики; различие приедет со своей осью (F3/prod).
+2. Правило «0 callers → живой caller» упирается в рантайм-ограничения потребителя (harness без require) — заранее проверяй МЕХАНИКУ подключения (relay/CLI-seam vs import), прежде чем обещать «врезку» в брифе; исполнитель с правом обоснованного отклонения закрыл разрыв правильно.

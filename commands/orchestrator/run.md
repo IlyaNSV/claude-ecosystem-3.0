@@ -1,6 +1,6 @@
 ---
 description: Run an Orchestrator PMO process end-to-end as an in-harness Workflow. First increment ships P3 batch-features-to-cc-sdd (route Product handoffs into cc-sdd specs). Reads handoffs + tool-docs; delegates spec generation to cc-sdd's kiro-spec-batch; gates with a content-fidelity preflight and an independent coverage oracle.
-argument-hint: "<process> [--feature FM-NNN ...] [--all] [--no-stack-gate] [--fabric] [--autonomy L0|L1]"
+argument-hint: "<process> [--feature FM-NNN ...] [--all] [--no-stack-gate] [--fabric] [--autonomy L0|L1|L2|L3]"
 ---
 
 # /orchestrator:run
@@ -288,10 +288,12 @@ is the durable INTER-process statechart: it tracks a feature's whole production 
 (P3 → P4 → P5/P6 → P7) across sessions and prescribes the next step. The engine never calls
 an LLM and never launches anything itself — YOU (the dispatcher) are its actuator. Same
 clock discipline as the ledger: every fabric call takes a dispatcher-stamped `--at "<ISO-now>"`.
-Every prescription's disposition has been resolved through the autonomy-policy (F1) — the
-floor (prod_deploy / destructive / spend_money / provision_real_secret) is not overridable;
-`--autonomy L0|L1` on this command is forwarded to each fabric call as `--autonomy <level>`
-(a per-invocation override; it can tighten to L0 or restore L1, never cross the floor).
+Every prescription's disposition has been resolved through the autonomy-policy (F1+F2, DEC-DEV-0193)
+— the floor (prod_deploy / destructive / spend_money / provision_real_secret) is not overridable;
+`--autonomy L0|L1|L2|L3` on this command is forwarded to each fabric call as `--autonomy <level>`
+(a per-invocation override; it can tighten to L0 or raise to L2/L3, never cross the floor). **L2/L3**
+route the staging/prod cells to a `consilium-gate` disposition (an Epic D jury replaces the human up
+to the floor) — see the consilium-gate prescription below; L0/L1 keep those cells human-gated.
 
 **Starting a line (opt-in, `--fabric`)** — when the user asks for a fabric-tracked line,
 BEFORE the first process of the line (usually P3):
@@ -344,6 +346,30 @@ node .claude/orchestrator/lib/fabric-engine.cjs ingest \
    - `kind: none` + `final: true` → the line is complete; say so in the run summary.
 4. `rejected` ticks (unknown event / guards failed) are deliberate no-ops — report the `why[]`,
    do not retry blindly and do not hand-edit `state.json` (events.ndjson is the source of truth).
+
+**Consilium-gate prescription (L2/L3 — DEC-DEV-0193).** When a prescription's `disposition` is
+`consilium-gate` (an L2/L3 line reached a staging/prod cell — the Epic D jury replaces the human on
+the gate, up to the floor), fold a jury verdict into a disposition BEFORE acting:
+
+1. **Convene the jury** with the existing consilium mechanism (`skills/orchestrator/architecture-consilium.md`,
+   the P2 methodology) — subject = the prescribed process + the line's context; panel =
+   `policy.consilium_gate.panel` or the built-in. No new machinery: the same heterogeneous jury P2 runs.
+2. **Synthesise** the verdicts deterministically:
+   `node .claude/orchestrator/lib/consilium-synth.cjs --verdicts-file <verdicts.json>` →
+   `{ recommended, strength: strong|split|none, … }`.
+3. **Fold** the verdict back into a disposition (code decides, not you):
+   `node .claude/orchestrator/lib/autonomy-policy.cjs resolve-consilium --envelope-file <prescription.json>
+   --synth-file <synth.json> [--threshold <τ from policy.consilium_gate.confidence_threshold>]`
+   (default τ 0.8; confidence maps strength → strong 1.0 / split 0.5 / none 0.0).
+4. **Act on the folded disposition:** `auto` (confidence ≥ τ on a recommended option) → continue the
+   line with your FULL bracket (ledger `start` → `Workflow({…})` → ledger `finish` → fabric `ingest`),
+   exactly as for an `auto` prescription; `human-gate` (safe-fallback — split / none / low confidence)
+   → the prioritised owner-queue + STOP, exactly as for a human-gate prescription.
+
+**The floor stays human, always** — a floor class never carries a consilium-gate. **Reversibility-first
+(vision Epic F rail):** an L2/L3 auto MUST be reversible — feature-flags / staging-first / a safety-commit
+(DEC-DEV-0061) — so a wrong auto-decision is recoverable. **Live grade is pilot-gated:** the jury runs,
+but the L2/L3 consilium loop has not yet been dogfooded end-to-end.
 
 **Resuming a parked line** — when the owner resolves the blocking item, tick the matching
 event and follow the new prescription: `evt:pa.resolved` (a resolved Product/capability PA),

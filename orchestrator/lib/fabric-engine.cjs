@@ -602,10 +602,18 @@ function computeLaneCounts(root, charter, selfId) {
 }
 
 function shellEnv(root, charter, selfId) {
+  const limits = readLimits(root);
+  // F2 (DEC-DEV-0193): the effective autonomy policy = product.yaml `autonomy:` (the PROJECT default)
+  // OVERLAID by the fabric-local limits.json `policy` (a fabric-scoped override). The project root is
+  // three levels up from the fabric root (.claude/orchestrator/fabric → .claude → <project>).
+  // loadAutonomyPolicy is fail-tolerant: no product.yaml (or no `autonomy:` block) → {} → the merge is
+  // bit-identical to the pre-F2 `readLimits(root).policy || {}` (existing fabric units stay green).
+  const projectRoot = path.resolve(root, '..', '..', '..');
+  const productPolicy = autonomyPolicy.loadAutonomyPolicy(projectRoot);
   return {
     laneCounts: computeLaneCounts(root, charter, selfId),
-    limits: readLimits(root),
-    policy: (readLimits(root).policy) || {},
+    limits,
+    policy: Object.assign({}, productPolicy, limits.policy || {}),
   };
 }
 
@@ -936,8 +944,8 @@ function printHelp() {
     '  → resolution half of the PA bridge: find fabric PA entries the owner set to done and, with',
     '    --tick, fire their resume-event to un-park the line; dismissed entries are only surfaced.',
     '',
-    'init/ingest/tick also take --autonomy <L0|L1> — per-invocation F1 override for the emitted',
-    'prescription (tighten/restore the level; the floor is never crossable, invalid levels ignored loudly).',
+    'init/ingest/tick also take --autonomy <L0|L1|L2|L3> — per-invocation override for the emitted',
+    'prescription (F2: L2/L3 emit consilium-gate on staging/prod; the floor is never crossable, invalid levels ignored loudly).',
     'tick/ingest/pa-scan take --pa-file <path> to override the canonical .claude/pending-actions.md',
     'target — an APPLIED tick into a human-gate state mirrors the gate there as a PA-NNN (phase 2b).',
     'Timestamps are INPUTS (--at ISO), stamped by the dispatcher. Instance-id is deterministic',

@@ -236,9 +236,21 @@ test('FB-LR-21: RA-10 surfaces a deferred/spec-sanctioned orphan, not a silent c
 test('returns the P6 contract keys', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'validators_incomplete', 'confirmed_findings', 'remediated', 'committed_under_non_ready', 'residual', 'conflicts', 'result', 'findings', 'go_gate']) {
+  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'validators_incomplete', 'confirmed_findings', 'remediated', 'committed_under_non_ready', 'residual', 'conflicts', 'result', 'findings', 'go_gate', 'autonomy']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
+});
+
+test('F2 autonomy disposition wired: resolve seam relayed + carried in the return (DEC-DEV-0193)', () => {
+  assert(/AUTONOMY_LIB\b/.test(SRC) && /autonomy-policy\.cjs/.test(SRC), 'autonomy-policy CLI seam path not wired');
+  assert(/resolve --operation-class feature-validate/.test(SRC), 'P6 does not resolve the feature-validate disposition via the CLI seam');
+  assert(/applyReadinessGuard/.test(SRC), 'the readiness-guard step is not referenced (resolve∘readiness)');
+  assert(/--readiness \$\{readiness\}/.test(SRC), 'the resolved disposition is not readiness-guarded');
+  // riskTier is the conservative honest rule (GO ∧ no conflict = LOW)
+  assert(/RISK_TIER\s*=\s*\(result === 'GO' && conflicts\.length === 0\)/.test(SRC), 'riskTier rule not the conservative GO∧no-conflict rule');
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /autonomy:\s*autonomy\s*\|\|\s*null/.test(m[0]), 'return envelope does not carry the autonomy disposition');
+  assert(/DEC-DEV-0193/.test(SRC), 'DEC-DEV-0193 not referenced');
 });
 
 test('P5 delegates its feature-level gate to P6 via workflow(), with a fallback', () => {

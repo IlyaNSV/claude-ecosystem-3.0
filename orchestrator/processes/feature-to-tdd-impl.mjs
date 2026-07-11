@@ -57,6 +57,7 @@ const CLASSIFIER = A.classifier || '.claude/orchestrator/lib/gate-risk-classifie
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs'   // DEC-DEV-0092: shared readiness probe (pre-flight)
 const CAP_PROBE = A.capabilityProbe || '.claude/orchestrator/lib/capability-probe.cjs'  // DEC-DEV-0117: §6 detect-leg — enumerate the feature's declared external_capabilities
 const REMEDIATION_GUARD = A.remediationGuard || '.claude/orchestrator/lib/remediation-guard.cjs'  // DEC-DEV-0096: block-discretion backbone (T5)
+const AUTONOMY_LIB = A.autonomyLib || '.claude/orchestrator/lib/autonomy-policy.cjs'  // DEC-DEV-0193 (F2): disposition-resolver CLI seam (the harness cannot require() a lib — DEC-DEV-0073 §D.1)
 const KIRO_TPL = A.kiroTemplates || '.claude/skills/kiro-impl/templates'
 const REGISTRY = A.registry || ''                                // optional load-bearing.<FM>.yaml/json
 const MAX_REVIEW_ROUNDS = A.maxReviewRounds || 2
@@ -152,6 +153,19 @@ const GATE_SCHEMA = {
   properties: {
     result: { type: 'string', enum: ['GO', 'NO-GO', 'MANUAL_VERIFY_REQUIRED'] },
     findings: { type: 'array', items: { type: 'string' } },
+  },
+}
+
+// DEC-DEV-0193 (F2): the autonomy disposition envelope relayed from the autonomy-policy CLI seam
+// (applyReadinessGuard ∘ resolve). Shape mirrors autonomy-policy.resolve()'s return.
+const AUTONOMY_SCHEMA = {
+  type: 'object',
+  required: ['disposition'],
+  properties: {
+    disposition: { type: 'string' },                   // auto | consilium-gate | human-gate | block
+    level_applied: { type: ['string', 'null'] },
+    floor_hit: { type: 'boolean' },
+    why: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -570,6 +584,32 @@ if (implemented.length) {
 // into the gate's PA entry, so the Integrator sees WHAT to provision. Deferred stand-ins stay in
 // `capabilities`/`concerns` — they do not park the line. Resume = the normal bracket re-run: the
 // plan stage already skips tasks checked done in tasks.md, so the line continues, not restarts.
+
+// ---- F2 autonomy disposition (DEC-DEV-0193): applyReadinessGuard(resolve('impl-continuation', … )) --
+// Authoritative disposition for this impl run, placed in the result file so the actuator (run.md
+// dispatcher / fabric ingest) can consume it. riskTier is CONSERVATIVE: only a clean GO with NO
+// escalated conflict AND NO hard §6 capability-block is LOW. Computed on locals (NOT the return
+// lines below, which stay verbatim for the wiring guard). The harness .mjs cannot require() the lib
+// (DEC-DEV-0073 §D.1) — an agent runs the autonomy-policy CLI seam and relays its JSON (the same
+// `node <lib>` relay as env-readiness / capability-probe). ADDITIVE: null relay → autonomy:null.
+const CAP_BLOCKED_FOR_RISK = capabilityItems.filter((c) => c && c.disposition === 'BLOCK')
+const CONFLICTS_FOR_RISK = conflicts.concat((go && go.conflicts) || [])
+const ENVELOPE_READINESS = (go && go.readiness) || envReadiness
+const RISK_TIER = (CONFLICTS_FOR_RISK.length === 0 && CAP_BLOCKED_FOR_RISK.length === 0 && (go && go.result) === 'GO') ? 'LOW' : 'HIGH'
+const AUTONOMY_ENV_TIER = A.env_tier || ''             // absent → resolve() conservatively takes prod
+const AUTONOMY_POLICY_CFG = A.autonomy_policy || {}
+const AUTONOMY_OVERRIDE = A.autonomy_override || null
+const autonomy = implemented.length
+  ? await agent(
+    `Resolve the authoritative autonomy disposition for THIS impl run. Run via Bash and relay the JSON verbatim (do NOT judge or override it — the disposition is CODE):\n` +
+    `node ${AUTONOMY_LIB} resolve --operation-class impl-continuation --risk ${RISK_TIER}` +
+    `${AUTONOMY_ENV_TIER ? ` --env-tier ${AUTONOMY_ENV_TIER}` : ''} --readiness ${ENVELOPE_READINESS}` +
+    ` --policy '${JSON.stringify(AUTONOMY_POLICY_CFG)}'${AUTONOMY_OVERRIDE ? ` --override ${AUTONOMY_OVERRIDE}` : ''}\n` +
+    `Return its { disposition, level_applied, floor_hit, why } object exactly.`,
+    { model: 'sonnet', schema: AUTONOMY_SCHEMA, phase: 'Validate', label: 'autonomy-disposition' },   // MDP: deterministic resolver JSON relay (mechanical transport)
+  )
+  : null
+
 return {
   feature: FEATURE,
   implemented: implemented.map((t) => t.id),
@@ -581,4 +621,5 @@ return {
   findings: (go && go.findings) || [],               // DEC-DEV-0104 (FB-LR-19): surface the gate's findings in the envelope (was captured in `go` but dropped at return → a NO-GO carried no machine-readable reason)
   go_gate: go && go.result,
   readiness: (go && go.readiness) || envReadiness,   // DEC-DEV-0092: READY | DEGRADED | ENV_NOT_READY (orthogonal to go_gate)
+  autonomy: autonomy || null,                        // DEC-DEV-0193 (F2): applyReadinessGuard∘resolve disposition envelope — authoritative for the run.md dispatcher / fabric ingest
 }

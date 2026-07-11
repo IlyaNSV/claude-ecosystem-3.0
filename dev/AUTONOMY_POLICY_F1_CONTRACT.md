@@ -1,25 +1,30 @@
-# F1 — контракт autonomy-policy резолвера (Epic F, skeleton-фаза)
+# F1+F2 — контракт autonomy-policy резолвера (Epic F)
 
-> **Статус:** contract-спека + **первый wiring** (Process Fabric: fabric-engine прогоняет
-> disposition каждой prescription через `resolve()`, DEC-DEV-0153; сверка §6 закрыта
-> DEC-DEV-0154). **Либа:** [`orchestrator/lib/autonomy-policy.cjs`](../orchestrator/lib/autonomy-policy.cjs)
-> (pure fn, юниты `tests/orchestrator/autonomy-policy.test.cjs`; дом — рядом с потребителем,
-> см. §6 п.4). **Vision-SSOT:** `dev/ECOSYSTEM_VISION.md`
-> §Epic F (enum L0-L3, floor, precedence — locked владельцем 2026-06-23). Построен DEC-DEV-0152.
+> **Статус:** **F1 + F2 построены.** F1 (skeleton — L0/L1 + resolver + precedence + audit-trail,
+> DEC-DEV-0152) + первый wiring (Process Fabric прогоняет disposition каждой prescription через
+> `resolve()`, DEC-DEV-0153/0154). **F2 (DEC-DEV-0193):** L2/L3 больше не деградируют — на
+> staging/prod они эмитят `consilium-gate` (жюри Epic D + порог τ + human-fallback, `applyConsiliumVerdict`);
+> `applyReadinessGuard`/`resolve` обрели живых caller'ов в P5/P6 (result-файл несёт авторитетную
+> диспозицию); `parseAutonomyConfig`/`loadAutonomyPolicy` читают блок `autonomy:` из `.claude/product.yaml`
+> (профили default=L1 / autonomous=L3); floor остался залочен. **Либа:**
+> [`orchestrator/lib/autonomy-policy.cjs`](../orchestrator/lib/autonomy-policy.cjs) (pure fn + CLI-seam
+> `resolve`/`resolve-consilium`; юниты `tests/orchestrator/autonomy-policy.test.cjs`; дом — рядом с
+> потребителем, см. §6 п.4). **Vision-SSOT:** `dev/ECOSYSTEM_VISION.md` §Epic F (enum L0-L3, floor,
+> precedence, профили — locked владельцем 2026-06-23).
 
 ## 1. Сигнатура и объём F1
 
 ```
 resolve(operation_class, risk_tier, env_tier, policy, override)
-  → { disposition ∈ {auto | human-gate | block}, level_applied, floor_hit, why[] }
+  → { disposition ∈ {auto | consilium-gate | human-gate | block}, level_applied, floor_hit, why[] }
 ```
 
-- **F1 реализует L0/L1.** Запрошенный L2/L3 деградирует к L1-семантике с громкой why-записью
-  (safe-fallback: несуществующий уровень не может тихо означать «больше auto»). `consilium-gate`
-  есть в vision-enum, но F1 его **не эмитит никогда** — эмитить диспозицию, которую нечем
-  исполнить, значит создать тихий провал (консилиум-гейт = F2).
+- **F1+F2 реализуют L0-L3.** L0/L1 — бит-в-бит как раньше. **L2/L3 больше НЕ деградируют** (F2,
+  DEC-DEV-0193): на dev ведут себя как L1 (auto), на staging/prod эмитят `consilium-gate` (жюри Epic D
+  + порог + human-fallback). **L3 ≡ L2** в матрице до F3 (prod-сегмент, Epic E) — с громкой why-нотой.
+  `consilium-gate` эмитится **только** на non-floor L2/L3 × staging/prod.
 - **`why[]` — replayable-цепочка** (какая ступень precedence сработала, какие инпуты
-  скорректированы): это семя audit-trail; персистенция трейла = wiring (F2).
+  скорректированы): семя audit-trail; на fabric-уровне персистится в `events.ndjson` (DEC-DEV-0154).
 - Pure: same inputs → same disposition (юнит deepStrictEqual).
 
 ## 2. Потребляемые контракты (не пере-выводить — жёсткий констрейнт волны #3)
@@ -66,16 +71,23 @@ floor (non-crossable) > per-invocation override (--autonomy=…)
 случай. staging+ human-гейтится на обоих уровнях: в F1 нет консилиума, которым vision закрывает
 эти клетки на L2/L3.
 
-## 5. Config-слот (wiring = F2, здесь только форма)
+## 5. Config-слот — **ПОСТРОЕН** (F2, DEC-DEV-0193)
 
 ```yaml
 autonomy:                      # .claude/product.yaml — absent == L1 1:1 (прецедент product_class)
-  default_level: L1
-  process_overrides: { deploy-to-stage: L0 }
-  # floor / consilium_gate — F2 (floor в F1 залочен built-in'ом)
+  profile: autonomous          # именованный профиль: default=L1 | autonomous=L3 (Vision Locked)
+  default_level: L2            # явный уровень ПЕРЕКРЫВАЕТ профиль (with a why-note)
+  process_overrides: { deploy-to-stage: L0 }   # пин = потолок, никогда не поднимает
+  consilium_gate: { confidence_threshold: 0.8, panel: architecture }   # τ + состав жюри
+  # floor: — ИГНОРИРУЕТСЯ ГРОМКО (FLOOR_LOCKED): сужение floor — отдельный явный opt-in, не обычный ключ
 ```
 
-Skeleton принимает этот срез как plain-объект `policy` (парс/валидация YAML — wiring-фаза).
+`parseAutonomyConfig(yamlText)` (line-state-machine, БЕЗ js-yaml — прецедент `agent-roster.cjs`)
+парсит блок в plain-объект `policy`; `loadAutonomyPolicy(root)` читает `<root>/.claude/product.yaml`
+(нет файла → `{}`, absent == L1 1:1). Инвалидные уровни / мусор — tolerant-ignore с why; `floor:` —
+громкий ignore; inline `{...}` и block-форма обе поддержаны. **SSOT приоритета:** product.yaml =
+проектный дефолт, `fabric/limits.json → policy` = fabric-локальный override (`shellEnv` мержит
+`Object.assign({}, product, fabric)`).
 
 ## 6. Сверка с оркестратор-треком (checklist перед F2-wiring) — ЗАКРЫТ DEC-DEV-0154
 
@@ -95,5 +107,30 @@ Skeleton принимает этот срез как plain-объект `policy`
       `fabric/<instance>/events.ndjson`; prescription-`why[]` детерминированно перевычислим из
       state+charter (не дублируется на диск).
 - [x] `--autonomy=` флаг: есть на `/orchestrator:run` (frontmatter) и на fabric CLI
-      (`init|ingest|tick --autonomy <L0|L1>` → per-invocation `override` в `resolve()`);
+      (`init|ingest|tick --autonomy <L0|L1|L2|L3>` → per-invocation `override` в `resolve()`);
       floor непробиваем (юнит). Продуктовые макро-команды (Epic C) — при их F2-wiring.
+
+## 7. F2 wiring (DEC-DEV-0193)
+
+- **Consilium-gate семантика.** L2/L3 × staging/prod → `consilium-gate`. Диспетчер (`run.md`)
+  актуирует: собирает жюри Epic D (`skills/orchestrator/architecture-consilium.md`, subject =
+  предписанный процесс + контекст линии) → `consilium-synth.cjs` → **fold** через
+  `applyConsiliumVerdict(envelope, synth, gateCfg)`. **Единственное LLM-суждение** — содержание
+  вердикта жюри; решение о диспозиции — код.
+- **Confidence-мэппинг (детерминированный):** `strength` жюри → confidence: `strong→1.0`, `split→0.5`,
+  `none→0.0`, мусор→`0.0` (`confidenceFromSynth`). `confidence ≥ τ` И `recommended != null` → `auto`;
+  иначе → **`human-gate`** (safe-fallback: слабый/расходящийся вердикт = человек, не слепой auto).
+  `τ` = `policy.consilium_gate.confidence_threshold` или дефолт **0.8**.
+- **CLI-seam** (для диспетчера + тестов): `node autonomy-policy.cjs resolve-consilium --envelope-file …
+  --synth-file … [--threshold τ]` и `node autonomy-policy.cjs resolve --operation-class … --risk … [--env-tier …]
+  [--policy …] [--override …] [--readiness …]` (P5/P6 live-caller seam).
+- **Врезки P5/P6 (аддитивные).** `feature-to-tdd-impl` (P5) и `validate-feature-impl` (P6) кладут в
+  result-файл поле `autonomy` = `applyReadinessGuard(resolve(<op>, riskTier, envTier, policy, override), readiness)`.
+  Harness `.mjs` **не может** `require()` либу (DEC-DEV-0073 §D.1) → диспозиция вычисляется через
+  `node <lib> resolve`-seam внутри agent()-промпта (тот же relay-паттерн, что env-readiness/capability-probe).
+  riskTier — консервативное честное правило (чистый GO без конфликтов = LOW, иначе HIGH).
+- **Границы скоупа (сознательно НЕ на этом контуре):** Integrator **approve-gate** (`/integrator:debug`
+  y/n) и **DA per-finding review** захардкожены на человека как анти-sycophancy рельса — F2 их не
+  трогает. **Floor залочен** (`FLOOR_LOCKED`): `prod_deploy` / `destructive` / `spend_money` /
+  `provision_real_secret` → всегда human-gate + floor_hit ПЕРВЫМ приоритетом, `consilium-gate` на floor
+  не эмитится никогда. Live-грейд L2/L3-петли — **pilot-gated** (жюри работает, сквозной dogfood не прогонялся).
