@@ -300,9 +300,9 @@
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">{
   "_build": {
-    "date": "2026-07-06",
-    "sha": "8bfa984",
-    "commands": 46,
+    "date": "2026-07-11",
+    "sha": "f5d3baa",
+    "commands": 49,
     "artifacts": 24,
     "rules": 44,
     "gates": 18,
@@ -1000,6 +1000,36 @@
           "source": "commands/integrator/add.md"
         },
         {
+          "cmd": "/integrator:debug",
+          "id": "integrator:debug",
+          "module": "integrator",
+          "name": "debug",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Diagnose an Integrator-zone failure — journal lookup → contract check → root-cause hypothesis → approve-gated fix → regression → journal. One-shot, not a REPL.",
+          "arg": "\u003cerror-description> [--tool \u003cname>]",
+          "when": "Диагностика сбоя в Integrator-зоне: журнал → контракты → гипотеза → approve-gated fix → regression → journal entry.",
+          "tags": "debug диагностика сбой фикс",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/debug.md"
+        },
+        {
+          "cmd": "/integrator:docs",
+          "id": "integrator:docs",
+          "module": "integrator",
+          "name": "docs",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Generate the Orchestrator-facing operating manual for installed tools at .claude/integrator/tool-docs/\u003ctool>.md. Wraps the tool-docs-generator skill; preserves manual blocks on regeneration.",
+          "arg": "[--tool \u003cname> | --tool=all]",
+          "when": "Сгенерировать operating manual инструмента для Orchestrator (.claude/integrator/tool-docs/\u003ctool>.md); manual-блоки переживают реген.",
+          "tags": "docs документация tool-docs orchestrator",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/docs.md"
+        },
+        {
           "cmd": "/integrator:gaps",
           "id": "integrator:gaps",
           "module": "integrator",
@@ -1124,6 +1154,22 @@
           "produces": [],
           "consumes": [],
           "source": "commands/integrator/update.md"
+        },
+        {
+          "cmd": "/integrator:verify",
+          "id": "integrator:verify",
+          "module": "integrator",
+          "name": "verify",
+          "st": "D2T",
+          "status": "shipped",
+          "desc": "Health check of the Integrator zone — tools installed, contracts valid, pmo-mapping consistent, adapters drift-free. Read-only; reports, does not repair.",
+          "arg": "",
+          "when": "Health-check Integrator-зоны: tools доступны, контракты валидны, pmo-mapping без orphan, адаптеры без дрейфа. Рекомендует, не чинит.",
+          "tags": "verify проверка здоровье дрейф контракты",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/verify.md",
+          "ro": true
         }
       ]
     },

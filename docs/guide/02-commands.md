@@ -9,7 +9,7 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `commands/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-command-catalog.cjs`. Интерактивная версия — [ecosystem-map.html](ecosystem-map.html). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 46 команд** в 5 модулях.
+**Всего: 49 команд** в 5 модулях.
 
 ## /ecosystem:* (7)
 
@@ -68,13 +68,15 @@ doc_type: reference
 | `/design:status` | Design Module dashboard. MK/DS/NM counts per status, active iterations, DS pending items, design tool connectivity, Stitch quota tracking. | `[--fm <FM-id>] [--verbose]` |
 | `/design:system` | Design System management — review pending DS proposals OR force re-extract from specific MK. Mass-rename workflow surfaces preview + IDE find-replace guidance (atomic — v1.1+). | `[--review] [--update-from <MK-id>]` |
 
-## /integrator:* (9)
+## /integrator:* (12)
 
 Подключение внешних инструментов под PMO («сисадмин»)
 
 | Команда | Что делает | Аргументы |
 |---|---|---|
 | `/integrator:add` | Add an external tool (npm package, MCP server, git repo, or Dockerized shared daemon) under Integrator management. 6-stage flow with approve gate before install. Idempotent re-run after partial failure. | `<tool-name>[@version] [--source npm\|mcp\|git\|binary\|docker]` |
+| `/integrator:debug` | Diagnose an Integrator-zone failure — journal lookup → contract check → root-cause hypothesis → approve-gated fix → regression → journal. One-shot, not a REPL. | `<error-description> [--tool <name>]` |
+| `/integrator:docs` | Generate the Orchestrator-facing operating manual for installed tools at .claude/integrator/tool-docs/<tool>.md. Wraps the tool-docs-generator skill; preserves manual blocks on regeneration. | `[--tool <name> \| --tool=all]` |
 | `/integrator:gaps` | Show uncovered PMO zones with criticality assessment. Read-only. | — |
 | `/integrator:journal` | View Integrator decision journal with optional filtering. | `[--filter <tag>] [--limit <N>] [--scope global\|project]` |
 | `/integrator:map` | Show current PMO coverage by active tools. Read-only. | — |
@@ -83,6 +85,7 @@ doc_type: reference
 | `/integrator:scan` | Scan project environment to detect existing customizations and conflicts before any modifying action. | — |
 | `/integrator:status` | Full Integrator state overview. Read-only. | — |
 | `/integrator:update` | Update an installed tool to a new version. Backup → install new → drift detection → contract repair → verify. Per SPEC §7.4 + DEC-DEV-0040 Q2 (kept in Phase 5, not Maintenance). | `<tool-name> [<target-version>] [--check-only] [--repair]` |
+| `/integrator:verify` | Health check of the Integrator zone — tools installed, contracts valid, pmo-mapping consistent, adapters drift-free. Read-only; reports, does not repair. | — |
 
 ## /orchestrator:* (1)
 
