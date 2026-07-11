@@ -104,7 +104,7 @@
         {"id": "AP.validate", "kind": "task", "label": "1. Inline validation", "what": "Applicable V-* per tier. Blocking failed -> stop, статус остаётся draft.", "hooks": ["artifact-validate"], "rules": ["V-01", "V-03", "V-11"]},
         {"id": "AP.transition", "kind": "task", "label": "2. Status transition + version++", "what": "draft -> active; version++ в frontmatter; updated timestamp."},
         {"id": "AP.bg", "kind": "task", "label": "3. BG extraction", "what": "Запуск BG-extraction (Phase 1-4).", "hooks": ["bg-extractor"], "alt": [{"to": "BG", "label": "запускает"}]},
-        {"id": "AP.cascade", "kind": "task", "label": "4. Cascade check", "what": "Identifies dependents, предлагает bundle.", "hooks": ["cascade-check"], "rules": ["V-11"], "alt": [{"to": "P4", "label": "запускает"}]},
+        {"id": "AP.cascade", "kind": "task", "label": "4. Cascade check", "what": "Identifies dependents, предлагает bundle.", "hooks": ["cascade-check"], "rules": ["V-11"], "alt": [{"to": "P4p", "label": "запускает"}]},
         {"id": "AP.journal", "kind": "task", "label": "5. Decision journal", "what": "Запись для Strategic/Critical уровней.", "next": ["AP.end"]},
         {"id": "AP.auto", "kind": "task", "label": "Auto-approve (🟢)", "what": "Confirmation-артефакт + confidence high + чистая валидация -> auto-transition без явного approve; «revert <id>» откатывает.", "next": ["AP.end"]},
         {"id": "AP.end", "kind": "end", "label": "active", "what": "Артефакт active."}
@@ -124,7 +124,7 @@
       ]
     },
     {
-      "id": "P4", "lane": "product", "label": "P4 · Cascade Consistency (continuous)", "status": "shipped",
+      "id": "P4p", "lane": "product", "label": "P4 · Cascade Consistency (continuous)", "status": "shipped",
       "domain": "maint", "command": "product:cascade", "doc": "docs/pmo/validation.md",
       "what": "Каскадная согласованность — интегрирована в каждый approve gate. V-11 (bi-dir) авто-фиксится хуком; остальное -> pending на ручной разбор.",
       "steps": [
@@ -138,7 +138,7 @@
       ]
     },
     {
-      "id": "P5", "lane": "product", "label": "P5 · Periodic Review (partial)", "status": "partial",
+      "id": "P5p", "lane": "product", "label": "P5 · Periodic Review (partial)", "status": "partial",
       "domain": "maint", "command": "product:drift-check", "doc": "docs/pmo/processes.md",
       "what": "Само-аудит согласованности + мета-линтер. P5.A покрыт P4 (continuous); P5.B Actuality Refresh не проектируется в v1 (нет триггера).",
       "steps": [
