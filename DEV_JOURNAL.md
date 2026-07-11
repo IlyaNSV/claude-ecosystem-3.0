@@ -1686,3 +1686,24 @@ What happened after applying. (Filled in retroactively if outcome takes time.)
 ### Lessons
 What to remember next time.
 ```
+
+---
+
+## DEC-DEV-0190 — Fix: G36-тест deep-discovery не EOL-толерантен — красный verify на Windows-чекауте при зелёном Linux-CI
+
+**Date:** 2026-07-11
+**Trigger:** после merge-волны deadweight-sweep (#171-#173) + параллельных #164-#175 финальный `npm run verify` на Windows-чекаунте упал: `deep-discovery-agents-wiring.test.cjs` — «no YAML frontmatter block» у обоих новых агентов G36.
+**Tag:** #bug-fix #tooling #portability
+
+### Context
+Файлы `agents/product/{market-researcher,competitor-analyst}.md` в git хранятся с LF, но `core.autocrlf=true` выдаёт их на Windows с CRLF. Парсер frontmatter в тесте: (а) `/^---\n/` не допускает `\r`; (б) `m[1].split('\n')` оставляет `\r` на хвосте строки, а `.` в JS-регэкспе НЕ матчит `\r` (это line terminator) → `/^([a-z_]+):\s*(.*)$/` не срабатывает вовсе. На Linux-CI (LF) тест зелёный — дефект виден только на Windows-чекаутах.
+
+### Decision
+Минимальный фикс парсера в тесте: `/^---\r?\n([\s\S]*?)\r?\n---/` + `split(/\r?\n/)`. Альтернатива «добавить `*.md eol=lf` в .gitattributes» отвергнута как несоразмерная: перенормализация всех md-файлов репо ради одного теста + смена поведения чекаута у владельца.
+
+### Outcome
+`test:product` и полный `npm run verify` EXIT=0 на Windows-чекаунте с CRLF-файлами; на LF поведение не изменилось (\r? опционален).
+
+### Lessons
+1. Парсеры построчных форматов в тестах обязаны быть EOL-толерантными с рождения: `\r?\n` в якорях + `split(/\r?\n/)`. «Зелёный CI» ≠ «зелёный на всех чекаутах» — CI один-ОС.
+2. Ловушка конкретно JS: `.` не матчит `\r` → `(.*)$` тихо умирает на CRLF-строке, хотя выглядит EOL-нейтрально.
