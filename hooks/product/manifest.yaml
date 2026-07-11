@@ -62,14 +62,14 @@ hooks:
     events:
       - type: PostToolUse
         matcher: "Write|Edit"
-    description: "P-RULE-02 enforcement per adaptive-depth model (DEC-DEV-0012 + DEC-DEV-0013 #8). Filters internally к .product/business-rules/*.md only. Detects BR change → captures git diff против HEAD (best-effort) → appends entry к .product/.pending/da-pending.yaml с Mode: adaptive → stderr signal для orchestrator. Orchestrator (feature-session.md skill) reads stderr → spawns product-devils-advocate subagent с adaptive brief через Agent tool. Hook не вызывает subagent сам."
+    description: "P-RULE-02 enforcement per adaptive-depth model (DEC-DEV-0012 + DEC-DEV-0013 #8). Filters internally к .product/business-rules/*.md only. Detects BR change → captures git diff против HEAD (best-effort) → appends entry к .product/.pending/da-pending.yaml с Mode: adaptive → stderr signal для orchestrator. Orchestrator (feature-session.md skill) reads stderr → spawns product-devils-advocate subagent с adaptive brief через Agent tool. Hook не вызывает subagent сам. G30 (DEC-DEV-0182): runs the deterministic depth-floor guardrail (lib/da-depth-floor.cjs) over the same diff — structural signals (creation/activation/category-change) stamp depth_floor: significant on the entry + a loud stderr override that forces full 6-lens, so a false-cosmetic self-classification cannot skip a required review. No signal → no field → adaptive behavior 1:1."
 
   - id: ic-change-trigger
     file: ic-change-trigger.js
     events:
       - type: PostToolUse
         matcher: "Write|Edit"
-    description: "P-RULE-01 enforcement per adaptive-depth model (DEC-DEV-0012 + DEC-DEV-0013 #8). Filters internally к .product/invariants/*.md only. Symmetric к br-change-trigger.js (same pattern, different artifact directory). Includes severity field в pending entry для subagent context. Stderr signal для orchestrator."
+    description: "P-RULE-01 enforcement per adaptive-depth model (DEC-DEV-0012 + DEC-DEV-0013 #8). Filters internally к .product/invariants/*.md only. Symmetric к br-change-trigger.js (same pattern, different artifact directory). Includes severity field в pending entry для subagent context. Stderr signal для orchestrator. G30 (DEC-DEV-0182): runs the deterministic depth-floor guardrail (lib/da-depth-floor.cjs) over the same diff — structural signals (creation/activation/severity-critical/entity-change) stamp depth_floor: significant on the entry + a loud stderr override that forces full 6-lens, so a false-cosmetic self-classification cannot skip a required review. No signal → no field → adaptive behavior 1:1."
 
   - id: product-handoff-gate
     file: product-handoff-gate.js

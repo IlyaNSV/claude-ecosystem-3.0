@@ -30,7 +30,7 @@
     "smoke:orchestrator": "node tests/orchestrator/workflow-syntax.smoke.cjs",
     "test:audit": "node tests/audit/classify-orchestrator.test.cjs && node tests/audit/feedback-intake.test.cjs",
     "test:integrator": "node tests/integrator/drift-checks.test.cjs && node tests/integrator/handoff-staleness.test.cjs",
-    "test:product": "node tests/product/cascade-scalar.test.cjs && node tests/product/zone-router.test.cjs && node tests/product/completeness-oracle.test.cjs && node tests/product/gap-classifier.test.cjs && node tests/product/complete-feature-wiring.test.cjs && node tests/product/consilium-wiring.test.cjs && node tests/product/batch-enrich-wiring.test.cjs && node tests/product/agent-roster.test.cjs && node tests/product/override-sweep.test.cjs",
+    "test:product": "node tests/product/cascade-scalar.test.cjs && node tests/product/zone-router.test.cjs && node tests/product/completeness-oracle.test.cjs && node tests/product/gap-classifier.test.cjs && node tests/product/complete-feature-wiring.test.cjs && node tests/product/consilium-wiring.test.cjs && node tests/product/batch-enrich-wiring.test.cjs && node tests/product/agent-roster.test.cjs && node tests/product/override-sweep.test.cjs && node tests/product/da-depth-floor.test.cjs",
     "verify": "npm run verify:hooks && npm run test:adapters && npm run test:orchestrator && npm run smoke:orchestrator && npm run test:audit && npm run test:integrator && npm run test:product && npm run gen:map:check && npm run gen:procmap:check && npm run gen:glossary:check && npm run gen:catalog:check && npm run check:doctype && npm run check:validation-sync && npm run smoke:procmap && npm run smoke:mapshell"
   },
   "devDependencies": {

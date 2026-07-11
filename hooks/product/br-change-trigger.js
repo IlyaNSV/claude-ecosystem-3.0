@@ -118,11 +118,22 @@ if (fs.existsSync(daFile)) {
   }
 }
 
+// Deterministic depth-floor guardrail (G30, DEC-DEV-0182). CODE — not the DA subagent —
+// decides whether structural signals in the diff make a `cosmetic` self-classification
+// unambiguously wrong. Absent any signal → floor null → entry identical to pre-G30.
+// Fail-open: lib missing / any error → no floor (old behavior 1:1).
+let depthFloor = { floor: null, signals: [] };
+try {
+  depthFloor = require('./lib/da-depth-floor.cjs').computeDepthFloor(diff, 'business-rule');
+} catch (e) {
+  depthFloor = { floor: null, signals: [] };
+}
+
 // Dedup: if there's already pending entry для this artifact, replace it (latest diff wins)
 const key = brId;
 const filtered = existing.filter((e) => e.artifact !== key);
 
-filtered.push({
+const entry = {
   artifact: brId,
   artifact_type: 'business-rule',
   title: brTitle,
@@ -133,7 +144,12 @@ filtered.push({
   mode: 'adaptive',
   queued_at: now,
   diff,
-});
+};
+if (depthFloor.floor) {
+  entry.depth_floor = depthFloor.floor;
+  entry.depth_floor_signals = depthFloor.signals.join(', ');
+}
+filtered.push(entry);
 
 try {
   fs.writeFileSync(daFile, formatDaEntriesYaml(filtered));
@@ -147,6 +163,12 @@ process.stderr.write(
   `DA review pending для ${brId} (${brTitle}, status: ${brStatus}) — Mode: adaptive (P-RULE-02).\n` +
     `See .product/.pending/da-pending.yaml; orchestrator should spawn product-devils-advocate subagent с adaptive brief.\n`
 );
+if (depthFloor.floor) {
+  process.stderr.write(
+    `⚠ DEPTH-FLOOR OVERRIDE (G30): deterministic signals [${depthFloor.signals.join(', ')}] force ${brId} to depth_floor=significant. ` +
+      `A 'cosmetic' self-classification by the DA subagent is OVERRIDDEN — spawn product-devils-advocate with the FULL 6-lens brief, NOT adaptive-cosmetic.\n`
+  );
+}
 
 process.exit(0);
 
@@ -235,6 +257,8 @@ function formatDaEntriesYaml(entries) {
     if (e.trigger) lines.push(`    trigger: ${formatScalar(e.trigger)}`);
     if (e.hook) lines.push(`    hook: ${formatScalar(e.hook)}`);
     if (e.mode) lines.push(`    mode: ${formatScalar(e.mode)}`);
+    if (e.depth_floor) lines.push(`    depth_floor: ${formatScalar(e.depth_floor)}`);
+    if (e.depth_floor_signals) lines.push(`    depth_floor_signals: ${formatScalar(e.depth_floor_signals)}`);
     if (e.queued_at) lines.push(`    queued_at: ${formatScalar(e.queued_at)}`);
     if (e.diff) {
       lines.push(`    diff: |`);
