@@ -12,6 +12,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **DEF-OD7-CLOSE — у парковочных гейтов не было owner-выхода: `evt:owner.close` теперь обрабатывается со ВСЕХ human-gate парковок (charter v4)** (DEC-DEV-0175; вскрыт live R1 re-run'ом 2026-07-11: движок отклонил закрытие линии из `awaiting_capability_impl` — charter v3 дал терминал `closed_without_runtime` только из `escalated`, у await-гейтов единственный выход = resume-событие, т.е. закрыть запаркованную линию без фейкового резолва или двух семантически ложных forced-событий было НЕЛЬЗЯ; executor честно отказался и оставил линию в honest-resting-state). Charter v4: `evt:owner.close → closed_without_runtime` добавлен в `awaiting_product` / `awaiting_capability` / `awaiting_capability_impl` / `runtime_gate_retry` (в `escalated` был с 0174); derived resume-события всех гейтов НЕ изменены (pa-first порядок deriveResumeEvent; юнит-регрессор проверяет все пять гейтов + end-to-end закрытие capability-парковки). Owner-гард ANOM-OD7-2 действует: close по-прежнему требует PA-фиксации решения владельца (`--force-manual "PA-NNN: …"`). Wiring: `run.md` §owner-decision events, `07-fabric.md` §6. Юниты fabric-engine 49→**50**; полный verify EXIT=0. Consumer-zone (`orchestrator/` + `commands/` + `docs/`); аддитивно, counts без изменений (24/44). Контекст: **R1 re-run = PASS судьи → OD7 live-валидирован по совокупности** (SPEC OD7-строка + GAPS G04 обновлены; вердикт — `dev/process-fabric/OD7_R1_RERUN_BRIEF.md` §Outcome; остаток R6/`evt:env.up` — event-gated).
+
 ---
 
 ## [1.8.1] — 2026-07-11
