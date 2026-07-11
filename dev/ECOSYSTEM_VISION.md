@@ -82,7 +82,7 @@ D1 Discovery ──/product:init,plan──► D2-B Requirements ──/product:
 | D3-04 CI/build · D3-05 provisioning · D3-06 deploy/rollback | ❌ **нет процесса, нет инструмента** |
 | D4 реальная QA-инфра (P6 лишь *прогоняет* существующий suite, не создаёт его) | ❌ нет инструмента (`/integrator:gaps`) |
 | D5 monitoring/feedback | ❌ отложен в v2 (DEC-P08); P3 Feedback = STUB |
-| §6 capability-канал Orchestrator→Integrator (ключ к деплою) | ⚠ **спроектирован, не построен, провалил S6 dogfood (FAIL)** |
+| §6 capability-канал Orchestrator→Integrator (ключ к деплою) | ✅ **построен и live-валидирован** (detect-leg DEC-DEV-0117; OD7 await→resume 0171/0175; *таблица изначально фиксировала снапшот 2026-06-23: «спроектирован, провалил S6 dogfood»*) |
 
 **Вывод по A:** «к проду» — это не доработка, а **новый сегмент конвейера D3-04…D5**, чей архитектурный ключ (§6-канал + P7 + установка Интегратором первых D3/D4/D5-инструментов) лежит в зоне Оркестратора/Интегратора и сейчас не готов.
 
@@ -269,10 +269,10 @@ A ──► G (матрица субагентов: control-plane участия
 ### Epic E — Сегмент конвейера до прода *(coordinate-only; Orchestrator + Integrator-owned)*
 **Намерение:** A — D3-04…D5: CI/build, provisioning, deploy/rollback, QA-инфра, monitoring.
 
-**Состояние и предусловия (НЕ реализую здесь — зона параллельной сессии):**
-- **Предусловие 1:** Orchestrator §6 capability-канал починен (S6 = FAIL сейчас) — без него Оркестратор не может «запросить руки/голову» для деплоя.
-- **Предусловие 2:** Integrator устанавливает первые D3/D4/D5-инструменты (CI/CD, deploy-таргет, test-infra, observability) — их сейчас нет.
-- **Затем:** Orchestrator строит P7 (runtime-smoke) + `deploy-to-stage` + `rollback-release` (orchestrator SPEC §8 их явно паркует до появления D3/D5-инструментов).
+**Состояние и предусловия (НЕ реализую здесь — зона параллельной сессии; ре-статус на kickoff Epic E, DEC-DEV-0194):**
+- **Предусловие 1 — ✅ ВЫПОЛНЕНО:** Orchestrator §6 capability-канал построен и live-валидирован (detect-leg DEC-DEV-0117; OD7 await→resume 0171, live-PASS 0175). *(Исходная запись 2026-06-23 фиксировала «S6 = FAIL».)*
+- **Предусловие 2 — скоуп самого Epic E:** Integrator устанавливает первые D3/D4/D5-инструменты (CI/CD, deploy-таргет, test-infra, observability). Субстрат назначен владельцем 2026-07-11: **VM-фабрика = прод-стенд** (kickoff — `dev/gates/EPIC_E_READINESS.md`).
+- **Затем:** Orchestrator строит живой boot P7 (readiness-нога уже есть, DEC-DEV-0120) + `deploy-to-stage` + `rollback-release` (orchestrator SPEC §8 их явно паркует до появления D3/D5-инструментов).
 
 **Anti-over-engineering / честность цели:** цель E = **полное покрытие пути с гейтами на границах** (pre-deploy, prod = human-gate per autonomy-tiers), **не** 100% unattended (§4 кластер 3 + OWASP high-privilege gating). «100% результата» владельца → переформулировать как «100% покрытия пути». Какие из границ закрывает человек/консилиум/auto — задаёт Epic F (autonomy-уровень), а floor держит prod-deploy под человеком по дефолту.
 

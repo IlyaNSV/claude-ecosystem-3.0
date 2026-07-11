@@ -835,3 +835,39 @@ Per SPEC §3.6 расширенный матрикс:
 - BR ↔ MK cross-ref automation: 1.5-2ч
 - Confidence threshold tuning + fixture (≥5 cases с mixed FP/TP): 1ч
 - **Total: 4-5ч focused work**
+
+---
+
+## Epic E cuts — конвейер до прода (C-E1..C-E7)
+
+**Originally planned:** Vision §Epic E full scope (D3-04…D5)
+**Deferred:** 2026-07-11 per DEC-DEV-0194 (kickoff Epic E, Section 4 scope discipline)
+**Defer rationale:** «Quick перед Deep» — минимальный конвейер (staging-deploy на VM + healthcheck) даёт feedback быстрее; каждый cut имеет несработавший триггер.
+**Bring-forward trigger:** per-cut, см. таблицу.
+
+### Architectural intent (per cut)
+
+| Cut | Что отложено | Bring-forward trigger |
+|---|---|---|
+| **C-E1** Full observability stack | Sentry/Datadog/Prometheus/APM как D5-инструменты Integrator'а; v1 = healthcheck+liveness→PA | реальный инцидент, где healthcheck не даёт причину / нужен трейсинг; ≥3 «слепых» падений |
+| **C-E2** Реальный облачный prod-хост / multi-host | v1 = один VM (staging; prod = stub под floor — решение владельца) | пилот выходит за пределы одного VM / реальный внешний prod-аккаунт (provisioning под floor) |
+| **C-E3** Standalone CI-сервер | Jenkins/GH-Actions-runner; v1 = build+test внутри `deploy-to-stage` (реюз P6/P7) | multi-contributor / cross-machine консистентность билдов |
+| **C-E4** Полная auto-rollback policy-матрица | v1 = staging auto-rollback на healthcheck-fail, prod human-confirm (решение владельца) | повторяющиеся deploy-провалы, где ручной rollback — узкое место |
+| **C-E5** Provisioning реальных внешних секретов/аккаунтов | §6-bis «+secret» остаётся floor/human; staging v1 живёт на dev-tier секретах | пост-пилот, реальный prod с реальными аккаунтами |
+| **C-E6** D4 создание новой QA-инфры (`/integrator:gaps`) | P6 прогоняет существующий suite; создание тест-инфры с нуля — отдельный трек | фича требует интеграционного окружения (docker-compose DB/Redis), которого нет |
+| **C-E7** VM-Integrator-as-DevOps (computer-use/GUI) | deploy в v1 — CLI/локальный процесс-менеджмент; отдельная greenfield-инициатива уже в этом backlog'е ниже/выше | явный запрос «true DevOps с visual feedback» / computer-use созрел |
+
+### Implementation notes
+
+Ядро, ОТ которого режем (E1/E2), описано в `dev/gates/EPIC_E_READINESS.md` (D-1..D-9, суб-фазы E.A–E.G). Cuts возвращаются поверх работающего ядра, не вместо.
+
+### References to existing spec
+
+- `dev/ECOSYSTEM_VISION.md` §Epic E (контракт трека-исполнителя: floor/reversibility/audit-trail) + §Epic F (F3)
+- `docs/orchestrator-module/SPEC.md` §8 — парковки `deploy-to-stage`/`rollback-release`
+- `docs/integrator-module/SPEC.md` — зоны D3-04/05/06, D5
+- DEC-DEV-0194 — kickoff-решения
+
+### Estimated effort при возврате
+
+Per-cut 2-8ч; C-E7 — отдельная greenfield-инициатива (≥60-80ч, см. её собственную запись).

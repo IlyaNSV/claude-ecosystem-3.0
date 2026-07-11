@@ -301,7 +301,7 @@
 <script id="map-data" type="application/json">{
   "_build": {
     "date": "2026-07-11",
-    "sha": "339a7ac",
+    "sha": "efdcbc7",
     "commands": 50,
     "artifacts": 24,
     "rules": 44,
@@ -2849,20 +2849,6 @@
   ],
   "roadmap": [
     {
-      "id": "orch-6ch",
-      "label": "§6-channel concerns",
-      "status": "planned",
-      "owner": "orchestrator",
-      "what": "Полноценный §6-канал передачи CONCERNS как detector, а не block-handler (S6 root-cause, DEC-DEV-0081 #3/#4) — substrate-gated, brief написан."
-    },
-    {
-      "id": "orch-s7",
-      "label": "S7 → P7 → P2 build-front",
-      "status": "planned",
-      "owner": "orchestrator",
-      "what": "Достройка модуля: S7-контракты → P7 (Integrator maintenance/verify/debug/docs) → возврат к P2; снимает PILOT POINT когда модуль полный."
-    },
-    {
       "id": "design-claude-path",
       "label": "Claude Design path (v1.1)",
       "status": "planned",
@@ -2878,10 +2864,10 @@
     },
     {
       "id": "vision-ef",
-      "label": "Vision Epic E/F (coordinate-only)",
+      "label": "Vision Epic E build (E1→E2)",
       "status": "planned",
       "owner": "ecosystem",
-      "what": "Autonomous Pipeline до прода (coordinate-only) — горизонт после полного модуля; границы=фазы (Epic C)."
+      "what": "Сегмент до прода: kickoff выполнен 2026-07-11 (DEC-DEV-0194, dev/gates/EPIC_E_READINESS.md) — спайк VM-реальности → E1 deploy/rollback ядро → E2 monitoring+F3. Epic F уже построен полностью (F1 0152/0154 + F2 consilium-gate 0193); §6-канал и P1–P7 закрыты ранее."
     }
   ],
   "boundaryObjects": [
