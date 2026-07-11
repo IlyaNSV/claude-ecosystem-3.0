@@ -1,6 +1,6 @@
 {
   "id": "feature-production-line",
-  "version": 3,
+  "version": 4,
   "context": { "feature": null, "fm": null },
   "initial": "handoff_ready",
   "limits": { "lane": "orchestrator", "wip": 1 },
@@ -68,25 +68,29 @@
     "runtime_gate_retry": {
       "meta": { "determinism": "H", "autonomy": "human-gate", "queue_kind": "gate" },
       "on": {
-        "evt:env.up": { "target": "runtime_gate" }
+        "evt:env.up": { "target": "runtime_gate" },
+        "evt:owner.close": { "target": "closed_without_runtime" }
       }
     },
     "awaiting_product": {
       "meta": { "autonomy": "human-gate", "queue_kind": "conflict" },
       "on": {
-        "evt:pa.resolved": { "target": "implementing" }
+        "evt:pa.resolved": { "target": "implementing" },
+        "evt:owner.close": { "target": "closed_without_runtime" }
       }
     },
     "awaiting_capability": {
       "meta": { "autonomy": "human-gate", "queue_kind": "conflict" },
       "on": {
-        "evt:pa.resolved": { "target": "runtime_gate" }
+        "evt:pa.resolved": { "target": "runtime_gate" },
+        "evt:owner.close": { "target": "closed_without_runtime" }
       }
     },
     "awaiting_capability_impl": {
       "meta": { "autonomy": "human-gate", "queue_kind": "conflict" },
       "on": {
-        "evt:pa.resolved": { "target": "implementing" }
+        "evt:pa.resolved": { "target": "implementing" },
+        "evt:owner.close": { "target": "closed_without_runtime" }
       }
     },
     "escalated": {

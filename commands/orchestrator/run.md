@@ -368,7 +368,10 @@ it merely witnessed. The sanctioned path is the PA flip + `pa-scan --tick` above
 PA flip cannot express (`evt:owner.abort` after a dismissal, `evt:owner.close` when the owner
 split/deferred the remaining work and closes the line without runtime — terminal
 `closed_without_runtime`), make sure the owner's decision is recorded in a PA entry, then tick with
-`--force-manual "PA-NNN: <owner decision>"` (audit-stamped into the event).
+`--force-manual "PA-NNN: <owner decision>"` (audit-stamped into the event). `evt:owner.close` is
+handled from EVERY parked human gate (`awaiting_*`, `runtime_gate_retry`, `escalated` — charter v4,
+DEC-DEV-0175): a parked line always has an owner exit that neither fakes a resolution nor
+overloads `owner.abort`.
 
 **OD7 mid-process resume is the normal bracket re-run — nothing special to restore.** After a
 capability gate resolves (`awaiting_capability_impl` → `evt:pa.resolved` → `implementing`), the

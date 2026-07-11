@@ -683,6 +683,38 @@ test('ANOM-OD7-1: evt:owner.close (PA-referenced) reaches the closed_without_run
   assert.strictEqual(readOwnerQueue(base).length, 0, 'the terminal move cleared the queued entry');
 });
 
+test('DEF-OD7-CLOSE (charter v4): evt:owner.close exists on EVERY park gate, resume-events unchanged', () => {
+  const { deriveResumeEvent } = lib;
+  // R1 re-run 2026-07-11 live-refusal: a line parked at awaiting_capability_impl had NO owner
+  // terminal-exit — the only handled event was the resume; closing required faking state. v4 gives
+  // every human-gate parking state the owner.close exit; the derived resume-event must NOT change
+  // (pa-scan still fires the same resume on the owner's PA flip).
+  const gates = [
+    ['awaiting_product', 'evt:pa.resolved'],
+    ['awaiting_capability', 'evt:pa.resolved'],
+    ['awaiting_capability_impl', 'evt:pa.resolved'],
+    ['runtime_gate_retry', 'evt:env.up'],
+    ['escalated', 'evt:owner.resume'],
+  ];
+  for (const [state, resume] of gates) {
+    const on = charter.states[state].on;
+    assert.ok(on['evt:owner.close'], `${state} must handle evt:owner.close`);
+    assert.strictEqual(on['evt:owner.close'].target, 'closed_without_runtime', `${state} close target`);
+    assert.strictEqual(deriveResumeEvent(charter, state), resume, `resume-event of ${state} must be unchanged`);
+  }
+  // end-to-end: the exact live dead-end — owner-close OUT of the capability park
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-CLOSEGATE');
+  assert.strictEqual(
+    ingest(base, id, 'feature-to-tdd-impl', { capability_blocked: [{ capability: 'tts' }] }).json.ticks[0].to,
+    'awaiting_capability_impl');                              // parks + appends PA-001 (the gate PA)
+  const r = tick(base, id, 'evt:owner.close', null, ['--force-manual', 'PA-001: owner defers the capability → close without runtime']);
+  assert.strictEqual(r.code, 0, `owner.close from the park gate must apply: ${r.stderr}`);
+  assert.strictEqual(r.json.to, 'closed_without_runtime');
+  assert.strictEqual(r.json.prescription.final, true, 'closed_without_runtime is terminal');
+  assert.strictEqual(readOwnerQueue(base).length, 0, 'the terminal move cleared the queued gate entry');
+});
+
 test('ANOM-OD7-2: pa-scan --tick (the owner-act path) still resumes escalated without --force-manual', () => {
   const base = mkTmp();
   const id = reachImplementing(base, 'FM-OWNRES');
