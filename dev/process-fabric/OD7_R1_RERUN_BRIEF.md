@@ -24,6 +24,25 @@
 `dev_stand_in: none`; ключа `DEEPL_API_KEY` в `.env` пилота реально НЕТ → disposition
 **BLOCK** — не срежиссированный дефицит.
 
+## ⚠ Deviation note (2026-07-11, ДО прогона; правило «исполнитель отклоняется с обоснованием»)
+
+Ground truth пилота опроверг DeepL-премису брифа: **DeepL для machine-translation отменён
+ратифицированным продуктовым решением пилота** (комментарий манифеста FM-002 + PA-038,
+2026-06-30: выбор = OpenAI — DeepL Free требовал карту, RU-глоссарий покрыт частично).
+DeepL-фикстура противоречила бы канону = режиссура. **Честный эквивалент той же схемы
+(вариант 1): реальный TTS-провайдер** — сквозной процесс пилота translate→**TTS**→download,
+real-provider wiring отложен в RL-002 (mvp-scope: primary candidate ElevenLabs voice library;
+FM-007 handoff подтверждает), `ELEVENLABS_API_KEY` в `.env` пилота реально ОТСУТСТВУЕТ,
+mock не может быть stand-in для фичи «retire the Mock». Субъект = **FM-008 real-TTS-provider
+wiring** с манифестом:
+```yaml
+external_capabilities:
+  - { capability: text-to-speech-real-provider, secret_env: ELEVENLABS_API_KEY, provider: ElevenLabs, tier: prod, dev_stand_in: none }
+```
+Пин провайдера следует primary-кандидату mvp-scope; ратификация выбора — на владельце через
+сам OD7-гейт (парковка это и сюрфейсит). Остальной сценарий брифа — без изменений
+(FM-NNN = FM-008). Критерий R1 не зависит от того, КАКАЯ capability паркует линию.
+
 ## Fixture-prep (оператор, до executor-сессии)
 
 1. Пилот: `/ecosystem:update` до **1.8.1** + `/ecosystem:verify` — на **main** пилота
