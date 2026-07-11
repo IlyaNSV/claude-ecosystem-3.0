@@ -1,0 +1,162 @@
+# Smoke-batch 2026-07-11 — пре-регистрированный бриф (4 накопленных плана, VM-пилот)
+
+> **Пре-регистрация:** коммитится ДО прогона (anti-tamper, live-run-validation).
+> **Мандат владельца (2026-07-11):** «Прогони пачку из 4 smoke-планов на VM». Контекст: closure-finding
+> Phase 7 — deferred-smoke долг = 4 плана (порог 2 превышен вдвое); прогон пачкой, новых built-фаз
+> до него не наслаивать.
+> **Класс:** B (функциональная механика по опубликованным планам). Рубрики = САМИ планы
+> (`dev/gates/{PATCH_1.3.3,PHASE_6,PHASE_7}_SMOKE_TEST_PLAN.md` + `S_LE_LESSON_GATE_SMOKE.md`);
+> executor-сессии их НЕ видят — получают операционные промпты ниже. Судья: **opus, фиксированная
+> модель**, пост-фактум по транскриптам, PASS/FAIL/N-A + цитата per сценарий.
+> **Доставка:** релиз **1.9.0** cut (`6da37c1`, тег) — прогону нужен `/ecosystem:update` пилота
+> 1.8.1→1.9.0 (Phase-7 артефакты). Сам update = сценарий S7 Phase-6 (см. U).
+> **Среда:** VM Ubuntu-ClaudeCode, пилот `~/projects/my-first-test`; скилл `vm-factory-ops`
+> (bypass-мандат, base64-промпты, harvest→kill, `DISABLE_AUTOUPDATER=1`). Перед прогоном —
+> офлайн-снапшот `smoke-batch-pre-run`.
+
+## Общие правила
+
+- Фикстуры (LESSON-файл, drift-правка адаптера, тестовые FM-записи) — ТОЛЬКО на изолированной
+  ветке пилота `smoke-batch-1-9-0`; `main` пилота не трогать (кроме самого `/ecosystem:update`,
+  который штатно едет в main — это реальная доставка). `.env` не редактировать; секреты не выводить.
+- Канон экосистемы (`.claude/**` содержимое, кроме штатной работы команд) не править; дефекты
+  фиксировать письменно, не чинить по ходу (capture-don't-fix).
+- Любой исход валиден: FAIL сценария = находка, не «провал прогона»; классифицировать, не подгонять.
+- После harvest каждую executor-сессию ГАСИТЬ (урок idle-TUI, скилл §4.5).
+- Оператор (я, с хоста) снимает детерминированные before/after-чеки сам по ssh (не через executor).
+
+## Порядок сессий
+
+### U — доставка 1.9.0 = Phase-6 **S7** (update-compat) + S-LE.5 re-confirm
+
+Оператор ДО сессии снимает before-state (ssh, read-only): sha256 `.claude/design.yaml` (если есть),
+список+checksums `.product/mockups/*`, `.product/design-system.md`, `.product/.design-sessions/*`,
+hooks-массив `settings.json`/`settings.local.json`, список third-party namespaces в `.claude/{commands,skills}`.
+Executor-промпт (verbatim):
+
+```text
+Обнови экосистему проекта: прогони /ecosystem:update, затем /ecosystem:verify.
+Держи меня в курсе ключевых решений и останавливайся там, где регламент требует
+моего участия.
+```
+
+Оператор ПОСЛЕ: after-state diff по чек-листу S7 (design.yaml identical · `.product/**` untouched ·
+managed namespaces обновлены · third-party preserved · hook-записи re-derived без дублей — заодно
+S-LE.5: `Stop`/`PreToolUse`/`UserPromptSubmit` ровно по одной) + Phase-7 артефакты доставлены
+(`.claude/commands/integrator/{verify,debug,docs}.md`, `.claude/hooks/integrator/{drift-check.js,lib/drift-checks.cjs}`,
+manifest, settings-регистрация SessionStart).
+
+### D — PHASE_7 S1-S5 (Integrator maintenance)
+
+Одна executor-сессия на `main` пилота (verify/debug/docs read-only или декларированно-обратимы;
+drift-фикстура для S4 — на ветке). Промпт (verbatim):
+
+```text
+Проведи maintenance-осмотр Integrator-зоны проекта:
+1. Прогони /integrator:verify и покажи отчёт.
+2. Возьми один исторический симптом из .claude/integrator/project-journal.md и
+   прогони /integrator:debug по нему; на approve-гейте выбери n (не применять).
+3. Прогони /integrator:docs --tool cc-sdd. Затем добавь в сгенерированный файл
+   секцию, обёрнутую маркерами <!-- manual: do not regenerate --> ... <!-- /manual -->,
+   и прогони /integrator:docs --tool cc-sdd повторно. Покажи, пережила ли секция реген.
+По ходу держи меня в курсе ключевых решений и останавливайся там, где регламент
+требует моего участия.
+```
+
+S4 (hook) — оператор+отдельные короткие сессии: (a) свежая сессия на чистом состоянии → хук молчит;
+(b) на ветке `smoke-batch-1-9-0` правкой инстанс-адаптера (`CONTRACT_SCHEMA_VERSION` −1) создать
+реальный drift → свежая сессия → в контексте additionalContext-нота с рекомендацией
+`/integrator:verify`; (c) `INTEGRATOR_DRIFT_CHECK=0` → молчит. S5 (отказы) — оператор: CLI-проба
+`drift-checks.cjs --root <пустой tmp-каталог>` (note «no Integrator state», exit 0) + в executor-сессии
+(b-ветке) `/integrator:docs` при искусственно пустом наборе — ИЛИ грейдить отказ по verify.md-ветке
+Step 1, если естественного пустого состояния нет (не вайпать реальное состояние ради фикстуры —
+достаточно tmp-каталога для CLI-ноги и текстовой ветки команды).
+
+### A — PATCH_1.3.3 S1-S5 (research gate + scope-guard + PA)
+
+A1 (S2/S3/S5, механика scope-guard): промпт (verbatim):
+
+```text
+Проверь гигиену Integrator-зоны проекта по шагам:
+1. Создай файл .product/features/FM-SG-TEST.md с одной строкой-заглушкой, покажи
+   результат, затем удали его.
+2. Прогони /integrator:scan.
+3. Сразу после скана снова создай .product/features/FM-SG-TEST.md, покажи stderr
+   вызова, повтори ту же запись ещё дважды в течение той же минуты, подожди минуту
+   с небольшим и повтори запись ещё раз. Затем удали файл.
+4. Прогони /ecosystem:pending-actions без аргументов, затем с --status all, затем
+   с --source integrator, затем с --help. Покажи выводы.
+По ходу держи меня в курсе ключевых решений и останавливайся там, где регламент
+требует моего участия.
+```
+
+(Заметка оператору: шаг 1 = Stage-1 no-op-контроль ДО маркера; шаги 3 — тайминг дедупа; PA-записи
+после прогона dismissed-ать не нужно — оставить для судьи, состояние ветки.) Прогон A1 — на ветке
+`smoke-batch-1-9-0` (создаёт PA-мусор и тестовые файлы).
+
+A2 (S1 research + hard gate): промпт (verbatim):
+
+```text
+Прогони /integrator:research "lightweight error-tracking для small SaaS (self-hosted
+или free tier)". Доведи до конца процесса.
+```
+
+На гейте Phase 5.2: оператор сначала МОЛЧИТ 3+ минуты (критерий silent-ignore — сессия обязана
+ждать), затем отвечает `defer`. Затем вторым промптом в той же сессии: `Прогони этот же research
+ещё раз и на гейте выбери вариант 1.` — проверка «выбор номера ≠ авто-add» (research из кэша).
+S4 (add env-preview): третьим промптом: `Прогони /integrator:add cc-sdd@latest (идемпотентный
+ре-ран). На approve-гейте выбери n.` — env-блок (tiers или agnostic) обязан быть в propose ДО гейта.
+
+### B — PHASE_6 S1-S5 (Design Module на UI FM)
+
+Предусловие: UI FM с `has_ui=true` + активные SC (оператор проверяет на VM; если нет — НЕ фабриковать
+насильно: взять ближайший честный FM с UI-поверхностью и обогатить его has_ui на ветке — фиксация
+deviation в Outcome). Stitch MCP на пилоте не установлен → D.2 обязан авто-фолбэкнуть в HTML
+(S3 сливается с S2-прогоном естественным образом). Ветка `smoke-batch-1-9-0`. Промпт (verbatim):
+
+```text
+Возьми фичу FM-NNN и проведи её через дизайн-контур: /design:start FM-NNN, дальше
+по регламенту до готовности артефактов, затем /design:export FM-NNN. После этого
+прогони /design:migrate MK-NNN --to html и /design:migrate MK-NNN --to claude-design
+и покажи результаты. По ходу держи меня в курсе ключевых решений и останавливайся
+там, где регламент требует моего участия.
+```
+
+Оператор на гейтах отвечает по-настоящему (approve brief; strategic gate; migrate approve).
+Грейд-точки: brief-файл + 🟡 gate явный · fallback-warning + PA (Stitch недоступен) · MK/DS/NM
+frontmatter + V-MK · export = handoff §10 формат · migrate идемпотентность/reject claude-design.
+
+### C — S-LE ре-прогон .1 + .3-exemption (против фикса 0143) — ПОСЛЕДНЯЯ сессия
+
+Ветка `smoke-batch-1-9-0`. Оператор готовит фикстуру: `.product/lessons/LESSON-901-smoke-batch.md`
+со `status: open` (минимальный валидный frontmatter). Сессию запускать с
+`LESSON_GATE_MODE=strict` в env. Шаги:
+1. Свежая сессия → любой промпт → S-LE.4 re-confirm (reminder в контексте, промпт не заблокирован).
+2. Промпт: `Создай файл notes/scratch.md с одной строкой.` → PreToolUse deny обязан отклонить
+   (S-LE.3 deny re-confirm).
+3. Промпт (verbatim): `Разреши открытый урок: /product:lesson --resume LESSON-901` → протокол обязан
+   СМОЧЬ создать свой маркер и цели `.product/lessons/**` (target-carve-out 0143) — **это грейд-предмет
+   exemption**; довести урок до active/resolved по регламенту.
+4. Вернуть урок в open (оператор, git checkout на ветке) → попытка завершить сессию (`/exit` или
+   закрытие) → Stop-гейт обязан заблокировать чистое закрытие (S-LE.1; наблюдать exit-код/поле
+   `preventedContinuation` в транскрипте на CC текущей версии VM).
+5. Клин-ап: урок → resolved или файл убран с ветки; сессию погасить.
+
+## Стоп-правила
+
+- Wipe-protection на update: если update хочет удалить пилот-фичи → СТОП, показать владельцу.
+- Крэш/обрыв → верифицировать фактическое состояние (git log, settings, снапшот), не ре-раннить вслепую.
+- Usage-limit VM-аккаунта → ждать, продолжать с чекпойнта; журнал прогона в этом файле §Outcome.
+- Любая правка канона экосистемы по ходу — запрещена; дефекты письменно.
+
+## Критерии — где лежат
+
+PASS/FAIL-критерии per сценарий НЕ дублируются здесь — они в четырёх планах (SSOT). Судья грейдит
+по ним; anti-phantom-inflation: упавший upstream-критерий делает наследников N/A, не FAIL.
+Phase-6 S2 «Stitch MCP active» грейдится по фактическому субстрату (Stitch нет) — HTML-путь =
+основной, Stitch-специфика = N/A-substrate. S-LE: на все-PASS (.1 и .3-exemption зелёные) — флип
+`lesson-presence-gate.js` warn→strict по инструкции плана §«На PASS».
+
+## Outcome
+
+(заполняется пост-прогон)
