@@ -10,16 +10,17 @@
  * every user turn (UserPromptSubmit) and — in strict mode — refuses the next
  * MUTATING tool call (PreToolUse) until the lesson is resolved.
  *
- * SHIPS DEFAULTED TO WARN (per the "Strict Stop, warn PreToolUse" decision): the
- * deny path below is DORMANT unless env LESSON_GATE_MODE=strict is set.
- * The armed S-LE live smoke (pilot session 4fb6e0f2, 2026-07-04) CONFIRMED the
- * self-deadlock the original marker-only exemption predicted: the protocol's FIRST
- * writes (the LESSON-* file, then the lesson-in-progress marker — lesson-capture.md
- * steps 3-4) happen BEFORE any marker can exist, so marker-only exemption denies the
- * very write that would create the marker. Fixed by the TARGET carve-out below
- * (isLessonResolutionTarget, DEC-DEV-0143): mutations whose target IS a
- * lesson-resolution instrument are always allowed. warn->strict flip still awaits a
- * PASS re-run of the S-LE smoke against this fix.
+ * SHIPS DEFAULTED TO STRICT (flipped 2026-07-11, owner decision after the S-LE
+ * re-run — smoke-batch DEC-DEV-0177; previously warn per the original "Strict
+ * Stop, warn PreToolUse" decision). History: the armed S-LE live smoke (pilot
+ * session 4fb6e0f2, 2026-07-04) CONFIRMED the self-deadlock the original
+ * marker-only exemption predicted: the protocol's FIRST writes (the LESSON-*
+ * file, then the lesson-in-progress marker — lesson-capture.md steps 3-4) happen
+ * BEFORE any marker can exist, so marker-only exemption denies the very write
+ * that would create the marker. Fixed by the TARGET carve-out below
+ * (isLessonResolutionTarget, DEC-DEV-0143); the fix was live-re-validated on the
+ * 2026-07-11 re-run (deny + exemption both PASS, session 9e5dab52) — that PASS
+ * unlocked this flip. Downgrade escape: env LESSON_GATE_MODE=warn.
  *
  * BLOCKING CONTRACT (verified against code.claude.com/docs/en/hooks, 2026-06):
  *   - PreToolUse denies a tool call via stdout JSON
@@ -34,9 +35,9 @@
  *   Platform-independent (Windows == macOS == Linux).
  *
  * MODE (env LESSON_GATE_MODE):
- *   - unset | "warn"  → reminder only (PreToolUse: stderr nag; UPS: additionalContext); never denies
- *   - "strict"        → PreToolUse denies mutating calls (with marker-exemption); UPS still reminder-only
- *   - "off"           → exit 0, silent
+ *   - unset | "strict" → PreToolUse denies mutating calls (with target carve-out + marker-exemption); UPS reminder-only. DEFAULT since 2026-07-11.
+ *   - "warn"           → reminder only (PreToolUse: stderr nag; UPS: additionalContext); never denies
+ *   - "off"            → exit 0, silent
  *
  * MARKER-EXEMPTION (strict only): while `/product:lesson` is actively resolving,
  * it keeps a fresh `.product/.sessions/lesson-in-progress.<id>` marker. If any
@@ -197,7 +198,7 @@ function reminderJSON(ids) {
 }
 
 function main() {
-  const mode = (process.env.LESSON_GATE_MODE || 'warn').toLowerCase();
+  const mode = (process.env.LESSON_GATE_MODE || 'strict').toLowerCase();
   if (mode === 'off') return;
 
   const raw = readStdinSync();
