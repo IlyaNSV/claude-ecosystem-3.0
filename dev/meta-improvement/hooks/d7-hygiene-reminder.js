@@ -219,7 +219,11 @@ function main() {
     'capture happened but consumption is pending:\n\n' + lines.join('\n') +
     '\n\nEach is a nudge, not a block — clear or dismiss at your discretion.';
 
-  process.stdout.write(JSON.stringify({ hookSpecificOutput: { additionalContext: context } }));
+  // hookEventName обязателен в hookSpecificOutput — без него Claude Code отбрасывает
+  // весь payload (DEC-DEV-0162, рецидив DEC-DEV-0191).
+  process.stdout.write(JSON.stringify({
+    hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context },
+  }));
   process.exit(0);
 }
 

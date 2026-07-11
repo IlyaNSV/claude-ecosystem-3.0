@@ -1707,3 +1707,24 @@ What to remember next time.
 ### Lessons
 1. Парсеры построчных форматов в тестах обязаны быть EOL-толерантными с рождения: `\r?\n` в якорях + `split(/\r?\n/)`. «Зелёный CI» ≠ «зелёный на всех чекаутах» — CI один-ОС.
 2. Ловушка конкретно JS: `.` не матчит `\r` → `(.*)$` тихо умирает на CRLF-строке, хотя выглядит EOL-нейтрально.
+
+## DEC-DEV-0191 — Fix: D7 SessionStart-хуки без hookEventName — Claude Code молча отбрасывал инжект (рецидив 0162)
+
+**Date:** 2026-07-11
+**Trigger:** после регистрации `d7-hygiene-reminder.js` (Волна 0, DEC-DEV-0181) его additionalContext не появлялся в новых сессиях, хотя хук зелёный: exit 0, валидный JSON на stdout.
+**Tag:** #bug-fix #hooks #d7 #recurrence
+
+### Context
+`d7-hygiene-reminder.js` (0181) и `rails-session-start.js` (0110) писали `hookSpecificOutput` только с `additionalContext`. Контракт Claude Code требует в `hookSpecificOutput` поле `hookEventName` — без него харнесс отвергает весь payload («missing required field "hookEventName"»), и инжект молча терялся: снаружи хук выглядит исправным. Это точный рецидив DEC-DEV-0162 (`session-fabric-status.js`, live-дефект Fabric фазы 3). Урок 0162 был записан в журнал и закреплён smoke-кейсом — но только для инцидентного файла; d7-хуки (dev-side, `dev/meta-improvement/hooks/`) в `smoke-hooks.js` не были покрыты вовсе, поэтому класс дефекта воспроизвёлся в следующих же SessionStart-хуках.
+
+### Decision
+1. Фикс обоих хуков: `hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext }` + комментарий-якорь на контракт (с отсылкой 0162/0191).
+2. 4 регрессионных smoke-кейса (пара no-op + injected на каждый хук) с фикстурным repo-root в поддиректории tmp: оба хука резолвят корень walk-up'ом от `payload.cwd` до `DEV_JOURNAL.md`+`CLAUDE.md` с fallback на РЕАЛЬНЫЙ репо — пин `cwd` на фикстуру делает кейсы детерминированными (иначе зависели бы от живого backlog/git-истории чекаута).
+3. Sweep класса: остальные носители `hookSpecificOutput` (`session-fabric-status`, `override-sweep-check`, `drift-check`, `worktree-enter-guard`, `lesson-presence-gate`) уже несут `hookEventName` — болели только эти два.
+
+### Outcome
+`smoke-hooks.js` 43→47 кейсов, 0 failures. Живое подтверждение: D7-nudge и rails-digest реально дошли до контекста сессии 2026-07-11 (working-tree фикс отработал на SessionStart).
+
+### Lessons
+1. Урок инцидента конвертируй в тест для всего КЛАССА (все SessionStart-хуки), не только для инцидентного файла: 0162 закрепили одним кейсом на fabric-хук — рецидив пришёл через два хука, построенных позже.
+2. «Хук зелёный» ≠ «инжект дошёл»: контракт-нарушение в hookSpecificOutput фейлится на стороне харнесса без следа в exit-коде хука. Новый SessionStart-хук обязан получать smoke-кейс с assertion на `hookEventName` при рождении.

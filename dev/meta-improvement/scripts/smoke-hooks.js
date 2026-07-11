@@ -728,6 +728,122 @@ const TEST_CASES = [
     expectStdoutIncludes: /hookEventName":"SessionStart[\s\S]*additionalContext[\s\S]*smoke-tool[\s\S]*integrator:verify/,
   },
 
+  // ---------- D7 SessionStart reminders (DEC-DEV-0191 regression) ----------
+  // d7-hygiene-reminder + rails-session-start shipped without hookEventName in
+  // hookSpecificOutput — Claude Code silently dropped the whole payload (recurrence
+  // of DEC-DEV-0162; these two dev-side hooks had no smoke coverage at all).
+  // Both hooks resolve the repo root by walking UP from payload.cwd to the first
+  // dir carrying DEV_JOURNAL.md + CLAUDE.md, with a fallback to the REAL repo —
+  // so each case pins cwd to a seeded fake root; otherwise the assertions would
+  // depend on the live backlog / git history of this checkout.
+  {
+    hook: 'dev/meta-improvement/hooks/d7-hygiene-reminder.js',
+    label: 'fresh-backlog-no-op',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart', cwd: path.join(TMP_DIR, 'd7-repo') },
+    env: { D7_HYGIENE_REMINDER: '1' },
+    setup: (ctx) => {
+      const root = path.join(ctx.tmpDir, 'd7-repo');
+      fs.mkdirSync(path.join(root, 'dev', 'meta-improvement'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'DEV_JOURNAL.md'), '# journal fixture\n', 'utf8');
+      fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# claude fixture\n', 'utf8');
+      // One Pending row FRESHER than the 7d threshold → every arm silent.
+      fs.writeFileSync(
+        path.join(root, 'dev', 'meta-improvement', 'audit-index.md'),
+        [
+          '## Pending',
+          '<!-- PENDING_ROWS_START -->',
+          `| \`fresh-sess\` | ${new Date().toISOString()} | smoke | \`x.jsonl\` |`,
+          '<!-- PENDING_ROWS_END -->',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+    },
+    expectStdoutAbsent: /additionalContext/,
+  },
+  {
+    hook: 'dev/meta-improvement/hooks/d7-hygiene-reminder.js',
+    label: 'g25-stale-injected-with-eventname',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart', cwd: path.join(TMP_DIR, 'd7-repo') },
+    env: { D7_HYGIENE_REMINDER: '1' },
+    setup: (ctx) => {
+      const root = path.join(ctx.tmpDir, 'd7-repo');
+      fs.mkdirSync(path.join(root, 'dev', 'meta-improvement'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'DEV_JOURNAL.md'), '# journal fixture\n', 'utf8');
+      fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# claude fixture\n', 'utf8');
+      // A fixed long-past ended_at is always ≥7d stale → the G25 arm trips.
+      fs.writeFileSync(
+        path.join(root, 'dev', 'meta-improvement', 'audit-index.md'),
+        [
+          '## Pending',
+          '<!-- PENDING_ROWS_START -->',
+          '| `stale-sess` | 2026-01-01T00:00:00.000Z | smoke | `x.jsonl` |',
+          '<!-- PENDING_ROWS_END -->',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+    },
+    expectStdoutIncludes: /hookSpecificOutput[\s\S]*hookEventName":"SessionStart[\s\S]*additionalContext[\s\S]*G25/,
+  },
+  {
+    hook: 'dev/meta-improvement/hooks/rails-session-start.js',
+    label: 'no-projector-no-op',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart', cwd: path.join(TMP_DIR, 'rails-repo-bare') },
+    env: { RAILS_AUTOGEN: '1' },
+    setup: (ctx) => {
+      // Root markers present but no scripts/rails-build.js → silent no-op.
+      const root = path.join(ctx.tmpDir, 'rails-repo-bare');
+      fs.mkdirSync(root, { recursive: true });
+      fs.writeFileSync(path.join(root, 'DEV_JOURNAL.md'), '# journal fixture\n', 'utf8');
+      fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# claude fixture\n', 'utf8');
+    },
+    expectStdoutAbsent: /additionalContext/,
+  },
+  {
+    hook: 'dev/meta-improvement/hooks/rails-session-start.js',
+    label: 'rails-digest-injected-with-eventname',
+    toolName: 'Write',
+    filePath: path.join(TMP_PRODUCT, 'features', 'FM-001-test.md'),
+    payloadExtra: { hook_event_name: 'SessionStart', cwd: path.join(TMP_DIR, 'rails-repo') },
+    env: { RAILS_AUTOGEN: '1' },
+    setup: (ctx) => {
+      const root = path.join(ctx.tmpDir, 'rails-repo');
+      fs.mkdirSync(path.join(root, 'dev', 'meta-improvement', 'scripts'), { recursive: true });
+      fs.mkdirSync(path.join(root, 'dev', 'meta-improvement', 'rails'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'DEV_JOURNAL.md'), '# journal fixture\n', 'utf8');
+      fs.writeFileSync(path.join(root, 'CLAUDE.md'), '# claude fixture\n', 'utf8');
+      // Stub projector: succeeds without touching the fixture RAILS.md below.
+      fs.writeFileSync(
+        path.join(root, 'dev', 'meta-improvement', 'scripts', 'rails-build.js'),
+        'process.exit(0);\n',
+        'utf8'
+      );
+      fs.writeFileSync(
+        path.join(root, 'dev', 'meta-improvement', 'rails', 'RAILS.md'),
+        [
+          '# RAILS',
+          '',
+          '**Summary: 3 commits · 1 area · smoke-rails-fixture**',
+          '',
+          '## Areas',
+          '| area | commits |',
+          '|---|--:|',
+          '| smoke-area | 3 |',
+          '',
+        ].join('\n'),
+        'utf8'
+      );
+    },
+    expectStdoutIncludes: /hookSpecificOutput[\s\S]*hookEventName":"SessionStart[\s\S]*additionalContext[\s\S]*smoke-rails-fixture/,
+  },
+
   // ── subagent-watchdog.js (DEC-DEV-0159, G05/G06) ─────────────────────────────
   // Deterministic watchdog over the pending-review queues + canonical persona spawns.
   // Sidecar state lives in .product/.pending/.watchdog-state.json; each case resets it
