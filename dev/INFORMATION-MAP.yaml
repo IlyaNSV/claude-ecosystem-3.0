@@ -104,7 +104,7 @@ classes:
   - id: module-contracts
     asks: "Контракт модуля Product/Design/Integrator?"
     ssot: "docs/<module>-module/SPEC.md"
-    verify: "product-module/SPEC.md · design-module/SPEC.md · integrator-module/SPEC.md"
+    verify: "docs/product-module/SPEC.md · docs/design-module/SPEC.md · docs/integrator-module/SPEC.md"
 
   - id: handoff-format
     asks: "Что входит в handoff.md? Как делегируется D2-Tech во внешний инструмент?"

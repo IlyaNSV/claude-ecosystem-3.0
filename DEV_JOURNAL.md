@@ -8445,3 +8445,24 @@ Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(P
 
 ### Lessons
 1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.
+
+## DEC-DEV-0184 — INFORMATION-MAP P3 path-guard (G34): скрипт check-information-map.js в verify-цепь + фикс абстрактных путей module-SPEC
+
+**Date:** 2026-07-11
+**Trigger:** закрытие G34 из аудита (`dev/process-fabric/audit/APPENDIX-B-gap-analysis.md`): принцип P3 `dev/INFORMATION-MAP.yaml` («каждый ssot-путь обязан резолвиться») заявлен, но guard-скрипт не построен. Root-cause класс **(e) — spec-без-импл**.
+
+### Решение
+Построен `dev/meta-improvement/scripts/check-information-map.js` (зеркалит структуру `check-counts.js`: shebang + header-контракт, `repoRoot()`, `--json`, коды выхода 0/1/2). Парсит INFORMATION-MAP.yaml как сырой текст (пути живут вкраплениями в прозе полей ssot/mirrors/verify/note, не в чистых полях), извлекает repo-относительные ссылки на файлы и проверяет резолвимость от корня. Вплетён в `npm run verify` тем же паттерном, что `check:doctype`/`check:validation-sync` (новый скрипт `check:infomap` в package.json + звено в цепи `verify`). `commands/ecosystem/verify.md` НЕ тронут: это user-facing `/ecosystem:verify` над установленным `.claude/`, а INFORMATION-MAP — dev-only (P4, в пилот не шипится) → consumer-zone не задета, CHANGELOG не нужен.
+
+### Ключевые дизайн-решения (борьба с false-positive на прозе)
+1. **Checkable-правило консервативное:** токен проверяется, только если (есть `/` ИЛИ он в наборе ROOT_DOCS) И (есть расширение .md/.js/.cjs/.mjs/.yaml/.json, ИЛИ trailing-`/`, ИЛИ glob `*`). Прозаические сокращения без расширения («artifacts/README») и голые имена инструментов без пути («gen-command-catalog.cjs») сознательно пропускаются — это не path-claim'ы.
+2. **Single-segment `word/` пропускается:** русский текст использует `/` как «или» («ROADMAP/память», «tech-debt/в бэклоге»); ASCII-регекс срезает кириллический хвост, оставляя ложный `dir/`. Реальные каталожные ссылки всегда многосегментны (`dev/tech-debt/`, `docs/pmo/artifacts/`) → требуем интерьерный `/`.
+3. **Skip out-of-repo и gitignored:** строки с `out-of-repo`/`~/` (класс memory-location: `~/.claude/.../memory/`, MEMORY.md, `project_*.md`) пропускаются целиком; gitignored-пути (регенерируемый `dev/meta-improvement/rails/RAILS.md`) отсеиваются через `git check-ignore` — их наличие на диске зависит от окружения, не контракт.
+4. **Глобы/якоря/плейсхолдеры:** `file.md#секция` → проверяется только файловая часть; `<TYPE>`/`<module>` → glob `*`; `dir/*.md` → ≥1 матч, `dir/*` → родитель-каталог, `dir/` → каталог.
+
+### Найдено/починено
+- **37 path-ссылок** проверяется, все резолвятся (green EXIT=0).
+- **Фикс в INFORMATION-MAP.yaml (line 107):** абстрактные `product-module/SPEC.md · design-module/SPEC.md · integrator-module/SPEC.md` в поле `verify` класса module-contracts не резолвились от корня (реальные файлы — под `docs/`). Приведены к полным `docs/product-module/SPEC.md · docs/design-module/SPEC.md · docs/integrator-module/SPEC.md` — консистентно с `ssot: docs/<module>-module/SPEC.md` строкой выше. Все три файла существуют; это был единственный реально-нерезолвящийся путь. Прочих битых путей нет — каталог был здоров, теперь ещё и enforced.
+
+### Lessons
+1. **Guard над human-prose YAML — упражнение в подавлении FP, не в извлечении.** Ценность P3-принципа была нулевой без исполнителя (класс-(e) долг): один устаревший `ssot:`-путь гнил бы молча. Но наивный «любой `/`-токен = путь» тонет в русской прозе (`/` как «или») → пришлось консервативно сужать checkable до «есть расширение/glob/trailing-slash И многосегментный». Правило «бери реальный образец, не выдумывай схему» (урок 0177 №1) применено к самому yaml: экстрактор откалиброван по фактическим 43 кандидатам файла, а не по воображаемой чистой схеме полей.
