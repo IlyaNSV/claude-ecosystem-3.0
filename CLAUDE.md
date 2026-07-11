@@ -24,11 +24,11 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 `last memory-sync: 2026-07-11` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
 
 **Перед стартом следующей phase** — пройди D7 [dev/meta-improvement/checklists/phase-kickoff.md](dev/meta-improvement/checklists/phase-kickoff.md) + соответствующий readiness:
-- `dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — runtime smoke S1-S5 (next pilot session)
+- `dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — 🟠 прогнан частично 2026-07-11 (S1/S3 PASS; S2/S4/S5 N/A — догон: живой маркер / свежий install; DEC-DEV-0177)
 - `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
-- `dev/gates/PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 (next pilot session); `dev/_archive/phase-6/PHASE_6_READINESS.md` archived
-- `dev/gates/PHASE_7_SMOKE_TEST_PLAN.md` — Phase 7 runtime smoke S1-S5 (next VM-визит); фаза BUILT 2026-07-11 (DEC-DEV-0176), readiness archived → `dev/_archive/phase-7/`
-- `dev/gates/S_LE_LESSON_GATE_SMOKE.md` — LESSON-* gate runtime contracts (S-LE); hard-prereq перед переводом `lesson-presence-gate.js` PreToolUse warn→strict (next pilot session, DEC-DEV-0062)
+- `dev/gates/PHASE_6_SMOKE_TEST_PLAN.md` — 🟠 прогнан частично 2026-07-11 (S4/S5/S7 PASS, S2 PARTIAL; S1/S3 N/A — догон: свежая UI FM без дизайна; DEC-DEV-0177); `dev/_archive/phase-6/PHASE_6_READINESS.md` archived
+- Phase 7 — ✅ built + **validated** 2026-07-11 (смоук прогнан, S4 PARTIAL/DEF-SMK-1; план и readiness archived → `dev/_archive/phase-7/`; DEC-DEV-0176/0177)
+- `dev/gates/S_LE_LESSON_GATE_SMOKE.md` — 🟢 цель ре-прогона достигнута 2026-07-11 (S-LE.3 полный PASS — самодедлок 0143 устранён; S-LE.1 PARTIAL = CC-ограничение под bypass); **флип warn→strict обоснован судьёй по существу — финальное решение за владельцем** (DEC-DEV-0177)
 - `dev/deferred/D7_DEADWEIGHT_CLEANUP.md` — 🅀 QUEUED maintenance work-order: прунинг D7 до работающего+используемого. Sequencing-триггер: D7 process-hardening (DEC-DEV-0083) смёржен в `main`
 
 ## Process triggers — harness contract (D7)

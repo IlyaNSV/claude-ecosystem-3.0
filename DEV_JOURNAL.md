@@ -8406,3 +8406,23 @@ Sub-phases B-G построены и в ветке: `commands/integrator/{verify
 
 ### Closure (phase-closure inline, тот же день)
 Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(Phase 7, when available)» → живые ссылки; drift-detection/contract-design/tool-docs-generator скиллы «→ Phase 7» → «v1.1+ cut, 0176»; ROADMAP статус-строки + баннер §Phase 7 «исторический план»). Step 3 hook-smoke 43/43 (в pre-commit гейте). Step 3.5 built≠validated: везде помечено «runtime smoke pending»; **finding: deferred-smoke долг = 4 плана** (PATCH_1.3.3 + PHASE_6 + S_LE + PHASE_7) — выше порога 2; прогонять ПАЧКОЙ на следующем VM-визите вместе с S1-S5, новых «built» фаз до этого не наслаивать. Step 4 consistency: SPEC §9/§10 ↔ manifest ↔ CHANGELOG сведены; counts 24/44 не задеты (команды вне счётчиков). Step 5: PHASE_7_READINESS архивирован → `dev/_archive/phase-7/` (смоук-план остаётся активным до прогона); Phase-8 skeleton не создан (фаз больше нет — решение 10). Step 2 (bootstrap на пилоте) и Step 6 (memory-sync) — после merge. Время closure ≈ 20 мин (в бюджете).
+
+## DEC-DEV-0177 — Batch-прогон 4 deferred-смоук-планов на VM-пилоте: 11 PASS / 2 PARTIAL / 6 N/A / 0 FAIL; вскрыт DEF-SMK-1 (drift-оси слепы на реальной схеме active-tools)
+
+**Date:** 2026-07-11
+**Trigger:** мандат владельца «Прогони пачку из 4 smoke-планов на VM» (closure-finding Phase 7: deferred-smoke долг = 4 плана, порог 2 превышен вдвое).
+
+### Ход
+Релиз **1.9.0** cut (`6da37c1`; Phase-7 в поставке — прогону Phase-7-смоука нужна доставка) → пре-регистрация брифа `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` (PR #157, ДО прогона; вкл. пре-вскрытые plan-drift'ы: Phase-6 S5/Q10 решён «export standalone», S2-Stitch N/A-substrate, 1.3.3 S4 env-блок в профиле) → VM-снапшот `smoke-batch-pre-run` (офлайн) → сессии **U** (update 1.9.0 + verify = Phase-6 S7) → **D** (Phase-7) → **A** (1.3.3) → **B** (Phase-6) → **C** (S-LE, strict) → harvest (по-сессионный digest из JSONL + операторские детерминированные факты) → **независимый судья opus**. Вердикт и полная таблица — бриф §Outcome (SSOT). Пилот: main `202c882` (доставка) → `54dd35a`; evidence-ветка `smoke-batch-1-9-0` (6 коммитов).
+
+### Ключевые результаты
+1. **Phase-6 S7 (update-compat) PASS детерминированно** — главный страх update'а (wipe пилот-состояния) не подтверждается: design.yaml/mockups(85 файлов)/DS побайтно целы, third-party хуки/скиллы preserved, `ecosystem_version` re-stamped.
+2. **Phase-7 живьём здоров**: verify/debug/docs PASS (debug попутно НАШЁЛ живой дефект — ложный C-03 на FM-006, whitelist отстал от v1.6.0; корректно cancelled по n). **DEF-SMK-1**: drift-оси D1/D2/D3 хука/либы слепы на реальном пилоте — парсер ждёт поле `adapter`, которого в реальной схеме active-tools.yaml НЕТ (связь tool→adapter живёт в CNT-*.yaml `transformation.script`); staleness-нога при этом работает live (нота в сессии D, молчание в чистой C). Юниты дефект не ловили — фикстуры были самодельной формы (урок №1).
+3. **S-LE: цель ре-прогона достигнута** — exemption-самодедлок 0143 live-устранён (протокол `--resume` пишет маркер и цели под strict), deny работает; S-LE.1 повторно PARTIAL (`preventedContinuation=false` при работающем feedback-инжекте — ограничение CC под bypassPermissions, не хука). Флип PreToolUse warn→strict — судья: «обоснован по существу, финал за владельцем».
+4. **1.3.3 S2/S5 = N/A по вине дизайна прогона** (не кода): `/integrator:scan` снимает session-marker на Final-cleanup → запись «после скана» шла без маркера, scope-guard легитимно no-op. Урок №2.
+5. Deferred-smoke долг 4 → 2 (PHASE_7 архивирован; S_LE — по решению флипа; 1.3.3/PHASE_6 — точечный догон: живой маркер / свежий install / честная UI FM без готового дизайна).
+
+### Lessons
+1. **Юнит-фикстуры «самодельной формы» проходят зелёными мимо реальной схемы данных** — при написании парсера реального файла пилота бери в фикстуры РЕАЛЬНЫЙ образец (или контракт-тест против схемы из add.md), иначе runtime-smoke становится первым местом, где парсер встречает правду (DEF-SMK-1).
+2. **Оркестровка смоука обязана знать side-effects шагов-предусловий**: `/integrator:scan` сам снимает маркер, который нужен следующему шагу теста, — секвенирование «scan → запись» разоружает сценарий. Пре-прогонная ревизия планов ловила contract-drift, но не эту динамику; в догоне — писать при живом маркере.
+3. **Судейская пара «пре-регистрированные поправки + anti-phantom-inflation» удержала прогон от ложных FAIL**: 6 N/A могли бы засчитаться провалами; 2 plan-drift'а были вскрыты ДО прогона грепами контрактов (вопрос владельца «не проверяешь ли устаревшее?» — прямое попадание).

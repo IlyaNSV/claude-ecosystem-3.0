@@ -2,7 +2,7 @@
 
 > **Назначение:** runtime smoke test scenarios для Phase 6 (Design Module v1.0), которые исполняются после implementation на real UI FM в pilot project.
 >
-> **Статус:** 🟡 **placeholder** — scenarios scoped на kickoff (DEC-DEV-0052, 2026-05-27) + S7 added Follow-up 2 (update-compat gap surfaced 2026-05-27 inline review); runtime execution при post-1.4.0 release pilot session.
+> **Статус:** 🟠 **прогнан частично 2026-07-11** (smoke-batch, DEC-DEV-0177; вердикты — `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome): **S4/S5/S7 PASS · S2 PARTIAL** (артефакт+гейт-механика валидны; fresh-генерация N/A-substrate) · **S1/S3 N/A-substrate** (дизайн FM-003 пред-существовал approved → iterate вместо fresh; Stitch отсутствует). Пре-регистрированная поправка: S5/Q10 решён — export standalone, handoff НЕ вызывает его. Догон S1/S3: честная UI FM без готового дизайна (кандидат — свежая фича пилота). Изначально: scenarios scoped на kickoff (DEC-DEV-0052, 2026-05-27) + S7 added Follow-up 2.
 >
 > **Принцип:** smoke test plan создаётся сейчас (kickoff phase) для substrate continuity — когда trigger fires, fresh-session implementation kickoff inherits эти scenarios и refines per actual FM context.
 

@@ -8,15 +8,15 @@
 
 ## Status banner
 
-🟡 **Ready to run.** Plan drafted as part of Sub-phase G. Execution deferred to user discretion (next pilot session OR explicit runtime smoke session).
+🟠 **Прогнан частично 2026-07-11 (smoke-batch, DEC-DEV-0177; вердикты судьи — `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome).** S1/S3 PASS; S2/S4/S5 = N/A (не упражнены по вине оркестровки прогона, НЕ FAIL кода). Догон-требования — в Run notes.
 
 | Scenario | Status | Run notes |
 |---|---|---|
-| S1 — research per-tier + approve gate | ⏳ pending | runs in `my-first-test/` after `/ecosystem:update` |
-| S2 — forbidden-path write → hook warn + PA append | ⏳ pending | needs Integrator-context session |
-| S3 — `/ecosystem:pending-actions` default filter | ⏳ pending | trivially read-only |
-| S4 — `/integrator:add` env_tier preview + prod-only warning | ⏳ pending | reuses cc-sdd or a new tool |
-| S5 — scope-guard dedup on repeated violation | ⏳ pending | follows S2 |
+| S1 — research per-tier + approve gate | ✅ PASS 2026-07-11 | silent-ignore 3.5 мин — ждала; defer — кэш DEFERRED, без chain; «1» — decision без авто-add |
+| S2 — forbidden-path write → hook warn + PA append | ⚠ N/A — догон | ядро не упражнено: `/integrator:scan` снял marker на Final-cleanup ДО записи → no-op легитимен. Догон: запись при ЖИВОМ маркере (не после scan) |
+| S3 — `/ecosystem:pending-actions` default filter | ✅ PASS 2026-07-11 | 12 pending / 63 all / 0 --source integrator / help; sentinel скрыт. Находка: PA-050/051 без `Status` (data-hygiene) |
+| S4 — `/integrator:add` env_tier preview + prod-only warning | ⚠ N/A — догон | idempotent re-verify path не рендерит Stage-2 propose. Догон: свежий install инструмента с профилем (идеально `local_dev: none`) |
+| S5 — scope-guard dedup on repeated violation | ⚠ N/A — догон | наследует S2 (нечего дедуплицировать) |
 
 ---
 
