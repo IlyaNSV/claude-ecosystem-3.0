@@ -8445,3 +8445,26 @@ Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(P
 
 ### Lessons
 1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.
+
+---
+
+## DEC-DEV-0179 — G22: handoff staleness на стороне Integrator — пересчёт хэшей реально выполняется и персистится (переиспользование Product hash-SSOT)
+
+**Date:** 2026-07-11
+**Trigger:** закрытие G22 из аудита (APPENDIX-B §1 / GAPS-RECONCILIATION §70; backlog-корзина №4).
+
+### Root cause
+handoff-spec §10 «Drift Detection» и §13 «С Integrator Module» обещали: при использовании handoff Integrator'ом (`/integrator:add`/`update`) и при `/integrator:verify` embedded `artifact_hashes` пересчитываются от `.product/` и расхождение флипает handoff в `stale`. По факту — шага пересчёта в `add.md`/`update.md` **не было вообще** (grep пуст), а единственный реальный drift-механизм жил в Product-зоне (`hooks/product/product-handoff-gate.js`, PostToolUse): он пересчитывает и предупреждает в **stderr**, но ничего не персистит — сигнал эфемерный. Итог (класс аудита (a)+(b)): спека обещала контур, которого на Integrator-стороне не существовало, а staleness нигде не оседала в файл.
+
+### Решения
+1. **Тонкая либа + переиспособление hash-SSOT, не копипаста (orchestrate-don't-duplicate).** Новая `hooks/integrator/lib/handoff-staleness.cjs` `require`-ит `hooks/product/lib/hash.js` (относительный путь `../../product/lib/hash.js` держится и в репо, и в пилоте `.claude/hooks/…`) и зовёт `computeArtifactHash` — SHA-256 / strip-frontmatter / LF-normalize НЕ реимплементированы. Альтернатива «встроить staleness в существующую `drift-checks.cjs`» отвергнута: та про **adapter**-drift (D1/D2/D3 reference↔instance + tool `last_audit`>90d) — ортогональная ось; её `staleness` — это возраст аудита тула, а не hash-дрейф артефактов handoff. Смешивать две модели в одном runDriftChecks значило бы перегрузить контракт JSON, который уже потребляет `verify.md`.
+2. **Персист — в Integrator-зону, НЕ в `.product/`.** Спека §10 говорит «status → stale», но Integrator по жёсткому контракту `add/update/verify` **никогда не пишет `.product/`** (scope-guard). Прямая запись `status: stale` в frontmatter самого handoff нарушила бы это. Разрешение: вердикт персистится в `.claude/integrator/handoff-staleness.yaml` (Integrator-зона); чтение `.product/` для пересчёта — read-only, допустимо. Регенерацию (единственное, что реально трогает handoff) инициирует владелец через `/product:handoff <FM-id> --regenerate` — Product-действие. handoff-spec §10/§13/§16 приведены к этому честному контракту (двусторонняя модель: Product-gate предупреждает, Integrator-либа персистит).
+3. **Producer/consumer split по командам.** `add.md`/`update.md` (модифицирующие) зовут либу с `--write` (persist свежего baseline). `verify.md` (read-only, один разрешённый write = `last_audit`) снапшот **читает** + считает свежий вердикт БЕЗ `--write` — single-write-инвариант verify сохранён. Так «персист в форму, которую читает verify» выполнено без нарушения инварианта.
+4. **id→path резолюция сканом `.product/`.** Имена файлов несут ASCII-slug, поэтому artifact-id (`FM-003`, `SC-005`) резолвится не по имени, а индексом: скан артефакт-директорий (mirror фильтра product-handoff-gate) + синглтоны (`rpm/glossary/design-system.md`), чтение frontmatter `id`. Отсутствующий в `.product/` артефакт → `missing_artifacts` (→ stale).
+
+### Outcome
+Сборка — opus-исполнитель (эта сессия). Реюз: `hooks/product/lib/hash.js` (алгоритм хэша), паттерн block-parse `artifact_hashes` из product-handoff-gate (grabli R5/A1 «regex ловит только первую запись» учтён — line-based). Добавлено: либа `handoff-staleness.cjs` (detect-only, CLI-seam `--root/--json/--write`, exit 0 всегда, tolerant к отсутствию `.product/`), юнит-тест 12 кейсов (вкл. hash-reuse-инвариант «frontmatter-only bump НЕ флипает stale» + «CLI никогда не пишет `.product/`»), wiring в `add.md`/`update.md`/`verify.md`, приведение handoff-spec §10/§13/§16 к честному контракту. `test:integrator` в verify-цепи (drift-checks + handoff-staleness). Полный `npm run verify` EXIT=0. Counts без изменений (24/44 — либа/команды в счётчики не входят). В пилот ещё не доставлено (следующий `/ecosystem:update`).
+
+### Lessons
+1. Когда спека обещает «X происходит при использовании», а grep реализации пуст — сначала проверь, не живёт ли половина контура в СОСЕДНЕЙ зоне (тут: Product-gate уже пересчитывал, но эфемерно). Закрытие = не «построить с нуля», а «дотянуть недостающую половину + переиспользовать SSOT алгоритма».
+2. Жёсткий zone-контракт («никогда не пишет `.product/`») может конфликтовать с буквой спеки («status → stale в handoff»). Разрешение — не нарушить контракт, а перенести персист в свою зону и оставить мутацию чужой зоны её владельцу; спеку привести к этому честно, а не оставить обещание, которое зона структурно не может выполнить.
