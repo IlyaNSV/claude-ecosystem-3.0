@@ -773,6 +773,33 @@ findings:
   # full 6-lens block для significant; single consistency block для cosmetic
 ```
 
+**Deterministic depth-floor guardrail (G30, DEC-DEV-0182):** Шаг 1 — это LLM-суждение,
+а false-cosmetic на реально значимом изменении молча пропускает проверку, которую это
+изменение требовало (watchdog G05/G06 страхует **факт** спавна DA, но не **глубину**).
+Поэтому классификатор subagent'а теперь имеет детерминированный пол: хук
+(`ic-change-trigger.js` / `br-change-trigger.js`) сканирует тот же git-diff набором
+**структурных, высокоточных** сигналов и, если хоть один сработал, штампует в
+da-pending-entry `depth_floor: significant` (+ `depth_floor_signals`) и выдаёт громкий
+stderr-override. Такая запись **принудительно** переводит subagent в full 6-lens —
+самоклассификация `cosmetic` игнорируется. Сигналы (каждый ⇒ один из перечисленных выше
+significant-триггеров):
+
+| Сигнал | Артефакт | Значение |
+|---|---|---|
+| `creation` | IC + BR | новый артефакт (нет версии в HEAD) |
+| `activation` | IC + BR | `status:` переходит в `active` (contract-binding момент) |
+| `severity-critical` | IC | `severity:` меняется на/с `critical` |
+| `entity-change` | IC | изменено значение `entity:` |
+| `category-change` | BR | изменено значение `category:` |
+
+**Границы (сознательно НЕ детерминизировано — остаётся за adaptive-LLM):** «statement
+semantic change / rewrite» (правка прозы неотличима регуляркой от cosmetic-typo) и BR
+«parameter TYPE change vs value tune» (tune `first_match`→`best_match` живёт в том же
+`parameters:` блоке — generic-сигнал дал бы false-positive на документированном cosmetic).
+Пол только **повышает** глубину; **отсутствие сигнала ⇒ поведение 1:1 как до G30** (adaptive
+сам решает, включая свободу выбрать significant). Логика — чистая, юнит-тестирована
+(`tests/product/da-depth-floor.test.cjs`), fail-open (lib недоступна ⇒ пола нет).
+
 **Преимущества vs прежней magnitude-gated модели:**
 - Никогда не пропускаем real changes (no skip → no debt накапливается)
 - Cost для cosmetic minimal (короткий context, короткий output)

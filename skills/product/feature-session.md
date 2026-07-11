@@ -360,6 +360,13 @@ After each BR or IC active write, hook (`br-change-trigger.js` или `ic-change
    Brief:
    ```
    Mode: adaptive
+     # DEPTH-FLOOR OVERRIDE (G30, DEC-DEV-0182): if the da-pending.yaml entry has
+     #   `depth_floor: significant`, the deterministic guardrail has already ruled the
+     #   change significant (signals in `depth_floor_signals`). Pass `Depth-floor:
+     #   significant` in the brief and DO the FULL 6-lens review — the subagent's own
+     #   Step-1 `cosmetic` verdict is OVERRIDDEN and must not downgrade the review.
+     #   No depth_floor field → adaptive as usual (1:1 pre-G30 behavior).
+   Depth-floor: <significant if entry.depth_floor set, else omit> (signals: <depth_floor_signals>)
    Artifact(s) under review: <BR-NNN | IC-NNN>
      # F.3 batched DA: list the WHOLE cluster (BR-NNN..BR-MMM) in ONE Agent call — still subagent_type: product-devils-advocate.
      #   There is no separate "batched" agent type; the cluster is just a multi-artifact brief to the canonical subagent.
@@ -370,7 +377,9 @@ After each BR or IC active write, hook (`br-change-trigger.js` или `ic-change
    ```
    **If the harness replies «Agent type 'product-devils-advocate' not found» → STOP.** Surface to the user that the canonical DA agent is not registered (a bootstrap/registration issue) — **do NOT silently fall back to `general-purpose` + a role-adoption prompt.** That workaround loses the agent's `model`/`tools` pin, the isolated Builder/Critic separation, and the canonical `.da-findings/` schema, and is the recurring «S8 P1 regression» (anti-pattern #10).
 5. Subagent (per refactored devils-advocate.md, DEC-DEV-0013 A.1):
-   - Step 1 classify magnitude (cosmetic | significant)
+   - Step 1 classify magnitude (cosmetic | significant) — **BUT if the brief carries
+     `Depth-floor: significant`, the deterministic G30 guardrail overrides Step 1: treat
+     as significant regardless of your own read of the diff (never downgrade to cosmetic).**
    - Step 2 adapt depth (cosmetic → quick consistency check; significant → full 6-lens)
    - Single LLM invocation (no double call)
 6. Subagent writes findings to `.product/.da-findings/<artifact-id>-<YYYY-MM-DD>-<HHMM>.md`

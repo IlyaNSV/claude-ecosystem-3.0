@@ -637,6 +637,10 @@ Integrator при `/integrator:verify`:
    - Warning пользователю
    - Предложение регенерации
 
+**Кто пересчитывает (две стороны, один hash-SSOT `hooks/product/lib/hash.js`):**
+- **Product-сторона** — `hooks/product/product-handoff-gate.js` (PostToolUse): при сохранении артефакта в `.product/` пересчитывает и предупреждает в stderr (эфемерно, не персистит).
+- **Integrator-сторона (G22, DEC-DEV-0179)** — `hooks/integrator/lib/handoff-staleness.cjs`: при `/integrator:add` и `/integrator:update` (persist) и `/integrator:verify` (read) сканирует `.product/handoffs/*-handoff.md`, пересчитывает и **персистит** вердикт в Integrator-зону `.claude/integrator/handoff-staleness.yaml`. **Read-only относительно `.product/`** — Integrator не пишет `status: stale` в frontmatter самого handoff (это зона Product Module); флаг живёт в Integrator-снапшоте. Регенерацию инициирует владелец через `/product:handoff <FM-id> --regenerate` (Product-действие).
+
 **Granularity:** per-артефакт. Можно увидеть, какие именно артефакты изменились.
 
 **Toleration threshold:** нет. Любое расхождение — warning. (В будущем можно ввести «trivial changes» detection, но в v1 — strict.)
@@ -944,7 +948,7 @@ Explicitly NOT part of this feature:
 ### С Integrator Module
 
 - **Adapter generation:** при `/integrator:add <tool>` Integrator создаёт adapter для этого инструмента, используя handoff spec как reference
-- **Drift check:** Integrator при `/integrator:verify` проверяет, что handoff'ы актуальны
+- **Drift check:** Integrator при `/integrator:verify` проверяет, что handoff'ы актуальны — через `hooks/integrator/lib/handoff-staleness.cjs` (пересчёт embedded `artifact_hashes` от `.product/`, read-only; G22 / DEC-DEV-0179). `/integrator:add` и `/integrator:update` персистят снапшот вердикта в `.claude/integrator/handoff-staleness.yaml`.
 - **Environment scanner:** Integrator перед передачей handoff во внешний tool проверяет совместимость через Environment Scanner
 
 ### С будущим Orchestrator Module
@@ -1013,6 +1017,7 @@ Implemented в skill [`skills/product/handoff-generator.md`](../../skills/produc
 - [x] **Skill `handoff-generator.md`** — Phase 4.E shipped с full §15 checklist + mode-aware DoR (DEC-DEV-0028 D.1) + hash utility integration (DEC-DEV-0025 C.1)
 - [x] **Cross-platform hash invariant** — `hooks/product/lib/hash.js` shipped (Phase 4.E); body markdown без frontmatter, LF-normalized; same module used by Phase 4.F gate hook
 - [x] **`product-handoff-gate.js` PostToolUse non-blocking hook** — Phase 4.F shipped; V-H-04 drift detection: после save артефакта в `.product/` сканирует handoffs, recomputes hashes через `lib/hash.js`, warns в stderr при mismatch (suggests `/product:handoff <FM-id> --regenerate`)
+- [x] **Integrator-side handoff staleness (G22)** — `hooks/integrator/lib/handoff-staleness.cjs` (DEC-DEV-0179): recompute embedded `artifact_hashes` от `.product/` через тот же `hooks/product/lib/hash.js`, persist в `.claude/integrator/handoff-staleness.yaml`; вызывается из `/integrator:{add,update}` (persist) + `/integrator:verify` (read). Read-only относительно `.product/`
 - [x] **`--with-da-review` flag actual DA invocation** — Phase 4.H shipped per DEC-DEV-0026: SlashCommand → `/product:da-review FM-NNN` (skill `product-da-review.md`) → consumes findings file with `source: auto-pre-handoff` → critical pending findings refuse handoff continue. B3 safe-guard pre-flight check preserved для defense против incomplete bootstrap
 - [ ] **RL-NNN bundle handoff** — v1.1+ (deferred per scope discipline); Phase 4 ships FM-NNN scope only
 - [ ] **Первый adapter (handoff → cc-sdd) через Integrator** — Phase 5 deliverable
