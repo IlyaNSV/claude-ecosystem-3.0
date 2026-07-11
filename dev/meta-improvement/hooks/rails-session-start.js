@@ -70,10 +70,13 @@ const context =
   'Consult it to see how often / in what area past work happened before editing — it answers ' +
   '"have we touched this N times / did it help / is it a skill-candidate":\n\n' + summary;
 
-// Per Claude Code SessionStart contract: hookSpecificOutput.additionalContext
-// (hookEventName is input-only; must be valid JSON on stdout; exit 0; <10k chars).
+// Per Claude Code SessionStart contract: hookSpecificOutput MUST carry
+// hookEventName: 'SessionStart' alongside additionalContext — without it the
+// harness rejects the whole payload («missing required field "hookEventName"»,
+// live-дефект Fabric фазы 3, DEC-DEV-0162; рецидив в D7-хуках — DEC-DEV-0191).
+// (Valid JSON on stdout; exit 0; <10k chars.)
 process.stdout.write(JSON.stringify({
-  hookSpecificOutput: { additionalContext: context },
+  hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext: context },
 }));
 process.exit(0);
 
