@@ -767,6 +767,21 @@ Expected output:
   - D6: Integrator (core)
   - D2-Tech, D3, D4, D5: uncovered (expected for fresh project)
 
+### Step 11.5: (Optional — ecosystem-development pilots only) Offer D7 audit opt-in
+
+The D7 **Session Audit** pipeline records a marker on every `SessionEnd` so that ecosystem-phase smoke runs can later be batch-audited (`/meta:audit-smoke`). It is **opt-in per project** and **default-OFF** — the mechanism is D7-internal and only useful for projects that exist to smoke-test the ecosystem itself (e.g., `my-first-test`). Consumer product projects do **not** want it.
+
+It is surfaced here (not silently skipped) because the opt-in living purely "in the developer's head" is a known gap (G24): forget it, and the whole audit pipeline stays silent with no signal.
+
+**Ask user** (default No):
+
+> Это пилот для смоук-тестирования самой экосистемы (будешь прогонять ecosystem-фазы здесь)? Если да — включу D7 session-audit opt-in (пишет маркеры для `/meta:audit-smoke`). Обычным продуктовым проектам это НЕ нужно. [y/N]
+
+- **Default / No / consumer project** → skip. (No change to behavior for the vast majority of installs.)
+- **Yes** → run `/ecosystem:enable-d7-audit` (idempotent — safe to re-run; it wires the `SessionEnd` hook into `.claude/settings.local.json` with the ecosystem repo's absolute path). If the ecosystem repo later moves, re-run that command — or set env `ECOSYSTEM_ROOT` — to re-point the hook (see the relocation note in `enable-d7-audit.md`).
+
+Do NOT enable this automatically without the explicit Yes — forcing it on every pilot would change behavior for all projects (which is exactly what G24's fix must NOT do).
+
 ### Step 12: Ready prompt
 
 Tell user:
