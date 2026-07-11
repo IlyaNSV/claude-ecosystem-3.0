@@ -28,7 +28,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 - `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
 - `dev/gates/PHASE_6_SMOKE_TEST_PLAN.md` — 🟠 прогнан частично 2026-07-11 (S4/S5/S7 PASS, S2 PARTIAL; S1/S3 N/A — догон: свежая UI FM без дизайна; DEC-DEV-0177); `dev/_archive/phase-6/PHASE_6_READINESS.md` archived
 - Phase 7 — ✅ built + **validated** 2026-07-11 (смоук прогнан, S4 PARTIAL/DEF-SMK-1; план и readiness archived → `dev/_archive/phase-7/`; DEC-DEV-0176/0177)
-- `dev/gates/S_LE_LESSON_GATE_SMOKE.md` — 🟢 цель ре-прогона достигнута 2026-07-11 (S-LE.3 полный PASS — самодедлок 0143 устранён; S-LE.1 PARTIAL = CC-ограничение под bypass); **флип warn→strict обоснован судьёй по существу — финальное решение за владельцем** (DEC-DEV-0177)
+- S-LE — ✅ ЗАКРЫТ 2026-07-11: ре-прогон PASS (самодедлок 0143 устранён) → **флип `lesson-presence-gate.js` warn→strict выполнен** (решение владельца; чеклист архивирован → `dev/_archive/s-le/`; S-LE.1 = known CC-caveat; DEC-DEV-0177)
 - `dev/deferred/D7_DEADWEIGHT_CLEANUP.md` — 🅀 QUEUED maintenance work-order: прунинг D7 до работающего+используемого. Sequencing-триггер: D7 process-hardening (DEC-DEV-0083) смёржен в `main`
 
 ## Process triggers — harness contract (D7)

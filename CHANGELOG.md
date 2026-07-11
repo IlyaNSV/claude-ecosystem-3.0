@@ -10,6 +10,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+### Changed
+
+- **LESSON-гейт PreToolUse (`lesson-presence-gate.js`) переведён из warn в strict по умолчанию** (решение владельца 2026-07-11 после S-LE ре-прогона; DEC-DEV-0177). Условие флипа из `S_LE_LESSON_GATE_SMOKE.md` выполнено по существу: специфический блокер — exemption-самодедлок протокола `/product:lesson` — устранён target-carve-out'ом DEC-DEV-0143 и **live-подтверждён на ре-прогоне** (deny + exemption PASS, VM-пилот, CC 2.1.205): при open-уроке мутирующие вызовы отклоняются с видимой причиной, а сам протокол разрешения пишет маркер и цели `.product/lessons/**` беспрепятственно. Известный caveat (задокументирован, не блокер): S-LE.1 Stop-prong'а — `preventedContinuation=false` под bypassPermissions (feedback-нога работает; ограничение CC-runtime, не хука). Откат без кода: `LESSON_GATE_MODE=warn`. Wiring: дефолт в хуке + manifest-description; hook-smoke 43/43 (strict-кейсы 0143 покрывают новый дефолт). Consumer-zone (`hooks/product/`); counts без изменений (24/44).
+
 ### Fixed
 
 ---
