@@ -1,6 +1,7 @@
 # Phase 7 Smoke Test Plan — Integrator maintenance (runtime, pilot session)
 
-> **Статус:** ⏳ QUEUED — runtime smoke на пилоте `my-first-test` (VM), следующий VM-визит после доставки версии с Phase 7.
+> **Статус:** ✅ **ПРОГНАН 2026-07-11 и АРХИВИРОВАН** (smoke-batch, DEC-DEV-0177; вердикты судьи — `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome): **S1/S2/S3/S5 PASS · S4 PARTIAL** (staleness-нога хука live-сработала в реальной сессии, drift-ось слепа — **DEF-SMK-1**, фикс follow-up'ом). Debug попутно нашёл живой дефект (ложный C-03 на FM-006). Phase 7 = built **и validated** (с оговоркой S4/DEF-SMK-1).
+> Изначально: ⏳ QUEUED — runtime smoke на пилоте `my-first-test` (VM), следующий VM-визит после доставки версии с Phase 7.
 > **Предусловие:** `/ecosystem:update` пилота до версии, содержащей Phase 7; активный инструмент cc-sdd (есть с Phase 5).
 > **Дисциплина:** live-run-validation класс B (механика по брифу); executor-сессии bypass; канон не править во время прогона; дефекты фиксировать письменно, чинить после.
 > **Static-эквиваленты уже покрыты** юнитами/wiring в `npm run verify` (`tests/integrator/`) — этот план только про runtime-поведение, которое статикой не поймать.
