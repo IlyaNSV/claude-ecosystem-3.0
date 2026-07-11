@@ -1849,3 +1849,22 @@ Vision §Epic E: «самостоятельный модульный трек» 
 ### Lessons
 1. Fresh-session kickoff на «Vision-эпике без ROADMAP-секции» работает: substrate-набор чеклиста + Vision-секция + свежий CHANGELOG заменяют отсутствующую фазовую секцию; 3 из 9 развилок оказались нерешаемыми без владельца, и ВСЕ три — про эмпирическую реальность за пределами репо (VM/пилот) → спайк-первым — не осторожность, а необходимость ([[feedback_substrate_premise_verification]]).
 2. Roadmap-блок генерируемой карты — «что дальше», не статус-трекер: выполненное УДАЛЯЕТСЯ, а не флипается в done (enum это принуждает). Не изобретай статусы в overlay — сначала посмотри enum селфтеста.
+
+## DEC-DEV-0195 — Спайк VM-реальности Epic E выполнен: деплойбл = pnpm monorepo (api/web/worker), инфра уже в docker-compose, E.A = systemd-юниты + release-симлинк
+
+**Date:** 2026-07-11
+**Trigger:** первый шаг порядка Epic E, выбранного владельцем на kickoff 0194 (спайк → E1 → E2); выполнен read-only ssh-разведкой в рамках VM-визита Волны 1 ([[feedback_substrate_premise_verification]] — верифицируй substrate-премисы эмпирически ДО архитектурных решений).
+**Tag:** #epic-e #spike #vm #deploy
+
+### Findings (полный факт-лист — `dev/gates/EPIC_E_READINESS.md` §Спайк)
+1. my-first-test = pnpm monorepo из 3 деплойблов: `@app/api` (NestJS), `@app/web` (Next.js), `@app/worker` (BullMQ; гейт `WORKER_AUTOSTART=1`); все — `build → node dist/…` (web — `next start`). Корневой `pnpm -r build`.
+2. Инфраструктурный слой УЖЕ работает: Postgres 16 + Redis 7 в docker-compose (healthy, healthcheck'и в compose готовы — переиспользовать в D-5, не изобретать). `.env` присутствует с DATABASE_URL/REDIS_URL.
+3. App-контейнеры compose — inert-заглушки под профилем `app` (нужны Dockerfiles + Prisma schema, «tasks 1.3+» = скоуп пилота). Контейнеризация приложений — НЕ пререквизит Epic E.
+4. На VM: systemd есть, pm2 НЕТ, docker есть (занят инфрой).
+
+### Decision
+E.A строится как **systemd-юниты на `node dist/main.js` поверх `releases/<ts>` + `current`-симлинка** (подтверждает D-1/D-4 kickoff'а: deploy локален внутри VM, симлинк-swap rollback). Docker-профиль compose — альтернативный путь ПОСЛЕ появления Dockerfiles у пилота (не v1; отвергнут как блокирующийся на чужом скоупе). Prisma-миграции — включить шагом `deploy` (наличие/форму схемы в `packages/db` проверить при сборке E.A).
+
+### Lessons
+1. Спайк подтвердил ценность порядка «спайк-первым»: две kickoff-неизвестности (менеджер процесса; есть ли БД) закрылись 10-минутной read-only разведкой — а неверная ставка на docker-деплой заблокировалась бы о несуществующие Dockerfiles чужого скоупа.
+2. Compose-файл пилота уже несёт готовые healthcheck-определения — D-5 healthcheck-нога должна их переиспользовать (pg_isready/redis-cli ping для инфры; для app — HTTP-проба), не изобретать параллельный контракт.

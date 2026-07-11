@@ -42,7 +42,12 @@
 
 ## Суб-фазы
 
-**Спайк (совместить с ближайшим VM-визитом):** эмпирия my-first-test как деплойбла — build-шаг? БД/миграции? порт/старт-скрипт? наличие systemd/pm2/docker на VM; подтверждение локальности deploy. Выход = факт-лист для E.A. (Урок [[feedback_substrate_premise_verification]]: верифицируй substrate-премисы эмпирически ДО архитектурных решений.)
+**Спайк — ✅ ВЫПОЛНЕН 2026-07-11 (VM-визит, read-only ssh; DEC-DEV-0195).** Факт-лист:
+- Деплойбл = **pnpm monorepo**, 3 сервиса: `@app/api` (NestJS: `nest build` → `node dist/main.js`), `@app/web` (Next.js: `next build` → `next start`), `@app/worker` (tsc → `node dist/main.js`; BullMQ, гейт `WORKER_AUTOSTART=1`). Корневой `pnpm -r build`; Node v22.23.1, pnpm-workspace.
+- Инфраструктура **уже живёт**: PostgreSQL 16 (`mft-postgres`) + Redis 7 (`mft-redis`) в docker-compose, оба healthy (healthcheck'и уже определены в compose — pg_isready / redis-cli ping); `.env` присутствует (DATABASE_URL/REDIS_URL/POSTGRES_*/BCRYPT_COST + внешние API-ключи).
+- **App-сервисы compose — inert-заглушки** под профилем `app` («require Dockerfiles + Prisma schema owned by tasks 1.3+») — контейнеризация app = скоуп самого пилота, НЕ блокер Epic E.
+- На VM: docker + systemd 255 есть, **pm2 НЕТ**. Порты 5432/6379 заняты инфрой; app-порты свободны.
+- **Вывод для E.A:** менеджер процесса = **systemd-юниты** на `node dist/main.js` поверх `releases/<ts>`+`current`-симлинка (кратчайший путь, D-1 подтверждён: deploy локален внутри VM); docker-профиль — альтернатива после Dockerfiles пилота (не v1). Prisma-миграции — учесть шагом deploy (`migrate deploy`) — наличие схемы проверить в `packages/db` при сборке E.A.
 
 **E1 — deploy/rollback ядро** (owner-гейт после E.A):
 - **E.A** — Integrator D3-runtime capability: deploy-skill + контракт CNT-* + role-агент `deployer` (D3-05/06).
