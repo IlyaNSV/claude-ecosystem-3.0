@@ -172,10 +172,10 @@
 <script id="proc-data" type="application/json">{
   "_build": {
     "date": "2026-07-11",
-    "sha": "09626f7",
+    "sha": "339a7ac",
     "lanes": 5,
-    "processes": 20,
-    "steps": 108,
+    "processes": 21,
+    "steps": 112,
     "artifacts": 24,
     "hooks": 13,
     "rules": 28
@@ -2252,6 +2252,90 @@
     },
     {
       "data": {
+        "id": "proc:IMPL-SYNC",
+        "parent": "lane:product",
+        "label": "Impl-Sync · result ingest (reverse-flow)",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "HO",
+        "command": "product:impl-sync",
+        "doc": "commands/product/impl-sync.md",
+        "what": "Обратный поток (E15): результат имплементации возвращается в .product/. Детерминированный сенсор impl-evidence.cjs (run-вердикты / fabric-done / external spec, переиспользует coverage-oracle id-экстракторы) + approve-gated запись FM.status->shipped + опциональный блок impl_sync. Product — единственный писатель .product/ (Integrator SPEC §8.3)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:IMPL-SYNC:IS.collect",
+        "parent": "proc:IMPL-SYNC",
+        "label": "Collect evidence (sensor)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "IMPL-SYNC",
+        "what": "impl-evidence.cjs: runs + fabric + external + handoff coverage. Read-only, ничего не пишет.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": [
+          "spec",
+          "handoff"
+        ]
+      }
+    },
+    {
+      "data": {
+        "id": "s:IMPL-SYNC:IS.disposition",
+        "parent": "proc:IMPL-SYNC",
+        "label": "Per-FM disposition",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "IMPL-SYNC",
+        "what": "ready-to-ship / gate-not-passed / validation-blocked (V-01) / no-evidence / already-shipped / deprecated.",
+        "review": "",
+        "hooks": [],
+        "rules": [
+          "V-01"
+        ],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:IMPL-SYNC:IS.gate",
+        "parent": "proc:IMPL-SYNC",
+        "label": "Approve gate [Y/E/N]",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "IMPL-SYNC",
+        "what": "Без явного Y ничего в .product/ не меняется.",
+        "review": "strategic",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:IMPL-SYNC:IS.apply",
+        "parent": "proc:IMPL-SYNC",
+        "label": "Flip FM -> shipped + impl_sync",
+        "kind": "task",
+        "status": "shipped",
+        "process": "IMPL-SYNC",
+        "what": "FM.status->shipped + updated + опциональный canonical-блок impl_sync (absent==поведение 1:1). Никакие другие поля не трогаются.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [
+          "FM"
+        ],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
         "id": "proc:P3o",
         "parent": "lane:orchestrator",
         "label": "P3 · batch-features-to-cc-sdd",
@@ -3669,6 +3753,33 @@
     },
     {
       "data": {
+        "id": "art:spec__s:IMPL-SYNC:IS.collect__consumes",
+        "source": "art:spec",
+        "target": "s:IMPL-SYNC:IS.collect",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "art:handoff__s:IMPL-SYNC:IS.collect__consumes",
+        "source": "art:handoff",
+        "target": "s:IMPL-SYNC:IS.collect",
+        "type": "consumes",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:IMPL-SYNC:IS.apply__art:FM__produces",
+        "source": "s:IMPL-SYNC:IS.apply",
+        "target": "art:FM",
+        "type": "produces",
+        "label": ""
+      }
+    },
+    {
+      "data": {
         "id": "art:handoff__s:P3o:P3o.read__consumes",
         "source": "art:handoff",
         "target": "s:P3o:P3o.read",
@@ -4425,6 +4536,33 @@
     },
     {
       "data": {
+        "id": "s:IMPL-SYNC:IS.collect__s:IMPL-SYNC:IS.disposition__sequence",
+        "source": "s:IMPL-SYNC:IS.collect",
+        "target": "s:IMPL-SYNC:IS.disposition",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:IMPL-SYNC:IS.disposition__s:IMPL-SYNC:IS.gate__sequence",
+        "source": "s:IMPL-SYNC:IS.disposition",
+        "target": "s:IMPL-SYNC:IS.gate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:IMPL-SYNC:IS.gate__s:IMPL-SYNC:IS.apply__sequence",
+        "source": "s:IMPL-SYNC:IS.gate",
+        "target": "s:IMPL-SYNC:IS.apply",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
         "id": "s:P3o:P3o.read__s:P3o:P3o.preflight__sequence",
         "source": "s:P3o:P3o.read",
         "target": "s:P3o:P3o.preflight",
@@ -4736,6 +4874,15 @@
         "target": "proc:P6o",
         "type": "sequence",
         "label": "impl → validate"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P6o__proc:IMPL-SYNC__delegate",
+        "source": "proc:P6o",
+        "target": "proc:IMPL-SYNC",
+        "type": "delegate",
+        "label": "impl result → .product/ ingest"
       }
     },
     {
