@@ -8445,3 +8445,22 @@ Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(P
 
 ### Lessons
 1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.
+
+---
+
+## DEC-DEV-0181 — D7-гигиена: консолидированная SessionStart-напоминалка на застой feedback-контуров G25/G26/G27
+
+**Date:** 2026-07-11
+**Trigger:** закрытие трёх Tier-3-разрывов из GAP-анализа процесс-фабрики (`dev/process-fabric/audit/APPENDIX-B-gap-analysis.md`): capture есть, автоматического потребления нет — G25 (Pending-маркеры audit-index копятся, ничто не обязывает `/meta:audit-smoke`), G26 (feedback-intake построен, но reconciliation — «человек должен вспомнить»), G27 (patch-candidates [Y/N/E/D] висят месяцами без reminder).
+
+### Решения
+1. **Один консолидированный хук, а не три раздельных (главный tradeoff).** Существующая тройка warn-напоминалок (`dev-journal/phase-closure/memory-drift-reminder`) — `git commit`-gated на PostToolUse:Bash, потому что их триггер — событие коммита. У G25/G26/G27 нет коммит-события: это **standing-backlog** условия (застой во времени). Поэтому естественный триггер — **SessionStart**: показать бэклог один раз за сессию, а не на каждый Bash-вызов (что дало бы шум × N команд). Раздельные три хука зеркалили бы паттерн тройки, но: (а) триггер у всех трёх один и тот же (SessionStart) → три записи в settings + три инъекции additionalContext = лишний шум; (б) общие helpers (repoRoot/пороги/формат) дублировались бы. Выбран один файл `d7-hygiene-reminder.js` с одной инъекцией, печатающей только сработавшие плечи. Зеркалит контракт `rails-session-start.js` (additionalContext, exit 0 всегда, no-op-safe, env-тумблер `D7_HYGIENE_REMINDER=0`).
+2. **Detect-only, порог-gated, честные сигналы (не выдумка путей).** Плечи бьют по РЕАЛЬНЫМ структурам данных: G25 — Pending-строки между сентинелами `PENDING_ROWS_START/END` в `audit-index.md`, поле `ended_at` (ISO), порог ≥7 дней; G27 — фронтматтер `patch-candidates/*.md` `verdict: survived` + `gate: pending`, дата последнего движения = git-log `%cI` файла (fallback mtime), порог ≥14 дней. Пороги консервативны — свежий capture не ноет. Никаких записей в файлы (иначе рекурсия Write→SessionStart), только чтение + additionalContext.
+3. **G26 — consolidate-don't-duplicate: переиспользуем настоящий `feedback-intake.js`.** Вместо эвристики «уже портировано?» плечо вызывает реальный `intake()` (дедуп против DEV_JOURNAL) над in-repo FB-ledger и считает находки `source=feedback-journal` + `disposition=open`. Session-audit-находки из ndjson (79 open на момент) СОЗНАТЕЛЬНО исключены — это домен patch-synth (G27-путь), а не intake-триггер; иначе плечо шумело бы всегда. Честная граница scope: пилотный outbox (`.product/.upstream/feedback-outbox.md`) лежит по внешнему пути, репо его не знает — плечо покрывает только in-repo FB-ledger-руку; человек, принёсший outbox, всё равно гонит `feedback-intake --outbox` руками (сообщение это проговаривает).
+
+### Outcome
+Реализация — main-модель (событийная ткань + honest-scope суждение = не делегируемо). Регистрация — `.claude/settings.local.json` SessionStart (gitignored, локальная — как rails); doc-обновление enumerating-таблиц `CONVENTIONS.md` (дерево hooks + activation-triggers). Верификация: юнит-смоук 11/11 (три чистых детектора с фикстурами: пусто/свежий/застоявшийся/mix/битый вход), end-to-end SessionStart-прогон против реального репо (сработало ровно плечо G26 — FB-LR-11 реально open; G25=0 pending, G27=0 survived-pending), тумблер OFF молчит, пустой stdin no-op-safe. Полный `npm run verify` EXIT=0. Тестов для D7-напоминалок в репо нет (не принятый паттерн) → ручной смоук с фиктивным входом, как указано в брифе; хук экспортирует чистые детекторы для тестируемости.
+
+### Lessons
+1. Триггер хука выбирается по **природе условия**, а не по зеркалу соседних хуков: commit-события → PostToolUse:Bash; застой-во-времени → SessionStart. Копирование паттерна тройки без этой проверки дало бы шум на каждый Bash-вызов.
+2. Напоминалка о застое переиспользует настоящий реконсилятор, а не эвристику: `intake()` уже умеет «портировано ли?» через дедуп DEV_JOURNAL — своя копия этой логики разошлась бы с источником (тот же класс «второй источник правды», что и урок 0178).
