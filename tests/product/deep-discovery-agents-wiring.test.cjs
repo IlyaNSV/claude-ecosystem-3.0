@@ -42,10 +42,11 @@ function assert(cond, msg) {
 
 // ---- frontmatter helper (name/description/tools/model + read-only tool roster) ----
 function frontmatter(text) {
-  const m = /^---\n([\s\S]*?)\n---/.exec(text);
+  // \r? — Windows-чекаут с autocrlf отдаёт CRLF; парсер обязан быть EOL-толерантным
+  const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
   if (!m) return null;
   const fm = {};
-  for (const line of m[1].split('\n')) {
+  for (const line of m[1].split(/\r?\n/)) {
     const kv = /^([a-z_]+):\s*(.*)$/.exec(line);
     if (kv) fm[kv[1]] = kv[2].trim();
   }
