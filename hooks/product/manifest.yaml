@@ -112,6 +112,13 @@ hooks:
         matcher: "Write|Edit"
     description: "Deterministic watchdog over the pending-review queues + canonical persona spawns (DEC-DEV-0159; closes audit gaps G05/G06). SubagentStop: a canonical persona (product-devils-advocate / architect-advisor / qa-advisor / ux-advisor) finishing records consumption of the artifact ids from its spawn prompt into the sidecar .product/.pending/.watchdog-state.json (producer yamls never mutated — their formatters whitelist fields); a persona/DA brief that ran under general-purpose/claude → loud stderr S8 P1 regression warning (review NOT valid, respawn canonical, G06). Stop: unconsumed pending entries at session close → stderr reminder (spawn-intent dies with the session, queue does not — G05). PostToolUse (Write|Edit on da/advisor-pending.yaml): entry disappeared without recorded consumption → loud stderr (incident class 1ff552c0c6b4 / DEC-DEV-0038 #1). Warn-only (exit 0 always — lesson-gate stays the only blocking hook), fail-open, env SUBAGENT_WATCHDOG=0 silences. First SubagentStop hook in the ecosystem."
 
+  - id: override-sweep-check
+    file: override-sweep-check.js
+    events:
+      - type: SessionStart
+        matcher: ""
+    description: "Proactive expired-approve_override listener (DEC-DEV-0180; closes audit gap G28). On session start, IFF the project carries a .product/ tree, runs the read-only sweep (lib/override-sweep.cjs) over every artifact's approve_overrides[] and, if any entry is expired (expires_at parses AND < now — the same condition buildOverrideMap uses to deactivate it) OR malformed (unparseable expires_at, which the validator treats as still-active), injects a compact one-line-per-finding note via SessionStart additionalContext pointing at the --clean sweeper. Inline-consistent: expired entries are already ignored by artifact-validate.js (rule re-applied), so this only surfaces the dead config for reaping — it never changes validation outcome. Detect-only, non-blocking (exit 0 always), fail-open; silent no-op when clean, when there is no .product/ dir (incl. the ecosystem-dev repo), or when disabled via env PRODUCT_OVERRIDE_SWEEP=0. The mutating reap lives only behind the explicit CLI `node .claude/hooks/product/lib/override-sweep.cjs --clean`, never in this hook. SessionStart additionalContext carries hookEventName per DEC-DEV-0162."
+
   - id: worktree-enter-guard
     file: worktree-enter-guard.js
     events:
