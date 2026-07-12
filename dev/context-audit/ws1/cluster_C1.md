@@ -142,8 +142,8 @@
 
 | Источник | URL | Что несёт | Флаги |
 |---|---|---|---|
-| **Cooper 1971**, Information Storage and Retrieval 7 | [SD](https://www.sciencedirect.com/science/article/abs/pii/0020027171900246) | **Уже в prior_knowledge** (relevance ≠ utility). Цитировать, не пере-открывать. | — |
-| **Cooper & Maron 1978**, JACM 25(1) | [ACM](https://dl.acm.org/doi/abs/10.1145/582415.582416) | Релевантность как субъективная полезность (utility-theoretic indexing). Ранняя версия той же идеи. | — |
+| **Cooper 1971**, *A definition of relevance for information retrieval*, Information Storage and Retrieval 7(1):19-37 | [SD](https://www.sciencedirect.com/science/article/abs/pii/0020027171900246) | 🔴 **НЕ источник «relevance ≠ utility»** — определяет **логическую** релевантность (через логическое следование). *[D8: prior_knowledge брифа цитировал эту работу неточно; см. FIX_citations §1a]* | — |
+| **Cooper & Maron 1978**, *Foundations of Probabilistic and Utility-Theoretic Indexing*, JACM 25(1):67-80 | [DOI](https://doi.org/10.1145/322047.322053) | **Первоисточник различения relevance ≠ utility**: релевантность как субъективная полезность (utility-theoretic indexing). *[D8: прежний DOI `10.1145/582415.582416` вёл на чужую статью — Amati & van Rijsbergen 2002; см. FIX_citations §1b-1c]* | — |
 | **Schamber, Eisenberg & Nilan 1990**, IP&M 26(6) | [SD](https://www.sciencedirect.com/science/article/abs/pii/030645739090050C) | Релевантность динамична/ситуативна — контраргумент чисто топикальному критерию. | — |
 | **van Rijsbergen 1979**, *Information Retrieval* | [pdf](https://openlib.org/home/krichel/courses/lis618/readings/rijsbergen79_infor_retriev.pdf) | Probability Ranking Principle. Фундамент retrieval. | — |
 | **Sperber & Wilson 1986/95**, *Relevance: Communication and Cognition* | [обзор](https://www.dan.sperber.fr/wp-content/uploads/2004_wilson_relevance-theory.pdf) | **Релевантность = когнитивный эффект ÷ усилие обработки.** Прообраз критерия «стоит ли токен места». Ключ к тому, почему дистилляция может ПОБЕЖДАТЬ первоисточник у ограниченного читателя (см. §3, п. 11). | — |
