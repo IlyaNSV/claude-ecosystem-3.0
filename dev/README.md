@@ -36,6 +36,7 @@
 
 - `PHASE_D_IMPLEMENTATION_PLAN.md` · `PHASE_D_DOCS_WIKI_READINESS.md` · `wiki-design.md` — Phase D Wiki initiative (DEFERRED to v1.1+, DEC-DEV-0046)
 - `D7_DEADWEIGHT_CLEANUP.md` — work-order прунинга D7; исполнен repo-wide deadweight-sweep'ом 2026-07-11 (см. статус в файле)
+- `CONTEXT_SEAM_PROTOCOL.md` — кандидат-механизм «протокол контекстных швов» (PROPOSED, не активирован; DEC-DEV-0196). В `CLAUDE.md`/память намеренно НЕ внесён до решения владельца
 
 ---
 
