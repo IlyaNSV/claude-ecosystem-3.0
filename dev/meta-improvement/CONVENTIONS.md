@@ -89,6 +89,7 @@ dev/meta-improvement/
 │   ├── dev-journal-reminder.js         # PostToolUse Bash — warn: feat/fix commit без DEV_JOURNAL
 │   ├── memory-drift-reminder.js        # PostToolUse Bash — warn: status-file commit → memory-sync due
 │   ├── rails-session-start.js          # SessionStart — inject work-rails digest (DEC-DEV-0110)
+│   ├── context-map-session-start.js    # SessionStart — inject context-map digest: MAP.md + INFORMATION-MAP.yaml (DEC-DEV-0197/D1)
 │   ├── d7-hygiene-reminder.js          # SessionStart — warn: stale G25/G26/G27 feedback-contour backlog (DEC-DEV-0181)
 │   └── session-audit.js                # SessionEnd marker writer (для pilot projects)
 ├── prompts/                     # Session Audit v2 auditor prompts
