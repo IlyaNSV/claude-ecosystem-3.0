@@ -24,6 +24,8 @@
     "check:doctype": "node dev/meta-improvement/scripts/check-guide-doctype.cjs",
     "check:validation-sync": "node dev/meta-improvement/scripts/check-validation-sync.cjs",
     "check:infomap": "node dev/meta-improvement/scripts/check-information-map.js",
+    "check:context": "node dev/meta-improvement/scripts/context-health.js",
+    "check:context:strict": "node dev/meta-improvement/scripts/context-health.js --strict",
     "smoke:procmap": "node tests/guide/procmap.smoke.mjs",
     "smoke:mapshell": "node tests/guide/mapshell.smoke.mjs",
     "test:adapters": "node tests/adapters/handoff-ccsdd.contract.test.cjs",
