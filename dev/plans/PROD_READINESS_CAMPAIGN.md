@@ -46,7 +46,7 @@
 - **Repo-сторона Epic E (E.A · E.B · E.C · E.E · E.F) — строится БЕЗ VM.** Волны A/B/C идут в полном объёме прямо сейчас. Решение владельца соблюдено.
 - **Живые ноги — жёстко заблокированы:** E.D (P7 живой boot), E.G (live-смоук deploy→rollback→floor), **все четыре догона Волны 1**, Tier-B консилиума.
 - ⇒ **Починка VM должна случиться ДО фазы прогонов, а не «в самом конце».** Это единственное отклонение от буквы решения №5 — и оно не по вкусу, а по факту: «обновить пилот» физически невозможно на мёртвой VM.
-- **Чинит владелец, не агент:** отключить Hyper-V / VBS / Credential Guard (Windows features + BIOS + перезагрузка). Ни один исполнитель этого не сделает.
+- **Чинит владелец, не агент** (агент не админ — elevation недоступен). **Диагноз подтверждён 2026-07-14:** Hyper-V hypervisor + VBS + Memory Integrity (HVCI `Enabled:1`) держат VT-x → VirtualBox на NEM-пути. **⚠ XOR-развилка:** WSL2 (Ubuntu) + Docker Desktop оба работают через Hyper-V; отключение Hyper-V оживит VirtualBox-пилот, но **вырубит WSL2+Docker** до обратного включения. Обратимые скрипты подготовлены (`vbox-vtx-ON.ps1` / `vbox-vtx-OFF.ps1`, elevated + reboot). Runbook продолжения — **§11 ШОВ**.
 
 **Единственное, что можно прогнать живьём БЕЗ VM:** **Tier A консилиум-гейта** (детерминированный sanity `autonomy-policy.cjs resolve`, 2 минуты, на хосте) — см. E5-A.
 
@@ -264,6 +264,53 @@ node orchestrator/lib/autonomy-policy.cjs resolve --operation-class prod_deploy 
 - Есть ли блок `autonomy:` в `.claude/product.yaml` пилота (вероятно нет — soft-миграция без backfill).
 - Природа adapter-drift (stitch/open-design) на пилоте — в репо ровно одна строка.
 - **Ambient-защиты от прямого `bash`-деплоя мимо резолвера НЕТ** (полного аудита манифестов не делали — исходить из того, что её нет).
+
+---
+
+## 11. ⏭ ШОВ — точка продолжения после восстановления VM (пункты 2 и 3)
+
+> **Кто читает:** я (или следующая сессия) после того, как владелец починил VM. Repo-сторона Epic E ЗАВЕРШЕНА (`git log`: `db6d23d`→`9c03802`, PR #189). Здесь — строгий порядок «оживить пилот → прогнать → нарезать релиз». **Recovery-дисциплина: сначала верифицируй фактическое состояние (git/ssh/verify), не доверяй этому шву как факту — он снимок на 2026-07-13.**
+
+### Предусловие (проверить ПЕРВЫМ, до всего)
+```
+# 1. VM жива?
+ssh -p 2222 cc-dev@127.0.0.1 "uptime && systemctl is-system-running"   # ключ vm-claude-factory
+# 2. PR #189 — смёржен владельцем? Если да — repo-сторона в main.
+gh pr view 189 --json state,mergedAt
+# 3. На VM: пилот на актуальном HEAD? Экосистема какой версии?
+ssh ... "cd ~/projects/my-first-test && git log --oneline -1 && cat .claude/.ecosystem-version 2>/dev/null"
+```
+Скилл операторки VM — `vm-factory-ops` (ssh/снапшоты/tmux-пульт/harvest). Грабли VM — в нём же.
+
+### Шаг A — доставка релиза в пилот (пункт 2, ПЕРЕД прогонами)
+**НЕ резать релиз до прогонов (см. пункт 3 ниже) — доставляется рабочая ветка/main, не тег.**
+1. Снапшот VM `pre-epic-e-run` (пред-deploy страховка).
+2. На VM обновить экосистему до состояния с Epic E: `/ecosystem:update` (**онлайн-путь** — репо публичный; **НЕ `--offline`**: глобальный кэш протух на апрель, §Волна D2).
+3. `/ecosystem:verify` = Healthy (версия согласована, 0 🔴). Если verify красный из-за DEF-CTX-6 (память на VM устарела) — это известный не-код-долг, `CONTEXT_HEALTH_STRICT=0` для обхода, не блокер деплоя.
+4. Оснастить deploy-capability: `/integrator:provision deploy-staging` → CNT в `.claude/integrator/contracts/` (draft). **Здесь же закрыть пробел B2/§10:** сверить байт-точную форму CNT с реально записанным инстансом (E.A строился по схеме).
+
+### Шаг B — прогоны Волны E (пункт 2), порядок по риску
+Приоритет — **догоны Волны 1 приоритетнее новых Epic E** (substrate-graduation-гейт, §Волна E). Детальные чек-листы — **§9**. Порядок:
+1. **E5-B консилиум Tier B** (§9 E5-B) — единственный никогда-не-проверенный путь = safe-fallback (слабый вердикт → human-gate). `.claude/product.yaml` вероятно без `autonomy:`-блока (§10) — добавить перед прогоном.
+2. **E3 run-ledger live** (§9 E3) — Шаг 0 инспекцией (`ls .claude/orchestrator/runs/`), возможно уже закрыт.
+3. **E4 `/product:impl-sync` live** (§9 E4).
+4. **E1 (1.3.3 S2/S4/S5)** + **E2 (PHASE_6 S1/S3)** — §9, требуют подготовленного субстрата (живой маркер / свежая UI FM).
+5. **E6 `/integrator:verify`** на пред-существующем adapter-drift (stitch/open-design).
+6. **🆕 E.D — P7 живой boot** (`bootSmoke:true` на реальном dev-env пилота) — суб-фаза Epic E, `dev/gates/EPIC_E_SMOKE_TEST_PLAN.md` контекст.
+7. **🆕 E.G — смоук Epic E deploy-контура** — прогнать `dev/gates/EPIC_E_SMOKE_TEST_PLAN.md` целиком (6 сценариев: happy deploy · **авто-rollback = сердце** · floor на prod · L1-гейт · просадка субстрата · rollback без предыдущего). **Executor/reviewer separation** (как batch-смоук 0177): исполнитель прогоняет, нейтральный судья грейдит по транскрипту.
+
+Каждый прогон: evidence (ledger/run.json/events.ndjson/PA), вердикт, findings → DEV_JOURNAL, дефекты → follow-up фиксы.
+
+### Шаг C — cut релиза (пункт 3, ПОСЛЕ live-валидации)
+**Триггер cut — S1-S3 смоука Epic E = PASS** (deploy-контур live-валидирован). Не раньше.
+1. `checklists/patch-cut.md` — нарезать из `[Unreleased]` (там накоплено: Волна A + весь Epic E; это **minor** → 1.12.0).
+2. Тег + cut-коммит + ROADMAP «Где мы сейчас».
+3. Доставить тег в пилот (если прогоны шли на рабочей ветке — переключить пилот на релиз).
+4. Epic E graduation: обновить `EPIC_E_READINESS.md` (E.D/E.G done), `SUBSTRATE_GRADUATION_GATE.md` (компонент run-ledger).
+5. Memory-sync + закрыть кампанию в этом трекере.
+
+### Если что-то вскрылось на прогоне
+Дефект deploy-контура на живом субстрате → follow-up фикс на repo-стороне (executor/reviewer как в этой сессии) ПЕРЕД cut. Cut фиксирует **валидированное** состояние, не «построенное».
 
 ---
 
