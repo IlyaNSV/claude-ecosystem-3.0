@@ -12,6 +12,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **Ложная сводка смоук-батча DEC-DEV-0177 растиражирована по документам — исправлена** (DEC-DEV-0197 / D13). Судья (opus) верно выставил все **22 per-сценарных вердикта**, но **ошибся в собственной агрегации**: назвал `11 PASS / 2 PARTIAL / 6 N/A / 0 FAIL` — **сумма 19**, не сходится ни с заявленными 22 грейд-точками, ни с его же таблицей (перечислил пять N/A, назвав шесть; назвал два PARTIAL, перечислив три; опустил carry-forward-строки S-LE.2 и S-LE.6). Ложные числа были скопированы verbatim в бриф → DEV_JOURNAL → CHANGELOG `[1.9.1]` → ROADMAP → память и прожили там ~2 суток. Истина по таблице судьи — **`14 PASS / 3 PARTIAL / 5 N/A / 0 FAIL`** (сумма 22 ✓; подтверждено двумя независимыми пересчётами транскрипта). **Per-сценарные вердикты не пересуживались и не менялись** — правились только агрегаты и две пропущенные строки; улика (прежние числа) сохранена в каждом месте правки. SSOT — `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome. **Урок:** сводку LLM-судьи нельзя тиражировать, не пересчитав её против его же таблицы — сумма не билась с n=22, и этого не проверил никто.
+
 ---
 
 ## [1.11.0] — 2026-07-11
@@ -56,7 +58,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [1.9.1] — 2026-07-11
 
-**Patch release — accumulated since 1.9.0:** итоги batch-прогона 4 смоук-планов (DEC-DEV-0177, судья: 11 PASS / 2 PARTIAL / 6 N/A / 0 FAIL) конвертированы в поставку: **LESSON-гейт PreToolUse флипнут warn→strict** (решение владельца; условие — S-LE ре-прогон PASS фикса 0143) + **три follow-up фикса** (DEC-DEV-0178): DEF-SMK-1 (drift-оси видят реальную схему через CNT-контракты), ложный C-03 (whitelist → `v1.x`), деплой adapter-фикстуры в `.claude/adapters/fixtures/`. Counts без изменений (24/44). **Post-delivery шаг в пилоте:** `/integrator:update cc-sdd --repair` — докатить C-03-фикс до instance-адаптера (D2/D3 покажут drift reference↔instance).
+**Patch release — accumulated since 1.9.0:** итоги batch-прогона 4 смоук-планов (DEC-DEV-0177, судья: 14 PASS / 3 PARTIAL / 5 N/A / 0 FAIL — *агрегаты исправлены 2026-07-13, D13 / DEC-DEV-0197: ранее здесь стояло ложное `11 / 2 / 6` из ошибочной самосводки судьи; per-сценарные вердикты не менялись*) конвертированы в поставку: **LESSON-гейт PreToolUse флипнут warn→strict** (решение владельца; условие — S-LE ре-прогон PASS фикса 0143) + **три follow-up фикса** (DEC-DEV-0178): DEF-SMK-1 (drift-оси видят реальную схему через CNT-контракты), ложный C-03 (whitelist → `v1.x`), деплой adapter-фикстуры в `.claude/adapters/fixtures/`. Counts без изменений (24/44). **Post-delivery шаг в пилоте:** `/integrator:update cc-sdd --repair` — докатить C-03-фикс до instance-адаптера (D2/D3 покажут drift reference↔instance).
 
 ### Changed
 
