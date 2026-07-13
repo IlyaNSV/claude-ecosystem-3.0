@@ -1,0 +1,50 @@
+ ▎ Extended through July 19
+ ▎ We're extending Claude Fable 5 access on all paid plans, as well as keeping Claude Code’s weekly rate limits 50% higher, through July 19.
+ ▎
+ ▎ As before, you can use up to half of your weekly usage limit on Fable 5. After that, you can keep using Fable 5 with usage credits, or switch to another model to keep working within your remaining
+ ▎ limits.
+ ▎
+ ▎ More details here: https://support.claude.com/en/articles/15424964-claude-fable-5-promotional-access
+   +2 more · /status
+  ⎿  SessionStart:startup hook error
+  ⎿  Failed with non-blocking status code: /bin/sh: 1: bd: not found
+
+❯ Приведи README в порядок.
+
+● ITP: T1 — допущение: речь о корневом README.md проекта; «привести в порядок» = вычитка/актуализация (структура, устаревшие факты, битые ссылки, версии), без переписывания смысла. Правка doc-файла
+  дёшево-обратима (git), поэтому действую, не блокируя.
+
+  Сначала посмотрю, что вообще есть.
+
+  Listed 1 directory
+
+● Корневого README.md в проекте нет. Есть .claude/README.md (обзор экосистемы), .beads/README.md, и несколько в backup-папках. Уточню состояние.
+
+  Ran 1 shell command
+
+● Важная находка: корневого README.md у проекта my-first-test нет вообще. Единственные README в git — это внутренние файлы экосистемы:
+
+  - .claude/README.md — README самой Ecosystem 3.0 (upstream-zone, перезаписывается при /ecosystem:update → локальная правка бессмысленна, её снесёт).
+  - .beads/README.md, .claude/docs/**/README.md и др. — тоже vendored/служебные.
+
+  То есть «привести README в порядок» не имеет очевидной цели: обычного корневого README, который тут подразумевается по умолчанию, не существует, а единственный «главный» README принадлежит
+  экосистеме и править его локально нет смысла.
+
+  Мне нужно понять, что именно вы имели в виду, прежде чем что-то менять — цена ошибки тут в потраченной работе не в ту сторону.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+ ☐ Какой README
+
+Корневого README.md нет, а единственный «главный» README — это upstream-файл экосистемы. Что привести в порядок?
+
+❯ 1. Создать корневой README.md (рекоменд.)
+     Написать новый README.md для проекта my-first-test: что это за проект, что в .product/, как пользоваться /product:* и Ecosystem 3.0. Это то, чего сейчас не хватает и что обычно и подразумевают
+     под «README проекта».
+  2. Править .claude/README.md
+     Вычитать/актуализировать README самой экосистемы. Внимание: это upstream-zone, следующий /ecosystem:update перезапишет правки. Осмысленно только через /ecosystem:meta-feedback в upstream-репо.
+  3. Другой конкретный README
+     Вы имели в виду какой-то конкретный файл (.beads/README.md, docs/..., один из mockup-assets README). Скажу какой — приведу в порядок его.
+  4. Type something.
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  5. Chat about this
+
+Enter to select · ↑/↓ to navigate · Esc to cancel
