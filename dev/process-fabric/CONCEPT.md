@@ -196,7 +196,7 @@ Mermaid-рендер стейтчарта генерится скриптом и
       "invoke": { "process": "runtime-smoke-readiness" },
       "meta": { "determinism": "DL0", "autonomy": "auto" },
       "on": {
-        "evt:runtime.ready_or_started": { "target": "done" },
+        "evt:runtime.ready_or_started": { "target": "deploying_staging" },
         "evt:runtime.blocked_capability": { "target": "awaiting_capability", "actions": ["queue_owner"] },
         "evt:runtime.env_not_ready": { "target": "runtime_gate_retry" }
       }

@@ -6,7 +6,7 @@
  *
  * Contract covered (CONCEPT §9 p.3):
  *   - transition determinism (same inputs → deepStrictEqual outputs);
- *   - full happy path of one instance (init → line.start → P3→P4→P5(GO)→P7 → done);
+ *   - full happy path of one instance (init → line.start → P3→P4→P5(GO)→P7 → deploying_staging → done);
  *   - bounded remediation (2 no_go rounds → escalation on the third);
  *   - wip-guard (a second instance on the same lane is rejected and why[] explains);
  *   - ingest mapping across every result branch (P3–P7);
@@ -371,7 +371,7 @@ test('deriveInstanceId is deterministic and shaped from the timestamp (no Math.r
 
 // ==== CLI ========================================================================================
 
-test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → done', () => {
+test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → deploy → done (charter v5, E.B)', () => {
   const base = mkTmp();
   const id = initInstance(base, 'FM-3');
   assert.ok(/-fm-3-/.test(id), `instance id shape: ${id}`);
@@ -381,7 +381,10 @@ test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → done', (
   assert.strictEqual(ingest(base, id, 'batch-features-to-cc-sdd', {}).json.ticks[0].to, 'fidelity_audit');
   assert.strictEqual(ingest(base, id, 'audit-spec-fidelity', { impl_ready: ['FM-3'] }).json.ticks[0].to, 'implementing');
   assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'GO' }).json.ticks[0].to, 'runtime_gate');
-  const last = ingest(base, id, 'runtime-smoke-readiness', { verdict: 'READY_TO_SMOKE' });
+  // charter v5 (E.B, DEC-DEV-0198): a P7 PASS now routes to the deploy cell, not straight to `done`.
+  assert.strictEqual(ingest(base, id, 'runtime-smoke-readiness', { verdict: 'READY_TO_SMOKE' }).json.ticks[0].to, 'deploying_staging');
+  // a clean staging deploy (flipped + healthy) is the shipped sink — done stays the terminal.
+  const last = ingest(base, id, 'deploy-to-stage', { result: 'DEPLOYED', readiness: 'READY', flipped: true });
   assert.strictEqual(last.json.ticks[0].to, 'done');
   assert.deepStrictEqual(last.json.ticks[0].prescription, { kind: 'none', final: true, state: 'done' });
   assert.strictEqual(readState(base, id).state, 'done');
@@ -740,18 +743,20 @@ test('ANOM-OD7-1: evt:owner.close (PA-referenced) reaches the closed_without_run
   assert.strictEqual(readOwnerQueue(base).length, 0, 'the terminal move cleared the queued entry');
 });
 
-test('DEF-OD7-CLOSE (charter v4): evt:owner.close exists on EVERY park gate, resume-events unchanged', () => {
+test('DEF-OD7-CLOSE (charter v5): evt:owner.close exists on EVERY park gate, resume-events unchanged', () => {
   const { deriveResumeEvent } = lib;
   // R1 re-run 2026-07-11 live-refusal: a line parked at awaiting_capability_impl had NO owner
   // terminal-exit — the only handled event was the resume; closing required faking state. v4 gives
   // every human-gate parking state the owner.close exit; the derived resume-event must NOT change
-  // (pa-scan still fires the same resume on the owner's PA flip).
+  // (pa-scan still fires the same resume on the owner's PA flip). v5 (Epic E deploy-bracket) adds
+  // rolled_back as a new human-gate park state — it too must carry the owner.close terminal exit.
   const gates = [
     ['awaiting_product', 'evt:pa.resolved'],
     ['awaiting_capability', 'evt:pa.resolved'],
     ['awaiting_capability_impl', 'evt:pa.resolved'],
     ['runtime_gate_retry', 'evt:env.up'],
     ['escalated', 'evt:owner.resume'],
+    ['rolled_back', 'evt:owner.resume'],
   ];
   for (const [state, resume] of gates) {
     const on = charter.states[state].on;

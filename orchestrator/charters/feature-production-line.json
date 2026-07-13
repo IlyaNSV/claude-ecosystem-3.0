@@ -1,6 +1,6 @@
 {
   "id": "feature-production-line",
-  "version": 4,
+  "version": 5,
   "context": { "feature": null, "fm": null },
   "initial": "handoff_ready",
   "limits": { "lane": "orchestrator", "wip": 1 },
@@ -59,10 +59,38 @@
       "invoke": { "process": "runtime-smoke-readiness" },
       "meta": { "determinism": "DL0", "autonomy": "auto" },
       "on": {
-        "evt:runtime.ready_or_started": { "target": "done" },
+        "evt:runtime.ready_or_started": { "target": "deploying_staging" },
         "evt:runtime.blocked_capability": { "target": "awaiting_capability", "actions": ["queue_owner"] },
         "evt:runtime.env_not_ready": { "target": "runtime_gate_retry" },
         "evt:fidelity.product_routed": { "target": "awaiting_product", "actions": ["queue_owner"] }
+      }
+    },
+    "deploying_staging": {
+      "invoke": { "process": "deploy-to-stage" },
+      "meta": { "determinism": "DL0", "operation_class": "deploy_staging", "env_tier": "staging", "risk": "HIGH" },
+      "on": {
+        "evt:owner.close": { "target": "closed_without_runtime" },
+        "evt:deploy.succeeded": { "target": "done" },
+        "evt:deploy.failed": { "target": "rolling_back" },
+        "evt:deploy.preflight_failed": { "target": "escalated", "actions": ["queue_owner"] },
+        "evt:deploy.env_not_ready": { "target": "runtime_gate_retry" },
+        "evt:deploy.gated": { "target": "runtime_gate_retry" }
+      }
+    },
+    "rolling_back": {
+      "invoke": { "process": "rollback-release" },
+      "meta": { "determinism": "DL0", "operation_class": "rollback", "env_tier": "staging", "risk": "HIGH" },
+      "on": {
+        "evt:rollback.done": { "target": "rolled_back", "actions": ["queue_owner"] },
+        "evt:rollback.no_prior": { "target": "escalated", "actions": ["queue_owner"] },
+        "evt:rollback.failed": { "target": "escalated", "actions": ["queue_owner"] }
+      }
+    },
+    "rolled_back": {
+      "meta": { "autonomy": "human-gate", "queue_kind": "gate" },
+      "on": {
+        "evt:owner.resume": { "target": "implementing" },
+        "evt:owner.close": { "target": "closed_without_runtime" }
       }
     },
     "runtime_gate_retry": {
@@ -138,6 +166,18 @@
       { "when": { "path": "verdict", "eq": "ENV_NOT_READY" }, "emit": "evt:runtime.env_not_ready" },
       { "when": { "path": "verdict", "in": ["READY_TO_SMOKE"] }, "emit": "evt:runtime.ready_or_started" },
       { "when": { "path": "verdict", "eq": "NOT_STARTABLE" }, "emit": "evt:fidelity.product_routed" }
+    ],
+    "deploy-to-stage": [
+      { "when": { "path": "readiness", "eq": "ENV_NOT_READY" }, "emit": "evt:deploy.env_not_ready" },
+      { "when": { "path": "result", "eq": "BLOCKED" }, "emit": "evt:deploy.gated", "payloadPath": "autonomy" },
+      { "when": { "path": "result", "eq": "DEPLOYED" }, "emit": "evt:deploy.succeeded" },
+      { "when": { "path": "flipped", "eq": true }, "emit": "evt:deploy.failed" },
+      { "default": true, "emit": "evt:deploy.preflight_failed" }
+    ],
+    "rollback-release": [
+      { "when": { "path": "result", "eq": "ROLLED_BACK" }, "emit": "evt:rollback.done" },
+      { "when": { "path": "result", "eq": "NO_PRIOR_RELEASE" }, "emit": "evt:rollback.no_prior" },
+      { "default": true, "emit": "evt:rollback.failed" }
     ]
   }
 }

@@ -22,12 +22,17 @@ DEC-DEV-0076).
 | `feature-to-tdd-impl` | Drive one feature's `tasks.md` to implemented code via native TDD loop (P5) | D3 |
 | `validate-feature-impl` | Feature-level GO/NO-GO gate after impl: full suite+build + 3 validators (RA-8/9/10) + verify-finding (P6) | D3 verify |
 | `runtime-smoke-readiness` | Runtime-smoke gate after P6 GO: is a boot ATTEMPTABLE (run-target + §6 boot-caps + env)? boot the dev server + diagnose a failed start (P7) | D3+ runtime |
+| `deploy-to-stage` | Staging deploy cell AFTER a P7 PASS: env+manifest preflight → clean build/test → **§3.2 autonomy-policy GATE** → build `releases/<ts>` + flip `current` + restart → healthcheck (E.B) | D3-05/06 |
+| `rollback-release` | Auto-rollback cell (staging): **§3.2 GATE** (`rollback`→staging auto, level-independent) → revert `current` to the prior release + restart → verify (E.C) | D3-05/06 |
 
 P5 delegates its feature-level gate to P6 (`validate-feature-impl`) via `workflow()`; you can
 also run P6 standalone to re-gate an already-implemented feature. P7 (`runtime-smoke-readiness`)
 runs after a P6 GO — its **readiness leg** (the deterministic verdict) is built; the **live boot**
-is substrate-gated (needs a pilot dev env), and the full Epic E deploy chain awaits Integrator
-D3-runtime. **P2 (`decide-architecture-foundation`) is built** — it runs an undecided
+is substrate-gated (needs a pilot dev env). **The Epic E deploy chain is now built**: E.A equipped
+the deploy-capability (Integrator `deployment-provisioning.md` + CNT + `deployer`); E.B/E.C built
+`deploy-to-stage` / `rollback-release` as the fabric deploy bracket (P7 PASS → deploy → healthcheck →
+auto-rollback on failure). The **live** deploy/rollback (the real build/migrate/flip/`systemctl`/`/health`)
+is VM-gated (E.D/E.G — needs the VM staging target restored). **P2 (`decide-architecture-foundation`) is built** — it runs an undecided
 architecture fork through a heterogeneous 3-prior consilium (velocity/fidelity/integrity) and
 hands the owner a scored recommendation + a DRAFT DEC; it never auto-decides (FB-LR-07). Its
 live grade is a dogfood on the S7 fork `PA-040/042`.
@@ -102,6 +107,25 @@ reads a declared fork + the `.product`/spec sources; it does not touch cc-sdd):
    to run the **readiness leg only** (assess + disclose, no boot) — the explicit knob while the
    execution leg is substrate-gated. A boot-required capability that is `BLOCK` emits a §6
    capability-request (Integrator/Product, OD7 await) — do NOT self-equip or mock it.
+
+**For `deploy-to-stage` (E.B)** — run AFTER a P7 PASS (the deploy cell; usually the fabric
+prescribes it, not a hand-launch):
+1. `autonomy-policy` present (`.claude/orchestrator/lib/autonomy-policy.cjs`) — the **§3.2** resolver
+   the process MUST call before any mutation (the deploy path that skips it bypasses the floor entirely).
+2. `env-readiness` + `runtime-readiness` present (`.claude/orchestrator/lib/`) — the readiness axis + the
+   cheap pre-flip re-probe (NOT a second live boot — the live boot is the P7 `runtime_gate`, D-7).
+3. **A deploy-capability is equipped** (E.A): `.claude/integrator/deploy/<capability>/deploy-manifest.yaml`
+   (+ systemd unit templates) authored by the `deployer`. Absent / `status: draft` → the process reports
+   `readiness=ENV_NOT_READY` (could not prepare — provision via `/integrator:provision <capability>`), it
+   does NOT fabricate a step-list.
+4. **Substrate-gated:** the real build/migrate/flip/`systemctl`/`/health` run only on the VM staging
+   target (E.D/E.G). `env_tier` is `staging`; **prod is a floor-gated stub** — NOT a mode of this process.
+
+**For `rollback-release` (E.C)** — the auto-rollback cell (the fabric prescribes it when a deploy
+flipped a release that then failed its healthcheck):
+1. `autonomy-policy` present — the **§3.2** resolver (operation_class `rollback`, NOT `destructive`:
+   staging → auto so the auto-rollback net fires at the default level; prod → human-gate).
+2. The same equipped deploy-capability (E.A) — the release layout + healthcheck spec come from its manifest.
 
 ## Launch
 
@@ -215,6 +239,42 @@ Workflow({
 })
 ```
 
+**E.B — `deploy-to-stage`** (skills: `orchestrator-init`) — the staging deploy cell AFTER a P7 PASS.
+It calls the **§3.2 autonomy-policy resolver BEFORE any mutation** and STOPs unless it returns `auto`:
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/deploy-to-stage.mjs',
+  args: {
+    feature: "<cc-sdd slug, e.g. auth>",        // optional lens: the feature this deploy ships
+    capability: "<deploy-capability slug>",     // E.A-equipped; manifest at .claude/integrator/deploy/<slug>/deploy-manifest.yaml
+    autonomyLib: '.claude/orchestrator/lib/autonomy-policy.cjs',   // §3.2 resolver CLI seam (floor + ladder)
+    envProbe: '.claude/orchestrator/lib/env-readiness.cjs',        // DEC-DEV-0092: readiness axis
+    runtimeProbe: '.claude/orchestrator/lib/runtime-readiness.cjs', // DEC-DEV-0120: pre-flip re-probe + failure taxonomy
+    envTier: 'staging',                         // prod is a floor-gated stub, NOT a mode of this process
+    p6Verdict: 'GO', p7Verdict: 'READY_TO_SMOKE',                  // optional prior verdicts (informational / re-probe hint)
+    autonomyOverride: '<the --autonomy level, if the owner approved a gated deploy>'  // RAISES the level → resolver reads auto
+  }
+})
+```
+
+**E.C — `rollback-release`** (skills: `orchestrator-init`) — the staging auto-rollback cell. Also
+calls the **§3.2 resolver before the swap** (`rollback` class → staging auto, level-independent):
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/rollback-release.mjs',
+  args: {
+    feature: "<cc-sdd slug>",
+    capability: "<deploy-capability slug>",     // release layout + healthcheck spec come from its manifest
+    autonomyLib: '.claude/orchestrator/lib/autonomy-policy.cjs',
+    envProbe: '.claude/orchestrator/lib/env-readiness.cjs',
+    envTier: 'staging',                         // prod rollback is human-gated (owner rail)
+    autonomyOverride: '<the --autonomy level, forwarded>'
+  }
+})
+```
+
 ### Run ledger (dispatcher wiring — VC-087 / VC-134)
 
 You (the dispatcher) bracket the Workflow with the run-ledger so every run leaves a
@@ -292,8 +352,10 @@ Every prescription's disposition has been resolved through the autonomy-policy (
 — the floor (prod_deploy / destructive / spend_money / provision_real_secret) is not overridable;
 `--autonomy L0|L1|L2|L3` on this command is forwarded to each fabric call as `--autonomy <level>`
 (a per-invocation override; it can tighten to L0 or raise to L2/L3, never cross the floor). **L2/L3**
-route the staging/prod cells to a `consilium-gate` disposition (an Epic D jury replaces the human up
-to the floor) — see the consilium-gate prescription below; L0/L1 keep those cells human-gated.
+route the charter's `deploying_staging` / `rolling_back` deploy cells (Epic E.B/E.C) to a
+`consilium-gate` disposition (an Epic D jury replaces the human up to the floor) — see the
+consilium-gate prescription below; L0/L1 keep those cells human-gated (so a staging deploy at the
+default level is an owner decision, never a silent auto-deploy).
 
 **Starting a line (opt-in, `--fabric`)** — when the user asks for a fabric-tracked line,
 BEFORE the first process of the line (usually P3):
@@ -368,13 +430,17 @@ the gate, up to the floor), fold a jury verdict into a disposition BEFORE acting
 
 **The floor stays human, always** — a floor class never carries a consilium-gate. **Reversibility-first
 (vision Epic F rail):** an L2/L3 auto MUST be reversible — feature-flags / staging-first / a safety-commit
-(DEC-DEV-0061) — so a wrong auto-decision is recoverable. **Live grade is pilot-gated:** the jury runs,
-but the L2/L3 consilium loop has not yet been dogfooded end-to-end.
+(DEC-DEV-0061) — so a wrong auto-decision is recoverable. The `deploying_staging` / `rolling_back` deploy
+cells (Epic E.B/E.C) now exist and are the concrete staging cells this gate routes. **Live grade is
+VM-gated (E.G):** the jury runs, but the L2/L3 consilium loop on a real deploy has not yet been
+dogfooded end-to-end (needs the VM staging target restored).
 
 **Resuming a parked line** — when the owner resolves the blocking item, tick the matching
 event and follow the new prescription: `evt:pa.resolved` (a resolved Product/capability PA),
-`evt:env.up` (substrate back up), `evt:owner.resume` / `evt:owner.abort` / `evt:owner.close`
-(an escalated gate):
+`evt:env.up` (substrate back up — also the `runtime_gate_retry` gate a `deploy.gated` /
+`deploy.env_not_ready` routed to), `evt:owner.resume` / `evt:owner.abort` / `evt:owner.close`
+(an `escalated` gate, or the post-rollback `rolled_back` owner surface — `owner.resume` re-drives
+`implementing`, `owner.close` closes the line):
 
 ```
 node .claude/orchestrator/lib/fabric-engine.cjs tick \
@@ -395,9 +461,18 @@ PA flip cannot express (`evt:owner.abort` after a dismissal, `evt:owner.close` w
 split/deferred the remaining work and closes the line without runtime — terminal
 `closed_without_runtime`), make sure the owner's decision is recorded in a PA entry, then tick with
 `--force-manual "PA-NNN: <owner decision>"` (audit-stamped into the event). `evt:owner.close` is
-handled from EVERY parked human gate (`awaiting_*`, `runtime_gate_retry`, `escalated` — charter v4,
-DEC-DEV-0175): a parked line always has an owner exit that neither fakes a resolution nor
-overloads `owner.abort`.
+handled from EVERY parked human gate (`awaiting_*`, `runtime_gate_retry`, `escalated`, and the
+Epic E deploy cells `deploying_staging` / `rolled_back` — charter v5, DEC-DEV-0175/0198): a parked
+line always has an owner exit that neither fakes a resolution nor overloads `owner.abort`.
+
+**The staging deploy is an owner decision at the default level, not a PA-flip resume.** At L0/L1 the
+`deploying_staging` cell prescribes `run-process` + `human-gate` — the owner APPROVES the deploy by
+re-invoking the line's next process with `--autonomy L2|L3` (which raises the level so the resolver
+reads `auto`), NOT by flipping the deploy PA. The deploy cell's PA is deliberately wired so that a
+stray `pa-scan --tick` of it fires `evt:owner.close` (→ `closed_without_runtime`, a SAFE close), never
+`evt:deploy.succeeded` — a PA flip must never mark a feature shipped without an actual deploy. Once
+approved and run, `deploy-to-stage`'s own §3.2 resolver (with live readiness) is the second, load-bearing
+gate before any mutation.
 
 **OD7 mid-process resume is the normal bracket re-run — nothing special to restore.** After a
 capability gate resolves (`awaiting_capability_impl` → `evt:pa.resolved` → `implementing`), the
@@ -523,5 +598,27 @@ P7's readiness probe is cheap and re-assesses from zero. This closes the OD7
   must be surfaced** — a green boot over a dev stand-in (mock-only), a non-GO P6, or a `DEGRADED` env
   is "indicative, not proof" (the RUN 01 lesson: 223 tests green ≠ app starts; a green boot on mocks
   ≠ prod-ready). P7 is **capture-don't-fix**: a failed start is surfaced for a P5/P6 re-run, never
-  auto-remediated. The live boot is **substrate-gated** (needs a pilot dev env); the full Epic E
-  deploy/rollback chain awaits Integrator D3-runtime tooling.
+  auto-remediated. The live boot is **substrate-gated** (needs a pilot dev env). A P7 PASS
+  (`READY_TO_SMOKE`) now routes the fabric line to the **`deploy-to-stage`** cell (Epic E.B) rather
+  than straight to `done` — deploy is always the next step, but never forced (`evt:owner.close` on the
+  deploy cell closes a feature without a deploy).
+- **E.B (`deploy-to-stage`, DEC-DEV-0198):** two-axis — `result` (`DEPLOYED` | `DEPLOY_FAILED` |
+  `BLOCKED`) × `readiness` (`READY` | `DEGRADED` | `ENV_NOT_READY`). **`BLOCKED`** = the §3.2
+  autonomy-policy resolver did not return `auto` (human-gate / consilium-gate / floor, or a
+  readiness downgrade) — **nothing was mutated** (`flipped:false`); the owner approves by re-invoking
+  with `--autonomy L2|L3`, or the substrate must recover. **`readiness=ENV_NOT_READY`** (substrate
+  down / manifest not provisioned / target not startable) is "could not prepare/judge", **NOT** a
+  deploy failure — provision (`/integrator:provision <capability>`) or bring the target up and re-run.
+  **`DEPLOYED`** ⇒ the `current` symlink flipped AND the post-deploy healthcheck returned 2xx.
+  **`DEPLOY_FAILED` + `flipped:true`** (flipped but unhealthy) routes to **auto-rollback**
+  (`rolling_back`); `DEPLOY_FAILED` with nothing flipped (build/test red, or the flip never completed)
+  escalates. Surface `disclosures` (a deploy over a non-GO P6, an unverified prisma step, a healthcheck
+  `failure_class` from the P7 taxonomy). The real build/migrate/flip/healthcheck is **VM-gated** (E.D/E.G).
+- **E.C (`rollback-release`, DEC-DEV-0198):** two-axis — `result` (`ROLLED_BACK` | `ROLLBACK_FAILED` |
+  `NO_PRIOR_RELEASE` | `BLOCKED`) × `readiness`. The `rollback` operation-class makes staging
+  **auto** at every level (the auto-rollback net fires without a human at the default level); **prod
+  rollback stays human-gate** (owner rail → `BLOCKED`). **`NO_PRIOR_RELEASE`** is distinct from a
+  failure: nothing to revert to → the bad release stays live, flagged, owner decides. `ROLLED_BACK`
+  ⇒ `current` reverted to the prior release AND it healthchecks clean; an unhealthy restored release
+  is `ROLLBACK_FAILED` (owner intervention). Both non-clean outcomes escalate; the post-rollback
+  `rolled_back` owner gate lets the owner re-drive (`implementing`) or close. VM-gated for the live swap.

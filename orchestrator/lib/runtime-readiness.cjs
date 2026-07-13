@@ -444,6 +444,7 @@ function parseArgs(argv) {
       case '--app': a.app = next(); break;        // DEF-4: pin an explicit workspace-package dir
       case '--env': a.env = next(); break;        // READY | DEGRADED | ENV_NOT_READY
       case '--p6': a.p6 = next(); break;          // GO | NO-GO | MANUAL_VERIFY
+      case '--health-check': a.healthCheck = next(); break;  // E.E: post-deploy liveness probe, e.g. "GET http://localhost:3000/health" → folded into smokePlan.success_signals
       default: break;
     }
   }
@@ -455,7 +456,7 @@ function printHelp() {
     'runtime-readiness.cjs — Orchestrator P7: is a runtime smoke ATTEMPTABLE, and if',
     'not, why (+ the §6 request to emit)? (DEC-DEV-0120).',
     '',
-    'USAGE:  node runtime-readiness.cjs --feature FM-002 [--root .] [--env READY] [--p6 GO] [--app apps/web]',
+    'USAGE:  node runtime-readiness.cjs --feature FM-002 [--root .] [--env READY] [--p6 GO] [--app apps/web] [--health-check "GET http://localhost:3000/health"]',
     '',
     '--app <dir> pins a workspace-package dir (DEF-4 monorepo); else the root manifest is used,',
     'and if it declares no run target the workspace packages are scanned (pnpm + npm forms).',
@@ -507,7 +508,7 @@ function main() {
     p6Verdict: args.p6 || null,
   });
   const plan = assessment.smoke_attemptable
-    ? smokePlan({ command: runTarget && runTarget.command, cwd: runTarget && runTarget.cwd })
+    ? smokePlan({ command: runTarget && runTarget.command, cwd: runTarget && runTarget.cwd, healthCheck: args.healthCheck })
     : null;
 
   process.stdout.write(JSON.stringify({

@@ -2338,3 +2338,21 @@ DEF-CTX-1/2/3/5 помечены `[FIXED]`; DEF-CTX-4/6 остаются `[OPEN]
 **Контракт для E.B (передан в бриф):** deploy-состояния чартера ОБЯЗАНЫ объявить `operation_class:'deploy_staging'|'rollback'|'prod_deploy'` + `env_tier` в `meta`, и ОПУСТИТЬ `meta.autonomy` (иначе `prescribe` флорит в human-gate, убивая staging-автономию). Резолвер инертен, пока чартер не объявит meta. `rollback` в meta должен быть ТОЧНО `'rollback'` — иначе едет в generic-колонку → human-gate на дефолте → auto-rollback молча выключен.
 
 **Мелочь для E.B:** `run.md` несёт stale-прозу про «L2/L3 → consilium» (2 региона: ~:294-296 + скобка ~:350-351) — теперь неточно для L3×staging=auto. Не load-bearing (актуатор кейается на `disposition`, не на level), но поправить при регистрации E.B.
+
+### Addendum — E.B/E.C (deploy-брекет) + E.E (healthcheck-звено): repo-сторона Epic E завершена
+
+**E.B `deploy-to-stage` + E.C `rollback-release` + чартер v4→v5 + E.E healthcheck-звено.** Дизайн→сборка→адверс-проверка (opus), вердикт PASS, verify exit 0. Это последний крупный код-кусок Epic E repo-стороны; дальше — только смоук-план (док) + cut + VM-gated живые ноги.
+
+**Главное — §3.2 (тихий auto-deploy мимо floor) доказан отсутствующим на ДВУХ слоях.** Дизайнер вскрыл, что резолвер консультируется дважды, и это НЕ избыточность: (1) fabric-prescription (readiness-BLIND) решает, ЗАПУСКАТЬ ли процесс вообще (по level×env×class); (2) внутри-процессный §3.2-вызов (readiness-AWARE, `--readiness`) — ЕДИНСТВЕННАЯ консультация, применяющая `applyReadinessGuard` (DEGRADED→human-gate, ENV_NOT_READY→block), прямо перед мутацией. Второй ловит и standalone-запуск мимо брекета, и просадку субстрата посреди линии. Мутация (`deploy-flip`) достижима только после свежего `disposition==='auto'` от §3.2-вызова — иначе `result:'BLOCKED', flipped:false`.
+
+**Charter meta-контракт B4 соблюдён и проверен эмпирически, включая destructive-trap.** deploy-состояния несут `operation_class`+`env_tier`, `meta.autonomy` ОПУЩЕН. Проверяющий прогнал резолвер живьём: `deploy_staging×staging×L3→auto`, `×DEGRADED→human-gate`, `rollback×staging×L1→auto` (сетка срабатывает без человека), `rollback×prod→human-gate`, и главное — **`destructive×staging→floor_hit:true`**: если бы rollback-состояние назвали `destructive` «по смыслу», staging-auto-rollback молча умер бы. Строитель назвал `rollback` точно.
+
+**Строитель закрыл РЕАЛЬНУЮ латентную silent-ship дыру, которую дизайн проглядел.** `deriveResumeEvent` падает на `keys[0]` для состояния без `evt:pa.*`/`owner.resume`/`env.up`; `pa-scan --tick` зовёт `applyEventFS` в обход bracket-guard; `done` несёт `project_fm_shipped_hint`. Если бы `evt:deploy.succeeded` стоял keys[0] в `deploying_staging.on`, случайный PA-флип + pa-scan пометил бы фичу **shipped без деплоя**. Строитель поставил `evt:owner.close` первым (keys[0]→`closed_without_runtime`, safe), закрепил не-тавтологичным тестом на живом `deriveResumeEvent`.
+
+**Дизайн-решения чартера (reuse, не разрастание):** `runtime_gate.ready_or_started` перенаправлен `done`→`deploying_staging` (одна проволока, не новое событие); `deploy.succeeded→done` (переиспользован shipped-sink, `project_fm_shipped_hint` теперь честно значит «shipped to staging»); `deploy.gated`/`env_not_ready`→`runtime_gate_retry` (обе env-driven, resume `evt:env.up`); A-9 (parallel-deploy race) покрыт `wip:1` лейна — нового guard'а не надо. «Фича без деплоя закрывается» сохранено через `owner.close` на `deploying_staging`.
+
+**E.E — оживление, не постройка.** `smokePlan({healthCheck})` был живой и покрыт юнитом; мёртвым было CLI-звено — добавлен `--health-check` в parseArgs + проброс в call-site. Failure-таксономия P7 (5 классов) переиспользована, не переизобретена (D-7: без дубля живого boot).
+
+**Doc-drift v4→v5 закрыт сразу (кампания сама про гниющие координаты):** `docs/guide/07-fabric.md` (user-facing — park-gate список + consilium-строка с L3-нюансом), `CONCEPT.md` snippet, тест-комментарии, и расширен `DEF-OD7-CLOSE`-тест новым park-gate `rolled_back` (заявление «EVERY park gate» осталось правдой).
+
+**Осталось repo-сторона:** только E.G-смоук-план (док) + cut релиза. Всё живое (E.D boot, E.G прогон, доставка, Волна E) — VM-gated.
