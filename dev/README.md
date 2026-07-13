@@ -10,7 +10,7 @@
 | **`plans/`** | Активные планы работ | живые до завершения → архив или удаление |
 | **`gates/`** | Smoke-тесты и readiness-гейты фаз (active) | архивируются в `_archive/phase-<N>/` после прогона/closure (CONVENTIONS §5.1) |
 | **`deferred/`** | Отложенные инициативы (полный контекст сохранён для bring-forward) | пробуждаются по trigger из `v1_1_backlog.md` |
-| **`tech-debt/`** | Post-closure findings по фазам | закрываются фиксом или явным defer |
+| **`tech-debt/`** | Post-closure findings по фазам и аудитам | закрываются фиксом или явным defer |
 | **`v1_1_backlog.md`** | Living-список отложенного (post-MVP v1.1+) | живёт в корне `dev/`, обновляется per phase |
 | **`meta-improvement/`** | Модуль D7 (mechanisms + checklists + patterns + rubrics + scripts + audit-pipeline) | живой код, НЕ архивируется (CONVENTIONS §2) |
 | **`process-fabric/`** | Design-SSOT Process Fabric (CONCEPT + EXECUTION_ROADMAP + OD7-вердикты); исторический балласт — в `_archive/process-fabric/` | живые указатели |
@@ -31,6 +31,11 @@
 - `PHASE_6_SMOKE_TEST_PLAN.md` — runtime smoke S1-S7 Design Module (🟠 частично прогнан 2026-07-11; догон S1/S3)
 - `SMOKE_BATCH_2026-07-11_BRIEF.md` — вердикты batch-прогона 2026-07-11 (§Outcome — SSOT)
 - `SUBSTRATE_GRADUATION_GATE.md` — graduation-гейт субстрата
+
+## tech-debt/
+
+- `PHASE_4.md` — post-closure findings Phase 4 (аудит 8 сессий пилота, 2026-05-26): E1-E5 `[OPEN]`
+- `CONTEXT_AUDIT_D6.md` — побочный улов зондов контекст-аудита (DEC-DEV-0197 / D6): `DEF-CTX-1` NFR-дрейф · `DEF-CTX-2` мёртвое `enabled_when` · `DEF-CTX-3` prune-асимметрия bootstrap (2 и 3 связаны — порядок работ важен)
 
 ## deferred/
 
