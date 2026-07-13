@@ -203,6 +203,8 @@ version: 1
 - ❌ **`sanity_check: failed`** → НЕ canonical state в Phase 4 workflow per DEC-DEV-0025 C.2 + Ambiguity 9; runtime использует только `passed | overridden`. State `failed` deprecated (legacy NFRs treat как `overridden` с empty rationale + backfill prompt).
 - ❌ `confidence_rationale`, `confidence_reasoning` → canonical = `confidence_notes`
 
+**Машинная страховка (DEF-CTX-1, 2026-07-13).** Список выше больше не держится на одном тоне: **V-18** (`hooks/product/artifact-validate.js`, 🟡 Warning, override- и tier-aware) ловит `sanity_check` вне `passed|overridden` (с отдельной подсказкой на legacy-`failed`), `sanity_check: overridden` без `override_rationale`, `confidence` вне enum и `confidence != high` без `confidence_notes`. **Наличие** самого `confidence` — это правило **C2**, не V-18 (C2 не type-scoped: ловит любой `status: active` без `confidence`, но на дефолтном тире `pilot` молчит и всплывает на `mvp`/`full`). До этого фикса NFR-фронтматтер не сторожился **ничем** — спек `NFR.md` разрешал мёртвый `failed`, а оба его же «Good»-примера нарушали собственную схему.
+
 Body sections (per NFR.md §Body Structure):
 1. **Statement** — формулировка требования
 2. **Target value** — числовое значение + tier rationale

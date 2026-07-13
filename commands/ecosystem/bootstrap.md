@@ -285,20 +285,52 @@ rm -f .claude-ecosystem-tmp/package.json
 rm -f .claude-ecosystem-tmp/package-lock.json
 rm -f .claude-ecosystem-tmp/eslint.config.js
 rm -rf .claude-ecosystem-tmp/node_modules
+# DEC-DEV-0198 / A8-b + adjacent leaks: these are ecosystem-DEV artifacts too. A naive
+# `cp -rn temp/. .claude/` (denylist copy) would otherwise leak them into the pilot as
+# permanent garbage — they sit OUTSIDE /ecosystem:update's allowlist, so once in they are
+# never updated and never removed. (.github/ = CI workflow; .obsidian/ = vault UI config;
+# HOME.md = vault entry note.) `tests/` is filtered too, but only AFTER the fixture deploy
+# below — the adapter contract-test fixtures live in tests/fixtures/ and must be extracted first.
+rm -rf .claude-ecosystem-tmp/.github
+rm -rf .claude-ecosystem-tmp/.obsidian
+rm -f  .claude-ecosystem-tmp/HOME.md
+# The repo's ROOT .gitattributes is for the ecosystem repo itself. The pilot's own
+# .claude/.gitattributes is delivered deliberately from gitattributes.template in Step 2f
+# (create-if-absent), so drop this accidental leak to keep that delivery authoritative
+# (FB-LR-27 / DEC-DEV-0198). The template FILE gitattributes.template is NOT filtered — it
+# rides into .claude/ like gitignore.template.
+rm -f  .claude-ecosystem-tmp/.gitattributes
+
+# Deploy adapter contract-test fixtures FROM temp BEFORE removing tests/ (DEC-DEV-0178).
+# Extract into the fixtures dir directly (only needs mkdir -p, not the full copy) so the
+# subsequent `rm -rf temp/tests` cannot strand them. cp -rn below will not clobber these.
+mkdir -p .claude/adapters/fixtures
+cp .claude-ecosystem-tmp/tests/fixtures/FM-FIXTURE-*.md .claude/adapters/fixtures/ 2>/dev/null || true
+
+# NOW filter tests/ from temp so the whole test tree does not ride into the pilot (A8-b).
+# Filtering the SOURCE (not deleting from .claude/) keeps the no-clobber merge safe on the
+# re-install/merge path — a pre-existing user .claude/tests/ is never touched.
+rm -rf .claude-ecosystem-tmp/tests
 
 # Ensure .claude/ exists
 mkdir -p .claude
 
-# Merge temp → .claude/ with no-clobber (preserves existing files like settings.local.json)
+# Merge temp → .claude/ with no-clobber (preserves existing files like settings.local.json).
+# Leak-free now: dev/, tests/, .github/, .obsidian/, HOME.md, npm infra all filtered from temp.
 cp -rn .claude-ecosystem-tmp/. .claude/
 
-# Cleanup temp
+# Cleanup temp. Safe to remove here: $ECOSYSTEM_HEAD is already captured (above) and fixtures
+# are already extracted — Step 2d reads NEITHER temp nor re-derives HEAD (DEC-DEV-0198 / A8-a).
 rm -rf .claude-ecosystem-tmp
 ```
 
 #### 2c. Offline path (with `--offline` flag)
 
 ```bash
+# Capture HEAD from the global cache BEFORE staging (mirrors /ecosystem:update Step 3b).
+# Offline had NO capture at all — it leaned on 2d's re-read, which no longer re-captures.
+ECOSYSTEM_HEAD=$(git -C ~/.claude/ecosystem rev-parse HEAD 2>/dev/null || echo "unknown")
+
 # Stage global cache к temp (so we can filter без modifying cache)
 cp -r ~/.claude/ecosystem .claude-ecosystem-tmp
 rm -rf .claude-ecosystem-tmp/.git
@@ -308,14 +340,32 @@ rm -rf .claude-ecosystem-tmp/dev
 rm -f .claude-ecosystem-tmp/CLAUDE.md
 rm -f .claude-ecosystem-tmp/DEV_JOURNAL.md
 rm -f .claude-ecosystem-tmp/INSTALL-HUMAN.md
+# DEC-DEV-0023 parity with 2b: hook lint infra is ecosystem-dev only
+rm -f .claude-ecosystem-tmp/package.json
+rm -f .claude-ecosystem-tmp/package-lock.json
+rm -f .claude-ecosystem-tmp/eslint.config.js
+rm -rf .claude-ecosystem-tmp/node_modules
+# A8-b parity with 2b: dev-only artifacts a denylist copy would leak into the pilot
+rm -rf .claude-ecosystem-tmp/.github
+rm -rf .claude-ecosystem-tmp/.obsidian
+rm -f  .claude-ecosystem-tmp/HOME.md
+# Root .gitattributes leak — pilot's own is delivered from the template in Step 2f (A9)
+rm -f  .claude-ecosystem-tmp/.gitattributes
+
+# Deploy adapter fixtures FROM temp BEFORE removing tests/ (same as 2b — DEC-DEV-0178)
+mkdir -p .claude/adapters/fixtures
+cp .claude-ecosystem-tmp/tests/fixtures/FM-FIXTURE-*.md .claude/adapters/fixtures/ 2>/dev/null || true
+
+# Filter tests/ from the SOURCE (re-install-safe — see 2b note)
+rm -rf .claude-ecosystem-tmp/tests
 
 # Ensure .claude/ exists
 mkdir -p .claude
 
-# Merge temp → .claude/
+# Merge temp → .claude/ (leak-free — same filter set as 2b)
 cp -rn .claude-ecosystem-tmp/. .claude/
 
-# Cleanup temp
+# Cleanup temp (safe — HEAD captured, fixtures extracted; 2d reads neither)
 rm -rf .claude-ecosystem-tmp
 ```
 
@@ -331,13 +381,17 @@ Check presence of:
 - `.claude/docs/product-module/SPEC.md`
 - `.claude/templates/project/CLAUDE.md.template`
 - `.claude/adapters/handoff-to-ccsdd.js` (reference for `/integrator:add cc-sdd` Stage 5 — REUSE per DEC-DEV-0040 Q1)
-- `.claude/adapters/fixtures/FM-FIXTURE-001-handoff.md` (adapter contract-test fixture — deploy from the clone's `tests/fixtures/FM-FIXTURE-*.md` if missing: `mkdir -p .claude/adapters/fixtures && cp .claude-ecosystem-tmp/tests/fixtures/FM-FIXTURE-*.md .claude/adapters/fixtures/`; DEC-DEV-0178, smoke-batch finding — Stage-6 verify previously referenced a repo-only path the project never received)
+- `.claude/adapters/fixtures/FM-FIXTURE-001-handoff.md` (adapter contract-test fixture — **already deployed in Step 2b/2c** from the clone's `tests/fixtures/FM-FIXTURE-*.md`, which is why that extract runs *before* `tests/` is filtered out; DEC-DEV-0178, smoke-batch finding — Stage-6 verify previously referenced a repo-only path the project never received). If absent here, the 2b/2c extract failed — re-run the clone; do **not** reach into `.claude-ecosystem-tmp/` (it is gone by this point).
 
 **Stamp `.claude/adapters/.sync-metadata.yaml`** (per DEC-DEV-0044 — tri-location pattern audit trail) — needed by `contract-designer` subagent to populate `@source_ref` in installed adapter instances:
 
 ```bash
-ECOSYSTEM_HEAD=$(git -C .claude-ecosystem-tmp rev-parse HEAD 2>/dev/null || echo "unknown")
-# NB: `.git` was stripped in Step 2b; capture HEAD BEFORE strip if possible (move this stamp earlier in 2b/2c if implementation requires git access)
+# USE the $ECOSYSTEM_HEAD captured in Step 2b/2c — do NOT re-capture here. The old code re-ran
+# `git -C .claude-ecosystem-tmp rev-parse HEAD 2>/dev/null || echo "unknown"` at this point;
+# because .git was stripped in 2b (and temp was even deleted), that git call ALWAYS failed and
+# UNCONDITIONALLY overwrote the good HEAD with "unknown" (DEC-DEV-0198 / A8-a). Non-clobbering
+# guard: only fall back to "unknown" if the variable is somehow empty/unset.
+: "${ECOSYSTEM_HEAD:=unknown}"
 NOW_ISO=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 cat > .claude/adapters/.sync-metadata.yaml <<EOF
 # Stamped by /ecosystem:bootstrap and /ecosystem:update.
@@ -350,7 +404,9 @@ last_synced_from: https://github.com/IlyaNSV/claude-ecosystem-3.0
 EOF
 ```
 
-(Capture `ECOSYSTEM_HEAD` in Step 2b/2c BEFORE `rm -rf .claude-ecosystem-tmp/.git`. If you already stripped `.git` before reaching here, fall back to `unknown` — non-fatal, audit field only.)
+(`ECOSYSTEM_HEAD` is captured once — Step 2b (online) / Step 2c (offline) — BEFORE `.git` is
+stripped, and used verbatim here. This mirrors `/ecosystem:update`, which captures in Step 3a/3b
+and stamps in Step 5.3 with no re-read.)
 
 If any missing → abort with clear error listing missing items. Suggest re-running with `--force` or checking network.
 
@@ -359,16 +415,42 @@ If any missing → abort with clear error listing missing items. Suggest re-runn
 After Step 2, the `.claude/` directory contains:
 - Ecosystem content (commands, skills, agents, hooks, docs, templates, config templates)
 - **Preserved:** any Claude Code auto-generated files (`settings.local.json` etc.) that were there before — `cp -n` skips overwriting them.
-- **NOT copied (filtered per Step 2b/2c never-copy zone — DEC-DEV-0022, extended DEC-DEV-0023):**
+- **NOT copied (filtered per Step 2b/2c never-copy zone — DEC-DEV-0022, extended DEC-DEV-0023, DEC-DEV-0198):**
   - `dev/` — ecosystem developer artifacts (PHASE_*, meta-improvement/, v1_1_backlog.md)
   - `CLAUDE.md` (root) — ecosystem dev's CLAUDE.md (would mislead future Claude sessions to think they're working on ecosystem itself, не user's product)
   - `DEV_JOURNAL.md` — ecosystem dev's decision log
   - `INSTALL-HUMAN.md` — ecosystem dev guide
   - `package.json`, `package-lock.json`, `eslint.config.js`, `node_modules/` — hook lint pipeline artifacts (ecosystem-dev only — user projects не нуждаются в npm)
+  - `tests/` — ecosystem test suite (DEC-DEV-0198 / A8-b). The adapter fixtures under `tests/fixtures/` ARE needed, so 2b/2c extracts them to `.claude/adapters/fixtures/` **first**, then filters the rest of `tests/` from the temp source.
+  - `.github/` (CI workflow), `.obsidian/` (Obsidian vault UI config), `HOME.md` (vault entry note) — ecosystem-dev-only; leaked before DEC-DEV-0198 because the denylist copy did not name them.
 
 **Why this filter exists:** without it, naive `cp -rn` would copy ALL files from upstream repo, contaminating user's `.claude/` с ecosystem-dev artifacts. Phase 3 closure (DEC-DEV-0019 Finding A) caught this с pilot Claude observation that `.claude/CLAUDE.md` would be auto-loaded by future sessions. `/ecosystem:update` solves equivalent problem via allowlist (DEC-DEV-0020); bootstrap closes greenfield install path here (DEC-DEV-0022).
 
 If a `settings.json` or `.env.template` already existed (rare, ecosystem re-install) — they were NOT overwritten. Check and let user decide manually if re-install needs those files refreshed.
+
+#### 2f. Deliver `.claude/.gitattributes` (create-if-absent — FB-LR-27 / DEC-DEV-0198)
+
+The ecosystem ships executable scripts inside `.claude/` (`orchestrator/processes/*.mjs`,
+`orchestrator/lib/*.cjs`, `product/processes/*.mjs`, `hooks/**/*.js`). On a Windows checkout with
+`core.autocrlf=true` these can materialize CRLF, and a CR byte makes the scriptPath-Workflow
+permission validator reject the whole file, blocking the launch (FB-LR-27, DEC-DEV-0114). A
+`.claude/.gitattributes` pinning the script families to LF keeps the pilot's own autocrlf from
+re-converting the installed scripts after delivery.
+
+**Create-if-absent** — a project that already customised `.claude/.gitattributes` keeps its version:
+
+```bash
+if [ ! -f .claude/.gitattributes ]; then
+  cp .claude/gitattributes.template .claude/.gitattributes
+  echo "Delivered .claude/.gitattributes (LF-pins ecosystem scripts; FB-LR-27)"
+else
+  echo "Preserved existing .claude/.gitattributes (project customisation respected)"
+fi
+```
+
+(The source `gitattributes.template` landed in `.claude/` during Step 2b/2c — it is a real template
+like `gitignore.template`, not filtered. Only the repo's ROOT `.gitattributes` dotfile is filtered,
+so this template is the single authoritative source for the pilot's `.claude/.gitattributes`.)
 
 ### Step 3: Initialize `.product/` structure
 
@@ -413,20 +495,40 @@ If `.gitignore` already exists at project root — merge strategically:
 
 ### Step 6: Configure Claude Code settings
 
-#### 6a. Copy base template
+#### 6a. Seed base template — **create-if-absent, never clobber**
 
 ```bash
-cp .claude/settings.json.template .claude/settings.json
+# Seed ONLY when absent. An unconditional `cp` here would overwrite a settings.json
+# that already carries user permissions and third-party hook injections — and would
+# silently defeat 6b's "preserve non-ecosystem hooks" contract below (there would be
+# nothing left to preserve). Greenfield → template; re-install / merge path → keep.
+if [ ! -f .claude/settings.json ]; then
+  cp .claude/settings.json.template .claude/settings.json
+  echo "Seeded .claude/settings.json from template"
+else
+  echo "Preserved existing .claude/settings.json (6b merges hooks into it)"
+fi
 ```
 
 The template sets:
 - Default model: `claude-opus-4-8`
 - Minimum safe permissions allowlist
-- Empty hooks array (populated in 6b below)
+- Pre-seeded (empty) hook event keys — populated in 6b below
+
+**Invariant (was a real contradiction, DEC-DEV-0198 / DEF-CTX-3):** 6a used to `cp` the
+template unconditionally while 6b promised to «preserve user-added hooks». Both cannot be
+true: the `cp` wipes them first. 6a is now create-if-absent, so 6b's merge has something to
+preserve. If `.claude/settings.json` exists but lacks a top-level event key the manifest
+declares, 6b appends it (see the "new top-level event key" note below).
 
 #### 6b. Auto-register hooks from module manifests
 
 Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module directory has a `manifest.yaml` describing which events + matchers each hook should register for. Bootstrap scans all manifests and merges registrations into `.claude/settings.json`.
+
+**Semantics: RE-DERIVE the ecosystem-owned entries, merge-preserve everything else.** Identical
+to `/ecosystem:update` Step 6 — the manifests are the single source of truth for the ecosystem's
+own hook registrations, so an entry the manifests no longer declare is **pruned**, while
+third-party (non-ecosystem) entries are kept verbatim.
 
 **Process:**
 
@@ -434,30 +536,53 @@ Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module direc
 
 2. **Parse each manifest** per schema documented in the manifest file header (fields: `version`, `module`, `hooks[]` with `id`, `file`, `events[]`, `description`).
 
-3. **Build hook entries** per event type. For each `(event, matcher)` pair, collect all hook commands:
+3. **Read existing** `.claude/settings.json` (seeded or preserved in 6a).
+   **Preserve verbatim:** the `permissions` section and ALL other top-level fields (model, env, …).
+   Only the `hooks` section is rewritten.
+
+4. **Re-derive ecosystem-owned hook entries** from the manifests. Group by `(event, matcher)` pair;
+   build command entries `node .claude/hooks/<module>/<file>`.
+
+5. **Classify every entry already in `hooks`** — this is the prune step:
+   - **Pattern (primary):** `command` matching regex
+     `^node \.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/`
+     → **ecosystem-owned** → discard it and take the re-derived set instead. An entry whose hook
+     was removed from (or never declared in) the manifest therefore **disappears** — it is not
+     carried over.
+   - **Everything else** → **non-ecosystem** (third-party tool injections, e.g. `bd prime` from
+     beads; user's own hooks) → **preserved verbatim**.
+   - *(Optional, audit-only:* if `.claude/integrator/active-tools.yaml` exists and is parseable,
+     cross-reference preserved entries against `tools[*].claude_primitives[]` where `type: hook`
+     and label them by owning tool in the summary. Never gates — the pattern is the sole
+     decisive criterion.)
+
+6. **Merge logic** (per `(event, matcher)` pair):
+   - Union: re-derived ecosystem entries + preserved non-ecosystem entries
+   - Dedupe by `command` string (idempotent re-runs)
+   - Ordering: ecosystem entries first, preserved entries after (so the user can react to ecosystem findings)
+   - An `(event, matcher)` pair left with **zero** entries after the prune → drop the pair.
+
+7. **Write merged settings.json** back.
+
+8. **Log summary** to user — **the prune must be visible**, never silent:
    ```
-   "node .claude/hooks/<module>/<file>"
-   ```
-
-4. **Read existing** `.claude/settings.json` — preserve user-added hooks (merge, don't overwrite).
-
-5. **Merge logic:**
-   - For each event type (PostToolUse, PreToolUse, Stop, etc.):
-     - For each unique matcher: collect all command entries (existing + new), deduplicate by command string
-   - If user has custom hooks for same matcher — preserve them, add ecosystem hooks alongside
-   - Order: ecosystem hooks first, user customizations after (so user can react to ecosystem findings)
-
-6. **Write merged settings.json** back.
-
-7. **Log summary** to user:
-   ```
-   Hooks registered:
+   Hooks re-derived from manifests:
      PostToolUse (matcher: Write|Edit):
        - node .claude/hooks/product/artifact-validate.js (inline validation)
        - node .claude/hooks/product/session-state.js (session snapshot)
      PostToolUse (matcher: ...): ...
+     Total ecosystem: N hooks across M event types
 
-   Total: N hooks across M event types
+   Preserved (non-ecosystem):
+     SessionStart (matcher: ""):
+       - bd prime  [owned by: beads (per active-tools.yaml)]
+     Total preserved: L hooks
+     (без `[owned by: ...]`, если active-tools.yaml отсутствует или unparseable)
+
+   Pruned (ecosystem entries no longer declared by any manifest):
+     PostToolUse (matcher: Write|Edit):
+       - node .claude/hooks/product/<retired-hook>.js
+     Total pruned: K   (or "none")
    ```
 
 **Example result in `.claude/settings.json`** (after Phase 2 manifest processed):
@@ -517,9 +642,25 @@ Ecosystem phases add JS hooks under `.claude/hooks/<module>/`. Each module direc
 }
 ```
 
-**Convention for future phases:** when adding new hook files, drop them alongside existing in `hooks/<module>/` AND add entry to `hooks/<module>/manifest.yaml`. Re-running `/ecosystem:bootstrap` (or `/ecosystem:update`) will re-scan manifests and update `settings.json`. Manifest is the single source of truth for hook registration.
+**Why RE-DERIVE, not additive union** (DEC-DEV-0198 / DEF-CTX-3 — the bootstrap↔update prune asymmetry):
 
-**Idempotency:** running Step 6b on already-registered settings.json is safe — merge dedupes by command string. No double-registration. The empty-matcher (`matcher: ""`) entries dedupe identically — one registration each on re-run. (New-event-key emission + empty-matcher dedup are verified by S-LE in the active phase smoke plan.)
+Bootstrap used to do a **pure union** here: «collect all command entries (existing + new), deduplicate
+by command string». Union has no way to *remove* anything. Consequences, both real:
+
+- A hook **deleted from the manifest** (or renamed, or its module retired) stayed registered in
+  `settings.json` forever on the bootstrap path — and fired on every matching tool call until it died
+  with `Cannot find module '.claude/hooks/<module>/<gone>.js'`.
+- Any «switch this hook off» mechanism was a **silent no-op on bootstrap** while working on update —
+  the worst kind of half-working control.
+
+`/ecosystem:update` Step 6 already had the correct semantics (re-derive ecosystem-owned, preserve
+third-party). Bootstrap now carries the **same** logic — same regex, same preservation rule, same
+dedupe — so a hook's registration lifecycle no longer depends on *which command the user happened to
+run*. Manifest is SSOT for the ecosystem's own hooks: **declared ⇒ registered; undeclared ⇒ pruned.**
+
+**Convention for future phases:** when adding new hook files, drop them alongside existing in `hooks/<module>/` AND add entry to `hooks/<module>/manifest.yaml`. Re-running `/ecosystem:bootstrap` (or `/ecosystem:update`) will re-scan manifests and update `settings.json`. Manifest is the single source of truth for hook registration — and, per the prune above, **removing** the manifest entry now genuinely unregisters the hook on both paths.
+
+**Idempotency:** running Step 6b on already-registered settings.json is safe — re-derivation is deterministic and the merge dedupes by command string. No double-registration, no drift. The empty-matcher (`matcher: ""`) entries dedupe identically — one registration each on re-run. (New-event-key emission + empty-matcher dedup are verified by S-LE in the active phase smoke plan.)
 
 **If manifest is missing for a module but hook files exist** → warn user, skip registration for that module. Suggest: create manifest.yaml per the convention in existing `hooks/product/manifest.yaml`.
 
@@ -793,6 +934,7 @@ Tell user:
 
 Installed:
   ✓ .claude/                    ecosystem (commands, skills, docs)
+  ✓ .claude/.gitattributes      LF-pins ecosystem scripts (FB-LR-27; create-if-absent)
   ✓ .claude/pending-actions.md  user-action journal (committed; sentinel PA-000)
   ✓ .product/                   empty skeleton (artifacts will come from /product:init)
   ✓ CLAUDE.md                   project context for Claude Code

@@ -68,7 +68,7 @@ measurement_method: string           # описание как измеряем
 scope: global | per_feature
 related_features: [FM-<NNN>, ...]    # пусто если scope=global
 status: draft | active | deprecated
-sanity_check: passed | overridden | failed     # автопроверка
+sanity_check: passed | overridden    # автопроверка; `failed` — deprecated, см. ниже
 override_rationale: string           # если sanity_check=overridden, обязателен
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
@@ -77,6 +77,8 @@ updated: YYYY-MM-DD
 version: 1
 ---
 ```
+
+**Legacy-миграция `sanity_check: failed`.** Состояние `failed` — **не каноничное** (DEC-DEV-0025 C.2 + Ambiguity 9): runtime использует только `passed | overridden`. Target вне sanity range — это **не провал валидации**, а осознанный override: он информирует, но не блокирует (см. §Review Level). Legacy-NFR с `sanity_check: failed` трактуются как `overridden` с пустым `override_rationale` + backfill-промпт при первом открытии артефакта. Ровно эту семантику держит [`nfr-review.md`](../../../skills/product/nfr-review.md) (Step 4 + anti-pattern list), и с 2026-07-13 её **машинно сторожит V-18** (`artifact-validate.js`, 🟡 Warning) — раньше расхождение спека и скилла не ловилось ничем (DEF-CTX-1).
 
 ## Body Structure
 
@@ -255,6 +257,7 @@ scope: global
 related_features: []
 status: active
 sanity_check: passed
+confidence: high
 created: 2026-06-01
 updated: 2026-06-01
 version: 1
@@ -324,6 +327,15 @@ scope: per_feature
 related_features: [FM-003]
 status: active
 sanity_check: passed
+confidence: medium
+confidence_notes: |
+  Solid: порог 3s — прямая цитата из интервью SEG-001; measurement method
+  (Plausible histogram) уже настроен и снимает данные.
+  Assumed: объём «до 100 revisions в inbox» — оценка по пилоту, не замер.
+  При >200 revisions target не проверялся (см. Known tradeoffs).
+created: 2026-06-01
+updated: 2026-06-01
+version: 1
 ---
 
 ## Statement
@@ -368,11 +380,14 @@ Inbox-страница (SI-1 из MK-003) должна загружаться в
 ```yaml
 ---
 id: NFR-X
+type: non-functional-requirement
 title: "Enterprise-grade availability"
 target_value: "99.99% uptime, <100ms response, support 1M concurrent users"
 target_tier: mvp
-sanity_check: failed           # warning: target далеко вне MVP range
-measurement_method: "TBD"      # warning: vague
+status: active
+sanity_check: overridden       # ❌ target вне MVP range, а override_rationale не заполнен → V-18
+measurement_method: "TBD"      # ❌ vague — target без measurement method = wish
+confidence: high               # ❌ «high» при полном отсутствии обоснования — ложная уверенность
 ---
 
 ## Statement
@@ -381,6 +396,8 @@ measurement_method: "TBD"      # warning: vague
 ## Rationale
 Стандартная best practice SaaS.                       ❌ без привязки к реальности
 ```
+
+> **Почему anti-example больше не пишет `sanity_check: failed`:** такого состояния в каноне нет (см. §Frontmatter Schema). Out-of-range target выражается как `overridden` — и тогда **обязателен** `override_rationale`. Ровно его отсутствие здесь и ловит V-18.
 
 ## Common Mistakes
 

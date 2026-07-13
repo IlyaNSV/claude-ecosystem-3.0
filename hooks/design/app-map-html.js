@@ -102,9 +102,27 @@ function main() {
   process.exit(0);
 }
 
+// Serialize DATA for embedding inside an inline <script>. JSON.stringify does NOT escape '<',
+// so a '</script>' inside any artifact-derived string (FM/NM titles, CJM cells — all
+// prompt-injection-influenceable) would close the tag and execute whatever follows
+// (stored XSS: M-1, SECURITY_REVIEW_2026-07-11). Escaping every '<' kills both the '</script>'
+// and the '<!--' breakout (both need a '<'); U+2028/U+2029 are line terminators to a JS parser
+// (legal inside JSON strings, fatal inside a script body pre-ES2019). All three replacements are
+// valid JSON escapes that decode back to the original char — DATA round-trips byte-for-byte.
+// NB: a '<' in JSON.stringify output can only ever occur inside a string literal (JSON's own
+// structural chars are {}[]:," ), so the blanket replace can never corrupt the JSON grammar.
+// NB2: the U+2028/U+2029 patterns MUST stay \u-escaped — a raw separator inside a regex literal
+// is a line terminator and does not compile (the fix as literally quoted in the report does not).
+function scriptSafeJson(obj) {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 function buildHtml(DATA, viewerJs) {
   const css = CSS; // eslint-disable-line no-use-before-define -- const hoisting safe: main() runs after module load
-  const json = JSON.stringify(DATA);
+  const json = scriptSafeJson(DATA);
   return '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"/>'
     + '<meta name="viewport" content="width=device-width, initial-scale=1"/>'
     + '<title>' + (DATA.title || 'App Map').replace(/</g, '&lt;') + '</title>'
