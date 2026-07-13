@@ -10,6 +10,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **Epic E · E.A — Integrator оснащает deploy-capability (scaffold, owner-gated).** Новый role-агент `agents/integrator/deployer.md` + скилл `skills/integrator/deployment-provisioning.md`: Integrator **авторит** deploy-setup (systemd-unit-шаблоны для `@app/{api,web,worker}`, `releases/<ts>`+`current`-layout, шаг `prisma migrate deploy`, healthcheck-спека на базе P7 failure-таксономии) + CNT-контракт deploy-capability (`producer: deployer` / `consumer: deploy-to-stage`). Граница §8.3 закрыта **структурно**: `deployer` несёт `tools: Read, Grep, Glob` — без `Bash`/`Write`, поэтому исполнить deploy (`systemctl`/симлинк-флип) физически не может; исполнение — за Orchestrator-процессом `deploy-to-stage` (E.B, ещё не построен). Сама команда-триггер и live-валидация — за owner-gate + восстановлением VM.
 - **Каталог скиллов — генератор + строгая проверка (`docs/guide/08-skills.md`).** Построен `gen-skill-catalog.cjs` (симметрично каталогу команд): каталог скиллов генерируется из frontmatter `description:`, `gen:skills:check` вшит в цепь `verify`. `/ecosystem:verify` Step 4 получил инвентарь скиллов + строку `SKILLS` в отчёте (Step 9). Закрывает **пустой пронг «скилл»** harness-контракта — теперь swap/rename скилла с сохранением числа **больше не проходит молча** (прежде держался лишь на floor-затычке). `DEF-CTX-5` закрыт.
 
 ### Fixed

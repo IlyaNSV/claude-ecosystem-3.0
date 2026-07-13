@@ -88,8 +88,8 @@
 
 | ID | Задача | Статус | Примечание |
 |---|---|---|---|
-| **B1 = E.A** | Integrator D3-runtime capability: deploy-skill + контракт CNT-* + role-агент **`agents/integrator/deployer.md`** (НЕ в `agents/orchestrator/` — та директория пуста by design, D-2) | ⬜ | **→ OWNER GATE** |
-| — | 🚦 **OWNER GATE (решение владельца №1):** стоп, предъявление, «go» на B2 | ⬜ | — |
+| **B1 = E.A** | Integrator D3-runtime capability: `deployment-provisioning.md` скилл + reference CNT + role-агент `agents/integrator/deployer.md` | ✅ **2026-07-13** | §8.3 закрыта структурно (deployer лишён `Bash`/`Write`); verify exit 0; проверяющий PASS |
+| — | 🚦 **OWNER GATE (решение владельца №1):** стоп, предъявление, «go» на B2 | 🛑 **МЫ ЗДЕСЬ** | открытые вопросы к владельцу — DEV_JOURNAL 0198 addendum + §ниже |
 | **B2 = E.B** | `orchestrator/processes/deploy-to-stage.mjs`: build+test → P7 boot-гейт → deploy staging (`releases/<ts>` + флип `current`-симлинка, systemd) → healthcheck. **Acceptance (§3.2): зовёт `autonomy-policy resolve` через CLI-seam + двухосный контракт `result × readiness`** (образец — `validate-feature-impl.mjs:530-548`) | ⬜ | 4 места регистрации, см. §8 |
 | **B3 = E.C** | `orchestrator/processes/rollback-release.mjs` (симлинк-swap). **`rollback` — ОТДЕЛЬНЫЙ operation-класс, НЕ `destructive`** (тот во floor ⇒ классификация «по смыслу» сломает staging-авто-rollback и решение владельца) | ⬜ | — |
 | **B4** | **F3-core, поднято из E.F (§3.2):** `resolveDisposition` → per-state `env_tier` (`meta.env_tier \|\| env.limits.env_tier`); `operation_class`/`risk` в states чартера; снятие затычки «L3≡L2» (`autonomy-policy.cjs:215-216`) | ⬜ | — |

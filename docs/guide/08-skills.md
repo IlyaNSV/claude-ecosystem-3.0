@@ -9,7 +9,7 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `skills/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-skill-catalog.cjs`. Скиллы — **lazy-loaded методология**: их не вызывают как команды, их подгружает ассистент под задачу (3-5 за раз). Путь на диске — `skills/<скилл>.md`. Команды — [02-commands.md](02-commands.md). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 63 скилла** в 5 модулях.
+**Всего: 64 скилла** в 5 модулях.
 
 ## skills/ecosystem/ (5)
 
@@ -81,13 +81,14 @@ doc_type: reference
 | `design/open-design-workflow` | open-design primary generator for D.2/D.3 — Claude authors DS-token-bound SI-*.html and drives the Dockerized open-design daemon via its `od mcp` stdio server (CNT-004) to create a per-FM OD project + one artifact per screen, with live iframe preview (od-proxy) + multi-format export. Multi-screen, agent-authoring (Mode A). Autonomous start_run (Mode B) deferred per CNT-004. |
 | `design/stitch-workflow` | Stitch MCP dispatch для D.2/D.3 screen generation. Prompt patterns v0 best-effort (OQ-DM-01 open); quota tracking integration; fallback chain trigger при unavailability. |
 
-## skills/integrator/ (6)
+## skills/integrator/ (7)
 
 Подключение внешних инструментов под PMO («сисадмин»)
 
 | Скилл | Что делает |
 |---|---|
 | `integrator/contract-design` | How to design a contract (CNT-*.yaml/.md) between two tools and instantiate the adapter script. Used at /integrator:add Stage 5 and /integrator:update Stage 4 (contract repair). Authoritative schema in docs/integrator-module/SPEC.md §5. |
+| `integrator/deployment-provisioning` | How the Integrator EQUIPS a deploy-capability (D3-05/06) for a fabric pilot — authors systemd unit templates (@app/api\|web\|worker running node dist/main.js under WORKER_AUTOSTART), a releases/<ts>+current symlink layout, a prisma migrate deploy step, and a healthcheck spec (reusing the P7 failure taxonomy) plus a CNT deploy-capability contract. Equips only; the Orchestrator deploy-to-stage process EXECUTES (§8.3). Used by the deployer subagent. |
 | `integrator/drift-detection` | Minimum-viable drift detection between installed adapter instance and pilot-local reference adapter, used by /integrator:update Stage 3. Three heuristics (D1 semver / D2 schema / D3 body diff) — all local-only post DEC-DEV-0044 tri-location refinement. Full schema-aware drift deferred to v1.1+ (Phase-7 cut, DEC-DEV-0176). |
 | `integrator/installation-protocol` | Installation flow methodology — 6-stage add-flow shared logic (lazy-init, backup, conflict resolution, rollback). Used by /integrator:add, /integrator:remove (backup paths), /integrator:update (drift repair flow). |
 | `integrator/research-protocol` | Multi-step methodology for researching tools to fill PMO needs. Used by /integrator:research and tool-researcher subagent. |
