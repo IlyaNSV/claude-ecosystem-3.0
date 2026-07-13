@@ -1,0 +1,50 @@
+
+
+  Ran 1 shell command
+
+● Всё есть. Пишу корневой README.md — по факту проекта (монорепо-платформа локализации длинного видео поверх Ecosystem 3.0), честно отражая, что фичи ещё in-progress.
+
+● Write(README.md)
+  ⎿  Wrote 121 lines to README.md
+       1 # my-first-test
+       2
+       3 **Long-video localization platform** — a pnpm monorepo that lets creators of long-form video
+       4 (courses, lectures, podcasts, long YouTube) localize into other languages end-to-end:
+       5 upload → glossary → translation → target-language voice-over → publish.
+       6
+       7 The product hypothesis and full behavioral spec live under [`.product/`](.product/) (managed with
+       8 [Ecosystem 3.0](#product-management-ecosystem-30)); this README covers the **code** layer.
+       9
+      10 > Status: **pre-MVP pilot scaffold.** All feature modules are `in-progress` — see
+     … +111 lines
+
+● Готово. Что оказалось и что сделал:
+
+  Диагноз: корневого README.md в проекте не было вообще — в корне только CLAUDE.md (для Claude) и вендоренный .claude/README.md (экосистема, перезаписывается при /ecosystem:update — править его смысла
+  нет). Остальные README — ассеты мокапов и бэкапы. То есть «приводить в порядок» было нечего; правильное действие — создать нормальный корневой README.
+
+  Сделал: написал README.md по фактам репозитория (не по памяти):
+  - Что это — платформа локализации длинного видео, pnpm-монорепо поверх Ecosystem 3.0.
+  - Реальная структура: apps/{api,web,worker}, packages/{db,providers,shared}, tests/, docker-compose (Postgres 16 + Redis 7).
+  - Prerequisites (Node ≥22, pnpm ≥11, Docker), quick start, таблица root-скриптов — всё сверено с package.json, pnpm-workspace.yaml, .env.example.
+  - Таблица фич FM-001…007 с честным статусом in-progress и указанием, что это pre-MVP-скаффолд.
+  - Секции про Ecosystem 3.0 и beads.
+
+  README на английском — под стать коду и конфигам (.env.example, package.json); отметил, что продуктовые артефакты в .product/ — на русском.
+
+  Пара решений, которые я принял сам (не переспрашивал, т.к. дёшево-обратимо): язык = английский, состав = стандартный dev-README. Если хочешь на русском или с другим акцентом — скажу переделаю.
+
+  Файл пока не закоммичен. Project CLAUDE.md требует push при завершении сессии — по регламенту закоммитить+запушить (git pull --rebase && git push)?
+
+  Короткий ответ: Корневого README не существовало — создал README.md с реальной структурой монорепо, quick-start и статусом фич. Не закоммичен; сказать — закоммичу и запушу по регламенту.
+
+✻ Cooked for 2m 28s
+
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+❯ 
+────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Opus 4.8 (1M context) high
+  main
+  ctx 6% · 5h 6% ⟳3h51m · 7d 82%
+  id 31049037-171b-4c41-afb0-fabf11e52b48
+  ⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents

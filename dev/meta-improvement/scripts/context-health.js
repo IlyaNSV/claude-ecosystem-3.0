@@ -122,7 +122,18 @@ function findSibling(h) {
   return null;
 }
 // объект есть в этом репо, но недостижим из refs (непушнутый / amend'нутый / squash-мёрженный)
-const isHistorical = (h) => sh(`git cat-file -t ${h}`, REPO) === 'commit';
+const objectInStore = (h) => sh(`git cat-file -t ${h}`, REPO) === 'commit';
+
+// ⚠ Локальный git-стор ЭФЕМЕРЕН: `git gc` вычищает висячие объекты в любой момент, без действий
+// коммиттера. Опираться ТОЛЬКО на `git cat-file` значит сделать классификацию недетерминированной
+// во времени: вчера «честная история», сегодня «мёртвый указатель», и verify падает сам по себе.
+// Реальный случай (2026-07-13): d48c113 пережил D4 как historical, а через день gc его снёс —
+// и гейт объявил ложью запись, которая ДОСЛОВНО говорит «amend, новый хеш 9d92b82 вместо d48c113».
+// Требовать убрать такую координату = требовать стереть историю.
+// ⇒ Историчность распознаётся ТАКЖЕ по семантике текста рядом с хешем. Память, которая САМА
+// объявляет координату переписанной/непушнутой, — честна, и гейт не вправе звать её лгуньей.
+const HISTORICAL_RX = /(amend|renumber|переимен|переписан|непушнут|не запушен|локальн\w+ коммит|была:|был:|вместо\s+`?[0-9a-f]{7}|устарел|retired|ретиров|удалённ\w+ ветк|deleted branch)/i;
+const isHistorical = (h, ctx) => objectInStore(h) || HISTORICAL_RX.test(ctx);
 
 // ---------- ground truth #3: пути ----------
 const PATH_BASES = [REPO, MEM, path.join(REPO, 'dev/meta-improvement'), path.join(REPO, 'dev'), path.join(REPO, 'docs')];
@@ -182,7 +193,7 @@ function scan(file, label) {
     if (hashes7.has(h)) continue;                                    // жив здесь
     const sib = findSibling(h);
     if (sib) { findings.crossRepo.push({ where: label, hash: h, repo: sib }); continue; }
-    if (isHistorical(h)) { findings.historical.push({ where: label, hash: h }); continue; }
+    if (isHistorical(h, near(m.index, 220))) { findings.historical.push({ where: label, hash: h }); continue; }
     if (CROSS_RX.test(near(m.index, 220))) { findings.unverifiable++; continue; }
     // Пространство поиска неполно: ожидаемого соседнего репо нет на диске ⇒ доказать смерть
     // НЕЛЬЗЯ. Отсутствие доказательства ≠ доказательство отсутствия — в unverifiable, не в ложь.

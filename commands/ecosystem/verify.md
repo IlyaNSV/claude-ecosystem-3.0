@@ -60,10 +60,19 @@ Runtime dirs (not commands, no catalog row — keep the structural minimums):
 - `.claude/product/processes/*.mjs` — expect 3+ (complete-feature DEC-DEV-0142; consilium DEC-DEV-0145; batch-enrich-feature-set DEC-DEV-0150)
 - `.claude/orchestrator/charters/*.json` — expect 1+ (feature-production-line — Process Fabric; engine `.claude/orchestrator/lib/fabric-engine.cjs` + co-located `autonomy-policy.cjs`, DEC-DEV-0153/0154)
 
+Skills (lazy-loaded methodology — no catalog row, no per-namespace count; keep the structural minimum):
+- `.claude/skills/**/*.md` — expect 63+ (across all module dirs; the repo keeps this number **equal** to `skills/**/*.md` — CLAUDE.md «Process triggers» Row 5 is machine-checked by `check-inventory-sync.cjs`, which fails the repo's verify if the floor lags a newly added skill. The `+` is tolerance for *locally added* skills in an install — the ecosystem never removes them.)
+
 > **Note (DEC-DEV-0082, revised by G33 fix):** the old hand-maintained per-namespace number list
 > lived here in parallel with the generated catalog and silently drifted (e.g. «~22» product
 > commands). It is gone — the catalog is the single expectation source. An *extra* local command
 > vs the catalog is almost never a fault; a *missing* one usually is.
+
+> **Note (skills — DEF-CTX-5):** unlike commands, skills have **no generated catalog**, so the floor
+> above is the only mechanical guard. It catches an added or a removed skill, but **not** a
+> count-preserving swap (one deleted, another added the same day). The strong form — a generated
+> skill catalog à la `gen-command-catalog.cjs` — is deferred: see `dev/tech-debt/CONTEXT_AUDIT_D6.md`
+> (DEF-CTX-5). Until then, treat the number as a floor, not as a manifest.
 
 ### Step 4.5: Orchestrator gate-contract freshness (delivery spot-check)
 
@@ -207,6 +216,9 @@ COMMANDS (deployed vs generated catalog 02-commands.md — Step 4 / G33)
   ✓ orchestrator/: <n> = catalog <n>
   ✓ ecosystem/:    <n> = catalog <n>
   ✓ product/processes: 3+       (complete-feature DEC-DEV-0142; consilium DEC-DEV-0145; batch-enrich-feature-set DEC-DEV-0150)
+
+SKILLS (lazy-loaded methodology — floor per Step 4; no generated catalog, DEF-CTX-5)
+  ✓ skills/**:     63+          (all module dirs; locally added skills are fine — floor, not manifest)
 
 ORCHESTRATOR CONTRACT (delivery spot-check — DEC-DEV-0101/0102/0104)
   ✓ validators_incomplete + committed_under_non_ready   (validate-feature-impl.mjs)

@@ -54,19 +54,21 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 | `refactor:` | CHANGELOG — **только если меняет behavior**; DEV_JOURNAL — если non-trivial | дисциплина (гейт не ловит: он смотрит только `feat:`/`fix:`) |
 | `docs:` / typo / dependency bump | **ничего** — это НЕ триггеры | §1 «НЕ триггеры» |
 | добавил/убрал артефакт-тип или validation-правило | 🔒 count-sweep всех ~10 count-доков (`node dev/meta-improvement/scripts/check-counts.js` зелёный) | [[reference_pmo_canonical_counts]] |
-| добавил/убрал команду / **namespace** команд / хук | обновить `commands/ecosystem/verify.md` (Step 4 + Step 9 summary) + проверить обзорные шаблоны (`status.md`, `docs/MAP.md`) | ⚠️ warn-only чекер `check-inventory-sync.cjs` (D11) — см. сноску под таблицей |
+| добавил/убрал команду / **namespace** команд / **скилл** / хук | обновить `commands/ecosystem/verify.md` (Step 4 + Step 9 summary) + проверить обзорные шаблоны (`status.md`, `docs/MAP.md`) | ⚙ strict-чекер `check-inventory-sync.cjs` в `npm run verify` (D11) — см. сноску под таблицей |
 | архитектурный выбор из ≥2 вариантов | DEV_JOURNAL: что выбрал + почему отверг остальные | §1 |
 | собрался резать версию / доставлять в пилот | `checklists/patch-cut.md` | каденс — по событию |
 | собрался прогнать live-доработку в пилоте (dogfood-валидация) | `checklists/live-run-validation.md` | executor/reviewer separation; класс A (спонтанность) / B (механика) |
 | перед фазой / после фазы | `checklists/phase-kickoff.md` / `phase-closure.md` | **это SSOT ритуалов фазы** — §«Что делать в этой сессии» на них лишь ссылается |
 | рефактор с риском stale-ссылок | `patterns/spec-drift-sweep.md` (grep после) | — |
 
-🔒 = hard-enforced **кодом** (`process-gate.js`, блокирующий `commit-msg`). Остальное — дисциплина (+ warn-only PostToolUse напоминалки `dev-journal-reminder.js` / `phase-closure-reminder.js` / `memory-drift-reminder.js`).
+🔒 = hard-enforced **кодом** (`process-gate.js`, блокирующий `commit-msg`). ⚙ = принуждается **другой** блокирующей цепью — `npm run verify` (коммит пройдёт, verify упадёт). Остальное — дисциплина (+ warn-only PostToolUse напоминалки `dev-journal-reminder.js` / `phase-closure-reminder.js` / `memory-drift-reminder.js`).
 
-**Сноска к строке «добавил/убрал команду / namespace / хук»** (DEC-DEV-0197 / D11 — единственное правило таблицы, у которого не было НИ гейта, НИ warn-хука):
-- `node dev/meta-improvement/scripts/check-inventory-sync.cjs` — детерминированно сверяет `verify.md` с репо: набор namespace'ов (Step 4 **и** Step 9 summary), floor'ы runtime-дир, маркеры Step 4.5/4.6 (реально ли строка есть в `.mjs`), хуки Step 8.5 (есть ли в `hooks/*/manifest.yaml` с заявленным событием).
-- **warn-only (exit 0 всегда), НЕ в цепи `npm run verify`, НЕ в `process-gate`.** Precision измерена (7/7 инъецированных дефектов пойманы, 0 ложняков); **флип warn→strict — решение владельца**, не моё. Строгий гейт с ложняками хуже отсутствующего.
-- **Чего чекер НЕ покрывает (честно):** **скиллы** — в `verify.md` инвентаря скиллов вообще нет (только проверка существования дир в Step 1), т.е. синхронизировать при добавлении скилла *нечего*; хуки помимо пары LESSON-*; `status.md`-шаблоны (нужно суждение). Поштучные команды уже гейтит `gen:catalog:check`, `docs/MAP.md` — `gen:map:check`.
+**Сноска к строке «добавил/убрал команду / namespace / скилл / хук»** (DEC-DEV-0197 / D11 — единственное правило таблицы, у которого не было НИ гейта, НИ warn-хука):
+- `node dev/meta-improvement/scripts/check-inventory-sync.cjs` — детерминированно сверяет `verify.md` с репо: набор namespace'ов (Step 4 **и** Step 9 summary), floor'ы runtime-дир **и скиллов**, маркеры Step 4.5/4.6 (реально ли строка есть в `.mjs`), хуки Step 8.5 (есть ли в `hooks/*/manifest.yaml` с заявленным событием).
+- **⚙ STRICT** (флип владельца 2026-07-13): в цепи `npm run verify` как `check:inventory:strict`. **НЕ** в `process-gate` — коммит пройдёт, упадёт `verify`. Аварийный тумблер: `INVENTORY_SYNC_STRICT=0 npm run verify` (гейт на общем ресурсе без выключателя однажды склинит чужой цикл — и виноват будет не тот, кто падает).
+- **«Чекер ослеп» ≠ «нашёл дрейф».** Непарсящийся якорь (`verify.md` реструктурировали) или недоступный ground truth (частичный / sparse checkout — файл в индексе git, но не на диске) → громкий warn «обнови парсер», **exit 0, никогда не гейтит**. Тот же закон, что у сторожа координат: *отсутствие доказательства ≠ доказательство отсутствия*; гейт не имеет права падать на том, чего не может знать.
+- **Скиллы — пронг наполнен, но проверка слабая (осознанно).** `verify.md` Step 4 держит floor `` `.claude/skills/**/*.md` `` (машинно равен живому `skills/**/*.md`, тихо дрейфовать не может: добавил/убрал скилл ⇒ красный `verify`). Но **swap/переименование с сохранением числа проходит молча**. Сильная форма — генератор каталога скиллов, как `gen-command-catalog.cjs` у команд — отложена: `dev/tech-debt/CONTEXT_AUDIT_D6.md` **DEF-CTX-5**.
+- **Чего чекер НЕ покрывает (честно):** хуки помимо пары LESSON-*; `status.md`-шаблоны (нужно суждение). Поштучные команды уже гейтит `gen:catalog:check`, `docs/MAP.md` — `gen:map:check`.
 
 ## Autoflow — git / память / sync без отдельных команд (DEC-DEV-0100)
 
