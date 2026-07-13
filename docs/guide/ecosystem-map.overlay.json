@@ -157,6 +157,10 @@
       "when": "Сгенерировать operating manual инструмента для Orchestrator (.claude/integrator/tool-docs/<tool>.md); manual-блоки переживают реген.",
       "arg": "[--tool <name> | --tool=all]", "tags": "docs документация tool-docs orchestrator", "source": "commands/integrator/docs.md"},
 
+    "integrator:provision": {"st": "D3", "status": "partial", "produces": [], "consumes": [],
+      "when": "Оснастить deploy-capability (D3-05/06) для пилота: спавнит deployer-субагента (systemd-шаблоны + releases/<ts>+current + prisma-migrate + healthcheck-спека + CNT draft). Approve-gate, персист в .claude/integrator/. Оснащает, НЕ деплоит — исполняет Orchestrator deploy-to-stage (§8.3).",
+      "arg": "<capability> (deploy-staging|deploy-prod-stub)", "tags": "provision оснастить deploy staging systemd capability CNT deployer", "source": "commands/integrator/provision.md"},
+
     "orchestrator:run": {"st": "D3", "status": "shipped", "produces": ["spec"], "consumes": ["handoff"],
       "when": "Прогнать PMO-процесс end-to-end. Построены и live-validated: P3 (handoffs → cc-sdd specs) → P4 (audit-spec-fidelity) → P5 (feature-to-tdd-impl) → P6 (validate-feature-impl). Возвращает GO / NO-GO / MANUAL_VERIFY. Предусловие: активный cc-sdd (сначала /integrator:add cc-sdd).",
       "arg": "<process> [--feature FM-NNN ...] [--all] [--no-stack-gate]", "tags": "оркестратор run P3 P4 P5 P6 cc-sdd impl tdd", "source": "commands/orchestrator/run.md"},

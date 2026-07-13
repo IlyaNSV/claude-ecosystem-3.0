@@ -248,6 +248,63 @@ test('--autonomy override: L0 tightens a dev HIGH step to human-gate; floor stay
   assert.ok(bad.why.some((w) => /override "L9"/.test(w)), `why[] must name the ignored override: ${JSON.stringify(bad.why)}`);
 });
 
+test('F3 per-state env_tier: meta.env_tier overrides the global limit; absent ⇒ global (1:1 back-compat)', () => {
+  const { resolveDisposition } = lib;
+  // a deploy_staging state declaring env_tier:'staging' routes the STAGING column despite global dev…
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'deploy_staging', env_tier: 'staging', risk: 'HIGH' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L3' } }).disposition,
+    'auto', 'meta.env_tier=staging wins over global dev → L3×staging=auto');
+  // …the same state under L2 is consilium-gate (contrast proves env_tier really routed the staging column)
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'deploy_staging', env_tier: 'staging' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L2' } }).disposition,
+    'consilium-gate', 'staging column under L2');
+  // …and under the L1 default it human-gates (staging is human-gated below L2)
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'deploy_staging', env_tier: 'staging' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } }).disposition,
+    'human-gate', 'staging column under L1');
+  // backward-compat: a state with NO meta.env_tier falls through to the global limit — bit-identical to pre-F3
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'process-step' }, { limits: { env_tier: 'dev' }, policy: {} }).disposition,
+    'auto', 'absent meta.env_tier → global dev → L1×dev=auto (1:1 pre-F3)');
+});
+
+test('F3 (guard G): rollback state auto-resolves at the DEFAULT level — silent auto-rollback-disable guard', () => {
+  const { resolveDisposition } = lib;
+  // The load-bearing case: a rollback state on staging under the L1 DEFAULT must be auto. If it rode the
+  // generic staging column it would human-gate at L1 and silently disable the D-4 auto-rollback bracket.
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'rollback', env_tier: 'staging' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } }).disposition,
+    'auto', 'rollback×staging is auto at the default L1 (auto-rollback not silently gated)');
+  // prod rollback stays human at every level (owner rail)
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'rollback', env_tier: 'prod' }, { limits: { env_tier: 'dev' } }).disposition,
+    'human-gate', 'rollback×prod is human-gate');
+});
+
+test('F3 (integration H): prescribe routes deploy_staging / rollback invoke states through the resolver', () => {
+  const deployCharter = {
+    id: 'd', version: 1, initial: 'deploy',
+    states: { deploy: { invoke: { process: 'deploy-to-stage' }, meta: { operation_class: 'deploy_staging', env_tier: 'staging', risk: 'HIGH' } } },
+    guards: {},
+  };
+  const l3 = prescribe(deployCharter, { state: 'deploy', subject: 's', instance: 'i' }, { limits: { env_tier: 'dev' }, policy: { default_level: 'L3' } });
+  assert.strictEqual(l3.kind, 'run-process');
+  assert.strictEqual(l3.disposition, 'auto', 'deploy_staging under L3 → auto');
+  const l1 = prescribe(deployCharter, { state: 'deploy', subject: 's', instance: 'i' }, { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } });
+  assert.strictEqual(l1.disposition, 'human-gate', 'deploy_staging under the L1 default → human-gate');
+  const rbCharter = {
+    id: 'r', version: 1, initial: 'rb',
+    states: { rb: { invoke: { process: 'rollback-release' }, meta: { operation_class: 'rollback', env_tier: 'staging' } } },
+    guards: {},
+  };
+  const rb = prescribe(rbCharter, { state: 'rb', subject: 's', instance: 'i' }, { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } });
+  assert.strictEqual(rb.disposition, 'auto', 'rollback invoke state → auto (auto-rollback works via prescribe at the default level)');
+});
+
 test('CLI --autonomy L0 flows through tick to the emitted prescription', () => {
   const base = mkTmp();
   const id = initInstance(base, 'FM-OV');

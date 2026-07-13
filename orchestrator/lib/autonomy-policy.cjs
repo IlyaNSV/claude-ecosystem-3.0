@@ -10,9 +10,11 @@
  *       > project default_level > ecosystem built-in (L1)
  *     resolve(operation_class, risk_tier, env_tier, policy, override)
  *       → { disposition ∈ {auto | human-gate | block}, level_applied, floor_hit, why[] }
- *   - F2 (DEC-DEV-0193) implements L0-L3. L2/L3 route the staging/prod cells to
- *     `consilium-gate` (Epic D jury + confidence threshold τ + human-fallback); the floor
- *     remains non-crossable and its classes are human-gate FIRST (never consilium-gate).
+ *   - F2 (DEC-DEV-0193) implements L0-L3. L2 routes the staging/prod cells to `consilium-gate`
+ *     (Epic D jury + confidence threshold τ + human-fallback). F3 (DEC-DEV-0194) differentiates
+ *     L3: L3 × staging → auto (pre-deploy jury replaced by the healthcheck → auto-rollback net),
+ *     L3 × prod stays consilium-gate; plus a `rollback` class (dev/staging → auto, prod → human).
+ *     The floor remains non-crossable and its classes are human-gate FIRST (never consilium-gate).
  *   - WIRED (F2 seed, DEC-DEV-0154): consumed by orchestrator/lib/fabric-engine.cjs
  *     (Process Fabric prescriptions). Home is orchestrator/lib/ — co-located with its
  *     consumer so the existing `/ecosystem:update` orchestrator `lib/` namespace sync
@@ -39,10 +41,11 @@
  * and the CLI seam touch the FS.
  *
  * F2 (DEC-DEV-0193): L2/L3 are now BUILT. resolve() emits `consilium-gate` on the staging/prod
- * cells of L2/L3 (L3 ≡ L2 until F3); the consilium verdict is folded back by applyConsiliumVerdict
- * (confidence ≥ τ → auto, else human-fallback). The floor stays non-crossable — a floor class is
- * human-gate + floor_hit FIRST, consilium-gate is never emitted on it. product.yaml `autonomy:` is
- * parsed by parseAutonomyConfig/loadAutonomyPolicy (named profiles default=L1 / autonomous=L3).
+ * cells of L2. F3 (DEC-DEV-0194) differentiates L3 (L3 × staging → auto, L3 × prod → consilium-gate)
+ * and adds a `rollback` class (dev/staging → auto, prod → human-gate). The consilium verdict is folded
+ * back by applyConsiliumVerdict (confidence ≥ τ → auto, else human-fallback). The floor stays
+ * non-crossable — a floor class is human-gate + floor_hit FIRST, consilium-gate is never emitted on
+ * it. product.yaml `autonomy:` is parsed by parseAutonomyConfig/loadAutonomyPolicy (default=L1 / autonomous=L3).
  */
 
 const fs = require('fs');
@@ -52,7 +55,7 @@ const POLICY_SCHEMA_VERSION = 1;
 
 // ---- enums (vision §Epic F, locked 2026-06-23) ------------------------------------------------
 
-/** Autonomy ladder. F1 implements L0/L1; L2/L3 recognized but degrade to L1 (F2 builds them). */
+/** Autonomy ladder. F1 implemented L0/L1; F2 built L2; F3 differentiated L3 (staging → auto). */
 const LEVELS = ['L0', 'L1', 'L2', 'L3'];
 const LEVEL_ORDER = { L0: 0, L1: 1, L2: 2, L3: 3 };
 const BUILT_IN_DEFAULT_LEVEL = 'L1'; // ecosystem built-in (vision: дефолт новых проектов = L1)
@@ -139,7 +142,7 @@ function resolveLevel(policy, override, processName) {
   }
 
   // F2 (DEC-DEV-0193): L2/L3 are BUILT — returned verbatim (no more degradation to L1). resolve()
-  // maps them onto the consilium-gate matrix; L3 ≡ L2 semantics until F3 (prod segment, Epic E).
+  // maps them onto the disposition matrix; F3 (DEC-DEV-0194) differentiates L3 from L2 on staging.
   return { level, why };
 }
 
@@ -162,12 +165,15 @@ function resolveLevel(policy, override, processName) {
  *
  * → { disposition: 'auto'|'consilium-gate'|'human-gate'|'block', level_applied, floor_hit, why: [string] }
  *
- * Disposition matrix (F2, L0-L3 — the contract doc carries the table with rationale):
+ * Disposition matrix (F2+F3, L0-L3 — the contract doc carries the table with rationale):
  *   floor class                → human-gate, always (floor_hit: true) — checked FIRST, never consilium
+ *   rollback class (non-floor) → auto on dev/staging, human-gate on prod — level-INDEPENDENT, checked
+ *                                before the matrix (reverse ⇒ more autonomous; owner rail: prod always human)
  *   L0: auto iff LOW × dev; HIGH/staging/prod → human-gate (человек на всех 🟠+🔴)
  *   L1: auto iff dev (staging/prod → human-gate; irreversibility is carried by the floor classes)
- *   L2/L3: auto on dev (as L1); staging/prod → consilium-gate (Epic D jury + τ + human-fallback).
- *          L3 ≡ L2 here until F3 (prod segment, Epic E) — noted loudly in why[].
+ *   L2: auto on dev (as L1); staging/prod → consilium-gate (Epic D jury + τ + human-fallback)
+ *   L3: auto on dev AND staging (F3: staging jury replaced by the healthcheck → auto-rollback net);
+ *       prod → consilium-gate (conservative — monotone with L2, never a blanket prod auto)
  *
  * Pure: same inputs → same disposition. The why[] chain is replayable (audit-trail seed).
  */
@@ -208,29 +214,52 @@ function resolve(operationClass, riskTier, envTier, policy, override) {
   const level = lv.level;
   const whyAll = why.concat(lv.why);
 
-  // ---- the F2 disposition matrix (L0-L3) ------------------------------------------------------
-  // L3 ≡ L2 in this matrix (F3 differentiates the prod segment, Epic E) — noted loudly.
-  let effLevel = level;
-  if (level === 'L3') {
-    whyAll.push('L3 requested — equals L2 semantics until F3 (prod segment, Epic E); floor unchanged');
-    effLevel = 'L2';
+  // ---- rollback operation-class (F3, DEC-DEV-0194 D-8): "reverse => more autonomous" ----------
+  // A rollback moves the system toward a PREVIOUSLY-deployed known-good release: it cannot introduce
+  // novel broken state, so it is safe-by-construction on the reversible side. Owner rail
+  // (EPIC_E_READINESS.md:22): staging auto, prod ALWAYS human-confirm. Keyed on env ONLY
+  // (level-independent) and placed ABOVE the generic level-matrix: the D-4/D-9 auto-rollback bracket
+  // must fire on a healthcheck failure at the project's ACTUAL level (L1 default, possibly L0) WITHOUT
+  // a human. Riding the generic staging column would human-gate it at L0/L1 and silently defeat the
+  // owner's "staging auto" decision. rollback is NOT in DEFAULT_FLOOR, so the floor already returned
+  // above; prod is human-gate (NEVER consilium - "human-confirm" is unconditional, agents are not a human).
+  if (opClass === 'rollback') {
+    if (env === 'prod') {
+      whyAll.push(`rollback x prod: human-gate at ${level} (owner rail: prod rollback is ALWAYS human-confirm, every level)`);
+      return { disposition: 'human-gate', level_applied: level, floor_hit: false, why: whyAll };
+    }
+    whyAll.push(`rollback x ${env}: auto at ${level} (reverse -> more autonomous; a rollback only restores a prior known-good release - safe-by-construction, level-independent so D-4 auto-rollback fires at the project default level)`);
+    return { disposition: 'auto', level_applied: level, floor_hit: false, why: whyAll };
   }
 
+  // ---- the F3 disposition matrix (L0-L3) ------------------------------------------------------
+  // F3 (DEC-DEV-0194) removes the F2 "L3 == L2" stub. L3 differs from L2 in exactly ONE cell:
+  // L3 x staging = auto (was consilium-gate). Staging is reversible by construction (symlink-swap
+  // rollback, dev-tier secrets); at L3 the operator has opted into replacing the pre-deploy jury (L2)
+  // with the post-deploy healthcheck -> auto-rollback net (D-4/D-5). L3 x prod stays consilium-gate:
+  // prod is conservative (monotonicity forbids human-gate below L2; owner intent forbids a blanket
+  // auto on real users). The floor (checked first) and applyReadinessGuard (downstream) are untouched.
   let disposition;
   if (env === 'dev') {
-    if (effLevel === 'L0') {
+    if (level === 'L0') {
       disposition = tier === 'LOW' ? 'auto' : 'human-gate';
       whyAll.push(`L0 × dev × ${tier}: auto only on LOW (человек на всех 🟠+🔴)`);
     } else {
-      // L1/L2 (and L3→L2): auto on dev; irreversible operation classes are already caught by the
-      // floor above, so a non-floor dev operation is the reversible case.
+      // L1/L2/L3: auto on dev; irreversible operation classes are already caught by the floor
+      // above, so a non-floor dev operation is the reversible case.
       disposition = 'auto';
       whyAll.push(`${level} × dev × ${tier}: auto on the reversible/dev side (floor classes already human-gated)`);
     }
-  } else if (effLevel === 'L2') {
-    // L2/L3 × staging/prod: the consilium gate (Epic D jury + τ + human-fallback). The verdict is
-    // folded back by applyConsiliumVerdict; the floor already returned human-gate above, so a
-    // consilium-gate is only ever emitted on a NON-floor operation.
+  } else if (level === 'L3' && env === 'staging') {
+    // F3: the ONE cell that differentiates L3 from L2. The pre-deploy jury is replaced by the
+    // post-deploy healthcheck -> auto-rollback net; staging is reversible, and the floor +
+    // readiness-guard still apply. This is the operational meaning of profile:autonomous (L3).
+    disposition = 'auto';
+    whyAll.push(`L3 × staging × ${tier}: auto (F3 - pre-deploy jury replaced by the post-deploy healthcheck -> auto-rollback net; staging is reversible, floor + readiness-guard still apply)`);
+  } else if (level === 'L2' || level === 'L3') {
+    // L2 × staging/prod AND L3 × prod: the consilium gate (Epic D jury + threshold + human-fallback).
+    // The verdict is folded back by applyConsiliumVerdict; the floor already returned human-gate
+    // above, so a consilium-gate is only ever emitted on a NON-floor operation.
     disposition = 'consilium-gate';
     whyAll.push(`${level} × ${env}: consilium-gate (Epic D jury + threshold + human-fallback; floor stays human)`);
   } else {

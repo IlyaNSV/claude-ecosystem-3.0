@@ -286,7 +286,8 @@ function applyIngest(charter, processName, resultJson) {
  * resolveDisposition(stateMeta, env) → the F1 envelope from autonomy-policy.resolve().
  *   operation_class ← stateMeta.operation_class || 'process-step'
  *   risk_tier       ← stateMeta.risk           || 'HIGH'   (conservative; consumed, not re-derived)
- *   env_tier        ← env.limits.env_tier       || 'dev'
+ *   env_tier        ← stateMeta.env_tier || env.limits.env_tier || 'dev'  (per-state routes the
+ *                     deploy column; F3/DEC-DEV-0194 — absent meta.env_tier ⇒ global limit, 1:1 back-compat)
  *   policy          ← env.policy                || {}
  *   override        ← env.override              (per-invocation --autonomy flag; F1 precedence:
  *                     floor > override > pin > default — an invalid level is ignored LOUDLY by F1)
@@ -297,7 +298,7 @@ function resolveDisposition(stateMeta, env) {
   const meta = stateMeta || {};
   const operationClass = meta.operation_class || 'process-step';
   const riskTier = meta.risk || 'HIGH';
-  const envTier = (env && env.limits && env.limits.env_tier) || 'dev';
+  const envTier = meta.env_tier || (env && env.limits && env.limits.env_tier) || 'dev';
   const policy = (env && env.policy) || {};
   const override = (env && env.override) || undefined;
   return autonomyPolicy.resolve(operationClass, riskTier, envTier, policy, override);
@@ -945,7 +946,7 @@ function printHelp() {
     '    --tick, fire their resume-event to un-park the line; dismissed entries are only surfaced.',
     '',
     'init/ingest/tick also take --autonomy <L0|L1|L2|L3> — per-invocation override for the emitted',
-    'prescription (F2: L2/L3 emit consilium-gate on staging/prod; the floor is never crossable, invalid levels ignored loudly).',
+    'prescription (F3: L2 → consilium-gate on staging/prod; L3 → auto on staging, consilium-gate on prod; floor never crossable, invalid levels ignored loudly).',
     'tick/ingest/pa-scan take --pa-file <path> to override the canonical .claude/pending-actions.md',
     'target — an APPLIED tick into a human-gate state mirrors the gate there as a PA-NNN (phase 2b).',
     'Timestamps are INPUTS (--at ISO), stamped by the dispatcher. Instance-id is deterministic',

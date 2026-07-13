@@ -2320,3 +2320,21 @@ DEF-CTX-1/2/3/5 помечены `[FIXED]`; DEF-CTX-4/6 остаются `[OPEN]
 **Owner-gate (решение владельца №1) — открытые вопросы к предъявлению перед E.B:** (a) канал-триггер деплойера (`/integrator:provision <cap>` рекоменд. vs inline-spawn vs `/integrator:add --capability`) — дизайн команду намеренно не поставил; (b) подтвердить, что CNT едет как `draft`; (c) генеральность имени скилла; (d) prisma-absent: note-and-proceed vs hard-block. VM-gated (не дефекты): флип CNT `draft→active` (нужен живой verify = E.D), pilot-side регистрация в `active-tools.yaml`/`pmo-mapping.yaml`, байт-точная сверка формы CNT с реальным инстансом пилота.
 
 **Acceptance для E.B (передано контрактом, НЕ scope E.A):** `deploy-to-stage.mjs` обязан (1) нормализовать CRLF при парсинге манифеста; (2) звать `autonomy-policy resolve` + объявлять per-state `env_tier` — против «тихого зелёного auto-deploy» (кампания §3.2).
+
+### Addendum — Фундамент E1: B4 (F3-core) + /integrator:provision (owner-gate пройден)
+
+**Owner-gate после E.A пройден** (решение владельца 2026-07-13): канал-триггер деплойера = `/integrator:provision` (новая команда); строить весь repo-side сейчас (unvalidated до восстановления VM); prisma-absent = note-and-proceed; CNT = draft.
+
+**B4 = F3-core** — резолвер, на который обопрётся E.B (построен ПЕРЕД процессами намеренно: §3.2 кампании — floor раньше deploy; иначе E.B дал бы тихий auto-deploy мимо резолвера). Дизайн→сборка→адверс-проверка, вердикт PASS, verify exit 0.
+
+**Ключевое дизайн-решение — семантика L3 как одноячеечная дельта.** F2 держал L3 затычкой (`effLevel='L2'`). Снятие затычки могло раздуться в переписывание матрицы. Дизайнер свёл F3 к **одной ячейке**: `L3 × staging` для не-floor операций → `auto` (вместо `consilium-gate`). Обоснование — оси ортогональны: `env_tier` = ось радиуса поражения, floor = ось необратимости; лестница L0→L3 растёт по доверию к автоматике на НЕ-floor операциях, floor неизменен. L3 приземляется там, где радиус ограничен (staging: обратимый симлинк-своп, dev-tier секреты, сетка healthcheck→auto-rollback), и НЕ на prod (floor + консервативный consilium). Модель безопасности сдвигается «обдумать-до-действия» (L2 жюри до деплоя) → «обнаружить-и-откатить» (L3 деплоит, полагаясь на пост-деплой сетку) — это БОЛЬШЕ автономии, не безрассудство; оператор явно выбрал `profile: autonomous`.
+
+**Floor непробиваем на L3 — доказано по построению, не по тесту.** Floor-проверка — early-return ПЕРВОЙ (`autonomy-policy.cjs:191-198`), выше и rollback-ветки, и матрицы. Все правки F3 строго ниже. ⇒ floor-класс никогда не достигает нового кода. Закреплено свипом floor×{L0..L3}×{dev,staging,prod} + тестом монотонности автономии L0≤L1≤L2≤L3.
+
+**operation-класс `rollback` — level-INDEPENDENT (важно).** rollback ∉ floor. Правило: staging→`auto` на ЛЮБОМ уровне (включая дефолтные L0/L1), prod→`human-gate` всегда. Почему level-independent: D-4/D-9 auto-rollback брекет (`deploy_failed → auto-rollback → rolled_back`) обязан срабатывать без человека на РЕАЛЬНОМ уровне проекта (L1 дефолт). Если бы rollback ехал по generic-матрице, на L1 он был бы `human-gate` — auto-rollback молча сломан, а выглядит зелёным. Правило сидит ВЫШЕ матрицы (зеркало floor, обратное направление). Safe-by-construction: rollback двигает систему только к ранее-задеплоенному known-good.
+
+**per-state env_tier** — `resolveDisposition` (fabric-engine:301) получил префикс `meta.env_tier ||` перед глобальным `env.limits.env_tier`; отсутствует ⇒ байт-идентично прежнему (backward-compat). Нужно, т.к. глобальный limits не различит deploy-состояние от build-состояния в одной линии.
+
+**Контракт для E.B (передан в бриф):** deploy-состояния чартера ОБЯЗАНЫ объявить `operation_class:'deploy_staging'|'rollback'|'prod_deploy'` + `env_tier` в `meta`, и ОПУСТИТЬ `meta.autonomy` (иначе `prescribe` флорит в human-gate, убивая staging-автономию). Резолвер инертен, пока чартер не объявит meta. `rollback` в meta должен быть ТОЧНО `'rollback'` — иначе едет в generic-колонку → human-gate на дефолте → auto-rollback молча выключен.
+
+**Мелочь для E.B:** `run.md` несёт stale-прозу про «L2/L3 → consilium» (2 региона: ~:294-296 + скобка ~:350-351) — теперь неточно для L3×staging=auto. Не load-bearing (актуатор кейается на `disposition`, не на level), но поправить при регистрации E.B.

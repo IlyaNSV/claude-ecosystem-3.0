@@ -10,8 +10,13 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **`/integrator:provision <capability>` — команда-триггер deploy-capability (Epic E · E.A).** Спавнит `deployer`-субагента, получает deploy-setup + CNT-контракт (draft), персистит в `.claude/integrator/contracts/` через approve-гейт [Y/E/N]. Оснащает, не исполняет (§8.3). prisma-absent — note-and-proceed.
 - **Epic E · E.A — Integrator оснащает deploy-capability (scaffold, owner-gated).** Новый role-агент `agents/integrator/deployer.md` + скилл `skills/integrator/deployment-provisioning.md`: Integrator **авторит** deploy-setup (systemd-unit-шаблоны для `@app/{api,web,worker}`, `releases/<ts>`+`current`-layout, шаг `prisma migrate deploy`, healthcheck-спека на базе P7 failure-таксономии) + CNT-контракт deploy-capability (`producer: deployer` / `consumer: deploy-to-stage`). Граница §8.3 закрыта **структурно**: `deployer` несёт `tools: Read, Grep, Glob` — без `Bash`/`Write`, поэтому исполнить deploy (`systemctl`/симлинк-флип) физически не может; исполнение — за Orchestrator-процессом `deploy-to-stage` (E.B, ещё не построен). Сама команда-триггер и live-валидация — за owner-gate + восстановлением VM.
 - **Каталог скиллов — генератор + строгая проверка (`docs/guide/08-skills.md`).** Построен `gen-skill-catalog.cjs` (симметрично каталогу команд): каталог скиллов генерируется из frontmatter `description:`, `gen:skills:check` вшит в цепь `verify`. `/ecosystem:verify` Step 4 получил инвентарь скиллов + строку `SKILLS` в отчёте (Step 9). Закрывает **пустой пронг «скилл»** harness-контракта — теперь swap/rename скилла с сохранением числа **больше не проходит молча** (прежде держался лишь на floor-затычке). `DEF-CTX-5` закрыт.
+
+### Changed
+
+- **Autonomy F3-core: уровень L3 теперь реально отличается от L2 в prod-сегменте (Epic E · B4).** Прежде L3 был затычкой (≡ L2 до Epic E). Теперь: `L3 × staging` для не-floor операций даёт `auto` (вместо `consilium-gate` на L2) — автономный staging-деплой обменивает пред-деплойное жюри на пост-деплойную сетку healthcheck→auto-rollback; **floor остаётся абсолютно непробиваемым на всех уровнях** (`prod_deploy` × L3 → human-gate, доказано свипом). Новый operation-класс `rollback` (staging = `auto` на любом уровне, чтобы auto-rollback срабатывал без человека; prod = `human-gate` всегда). Fabric-состояния теперь могут объявлять per-state `env_tier` (`meta.env_tier`; отсутствует ⇒ прежнее глобальное поведение 1:1).
 
 ### Fixed
 
