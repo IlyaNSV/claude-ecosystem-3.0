@@ -1,6 +1,6 @@
 # Ecosystem Vision — автономный конвейер «идея → прод»
 
-> **Статус:** `accepted — направление принято` (2026-06-23; все 10 вопросов §7 решены). Превращает три «вектор-идеи» владельца (Step -0.9 / -0.8 / 0) в точные намерения, заземляет их в фактическом состоянии кода, прикладывает внешний ресёрч (profit vs переусложнение) и нарезает на инкременты-эпики A-F. **Следующий шаг** — формализация: DEC-DEV-запись + перенос в [ROADMAP.md](../ROADMAP.md) (pending; см. §8 + замечание о коллизии нумерации DEC-DEV с активной оркестратор-сессией).
+> **Статус:** `accepted — формализовано и в работе` (принято 2026-06-23, §7 10/10; формализовано DEC-DEV-0098 `9d6a4f3`). Превращает три «вектор-идеи» владельца (Step -0.9 / -0.8 / 0) в точные намерения, заземляет их в фактическом состоянии кода, прикладывает внешний ресёрч (profit vs переусложнение) и нарезает на инкременты-эпики A-F. **Формализация ВЫПОЛНЕНА** (DEC-DEV-0098): эпики A-F перенесены в [ROADMAP.md](../ROADMAP.md) секцией «Autonomous Pipeline Vision». Живой статус эпиков — в ROADMAP (A/B/C/D/G/F1/F2 построены; E = Epic E в активной сборке), не здесь.
 > **Охват:** cross-module (вся экосистема D1→прод). Оркестратор — один из исполнителей.
 > **Граница с параллельной сессией:** одновременно идёт работа над модулем Оркестратора (трек gate-contracts / P4-P5; на 2026-06-23 — P5 T5 remediation-guardrails). Этот док **не редактирует** файлы `orchestrator/`, `docs/orchestrator-module/`, `skills/orchestrator/` — только ссылается. Эпики, чья реализация лежит в зоне Оркестратора (E), помечены как **coordinate-only**.
 > **Грунтовка (источники-факты):** [pmo-map.md](../docs/pmo/pmo-map.md), [processes.md](../docs/pmo/processes.md), [orchestrator-module/SPEC.md](../docs/orchestrator-module/SPEC.md), [ROADMAP.md](../ROADMAP.md), `agents/`, `orchestrator/processes/*.mjs`. Внешний ресёрч — §4 + источники в конце.
@@ -407,9 +407,9 @@ autonomy:                      # .claude/product.yaml — применяется
 ## 8. Что дальше (процесс)
 
 1. ✅ Ревью пройдено, §7 (10/10) решены — направление принято (2026-06-23).
-2. ⏸ **Формализация ОТЛОЖЕНА до старта Epic A (решение владельца, вариант I, 2026-06-23):** DEC-DEV-запись (rationale + отвергнутые альтернативы) + перенос эпиков A-F в [ROADMAP.md](../ROADMAP.md) **новой секцией «Autonomous Pipeline Vision (epics A-F)»** (не Phase-N — cross-module) делаются **в пакете с kickoff Epic A**, чтобы (a) не жечь DEC-DEV-номер преждевременно при активной оркестратор-сессии (риск коллизии, прецедент 0082) — номер согласовать по `git log` обеих веток ПЕРЕД записью; (b) этот док уже служит accepted-SSOT до того момента.
-3. При старте Epic A — D7 `phase-kickoff.md` + первый инкремент. **Execution-batch (Increment 1 — done, archived):** [_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md](_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md) (Step0 kickoff+формализация → B4 → A1 → A2 → B1-stretch; F1-core и B-пилот вне батча).
-4. **Граница соблюдена:** ни один файл `orchestrator/` не тронут; этот док — только `dev/`. PAUSED до момента старта Epic A.
+2. ✅ **Формализация ВЫПОЛНЕНА (DEC-DEV-0098, `9d6a4f3`):** DEC-DEV-запись (rationale + отвергнутые альтернативы) сделана, эпики A-F перенесены в [ROADMAP.md](../ROADMAP.md) секцией «Autonomous Pipeline Vision (epics A-F)» (не Phase-N — cross-module). *(Ранее было «⏸ отложено до старта Epic A» — устарело: старт давно состоялся.)*
+3. ✅ Epic A стартовал — D7 `phase-kickoff.md` + Increment 1 (слит 2026-06-25). **Execution-batch (Increment 1 — done, archived):** [_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md](_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md) (Step0 kickoff+формализация → B4 → A1 → A2 → B1-stretch; F1-core и B-пилот вне батча).
+4. **Актуальный статус — НЕ здесь.** Этот док остаётся intent-SSOT (accepted), но живой прогресс эпиков ведёт [ROADMAP.md](../ROADMAP.md) «Autonomous Pipeline Vision» + `git log`. *(Историч.: док писался в границе «не трогать `orchestrator/`»; она соблюдена.)*
 
 ---
 

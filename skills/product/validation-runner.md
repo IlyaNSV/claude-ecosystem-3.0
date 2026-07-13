@@ -64,7 +64,7 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 | V-14a | 🟡 Warning | BR | parameter compare across BR pairs (same category + entity, conflicting numeric/enum) | Parametric BR conflict |
 | V-15 | 🟡 Warning | all | graph: no incoming refs from active artifacts | Orphan artifacts detection |
 | V-16 | varies | FM, NFR | tier × `nfr_status` × high_risk matrix (см. ниже) | NFR Review status tracking |
-| V-18 | 🟡 Warning | IC, BR, SC | per-type frontmatter schema per `docs/pmo/artifacts/<TYPE>.md`: значение `type`, обязательные per-type поля, scalar-enum'ы (v1 scope IC/BR/SC; зеркалит inline-check `artifact-validate.js`, override-aware) | Per-type frontmatter schema conformance (IC/BR/SC) |
+| V-18 | 🟡 Warning | IC, BR, SC | per-type frontmatter schema per `docs/pmo/artifacts/<TYPE>.md`: значение `type`, обязательные per-type поля, scalar-enum'ы (on-demand scope IC/BR/SC; inline-check `artifact-validate.js` **дополнительно** покрывает `NFR` с DEC-DEV-0198 — этот on-demand путь NFR пока не enforce-ит; override-aware) | Per-type frontmatter schema conformance (IC/BR/SC) |
 
 V-13 dropped per `validation.md §0` → process rule P-RULE-01 (см. agents/product/devils-advocate.md adaptive-depth). V-17 перемещён в Integrator namespace (V-I-*, future) per `validation.md §0`.
 

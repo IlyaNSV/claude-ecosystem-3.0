@@ -300,9 +300,9 @@
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">{
   "_build": {
-    "date": "2026-07-11",
-    "sha": "efdcbc7",
-    "commands": 50,
+    "date": "2026-07-13",
+    "sha": "20f5a05",
+    "commands": 51,
     "artifacts": 24,
     "rules": 44,
     "gates": 18,
@@ -1096,6 +1096,21 @@
           "consumes": [],
           "source": "commands/integrator/map.md",
           "ro": true
+        },
+        {
+          "cmd": "/integrator:provision",
+          "id": "integrator:provision",
+          "module": "integrator",
+          "name": "provision",
+          "st": "D3",
+          "status": "partial",
+          "desc": "Equip a deploy-capability (D3-05/06) for a fabric pilot — spawns the deployer subagent to author systemd unit templates, a releases/\u003cts>+current layout, a prisma migrate step, a healthcheck spec, and a DRAFT CNT deploy-capability contract, then persists them under an approve gate. Equips only; never executes the deploy (§8.3).",
+          "arg": "\u003ccapability> (deploy-staging|deploy-prod-stub)",
+          "when": "Оснастить deploy-capability (D3-05/06) для пилота: спавнит deployer-субагента (systemd-шаблоны + releases/\u003cts>+current + prisma-migrate + healthcheck-спека + CNT draft). Approve-gate, персист в .claude/integrator/. Оснащает, НЕ деплоит — исполняет Orchestrator deploy-to-stage (§8.3).",
+          "tags": "provision оснастить deploy staging systemd capability CNT deployer",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/integrator/provision.md"
         },
         {
           "cmd": "/integrator:remove",

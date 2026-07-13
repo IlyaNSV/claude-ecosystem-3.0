@@ -1,0 +1,19 @@
+# === Ecosystem 3.0 — .gitattributes for the installed .claude/ zone ===
+# Deployed by /ecosystem:bootstrap and /ecosystem:update to <project>/.claude/.gitattributes
+# (create-if-absent: an existing .claude/.gitattributes is never overwritten — FB-LR-27,
+# DEC-DEV-0198). Mirrors the ecosystem repo's OWN root .gitattributes.
+#
+# WHY: the ecosystem ships executable scripts inside .claude/ — the Orchestrator/Product
+# Workflow runners (orchestrator/processes/*.mjs, orchestrator/lib/*.cjs, product/processes/*.mjs)
+# and hook/*.js. On a Windows checkout with core.autocrlf=true these materialize CRLF, and a
+# CR byte (U+000D) makes the scriptPath-Workflow permission validator reject the whole file,
+# blocking the launch (FB-LR-27, DEC-DEV-0114). Pinning the script families to LF here keeps
+# the pilot's own autocrlf from re-converting the installed scripts back to CRLF after delivery.
+#
+# NB: only the SCRIPT families are pinned. .md / .yaml / .json are deliberately NOT forced to
+# LF — ecosystem parsers of those are EOL-tolerant by contract, and forcing LF would renormalize
+# the whole tree on the pilot's next checkout for no runtime benefit.
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.js  text eol=lf
+*.sh  text eol=lf

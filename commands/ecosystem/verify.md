@@ -60,19 +60,30 @@ Runtime dirs (not commands, no catalog row — keep the structural minimums):
 - `.claude/product/processes/*.mjs` — expect 3+ (complete-feature DEC-DEV-0142; consilium DEC-DEV-0145; batch-enrich-feature-set DEC-DEV-0150)
 - `.claude/orchestrator/charters/*.json` — expect 1+ (feature-production-line — Process Fabric; engine `.claude/orchestrator/lib/fabric-engine.cjs` + co-located `autonomy-policy.cjs`, DEC-DEV-0153/0154)
 
-Skills (lazy-loaded methodology — no catalog row, no per-namespace count; keep the structural minimum):
-- `.claude/skills/**/*.md` — expect 63+ (across all module dirs; the repo keeps this number **equal** to `skills/**/*.md` — CLAUDE.md «Process triggers» Row 5 is machine-checked by `check-inventory-sync.cjs`, which fails the repo's verify if the floor lags a newly added skill. The `+` is tolerance for *locally added* skills in an install — the ecosystem never removes them.)
+**Skills (lazy-loaded methodology) — DERIVED the same way, and by NAME (DEF-CTX-5 closed):** the
+generated skill catalog `.claude/docs/guide/08-skills.md` is auto-synced from the same `skills/**`
+frontmatter at every cut (`gen-skill-catalog.cjs`, drift-gated by `gen:skills:check` in the repo's
+verify). It is **item-granular** — it carries skill *names*, not just a count. For each module
+(`ecosystem`, `product`, `design`, `integrator`, `orchestrator`): compare the `` `<module>/<name>` ``
+rows of the catalog against `.claude/skills/<module>/*.md` and report both numbers **plus any
+catalog name that has no file on disk**. A missing *name* is the partial/aborted-sync class
+(DEC-DEV-0088) that a bare count can never see — a delivery that dropped one skill and added
+another passes any count check. *Extra* local skills are fine: the ecosystem never removes them.
+
+If the catalog file is absent (pre-guide-layer install) — report raw per-module counts without
+expectations and note the missing catalog.
 
 > **Note (DEC-DEV-0082, revised by G33 fix):** the old hand-maintained per-namespace number list
 > lived here in parallel with the generated catalog and silently drifted (e.g. «~22» product
 > commands). It is gone — the catalog is the single expectation source. An *extra* local command
 > vs the catalog is almost never a fault; a *missing* one usually is.
 
-> **Note (skills — DEF-CTX-5):** unlike commands, skills have **no generated catalog**, so the floor
-> above is the only mechanical guard. It catches an added or a removed skill, but **not** a
-> count-preserving swap (one deleted, another added the same day). The strong form — a generated
-> skill catalog à la `gen-command-catalog.cjs` — is deferred: see `dev/tech-debt/CONTEXT_AUDIT_D6.md`
-> (DEF-CTX-5). Until then, treat the number as a floor, not as a manifest.
+> **Note (skills — DEF-CTX-5, closed):** skills used to be the exception — no generator, so this
+> step held a hand-written floor («expect 63+»), machine-kept honest by `check-inventory-sync.cjs`.
+> A floor cannot see a **count-preserving swap** (delete one skill, add another — i.e. any *rename*),
+> and it can never answer «is `problem-discovery.md` still installed?». The floor and its
+> `check-inventory-sync` class are gone; skills are now on the same derived, item-granular contract
+> as commands.
 
 ### Step 4.5: Orchestrator gate-contract freshness (delivery spot-check)
 
@@ -217,8 +228,13 @@ COMMANDS (deployed vs generated catalog 02-commands.md — Step 4 / G33)
   ✓ ecosystem/:    <n> = catalog <n>
   ✓ product/processes: 3+       (complete-feature DEC-DEV-0142; consilium DEC-DEV-0145; batch-enrich-feature-set DEC-DEV-0150)
 
-SKILLS (lazy-loaded methodology — floor per Step 4; no generated catalog, DEF-CTX-5)
-  ✓ skills/**:     63+          (all module dirs; locally added skills are fine — floor, not manifest)
+SKILLS (deployed vs generated catalog 08-skills.md — Step 4; by NAME, not just count)
+  ✓ skills/ecosystem/:    <n> = catalog <n>
+  ✓ skills/product/:      <n> = catalog <n>
+  ✓ skills/design/:       <n> = catalog <n>
+  ✓ skills/integrator/:   <n> = catalog <n>
+  ✓ skills/orchestrator/: <n> = catalog <n>
+  ✓ all catalog names present on disk   (a missing name = partial sync — DEC-DEV-0088 class)
 
 ORCHESTRATOR CONTRACT (delivery spot-check — DEC-DEV-0101/0102/0104)
   ✓ validators_incomplete + committed_under_non_ready   (validate-feature-impl.mjs)

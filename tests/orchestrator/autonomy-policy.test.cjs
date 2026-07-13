@@ -43,12 +43,16 @@ console.log('autonomy-policy (F1 skeleton) — Epic F resolver units');
 
 // ---- floor: non-crossable ----------------------------------------------------------------------
 
-test('every default floor class → human-gate regardless of level/override', () => {
+test('INVARIANT: every floor class → human-gate + floor_hit at EVERY level (incl. L2/L3) and env', () => {
+  // The non-negotiable (F3): floor is checked FIRST and early-returns, upstream of the rollback branch
+  // and the whole level-matrix, so a floor class can never reach the new F3 code at ANY level or env.
   for (const cls of DEFAULT_FLOOR) {
-    for (const override of [undefined, 'L0', 'L1', 'L3']) {
-      const r = resolve(cls, 'LOW', 'dev', { default_level: 'L1' }, override);
-      eq(r.disposition, 'human-gate', `${cls} @ override=${override}`);
-      eq(r.floor_hit, true, `${cls} floor_hit`);
+    for (const override of [undefined, 'L0', 'L1', 'L2', 'L3']) {
+      for (const env of ['dev', 'staging', 'prod']) {
+        const r = resolve(cls, 'LOW', env, { default_level: 'L1' }, override);
+        eq(r.disposition, 'human-gate', `${cls} @ override=${override} × ${env}`);
+        eq(r.floor_hit, true, `${cls} floor_hit @ ${override} × ${env}`);
+      }
     }
   }
 });
@@ -141,13 +145,13 @@ test('determinism: same inputs → deep-equal envelope', () => {
   assert.deepStrictEqual(a, b); passed += 1;
 });
 
-test('F2: consilium-gate is emitted ONLY on L2/L3 × staging/prod × non-floor (never L0/L1/dev/floor)', () => {
+test('F3: consilium-gate ONLY on L2×staging/prod + L3×prod (L3×staging is auto; never L0/L1/dev/floor)', () => {
   for (const tier of ['HIGH', 'LOW']) {
     for (const env of ['dev', 'staging', 'prod']) {
       for (const lvl of ['L0', 'L1', 'L2', 'L3']) {
-        // non-floor operation
+        // non-floor operation. F3: L3×staging flips to auto, so it is NO LONGER a consilium cell.
         const r = resolve('op', tier, env, { default_level: lvl }, undefined);
-        const shouldConsilium = (lvl === 'L2' || lvl === 'L3') && env !== 'dev';
+        const shouldConsilium = (env !== 'dev') && (lvl === 'L2' || (lvl === 'L3' && env === 'prod'));
         eq(r.disposition === 'consilium-gate', shouldConsilium, `op ${lvl}×${env}×${tier}`);
         // floor operation NEVER consilium-gate, always human-gate + floor_hit
         const f = resolve('prod_deploy', tier, env, { default_level: lvl }, undefined);
@@ -168,12 +172,63 @@ test('F2: L2 matrix — dev → auto (bit-identical to L1 on dev); staging/prod 
   }
 });
 
-test('F2: L3 ≡ L2 in the matrix with a loud why-note', () => {
-  eq(resolve('op', 'LOW', 'prod', { default_level: 'L3' }, undefined).disposition, 'consilium-gate');
-  eq(resolve('op', 'HIGH', 'dev', { default_level: 'L3' }, undefined).disposition, 'auto');
+test('F3: L3 differentiates from L2 on staging (the L3-equals-L2 stub is gone)', () => {
+  eq(resolve('op', 'LOW', 'prod', { default_level: 'L3' }, undefined).disposition, 'consilium-gate'); // prod unchanged
+  eq(resolve('op', 'HIGH', 'dev', { default_level: 'L3' }, undefined).disposition, 'auto');            // dev unchanged
   const r = resolve('op', 'LOW', 'staging', { default_level: 'L3' }, undefined);
-  ok(r.why.some((w) => /L3 requested/.test(w) && /F3/.test(w)), 'L3 why names the F3 differentiation');
+  eq(r.disposition, 'auto', 'L3 × staging is now auto (was consilium-gate under the F2 stub)');
+  ok(r.why.some((w) => /staging/.test(w) && /auto/.test(w) && /F3/.test(w)), 'the why-note explains the staging-auto differentiation');
   eq(r.level_applied, 'L3', 'level_applied preserves the requested L3 for audit');
+});
+
+// ---- F3 (DEC-DEV-0194 D-8): L3 staging differentiation + rollback class -------------------------
+
+test('F3: L3 × staging → auto (both risks); contrast L2 × staging → consilium-gate; L3 audit preserved', () => {
+  eq(resolve('op', 'LOW', 'staging', { default_level: 'L3' }, undefined).disposition, 'auto');
+  eq(resolve('op', 'HIGH', 'staging', { default_level: 'L3' }, undefined).disposition, 'auto');
+  eq(resolve('op', 'LOW', 'staging', { default_level: 'L2' }, undefined).disposition, 'consilium-gate', 'L3 != L2');
+  eq(resolve('op', 'LOW', 'staging', { default_level: 'L3' }, undefined).level_applied, 'L3', 'audit preserves L3');
+});
+
+test('F3: L3 × prod stays conservative — consilium-gate, never a blanket auto', () => {
+  eq(resolve('op', 'LOW', 'prod', { default_level: 'L3' }, undefined).disposition, 'consilium-gate');
+  eq(resolve('op', 'HIGH', 'prod', { default_level: 'L3' }, undefined).disposition, 'consilium-gate');
+});
+
+test('F3 rollback: dev/staging → auto at EVERY level (auto-rollback fires at the default level, even L0)', () => {
+  eq(resolve('rollback', 'HIGH', 'staging', { default_level: 'L1' }, undefined).disposition, 'auto', 'auto-rollback @ default L1');
+  eq(resolve('rollback', 'HIGH', 'staging', { default_level: 'L0' }, undefined).disposition, 'auto', 'even under L0');
+  eq(resolve('rollback', 'LOW', 'staging', { default_level: 'L3' }, undefined).disposition, 'auto');
+  eq(resolve('rollback', 'HIGH', 'dev', {}, undefined).disposition, 'auto', 'dev rollback trivially auto');
+  // rollback is NOT a floor class — it must not be misclassified as `destructive`.
+  eq(resolve('rollback', 'LOW', 'staging', {}, undefined).floor_hit, false, 'rollback is not on the floor');
+});
+
+test('F3 rollback: prod → human-gate at EVERY level (owner rail: prod rollback is always human-confirm)', () => {
+  eq(resolve('rollback', 'LOW', 'prod', { default_level: 'L3' }, undefined).disposition, 'human-gate');
+  eq(resolve('rollback', 'HIGH', 'prod', { default_level: 'L0' }, undefined).disposition, 'human-gate');
+  // unknown env → conservatively prod → human-gate (never a blind auto on an unclassified target)
+  eq(resolve('rollback', 'LOW', undefined, { default_level: 'L3' }, undefined).disposition, 'human-gate');
+});
+
+test('F3 rollback: determinism (same inputs → deep-equal envelope)', () => {
+  const a = resolve('rollback', 'HIGH', 'staging', { default_level: 'L1' }, undefined);
+  const b = resolve('rollback', 'HIGH', 'staging', { default_level: 'L1' }, undefined);
+  assert.deepStrictEqual(a, b); passed += 1;
+});
+
+test('INVARIANT monotonicity: autonomy is non-decreasing L0→L1→L2→L3 for every (env, risk)', () => {
+  const RANK = { block: 0, 'human-gate': 1, 'consilium-gate': 2, auto: 3 };
+  for (const env of ['dev', 'staging', 'prod']) {
+    for (const risk of ['HIGH', 'LOW']) {
+      let prev = -1;
+      for (const lvl of ['L0', 'L1', 'L2', 'L3']) {
+        const d = resolve('op', risk, env, { default_level: lvl }, undefined).disposition;
+        ok(RANK[d] >= prev, `monotonicity ${env}×${risk}: ${lvl}=${d} (rank ${RANK[d]}) must be >= prev rank ${prev}`);
+        prev = RANK[d];
+      }
+    }
+  }
 });
 
 test('F2: DISPOSITIONS enum includes consilium-gate', () => {

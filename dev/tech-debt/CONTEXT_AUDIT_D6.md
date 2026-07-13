@@ -20,7 +20,9 @@
 
 ## Errors for fix
 
-### DEF-CTX-1 — `[OPEN]` NFR: enum-дрейф спек↔скилл + примеры нарушают собственную схему + нет enforcement
+### DEF-CTX-1 — `[FIXED]` NFR: enum-дрейф спек↔скилл + примеры нарушают собственную схему + нет enforcement
+
+> **FIXED 2026-07-13 (DEC-DEV-0198 / Волна A):** enum `sanity_check` сужен до `passed|overridden` (+legacy-абзац), примеры NFR-001/004 приведены к схеме, V-18 расширен веткой `NFR` в `hooks/product/artifact-validate.js`, `validation.md` §V-18 покрывает `NFR-*`. Ловушка «двойной репорт с C2» обойдена (V-18 не проверяет наличие `confidence` — это уже за C2). **Остаток (follow-up, LOW):** on-demand путь `/product:validate` (`skills/product/validation-runner.md`) несёт свою реализацию V-18 и NFR-схему пока не enforce-ит — inline save-путь (первичный) закрыт полностью.
 
 **Что наблюдается.** Три слоя одного дефекта вокруг NFR-фронтматтера:
 
@@ -45,7 +47,9 @@
 
 ---
 
-### DEF-CTX-2 — `[OPEN]` `enabled_when` — мёртвое поле схемы манифеста хуков
+### DEF-CTX-2 — `[FIXED]` `enabled_when` — мёртвое поле схемы манифеста хуков
+
+> **FIXED 2026-07-13 (DEC-DEV-0198 / Волна A):** поле удалено из `hooks/product/manifest.yaml` и `hooks/orchestrator/manifest.yaml` (вариант A — YAGNI, читателей было ноль). Порядок соблюдён: DEF-CTX-3 закрыт первым.
 
 **Что наблюдается.**
 
@@ -69,7 +73,9 @@
 
 ---
 
-### DEF-CTX-3 — `[OPEN]` prune-асимметрия: `update` re-derive'ит записи хуков, `bootstrap` делает additive union без prune
+### DEF-CTX-3 — `[FIXED]` prune-асимметрия: `update` re-derive'ит записи хуков, `bootstrap` делает additive union без prune
+
+> **FIXED 2026-07-13 (DEC-DEV-0198 / Волна A):** `bootstrap.md` Step 6b переведён с additive-union на re-derive-семантику по эталону `update.md` Step 6 (regex `^node \.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/`; undeclared ⇒ prune; сторонние хуки verbatim). Противоречие 6a↔6b устранено (6a create-if-absent), ложь `update.md:791` («symmetry restored») исправлена.
 
 **Что наблюдается.**
 
@@ -113,7 +119,9 @@
 
 ---
 
-### DEF-CTX-5 — `[OPEN]` нет генератора каталога скиллов: пронг Row 5 «скилл» держится на floor'е, а не на инвентаре
+### DEF-CTX-5 — `[FIXED]` нет генератора каталога скиллов: пронг Row 5 «скилл» держится на floor'е, а не на инвентаре
+
+> **FIXED 2026-07-13 (DEC-DEV-0198 / Волна A):** построен `dev/meta-improvement/scripts/gen-skill-catalog.cjs` (клон `gen-command-catalog.cjs`, 63 скилла, EOL-толерантен) + `docs/guide/08-skills.md` + `gen:skills:check` в цепь `verify`; floor-затычка в `verify.md` заменена на derived-by-name проверку, класс SKILL-FLOOR снят из `check-inventory-sync.cjs`. Теперь swap/rename скилла ловится (не проходит молча). Blind-law чекера сохранён.
 
 **Что наблюдается.**
 
@@ -148,6 +156,7 @@
 ## Журнал статусов
 
 | Дата | Изменение | Кто |
+| 2026-07-13 | **DEF-CTX-1/2/3/5 → `[FIXED]`** в Волне A кампании до-PROD (DEC-DEV-0198). Порядок DEF-CTX-3→2 соблюдён. Каждая зона прошла адверсариального проверяющего + полный `npm run verify` (exit 0). DEF-CTX-4/6 остаются `[OPEN]` — под решением владельца по VM (кампания §6/A12) | Волна A, кампания до-PROD |
 |---|---|---|
 | 2026-07-13 | Файл создан по решению D6 контекст-аудита (DEC-DEV-0197); DEF-CTX-1/2/3 заведены как `[OPEN]`, координаты перепроверены по файлам | контекст-аудит, исполнение D6 |
 | 2026-07-13 | `DEF-CTX-6` добавлен `[OPEN]` — память не доставляется (VM держит устаревшую копию; verify на VM красный из-за 36 битых ссылок); вскрыт кросс-ОС прогоном B3-live | контекст-аудит, B3-live |

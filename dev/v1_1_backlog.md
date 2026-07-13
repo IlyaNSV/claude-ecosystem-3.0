@@ -35,12 +35,32 @@
 
 ---
 
-## Deep mode subagents (D1.2 / D1.3 Discovery)
+## Deep mode subagents (D1.2 / D1.3 Discovery) — ✅ ПОСТРОЕНО (закрыто, не долг)
+
+> **✅ BUILT 2026-07-11 — DEC-DEV-0186 (`a66b79a`), в main.** Оба субагента существуют:
+> `agents/product/market-researcher.md` (8-фазный пайплайн) + `agents/product/competitor-analyst.md`
+> (6-стадийный). Deep-ветки D1.2/D1.3 в `skills/product/discovery-session.md` конкретизированы
+> (brief + spawn + writer-контракт); Quick-путь не тронут 1:1. Смоук —
+> `tests/product/deep-discovery-agents-wiring.test.cjs` (87 ассертов) в цепи `test:product` → `verify`.
+> Оба агента read-only+web (без Write/Edit/Bash) — файл в `.product/` пишет вызывающая
+> `discovery-session`.
+>
+> **Запись оставлена как исторический контекст defer→build** (файл — NEVER archive), а НЕ как открытый долг.
+> Разделы ниже читать как спецификацию *того, что построено*, а не как план.
+>
+> **⚠ Что из этой записи НЕ построено (сознательно, зафиксировано в том же коммите):**
+> - **Deep Research skills** (`docs/product-module/SPEC.md` §4.5: `deep-research-8-phase.md`,
+>   `competitive-intel.md`) — не строились: 8-фазный пайплайн лёг **внутрь** агента, отдельный
+>   skill-слой оказался не нужен. SPEC §4.5 их всё ещё обещает — spec-дрейф, не долг этого файла.
+> - **`screen-generator`** (Design, cut C2) — **свой отдельный долг ниже, всё ещё ОТКРЫТ.**
+>   ⇒ разрыв **G36** (три субагента: market-researcher / competitor-analyst / screen-generator)
+>   закрыт **частично** — Product-сторона (D1 Deep) функциональна, Design-сторона нет.
 
 **Originally planned:** Phase 3 (per ROADMAP draft 2026-04-18)
 **Deferred:** 2026-04-20 per DEC-DEV-0012 (D.1 decision)
-**Defer rationale:** Phase 2 pilot Quick mode (DEC-DEV-0008) produced quality output exceeding expectations: MR 22 sources, CA 7 competitors, credibility-tagged. Нет evidence что Quick mode insufficient. Building Deep mode without validated need = textbook over-engineering.
-**Bring-forward trigger:** 2-3 real Discoveries с Quick mode демонстрируют конкретные limits — недостаточная triangulation для regulated domains, missing competitor coverage, MR depth insufficient для investor pitch level.
+**Built:** 2026-07-11 per DEC-DEV-0186 (закрытие G36 в части D1 Deep)
+**Defer rationale (историч.):** Phase 2 pilot Quick mode (DEC-DEV-0008) produced quality output exceeding expectations: MR 22 sources, CA 7 competitors, credibility-tagged. Нет evidence что Quick mode insufficient. Building Deep mode without validated need = textbook over-engineering.
+**Bring-forward trigger (историч. — СРАБОТАЛ):** 2-3 real Discoveries с Quick mode демонстрируют конкретные limits — недостаточная triangulation для regulated domains, missing competitor coverage, MR depth insufficient для investor pitch level.
 
 ### Architectural intent
 

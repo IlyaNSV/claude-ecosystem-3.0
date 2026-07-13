@@ -18,14 +18,17 @@
  *                       («that's list-drift, not a bad install») but nothing detected it.
  *   [5] HOOK-CLAIM      Every hook verify.md claims is «registered under <Event>» exists in
  *                       some hooks/<module>/manifest.yaml with that event type.
- *   [6] SKILL-FLOOR     Row 5's «скилл» prong. [3] already catches a REMOVED skill
- *                       (live < floor). [6] adds the other direction — the floor must not
- *                       LAG the repo (live > floor ⇒ a skill was ADDED and verify.md was not
- *                       updated) — plus the Step 9 summary echo of that same number.
- *                       ⚠ WEAK BY CONSTRUCTION: a count-preserving swap (one skill deleted,
- *                       another added) passes. The strong form needs a generated skill catalog
- *                       (à la gen-command-catalog.cjs) — deferred as DEF-CTX-5,
- *                       dev/tech-debt/CONTEXT_AUDIT_D6.md.
+ *
+ * ── RETIRED: [6] SKILL-FLOOR (DEF-CTX-5 closed) ──
+ * Row 5's «скилл» prong used to live here as a floor check ([3] caught a REMOVED skill,
+ * [6] caught the floor LAGGING an added one + its Step 9 echo). It was WEAK BY CONSTRUCTION:
+ * a count-preserving swap (delete one skill, add another — i.e. any *rename*) passed silently.
+ * The strong form now exists — dev/meta-improvement/scripts/gen-skill-catalog.cjs generates
+ * docs/guide/08-skills.md from skills/**\/*.md frontmatter, drift-gated by `gen:skills:check`
+ * (blocking, in `npm run verify`) at ITEM granularity. Two mechanisms for one obligation is how
+ * the divergence in CLAUDE.md's own tables started; the weaker one goes. verify.md's skills floor
+ * and its summary echo were deleted in the same change — [3] simply has one fewer floor line to
+ * parse, and that is not blindness (nothing claims a skills floor any more, so nothing is unseen).
  *
  * ── Deploy mapping ──
  * verify.md describes the INSTALLED tree (`.claude/product/processes/`), the repo is the
@@ -53,13 +56,13 @@
  * exits 0 rather than asserting a drift it never measured.
  *
  * ── NOT covered (stated honestly, not faked) ──
- *   · SKILLS at ITEM granularity — see [6]: a floor, not a catalog. DEF-CTX-5.
  *   · HOOKS beyond the two LESSON-* ones named in Step 8.5. The other manifest entries
  *     (4 modules) are unrepresented in verify.md, so their add/remove is undetectable here.
- *   · Commands at ITEM granularity — already covered elsewhere: verify.md Step 4 derives
- *     per-namespace counts from the generated catalog docs/guide/02-commands.md, which is
- *     drift-gated by `gen:catalog:check` (blocking, in `npm run verify`). This linter adds the
- *     one thing that catalog cannot see: the NAMESPACE SET itself.
+ *   · Commands AND skills at ITEM granularity — already covered elsewhere, by the two generated
+ *     catalogs: verify.md Step 4 derives its expectations from docs/guide/02-commands.md and
+ *     docs/guide/08-skills.md, each drift-gated by `gen:catalog:check` / `gen:skills:check`
+ *     (blocking, in `npm run verify`). This linter adds the one thing those catalogs cannot see:
+ *     the NAMESPACE SET itself (a whole commands/<ns>/ dir appearing or vanishing).
  *   · Artifact counts in verify.md (Step 3 «25 files») — already covered by check-counts.js.
  *   · `status.md` / `docs/MAP.md` (the other half of Row 5): docs/MAP.md is gated by
  *     `gen:map:check`; the status.md overview templates need a judgment call («does this new
@@ -78,6 +81,11 @@
  *     → BLIND, exit 0 (before the git-index guard: 12 false «REMOVED» findings, exit 1);
  *   · 1 forced crash (--verify-md=<a directory>) → screams, exit 0;
  *   · kill-switch verified on a run that WOULD have failed (a green toggle proves nothing).
+ * ⚠ Evidence bookkeeping after the [6] retirement: two of those data points measured class [6]
+ * (the «64th skill file» probe, and the skill-floor half of the 8 injections). They are NOT
+ * re-attributed to the surviving classes — evidence for a deleted class proves nothing about the
+ * ones that remain. The record above is kept verbatim as history; the live claim is narrower:
+ * classes [1]-[5] were injected and caught, and skills are now the generator's problem.
  * A green verdict is printed ONLY when blind.length === 0 — «no drift in what I could see» is a
  * warning, never a ✓.
  *
@@ -127,8 +135,6 @@ function die(msg) {
 function repoPathOf(installedPath) {
   return installedPath.replace(/^\.claude\//, '').replace(/^\/+/, '');
 }
-
-const isSkillsGlob = g => /(^|\/)skills\//.test(repoPathOf(g));
 
 // Does git's INDEX know this path? «Not on disk» and «not in the repo» are different facts:
 // a cone-mode sparse checkout omits whole directories that git still tracks. Calling that
@@ -239,7 +245,9 @@ function echoedNamespaces(text) {
   return out.length ? out.sort() : null;
 }
 
-// [3]/[6] «- `.claude/product/processes/*.mjs` — expect 3+ (…)»
+// [3] «- `.claude/product/processes/*.mjs` — expect 3+ (…)»
+// Structural minimums only (runtime dirs). Commands and skills are NOT floors — they are
+// derived from their generated catalogs; see «NOT covered» in the header.
 function claimedFloors(text) {
   const floors = [];
   for (const line of text.split('\n')) {
@@ -247,12 +255,6 @@ function claimedFloors(text) {
     if (m) floors.push({ glob: m[1], floor: parseInt(m[2], 10) });
   }
   return floors;
-}
-
-// [6] Step 9 summary echo of the skills floor: «  ✓ skills/**:     63+»
-function echoedSkillFloor(text) {
-  const m = text.match(/^\s*[✓✗🟡]\s*skills\/\*\*:\s*(\d+)\+/m);
-  return m ? parseInt(m[1], 10) : null;
 }
 
 // [4] Steps 4.5/4.6 marker tables. Header cell 2 carries the dir: «File (`.claude/…/`)».
@@ -300,7 +302,7 @@ function main() {
 
   const findings = [];  // parsed claim + established ground truth + they disagree → GATES
   const blind = [];     // claim unparseable OR ground truth unestablished → NEVER gates
-  const checked = { ns: 0, echo: 0, floors: 0, markers: 0, hooks: 0, skills: null };
+  const checked = { ns: 0, echo: 0, floors: 0, markers: 0, hooks: 0 };
 
   const live = liveNamespaces();
   const hooks = liveHooks();
@@ -368,30 +370,10 @@ function main() {
     }
   }
 
-  // [6] SKILL-FLOOR — Row 5's «скилл» prong (the other direction + the summary echo).
-  const skillFloor = floors.find(f => isSkillsGlob(f.glob));
-  if (!skillFloor) {
-    blind.push('[6] SKILL-FLOOR — no skills floor line («- `.claude/skills/**/*.md` — expect N+») parsed out of Step 4');
-  } else {
-    const liveSkills = countFiles(skillFloor.glob);
-    if (liveSkills === null) {
-      const base = baseDirOf(skillFloor.glob);
-      blind.push(`[6] SKILL-FLOOR — ground truth unestablished: ${base}/ is not on disk ` +
-        `(${gitTracks(base) ? 'git tracks it — partial / sparse checkout' : 'git tracks nothing there'})`);
-    } else {
-      checked.skills = liveSkills;
-      // A REMOVED skill is already caught by [3] (live < floor). Here: the floor must not LAG.
-      if (liveSkills > skillFloor.floor) {
-        findings.push(`[6] SKILL-FLOOR — the repo has ${liveSkills} skills (skills/**/*.md) but Step 4's floor still says ${skillFloor.floor}+ (a skill was ADDED and verify.md was not updated — CLAUDE.md «Process triggers» Row 5)`);
-      }
-      const echoFloor = echoedSkillFloor(text);
-      if (echoFloor === null) {
-        blind.push('[6] SKILL-FLOOR — the Step 9 summary echo («✓ skills/**: N+») did not parse');
-      } else if (echoFloor !== skillFloor.floor) {
-        findings.push(`[6] SKILL-FLOOR — Step 4 says ${skillFloor.floor}+ skills, the Step 9 summary says ${echoFloor}+ (Row 5 requires «Step 4 + summary» — both)`);
-      }
-    }
-  }
+  // [6] SKILL-FLOOR — RETIRED (DEF-CTX-5 closed). The «скилл» prong of Row 5 is now held at item
+  // granularity by gen-skill-catalog.cjs → docs/guide/08-skills.md, gated by `gen:skills:check`.
+  // Nothing is silently unchecked here and nothing is blind: verify.md no longer *claims* a skills
+  // floor, and a claim that does not exist cannot go unverified.
 
   // [4] MARKER-LIVE
   const markers = claimedMarkers(text);
@@ -439,8 +421,7 @@ function main() {
 
   // ── report ────────────────────────────────────────────────────────────────
   const scope = `${checked.ns} namespaces · ${checked.echo} summary rows · ` +
-    `${checked.floors} floors · ${checked.skills === null ? 'skills n/a' : checked.skills + ' skills'} · ` +
-    `${checked.markers} markers · ${checked.hooks} hook claims`;
+    `${checked.floors} floors · ${checked.markers} markers · ${checked.hooks} hook claims`;
 
   // Blind goes to stderr — same stream as findings, so a mixed run stays ordered.
   if (blind.length) {
@@ -465,8 +446,9 @@ function main() {
       return 0;
     }
     process.stdout.write(`check-inventory-sync: ✓ verify.md matches the repo — ${scope}.\n`);
-    process.stdout.write('  (not covered: skills at item granularity — floor only, DEF-CTX-5; ' +
-      'hooks beyond the LESSON-* pair; status.md overview templates. See the header.)\n');
+    process.stdout.write('  (not covered: hooks beyond the LESSON-* pair; status.md overview templates. ' +
+      'Commands + skills at item granularity are covered by gen:catalog:check / gen:skills:check. ' +
+      'See the header.)\n');
     return 0;
   }
 

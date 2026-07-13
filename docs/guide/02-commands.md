@@ -9,7 +9,7 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `commands/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-command-catalog.cjs`. Интерактивная версия — [ecosystem-map.html](ecosystem-map.html). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 50 команд** в 5 модулях.
+**Всего: 51 команд** в 5 модулях.
 
 ## /ecosystem:* (7)
 
@@ -69,7 +69,7 @@ doc_type: reference
 | `/design:status` | Design Module dashboard. MK/DS/NM counts per status, active iterations, DS pending items, design tool connectivity, Stitch quota tracking. | `[--fm <FM-id>] [--verbose]` |
 | `/design:system` | Design System management — review pending DS proposals OR force re-extract from specific MK. Mass-rename workflow surfaces preview + IDE find-replace guidance (atomic — v1.1+). | `[--review] [--update-from <MK-id>]` |
 
-## /integrator:* (12)
+## /integrator:* (13)
 
 Подключение внешних инструментов под PMO («сисадмин»)
 
@@ -81,6 +81,7 @@ doc_type: reference
 | `/integrator:gaps` | Show uncovered PMO zones with criticality assessment. Read-only. | — |
 | `/integrator:journal` | View Integrator decision journal with optional filtering. | `[--filter <tag>] [--limit <N>] [--scope global\|project]` |
 | `/integrator:map` | Show current PMO coverage by active tools. Read-only. | — |
+| `/integrator:provision` | Equip a deploy-capability (D3-05/06) for a fabric pilot — spawns the deployer subagent to author systemd unit templates, a releases/<ts>+current layout, a prisma migrate step, a healthcheck spec, and a DRAFT CNT deploy-capability contract, then persists them under an approve gate. Equips only; never executes the deploy (§8.3). | `<capability>  (deploy-staging \| deploy-prod-stub)` |
 | `/integrator:remove` | Remove a tool from Integrator management. Impact analysis + backup + uninstall + cleanup contracts + update pmo-mapping. Destructive; requires explicit user confirmation. | `<tool-name> [--confirm]` |
 | `/integrator:research` | Research tools for a PMO need; presents 2-5 options with comparison, doesn't install. | `<need-description>` |
 | `/integrator:scan` | Scan project environment to detect existing customizations and conflicts before any modifying action. | — |

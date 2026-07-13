@@ -133,14 +133,20 @@ current.recent_artifacts = recent.join(', ');
 
 // Git head (optional — helps OQ-PM-02 concurrent session detection)
 try {
-  const headFile = path.join(projectRoot, '.git', 'HEAD');
+  const gitDir = path.join(projectRoot, '.git');
+  const headFile = path.join(gitDir, 'HEAD');
   if (fs.existsSync(headFile)) {
     const head = fs.readFileSync(headFile, 'utf-8').trim();
     // If ref: refs/heads/main, resolve to SHA
     const refMatch = /^ref:\s+(\S+)/.exec(head);
     if (refMatch) {
-      const refPath = path.join(projectRoot, '.git', refMatch[1]);
-      if (fs.existsSync(refPath)) {
+      // .git/HEAD is attacker-influenceable (prompt-injection can get an agent to write it), and
+      // this hook auto-runs on every .product/ write. Unvalidated, `ref: ../../../../etc/passwd`
+      // escaped .git/ and leaked the first 12 bytes of an arbitrary file into current.yaml
+      // (L-2, SECURITY_REVIEW_2026-07-11). safeRefPath() returns null for anything unresolvable,
+      // which falls through to the pre-existing 'detached' sentinel.
+      const refPath = safeRefPath(gitDir, refMatch[1]);
+      if (refPath && fs.existsSync(refPath)) {
         current.git_head_sha = fs.readFileSync(refPath, 'utf-8').trim().slice(0, 12);
       } else {
         current.git_head_sha = 'detached';
@@ -174,6 +180,23 @@ function findProjectRoot(filePath) {
     dir = path.dirname(dir);
   }
   return null;
+}
+
+// Resolve `<gitDir>/<ref>` — but ONLY for a well-formed ref (L-2 path-traversal guard).
+// Returns null (→ caller records 'detached') for anything else. Two independent layers:
+//   1. shape — must be `refs/<segments>` over a conservative charset, and no '..' segment.
+//      NB the charset alone is NOT sufficient: '.' and '/' are both in [\w./-], so the regex
+//      happily matches 'refs/../../../etc/passwd'. The explicit '..'-segment rejection is what
+//      actually closes the traversal — the report's recommendation needs BOTH halves.
+//   2. containment — re-check the RESOLVED absolute path still sits under <gitDir>. Belt-and-
+//      braces: if a future maintainer widens the charset (e.g. for non-ASCII branch names, which
+//      git permits and \w does not), traversal stays blocked.
+function safeRefPath(gitDir, ref) {
+  if (!/^refs\/[\w./-]+$/.test(ref)) return null;
+  if (ref.split('/').includes('..')) return null;
+  const abs = path.resolve(gitDir, ref);
+  const base = path.resolve(gitDir) + path.sep;
+  return abs.startsWith(base) ? abs : null;
 }
 
 function parseYamlFlat(text) {

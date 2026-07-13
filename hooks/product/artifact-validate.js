@@ -21,7 +21,8 @@
  * Exit 0 always — non-blocking.
  *
  * Scope v1: V-01, V-03, V-04, V-09, V-10, V-11 (basic, automatable) + V-18 (per-type
- *   frontmatter schema conformance for IC/BR/SC — DEC-DEV-0064).
+ *   frontmatter schema conformance for IC/BR/SC — DEC-DEV-0064; extended to NFR per
+ *   DEF-CTX-1).
  * Full catalog in .claude/docs/pmo/validation.md §5.
  */
 
@@ -188,9 +189,17 @@ if (fm.status === 'active' && !fm.confidence) {
 // V-18: per-type frontmatter schema conformance (DEC-DEV-0064, from Session Audit
 // cluster D2B-behavioral::A). Warning-level + override-aware (rule 'V-18' in
 // overrideMap is skipped like any other) + tier-aware (surfaces at mvp/full, queued
-// at pilot). Scoped to IC / BR / SC — the types with confirmed canonical enums and
-// the highest observed drift — to keep false-positives low; other types deferred.
+// at pilot). Scoped to IC / BR / SC / NFR — the types with confirmed canonical enums
+// and the highest observed drift — to keep false-positives low; other types deferred.
 // Canonical source of truth: docs/pmo/artifacts/<TYPE>.md.
+//
+// ⚠ BOUNDARY WITH C2 (see :180) — do not "helpfully" add a confidence-PRESENCE check
+// here. C2 is NOT type-scoped: it already flags any `status: active` artifact missing
+// `confidence`, for every type including NFR. It merely stays invisible at the default
+// `pilot` tier (tierAllowsSeverity lets only 'blocking' through) and fires at mvp/full.
+// V-18 validates the VALUE of confidence and the conditional confidence_notes — never
+// its presence. Checking presence in both = double-report on one defect (DEF-CTX-1,
+// whose own write-up wrongly claimed NFR passes validation without `confidence`).
 {
   const idPrefix = (String(fm.id).match(/^([A-Z]+)-/) || [])[1];
   const LIFECYCLE = ['draft', 'active', 'deprecated']; // common status enum (README.md)
@@ -224,6 +233,37 @@ if (fm.status === 'active' && !fm.confidence) {
   } else if (idPrefix === 'SC') {
     if (fm.status && !LIFECYCLE.includes(fm.status)) {
       v18(`SC ${fm.id} status='${fm.status}' off canonical enum (draft|active|deprecated)`);
+    }
+  } else if (idPrefix === 'NFR') {
+    // NFR — DEF-CTX-1. Canon: docs/pmo/artifacts/NFR.md §Frontmatter Schema.
+    // `sanity_check: failed` is a DEAD state (DEC-DEV-0025 C.2 + Ambiguity 9): runtime
+    // knows only passed|overridden. An out-of-range target is an *override*, not a
+    // failure — so `failed` gets a targeted migration hint rather than a bare enum gripe.
+    const SANITY = ['passed', 'overridden'];
+    const CONFIDENCE = ['high', 'medium', 'low'];
+
+    if (fm.type && fm.type !== 'non-functional-requirement') {
+      v18(`NFR ${fm.id} type='${fm.type}' should be 'non-functional-requirement' (NFR.md)`);
+    }
+    if (fm.status && !LIFECYCLE.includes(fm.status)) {
+      v18(`NFR ${fm.id} status='${fm.status}' off canonical enum (draft|active|deprecated)`);
+    }
+    if (fm.sanity_check && !SANITY.includes(fm.sanity_check)) {
+      const hint = fm.sanity_check === 'failed'
+        ? " — 'failed' is deprecated: treat as 'overridden' + backfill override_rationale"
+        : '';
+      v18(`NFR ${fm.id} sanity_check='${fm.sanity_check}' off canonical enum (passed|overridden) (NFR.md)${hint}`);
+    }
+    if (fm.sanity_check === 'overridden' && !fm.override_rationale) {
+      v18(`NFR ${fm.id} sanity_check='overridden' but 'override_rationale' is missing/empty (NFR.md)`);
+    }
+    if (fm.confidence && !CONFIDENCE.includes(fm.confidence)) {
+      v18(`NFR ${fm.id} confidence='${fm.confidence}' off canonical enum (high|medium|low)`);
+    }
+    // Conditional-required. Gated on a VALID non-high value so that a typo'd confidence
+    // reports once (the enum check above) instead of twice.
+    if (['medium', 'low'].includes(fm.confidence) && !fm.confidence_notes) {
+      v18(`NFR ${fm.id} confidence='${fm.confidence}' (!= high) but 'confidence_notes' is missing (NFR.md)`);
     }
   }
 }

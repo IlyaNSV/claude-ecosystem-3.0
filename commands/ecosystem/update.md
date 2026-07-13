@@ -179,7 +179,7 @@ rm -rf .claude-ecosystem-tmp/.git
 | Type | Items |
 |---|---|
 | **Subdirs** (sync с delete) | `commands/`, `skills/`, `agents/`, `hooks/`, `orchestrator/`, `product/`, `docs/`, `templates/`, `adapters/` |
-| **Root files** (overwrite) | `README.md`, `BOOTSTRAP.md`, `CHANGELOG.md`, `ROADMAP.md`, `install.sh`, `install.ps1`, `.env.template`, `gitignore.template` |
+| **Root files** (overwrite) | `README.md`, `BOOTSTRAP.md`, `CHANGELOG.md`, `ROADMAP.md`, `install.sh`, `install.ps1`, `.env.template`, `gitignore.template`, `gitattributes.template` |
 
 **Never-copy zone (explicitly skip — never enter `.claude/`):**
 
@@ -191,7 +191,7 @@ rm -rf .claude-ecosystem-tmp/.git
 | `INSTALL-HUMAN.md` | Pre-install guide для humans (not для running ecosystem) |
 | `package.json`, `package-lock.json`, `eslint.config.js`, `node_modules/` | Hook lint pipeline (ecosystem-dev only — DEC-DEV-0023; user projects не нуждаются в npm) |
 | `.git/` | Already removed from temp в Step 3 |
-| `.gitignore`, `.gitattributes` (root) | Project's own |
+| `.gitignore`, `.gitattributes` (the project's ROOT dotfiles) | Project's own — never overwritten. Distinct from `.claude/.gitattributes`, which IS ecosystem-delivered create-if-absent in Step 5d (the `gitattributes.template` root file above is the source; the repo's root `.gitattributes` dotfile is never copied). |
 | Any other root files (e.g., LICENSE) | Not ecosystem-managed |
 
 **User zone (preserved verbatim):**
@@ -248,7 +248,7 @@ Older bootstrap implementations (before Path Y was codified) used `cp -rn` from 
 | `.claude/package.json`, `.claude/package-lock.json`, `.claude/eslint.config.js`, `.claude/node_modules/` | Hook lint pipeline — ecosystem-dev-only (DEC-DEV-0023) |
 
 **Out of scope** (NEVER auto-removed — may be the project's own):
-- `.claude/.gitignore`, `.claude/.gitattributes` — project may have customised these
+- `.claude/.gitignore` — project may have customised this; `.claude/.gitattributes` — never *removed* either, and additionally *created if absent* in Step 5d (existing one respected)
 - `.claude/LICENSE` and any other non-listed root file — not ecosystem-managed
 - Anything outside the closed list above
 
@@ -572,6 +572,7 @@ cp .claude-ecosystem-tmp/install.sh .claude/install.sh
 cp .claude-ecosystem-tmp/install.ps1 .claude/install.ps1
 cp .claude-ecosystem-tmp/.env.template .claude/.env.template
 cp .claude-ecosystem-tmp/gitignore.template .claude/gitignore.template
+cp .claude-ecosystem-tmp/gitattributes.template .claude/gitattributes.template
 ```
 
 **Stamp `.claude/adapters/.sync-metadata.yaml`** (per DEC-DEV-0044 — tri-location audit trail; needed by `contract-designer` subagent для populating `@source_ref` в adapter instances):
@@ -634,7 +635,7 @@ Total: K items removed (or "none — clean install" if all absent).
 
 **Invariants:**
 - Backup (Step 2) already captured these — rollback restores them if user objects.
-- `.claude/.gitignore`, `.claude/.gitattributes`, and any non-listed file are **NEVER** touched here — even if they look ecosystem-related.
+- `.claude/.gitignore` and any non-listed file are **NEVER touched by this removal step** — even if they look ecosystem-related. `.claude/.gitattributes` is likewise never *removed* here — but it IS *created if absent* in Step 5d (precise scope, DEC-DEV-0198; the earlier blanket «`.claude/.gitattributes` … are NEVER touched here» was false the moment Step 5d landed — this removal pass never touches it, but the update as a whole delivers it when missing).
 - `.claude/docs/` is an allowlisted subdir, NOT contamination — never confuse with `.claude/dev/`.
 
 ### Step 5b: Backfill `.claude/pending-actions.md` if missing (DEC-DEV-0047 / patch 1.3.3 B-3)
@@ -768,6 +769,39 @@ if ((Test-Path .claude\product.yaml) -and (Test-Path .claude\CHANGELOG.md)) {
 
 **Idempotent** — re-running against the same CHANGELOG produces no change. **Only** the `ecosystem_version` line is ever modified; absence (rare — pre-bootstrap-Step-7 installs) is backfilled. This is the **sole** `product.yaml` write `update` performs; all other fields (project_name, validation_tier, mode defaults, `product_class`, …) are untouched.
 
+### Step 5d: Deliver `.claude/.gitattributes` if missing (create-if-absent — FB-LR-27 / DEC-DEV-0198)
+
+Pre-DEC-DEV-0198 installs never received a `.claude/.gitattributes`, so the pilot's own
+`core.autocrlf=true` could re-convert the installed `orchestrator/processes/*.mjs` (and the other
+shipped scripts) to CRLF — and a CR byte makes the scriptPath-Workflow permission validator reject
+the whole file (FB-LR-27, DEC-DEV-0114). Update backfills it from the just-synced
+`.claude/gitattributes.template` (Step 5.3), **create-if-absent** — a project that already has a
+`.claude/.gitattributes` (its own customisation, or a prior delivery) is **never overwritten**.
+
+```bash
+if [ ! -f .claude/.gitattributes ]; then
+  cp .claude/gitattributes.template .claude/.gitattributes
+  echo "Delivered .claude/.gitattributes (LF-pins ecosystem scripts; FB-LR-27)"
+else
+  echo "Preserved existing .claude/.gitattributes (project customisation respected)"
+fi
+```
+
+**PowerShell equivalent (Windows):**
+
+```powershell
+if (-not (Test-Path ".claude\.gitattributes")) {
+  Copy-Item ".claude\gitattributes.template" ".claude\.gitattributes"
+  Write-Host "Delivered .claude/.gitattributes (LF-pins ecosystem scripts; FB-LR-27)"
+} else {
+  Write-Host "Preserved existing .claude/.gitattributes (project customisation respected)"
+}
+```
+
+**Idempotent** — once delivered, subsequent updates hit the `else` branch and leave it alone. This
+is a *creation*, not a sync: the ecosystem does not force its script-EOL policy over a project that
+deliberately set its own `.claude/.gitattributes`.
+
 ### Step 6: Re-derive `.claude/settings.json` hooks section (pattern-preserving merge)
 
 Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in Step 5). **Semantics: merge-preserve, не REPLACE** (revised в patch 1.3.4 / DEC-DEV-0049 — см. «Why merge, not replace» ниже).
@@ -788,7 +822,18 @@ Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in S
 
 **Why merge, not replace** (revised — DEC-DEV-0049, patch 1.3.4):
 
-Previous version specified «REPLACE not merge» с rationale «manifest = single source of truth; user adds custom hooks manually post-update». Pilot evidence (downstream `my-first-test` DEC-INT-0005, 2026-05-27): Integrator-registered tools (e.g. `bd` via `bd setup claude` injecting `SessionStart` / `PreCompact` hooks for `bd prime`) wiped on every `/ecosystem:update`. Pattern-preserving merge restores ecosystem hooks from manifests while keeping third-party injections intact, **matching Bootstrap Step 6b semantics** (`commands/ecosystem/bootstrap.md:441-446` — symmetry restored).
+Previous version specified «REPLACE not merge» с rationale «manifest = single source of truth; user adds custom hooks manually post-update». Pilot evidence (downstream `my-first-test` DEC-INT-0005, 2026-05-27): Integrator-registered tools (e.g. `bd` via `bd setup claude` injecting `SessionStart` / `PreCompact` hooks for `bd prime`) wiped on every `/ecosystem:update`. Pattern-preserving merge restores ecosystem hooks from manifests while keeping third-party injections intact.
+
+**Correction — the symmetry claim was false until 2026-07-13** (DEC-DEV-0198 / DEF-CTX-3). This
+paragraph used to end with «matching Bootstrap Step 6b semantics (`commands/ecosystem/bootstrap.md:441-446`
+— symmetry restored)». There was **no symmetry**: bootstrap's Step 6b did an *additive union*
+(«collect all command entries (existing + new), dedupe by command string») with **zero** prune —
+`grep -iE "remove|prune|delete|stale|drop"` over its merge block returned nothing. So a hook dropped
+from a manifest survived `/ecosystem:bootstrap` forever and kept firing until `Cannot find module`,
+while `/ecosystem:update` correctly pruned it. Bootstrap Step 6b now carries this same re-derive
+logic (same regex, same preservation rule), so the two paths finally agree. The stale `:441-446` line
+range is dropped on purpose — **reference the step, not the line numbers**; coordinates rot, and this
+one had already rotted before anyone noticed the claim it was propping up was untrue.
 
 **Print confirmation** (extended):
 
@@ -868,7 +913,9 @@ Synced from upstream (namespace-aware sync — DEC-DEV-0051):
   hooks/    — managed namespaces re-derived (incl. manifest.yaml); T4 third-party namespaces preserved
   docs/     — full sync (no third-party expected)
   templates/, adapters/ — full sync
-  Root files: README, CHANGELOG, ROADMAP, BOOTSTRAP, install.sh/ps1, .env.template, gitignore.template
+  Root files: README, CHANGELOG, ROADMAP, BOOTSTRAP, install.sh/ps1, .env.template, gitignore.template, gitattributes.template
+
+.claude/.gitattributes: delivered (LF-pins ecosystem scripts, FB-LR-27) — or "preserved (already present)"
 
 Settings.json hooks: ecosystem hooks re-derived (M active); L third-party entries preserved (per DEC-DEV-0049)
 
@@ -884,7 +931,8 @@ Preserved (untouched):
   .claude/integrator/ (Integrator state)
   .claude/projects/ (Claude Code session history)
   .product/ (your artifacts — entire)
-  .claude/.gitignore, .claude/.gitattributes (if present — project's own)
+  .claude/.gitignore (if present — project's own)
+  .claude/.gitattributes (project's own if it already existed; otherwise delivered create-if-absent in Step 5d)
 
 Preserved (integrator-managed third-party — DEC-DEV-0051):
   Inside ecosystem zone: .claude/skills/kiro-*/ (cc-sdd), .claude/hooks/<tool>/ (if any), ...

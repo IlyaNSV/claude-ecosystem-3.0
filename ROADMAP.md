@@ -142,7 +142,7 @@
 
 ## Autonomous Pipeline Vision (epics A-F)
 
-> **Cross-module инициатива, не Phase-N.** Превращает три «вектор-идеи» владельца (охват до прода / качество входа / автономия) в эпики A-F. Принята как направление 2026-06-24 (DEC-DEV-0098). Концепт-SSOT: [`dev/ECOSYSTEM_VISION.md`](dev/ECOSYSTEM_VISION.md) (`accepted`, §7 10/10); work-order первого инкремента: [`dev/_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md`](dev/_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md) (archived — Increment 1 done).
+> **Cross-module инициатива, не Phase-N.** Превращает три «вектор-идеи» владельца (охват до прода / качество входа / автономия) в эпики A-F. Принята как направление 2026-06-24 (DEC-DEV-0098). *(Epic **G** — матрица субагентов — добавлен позже отдельным запросом владельца 2026-06-30, поверх ядра A-F; в таблице ниже присутствует.)* Концепт-SSOT: [`dev/ECOSYSTEM_VISION.md`](dev/ECOSYSTEM_VISION.md) (`accepted`, §7 10/10); work-order первого инкремента: [`dev/_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md`](dev/_archive/orchestrator/ECOSYSTEM_VISION_BATCH_1.md) (archived — Increment 1 done).
 >
 > **Цель (переформулирована из «100% результата»):** «**100% покрытия пути + gated-автономия**», не «человек ни разу не нужен». Три research-«тормоза» зашиты в дизайн: completeness-loop только bounded+anchored; консилиум = жюри/гетерогенность, не консенсус-дебаты; полностью автономный идея→прод нереалистичен (METR 0.9⁷≈48%).
 
@@ -151,13 +151,14 @@
 | Эпик | Что | Зона | Статус |
 |---|---|---|---|
 | **A** | Реестр гетерогенных профильных персон (architect/qa/ux-advisor) + детерминированный zone→agent роутер | Product/Design (owned) | ✅ Increment 1 слит + Track V live-validated (0098/0103) |
-| **B** | Bounded completeness-loop для D1-D2B; граница «достаточности» = handoff DoR; стоп = cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0) | Product (owned) | 🔄 B1-core + B4 слиты (0098/0099); **полная волна — kickoff 0136** (work-order BATCH_2) |
-| **C** | Крупные автономные шаги (макро `batch-enrich-feature-set`, 5-8 шагов = границы фаз с гейтами) + branch-anticipation | Product macro (Workflow) | 📋 после B |
-| **D** | Консилиум-примитив как жюри (`parallel()` фан-аут гетерогенных персон → synthesis → в гейт, не вместо) | cross-cutting | 📋 с/после A |
-| **E** | Сегмент до прода (CI/build, provisioning, deploy/rollback, QA-инфра, monitoring) | Orchestrator+Integrator | 🔗 **coordinate-only** (зона оркестратор-трека; предусловие = §6-канал + D3/D4/D5-инструменты) |
-| **F** | Autonomy configuration layer: enum L0/L1/L2/L3, детерминированный resolver (`lib/autonomy-policy.cjs`), floor необратимости non-crossable, hard-config дефолт + override | cross-cutting | 📋 F1 рядом с A (контракт гейтов — сверить с оркестратор-сессией); F2 после D; F3 с E |
+| **B** | Bounded completeness-loop для D1-D2B; граница «достаточности» = handoff DoR; стоп = cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0) | Product (owned) | ✅ B1-core + B4 (0098/0099) + **волна B-a/B-b слиты** (0140 PR #105 / 0142 PR #111); B-c/B-d — stretch/pilot-gated |
+| **C** | Крупные автономные шаги (макро `batch-enrich-feature-set`, 5-8 шагов = границы фаз с гейтами) + branch-anticipation | Product macro (Workflow) | ✅ **построен** — `/product:batch-enrich` (DEC-DEV-0150, `83f5b19`, PR #123) |
+| **D** | Консилиум-примитив как жюри (`parallel()` фан-аут гетерогенных персон → synthesis → в гейт, не вместо) | cross-cutting | ✅ **построен** — `/product:consilium` + `consilium-synth.cjs` (wave C-D, `aca7c5d`, PR #117) |
+| **E** | Сегмент до прода (CI/build, provisioning, deploy/rollback, QA-инфра, monitoring) | Orchestrator+Integrator | 🔄 **в активной сборке** — kickoff (0194, `99609a3`) + спайк VM (0195, `31a935e`) выполнены; следующий шаг = build **E.A** (`dev/gates/EPIC_E_READINESS.md`). *(Ранее «coordinate-only» — предусловия §6-канал + D3/D4/D5 сняты.)* |
+| **F** | Autonomy configuration layer: enum L0/L1/L2/L3, детерминированный resolver (`lib/autonomy-policy.cjs`), floor необратимости non-crossable, hard-config дефолт + override | cross-cutting | ✅ **F1 + F2 построены** — F1 resolver (0152, `eea3a9f`, PR #125) + F2 L2/L3 consilium-gate wiring (0193, `76455ba`, PR #181); **F3** (autonomy prod-сегмент) едет с Epic E |
+| **G** | Матрица субагентов: control-plane участия (per-агент config + participation-map поверх Epic A, реюз механики F) | cross-cutting | ✅ **построен** — agent-roster + participation-matrix (0151, `72b16b1`, PR #124); intent-SSOT `dev/ECOSYSTEM_VISION.md` §Epic G |
 
-**Порядок:** (A ∥ F1) → B → (C ∥ D) → F2 → E(+F3). Фронт пайплайна (качество входа) — первым: ошибки спеки компаундируются вниз по конвейеру, чинить дешевле всего у источника.
+**Порядок (исторический план зависимостей):** (A ∥ F1) → B → (C ∥ D) → F2 → E(+F3). Всё, кроме E(+F3), построено; **E — в активной сборке** (последняя миля до прода). Фронт пайплайна (качество входа) шёл первым: ошибки спеки компаундируются вниз по конвейеру, чинить дешевле всего у источника.
 
 **Increment 1 (СЛИТ 2026-06-25):** Epic A целиком (3 персоны + zone-routing) + B4 (loop-readiness аудит) + B1-core (completeness-oracle + bounded-loop + `/product:complete`). **Track V live-run grade'нут** (V-1 zone-хук / V-3 оракул PASS; V-2 frontmatter-фикс — DEC-DEV-0103); V-2 ре-ран после `/ecosystem:update`. Граница соблюдена: ни один файл `orchestrator/` не тронут.
 

@@ -1,0 +1,106 @@
+# Epic E Smoke Test Plan — deploy/rollback/monitoring (E.G)
+
+> **Назначение:** runtime smoke-сценарии для Epic E (deploy-сегмент конвейера). Исполняются на **VM prod-стенде** (staging-инстанс пилота `my-first-test`) после восстановления VM. Это суб-фаза **E.G** (`dev/gates/EPIC_E_READINESS.md:61`).
+>
+> **Статус:** ⬜ **НЕ ПРОГНАН — VM-gated.** VM физически недоступна на 2026-07-13 (VirtualBox на Hyper-V/NEM-пути, VT-x отнят VBS; `dev/context-audit/SEAM.md` §4.5). Прогон возможен только после починки VM владельцем (Hyper-V/VBS off + reboot) и доставки релиза в пилот.
+>
+> **Дизайн-SSOT:** `dev/gates/EPIC_E_READINESS.md` (решения владельца D-1..D-9). **Что проверяем:** что deploy-брекет чартера v5 ведёт себя ровно так, как доказано юнит-тестами — но на живом субстрате, где реальны `pnpm build` / `prisma migrate` / симлинк-флип / `systemctl` / `/health`.
+>
+> **Принцип (кампания §3.2):** главный риск — тихий auto-deploy мимо floor. Смоук обязан ЭМПИРИЧЕСКИ показать, что деплой не идёт без прохождения через `autonomy-policy resolve`, и что floor непробиваем на живом прогоне.
+
+---
+
+## Pre-requisite state (когда VM восстановлена)
+
+- [ ] VM жива, ssh поднят (`ssh -p 2222 cc-dev@127.0.0.1`), пилот на HEAD с доставленным Epic E релизом.
+- [ ] deploy-capability оснащена: `/integrator:provision deploy-staging` прогнан, CNT-контракт в `.claude/integrator/contracts/` (draft), deploy-manifest + systemd-шаблоны персистированы.
+- [ ] Пилот-пакеты собираемы: `pnpm -r build` проходит; `packages/db` schema присутствует ИЛИ migrate-шаг помечен conditional.
+- [ ] Postgres 16 + Redis 7 healthy в docker-compose (спайк подтвердил).
+- [ ] Изолированная ветка пилота для evidence (прецедент `smoke-batch-1-9-0`).
+- [ ] Снапшот VM до прогона (грубая пред-deploy страховка, D-4).
+
+---
+
+## Scenarios
+
+### S1 — Успешный staging-деплой (happy path, L3)
+
+**Setup:** фича с P7 boot PASS; профиль автономии `autonomous` (L3) ИЛИ `--autonomy L3`; субстрат READY.
+
+**Steps:**
+1. Прогнать линию до `runtime_gate` (P7 boot PASS → `evt:runtime.ready_or_started`).
+2. Линия входит в `deploying_staging` → процесс `deploy-to-stage`.
+3. Наблюдать фазу `Gate`: вызов `autonomy-policy resolve --operation-class deploy_staging --env-tier staging --readiness READY --override L3` → `disposition: auto`.
+4. Фаза `Deploy`: `releases/<ts>` собран, `current`-симлинк флипнут, `systemctl` рестарт.
+5. Healthcheck `GET /health` → 2xx.
+
+**Pass:** `result: DEPLOYED`, `flipped: true`, `evt:deploy.succeeded` → состояние `done`; `current` указывает на новый релиз; сервисы живы. Ledger + fabric-ingest записали брекет.
+
+---
+
+### S2 — Индуцированный провал healthcheck → авто-rollback (СЕРДЦЕ Epic E)
+
+**Setup:** как S1, но специально сломать сервис так, чтобы он задеплоился, но не прошёл healthcheck (напр. битый `.env`-ключ, или порт занят).
+
+**Steps:**
+1. Деплой проходит §3.2-гейт (auto), симлинк флипнут (`flipped: true`).
+2. Healthcheck `GET /health` → НЕ 2xx (500/timeout).
+3. `result: DEPLOY_FAILED` → `evt:deploy.failed` → состояние `rolling_back`.
+4. `rollback-release` резолвится: `operation_class: rollback × staging` → `auto` (БЕЗ человека — это суть auto-rollback).
+5. Симлинк-swap на предыдущий `releases/<ts>`, `systemctl` рестарт.
+
+**Pass:** `evt:rollback.done` → `rolled_back`; `current` указывает на ПРЕДЫДУЩИЙ известный-хороший релиз; сервисы снова живы; PA-запись владельцу (`queue_owner`) с диагнозом по P7 failure-таксономии. **Ключ:** rollback сработал автоматически на дефолтном/L3 уровне — человек не требовался для отката, но уведомлён.
+
+---
+
+### S3 — Floor непробиваем на prod (live-подтверждение §3.2)
+
+**Setup:** попытка prod-деплоя на L3 (максимальная автономия).
+
+**Steps:**
+1. Триггернуть операцию с `operation_class: prod_deploy` на `--override L3`.
+2. Наблюдать `autonomy-policy resolve`.
+
+**Pass:** `disposition: human-gate`, `floor_hit: true` — деплой НЕ идёт, PA владельцу. **На живом прогоне подтверждается, что floor непробиваем даже на L3** (детерминированно уже доказано E5-A, здесь — на фабричном пути). prod остаётся stub под floor.
+
+---
+
+### S4 — §3.2-гейт на дефолтном L1 (деплой не идёт без владельца)
+
+**Setup:** фича с P7 PASS, профиль автономии по умолчанию (L1, без `autonomous`).
+
+**Steps:**
+1. Линия входит в `deploying_staging`.
+2. fabric-prescription для `deploy_staging × staging × L1` → `human-gate` (первый слой).
+
+**Pass:** процесс `deploy-to-stage` НЕ запускается авто — линия паркуется на owner-gate с PA. Владелец либо `--autonomy L2/L3` (продолжить), либо `evt:owner.close` (закрыть фичу без деплоя → `closed_without_runtime`). **Подтверждает:** дефолт консервативен, деплой требует явной автономии ИЛИ владельца.
+
+---
+
+### S5 — Просадка субстрата (readiness-ось)
+
+**Setup:** деплой на L3, но субстрат DEGRADED (напр. Redis down) ИЛИ ENV_NOT_READY.
+
+**Steps:**
+1. Линия входит в `deploying_staging`, процесс запускается (fabric-prescription на L3 = auto).
+2. Внутри-процессный §3.2-вызов передаёт `--readiness DEGRADED`.
+3. `applyReadinessGuard` понижает `auto → human-gate` (DEGRADED) ИЛИ `→ block` (ENV_NOT_READY).
+
+**Pass:** DEGRADED → `evt:deploy.gated` → `runtime_gate_retry` (владелец решает); ENV_NOT_READY → `result: BLOCKED` (НЕ `DEPLOY_FAILED` — двухосный контракт: «не смог подготовить» ≠ «провалил деплой») → `runtime_gate_retry`, resume на `evt:env.up`. **Ключ:** просадка субстрата не читается как провал кода; деплой не мутирует на нездоровом субстрате.
+
+---
+
+### S6 — Rollback без предыдущего релиза (edge)
+
+**Setup:** первый деплой фичи проваливает healthcheck (нет предыдущего `releases/<ts>` для отката).
+
+**Pass:** `rollback-release` → `evt:rollback.no_prior` → `escalated` + PA владельцу (нечего откатывать — человек решает). Система не пытается флипнуть на несуществующий релиз.
+
+---
+
+## После прогона
+
+1. Вердикты per-сценарий (PASS/PARTIAL/FAIL/N/A) + evidence (ledger, run.json, fabric events.ndjson, PA-записи).
+2. Обновить статус-баннер этого файла + `EPIC_E_READINESS.md` (E.G done).
+3. Findings → DEV_JOURNAL; дефекты → follow-up фиксы (executor/reviewer separation, как batch-смоук 0177).
+4. При PASS S1-S3 — Epic E graduation: deploy-контур live-валидирован, prod-сегмент готов (в рамках stub-под-floor v1).

@@ -41,7 +41,7 @@
  * already known locally (a warning is printed to stderr either way).
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -176,9 +176,16 @@ function writeClaims(file, claims) {
   }
 }
 
+// `ref` is a branch name harvested from `git branch -r/--format` — i.e. it can originate from a
+// hostile remote (a PR/fork branch that `gitFetch()` above pulls into our refs). `git
+// check-ref-format` permits backtick / $() / ; / | in a ref name, so interpolating one into a
+// shell command string was a command-injection sink on the maintainer's machine (M-2,
+// SECURITY_REVIEW_2026-07-11). execFileSync spawns git directly with a discrete argv — no shell,
+// so no metacharacter is ever interpreted. (No `--` separator: `<ref>:<path>` is a rev, not a
+// pathspec; `git show -- <arg>` would change the meaning.)
 function readJournalAtRef(ref) {
   try {
-    const out = execSync(`git show ${ref}:${JOURNAL_REL}`, {
+    const out = execFileSync('git', ['show', `${ref}:${JOURNAL_REL}`], {
       cwd: ROOT,
       encoding: 'utf8',
       stdio: ['ignore', 'pipe', 'ignore'],

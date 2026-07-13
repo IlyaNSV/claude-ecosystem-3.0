@@ -6,7 +6,7 @@
  *
  * Contract covered (CONCEPT §9 p.3):
  *   - transition determinism (same inputs → deepStrictEqual outputs);
- *   - full happy path of one instance (init → line.start → P3→P4→P5(GO)→P7 → done);
+ *   - full happy path of one instance (init → line.start → P3→P4→P5(GO)→P7 → deploying_staging → done);
  *   - bounded remediation (2 no_go rounds → escalation on the third);
  *   - wip-guard (a second instance on the same lane is rejected and why[] explains);
  *   - ingest mapping across every result branch (P3–P7);
@@ -248,6 +248,63 @@ test('--autonomy override: L0 tightens a dev HIGH step to human-gate; floor stay
   assert.ok(bad.why.some((w) => /override "L9"/.test(w)), `why[] must name the ignored override: ${JSON.stringify(bad.why)}`);
 });
 
+test('F3 per-state env_tier: meta.env_tier overrides the global limit; absent ⇒ global (1:1 back-compat)', () => {
+  const { resolveDisposition } = lib;
+  // a deploy_staging state declaring env_tier:'staging' routes the STAGING column despite global dev…
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'deploy_staging', env_tier: 'staging', risk: 'HIGH' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L3' } }).disposition,
+    'auto', 'meta.env_tier=staging wins over global dev → L3×staging=auto');
+  // …the same state under L2 is consilium-gate (contrast proves env_tier really routed the staging column)
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'deploy_staging', env_tier: 'staging' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L2' } }).disposition,
+    'consilium-gate', 'staging column under L2');
+  // …and under the L1 default it human-gates (staging is human-gated below L2)
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'deploy_staging', env_tier: 'staging' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } }).disposition,
+    'human-gate', 'staging column under L1');
+  // backward-compat: a state with NO meta.env_tier falls through to the global limit — bit-identical to pre-F3
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'process-step' }, { limits: { env_tier: 'dev' }, policy: {} }).disposition,
+    'auto', 'absent meta.env_tier → global dev → L1×dev=auto (1:1 pre-F3)');
+});
+
+test('F3 (guard G): rollback state auto-resolves at the DEFAULT level — silent auto-rollback-disable guard', () => {
+  const { resolveDisposition } = lib;
+  // The load-bearing case: a rollback state on staging under the L1 DEFAULT must be auto. If it rode the
+  // generic staging column it would human-gate at L1 and silently disable the D-4 auto-rollback bracket.
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'rollback', env_tier: 'staging' },
+      { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } }).disposition,
+    'auto', 'rollback×staging is auto at the default L1 (auto-rollback not silently gated)');
+  // prod rollback stays human at every level (owner rail)
+  assert.strictEqual(
+    resolveDisposition({ operation_class: 'rollback', env_tier: 'prod' }, { limits: { env_tier: 'dev' } }).disposition,
+    'human-gate', 'rollback×prod is human-gate');
+});
+
+test('F3 (integration H): prescribe routes deploy_staging / rollback invoke states through the resolver', () => {
+  const deployCharter = {
+    id: 'd', version: 1, initial: 'deploy',
+    states: { deploy: { invoke: { process: 'deploy-to-stage' }, meta: { operation_class: 'deploy_staging', env_tier: 'staging', risk: 'HIGH' } } },
+    guards: {},
+  };
+  const l3 = prescribe(deployCharter, { state: 'deploy', subject: 's', instance: 'i' }, { limits: { env_tier: 'dev' }, policy: { default_level: 'L3' } });
+  assert.strictEqual(l3.kind, 'run-process');
+  assert.strictEqual(l3.disposition, 'auto', 'deploy_staging under L3 → auto');
+  const l1 = prescribe(deployCharter, { state: 'deploy', subject: 's', instance: 'i' }, { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } });
+  assert.strictEqual(l1.disposition, 'human-gate', 'deploy_staging under the L1 default → human-gate');
+  const rbCharter = {
+    id: 'r', version: 1, initial: 'rb',
+    states: { rb: { invoke: { process: 'rollback-release' }, meta: { operation_class: 'rollback', env_tier: 'staging' } } },
+    guards: {},
+  };
+  const rb = prescribe(rbCharter, { state: 'rb', subject: 's', instance: 'i' }, { limits: { env_tier: 'dev' }, policy: { default_level: 'L1' } });
+  assert.strictEqual(rb.disposition, 'auto', 'rollback invoke state → auto (auto-rollback works via prescribe at the default level)');
+});
+
 test('CLI --autonomy L0 flows through tick to the emitted prescription', () => {
   const base = mkTmp();
   const id = initInstance(base, 'FM-OV');
@@ -314,7 +371,7 @@ test('deriveInstanceId is deterministic and shaped from the timestamp (no Math.r
 
 // ==== CLI ========================================================================================
 
-test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → done', () => {
+test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → deploy → done (charter v5, E.B)', () => {
   const base = mkTmp();
   const id = initInstance(base, 'FM-3');
   assert.ok(/-fm-3-/.test(id), `instance id shape: ${id}`);
@@ -324,7 +381,10 @@ test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → done', (
   assert.strictEqual(ingest(base, id, 'batch-features-to-cc-sdd', {}).json.ticks[0].to, 'fidelity_audit');
   assert.strictEqual(ingest(base, id, 'audit-spec-fidelity', { impl_ready: ['FM-3'] }).json.ticks[0].to, 'implementing');
   assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'GO' }).json.ticks[0].to, 'runtime_gate');
-  const last = ingest(base, id, 'runtime-smoke-readiness', { verdict: 'READY_TO_SMOKE' });
+  // charter v5 (E.B, DEC-DEV-0198): a P7 PASS now routes to the deploy cell, not straight to `done`.
+  assert.strictEqual(ingest(base, id, 'runtime-smoke-readiness', { verdict: 'READY_TO_SMOKE' }).json.ticks[0].to, 'deploying_staging');
+  // a clean staging deploy (flipped + healthy) is the shipped sink — done stays the terminal.
+  const last = ingest(base, id, 'deploy-to-stage', { result: 'DEPLOYED', readiness: 'READY', flipped: true });
   assert.strictEqual(last.json.ticks[0].to, 'done');
   assert.deepStrictEqual(last.json.ticks[0].prescription, { kind: 'none', final: true, state: 'done' });
   assert.strictEqual(readState(base, id).state, 'done');
@@ -683,18 +743,20 @@ test('ANOM-OD7-1: evt:owner.close (PA-referenced) reaches the closed_without_run
   assert.strictEqual(readOwnerQueue(base).length, 0, 'the terminal move cleared the queued entry');
 });
 
-test('DEF-OD7-CLOSE (charter v4): evt:owner.close exists on EVERY park gate, resume-events unchanged', () => {
+test('DEF-OD7-CLOSE (charter v5): evt:owner.close exists on EVERY park gate, resume-events unchanged', () => {
   const { deriveResumeEvent } = lib;
   // R1 re-run 2026-07-11 live-refusal: a line parked at awaiting_capability_impl had NO owner
   // terminal-exit — the only handled event was the resume; closing required faking state. v4 gives
   // every human-gate parking state the owner.close exit; the derived resume-event must NOT change
-  // (pa-scan still fires the same resume on the owner's PA flip).
+  // (pa-scan still fires the same resume on the owner's PA flip). v5 (Epic E deploy-bracket) adds
+  // rolled_back as a new human-gate park state — it too must carry the owner.close terminal exit.
   const gates = [
     ['awaiting_product', 'evt:pa.resolved'],
     ['awaiting_capability', 'evt:pa.resolved'],
     ['awaiting_capability_impl', 'evt:pa.resolved'],
     ['runtime_gate_retry', 'evt:env.up'],
     ['escalated', 'evt:owner.resume'],
+    ['rolled_back', 'evt:owner.resume'],
   ];
   for (const [state, resume] of gates) {
     const on = charter.states[state].on;

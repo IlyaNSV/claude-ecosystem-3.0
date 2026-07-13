@@ -72,6 +72,7 @@ _Диаграмма coarse — обновляется только при сме
 | понять, **почему меня заблокировали** / что значит `NO-GO` | [`06-gates.md`](06-gates.md) |
 | узнать, **где стоит линия фичи** между сессиями / что ждёт моего решения | [`07-fabric.md`](07-fabric.md) |
 | найти **нужную команду** | [`02-commands.md`](02-commands.md) · [ecosystem-map.html](ecosystem-map.html) |
+| увидеть, **что умеет методология** под капотом (скиллы) | [`08-skills.md`](08-skills.md) |
 | **увидеть все процессы** целиком (BPMN) | [ecosystem-processes.html](ecosystem-processes.html) |
 | вспомнить, **что за артефакт** `PS`/`FM`/`BR`… | [`03-glossary.md`](03-glossary.md) (словарь) |
 
@@ -103,9 +104,10 @@ _Диаграмма coarse — обновляется только при сме
 | [`07-fabric.md`](07-fabric.md) | How-to · Explanation | Process Fabric: линия фичи P3→P7 между сессиями — charter, `status`/owner-queue, PA-мост, как добавить процесс | ✅ v1 |
 | [`02-commands.md`](02-commands.md) | Reference | Каталог всех команд «когда что» — **генерируется** из frontmatter (`gen:catalog`), не дрейфует | ✅ gen |
 | [`03-glossary.md`](03-glossary.md) | Reference | Словарь: 24 артефакта (ID · название · ревью · родословная, по доменам) + сквозные термины — **генерируется** из спеков + overlay | ✅ gen |
+| [`08-skills.md`](08-skills.md) | Reference | Каталог всех скиллов «что умеет методология» — lazy-loaded слой под командами; **генерируется** из frontmatter (`gen:skills`), не дрейфует | ✅ gen |
 
 ---
 
 ## Провенанс
 
-Статусы и описания в `ecosystem-map.html` / `ecosystem-processes.html` — из спеков; текстовый каталог команд [`02-commands.md`](02-commands.md) и словарь [`03-glossary.md`](03-glossary.md) **генерируются** (`npm run gen:catalog` / `gen:glossary`, `--check` валит при рассинхроне) — анти-дрейф, согласуется с решением [docs/MAP.md](../MAP.md) не вести cross-ref-таблицы руками. Обе интерактивные карты тоже генерируются из SSOT (`gen-ecosystem-map` / `gen-process-map`, в `npm run verify`) — правь overlay/шаблон, не сгенерированный HTML. Канонический статус «где мы сейчас» — всегда [ROADMAP.md](../../ROADMAP.md#где-мы-сейчас).
+Статусы и описания в `ecosystem-map.html` / `ecosystem-processes.html` — из спеков; текстовый каталог команд [`02-commands.md`](02-commands.md), словарь [`03-glossary.md`](03-glossary.md) и каталог скиллов [`08-skills.md`](08-skills.md) **генерируются** (`npm run gen:catalog` / `gen:glossary` / `gen:skills`, `--check` валит при рассинхроне) — анти-дрейф, согласуется с решением [docs/MAP.md](../MAP.md) не вести cross-ref-таблицы руками. Обе интерактивные карты тоже генерируются из SSOT (`gen-ecosystem-map` / `gen-process-map`, в `npm run verify`) — правь overlay/шаблон, не сгенерированный HTML. Канонический статус «где мы сейчас» — всегда [ROADMAP.md](../../ROADMAP.md#где-мы-сейчас).

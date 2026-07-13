@@ -1,7 +1,7 @@
 # Epic E Readiness — сегмент конвейера до прода
 
 > **Статус:** 🟢 KICKOFF ВЫПОЛНЕН 2026-07-11 (DEC-DEV-0194) — решения владельца сняты, суб-фазы нарезаны.
-> **Следующий шаг:** спайк VM-реальности (совмещается с ближайшим VM-визитом: доставка релиза + смоук-догоны) → build E1.
+> **Следующий шаг:** **build E.A** (Integrator D3-runtime capability). Спайк VM-реальности — ✅ **ВЫПОЛНЕН 2026-07-11** (DEC-DEV-0195, `31a935e`); его факт-лист — в §Суб-фазы ниже, он и есть вход в E.A.
 > **Vision-SSOT намерения:** `dev/ECOSYSTEM_VISION.md` §Epic E (+§Epic F инкремент F3). Kickoff-ритуал: `dev/meta-improvement/checklists/phase-kickoff.md`, fresh-session mode (анти-якорение).
 > **Журнал kickoff-решений:** DEV_JOURNAL DEC-DEV-0194.
 

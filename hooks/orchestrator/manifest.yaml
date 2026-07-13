@@ -14,7 +14,11 @@
 #         - type: <event-name>         # PostToolUse | PreToolUse | UserPromptSubmit | Stop | SessionStart | SessionEnd | PreCompact | Notification | SubagentStop
 #           matcher: <string>          # tool name regex, or "" for event types without tools
 #       description: <string>          # human-readable purpose
-#       enabled_when: <string>         # optional: "always" | "has_ui" | ...; default "always"
+#
+# These are ALL the fields bootstrap/update parse. An optional per-hook enable/disable toggle
+# field was removed 2026-07-13 (DEC-DEV-0198 / DEF-CTX-2: zero readers). To disable a hook,
+# remove its entry here; both bootstrap and update now prune undeclared ecosystem hooks from
+# settings.json (DEF-CTX-3).
 #
 # Process Fabric wiring (DEC-DEV-0154; dev/process-fabric/EXECUTION_ROADMAP.md §2c).
 # The ecosystem's FIRST shipped SessionStart hook (SessionStart is a tool-less event →
@@ -31,4 +35,3 @@ hooks:
       - type: SessionStart
         matcher: ""
     description: "SessionStart injector of Process Fabric status (DEC-DEV-0154, roadmap §2c). If the project carries live fabric state (.claude/orchestrator/fabric/), shells the read-only `fabric-engine.cjs status` and injects a compact additionalContext summary — active instances + top ≤5 of the prioritised owner-queue — so a returning session re-enters the inter-process line without running `fabric status` by hand. Warn-only, read-only, exit 0 ALWAYS; every error swallowed. No-op when there is no fabric dir (incl. the ecosystem-dev repo), when the engine is absent, or when instances AND owner-queue are both empty. Instant OFF via env FABRIC_STATUS_INJECT=0. Contract mirrors dev/meta-improvement/hooks/rails-session-start.js."
-    enabled_when: always

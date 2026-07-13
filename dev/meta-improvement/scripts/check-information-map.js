@@ -40,7 +40,7 @@
  * check:validation-sync.
  */
 
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
@@ -108,9 +108,12 @@ function isCheckable(token) {
 
 // ─── Resolution ──────────────────────────────────────────────────────────────
 
+// `rel` is a path token extracted from INFORMATION-MAP.yaml. Interpolating it into a shell string
+// was a (narrow, dev-only) injection sink — L-5, SECURITY_REVIEW_2026-07-11. execFileSync passes a
+// discrete argv with no shell, so the quoting question disappears entirely.
 function isGitIgnored(rel) {
   try {
-    execSync(`git check-ignore -q "${rel}"`, { cwd: ROOT, stdio: 'ignore' });
+    execFileSync('git', ['check-ignore', '-q', rel], { cwd: ROOT, stdio: 'ignore' });
     return true; // exit 0 = ignored
   } catch (e) {
     return false; // exit 1 = not ignored

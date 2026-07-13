@@ -13,7 +13,14 @@
 #         - type: <event-name>         # PostToolUse | PreToolUse | UserPromptSubmit | Stop | SessionStart | SessionEnd | PreCompact | Notification | SubagentStop
 #           matcher: <string>          # tool name regex, or "" for event types without tools
 #       description: <string>          # human-readable purpose
-#       enabled_when: <string>         # optional: "always" | "has_ui" | ...; default "always"
+#
+# These are ALL the fields bootstrap/update parse. An optional per-hook enable/disable
+# toggle field was removed 2026-07-13 (DEC-DEV-0198 / DEF-CTX-2): it was documented here
+# and set once, but had ZERO readers — neither bootstrap.md nor update.md ever looked at
+# it. A schema field nothing reads is worse than a missing one: the next contributor
+# believes it works. To disable a hook, REMOVE its entry from this manifest — both
+# /ecosystem:bootstrap and /ecosystem:update now prune undeclared ecosystem hooks from
+# settings.json (DEF-CTX-3; before that fix, bootstrap's additive union made removal a no-op).
 #
 # How bootstrap processes this:
 #   1. Read all hooks/*/manifest.yaml files

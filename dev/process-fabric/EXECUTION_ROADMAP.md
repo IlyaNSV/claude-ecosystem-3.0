@@ -60,7 +60,8 @@ history, XState-миграция, D7-charter.
 - [x] SubagentStop-watchdog (G05/G06) — ✅ DEC-DEV-0159, PR #134
 - [x] Линтер catalog↔runner (G19) — ✅ DEC-DEV-0158, PR #133 · install-pre-commit → авто-установка
       npm prepare (G23) — ✅ DEC-DEV-0157, PR #132
-- [ ] expires_at-sweeper (G28) — единственный остаток очереди AUDIT §6
+- [x] expires_at-sweeper (G28) — ✅ DEC-DEV-0180, `1e75dc0` (sweeper истёкших `approve_overrides`).
+      **Очередь AUDIT §6 закрыта полностью** — остатка нет.
 
 ## Пост-graduation обязательства — 🟢 ОТКРЫТЫ 2026-07-10 (DEC-DEV-0165)
 
@@ -79,6 +80,35 @@ history, XState-миграция, D7-charter.
    G11/G12/G13), открыто 22 с роутингом: Tier-0 (G01/G02) — substrate-gated треки; G08/G28/G29 —
    кандидаты фазы 4; G14–G18/G21/G24/G33/G35/G36 — п.4 ниже; G22/G25–G27/G30/G31/G34 —
    backlog D7-гигиены на приоритизацию владельцем.
+
+   > **⚠ ДЕЛЬТА К РЕЕСТРУ (свежее архива; сверено с `git log` 2026-07-13).** Сам реестр —
+   > **снапшот на 2026-07-10 и НЕ обновляется**: он в `dev/_archive/`, а архив read-only
+   > (`dev/README.md:18` — правка архивного снапшота = фальсификация point-in-time записи).
+   > Поэтому актуальное состояние G-номеров живёт **здесь**. Закрыто ПОСЛЕ снапшота:
+   >
+   > | Разрыв | Чем закрыт |
+   > |---|---|
+   > | **G02** | `/product:impl-sync` — DEC-DEV-0192, `3c80537` |
+   > | **G14 / G15 / G16** | Integrator Phase-7 (`:verify` / `:debug` / `:docs` + drift-либа) — DEC-DEV-0176, `81501ac` |
+   > | **G17 / G18 / G33 / G35** | doc-drift quick-wins — DEC-DEV-0170, `a9533c6` |
+   > | **G21** | Vision-эпики вписаны в тело Product/Design SPEC — DEC-DEV-0187, `e1da2a4` |
+   > | **G22** | handoff staleness recompute+persist — `5a69bb2` (PR #165) |
+   > | **G24** | session-audit path-resolve + D7 opt-in visibility — DEC-DEV-0183, `595cd68` |
+   > | **G25 / G26 / G27** | консолидированный D7 hygiene reminder (SessionStart) — DEC-DEV-0181, `e09c882` |
+   > | **G28** | expires_at-sweeper — DEC-DEV-0180, `1e75dc0` |
+   > | **G30** | depth-floor guardrail для adaptive-depth DA — DEC-DEV-0182, `bdb0c1b` |
+   > | **G34** | INFORMATION-MAP path-guard в verify-цепь — `f743902` (PR #170) |
+   > | **G36** | **ЧАСТИЧНО** — D1 Deep (market-researcher + competitor-analyst) построен, DEC-DEV-0186 `a66b79a`; **`screen-generator` НЕ построен** (Design, cut C2) ⇒ разрыв остаётся открыт в Design-части |
+   >
+   > **Реально открытыми из реестра остаются (проверено, а не переписано):**
+   > - **G01** (= Vision Epic E, «последняя миля») — **в активной работе**: kickoff + спайк VM-реальности
+   >   выполнены (DEC-DEV-0194 `99609a3` / 0195 `31a935e`), следующий шаг — build **E.A**
+   >   (`dev/gates/EPIC_E_READINESS.md`). Уже НЕ «просто открыт», но и не закрыт.
+   > - **G08** (авто-шов handoff→`integrator:add`) и **G29** (periodic stale-draft sweep) — кандидаты
+   >   фазы 4, строго по live-триггерам. Открыты.
+   > - **G31** (`bg-rename` — atomic apply отложен к v1.1) — открыт **сознательно**: триггер
+   >   («5+ mass-renames за месяц») не сработал; запись в `dev/v1_1_backlog.md`.
+   > - **G36** — открыт **в Design-части** (`screen-generator`, cut C2). Product-часть закрыта.
 3. [x] **Upstream-долг graduation-прогона** — ✅ 2026-07-10 (DEC-DEV-0168): **DEF-4** — P7 probe
    получил workspace-скан (pnpm-workspace.yaml + npm `workspaces`, `--app`-пин, disclosure на
    происхождение/неоднозначность; enum вердиктов нетронут; юниты 21→30) · **ANOM-5** — owner-queue
@@ -87,9 +117,29 @@ history, XState-миграция, D7-charter.
    (юниты fabric-engine 27→35). PA-056 пилота закрывается следующей доставкой; ветка
    `runtime_gate_retry`/`evt:env.up` остаётся live-невалидированной (теперь не маскируется DEF-4) —
    проверится естественным live-триггером.
-4. [ ] **Незавершённые параллельные инициативы, попутно выявленные аудитом** (не Fabric-зона,
-   не потерять): OD7 await→resume не построен целиком · Integrator Phase-7 команды spec-only
-   при живых ссылках на них (G14–G16) · Deep Discovery / screen-generator субагенты spec-only
-   (G36) · P3p-путаница SSOT-оверлея · doc-дрейфы G17–G21/G33/G35 · ≥3 deferred-smoke плана
-   (порог substrate-graduation уже превышен) · session-audit opt-in хрупкость (G24).
-   ~~DEC-DEV аллокатор не атомарен (G32)~~ — закрыт DEC-DEV-0160, PR #135.
+4. 🟠 **Незавершённые параллельные инициативы, попутно выявленные аудитом** (не Fabric-зона,
+   не потерять). **Сверено с `git log` 2026-07-13 — закрыто почти всё; живой остаток внизу.**
+
+   Закрыто:
+   - ~~OD7 await→resume не построен целиком~~ — **построен** DEC-DEV-0171 (PR #150) и
+     **live-валидирован** DEC-DEV-0175 (PR #155, `642893d`); попутно вскрыт+починен DEF-OD7-CLOSE → charter v4.
+   - ~~Integrator Phase-7 команды spec-only при живых ссылках (G14–G16)~~ — **построены**
+     DEC-DEV-0176 (`81501ac`, PR #156): `/integrator:{verify,debug,docs}` + drift-либа + SessionStart-хук.
+   - ~~Deep Discovery субагенты spec-only~~ — **построены** DEC-DEV-0186 (`a66b79a`):
+     `market-researcher` + `competitor-analyst`, D1 Deep функционален.
+   - ~~P3p-путаница SSOT-оверлея~~ — **снята** DEC-DEV-0188 (`8c87d7b`): product-lane node-id получили
+     `p`-суффикс (`P3p`/`P4p`/`P5p`) → коллизия с orchestrator `P4o`/`P5o` устранена.
+   - ~~doc-дрейфы G17–G21/G33/G35~~ — **закрыты** DEC-DEV-0170 (`a9533c6`; G17/G18/G33/G35) +
+     DEC-DEV-0187 (`e1da2a4`; G21).
+   - ~~session-audit opt-in хрупкость (G24)~~ — **закрыта** DEC-DEV-0183 (`595cd68`).
+   - ~~DEC-DEV аллокатор не атомарен (G32)~~ — закрыт DEC-DEV-0160, PR #135.
+
+   **Живой остаток (только это, остальное выше — закрыто):**
+   - [ ] **`screen-generator` (Design, cut C2)** — единственный несобранный субагент из G36;
+     запись в [`dev/v1_1_backlog.md`](../v1_1_backlog.md) §«Design Module — `screen-generator`».
+     Триггер (>5 экранов в реальном D.2 / измеренное context-загрязнение) **не сработал** —
+     открыт сознательно, не по забывчивости.
+   - [ ] **Deferred-smoke долг: 4 → 2 плана.** Батарея из 4 планов прогнана 2026-07-11
+     (DEC-DEV-0177: 14 PASS / 3 PARTIAL / 5 N/A / 0 FAIL); Phase-7 и S-LE закрыты и архивированы.
+     Остались **догоны, требующие живой VM** (сейчас VM-gated): `PATCH_1.3.3` S2/S4/S5 + `PHASE_6` S1/S3
+     (оба плана — в `dev/gates/`).
