@@ -181,6 +181,109 @@ test('D2: EVERY return arm carries readiness_reasons — the §3.2 deploy gate m
   }
 });
 
+// ---- THE FIRST-DEPLOY CONTRACT DEADLOCK (first live E.B run, 2026-07-14 — DEC-DEV-0201) ----------
+//
+// E.A must ship the CNT `draft` (never claim `active` before a live verify). E.B refused to deploy a
+// non-`active` manifest, calling it ENV_NOT_READY. The live verify can only come FROM a deploy ⇒ the
+// FIRST DEPLOY WAS IMPOSSIBLE IN PRINCIPLE. The live run.json carried `disposition: null` — the preflight
+// short-circuited before the §3.2 resolver was ever reached, so the whole mutating branch of the gate was
+// unreachable, untested, and (worse) unnecessary: at L3×staging the resolver would have said `auto`, so
+// the bogus block was the ONLY thing standing between an unverified contract and a silent auto-deploy.
+//
+// These tests EVALUATE the real source expressions (not string-match them): a regression that re-couples
+// status to readiness, or drops the contract axis from the resolver call, fails here exactly as it would live.
+
+// Pull `const manifestOk = <expr>` out of the source and run it as the code it is.
+function evalManifestOk(manifest) {
+  const m = SRC.match(/const hasSteps = ([^\n]+)\nconst manifestOk = ([^\n]+)/);
+  assert(m, 'could not locate the manifestOk expression (has the preflight been restructured?)');
+  // eslint-disable-next-line no-new-func
+  return new Function('manifest', `const hasSteps = ${m[1]}; return ${m[2]};`)(manifest);
+}
+
+test('DEADLOCK REGRESSION: present + a step-list + status=draft ⇒ manifestOk (NO ENV_NOT_READY)', () => {
+  assert(evalManifestOk({ present: true, status: 'draft', steps: [{ run: 'pnpm -r build' }] }) === true,
+    'THE DEADLOCK: a draft manifest that exists, parses and carries a step-list must NOT be ENV_NOT_READY — '
+    + 'the equipment is on disk; what is missing is a HUMAN, and a missing human is a gate, not a block');
+  assert(evalManifestOk({ present: true, status: 'active', steps: [{ run: 'x' }] }) === true, 'active is deployable too');
+  assert(evalManifestOk({ present: true, status: null, steps: [{ run: 'x' }] }) === true,
+    'an undeclared status is a TRUST question (→ conservatively draft at the gate), never a readiness block');
+});
+
+test('…but present=false STILL gives ENV_NOT_READY (the real "could not prepare" cases survive)', () => {
+  assert(evalManifestOk({ present: false, status: 'active', steps: [{ run: 'x' }] }) === false, 'absent/unparseable manifest ⇒ ENV_NOT_READY');
+  assert(evalManifestOk({ present: true, status: 'active', steps: [] }) === false, 'a manifest with no executable step-list ⇒ ENV_NOT_READY (nothing to run)');
+  assert(evalManifestOk({ present: true, status: 'active' }) === false, 'no steps key at all ⇒ ENV_NOT_READY');
+  assert(evalManifestOk(null) === false, 'a null relay ⇒ ENV_NOT_READY (never optimistic)');
+});
+
+test('the manifestOk expression does not read `status` at all (the axes are separated IN CODE)', () => {
+  const m = SRC.match(/const manifestOk = ([^\n]+)/);
+  assert(m, 'no manifestOk');
+  assert(!/status/.test(m[1]),
+    `manifestOk must NOT depend on status — that coupling IS the deadlock; got: ${m[1]}`);
+  // and the draft branch must not downgrade readiness
+  const draftIdx = SRC.indexOf('if (contractDraft) {');
+  assert(draftIdx !== -1, 'no contractDraft branch');
+  const draftArm = SRC.slice(draftIdx, SRC.indexOf('\n}', draftIdx));
+  assert(!/worstReadiness/.test(draftArm) && !/readiness = /.test(draftArm),
+    'the draft branch must NEVER downgrade readiness — a draft contract is a trust fact, not an env fact');
+  assert(/readinessReasons\.push/.test(draftArm),
+    'the draft must still be DISCLOSED in readiness_reasons (an explanation, not a block)');
+});
+
+// Compose the REAL resolver command from the source template — a dropped flag or a broken interpolation
+// fails here exactly as it would live.
+function composeResolveCmd(vars) {
+  const m = SRC.match(/const resolveCmd = `([\s\S]*?)`\n/);
+  assert(m, 'could not locate the resolveCmd template');
+  const names = Object.keys(vars);
+  // eslint-disable-next-line no-new-func
+  return new Function(...names, 'return `' + m[1] + '`')(...names.map((n) => vars[n]));
+}
+
+test('§3.2 + contract axis: a draft contract reaches the resolver as --contract-status (auto → human-gate)', () => {
+  const base = {
+    AUTONOMY_LIB: 'A.cjs', RISK: 'HIGH', ENV_TIER: 'staging', readiness: 'READY',
+    contractStatus: 'draft', ACCEPT_DRAFT: false, AUTONOMY_POLICY_CFG: null, AUTONOMY_OVERRIDE: 'L3',
+  };
+  const cmd = composeResolveCmd(base);
+  assert(cmd === 'node A.cjs resolve --operation-class deploy_staging --risk HIGH --env-tier staging --readiness READY --contract-status draft --override L3',
+    `the draft must ride to the resolver — got: ${cmd}`);
+  // the owner's sanction is a SEPARATE, explicit flag — never implied by the draft itself
+  const sanctioned = composeResolveCmd({ ...base, ACCEPT_DRAFT: true });
+  assert(/--accept-draft-contract/.test(sanctioned), `the owner sanction must reach the resolver — got: ${sanctioned}`);
+  assert(!/--accept-draft-contract/.test(cmd), 'the sanction must NOT be sent unless the owner actually gave it');
+});
+
+test('BACKWARD-COMPAT: no contract status ⇒ the resolver command is byte-for-byte the pre-fix one', () => {
+  const cmd = composeResolveCmd({
+    AUTONOMY_LIB: 'A.cjs', RISK: 'HIGH', ENV_TIER: 'staging', readiness: 'DEGRADED',
+    contractStatus: null, ACCEPT_DRAFT: false, AUTONOMY_POLICY_CFG: null, AUTONOMY_OVERRIDE: null,
+  });
+  assert(cmd === 'node A.cjs resolve --operation-class deploy_staging --risk HIGH --env-tier staging --readiness DEGRADED',
+    `an absent contract axis must leave the command unchanged — got: ${cmd}`);
+});
+
+test('🔒 §8.3: the process REPORTS the contract evidence and never writes .claude/integrator/**', () => {
+  // a DEPLOYED run on a draft contract emits the live-evidence the Integrator needs to flip it…
+  assert(/contract_evidence: contractEvidence/.test(SRC), 'the DEPLOYED arm must carry contract_evidence');
+  assert(/verdict: 'live-verified'/.test(SRC), 'the evidence must carry a verdict');
+  assert(/run_id: RUN_ID \|\| null/.test(SRC), 'the evidence must carry the RUN_ID (the handle the flip points at)');
+  assert(/const RUN_ID = A\.runId \|\| ''/.test(SRC), 'RUN_ID must be FORWARDED (the harness may not read a clock/FS)');
+  assert(/flip_owner: 'integrator'/.test(SRC), 'the evidence must name WHO may flip the contract — not us');
+  // …and NOTHING in this process may write that zone (the §8.3 line; convenience is exactly how it gets crossed)
+  assert(/NEVER WRITE UNDER/.test(SRC) && /\.claude\/integrator/.test(SRC),
+    'the mutating agent must be explicitly forbidden from writing .claude/integrator/**');
+  const deploySeg = SRC.slice(SRC.indexOf('const deployed = await agent'), SRC.indexOf("label: 'deploy-flip'"));
+  assert(/§8\.3/.test(deploySeg) && /draft→active/.test(deploySeg),
+    'the deploy agent must be told, in words, not to flip the contract itself');
+  // no agent prompt may instruct a write/edit into the Integrator zone
+  for (const m of SRC.match(/(Write|write|edit|Edit)[^\n]{0,40}\.claude\/integrator[^\n]*/g) || []) {
+    assert(/never|NEVER|not|NOT|read-only|READ-ONLY/i.test(m), `a prompt appears to write the Integrator zone: ${m}`);
+  }
+});
+
 test('MDP: the real mutation + diagnosis stages are opus; the relays are sonnet', () => {
   const line = (label) => SRC.split('\n').find((l) => l.includes(`label: '${label}'`)) || '';
   assert(/model: 'opus'/.test(line('deploy-flip')), 'the deploy/flip mutation must be opus (high-R)');
