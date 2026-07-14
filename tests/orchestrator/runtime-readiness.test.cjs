@@ -401,5 +401,91 @@ test('CLI: npm-form root workspaces:[packages/*] is scanned as well as pnpm', ()
   } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 });
 
+// === LIVE-RUN DEFECTS (first live P7 run on the pilot, FM-006 / 2026-07-14) ===================
+
+// (D3) The §6 lookup key is a `.product/features` key, NOT the cc-sdd/.kiro slug. The fuzzy
+// `includes` match masked the mismatch for 5 of the pilot's 6 features (kiro `auth` ⊂
+// `FM-001-authentication`); FM-006 was the first divergence (`conversion-measurement` vs
+// `FM-006-conversion-dashboard`) → capabilities_unknown, i.e. a verdict with NO §6 check. The miss
+// stays safe (fail-loud) but must now NAME the key it looked for — the operator had to re-probe by hand.
+test('CLI (D3 regression): a kiro-slug feature key misses the .product/features lookup ⇒ the reason NAMES the key + the namespace trap', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p7-ns-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ scripts: { start: 'node server.js' } }));
+    const featDir = path.join(tmp, '.product', 'features');
+    fs.mkdirSync(featDir, { recursive: true });
+    fs.writeFileSync(path.join(featDir, 'FM-006-conversion-dashboard.md'), '---\nid: FM-006\n---\nbody\n');
+    const run = (feature) => JSON.parse(execFileSync(
+      'node', [LIB_PATH, '--feature', feature, '--root', tmp, '--env', 'READY'], { encoding: 'utf8' }));
+
+    // the kiro slug (what run.md used to prescribe) does NOT resolve the FM file
+    const miss = run('conversion-measurement');
+    assert.strictEqual(miss.capabilities_unknown, true, 'a wrong-namespace key must surface as capabilities_unknown');
+    assert.ok(/conversion-measurement/.test(miss.capabilities_unknown_reason || ''),
+      `the reason must NAME the key that missed; got: ${miss.capabilities_unknown_reason}`);
+    assert.ok(/\.product\/features/.test(miss.capabilities_unknown_reason || ''), 'the reason must name WHERE it looked');
+    assert.ok(/\.kiro|cc-sdd/.test(miss.capabilities_unknown_reason || ''), 'the reason must name the namespace trap (not the kiro slug)');
+    // and the disclosure the operator actually reads carries that same key (not a generic phrase)
+    assert.ok(miss.disclosures.some((d) => /UNAVAILABLE/.test(d) && /conversion-measurement/.test(d)),
+      'the UNAVAILABLE disclosure must name the unresolved key, not just say "could not resolve"');
+
+    // the correct key (the .product/features id) resolves → no unknown, no reason
+    const hitByFm = run('FM-006');
+    assert.strictEqual(hitByFm.capabilities_unknown, false, 'the FM-id key must resolve the feature');
+    assert.strictEqual(hitByFm.capabilities_unknown_reason, null, 'a resolved probe carries no reason');
+    assert.ok(!hitByFm.disclosures.some((d) => /UNAVAILABLE/.test(d)), 'a resolved probe discloses no capability gap');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
+test('assessReadiness: capabilitiesUnknownReason is folded into the UNAVAILABLE disclosure + returned (absent ⇒ old generic phrasing)', () => {
+  const withReason = assessReadiness({
+    runTarget: { command: 'npm run dev' },
+    capabilities: [],
+    capabilitiesUnknown: true,
+    capabilitiesUnknownReason: 'feature "conversion-measurement" not found under .product/features',
+    envReadiness: READINESS.READY,
+  });
+  assert.strictEqual(withReason.capabilities_unknown_reason, 'feature "conversion-measurement" not found under .product/features');
+  assert.ok(withReason.disclosures.some((d) => /UNAVAILABLE/.test(d) && /conversion-measurement/.test(d)),
+    'the reason must ride INSIDE the disclosure (that is what the operator reads in run.json)');
+  // backward-compat: no reason supplied ⇒ the disclosure is the old generic one, field is null
+  const noReason = assessReadiness({
+    runTarget: { command: 'npm run dev' }, capabilities: [], capabilitiesUnknown: true, envReadiness: READINESS.READY,
+  });
+  assert.strictEqual(noReason.capabilities_unknown_reason, null);
+  assert.ok(noReason.disclosures.some((d) => /UNAVAILABLE/.test(d)), 'the loud disclosure survives without a reason');
+});
+
+// (D1) sourceRank shadowing — the pilot's REAL monorepo shape: apps/web has `dev`, apps/api has
+// `start`. sourceRank puts scripts.dev ABOVE scripts.start, so the frontend wins the auto-pick no
+// matter the dir order (test (f) above only proves the lexicographic tiebreak at EQUAL rank — a
+// different mechanism). A backend feature is then smoked against the frontend. --app is the pin.
+test('CLI (D1 regression): scripts.dev (apps/web) outranks scripts.start (apps/api) ⇒ the backend needs an explicit --app pin', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'p7-rank-'));
+  try {
+    fs.writeFileSync(path.join(tmp, 'package.json'), JSON.stringify({ name: 'root', scripts: { test: 'jest' } }));
+    fs.writeFileSync(path.join(tmp, 'pnpm-workspace.yaml'), "packages:\n  - 'apps/*'\n");
+    const mk = (name, scripts) => {
+      const d = path.join(tmp, 'apps', name);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'package.json'), JSON.stringify({ scripts }));
+    };
+    mk('web', { dev: 'next dev' });          // frontend: scripts.dev  (rank 2)
+    mk('api', { start: 'node dist/main' });  // backend:  scripts.start (rank 3) — loses despite "api" < "web"
+    const run = (extra) => JSON.parse(execFileSync(
+      'node', [LIB_PATH, '--root', tmp, '--env', 'READY', ...extra], { encoding: 'utf8' }));
+
+    const auto = run([]);
+    assert.strictEqual(auto.run_target.cwd, 'apps/web',
+      'the auto-pick is rank-driven: scripts.dev outranks scripts.start (this is the live-run mis-boot)');
+    assert.ok(auto.disclosures.some((d) => /--app/.test(d)), 'the ambiguous auto-pick must be disclosed with the --app hint');
+
+    const pinned = run(['--app', 'apps/api']);
+    assert.strictEqual(pinned.run_target.cwd, 'apps/api', '--app must pin the backend leg over the higher-ranked frontend');
+    assert.strictEqual(pinned.run_target.command, 'npm run start');
+    assert.strictEqual(pinned.plan.cwd, 'apps/api', 'the boot plan must carry the pinned cwd (that is what the smoke agent boots)');
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
+});
+
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);

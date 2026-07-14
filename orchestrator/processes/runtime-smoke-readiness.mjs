@@ -51,8 +51,15 @@ export const meta = {
 
 // FB-001: the harness forwards `args` verbatim; an invoking agent may stringify it.
 const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
+// FEATURE is the `.product/features` KEY (FM-NNN) — the §6 manifest lives there. NOT the cc-sdd/.kiro
+// spec slug P5/P6 take (runtime-readiness.cjs::capabilitiesFor resolves it under .product/features; a
+// wrong-namespace key ⇒ capabilities_unknown ⇒ a verdict with NO §6 check). Live P7 run FM-006.
 const FEATURE = A.feature || ''                                  // optional lens: which feature's §6 boot caps to check (whole-app boot otherwise)
-const SPEC_DIR = A.specDir || (FEATURE ? `.kiro/specs/${FEATURE}` : '')
+// DEF-4 monorepo pin: which workspace package to boot (e.g. `apps/api`). WITHOUT it the lib auto-picks
+// the first candidate by sourceRank (scripts.dev > scripts.start) — so a frontend `apps/web` beats a
+// backend `apps/api` deterministically, and a backend feature gets smoked against the wrong app (live
+// P7 run FM-006). Absent ⇒ the probe command is byte-for-byte the old one (backward-compat).
+const APP = A.app || ''
 const RUNTIME_PROBE = A.runtimeProbe || '.claude/orchestrator/lib/runtime-readiness.cjs'   // DEC-DEV-0120: P7 deterministic core
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs'               // DEC-DEV-0092: shared readiness probe
 const P6_VERDICT = A.p6Verdict || A.go_gate || ''               // optional: the prior P6 GO/NO-GO/MANUAL_VERIFY (a non-GO smoke is informational, disclosed)
@@ -75,6 +82,7 @@ const ASSESS_SCHEMA = {
     verdict: { type: 'string', enum: ['READY_TO_SMOKE', 'BLOCKED_ON_CAPABILITY', 'ENV_NOT_READY', 'NOT_STARTABLE'] },
     smoke_attemptable: { type: 'boolean' },
     capabilities_unknown: { type: 'boolean' },                  // §6 probe could not resolve the feature/manifest → disclosed, never a silent clean READY
+    capabilities_unknown_reason: { type: ['string', 'null'] },  // …and WHICH key missed where (named in the disclosure — no hand re-probe)
     run_target: { type: ['object', 'null'] },                   // {command, source} | null
     requests: { type: 'array', items: { type: 'object' } },     // §6 capability-requests on a BLOCK
     disclosures: { type: 'array', items: { type: 'string' } },
@@ -146,13 +154,18 @@ const envProbe = await agent(
   { model: 'sonnet', schema: ENV_READINESS_SCHEMA, phase: 'Assess', label: 'env-readiness' },   // MDP: env-probe JSON relay (mechanical transport)
 )
 const envReadiness = (envProbe && envProbe.readiness) || 'unknown'
-log(`pre-flight env-readiness: ${envReadiness}${envProbe && envProbe.reasons && envProbe.reasons.length ? ` — ${envProbe.reasons.join('; ')}` : ''}`)
+// CARRY the WHY, don't only log it: readiness is what applyReadinessGuard downgrades the deploy
+// disposition on (DEGRADED → human-gate), so a run.json that states the readiness but not its reasons
+// makes the gate UNAUDITABLE — the live P7 run had to re-probe the VM by hand to learn that a missing
+// pg_isready/redis-cli (not a real outage) was the DEGRADED. Additive field; [] when the probe said nothing.
+const readinessReasons = (envProbe && envProbe.reasons) || []
+log(`pre-flight env-readiness: ${envReadiness}${readinessReasons.length ? ` — ${readinessReasons.join('; ')}` : ''}`)
 
 // runtime-readiness lib: run-target detection + §6 boot-capability disposition (reuses
 // capability-probe) + verdict synthesis. The agent only RELAYS the lib JSON (like the env probe).
 const assess = await agent(
-  `Run the runtime-smoke readiness probe: \`node ${RUNTIME_PROBE}${FEATURE ? ` --feature ${FEATURE}` : ''} --root . --env ${envReadiness}${P6_VERDICT ? ` --p6 ${P6_VERDICT}` : ''}\` via Bash and relay its JSON verbatim ` +
-  `(verdict + smoke_attemptable + run_target + requests + disclosures + plan). Do NOT provision, boot, or mock anything — just relay the lib output.`,
+  `Run the runtime-smoke readiness probe: \`node ${RUNTIME_PROBE}${FEATURE ? ` --feature ${FEATURE}` : ''} --root .${APP ? ` --app ${APP}` : ''} --env ${envReadiness}${P6_VERDICT ? ` --p6 ${P6_VERDICT}` : ''}\` via Bash and relay its JSON verbatim ` +
+  `(verdict + smoke_attemptable + run_target + capabilities_unknown_reason + requests + disclosures + plan). Do NOT provision, boot, or mock anything — just relay the lib output.`,
   { model: 'sonnet', schema: ASSESS_SCHEMA, phase: 'Assess', label: 'runtime-readiness' },   // MDP: runtime-readiness.cjs JSON relay (mechanical transport)
 )
 const verdict = (assess && assess.verdict) || 'NOT_STARTABLE'
@@ -161,7 +174,8 @@ const disclosures = (assess && assess.disclosures) || []
 const runTarget = (assess && assess.run_target) || null
 const plan = (assess && assess.plan) || null
 const capsUnknown = !!(assess && assess.capabilities_unknown)   // §6 probe could not resolve → readiness assessed WITHOUT capability disposition (disclosed, never silent)
-log(`runtime-readiness: ${verdict}${runTarget ? ` (run target: ${runTarget.command})` : ''}; ${requests.length} §6 request(s); ${disclosures.length} disclosure(s)${capsUnknown ? '; ⚠ capability disposition UNAVAILABLE' : ''}`)
+const capsUnknownReason = (assess && assess.capabilities_unknown_reason) || null   // …and WHICH key missed where (names the wrong-namespace key, e.g. a .kiro slug fed where an FM-id belongs)
+log(`runtime-readiness: ${verdict}${runTarget ? ` (run target: ${runTarget.command}${runTarget.cwd ? ` @ ${runTarget.cwd}` : ''})` : ''}; ${requests.length} §6 request(s); ${disclosures.length} disclosure(s)${capsUnknown ? `; ⚠ capability disposition UNAVAILABLE${capsUnknownReason ? ` — ${capsUnknownReason}` : ''}` : ''}`)
 
 // ---- Phase 2: smoke — branch on the verdict --------------------------------
 phase('Smoke')
@@ -208,13 +222,16 @@ if (disclosures.length) log(`P7 disclosures (green boot ≠ proof): ${disclosure
 
 return {
   feature: FEATURE || null,
+  app: APP || null,                 // the pinned monorepo leg (null = auto-picked by sourceRank — disclosed by the lib when >1 candidate)
   verdict,                          // the readiness verdict (READY_TO_SMOKE | BLOCKED_ON_CAPABILITY | ENV_NOT_READY | NOT_STARTABLE)
   p7_result: p7Result,              // STARTS | FAILS_TO_START | INCONCLUSIVE | BLOCKED | NOT_STARTABLE | ENV_NOT_READY | READY_NOT_RUN
   smoke_attemptable: verdict === 'READY_TO_SMOKE',
   capabilities_unknown: capsUnknown, // §6 probe could not resolve the feature/manifest — readiness assessed without capability disposition (disclosed in `disclosures`)
+  capabilities_unknown_reason: capsUnknownReason,   // WHICH key missed where (null when the probe resolved)
   run_target: runTarget,
   smoke,                            // the boot result (null unless a live smoke ran)
   requests,                         // §6 capability-requests emitted on a BLOCK (routes + OD7 await)
   disclosures,                      // mock-only boot / non-GO / DEGRADED caveats — carried, never dropped
   readiness: envReadiness,          // READY | DEGRADED | ENV_NOT_READY | unknown (orthogonal to the verdict)
+  readiness_reasons: readinessReasons,   // WHY that readiness (the env-probe reasons) — the gate must be auditable from run.json alone
 }

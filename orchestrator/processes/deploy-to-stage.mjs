@@ -68,7 +68,14 @@ export const meta = {
 // FB-001: the harness forwards `args` verbatim; an invoking agent (or the dispatcher's Workflow call)
 // may pass a JSON string. (Keep the comment ABOVE this line — the args-parsing smoke evals it.)
 const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
+// FEATURE is the `.product/features` KEY (FM-NNN) — it is fed to runtime-readiness.cjs --feature in the
+// pre-flip re-probe, which resolves the §6 manifest under .product/features. NOT the cc-sdd/.kiro spec
+// slug (a wrong-namespace key ⇒ capabilities_unknown ⇒ a re-probe with NO §6 check). Live P7 run FM-006.
 const FEATURE = A.feature || ''                                  // optional lens: the feature this deploy ships
+// DEF-4 monorepo pin for the pre-flip re-probe (e.g. `apps/api`) — same knob as P7's. Without it the lib
+// auto-picks by sourceRank (dev > start), so a frontend leg can shadow the backend one. Absent ⇒ the
+// probe command is byte-for-byte the old one (backward-compat).
+const APP = A.app || ''
 const CAPABILITY = A.capability || 'cc-sdd-deploy'               // the deploy-capability slug (Integrator-equipped, E.A)
 const MANIFEST = A.manifest || (CAPABILITY ? `.claude/integrator/deploy/${CAPABILITY}/deploy-manifest.yaml` : '')  // E.A deploy-setup (deployment-provisioning.md)
 const ENV_TIER = A.envTier || 'staging'                          // per-state env tier — staging (prod is a floor-gated stub, NOT this process)
@@ -187,7 +194,12 @@ const envProbe = await agent(
   { model: 'sonnet', schema: ENV_READINESS_SCHEMA, phase: 'Preflight', label: 'env-readiness' },   // MDP: env-probe JSON relay (mechanical transport)
 )
 let readiness = (envProbe && envProbe.readiness) || 'DEGRADED'   // unknown/absent → conservatively DEGRADED (never silently READY)
-log(`pre-flight env-readiness: ${readiness}${envProbe && envProbe.reasons && envProbe.reasons.length ? ` — ${envProbe.reasons.join('; ')}` : ''}`)
+// CARRY the WHY of the readiness axis, don't only log it. THIS is the axis applyReadinessGuard gates the
+// deploy on (DEGRADED → human-gate, ENV_NOT_READY → block): a run.json that states `readiness` but not
+// its reasons makes the DEPLOY GATE UNAUDITABLE — the live P7 run had to hand-probe the VM to learn the
+// DEGRADED was a missing pg_isready/redis-cli, not an outage. Every downgrade below appends its reason.
+const readinessReasons = [...((envProbe && envProbe.reasons) || [])]
+log(`pre-flight env-readiness: ${readiness}${readinessReasons.length ? ` — ${readinessReasons.join('; ')}` : ''}`)
 
 // (b) parse the E.A deploy-manifest — EOL-TOLERANT (this process is a CNT consumer; the manifest
 // materialises CRLF on a Windows pilot — deployment-provisioning.md "EOL tolerance" hands this as a
@@ -202,7 +214,9 @@ const manifest = await agent(
 const manifestOk = !!(manifest && manifest.present && manifest.status !== 'draft')
 if (!manifestOk) {
   readiness = worstReadiness(readiness, 'ENV_NOT_READY')   // capability not provisioned → could not PREPARE the deploy
-  log(`manifest not deployable (present=${manifest && manifest.present}, status=${manifest && manifest.status}) → readiness ENV_NOT_READY`)
+  const why = `deploy-manifest for "${CAPABILITY}" not deployable (present=${manifest && manifest.present}, status=${(manifest && manifest.status) || 'null'}) at ${MANIFEST} → ENV_NOT_READY; provision it via /integrator:provision ${CAPABILITY}`
+  readinessReasons.push(why)   // a readiness downgrade that is NOT the env probe's — record it or the gate reads as an unexplained block
+  log(`manifest not deployable → readiness ENV_NOT_READY — ${why}`)
 }
 
 // (c) clean build + full suite (D-6 — a deploy ships only green code). A RED build/test over a READY
@@ -221,13 +235,14 @@ log(`clean build+test: ${buildPassed ? 'GREEN' : 'RED'}${build && build.failures
 // standalone deploy off a NOT_STARTABLE / ENV_NOT_READY target; the forwarded p7Verdict is a hint.
 const preflight = await agent(
   `Run the runtime-smoke READINESS leg (deterministic — NOT a live boot; the live boot is the P7 runtime_gate, do NOT duplicate it): ` +
-  `\`node ${RUNTIME_PROBE}${FEATURE ? ` --feature ${FEATURE}` : ''} --root . --env ${readiness}${P7_VERDICT ? ` --p6 ${P7_VERDICT}` : (P6_VERDICT ? ` --p6 ${P6_VERDICT}` : '')}\` via Bash and relay its JSON verbatim (verdict + run_target + disclosures). ` +
+  `\`node ${RUNTIME_PROBE}${FEATURE ? ` --feature ${FEATURE}` : ''} --root .${APP ? ` --app ${APP}` : ''} --env ${readiness}${P7_VERDICT ? ` --p6 ${P7_VERDICT}` : (P6_VERDICT ? ` --p6 ${P6_VERDICT}` : '')}\` via Bash and relay its JSON verbatim (verdict + run_target + disclosures). ` +
   `This is the cheap re-check that the target is still startable (run-target present, env up, §6 boot-caps satisfied) before we deploy. Do NOT boot, provision, or mock — just relay.`,
   { model: 'sonnet', schema: ASSESS_SCHEMA, phase: 'Preflight', label: 'runtime-readiness' },   // MDP: runtime-readiness.cjs JSON relay (mechanical transport)
 )
 const preVerdict = (preflight && preflight.verdict) || 'ENV_NOT_READY'
 if (preVerdict === 'ENV_NOT_READY' || preVerdict === 'NOT_STARTABLE' || preVerdict === 'BLOCKED_ON_CAPABILITY') {
   readiness = worstReadiness(readiness, 'ENV_NOT_READY')   // not startable / substrate down / boot-cap blocked → could not judge/prepare
+  readinessReasons.push(`pre-flip runtime-readiness = ${preVerdict}${FEATURE ? ` (feature ${FEATURE}${APP ? `, app ${APP}` : ''})` : ''} → ENV_NOT_READY`)
 }
 const disclosures = [
   ...((manifest && manifest.disclosures) || []),
@@ -244,7 +259,7 @@ if (readiness === 'ENV_NOT_READY') {
   log('BLOCKED (readiness=ENV_NOT_READY): substrate down / manifest not provisioned / target not startable — no mutation, flipped=false. Bring the target up / provision the capability and re-run.')
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
-    result: 'BLOCKED', readiness, flipped: false,
+    result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
     release: null, healthcheck: null, disposition: null, autonomy: null,
     disclosures: disclosures.concat(['readiness=ENV_NOT_READY — the deploy could not be prepared/judged; this is NOT a deploy failure']),
   }
@@ -256,7 +271,7 @@ if (!buildPassed) {
   log('DEPLOY_FAILED at preflight (build/test RED) — nothing flipped; route to escalate for a P5/P6 re-drive (capture-don\'t-fix).')
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
-    result: 'DEPLOY_FAILED', readiness, flipped: false,
+    result: 'DEPLOY_FAILED', readiness, readiness_reasons: readinessReasons, flipped: false,
     release: null, healthcheck: null, disposition: null, autonomy: null,
     disclosures: disclosures.concat(((build && build.failures) || []).map((x) => `build/test: ${x}`)),
   }
@@ -281,7 +296,7 @@ if (!disposition || disposition.disposition !== 'auto') {
   log(`§3.2 GATE: disposition=${d} (not auto${disposition && disposition.floor_hit ? ', floor_hit' : ''}) — STOP. No mutation. flipped=false. Owner must approve (re-invoke --autonomy L2|L3) or the substrate must recover.`)
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
-    result: 'BLOCKED', readiness, flipped: false,
+    result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
     release: null, healthcheck: null,
     disposition, autonomy: disposition,   // payloadPath: autonomy — the envelope rides the evt:deploy.gated PA so the owner sees WHY
     disclosures: disclosures.concat([`deploy gated by autonomy-policy → ${d}${disposition && disposition.floor_hit ? ' (floor)' : ''}: ${(disposition && disposition.why && disposition.why.slice(-1)[0]) || 'see why[]'}`]),
@@ -312,7 +327,7 @@ if (!flipped) {
   log('DEPLOY_FAILED (flip did not complete) — nothing went live; route to escalate (no rollback: there is no flipped release to revert).')
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
-    result: 'DEPLOY_FAILED', readiness, flipped: false,
+    result: 'DEPLOY_FAILED', readiness, readiness_reasons: readinessReasons, flipped: false,
     release, healthcheck: null, disposition, autonomy: disposition,
     disclosures: disclosures.concat([`deploy failed before the flip: ${(deployed && deployed.diagnosis) || 'see observed'}`]),
   }
@@ -341,6 +356,7 @@ return {
   env_tier: ENV_TIER,
   result,                              // DEPLOYED | DEPLOY_FAILED (flipped) | BLOCKED (handled above)
   readiness,                           // READY | DEGRADED (ENV_NOT_READY returns above)
+  readiness_reasons: readinessReasons, // WHY that readiness (env-probe reasons + any local downgrade) — the §3.2 gate must be auditable from run.json alone
   flipped,                             // true here — the charter routes DEPLOY_FAILED+flipped to auto-rollback
   release,
   healthcheck,                         // { healthy, failure_class, diagnosis, observed }

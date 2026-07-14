@@ -136,6 +136,54 @@ test('a §6 probe that cannot resolve is fail-loud, not fail-open (capabilities_
   assert(m && /capabilities_unknown:\s*capsUnknown/.test(m[0]), 'capabilities_unknown not surfaced in the envelope');
 });
 
+// ---- LIVE-RUN DEFECTS (first live P7 run on the pilot, FM-006 / 2026-07-14) ----------------------
+
+// Extract the REAL probe-command template from the source and EVALUATE it. This is NOT a
+// string-presence assertion: it composes the exact command line the relay agent is told to run, so a
+// dropped flag or a broken interpolation fails here precisely as it would live. It also pins the
+// backward-compat invariant (no app ⇒ byte-for-byte the pre-fix command).
+function composeProbeCmd(vars) {
+  const m = SRC.match(/\\`node \$\{RUNTIME_PROBE\}([\s\S]*?)\\` via Bash/);
+  assert(m, 'could not locate the runtime-readiness probe command template in the assess prompt');
+  const names = Object.keys(vars);
+  // eslint-disable-next-line no-new-func
+  const fn = new Function(...names, 'return `node ${RUNTIME_PROBE}' + m[1] + '`');
+  return fn(...names.map((n) => vars[n]));
+}
+
+test('D1: the --app monorepo pin reaches the probe command line; absent ⇒ the command is byte-for-byte the old one', () => {
+  assert(/const APP = A\.app \|\| ''/.test(SRC), 'the process does not read the app arg (A.app)');
+  const base = { RUNTIME_PROBE: 'L.cjs', FEATURE: 'FM-006', APP: '', envReadiness: 'DEGRADED', P6_VERDICT: 'GO' };
+  const unpinned = composeProbeCmd(base);
+  assert(unpinned === 'node L.cjs --feature FM-006 --root . --env DEGRADED --p6 GO',
+    `BACKWARD-COMPAT: an absent app must leave the command unchanged — got: ${unpinned}`);
+  const pinned = composeProbeCmd({ ...base, APP: 'apps/api' });
+  assert(pinned === 'node L.cjs --feature FM-006 --root . --app apps/api --env DEGRADED --p6 GO',
+    `--app must reach the probe (without it the lib auto-picks by sourceRank: dev > start ⇒ a frontend shadows the backend) — got: ${pinned}`);
+});
+
+test('D2: the env-probe REASONS are carried into the envelope, not just logged (the readiness axis must be auditable)', () => {
+  assert(/const readinessReasons = \(envProbe && envProbe\.reasons\) \|\| \[\]/.test(SRC),
+    'the env-probe reasons are not captured (readiness without its WHY makes the gate unauditable)');
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /readiness_reasons:\s*readinessReasons/.test(m[0]),
+    'readiness_reasons must ride in the return envelope (applyReadinessGuard downgrades the deploy on THIS axis)');
+  assert(/reasons: \{ type: 'array'/.test(SRC), 'the env-readiness relay schema must still admit reasons[]');
+});
+
+test('D3: the §6 unresolve REASON (which key missed) is relayed + surfaced, not a generic phrase', () => {
+  assert(/capabilities_unknown_reason: \{ type: \['string', 'null'\] \}/.test(SRC),
+    'the assess relay schema must admit capabilities_unknown_reason (else the agent may drop it)');
+  assert(/const capsUnknownReason\b/.test(SRC), 'the process does not read capabilities_unknown_reason from the assessment');
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /capabilities_unknown_reason:\s*capsUnknownReason/.test(m[0]),
+    'capabilities_unknown_reason must ride in the envelope (the operator must not have to re-probe by hand)');
+});
+
+test('the dead .kiro SPEC_DIR is gone (P7 resolves features under .product/features, not .kiro/specs)', () => {
+  assert(!/SPEC_DIR/.test(SRC), 'SPEC_DIR was unused AND encoded the wrong namespace (.kiro) — it must not come back');
+});
+
 test('reuses the §6 manifest via the lib (composes capability-probe, does not duplicate disposition)', () => {
   // the .mjs feeds --feature to runtime-readiness, which internally reuses capability-probe; the
   // process must NOT re-implement the disposition logic (no parseManifestItem / dispositionFor here).

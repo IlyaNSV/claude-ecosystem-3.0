@@ -99,7 +99,8 @@
 | **B2 = E.B** | `orchestrator/processes/deploy-to-stage.mjs`: build → P7 boot-гейт → **§3.2 резолвер** → deploy staging → healthcheck. Двухосный `result × readiness` | ✅ **2026-07-13** | §3.2 доказан на 2 слоях; destructive-trap избегнут; строитель закрыл латентную silent-ship дыру; тесты 13/13 |
 | **B3 = E.C** | `orchestrator/processes/rollback-release.mjs` (симлинк-swap, `operation_class: 'rollback'` точно) | ✅ **2026-07-13** | staging auto на дефолт-уровне подтверждён; тесты 10/10 |
 | **B4** | **F3-core, поднято из E.F (§3.2):** `resolveDisposition` → per-state `env_tier` (`meta.env_tier \|\| env.limits.env_tier`); `operation_class`/`risk` в states чартера; снятие затычки «L3≡L2» (`autonomy-policy.cjs:215-216`) | ⬜ | — |
-| **B5 = E.D** | P7 живой boot (`bootSmoke:true`) на реальном dev-env пилота | 🚫 | **VM-gated** |
+| **B1-live** | **E.A live: `/integrator:provision deploy-staging` прогнан на пилоте** | ✅ **2026-07-14 — PASS** | CNT-005 (`draft`, `producer: deployer` → `consumer: deploy-to-stage`), deploy-setup из 4 файлов (3 systemd-шаблона + `deploy-manifest.yaml`, 254 стр.), prisma опознана **present** (шаг migrate `verified`, не conditional), журнал DEC-INT-0016. **§8.3 подтверждён эмпирически:** аудит всех Bash-вызовов транскрипта — ноль `systemctl`/`build`/симлинк-флипов, ноль Write до гейта; `git status` до `Y` показывал только lazy-init маркер |
+| **B5 = E.D** | P7 живой boot (`bootSmoke:true`) на реальном dev-env пилота | 🟠 **прогон 1 (2026-07-14): вердикт зелёный, но НЕПОЛНЫЙ** | `READY_TO_SMOKE` / `STARTS`; **DEF-4 подтверждён живьём** — workspace-скан нашёл run-target в монорепо, Next.js реально поднялся (`✓ Ready in 4.3s`, `GET / 200`). Брекет отработал (ledger 13→14). **НО** вскрыты 4 дефекта (§12) ⇒ вердикт = PARTIAL, нужен **перепрогон после фиксов**: бутнута не та нога (web вместо api для бэкендной фичи) и capability не проверена вообще |
 
 ### Волна C — Epic E2 (monitoring + смоук)
 
@@ -321,6 +322,25 @@ ssh ... "cd ~/projects/my-first-test && git log --oneline -1 && cat .claude/.eco
 
 ### Если что-то вскрылось на прогоне
 Дефект deploy-контура на живом субстрате → follow-up фикс на repo-стороне (executor/reviewer как в этой сессии) ПЕРЕД cut. Cut фиксирует **валидированное** состояние, не «построенное».
+
+---
+
+## 12. 🔬 Находки live-прогона Epic E (2026-07-14) — то, ради чего смоук и гоняют
+
+> Прогон E.D дал **зелёный вердикт и тут же показал, что зелёный слабее, чем выглядит**. Ни одна из находок не была видна repo-side: юнит-тесты проходили, `verify` = exit 0.
+
+| # | Находка | Корень (координата) | Последствие | Статус |
+|---|---|---|---|---|
+| **FIND-1** | **`env-readiness` без клиентских утилит → вечный `DEGRADED`** | `env-readiness.cjs:116-122`, `:168`, `:176` — нет `pg_isready`/`redis-cli` ⇒ `status: unknown` ⇒ DEGRADED (safe-by-design) | **Любой staging-деплой даже на L3 → `human-gate`** (`applyReadinessGuard` понижает `auto` по DEGRADED). На чистой машине автономный деплой **недостижим**, а причина («не установлен psql-клиент») от симптома («деплой всегда просит человека») отстоит далеко | 🔧 стенд оснащён (`postgresql-client` + `redis-tools` → проба даёт `READY`: `postgres: accepting connections`, `redis: PONG`). Repo-фикс — **F5** (actionable reason) |
+| **FIND-2** | **`envProbe.reasons` выбрасываются** ⇒ гейт деплоя неаудируем | `runtime-smoke-readiness.mjs:143-149` получает `{readiness, reasons}`, логирует reasons, а в return `:219` несёт **только** `readiness` | В `run.json` **нет ни строки** о том, ПОЧЕМУ readiness такой. Гейт, решающий `auto` vs `human-gate`, стоит на неаудируемом слове релея. Доказано на практике: чтобы узнать причину DEGRADED, пришлось руками лезть пробой на VM | 🔧 фикс **F2** |
+| **FIND-3** | **🔴 Namespace-рассинхрон ключа фичи — P7 месяцами судил БЕЗ проверки capability** | `capabilitiesFor` (`runtime-readiness.cjs:404-432`) ищет в `.product/features/` по FM-id; `run.md:233` предписывает подавать **cc-sdd slug** из `.kiro/specs/`. Промах → `:422` → `capabilities_unknown: true` | P7 выносит вердикт **без §6 capability-проверки** («a hard boot-blocking capability may be hidden»). **Почему не всплывало: подстрочная лотерея** — у 5 из 6 фич пилота kiro-слаг случайно оказался подстрокой имени FM-файла (`auth` → `FM-001-authentication`), и fuzzy-`includes` маскировал контрактный разрыв. FM-006 (`conversion-measurement` ↔ `FM-006-conversion-dashboard`) — первая, где слаги разошлись. Проверено живьём: `--feature FM-006` → `capabilities_unknown:false`, `--feature conversion-measurement` → `true` | 🔧 фиксы **F3** (громкий нерезолв) + **F4** (контракт в доке) |
+| **FIND-4** | **`--app` не пробрасывается — совет в disclosure физически невыполним** | Либа умеет (`runtime-readiness.cjs:444`, `:480-486`) и сама же советует «pin explicitly with `--app <dir>`» (`:246`); процесс не передаёт (`runtime-smoke-readiness.mjs:154`), команда ключа не имеет. Тот же разрыв в пред-флип ре-пробе деплоя (`deploy-to-stage.mjs:224`) | `sourceRank` (`:111-120`) ставит `scripts.dev` выше `scripts.start` ⇒ `apps/web` детерминированно обгоняет `apps/api`. **Для бэкендной фичи всегда бутится фронтенд** — живой прогон именно это и сделал (FM-006 `has_ui:false`, а бутнулся Next.js). Бэкендный дефект (env/миграция/секрет) на статичной главной не всплыл бы | 🔧 фикс **F1** |
+| **FIND-5** | run-ledger: верхнеуровневое `readiness: null` при вложенном `verdict.readiness: DEGRADED` | писатель `run-ledger.cjs` | несогласованность трейса (в соседней строке от 2026-07-10 поле заполнено) | ⬜ минор, в очередь |
+| **FIND-6** | `run_target_candidates` / `success_signals` не эмитируются в результат (живут прозой в `disclosures` / `diagnosis`) | `runtime-smoke-readiness.mjs` return | схема-дрейф: либа поля вычисляет (`runtime-readiness.cjs:266`), процесс их теряет | ⬜ минор, в очередь |
+
+**Урок кампании (в DEV_JOURNAL):** FIND-3 — эталон того, зачем нужен live-прогон на **реальном** субстрате. Дефект был *контрактным* (два каталога, два ключа), но **маскировался случайным совпадением имён** в 5 случаях из 6. Ни один юнит-тест его не ловил — тесты гоняют фикстуры, где имена совпадают by construction. Вскрыла его единственная фича, где нейминг разошёлся.
+
+**Дисциплинарный урок (мой промах):** запустив аналитика на read-only разбор, я **параллельно доустановил клиенты БД на VM** — и аналитик, увидев мир уже после мутации, ошибочно атрибутировал DEGRADED «искажению LLM-релея, причина не установлена». Правило «не мутируй субстрат, пока по нему идёт чтение» — не бюрократия: оно ровно про это.
 
 ---
 

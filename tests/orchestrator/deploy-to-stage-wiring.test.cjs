@@ -138,6 +138,49 @@ test('reuses the P7 readiness leg (no duplicate live boot, D-7) + the P7 failure
   }
 });
 
+// ---- LIVE-RUN DEFECTS (first live P7 run on the pilot, FM-006 / 2026-07-14) ----------------------
+
+// Compose the REAL pre-flip re-probe command from the source template (not a string-presence check:
+// a dropped flag or a broken interpolation fails here exactly as it would live), and pin the
+// backward-compat invariant: no app ⇒ byte-for-byte the pre-fix command.
+function composeProbeCmd(vars) {
+  const m = SRC.match(/\\`node \$\{RUNTIME_PROBE\}([\s\S]*?)\\` via Bash/);
+  assert(m, 'could not locate the runtime-readiness re-probe command template');
+  const names = Object.keys(vars);
+  // eslint-disable-next-line no-new-func
+  const fn = new Function(...names, 'return `node ${RUNTIME_PROBE}' + m[1] + '`');
+  return fn(...names.map((n) => vars[n]));
+}
+
+test('D1: the --app monorepo pin reaches the pre-flip re-probe; absent ⇒ the command is byte-for-byte the old one', () => {
+  assert(/const APP = A\.app \|\| ''/.test(SRC), 'the process does not read the app arg (A.app)');
+  const base = { RUNTIME_PROBE: 'L.cjs', FEATURE: 'FM-006', APP: '', readiness: 'DEGRADED', P7_VERDICT: 'READY_TO_SMOKE', P6_VERDICT: 'GO' };
+  const unpinned = composeProbeCmd(base);
+  assert(unpinned === 'node L.cjs --feature FM-006 --root . --env DEGRADED --p6 READY_TO_SMOKE',
+    `BACKWARD-COMPAT: an absent app must leave the re-probe command unchanged — got: ${unpinned}`);
+  const pinned = composeProbeCmd({ ...base, APP: 'apps/api' });
+  assert(pinned === 'node L.cjs --feature FM-006 --root . --app apps/api --env DEGRADED --p6 READY_TO_SMOKE',
+    `--app must reach the re-probe (else sourceRank auto-picks a frontend leg over the backend) — got: ${pinned}`);
+});
+
+test('D2: EVERY return arm carries readiness_reasons — the §3.2 deploy gate must be auditable from run.json alone', () => {
+  assert(/const readinessReasons = \[\.\.\.\(\(envProbe && envProbe\.reasons\) \|\| \[\]\)\]/.test(SRC),
+    'the env-probe reasons are not captured (a readiness axis without its WHY makes the gate unauditable)');
+  // the two LOCAL downgrades (manifest not deployable / pre-flip verdict) are not the env probe's —
+  // they must record their own reason, or an ENV_NOT_READY BLOCK reads as an unexplained refusal.
+  const manifestArm = SRC.slice(SRC.indexOf('if (!manifestOk)'), SRC.indexOf('if (!manifestOk)') + 500);
+  assert(/readinessReasons\.push/.test(manifestArm), 'a manifest-driven ENV_NOT_READY must record its reason');
+  const preArm = SRC.slice(SRC.indexOf("const preVerdict"), SRC.indexOf('const disclosures'));
+  assert(/readinessReasons\.push/.test(preArm), 'a pre-flip-verdict-driven ENV_NOT_READY must record its reason');
+  // and every result-bearing return exposes it (a future arm that forgets is caught here)
+  const returns = (SRC.match(/return \{[\s\S]*?\n\s*\}/g) || []).filter((r) => /result/.test(r));
+  assert(returns.length >= 5, `expected all 5 result-bearing returns (BLOCKED×2, DEPLOY_FAILED×2, final); found ${returns.length}`);
+  for (const r of returns) {
+    const label = (r.match(/result:?\s*'?([A-Z_]*)'?/) || [])[1] || '(final)';
+    assert(/readiness_reasons:\s*readinessReasons/.test(r), `return arm ${label} drops readiness_reasons`);
+  }
+});
+
 test('MDP: the real mutation + diagnosis stages are opus; the relays are sonnet', () => {
   const line = (label) => SRC.split('\n').find((l) => l.includes(`label: '${label}'`)) || '';
   assert(/model: 'opus'/.test(line('deploy-flip')), 'the deploy/flip mutation must be opus (high-R)');

@@ -199,6 +199,13 @@ function assessReadiness(input) {
   const envReadiness = inp.envReadiness || 'unknown';
   const p6Verdict = inp.p6Verdict || null;
   const capabilitiesUnknown = !!inp.capabilitiesUnknown;   // §6 probe could not resolve the feature/manifest (≠ "feature has no caps")
+  // The EXACT reason the §6 probe could not resolve (capabilitiesFor computes it: which key was
+  // looked up, where). Live P7 run (FM-006, 2026-07-14): the operator got the generic "probe could
+  // not resolve" line and had to re-probe by hand to learn WHICH key missed. A silent-ish miss is
+  // still a miss — name the key. Optional/additive: absent ⇒ the old generic phrasing 1:1.
+  const capabilitiesUnknownReason = typeof inp.capabilitiesUnknownReason === 'string' && inp.capabilitiesUnknownReason.trim()
+    ? inp.capabilitiesUnknownReason.trim()
+    : null;
   // DEF-4 (DEC-DEV-0168) — optional workspace inputs; absent == old behaviour bit-for-bit.
   const runTargetOrigin = inp.runTargetOrigin === 'workspace' ? 'workspace' : 'root';
   const runTargetCandidates = Array.isArray(inp.runTargetCandidates) ? inp.runTargetCandidates : [];
@@ -255,13 +262,16 @@ function assessReadiness(input) {
   // not false-block (the live boot's missing-runtime-secret failure class is the ground-truth backstop),
   // but the absence of a probe must never read as a clean capability bill of health.
   if (capabilitiesUnknown) {
-    disclosures.push('§6 capability disposition UNAVAILABLE — the probe could not resolve the feature/manifest, so boot-readiness was assessed WITHOUT capability disposition; a hard boot-blocking capability may be hidden (this readiness is NOT a clean capability check).');
+    disclosures.push('§6 capability disposition UNAVAILABLE — the probe could not resolve the feature/manifest'
+      + (capabilitiesUnknownReason ? ` (${capabilitiesUnknownReason})` : '')
+      + ', so boot-readiness was assessed WITHOUT capability disposition; a hard boot-blocking capability may be hidden (this readiness is NOT a clean capability check).');
   }
 
   return {
     verdict,
     smoke_attemptable: verdict === VERDICT.READY_TO_SMOKE,
     capabilities_unknown: capabilitiesUnknown,
+    capabilities_unknown_reason: capabilitiesUnknownReason,   // WHICH key missed and where (null when the probe resolved)
     run_target: runTarget,
     run_target_candidates: runTargetCandidates,
     requests,
@@ -419,7 +429,19 @@ function capabilitiesFor(feature, root) {
   const key = String(feature).toLowerCase();
   const hit = entries.filter((f) => f.endsWith('.md'))
     .find((f) => f.toLowerCase().startsWith(`${key}-`) || f.toLowerCase().includes(key));
-  if (!hit) return { capabilities: [], unresolved: true, reason: `feature "${feature}" not found under .product/features` };
+  // NAMESPACE TRAP (live P7 run, FM-006 / 2026-07-14): the lookup key is a `.product/features` key
+  // (FM-NNN) — NOT the cc-sdd/.kiro spec slug P5/P6 take. The fuzzy `includes` above masked the
+  // mismatch for 5 of the pilot's 6 features (kiro `auth` ⊂ `FM-001-authentication`); the 6th
+  // (kiro `conversion-measurement` vs `FM-006-conversion-dashboard`) missed → capabilities_unknown.
+  // The miss is safe (fail-loud disclosure, never a silent clean READY) but was un-actionable: the
+  // reason names the key AND the trap, so the operator does not have to re-probe by hand to find out.
+  if (!hit) {
+    return {
+      capabilities: [],
+      unresolved: true,
+      reason: `feature "${feature}" not found under .product/features — P7/E.B take the .product/features key (e.g. FM-006), NOT the cc-sdd/.kiro spec slug`,
+    };
+  }
   try {
     const raw = fs.readFileSync(path.join(dir, hit), 'utf8').replace(/\r\n/g, '\n');
     const m = raw.match(/^---\n([\s\S]*?)\n---/);
@@ -504,6 +526,7 @@ function main() {
     workspaceScanNotes,
     capabilities: cap.capabilities,
     capabilitiesUnknown: cap.unresolved,        // §6 probe could not resolve → loud disclosure, never a silent clean READY
+    capabilitiesUnknownReason: cap.reason,      // …and WHICH key missed where (the disclosure names it — no hand re-probe)
     envReadiness: args.env || 'unknown',
     p6Verdict: args.p6 || null,
   });
