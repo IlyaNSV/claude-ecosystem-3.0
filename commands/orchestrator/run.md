@@ -230,7 +230,8 @@ readiness only):
 Workflow({
   scriptPath: '.claude/orchestrator/processes/runtime-smoke-readiness.mjs',
   args: {
-    feature: "<cc-sdd slug, e.g. auth>",   // optional lens: which feature's §6 boot caps to check
+    feature: "<.product/features key, e.g. FM-006>",   // §6 boot-cap lens — the FM-id, NOT the cc-sdd slug (⚠ below)
+    app: "apps/api",                        // monorepo: WHICH leg to boot (omit on a single-app repo — ⚠ below)
     runtimeProbe: '.claude/orchestrator/lib/runtime-readiness.cjs',   // DEC-DEV-0120: readiness core
     envProbe: '.claude/orchestrator/lib/env-readiness.cjs',           // DEC-DEV-0092: shared readiness probe
     p6Verdict: 'GO',                        // optional: the prior P6 result (a non-GO smoke is informational, disclosed)
@@ -239,6 +240,22 @@ Workflow({
 })
 ```
 
+> ⚠ **Two args that look cosmetic and are not** (both surfaced by the first live P7 run on the pilot,
+> feature FM-006 — they apply to **E.B below as well**, which feeds the same lib):
+>
+> - **`feature` is the `.product/features` key (`FM-006`), NOT the cc-sdd/`.kiro` spec slug.** P5/P6 take
+>   the kiro slug (they read `.kiro/specs/<feature>/`); P7/E.B resolve the **§6 `external_capabilities`
+>   manifest** under `.product/features/`. Pass a kiro slug here and the lookup misses → `capabilities_unknown`
+>   → the verdict is reached **without any §6 capability check** (a hidden boot-blocker stays hidden; the
+>   run is disclosed, not silently green — the disclosure now names the key it could not find). The lookup
+>   is fuzzy (substring), which is exactly why this hid: for 5 of the pilot's 6 features the kiro slug
+>   happened to be a substring of the FM filename (`auth` ⊂ `FM-001-authentication`); FM-006
+>   (`conversion-measurement` vs `FM-006-conversion-dashboard`) was the first where they diverged.
+> - **`app` pins the monorepo leg.** Without it the lib auto-picks the first candidate by `sourceRank`
+>   (`scripts.dev` > `scripts.start` > …), so an `apps/web` frontend deterministically beats an `apps/api`
+>   backend — a **backend** feature then gets smoked against the **wrong app**. On a single-app repo omit it
+>   (absent ⇒ the old auto-detect, unchanged). The lib discloses the auto-pick whenever >1 candidate exists.
+
 **E.B — `deploy-to-stage`** (skills: `orchestrator-init`) — the staging deploy cell AFTER a P7 PASS.
 It calls the **§3.2 autonomy-policy resolver BEFORE any mutation** and STOPs unless it returns `auto`:
 
@@ -246,7 +263,8 @@ It calls the **§3.2 autonomy-policy resolver BEFORE any mutation** and STOPs un
 Workflow({
   scriptPath: '.claude/orchestrator/processes/deploy-to-stage.mjs',
   args: {
-    feature: "<cc-sdd slug, e.g. auth>",        // optional lens: the feature this deploy ships
+    feature: "<.product/features key, e.g. FM-006>",   // the feature this deploy ships — FM-id, NOT the cc-sdd slug (⚠ under P7)
+    app: "apps/api",                            // monorepo pin for the pre-flip re-probe (same knob as P7 — ⚠ under P7)
     capability: "<deploy-capability slug>",     // E.A-equipped; manifest at .claude/integrator/deploy/<slug>/deploy-manifest.yaml
     autonomyLib: '.claude/orchestrator/lib/autonomy-policy.cjs',   // §3.2 resolver CLI seam (floor + ladder)
     envProbe: '.claude/orchestrator/lib/env-readiness.cjs',        // DEC-DEV-0092: readiness axis

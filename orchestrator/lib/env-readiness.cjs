@@ -165,7 +165,11 @@ function probe(opts) {
   const usesDb = !!opts.dbPort || !!prismaSchema || !!compose;
   if (opts.db !== false && usesDb) {
     const pg = tryRun('pg_isready', ['-h', opts.dbHost || '127.0.0.1', '-p', String(opts.dbPort || 5432)]);
-    if (!pg.ran) checks.push({ name: 'postgres', status: 'unknown', detail: 'Postgres not directly probed — pg_isready not installed (FB-LR-24)' });
+    // ACTIONABLE, not just diagnosed (live P7 run 2026-07-14): a bare "not installed" leaves a clean
+    // host on a PERMANENT DEGRADED — which downgrades an L3 staging deploy to human-gate forever
+    // (applyReadinessGuard) with no hint of the one-liner that fixes it. Status semantics unchanged:
+    // unknown stays unknown, DEGRADED stays DEGRADED (safe-by-design) — only the reason gets a verb.
+    if (!pg.ran) checks.push({ name: 'postgres', status: 'unknown', detail: 'Postgres not directly probed — pg_isready not installed (FB-LR-24) — install a Postgres client to enable a direct probe (Debian/Ubuntu: `apt-get install -y postgresql-client`; macOS: `brew install libpq`)' });
     else checks.push({ name: 'postgres', status: pg.ok ? 'up' : 'down', detail: pg.detail || `pg_isready :${opts.dbPort || 5432}` });
   }
 
@@ -173,7 +177,7 @@ function probe(opts) {
   const usesRedis = !!opts.redisPort || (compose && /redis/i.test((() => { try { return fs.readFileSync(compose, 'utf8'); } catch (_e) { return ''; } })()));
   if (opts.redis !== false && usesRedis) {
     const rc = tryRun('redis-cli', ['-p', String(opts.redisPort || 6379), 'ping']);
-    if (!rc.ran) checks.push({ name: 'redis', status: 'unknown', detail: 'Redis not directly probed — redis-cli not installed (FB-LR-24)' });
+    if (!rc.ran) checks.push({ name: 'redis', status: 'unknown', detail: 'Redis not directly probed — redis-cli not installed (FB-LR-24) — install the Redis CLI to enable a direct probe (Debian/Ubuntu: `apt-get install -y redis-tools`; macOS: `brew install redis`)' });
     else checks.push({ name: 'redis', status: rc.ok && /PONG/i.test(rc.detail) ? 'up' : 'down', detail: rc.detail || `ping :${opts.redisPort || 6379}` });
   }
 
