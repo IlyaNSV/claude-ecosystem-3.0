@@ -109,6 +109,7 @@ test('summarizeResult: opportunistic pull, tolerant of odd shapes', () => {
   assert.deepStrictEqual(summarizeResult(null), {
     verdict: null, result: null, readiness: null, readiness_reasons: null,
     conflicts: 0, counts: null, outcome_key: null, unread_outcome_keys: [],
+    decision_trail: null,
   });
 });
 
@@ -167,7 +168,7 @@ test('P5 real shape: the gate verdict lives under go_gate — it was ALSO being 
   assert.strictEqual(s.outcome_key, 'go_gate');
 });
 
-test('backward-compat: deploy-to-stage / rollback-release / P6 summarize exactly as before', () => {
+test('backward-compat: deploy-to-stage / rollback-release / P6 keep their outcome columns exactly as before', () => {
   const deploy = summarizeResult({
     feature: 'FM-002', capability: 'api', env_tier: 'staging', result: 'DEPLOY_FAILED',
     readiness: 'READY', readiness_reasons: [], flipped: true, release: 'releases/20260714',
@@ -191,6 +192,76 @@ test('backward-compat: deploy-to-stage / rollback-release / P6 summarize exactly
   assert.strictEqual(p6.result, 'GO');
   assert.strictEqual(p6.outcome_key, 'result');
   assert.strictEqual(p6.conflicts, 0);
+});
+
+// ---------------------------------------------------------------------------
+// DEC-DEV-0203 / FIND-D — the ledger must not FLATTEN the decision trail.
+//
+// The live E.B DEPLOY_FAILED run.json carried ONLY `result` + `readiness`. `disposition: auto` — the
+// fact that the §3.2 gate had AUTHORIZED a mutation — had to be dug out of the transcript, and
+// "did anything actually go live?" was unanswerable from the record. A BLOCKED run looked rich by
+// comparison (the charter parks a PA carrying the resolver envelope). That is exactly backwards.
+//
+// And note WHERE the defect was: NOT in the process. deploy-to-stage's `return {…}` arms carried
+// disposition/flipped/release/healthcheck all along — `summarizeResult` was projecting them away.
+// A summary that silently narrows the record is indistinguishable from a process that never
+// produced it, which is why the fix had to land HERE and not only in the arms.
+// ---------------------------------------------------------------------------
+
+/** deploy-to-stage's real DEPLOY_FAILED arm (the shape the live run returned). */
+const DEPLOY_FAILED_LIVE = {
+  feature: 'FM-006', capability: 'cc-sdd-deploy', env_tier: 'staging',
+  result: 'DEPLOY_FAILED', readiness: 'READY', readiness_reasons: ['env-probe: all used substrates up'],
+  flipped: false, release: null, healthcheck: null, failure_class: null,
+  contract_status: 'draft', contract_evidence: null, blocking_defects: [],
+  scene: { ready: false, blocker: 'pnpm install failed', blocker_class: 'deploy-failed' },
+  deploy: null,
+  disposition: { disposition: 'auto', level_applied: 'L3', floor_hit: false, why: ['L3 × staging ⇒ auto'] },
+  autonomy: { disposition: 'auto' },
+  disclosures: ['scene bootstrap FAILED (deploy-failed): pnpm install failed'],
+};
+
+test('FIND-D: a DEPLOY_FAILED run keeps its decision trail — who authorized it, what moved, what broke', () => {
+  const s = summarizeResult(DEPLOY_FAILED_LIVE);
+  const t = s.decision_trail;
+  assert.ok(t, 'a deploy run must have a decision_trail (the live run.json had NOTHING but result+readiness)');
+  assert.strictEqual(t.disposition.disposition, 'auto',
+    'THE ONE THAT HURT: `disposition: auto` had to be recovered from the transcript — the §3.2 gate had authorized a mutation and run.json did not say so');
+  assert.strictEqual(t.flipped, false,
+    '`flipped: false` is LOAD-BEARING, not an absence — it is the answer to "did anything go live?" and must survive the summary');
+  assert.strictEqual(t.contract_status, 'draft');
+  assert.deepStrictEqual(t.disclosures, ['scene bootstrap FAILED (deploy-failed): pnpm install failed'],
+    'the human-readable why must reach run.json');
+  // the outcome columns are untouched by the widening
+  assert.strictEqual(s.result, 'DEPLOY_FAILED');
+  assert.strictEqual(s.readiness, 'READY');
+});
+
+test('FIND-D: failure_class is hoisted out of the nested healthcheck (one key to grep, not two shapes)', () => {
+  const s = summarizeResult({
+    result: 'DEPLOY_FAILED', readiness: 'READY', flipped: true, release: 'releases/20260714T120000Z',
+    healthcheck: { healthy: false, failure_class: 'env-not-loaded', diagnosis: '500 on /health' },
+    disposition: { disposition: 'auto' },
+  });
+  assert.strictEqual(s.decision_trail.failure_class, 'env-not-loaded',
+    'a post-mortem greps failure_class — it must not have to know it hides inside healthcheck');
+  assert.strictEqual(s.decision_trail.flipped, true, 'flipped+unhealthy is what routes the auto-rollback');
+});
+
+test('FIND-D: a process with no trail (P4-class) gets decision_trail: null — no shape churn, no fake keys', () => {
+  const p4 = summarizeResult({ audited: ['FM-002'], faithful: ['FM-002'], residual: [] });
+  assert.strictEqual(p4.decision_trail, null, 'nothing to trail ⇒ null, not an empty object pretending to be a record');
+  // a nested-envelope row is found one level down, like every other field
+  const wrapped = summarizeResult({ verdict: { result: 'BLOCKED', flipped: false, disposition: { disposition: 'human-gate' } } });
+  assert.strictEqual(wrapped.decision_trail.disposition.disposition, 'human-gate',
+    'the trail must be found inside a wrapped verdict envelope too');
+});
+
+test('FIND-D: the ndjson line stays COMPACT — the trail lives in run.json only', () => {
+  assert.deepStrictEqual(lib.TRAIL_KEYS, [
+    'disposition', 'flipped', 'release', 'healthcheck', 'failure_class',
+    'contract_status', 'contract_evidence', 'disclosures',
+  ], 'TRAIL_KEYS changed — is a process actually returning the new key? (update the guard + DEV_JOURNAL)');
 });
 
 test('a nested `verdict` object: readiness AND outcome are found one level down', () => {

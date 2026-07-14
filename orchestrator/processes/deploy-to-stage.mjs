@@ -1,6 +1,6 @@
 export const meta = {
   name: 'deploy-to-stage',
-  description: 'Orchestrator process E.B — the staging deploy cell of the feature-production line, run AFTER the P7 runtime gate PASSes. Preflight (env-readiness + CRLF-tolerant manifest parse + clean build/test + a cheap pre-flip runtime-readiness re-probe) → the §3.2 autonomy-policy resolver GATE (the last line before any mutation; STOP unless it returns auto) → Deploy (build a releases/<ts>, migrate, flip the `current` symlink, restart the systemd units — VM-gated) → Healthcheck (GET /health, diagnosed against the P7 5-class failure taxonomy). Two-axis result (DEPLOYED | DEPLOY_FAILED | BLOCKED) × readiness (READY | DEGRADED | ENV_NOT_READY). Closes the "P7 PASS = done" gap into "P7 PASS → deploy".',
+  description: 'Orchestrator process E.B — the staging deploy cell of the feature-production line, run AFTER the P7 runtime gate PASSes. Preflight (env-readiness + a DETERMINISTIC manifest read via deploy-manifest.cjs + an equipment-fitness check + clean build/test + a cheap pre-flip runtime-readiness re-probe) → the §3.2 autonomy-policy resolver GATE (the last line before any mutation; STOP unless it returns auto) → Deploy (bootstrap the scene — expand deploy_root, make releases/ + shared/{.env,logs,uploads}, lay out and install releases/<ts>, materialise the systemd units — then run the manifest step-list: build, migrate, atomically flip `current`, restart the units — VM-gated) → Healthcheck (GET /health, diagnosed against the P7 5-class failure taxonomy). Two-axis result (DEPLOYED | DEPLOY_FAILED | BLOCKED) × readiness (READY | DEGRADED | ENV_NOT_READY), with a uniform audit trail on every arm. Closes the "P7 PASS = done" gap into "P7 PASS → deploy".',
   phases: [
     { title: 'Preflight' },
     { title: 'Gate' },
@@ -66,10 +66,51 @@ export const meta = {
  * without it, unblocking the preflight would have handed L3×staging a silent `auto` first deploy on a
  * contract nobody had ever verified. The block was accidentally doing the gate's job — badly.
  *
- * CAPTURE-DON'T-FIX (D-5): the deploy + healthcheck agents SURFACE a failed flip / a post-flip
- * unhealthy boot (diagnosed against the P7 taxonomy runtime-readiness.cjs::smokePlan.failure_classes:
- * env-not-loaded / missing-migration / port-in-use / missing-runtime-secret / dependency-not-up) —
- * they do NOT remediate. Fixing is a P5/P6 re-drive; recovery is E.C rollback.
+ * ⚠ THE SECOND LIVE RUN'S THREE DEFECTS (DEC-DEV-0203). All three were invisible repo-side — `verify`
+ * was green, the units passed, and the process was structurally perfect. They only exist on substrate.
+ *
+ * FIND-B (blocker) — E.A WROTE THE RECIPE AND NOBODY BUILT THE KITCHEN. The manifest declared
+ *   `deploy_root: ~/deploy/…`, a releases/<ts> + `current` + shared/{.env,logs,uploads} layout, and
+ *   three systemd unit templates. This process materialised NONE of it: it contained no `deploy_root`,
+ *   no `homedir`, no `expand` — the `~` was never expanded, `~/deploy/` was never created, no release
+ *   dir was ever laid out, `shared/.env` (where `migrate` reads DATABASE_URL) never existed, and no
+ *   unit was ever installed. THE FIRST DEPLOY WAS IMPOSSIBLE IN PRINCIPLE — structurally the same
+ *   defect as the 0201 draft-contract deadlock: two correct halves with a chasm between them. The
+ *   Deploy phase now BOOTSTRAPS THE SCENE (idempotently) before executing the step-list.
+ *
+ *   …and pulling that thread found the SECOND half of the same defect: the unit templates are
+ *   parameterized by `{{RELEASE_DIR}}` — a CONCRETE releases/<ts>. A systemd unit pinned to one
+ *   release is DEAF TO THE FLIP: `current` moves, the unit does not, `systemctl restart` brings the
+ *   OLD release back up — and the healthcheck PASSES, because the old release is still serving on the
+ *   same port. The run would report DEPLOYED having shipped nothing, and that false green is exactly
+ *   the `contract_evidence` that flips a never-verified draft CNT to `active`. A false DEPLOYED is the
+ *   worst thing this process can emit. So a release-pinned unit is a BLOCKING DEFECT (ENV_NOT_READY:
+ *   the capability is mis-equipped ⇒ we could not PREPARE a correct deploy). The units must reference
+ *   `current` ({{CURRENT_LINK}}) — then flip + restart IS the deploy, and the flip backwards IS the
+ *   rollback (E.C). The FIX IS IN THE EQUIPMENT (skills/integrator/deployment-provisioning.md §1), not
+ *   here: §8.3 — the Orchestrator executes equipment, it does not silently rewrite an Integrator
+ *   template to make a broken deploy look green.
+ *
+ * FIND-A (high) — THE READINESS GATE STOOD ON A STOCHASTIC PARSE. `present`/`status`/`steps` came from
+ *   a sonnet subagent. The SAME unchanged file parsed as a full 4-step list in one run and as
+ *   `step-list=MISSING` 18 minutes later (and once as the self-contradictory present:true + steps:[]).
+ *   "Does this file carry a step-list" is a deterministic fact about bytes. It is now read by
+ *   deploy-manifest.cjs through the same CLI-seam-plus-relay shape the §3.2 resolver already uses —
+ *   the agent transports, it does not judge.
+ *
+ * FIND-D (medium) — A FAILED DEPLOY HAD A THINNER TRAIL THAN A BLOCKED ONE. The DEPLOY_FAILED run.json
+ *   carried only `result` + `readiness`; `disposition: auto` had to be dug out of the transcript. That
+ *   is backwards — DEPLOY_FAILED is when the trail matters MOST, because a mutation may already have
+ *   happened. Every arm now returns the same key set (a wiring test enforces it). The other half of
+ *   that fix is in run-ledger.cjs: `summarizeResult` was projecting the return DOWN to those two
+ *   scalars, so richer arms alone would have changed nothing that reaches run.json.
+ *
+ * CAPTURE-DON'T-FIX (D-5): the scene + deploy + healthcheck agents SURFACE a failed bootstrap / a
+ * failed flip / a post-flip unhealthy boot (diagnosed against the P7 taxonomy
+ * runtime-readiness.cjs::smokePlan.failure_classes: env-not-loaded / missing-migration / port-in-use /
+ * missing-runtime-secret / dependency-not-up) — they do NOT remediate. Fixing is a P5/P6 re-drive;
+ * recovery is E.C rollback. And nothing is ever FABRICATED to get past a gap: no invented .env, no
+ * invented port, no invented step-list.
  *
  * VM-GATED (E.D/E.G): the real `pnpm -r build`, `prisma migrate deploy`, the `current` symlink flip,
  * `systemctl restart`, and the live `/health` call are real only on the VM-fabric prod-stand. They
@@ -101,6 +142,10 @@ const MANIFEST = A.manifest || (CAPABILITY ? `.claude/integrator/deploy/${CAPABI
 const ENV_TIER = A.envTier || 'staging'                          // per-state env tier — staging (prod is a floor-gated stub, NOT this process)
 const RISK = A.risk || 'HIGH'                                    // a deploy is HIGH by construction (real mutation)
 const AUTONOMY_LIB = A.autonomyLib || '.claude/orchestrator/lib/autonomy-policy.cjs'  // §3.2 resolver CLI seam (F1/F2/F3, DEC-DEV-0193/0194)
+const MANIFEST_LIB = A.manifestLib || '.claude/orchestrator/lib/deploy-manifest.cjs'  // DEC-DEV-0203: DETERMINISTIC manifest read + scene resolve (FIND-A)
+// The checkout the release is BUILT FROM. The deploy is a LOCAL op inside the VM (D-1), so this is
+// the pilot's own working tree; the scene (deploy_root) is a SEPARATE tree the manifest declares.
+const SOURCE_ROOT = A.sourceRoot || '.'
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs'          // DEC-DEV-0092: substrate readiness backbone
 const RUNTIME_PROBE = A.runtimeProbe || '.claude/orchestrator/lib/runtime-readiness.cjs'  // DEC-DEV-0120: P7 readiness leg + smokePlan failure taxonomy
 const P6_VERDICT = A.p6Verdict || ''                            // optional: the prior P6 GO (informational — a deploy over a non-GO is disclosed)
@@ -147,7 +192,39 @@ const MANIFEST_SCHEMA = {
     healthcheck: { type: ['object', 'null'] },                 // { url, boot_window_sec, expect, failure_taxonomy }
     migrate: { type: ['object', 'null'] },                     // prisma migrate deploy step (conditional_on packages/db)
     release_layout: { type: ['object', 'null'] },              // releases/<ts> + current symlink + shared/
+    // ---- DEC-DEV-0203 (additive — no field renamed, DEC-DEV-0012) ----------------------------
+    deploy_root: { type: ['object', 'null'] },                 // { declared: "~/deploy/x", expanded: "/home/u/deploy/x" } — the ~ nothing expanded
+    scene: { type: ['object', 'null'] },                       // every ABSOLUTE path the Deploy phase materialises (releases/ · current · shared/)
+    units: { type: 'array', items: { type: 'object' } },       // [{ name, template, template_found, release_pinned, placeholders }]
+    unit_templates: {},                                        // the manifest's own declaration, verbatim (map | list | null)
+    blocking_defects: { type: 'array', items: { type: 'string' } },  // equipment present but UNABLE to deploy correctly (FIND-B)
+    capability: { type: ['string', 'null'] },
     disclosures: { type: 'array', items: { type: 'string' } },
+  },
+}
+
+// The SCENE bootstrap (DEC-DEV-0203 / FIND-B). E.A wrote the recipe; NOBODY built the kitchen —
+// `~/deploy/…` never existed, `releases/<ts>` was never made, `shared/.env` (where `migrate` reads
+// DATABASE_URL) was never created, and the systemd units were never materialised. The first deploy
+// was impossible in principle. This is the phase that makes the target REAL — idempotently.
+const SCENE_SCHEMA = {
+  type: 'object',
+  required: ['ready'],
+  properties: {
+    ready: { type: 'boolean' },                                // the scene exists and the release is laid out — the step-list may now run
+    blocker: { type: ['string', 'null'] },                     // what stopped it, in words
+    // WHICH AXIS a scene failure lands on. `env-not-ready` = a substrate/provisioning gap we could
+    // not fill honestly (no .env anywhere ⇒ we will NOT fabricate secrets; no sudo/systemd) ⇒
+    // BLOCKED. Anything else = the deploy machinery genuinely failed ⇒ DEPLOY_FAILED, nothing flipped.
+    blocker_class: { type: ['string', 'null'], enum: ['env-not-ready', 'deploy-failed', null] },
+    release: { type: ['string', 'null'] },                     // the <ts> id stamped on the TARGET (the harness may not read a clock)
+    release_dir: { type: ['string', 'null'] },                 // …and its absolute path
+    env_source: { type: ['string', 'null'] },                  // 'shared' (already provisioned) | 'project-root' (seeded, dev-tier) | null
+    created: { type: 'array', items: { type: 'string' } },     // what this run had to make…
+    reused: { type: 'array', items: { type: 'string' } },      // …and what was already there (the idempotency evidence)
+    units_installed: { type: 'array', items: { type: 'string' } },
+    diagnosis: { type: 'string' },
+    observed: { type: 'string' },
   },
 }
 
@@ -238,18 +315,19 @@ let readiness = (envProbe && envProbe.readiness) || 'DEGRADED'   // unknown/abse
 const readinessReasons = [...((envProbe && envProbe.reasons) || [])]
 log(`pre-flight env-readiness: ${readiness}${readinessReasons.length ? ` — ${readinessReasons.join('; ')}` : ''}`)
 
-// (b) parse the E.A deploy-manifest — EOL-TOLERANT (this process is a CNT consumer; the manifest
-// materialises CRLF on a Windows pilot — deployment-provisioning.md "EOL tolerance" hands this as a
-// contract). A missing/unparseable/step-less manifest is "could not prepare" → ENV_NOT_READY, NEVER
-// fabricated. A DRAFT manifest is a different thing entirely — see the contract-trust split below.
+// (b) read the E.A deploy-manifest — THROUGH A DETERMINISTIC LIB, not by LLM inspection
+// (DEC-DEV-0203 / FIND-A). The agent is a TRANSPORT: it runs the CLI seam and relays the JSON. The
+// lib normalizes CRLF, expands `deploy_root`'s `~`, resolves the scene, and flags equipment that
+// cannot execute a correct deploy. A missing/unparseable/step-less manifest is "could not prepare"
+// → ENV_NOT_READY, NEVER fabricated. A DRAFT manifest is a different thing — see the trust split below.
 const manifest = await agent(
-  `Parse the deploy-setup manifest for capability "${CAPABILITY}" at \`${MANIFEST}\` (equipped by the Integrator deployer, E.A — deployment-provisioning.md §2/§4).\n` +
-  `FIRST normalize line endings: read the file, then \`.replace(/\\r\\n/g,'\\n')\` (or anchor \`/^---\\r?\\n/\` + \`split(/\\r?\\n/)\`) BEFORE parsing — the .yaml materialises CRLF on a Windows pilot and a bare-\\n parse would mangle it (the capability-probe.cjs extractManifest pattern; campaign §8.2 pt 7 / G36).\n` +
-  `Extract the ordered step-list (build → migrate → flip → (re)start), the release layout (releases/<ts> + current symlink + shared/), the conditional prisma migrate-deploy step, and the healthcheck spec (url / boot_window_sec / expect / failure_taxonomy).\n` +
-  `Also report, inventing NOTHING: \`status\` — the manifest's declared status VERBATIM (draft | active | stub; null if it declares none) — and \`contract\` — the CNT id the manifest names or references (e.g. "CNT-005"), or null if it names none. Do NOT guess a CNT id from the directory listing.\n` +
-  `⚠ \`status\` MUST NOT influence \`present\`. They answer different questions: \`present\` is a QUESTION OF FACT (is the deploy-setup here and executable?) — true iff the file exists, parses, and carries an executable step-list. \`status\` is a QUESTION OF TRUST (has a live run ever verified this capability contract?). A draft manifest with a full step-list is \`present: true, status: "draft"\` — report it as such. The trust axis is decided downstream by the §3.2 autonomy resolver, NOT by this parse. (Collapsing the two made the FIRST deploy impossible in principle: E.A must ship draft, E.B refused non-active, and only a deploy can verify it — DEC-DEV-0201.)\n` +
-  `FAIL LOUD, do NOT fabricate: if the file is absent, unparseable, or carries no executable step-list, return present:false with a disclosure saying so — do NOT invent a step-list. Do NOT run any step; do NOT commit. READ-ONLY on \`.claude/integrator/**\` — never edit a manifest or a CNT contract (§8.3: that zone is the Integrator's).`,
-  { model: 'sonnet', schema: MANIFEST_SCHEMA, phase: 'Preflight', label: 'manifest-parse' },   // MDP: read + CRLF-normalize + parse a manifest (standard/mechanical)
+  `Relay the DETERMINISTIC deploy-manifest read for capability "${CAPABILITY}". Run this via Bash and return its JSON VERBATIM:\n` +
+  `node ${MANIFEST_LIB} parse --manifest ${MANIFEST} --capability ${CAPABILITY}\n` +
+  `Return its { present, status, contract, capability, steps, healthcheck, migrate, release_layout, unit_templates, units, deploy_root, scene, blocking_defects, disclosures } object EXACTLY as printed.\n` +
+  `⚠ YOU ARE A TRANSPORT, NOT A PARSER. Do NOT open the .yaml, do NOT re-derive, re-interpret, "sanity-check" or summarize any field — relay what the lib printed, byte for byte. If the command itself fails to run (node missing, lib path wrong), SAY SO and return present:false with that as the disclosure; do NOT substitute your own reading of the file as a fallback.\n` +
+  `WHY (DEC-DEV-0203 / FIND-A — this used to be your job and it did not work): an LLM parsed this SAME unchanged file as a full 4-step list in one run and as an EMPTY step-list 18 minutes later, and once returned the self-contradictory pair present:true + steps:[]. "Does this file carry a step-list" is a deterministic FACT ABOUT BYTES sitting behind a readiness gate — a stochastic answer randomly blocks good deploys (false negative) AND would wave a mangled manifest through into a real mutation (false positive). The lib is CRLF-tolerant (the .yaml materialises CRLF on a Windows pilot — campaign §8.2 pt 7 / G36, the capability-probe.cjs extractManifest pattern), it FAILS LOUD rather than fabricating a step-list, and it keeps \`present\` (FACT) strictly independent of \`status\` (TRUST) — collapsing those made the first deploy impossible in principle (DEC-DEV-0201).\n` +
+  `Do NOT run any deploy step; do NOT commit. READ-ONLY on \`.claude/integrator/**\` — never edit a manifest, a unit template, or a CNT contract (§8.3: that zone is the Integrator's).`,
+  { model: 'sonnet', schema: MANIFEST_SCHEMA, phase: 'Preflight', label: 'manifest-parse' },   // MDP: pure JSON transport of a deterministic lib (the PARSE is code now — FIND-A)
 )
 // READINESS leg — FACT only. `status` is deliberately absent from this expression (DEC-DEV-0201): the
 // equipment being on disk and executable is what "could we prepare the deploy" means.
@@ -260,6 +338,31 @@ if (!manifestOk) {
   const why = `deploy-manifest for "${CAPABILITY}" not usable (present=${manifest && manifest.present}, step-list=${hasSteps ? 'present' : 'MISSING'}) at ${MANIFEST} → ENV_NOT_READY; provision it via /integrator:provision ${CAPABILITY}`
   readinessReasons.push(why)   // a readiness downgrade that is NOT the env probe's — record it or the gate reads as an unexplained block
   log(`manifest not usable → readiness ENV_NOT_READY — ${why}`)
+}
+
+// ---- EQUIPMENT-FITNESS leg (DEC-DEV-0203 / FIND-B) — the THIRD thing that can be wrong, and it is
+// neither of the other two. readiness asks CAN we deploy (substrate up? equipment on disk?); the
+// contract asks WHO decides (has any live run verified this?). This asks: WOULD EXECUTING THIS
+// EQUIPMENT ACTUALLY DEPLOY ANYTHING? The manifest can be present, parseable, fully step-listed —
+// and still be unable to ship, because E.A parameterized the systemd units by {{RELEASE_DIR}} (a
+// CONCRETE releases/<ts>). Such a unit is DEAF TO THE FLIP: `current` moves, the service does not,
+// `systemctl restart` brings the OLD release back up — and the healthcheck then PASSES, because the
+// old release is still serving on the same port. The run would return DEPLOYED having shipped
+// NOTHING, and that false green is precisely the `contract_evidence` that flips a never-verified
+// draft CNT to `active`. A false DEPLOYED is the worst thing this process can emit — worse than any
+// block — so mis-equipped ⇒ ENV_NOT_READY (we could not PREPARE a correct deploy) ⇒ BLOCKED, nothing
+// flipped. This is NOT a 0201-style deadlock: the remedy is /integrator:provision, which needs no
+// deploy to run. And it is not ours to patch — the Orchestrator EXECUTES equipment, it does not
+// silently rewrite an Integrator template to make a broken deploy look green (§8.3).
+const blockingDefects = (manifest && Array.isArray(manifest.blocking_defects) ? manifest.blocking_defects : [])
+if (manifestOk && blockingDefects.length) {
+  readiness = worstReadiness(readiness, 'ENV_NOT_READY')
+  const pinned = ((manifest && manifest.units) || []).filter((u) => u && u.release_pinned).map((u) => `${u.name} (${u.template})`)
+  const why = `deploy-capability "${CAPABILITY}" is MIS-EQUIPPED — blocking defect(s): ${blockingDefects.join(', ')}${pinned.length ? `; release-pinned unit(s): ${pinned.join(', ')}` : ''}. `
+    + `Executing it would flip \`current\` while the systemd units stay bolted to the OLD release — a restart would revive the old code, the healthcheck would pass, and this run would report DEPLOYED having deployed nothing (and hand the draft contract a fraudulent live-verify). `
+    + `→ ENV_NOT_READY. Fix the EQUIPMENT: re-run /integrator:provision ${CAPABILITY} (units must reference the \`current\` symlink — skills/integrator/deployment-provisioning.md §1). §8.3: the Orchestrator does not rewrite Integrator templates.`
+  readinessReasons.push(why)
+  log(`equipment NOT fit to deploy → readiness ENV_NOT_READY — ${why}`)
 }
 
 // TRUST leg — the capability-contract axis. NOT a readiness downgrade: the equipment is here, the
@@ -318,17 +421,29 @@ const disclosures = [
 ]
 log(`pre-flip runtime-readiness: ${preVerdict}; readiness axis = ${readiness}`)
 
+// ---- THE AUDIT TRAIL IS UNIFORM ACROSS EVERY ARM (DEC-DEV-0203 / FIND-D) --------------------
+// The live DEPLOY_FAILED run.json carried only `result` + `readiness`: no disposition, no flipped,
+// no release, no healthcheck, no failure_class, no contract_evidence, no disclosures — `disposition:
+// auto` had to be dug out of the TRANSCRIPT. Meanwhile a BLOCKED run had a full nested verdict. That
+// is exactly backwards: a DEPLOY_FAILED is the case where the trail matters MOST, because a mutation
+// may already have happened. So every `return {…}` below carries the SAME key set — a wiring test
+// enforces it, so a future arm cannot quietly ship a thinner one. (The other half of this fix is in
+// run-ledger.cjs: `summarizeResult` was projecting the return down to those two scalars, so richer
+// arms alone would have changed nothing that reaches run.json.)
+
 // ---- INVARIANT (in code): ENV_NOT_READY ⇒ BLOCKED, flipped=false — a down substrate / un-provisioned
-// manifest / not-startable target is "could not prepare or judge", NEVER a DEPLOY_FAILED. Decided
-// BEFORE the build-fail branch so a real code failure is not masked, and before the resolver so we
-// never even ask to mutate a target we cannot deploy to.
+// or MIS-EQUIPPED manifest / not-startable target is "could not prepare or judge", NEVER a
+// DEPLOY_FAILED. Decided BEFORE the build-fail branch so a real code failure is not masked, and
+// before the resolver so we never even ask to mutate a target we cannot deploy to.
 if (readiness === 'ENV_NOT_READY') {
-  log('BLOCKED (readiness=ENV_NOT_READY): substrate down / manifest not provisioned / target not startable — no mutation, flipped=false. Bring the target up / provision the capability and re-run.')
+  log('BLOCKED (readiness=ENV_NOT_READY): substrate down / manifest not provisioned or mis-equipped / target not startable — no mutation, flipped=false. Bring the target up, or re-provision the capability, and re-run.')
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
     contract_status: contractStatus, contract_evidence: null,
-    release: null, healthcheck: null, disposition: null, autonomy: null,
+    release: null, healthcheck: null, failure_class: null,
+    scene: null, deploy: null, blocking_defects: blockingDefects,
+    disposition: null, autonomy: null,
     disclosures: disclosures.concat(['readiness=ENV_NOT_READY — the deploy could not be prepared/judged; this is NOT a deploy failure']),
   }
 }
@@ -341,7 +456,9 @@ if (!buildPassed) {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'DEPLOY_FAILED', readiness, readiness_reasons: readinessReasons, flipped: false,
     contract_status: contractStatus, contract_evidence: null,
-    release: null, healthcheck: null, disposition: null, autonomy: null,
+    release: null, healthcheck: null, failure_class: null,   // no boot happened ⇒ no P7 taxonomy class applies (we do NOT invent one)
+    scene: null, deploy: null, blocking_defects: blockingDefects,
+    disposition: null, autonomy: null,                       // the gate was never reached — null is the HONEST value here, not a dropped field
     disclosures: disclosures.concat(((build && build.failures) || []).map((x) => `build/test: ${x}`)),
   }
 }
@@ -373,28 +490,104 @@ if (!disposition || disposition.disposition !== 'auto') {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
     contract_status: contractStatus, contract_evidence: null,   // gated ⇒ nothing deployed ⇒ no live-evidence for the contract
-    release: null, healthcheck: null,
+    release: null, healthcheck: null, failure_class: null,
+    scene: null, deploy: null, blocking_defects: blockingDefects,
     disposition, autonomy: disposition,   // payloadPath: autonomy — the envelope rides the evt:deploy.gated PA so the owner sees WHY
     disclosures: disclosures.concat([`deploy gated by autonomy-policy → ${d}${disposition && disposition.floor_hit ? ' (floor)' : ''}: ${(disposition && disposition.why && disposition.why.slice(-1)[0]) || 'see why[]'}`]),
   }
 }
 log(`§3.2 GATE: disposition=auto (level ${disposition.level_applied}) — proceeding to the mutation.`)
 
-// ---- Phase 3: Deploy (VM-GATED) — execute the manifest step-list. Sets flipped=true iff `current`
-// moves. Capture-diagnose a partial deploy; do NOT fix. Acquire the process lockfile before the flip
-// (A-9 belt; the charter's wip:1 already serializes the lane).
+// ---- Phase 3: Deploy (VM-GATED) ============================================================
+// Two mutating agents, in order: BOOTSTRAP THE SCENE, then execute the manifest's step-list.
+//
+// 🔒 EVERYTHING BELOW IS A MUTATION, AND IT IS ALL AFTER THE §3.2 GATE. That is not an accident and
+// it is not negotiable: scene-bootstrap creates directories, seeds a secrets file and INSTALLS SYSTEMD
+// UNITS. Putting it in the preflight "because it's just setup" would move real mutation to the wrong
+// side of the resolver and bypass the floor — the exact failure §3.2 exists to prevent.
 phase('Deploy')
+
+// ---- (a) SCENE BOOTSTRAP (DEC-DEV-0203 / FIND-B) — "E.A wrote the recipe, but nobody built the
+// kitchen." The manifest declared deploy_root / releases/<ts> / current / shared/{.env,logs,uploads}
+// and three systemd unit templates. NONE of it was ever materialised: the live process contained no
+// `deploy_root`, no `homedir`, no `expand` — `~/deploy/…` was never a directory, `shared/.env` (where
+// `migrate` reads DATABASE_URL) never existed, and no unit was ever installed. The first deploy was
+// impossible in principle — the same shape as the 0201 draft-contract deadlock: two correct halves
+// with a chasm between them.
+const scene = await agent(
+  `Bootstrap the ${ENV_TIER} deploy SCENE for capability "${CAPABILITY}" on this machine, then lay out the new release (VM-gated; authorized by the §3.2 auto disposition above — this is real mutation).\n` +
+  `The scene is ALREADY RESOLVED for you by the deterministic lib — use these ABSOLUTE paths verbatim, do NOT re-derive or re-expand them:\n` +
+  `${JSON.stringify((manifest && manifest.scene) || {}, null, 2)}\n` +
+  `Source checkout to deploy FROM: \`${SOURCE_ROOT}\` (the deploy is LOCAL inside this machine — D-1; it is NOT a remote push).\n` +
+  `Units to install: ${JSON.stringify((manifest && manifest.units) || [])} (templates live beside the manifest at \`${MANIFEST}\`).\n` +
+  `\n` +
+  `IDEMPOTENT — run it twice, nothing breaks and nothing is duplicated. Note the ONE deliberate exception: the SCENE (root, releases/, shared/, units) must be create-if-absent / reuse-if-present, but the RELEASE is by construction a FRESH releases/<ts>. That is the Capistrano contract, and it is exactly what makes rollback possible — a previous release must still be sitting there, intact, to flip back to.\n` +
+  `\n` +
+  `1) SCENE DIRS — \`mkdir -p\` deploy_root, releases_dir, shared_dir, and every shared_paths[] entry marked dir:true (logs/, uploads/). Record each path in created[] or reused[].\n` +
+  `2) shared/.env — THE SECRETS FILE, and the one place you may NOT improvise. If \`scene.env_file\` already exists, REUSE it (never overwrite: it is the persistent, hand-tuned staging config). If it does not exist, seed it by COPYING \`${SOURCE_ROOT}/.env\` (staging v1 secrets = dev-tier — the owner's decision, dev/gates/EPIC_E_READINESS.md A-1..A-9), then \`chmod 600\`. If there is NO .env in the project root either, STOP: return ready:false, blocker_class:'env-not-ready', blocker naming both paths you looked at. Do NOT fabricate, template, or synthesize a .env — a deploy on invented secrets fails at runtime as \`env-not-loaded\`, which reads like a code bug and costs an hour to disbelieve. Set env_source to 'shared' (reused) or 'project-root' (seeded).\n` +
+  `3) RELEASE DIR — stamp the timestamp with \`date -u ${(manifest && manifest.scene && manifest.scene.date_fmt) || '+%Y%m%dT%H%M%SZ'}\` (the format the manifest DECLARED — do not invent a shape; the harness may not read a clock, so YOU stamp it) and \`mkdir -p\` releases_dir/<ts>. Return it as release + release_dir.\n` +
+  `4) POPULATE THE RELEASE — copy the source tree into release_dir with a POSIX-portable pipeline (rsync may not be installed; tar always is):\n` +
+  `   \`tar -cf - -C ${SOURCE_ROOT} --exclude=./.git --exclude=./.claude --exclude='./.claude-backup*' --exclude=./node_modules --exclude='*/node_modules' --exclude=./.env --exclude='*/dist' --exclude='*/.next' --exclude='*/build' --exclude='*/coverage' --exclude=./.idea . | tar -xf - -C <release_dir>\`\n` +
+  `   …and if deploy_root happens to sit INSIDE the source tree, exclude it too or you will copy the scene into itself.\n` +
+  `   WHY THIS EXACT SET: (a) the manifest's \`build\` step runs with working_directory {{RELEASE_DIR}}, so the release needs the real sources + workspace manifests (package.json, pnpm-workspace.yaml, pnpm-lock.yaml, .npmrc, tsconfig*, apps/**, packages/**); (b) ROLLBACK IS A SYMLINK FLIP BACK, so each release must be INDEPENDENTLY RUNNABLE — which is why node_modules is NOT shared and NOT symlinked but installed per-release (a shared node_modules would let a newer deploy's install silently re-point an older release's dependencies, and the "known-good" release you roll back to would boot against dependencies it never saw); (c) .git / .claude are not runtime; (d) dist/.next/build are regenerated by the build step; (e) .env must be the SYMLINK from step 5, never a stale copy.\n` +
+  `   Then \`pnpm install --frozen-lockfile\` INSIDE release_dir. This is affordable precisely because pnpm hardlinks from its content-addressable store: a per-release node_modules costs almost no disk and is fast on a warm store. Never copy node_modules from the source checkout (it may carry a foreign-arch native build).\n` +
+  `5) SHARED SYMLINKS — link each shared path INTO the release: \`ln -sfn <shared>/.env <release_dir>/.env\`, same for logs and uploads. (The systemd units read the env via EnvironmentFile=<shared>/.env; this symlink is what lets the \`migrate\` step, which runs from the release root, see DATABASE_URL.)\n` +
+  `6) SYSTEMD UNITS — materialise each unit from its \`.service.template\` beside the manifest: substitute {{CURRENT_LINK}} → scene.current_link, {{ENV_FILE}} → scene.env_file, {{NODE_BIN}} → the ABSOLUTE node path (\`command -v node\`; systemd needs an absolute ExecStart), {{PORT}} → the port for that service. Write to /etc/systemd/system/<unit>.service (sudo — a prod stand is exactly where sudo is normal), then \`sudo systemctl daemon-reload\` and \`sudo systemctl enable <unit>\`. Writing the same content twice is a no-op; daemon-reload and enable are both idempotent. Record units_installed[].\n` +
+  `   {{PORT}}: resolve from the manifest's healthcheck spec, else from shared/.env (PORT / API_PORT / WEB_PORT / …). If you CANNOT resolve a port for a required unit, do NOT guess — a service on the wrong port fails the healthcheck in a way that looks exactly like a code bug. Return ready:false, blocker_class:'env-not-ready', and name the unit and where you looked.\n` +
+  `   The worker is required:false — install its unit, but only \`enable\` it if WORKER_AUTOSTART=1 is set in shared/.env; otherwise leave it installed-and-disabled and say so in diagnosis.\n` +
+  `   If sudo/systemd is unavailable (no systemctl, no non-interactive sudo), that is NOT a code failure: return ready:false, blocker_class:'env-not-ready' with the exact error.\n` +
+  `\n` +
+  `⚠ DO NOT FLIP \`current\` HERE, and do not build, migrate, or restart. That is the manifest's own step-list and it runs in the NEXT step. Your job ends with: the scene exists, the release is laid out and installed, the units are loaded.\n` +
+  `CAPTURE-DON'T-FIX: if something fails, STOP and report it — do NOT retry-hack, patch the app, or commit. Classify honestly with blocker_class: 'env-not-ready' (a substrate/provisioning gap we cannot fill without inventing something — no .env anywhere, no sudo, an unresolvable port) vs 'deploy-failed' (the deploy machinery itself broke — a copy failed, pnpm install failed, a disk filled).\n` +
+  `🔒 §8.3 — READ-ONLY on \`.claude/integrator/**\`: read the manifest and the unit templates, but NEVER edit them. If a template looks wrong, SAY SO — do not "fix" it (that zone is the Integrator's; the Orchestrator executes equipment, it does not author it).\n` +
+  `Return ready + blocker + blocker_class + release + release_dir + env_source + created[] + reused[] + units_installed[] + diagnosis + observed.`,
+  { model: 'opus', schema: SCENE_SCHEMA, phase: 'Deploy', label: 'scene-bootstrap' },   // MDP: real high-R mutation (dirs, secrets file, systemd units) + honest env/deploy failure classification (impl/depth)
+)
+const sceneReady = !!(scene && scene.ready)
+log(`scene: ${sceneReady ? `READY — release ${(scene && scene.release) || '?'} (.env from ${(scene && scene.env_source) || '?'}; created ${((scene && scene.created) || []).length}, reused ${((scene && scene.reused) || []).length}, units ${((scene && scene.units_installed) || []).length})` : `NOT READY — ${(scene && scene.blocker) || 'see diagnosis'} [${(scene && scene.blocker_class) || 'unclassified'}]`}`)
+
+// A scene we could not build honestly. Two DIFFERENT outcomes, and the difference is not cosmetic:
+//   env-not-ready → BLOCKED + readiness=ENV_NOT_READY (no .env anywhere / no sudo / no port). We could
+//                   not PREPARE the deploy without inventing something, and we refuse to invent. The
+//                   charter routes evt:deploy.env_not_ready → fix the substrate and re-run. Directories
+//                   we created on the way are harmless and idempotent; NOTHING was flipped.
+//   anything else → DEPLOY_FAILED, flipped=false → escalate (evt:deploy.preflight_failed).
+if (!sceneReady) {
+  const envGap = scene && scene.blocker_class === 'env-not-ready'
+  if (envGap) {
+    readiness = worstReadiness(readiness, 'ENV_NOT_READY')
+    readinessReasons.push(`scene bootstrap could not complete honestly: ${(scene && scene.blocker) || 'see diagnosis'} → ENV_NOT_READY (nothing was fabricated; nothing was flipped)`)
+  }
+  log(`${envGap ? 'BLOCKED (scene ENV_NOT_READY)' : 'DEPLOY_FAILED (scene bootstrap failed)'} — nothing flipped. ${(scene && scene.diagnosis) || ''}`)
+  return {
+    feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
+    result: envGap ? 'BLOCKED' : 'DEPLOY_FAILED', readiness, readiness_reasons: readinessReasons, flipped: false,
+    contract_status: contractStatus, contract_evidence: null,   // never flipped ⇒ the contract earned NO live-evidence
+    release: (scene && scene.release) || null, healthcheck: null, failure_class: null,
+    scene, deploy: null, blocking_defects: blockingDefects,
+    disposition, autonomy: disposition,
+    disclosures: disclosures.concat([`scene bootstrap ${envGap ? 'BLOCKED' : 'FAILED'} (${(scene && scene.blocker_class) || 'unclassified'}): ${(scene && scene.blocker) || (scene && scene.diagnosis) || 'see observed'}`]),
+  }
+}
+
+// ---- (b) EXECUTE THE MANIFEST STEP-LIST. The scene is real, the release is laid out and installed.
+// Sets flipped=true iff `current` actually moves. Capture-diagnose a partial deploy; do NOT fix.
 const deployed = await agent(
-  `Execute the ${ENV_TIER} deploy for capability "${CAPABILITY}" per the parsed manifest step-list (VM-gated — real only on the VM prod-stand; this is the ONE mutating step, authorized by the §3.2 auto disposition above).\n` +
-  `Manifest steps: ${JSON.stringify((manifest && manifest.steps) || [])}. Release layout: ${JSON.stringify((manifest && manifest.release_layout) || {})}.\n` +
-  `1) Acquire a deploy lockfile (A-9 belt — refuse if a parallel deploy holds it). 2) Build into a fresh releases/<timestamp> dir + wire the shared/.env symlink. 3) Run the prisma migrate deploy step IF the manifest marks it present/verified (skip cleanly if conditional+unverified — note it). 4) FLIP the \`current\` symlink to the new release (this is the atomic deploy — set flipped=true ONLY once current actually points at the new release). 5) systemctl restart the @app/* units (worker only if WORKER_AUTOSTART=1 is set).\n` +
+  `Execute the ${ENV_TIER} deploy for capability "${CAPABILITY}" per the parsed manifest step-list (VM-gated; authorized by the §3.2 auto disposition above).\n` +
+  `The SCENE IS ALREADY BUILT and the release is laid out, installed, and symlinked to shared/ — do NOT re-create it:\n` +
+  `  release      = ${(scene && scene.release) || '(see scene)'}\n` +
+  `  {{RELEASE_DIR}} = ${(scene && scene.release_dir) || '(see scene)'}\n` +
+  `  {{CURRENT_LINK}} = ${(manifest && manifest.scene && manifest.scene.current_link) || '(see scene)'}\n` +
+  `  {{ENV_FILE}}    = ${(manifest && manifest.scene && manifest.scene.env_file) || '(see scene)'}\n` +
+  `Manifest steps (ordered — run them IN THIS ORDER, substituting the paths above): ${JSON.stringify((manifest && manifest.steps) || [])}.\n` +
+  `1) Acquire a deploy lockfile (A-9 belt — refuse if a parallel deploy holds it). 2) BUILD: run the build step's command with its working_directory ({{RELEASE_DIR}} — the concrete new release; that is correct, a build belongs to ONE release). 3) MIGRATE: run the migrate step IF the manifest marks it verified (skip cleanly if conditional+unverified — note it); it reads DATABASE_URL through the release's .env symlink into shared/.env. 4) FLIP \`current\` to the new release — ATOMICALLY: \`ln -sfn <release_dir> <current>.tmp && mv -T <current>.tmp <current>\` (mv -T on the same filesystem is a single rename(2) — it REPLACES the symlink in one step). Do NOT \`rm current && ln -s …\`: that leaves a window where \`current\` does not exist, and a service restarting in that window dies. Set flipped=true ONLY once \`readlink -f current\` actually resolves to the new release. 5) RESTART the units (\`sudo systemctl restart <unit>\`) — the worker only if it was enabled. The units follow \`current\`, so the restart is what makes the flip take effect.\n` +
   `CAPTURE-DON'T-FIX: if a step fails, STOP, record steps_done + partial + a diagnosis of what broke and whether \`current\` moved — do NOT retry-hack, edit code, or commit. Set flipped precisely: true iff the symlink now points at the new release, false otherwise.\n` +
   `🔒 §8.3 BOUNDARY — NEVER WRITE UNDER \`.claude/integrator/**\`: you may READ the manifest and the CNT contract, but you must NOT edit either, and you must NOT flip a contract's status draft→active — not even after a perfect deploy, not "to close the loop". That flip is the INTEGRATOR's prerogative (docs/integrator-module/SPEC.md §8.3: Integrator EQUIPS, Orchestrator EXECUTES). This process REPORTS the live-evidence in its result; the Integrator acts on it.\n` +
   `Return flipped + release + migrated + partial + steps_done + diagnosis + observed.`,
   { model: 'opus', schema: DEPLOY_SCHEMA, phase: 'Deploy', label: 'deploy-flip' },   // MDP: real high-R mutation (build/migrate/flip/restart) + partial-deploy diagnosis (impl/depth)
 )
 const flipped = !!(deployed && deployed.flipped)
-const release = (deployed && deployed.release) || null
+const release = (deployed && deployed.release) || (scene && scene.release) || null
 log(`deploy: flipped=${flipped}${release ? ` (release ${release})` : ''}${deployed && deployed.partial ? ' — PARTIAL' : ''}`)
 
 // A flip that never happened (build/migrate/flip failed before moving `current`) is a DEPLOY_FAILED
@@ -406,7 +599,9 @@ if (!flipped) {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'DEPLOY_FAILED', readiness, readiness_reasons: readinessReasons, flipped: false,
     contract_status: contractStatus, contract_evidence: null,   // the flip never happened ⇒ the contract earned NO live-evidence
-    release, healthcheck: null, disposition, autonomy: disposition,
+    release, healthcheck: null, failure_class: null,            // no post-flip boot ⇒ no P7 taxonomy class (we do NOT invent one)
+    scene, deploy: deployed, blocking_defects: blockingDefects, // ← the trail the live run.json was missing entirely (FIND-D)
+    disposition, autonomy: disposition,
     disclosures: disclosures.concat([`deploy failed before the flip: ${(deployed && deployed.diagnosis) || 'see observed'}`]),
   }
 }
@@ -464,6 +659,10 @@ return {
   flipped,                             // true here — the charter routes DEPLOY_FAILED+flipped to auto-rollback
   release,
   healthcheck,                         // { healthy, failure_class, diagnosis, observed }
+  failure_class: (healthcheck && healthcheck.failure_class) || null,   // hoisted to the top level: the ONE field a post-mortem greps for (FIND-D)
+  scene,                               // what the deploy had to BUILD before it could deploy (dirs, .env source, units) — FIND-B
+  deploy: deployed,                    // steps_done / partial / migrated / diagnosis — the trail a DEPLOY_FAILED needs MOST
+  blocking_defects: blockingDefects,   // [] here by construction (a mis-equipped capability blocks in the preflight)
   disposition,                         // the §3.2 resolver envelope
   autonomy: disposition,               // alias (payloadPath: autonomy) — mirrors validate-feature-impl
   disclosures: (healthy ? disclosures : disclosures.concat([`post-flip healthcheck failed (${(healthcheck && healthcheck.failure_class) || 'unknown'}): ${(healthcheck && healthcheck.diagnosis) || 'see observed'} — auto-rollback (E.C)`]))

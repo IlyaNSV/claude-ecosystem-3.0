@@ -83,6 +83,54 @@ test('§3.2 ACCEPTANCE: the resolver call precedes the mutation, and STOPs on a 
     'a gated deploy must return result=BLOCKED, flipped=false (no mutation)');
 });
 
+// ---- FIND-B: the scene. "E.A wrote the recipe, and nobody built the kitchen." ------------------
+//
+// The manifest declared deploy_root / releases/<ts> / current / shared/{.env,logs,uploads} and three
+// systemd unit templates. The process materialised NONE of it — it contained no `deploy_root`, no
+// `homedir`, no `expand`, so `~/deploy/…` was never a directory, `shared/.env` (where `migrate` reads
+// DATABASE_URL) never existed, and no unit was ever installed. The first deploy was impossible in
+// principle. These pins keep the kitchen built — and, critically, keep it on the RIGHT SIDE of §3.2.
+
+test('§3.2 ACCEPTANCE (the sharpest edge): scene-bootstrap IS a mutation, so it MUST be AFTER the gate', () => {
+  const gateIdx = SRC.indexOf("disposition.disposition !== 'auto'");
+  const sceneIdx = SRC.indexOf("label: 'scene-bootstrap'");
+  const deployIdx = SRC.indexOf("label: 'deploy-flip'");
+  assert(sceneIdx !== -1, 'no scene-bootstrap agent — the deploy scene is never built (FIND-B)');
+  assert(gateIdx !== -1 && gateIdx < sceneIdx,
+    'THE TRAP: scene-bootstrap creates directories, seeds a secrets file and INSTALLS SYSTEMD UNITS. '
+    + 'Moving it into the preflight "because it is just setup" would put real mutation on the wrong side of the '
+    + 'resolver and bypass the floor — the exact failure §3.2 exists to prevent.');
+  assert(sceneIdx < deployIdx, 'the scene must be built before the step-list runs on it');
+  // and it must live in the Deploy phase, not Preflight
+  const sceneOpts = SRC.split('\n').find((l) => l.includes("label: 'scene-bootstrap'")) || '';
+  assert(/phase: 'Deploy'/.test(sceneOpts), `scene-bootstrap must be in the Deploy phase (post-gate); got: ${sceneOpts.trim()}`);
+});
+
+test('FIND-B: the scene is bootstrapped from the LIB-RESOLVED absolute paths (the `~` nothing expanded)', () => {
+  const seg = SRC.slice(SRC.indexOf('const scene = await agent'), SRC.indexOf("label: 'scene-bootstrap'"));
+  assert(/manifest\.scene/.test(seg), 'the scene agent must be handed the lib-resolved scene (not left to re-expand ~ itself)');
+  assert(/do NOT re-derive or re-expand/i.test(seg), 'and told not to re-derive it');
+  assert(/IDEMPOTENT/i.test(seg), 'the bootstrap must be idempotent — a second deploy must not break the first');
+  for (const must of ['releases', 'shared', 'mkdir -p', 'systemd', 'daemon-reload', 'enable']) {
+    assert(seg.includes(must), `the scene bootstrap does not cover: ${must}`);
+  }
+  assert(/env_source/.test(seg) && /project-root/.test(seg),
+    'shared/.env must be seeded from the project root when absent (staging v1 = dev-tier secrets, EPIC_E_READINESS A-1..A-9)');
+  assert(/pnpm install --frozen-lockfile/.test(seg), 'the release must install its OWN deps (a rollback target must be independently runnable)');
+  assert(/--exclude=\.\/\.git/.test(seg) && /--exclude=\.\/\.claude/.test(seg), '.git and .claude must not be copied into a release');
+  assert(/DO NOT FLIP/i.test(seg) && /do not build, migrate, or restart/i.test(seg),
+    'the flip (and build/migrate/restart) belong to the manifest step-list, NOT to the bootstrap — the bootstrap only makes the scene real');
+});
+
+test('FIND-B: the flip is ATOMIC (ln -sfn + mv -T), never rm && ln', () => {
+  const seg = SRC.slice(SRC.indexOf('const deployed = await agent'), SRC.indexOf("label: 'deploy-flip'"));
+  assert(/ln -sfn/.test(seg) && /mv -T/.test(seg),
+    'the flip must be a single rename(2): `ln -sfn <release> current.tmp && mv -T current.tmp current`');
+  assert(/rm current && ln/i.test(seg),
+    'the prompt must explicitly FORBID `rm current && ln -s` — it leaves a window where `current` does not exist, and a service restarting in it dies');
+  assert(/readlink -f current/.test(seg), 'flipped=true must be proven by resolving the symlink, not assumed');
+});
+
 test('two-axis contract: result × readiness + flipped/release/healthcheck/disposition/autonomy in the return', () => {
   for (const key of ['result', 'readiness', 'flipped', 'release', 'healthcheck', 'disposition', 'autonomy']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(SRC), `return contract missing key: ${key}`);
@@ -107,18 +155,59 @@ test('INVARIANT in code: ENV_NOT_READY ⇒ BLOCKED (never DEPLOY_FAILED), decide
   assert(/const flipped = !!\(deployed && deployed\.flipped\)/.test(SRC), 'flipped is not read from the deploy agent');
 });
 
-test('manifest parse is EOL-tolerant (CRLF) — deploy-to-stage is a CNT consumer', () => {
+// ---- FIND-A: the manifest parse is CODE, not an LLM reading a file -------------------------------
+//
+// It used to be a sonnet subagent, and the SAME unchanged file parsed as a full 4-step list in one
+// run and as `step-list=MISSING` 18 minutes later (once returning present:true + steps:[] — a pair
+// that cannot both be true). A deterministic fact about bytes, sitting behind a readiness gate, was
+// being answered by a coin flip. These pins keep it in the lib.
+
+test('FIND-A: the manifest is read through the DETERMINISTIC lib CLI seam — the agent only transports', () => {
   const segStart = SRC.indexOf("label: 'manifest-parse'");
   assert(segStart !== -1, 'no manifest-parse agent');
-  const seg = SRC.slice(SRC.indexOf("const manifest = await agent"), segStart);
-  assert(/normalize line endings/i.test(seg) && /CRLF/.test(seg), 'the manifest parse must instruct CRLF normalization');
-  assert(/extractManifest/.test(seg), 'the established EOL-tolerant pattern (capability-probe.cjs extractManifest) is not referenced');
-  assert(seg.includes('replace(/\\\\r\\\\n/g'), 'the manifest parse must carry the \\r\\n → \\n replace instruction');
-  // fail-loud, do not fabricate a step-list
-  assert(/do NOT fabricate/i.test(seg) || /FAIL LOUD/i.test(seg), 'a missing/draft manifest must fail loud, not fabricate a step-list');
+  const seg = SRC.slice(SRC.indexOf('const manifest = await agent'), segStart);
+  assert(/MANIFEST_LIB\b/.test(SRC) && /deploy-manifest\.cjs/.test(SRC),
+    'the deterministic deploy-manifest.cjs CLI seam is not wired (FIND-A: the parse must not be an LLM reading a .yaml)');
+  assert(/node \$\{MANIFEST_LIB\} parse --manifest \$\{MANIFEST\}/.test(seg),
+    'the manifest-parse agent must RUN the lib, not read the file itself');
+  assert(/TRANSPORT, NOT A PARSER/i.test(seg), 'the agent must be told, in words, that it is a transport');
+  assert(/do NOT (open|re-derive)|byte for byte/i.test(seg),
+    'the agent must be forbidden from re-deriving the fields it relays');
+  // and it must NOT fall back to its own reading when the lib fails — that resurrects the defect
+  assert(/do NOT substitute your own reading/i.test(seg),
+    'a lib failure must FAIL LOUD, never silently degrade back to an LLM parse');
+  // the CRLF tolerance + the fail-loud contract now live in the LIB (tested in deploy-manifest.test.cjs)
+  assert(/CRLF-tolerant/.test(seg), 'the CRLF contract must still be stated (it moved into the lib, it did not vanish)');
+  assert(/FAILS LOUD rather than fabricating/i.test(seg), 'a step-list must never be fabricated');
 });
 
-test('deploy + healthcheck agents are capture-don\'t-fix (surface a failure, do not remediate)', () => {
+test('FIND-B: a MIS-EQUIPPED capability (release-pinned units) is ENV_NOT_READY — never a silent DEPLOYED', () => {
+  // The killer: a unit bolted to a concrete releases/<ts> is deaf to the flip. `current` moves, the
+  // unit does not, restart revives the OLD release — and the healthcheck PASSES (old code, same port).
+  // The run would report DEPLOYED having shipped nothing, and that false green is the contract_evidence
+  // that flips an unverified draft CNT to `active`. A false DEPLOYED is the worst thing this can emit.
+  assert(/blocking_defects/.test(SRC), 'the process does not read blocking_defects from the manifest lib');
+  const idx = SRC.indexOf('if (manifestOk && blockingDefects.length)');
+  assert(idx !== -1, 'no equipment-fitness branch (a present-but-unusable capability must not proceed)');
+  const arm = SRC.slice(idx, idx + 1400);
+  assert(/worstReadiness\(readiness, 'ENV_NOT_READY'\)/.test(arm),
+    'a mis-equipped capability must downgrade readiness to ENV_NOT_READY (we could not PREPARE a correct deploy)');
+  assert(/readinessReasons\.push/.test(arm), 'and it must record WHY (an unexplained block is an unauditable gate)');
+  assert(/integrator:provision/.test(arm), 'and name the remedy (re-equip)');
+  // the fitness branch must be evaluated BEFORE the ENV_NOT_READY return arm, or it can never bite
+  const envReturnIdx = SRC.indexOf("if (readiness === 'ENV_NOT_READY')");
+  assert(idx < envReturnIdx, 'the equipment-fitness check must run BEFORE the ENV_NOT_READY block arm');
+  // §8.3: we refuse the equipment, we do not rewrite it
+  assert(/does not (silently )?rewrite an Integrator template|Orchestrator does not rewrite Integrator templates/i.test(SRC),
+    'the process must state that it refuses broken equipment rather than patching it (§8.3)');
+});
+
+test('scene + deploy + healthcheck agents are capture-don\'t-fix (surface a failure, do not remediate)', () => {
+  const sceneSeg = SRC.slice(SRC.indexOf('const scene = await agent'), SRC.indexOf("label: 'scene-bootstrap'"));
+  assert(/CAPTURE-DON'T-FIX/i.test(sceneSeg), 'the scene agent must be capture-don\'t-fix');
+  assert(/Do NOT fabricate, template, or synthesize a \.env/i.test(sceneSeg),
+    'a missing .env must be an honest ENV_NOT_READY — NEVER fabricated secrets (they fail at runtime as env-not-loaded and read like a code bug)');
+  assert(/do NOT guess/i.test(sceneSeg), 'an unresolvable port must not be guessed either');
   const deploySeg = SRC.slice(SRC.indexOf('const deployed = await agent'), SRC.indexOf("label: 'deploy-flip'"));
   assert(/CAPTURE-DON'T-FIX/i.test(deploySeg), 'the deploy agent must be capture-don\'t-fix');
   assert(/do NOT retry-hack, edit code, or commit/i.test(deploySeg), 'the deploy agent must not remediate/commit');
@@ -174,11 +263,48 @@ test('D2: EVERY return arm carries readiness_reasons — the §3.2 deploy gate m
   assert(/readinessReasons\.push/.test(preArm), 'a pre-flip-verdict-driven ENV_NOT_READY must record its reason');
   // and every result-bearing return exposes it (a future arm that forgets is caught here)
   const returns = (SRC.match(/return \{[\s\S]*?\n\s*\}/g) || []).filter((r) => /result/.test(r));
-  assert(returns.length >= 5, `expected all 5 result-bearing returns (BLOCKED×2, DEPLOY_FAILED×2, final); found ${returns.length}`);
+  assert(returns.length >= 6, `expected every result-bearing return (BLOCKED×3, DEPLOY_FAILED×3, final); found ${returns.length}`);
   for (const r of returns) {
     const label = (r.match(/result:?\s*'?([A-Z_]*)'?/) || [])[1] || '(final)';
     assert(/readiness_reasons:\s*readinessReasons/.test(r), `return arm ${label} drops readiness_reasons`);
   }
+});
+
+// ---- FIND-D: a FAILED deploy must not have a THINNER trail than a BLOCKED one -------------------
+//
+// The live DEPLOY_FAILED run.json carried only `result` + `readiness`. `disposition: auto` — the fact
+// that the §3.2 gate had AUTHORIZED a mutation — had to be dug out of the transcript. A BLOCKED run,
+// meanwhile, looked rich (the charter parks a PA carrying the resolver envelope). Exactly backwards:
+// DEPLOY_FAILED is when the trail matters MOST, because a mutation may already have happened.
+//
+// NOTE the other half of this fix lives in run-ledger.cjs (`summarizeResult` was projecting the whole
+// return down to those two scalars, so richer arms ALONE would have changed nothing that reaches
+// run.json). This test guards the process side; run-ledger.test.cjs guards the ledger side.
+
+test('FIND-D: EVERY result-bearing arm carries the SAME audit trail — a thin arm cannot ship again', () => {
+  const TRAIL = [
+    'flipped', 'release', 'healthcheck', 'failure_class',
+    'contract_status', 'contract_evidence', 'blocking_defects',
+    'scene', 'deploy', 'disposition', 'autonomy', 'disclosures',
+  ];
+  const returns = (SRC.match(/return \{[\s\S]*?\n\s*\}/g) || []).filter((r) => /result/.test(r));
+  assert(returns.length >= 6, `expected every result-bearing return; found ${returns.length}`);
+  for (const r of returns) {
+    const label = (r.match(/result:\s*'?([A-Za-z_?:' ]*)/) || [])[1] || '(final)';
+    for (const key of TRAIL) {
+      assert(new RegExp(`(^|[\\s{,])${key}\\s*[:,]`).test(r),
+        `return arm "${label.trim()}" drops \`${key}\` — a DEPLOY_FAILED with a thinner trail than a BLOCKED run is the FIND-D defect`);
+    }
+  }
+});
+
+test('FIND-D: failure_class is HOISTED to the top level (the one key a post-mortem greps)', () => {
+  assert(/failure_class: \(healthcheck && healthcheck\.failure_class\) \|\| null/.test(SRC),
+    'the final arm must hoist the P7 taxonomy class out of the nested healthcheck object');
+  // …but never INVENTED where no boot happened — "reuse the taxonomy, do not reinvent it"
+  const preflightArm = SRC.slice(SRC.indexOf('if (!buildPassed)'), SRC.indexOf('if (!buildPassed)') + 900);
+  assert(/failure_class: null/.test(preflightArm),
+    'a build failure never booted anything ⇒ no P7 class applies ⇒ null, NOT a fabricated class id');
 });
 
 // ---- THE FIRST-DEPLOY CONTRACT DEADLOCK (first live E.B run, 2026-07-14 — DEC-DEV-0201) ----------

@@ -1,0 +1,19 @@
+[Unit]
+Description=@app/api (NestJS) — my-first-test staging
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# {{CURRENT_LINK}} — the unit follows the `current` symlink, so a flip + restart actually
+# swaps the running code (and a flip BACK is the rollback). systemd chdir()s at exec time,
+# so the symlink is resolved fresh on every (re)start. NEVER {{RELEASE_DIR}} (FIND-B).
+WorkingDirectory={{CURRENT_LINK}}/apps/api
+EnvironmentFile={{ENV_FILE}}
+Environment=PORT={{PORT}}
+ExecStart={{NODE_BIN}} dist/main.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

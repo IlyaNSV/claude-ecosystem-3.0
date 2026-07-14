@@ -202,17 +202,69 @@ function pickFlatOrNested(r, key) {
 }
 
 /**
+ * The DECISION TRAIL (DEC-DEV-0203 / FIND-D) — WHO authorized the act, WHAT moved, WHAT broke,
+ * and WHAT was disclosed. These are the keys a post-mortem actually reaches for, and the summary
+ * used to drop every one of them.
+ *
+ * The live E.B run that failed a deploy left a run.json carrying only `result` + `readiness`: no
+ * `disposition` (so `disposition: auto` — the fact that the §3.2 gate had AUTHORIZED a mutation —
+ * had to be dug out of the transcript), no `flipped` (so "did anything go live?" was unanswerable
+ * from the record), no release, no healthcheck, no disclosures. A BLOCKED run, meanwhile, looked
+ * rich, because the charter parks a PA carrying the resolver envelope. That is exactly backwards:
+ * a FAILED deploy is the case where the trail matters MOST, because a mutation may already have
+ * happened and someone has to know what.
+ *
+ * The processes were not at fault — their `return {…}` arms carried these fields all along. The
+ * LEDGER was projecting them away. Same lesson, same lib, same shape as the readiness_reasons
+ * widening one commit earlier: a summary that silently narrows the record is indistinguishable
+ * from a process that never produced it.
+ *
+ * Carried opportunistically and nested under ONE key, so:
+ *   - a process with none of them (P2/P3/P4) gets `decision_trail: null` — no shape churn;
+ *   - `false` and `0` survive (only null/undefined are treated as "not disclosed" — `flipped:
+ *     false` is a LOAD-BEARING fact, not an absence);
+ *   - ledger.ndjson stays a compact line (finishRun builds it key-by-key and does NOT take this).
+ */
+const TRAIL_KEYS = [
+  'disposition',        // the §3.2 resolver envelope — WHO said this mutation could happen
+  'flipped',            // did `current` actually move? (the rollback trigger)
+  'release',            // …to which releases/<ts>
+  'healthcheck',        // { healthy, failure_class, diagnosis, observed }
+  'failure_class',      // a P7 smokePlan taxonomy id, hoisted for grepping
+  'contract_status',    // the DEC-DEV-0201 trust axis (draft | active)
+  'contract_evidence',  // …and the live-verify a DEPLOYED run earns for a draft CNT
+  'disclosures',        // the human-readable why (every failure arm concats its diagnosis here)
+];
+
+function decisionTrail(r) {
+  const trail = {};
+  for (const k of TRAIL_KEYS) {
+    const v = pickFlatOrNested(r, k);
+    if (v !== null && v !== undefined) trail[k] = v;
+  }
+  // failure_class rides INSIDE healthcheck on deploy-to-stage / rollback-release — hoist it so a
+  // post-mortem greps one key, not two shapes.
+  if (trail.failure_class == null && isPlainObject(trail.healthcheck) && trail.healthcheck.failure_class != null) {
+    trail.failure_class = trail.healthcheck.failure_class;
+  }
+  return Object.keys(trail).length ? trail : null;
+}
+
+/**
  * Compact the Workflow return value into the fields run.json / the ndjson line carry.
  * Opportunistic: pulls whatever of verdict / outcome / readiness / readiness_reasons /
- * conflicts / counts is present (the processes return genuinely different shapes — P4 vs
- * P5 vs P6 vs P7). Never throws on a missing/oddly-shaped field.
+ * conflicts / counts / decision_trail is present (the processes return genuinely different
+ * shapes — P4 vs P5 vs P6 vs P7). Never throws on a missing/oddly-shaped field.
  *
  * The five original keys keep their exact meaning and position (`impl-evidence.cjs`
  * reads verdict/result/readiness off `result_summary`) — this widens what is READ, it
- * does not rename what is WRITTEN. Three things are new:
+ * does not rename what is WRITTEN. Four things are new:
  *   readiness_reasons — carried when the process gives them. deploy-to-stage and P7 both
  *                       promise, in-code, that "the gate must be auditable from run.json
  *                       alone"; the summary used to drop the field, so it was not.
+ *   decision_trail    — WHO authorized / WHAT moved / WHAT broke (see above). Same promise,
+ *                       one step further: a DEPLOY_FAILED must not be a poorer record than a
+ *                       BLOCKED one. null for a process that carries none of it.
  *   outcome_key       — provenance: which key the outcome came from (null ⇒ the process
  *                       returned no outcome — a P2/P3/P4-class run, not a lost one).
  *   unread_outcome_keys — the self-disclosure. An outcome-shaped key the ledger does NOT
@@ -234,6 +286,7 @@ function summarizeResult(result) {
     counts: r.counts != null ? r.counts : null,
     outcome_key: picked.key,
     unread_outcome_keys: Object.keys(r).filter((k) => OUTCOME_SHAPED_KEY.test(k) && !READ_OUTCOME_KEYS.has(k)),
+    decision_trail: decisionTrail(r),
   };
 }
 
@@ -498,12 +551,14 @@ module.exports = {
   OUTCOME_KEYS,          // the outcome-key contract — the process-source guard test reconciles against THIS
   READ_OUTCOME_KEYS,
   OUTCOME_SHAPED_KEY,
+  TRAIL_KEYS,            // the decision-trail contract (DEC-DEV-0203 / FIND-D)
   defaultBaseRoot,
   slugifyProcess,
   deriveRunId,
   durationMs,
   extractModelMap,
   summarizeResult,
+  decisionTrail,
   startRun,
   finishRun,
   appendLedgerLine,
