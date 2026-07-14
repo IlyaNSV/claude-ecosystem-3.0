@@ -26,15 +26,20 @@
 ### S1 — Успешный staging-деплой (happy path, L3)
 
 **Setup:** фича с P7 boot PASS; профиль автономии `autonomous` (L3) ИЛИ `--autonomy L3`; субстрат READY.
+**⚠ Плюс — ось контракта (DEC-DEV-0201):** CNT capability приезжает из E.A со `status: draft`, и **draft
+human-гейтит деплой** (это не блок — см. S7). Поэтому для happy-path нужно ОДНО из двух:
+- `acceptDraftContract: true` в args — владелец санкционирует **первый** деплой по непроверенному контракту; **или**
+- CNT уже `active` — т.е. этот прогон **не первый** (контракт флипнут по evidence прошлого деплоя).
 
 **Steps:**
 1. Прогнать линию до `runtime_gate` (P7 boot PASS → `evt:runtime.ready_or_started`).
 2. Линия входит в `deploying_staging` → процесс `deploy-to-stage`.
-3. Наблюдать фазу `Gate`: вызов `autonomy-policy resolve --operation-class deploy_staging --env-tier staging --readiness READY --override L3` → `disposition: auto`.
+3. Наблюдать фазу `Gate`: вызов `autonomy-policy resolve --operation-class deploy_staging --env-tier staging --readiness READY --contract-status <draft|active> [--accept-draft-contract] --override L3` → `disposition: auto`.
 4. Фаза `Deploy`: `releases/<ts>` собран, `current`-симлинк флипнут, `systemctl` рестарт.
 5. Healthcheck `GET /health` → 2xx.
 
 **Pass:** `result: DEPLOYED`, `flipped: true`, `evt:deploy.succeeded` → состояние `done`; `current` указывает на новый релиз; сервисы живы. Ledger + fabric-ingest записали брекет.
+**Плюс (если контракт был `draft`):** в результате есть `contract_evidence` (CNT id + `run_id` + `verdict: live-verified`) и дисклоз «CNT может быть флипнут в `active`». **Проверить, что Orchestrator НИЧЕГО не записал в `.claude/integrator/**`** (`git status` — §8.3: он только СООБЩАЕТ; флип — акт Интегратора).
 
 ---
 
@@ -95,6 +100,31 @@
 **Setup:** первый деплой фичи проваливает healthcheck (нет предыдущего `releases/<ts>` для отката).
 
 **Pass:** `rollback-release` → `evt:rollback.no_prior` → `escalated` + PA владельцу (нечего откатывать — человек решает). Система не пытается флипнуть на несуществующий релиз.
+
+---
+
+### S7 — Draft-контракт: ГЕЙТ, а не БЛОК (регрессия дедлока первого деплоя, DEC-DEV-0201)
+
+> **Зачем сценарий.** Первый живой прогон E.B (2026-07-14) вернул `BLOCKED / ENV_NOT_READY / disposition: null`
+> на **полностью исправной** оснастке (манифест 254 строки, парсится, step-list полный). Причина — категориальная
+> ошибка: `draft` читался как факт **готовности**. E.A **обязан** отдать CNT `draft`, E.B отказывался деплоить
+> не-`active`, а верификация возможна **только через деплой** ⇒ **первый деплой невозможен в принципе**. Ни один
+> repo-side тест этого не ловил: обе стороны по отдельности корректны, дефект жил **в стыке**.
+
+**Setup:** capability оснащена E.A, CNT в статусе **`draft`** (как и должно быть после `/integrator:provision`);
+субстрат **READY**; уровень **L3** (максимальная автономия — чтобы доказать, что гейтит именно контракт, а не уровень).
+
+**Steps:**
+1. Запустить `deploy-to-stage` **без** `acceptDraftContract`.
+2. Наблюдать фазу `Preflight`: `readiness` **НЕ** понижается до ENV_NOT_READY; в `readiness_reasons` — строка-объяснение про ось доверия.
+3. Наблюдать фазу `Gate`: резолвер **ВЫЗВАН** (`disposition` ≠ `null`!) с `--contract-status draft`.
+4. Повторить прогон с `acceptDraftContract: true`.
+
+**Pass:**
+- **(1)** Прогон №1: `disposition: human-gate` (**НЕ** `block`), `result: BLOCKED`, `flipped: false`, `readiness: READY` — **не** `ENV_NOT_READY`. **Ключ:** `disposition` заполнена — резолвер реально вызван, мутирующая ветка гейта достижима. PA владельцу с внятным «первый деплой по непроверенному контракту — твоё решение».
+- **(2)** Прогон №2 (санкция владельца): `disposition: auto` → деплой идёт → `DEPLOYED` + `contract_evidence`.
+- **(3)** **Floor не сдвинулся:** `prod_deploy` × L3 × `draft` × `acceptDraftContract` = `human-gate` + `floor_hit: true` (детерминированно доказано юнитами; на живом пути — S3).
+- **(4)** **§8.3:** после обоих прогонов `git status` в пилоте показывает **ноль** изменений под `.claude/integrator/**` — Orchestrator контракт не флипал, только сообщил evidence.
 
 ---
 

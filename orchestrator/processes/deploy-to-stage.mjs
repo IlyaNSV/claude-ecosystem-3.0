@@ -46,6 +46,26 @@ export const meta = {
  * healthcheck.healthy; flipped=true only AFTER the resolver returned auto. `flipped` is what the
  * charter routes rollback on (flipped + unhealthy → auto-rollback; not-flipped failure → escalate).
  *
+ * ⚠ THE THIRD AXIS — CONTRACT TRUST (DEC-DEV-0201; the first live deploy-run's defect). readiness and
+ * trust are DIFFERENT questions, and this process used to collapse them:
+ *
+ *   readiness — CAN we deploy?    substrate up? manifest present, parseable, carrying a step-list?
+ *   contract  — WHO decides?      has any live run ever verified this capability contract (CNT status)?
+ *
+ * E.A MUST ship the CNT `draft` (it may not claim `active` before a live verify). E.B refused to deploy
+ * anything not `active`, calling it ENV_NOT_READY. But the live verify can only come FROM a deploy ⇒ the
+ * first deploy was IMPOSSIBLE IN PRINCIPLE, and `disposition` in the live run.json was `null`: the
+ * preflight short-circuited before the §3.2 resolver was ever called. ENV_NOT_READY was also simply
+ * FALSE — the equipment was on disk (254 lines, parsed, full step-list). What was missing was a HUMAN.
+ *
+ *   present=false (absent / unparseable / no step-list) → ENV_NOT_READY. Still true, still a block.
+ *   present=true + status=draft                          → readiness UNTOUCHED. The draft rides to the
+ *                                                          resolver as --contract-status (auto → human-gate).
+ *
+ * A missing capability is a BLOCK; a missing human is a GATE. And note WHY the gate is load-bearing:
+ * without it, unblocking the preflight would have handed L3×staging a silent `auto` first deploy on a
+ * contract nobody had ever verified. The block was accidentally doing the gate's job — badly.
+ *
  * CAPTURE-DON'T-FIX (D-5): the deploy + healthcheck agents SURFACE a failed flip / a post-flip
  * unhealthy boot (diagnosed against the P7 taxonomy runtime-readiness.cjs::smokePlan.failure_classes:
  * env-not-loaded / missing-migration / port-in-use / missing-runtime-secret / dependency-not-up) —
@@ -88,6 +108,14 @@ const P7_VERDICT = A.p7Verdict || ''                            // optional: the
 const AUTONOMY_OVERRIDE = A.autonomyOverride || null            // the forwarded --autonomy flag (owner approval RAISES the level → resolver reads auto)
 const AUTONOMY_POLICY_CFG = A.autonomyPolicy || null            // optional inline policy slice (default_level / process_overrides)
 const VALIDATION = A.validationCommands || {}                   // {build, test} if known; else discovered from the manifest / repo
+// DEC-DEV-0201 — the owner's EXPLICIT sanction of a first deploy on a `draft` (never-live-verified)
+// capability contract. Absent ⇒ a draft contract human-gates the deploy (it does NOT block it). This flag
+// is the human-in-the-loop: without a human act, `auto` on an unverified contract never happens.
+const ACCEPT_DRAFT = A.acceptDraftContract === true
+// The ledger RUN_ID, stamped by the dispatcher's run-ledger bracket and forwarded in (run.md). The harness
+// may not read a clock or the FS, so this is passed, never derived. It is the EVIDENCE HANDLE: a DEPLOYED
+// run is the live-verify a draft CNT was waiting for, and the Integrator needs a run to point the flip at.
+const RUN_ID = A.runId || ''
 
 // ---- schemas ---------------------------------------------------------------
 const ENV_READINESS_SCHEMA = {
@@ -99,15 +127,22 @@ const ENV_READINESS_SCHEMA = {
   },
 }
 
-// The parsed deploy-manifest (deployment-provisioning.md §2/§4). present=false OR status draft-only ⇒
-// the capability is not provisioned → readiness=ENV_NOT_READY (could not PREPARE the deploy), never a
-// fabricated step-list. CRLF-normalized before parse (this process is a CNT consumer — see below).
+// The parsed deploy-manifest (deployment-provisioning.md §2/§4). CRLF-normalized before parse (this
+// process is a CNT consumer — see below).
+//
+// `present` and `status` answer DIFFERENT questions and must NEVER be collapsed (DEC-DEV-0201):
+//   present=false — absent / unparseable / no executable step-list ⇒ the capability is not provisioned
+//                   ⇒ readiness=ENV_NOT_READY (could not PREPARE the deploy). Never a fabricated step-list.
+//   status        — the capability contract's TRUST state (draft = no live run has verified it). It does
+//                   NOT touch readiness; it rides to the §3.2 resolver as --contract-status (auto →
+//                   human-gate). A draft manifest with a full step-list is present:true, status:'draft'.
 const MANIFEST_SCHEMA = {
   type: 'object',
   required: ['present'],
   properties: {
-    present: { type: 'boolean' },                              // file exists + parseable + carries an executable step-list
-    status: { type: ['string', 'null'] },                      // draft | active — a draft-only manifest is not deployable
+    present: { type: 'boolean' },                              // FACT: file exists + parseable + carries an executable step-list
+    status: { type: ['string', 'null'] },                      // TRUST: draft | active | stub — NOT an input to `present`
+    contract: { type: ['string', 'null'] },                    // the CNT id the manifest names (e.g. "CNT-005"), or null — never invented
     steps: { type: 'array', items: { type: 'object' } },       // ordered build → migrate → flip → (re)start
     healthcheck: { type: ['object', 'null'] },                 // { url, boot_window_sec, expect, failure_taxonomy }
     migrate: { type: ['object', 'null'] },                     // prisma migrate deploy step (conditional_on packages/db)
@@ -140,7 +175,8 @@ const ASSESS_SCHEMA = {
   },
 }
 
-// The §3.2 disposition envelope relayed from the autonomy-policy CLI seam (shape = resolve()'s return).
+// The §3.2 disposition envelope relayed from the autonomy-policy CLI seam (shape = resolve()'s return,
+// plus whatever guard extensions the lib attached — `contract` comes from applyContractGuard).
 const AUTONOMY_SCHEMA = {
   type: 'object',
   required: ['disposition'],
@@ -148,6 +184,7 @@ const AUTONOMY_SCHEMA = {
     disposition: { type: 'string' },                           // auto | consilium-gate | human-gate | block
     level_applied: { type: ['string', 'null'] },
     floor_hit: { type: 'boolean' },
+    contract: { type: ['object', 'null'] },                    // { status, accepted_by_owner } — the contract-guard's record
     why: { type: 'array', items: { type: 'string' } },
   },
 }
@@ -203,20 +240,44 @@ log(`pre-flight env-readiness: ${readiness}${readinessReasons.length ? ` — ${r
 
 // (b) parse the E.A deploy-manifest — EOL-TOLERANT (this process is a CNT consumer; the manifest
 // materialises CRLF on a Windows pilot — deployment-provisioning.md "EOL tolerance" hands this as a
-// contract). A missing / draft-only manifest is "could not prepare" → ENV_NOT_READY, NEVER fabricated.
+// contract). A missing/unparseable/step-less manifest is "could not prepare" → ENV_NOT_READY, NEVER
+// fabricated. A DRAFT manifest is a different thing entirely — see the contract-trust split below.
 const manifest = await agent(
   `Parse the deploy-setup manifest for capability "${CAPABILITY}" at \`${MANIFEST}\` (equipped by the Integrator deployer, E.A — deployment-provisioning.md §2/§4).\n` +
   `FIRST normalize line endings: read the file, then \`.replace(/\\r\\n/g,'\\n')\` (or anchor \`/^---\\r?\\n/\` + \`split(/\\r?\\n/)\`) BEFORE parsing — the .yaml materialises CRLF on a Windows pilot and a bare-\\n parse would mangle it (the capability-probe.cjs extractManifest pattern; campaign §8.2 pt 7 / G36).\n` +
   `Extract the ordered step-list (build → migrate → flip → (re)start), the release layout (releases/<ts> + current symlink + shared/), the conditional prisma migrate-deploy step, and the healthcheck spec (url / boot_window_sec / expect / failure_taxonomy).\n` +
-  `FAIL LOUD, do NOT fabricate: if the file is absent, unparseable, or status is draft-only (the consumer does not exist yet / not verified), return present:false with a disclosure saying so — do NOT invent a step-list. Do NOT run any step; do NOT commit.`,
+  `Also report, inventing NOTHING: \`status\` — the manifest's declared status VERBATIM (draft | active | stub; null if it declares none) — and \`contract\` — the CNT id the manifest names or references (e.g. "CNT-005"), or null if it names none. Do NOT guess a CNT id from the directory listing.\n` +
+  `⚠ \`status\` MUST NOT influence \`present\`. They answer different questions: \`present\` is a QUESTION OF FACT (is the deploy-setup here and executable?) — true iff the file exists, parses, and carries an executable step-list. \`status\` is a QUESTION OF TRUST (has a live run ever verified this capability contract?). A draft manifest with a full step-list is \`present: true, status: "draft"\` — report it as such. The trust axis is decided downstream by the §3.2 autonomy resolver, NOT by this parse. (Collapsing the two made the FIRST deploy impossible in principle: E.A must ship draft, E.B refused non-active, and only a deploy can verify it — DEC-DEV-0201.)\n` +
+  `FAIL LOUD, do NOT fabricate: if the file is absent, unparseable, or carries no executable step-list, return present:false with a disclosure saying so — do NOT invent a step-list. Do NOT run any step; do NOT commit. READ-ONLY on \`.claude/integrator/**\` — never edit a manifest or a CNT contract (§8.3: that zone is the Integrator's).`,
   { model: 'sonnet', schema: MANIFEST_SCHEMA, phase: 'Preflight', label: 'manifest-parse' },   // MDP: read + CRLF-normalize + parse a manifest (standard/mechanical)
 )
-const manifestOk = !!(manifest && manifest.present && manifest.status !== 'draft')
+// READINESS leg — FACT only. `status` is deliberately absent from this expression (DEC-DEV-0201): the
+// equipment being on disk and executable is what "could we prepare the deploy" means.
+const hasSteps = !!(manifest && Array.isArray(manifest.steps) && manifest.steps.length > 0)
+const manifestOk = !!(manifest && manifest.present && hasSteps)
 if (!manifestOk) {
   readiness = worstReadiness(readiness, 'ENV_NOT_READY')   // capability not provisioned → could not PREPARE the deploy
-  const why = `deploy-manifest for "${CAPABILITY}" not deployable (present=${manifest && manifest.present}, status=${(manifest && manifest.status) || 'null'}) at ${MANIFEST} → ENV_NOT_READY; provision it via /integrator:provision ${CAPABILITY}`
+  const why = `deploy-manifest for "${CAPABILITY}" not usable (present=${manifest && manifest.present}, step-list=${hasSteps ? 'present' : 'MISSING'}) at ${MANIFEST} → ENV_NOT_READY; provision it via /integrator:provision ${CAPABILITY}`
   readinessReasons.push(why)   // a readiness downgrade that is NOT the env probe's — record it or the gate reads as an unexplained block
-  log(`manifest not deployable → readiness ENV_NOT_READY — ${why}`)
+  log(`manifest not usable → readiness ENV_NOT_READY — ${why}`)
+}
+
+// TRUST leg — the capability-contract axis. NOT a readiness downgrade: the equipment is here, the
+// substrate is whatever the probe said; the only open question is whether a HUMAN has ever sanctioned
+// deploying through this never-live-verified contract. It rides to the §3.2 resolver (--contract-status),
+// which turns `auto` into `human-gate` — a gate the owner can pass, not a wall that cannot be passed.
+// An absent/unknown status on a present manifest ⇒ conservatively `draft`: an undeclared contract must
+// never WIDEN autonomy (same rail as the resolver's own "absent → conservative" inputs).
+const contractStatus = manifestOk
+  ? (((manifest && manifest.status) ? String(manifest.status).trim().toLowerCase() : '') || 'draft')
+  : null
+const contractDraft = !!(contractStatus && contractStatus !== 'active')
+if (contractDraft) {
+  readinessReasons.push(
+    `capability contract for "${CAPABILITY}" is status=${contractStatus} (no live run has verified it) → readiness UNCHANGED (${readiness}). ` +
+    `This is a TRUST axis (who decides: auto or the owner), NOT a readiness axis (can we deploy at all) — the deploy-setup is present, parseable and carries a step-list. ` +
+    `It rides to the §3.2 resolver as --contract-status ${contractStatus} (auto → human-gate), it does NOT block the deploy.`)
+  log(`capability contract: ${contractStatus} → §3.2 contract-guard (auto → human-gate)${ACCEPT_DRAFT ? ' — OVERRIDDEN: the owner passed acceptDraftContract (explicit sanction of a first deploy on an unverified contract)' : ''}. Readiness is untouched.`)
 }
 
 // (c) clean build + full suite (D-6 — a deploy ships only green code). A RED build/test over a READY
@@ -248,6 +309,12 @@ const disclosures = [
   ...((manifest && manifest.disclosures) || []),
   ...((preflight && preflight.disclosures) || []),
   ...(P6_VERDICT && P6_VERDICT !== 'GO' ? [`deploying over a non-GO P6 verdict (${P6_VERDICT}) — indicative, not clean (FB-013)`] : []),
+  ...(contractDraft && !ACCEPT_DRAFT ? [
+    `capability contract "${CAPABILITY}" is ${contractStatus} — the FIRST deploy through a contract no live run has verified is the OWNER's call. This is NOT an ENV_NOT_READY block (the deploy-setup is in place): the §3.2 resolver human-gates it. To proceed, re-invoke with acceptDraftContract:true (explicit owner sanction), or flip the CNT to active after a live verify.`,
+  ] : []),
+  ...(contractDraft && ACCEPT_DRAFT ? [
+    `OWNER SANCTION: acceptDraftContract:true — deploying through a ${contractStatus} capability contract on the owner's explicit authority. The floor is untouched by this (it never was crossable).`,
+  ] : []),
 ]
 log(`pre-flip runtime-readiness: ${preVerdict}; readiness axis = ${readiness}`)
 
@@ -260,6 +327,7 @@ if (readiness === 'ENV_NOT_READY') {
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
+    contract_status: contractStatus, contract_evidence: null,
     release: null, healthcheck: null, disposition: null, autonomy: null,
     disclosures: disclosures.concat(['readiness=ENV_NOT_READY — the deploy could not be prepared/judged; this is NOT a deploy failure']),
   }
@@ -272,6 +340,7 @@ if (!buildPassed) {
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'DEPLOY_FAILED', readiness, readiness_reasons: readinessReasons, flipped: false,
+    contract_status: contractStatus, contract_evidence: null,
     release: null, healthcheck: null, disposition: null, autonomy: null,
     disclosures: disclosures.concat(((build && build.failures) || []).map((x) => `build/test: ${x}`)),
   }
@@ -281,11 +350,14 @@ if (!buildPassed) {
 // mutation. CLI seam via an agent+Bash relay (harness cannot require() the lib). --readiness is what
 // makes applyReadinessGuard bite here (the ONLY readiness-aware consultation on the deploy path).
 phase('Gate')
+// The resolver call as ONE auditable string. Two axes ride it beyond the level matrix: --readiness (CAN
+// we? — the ONLY place applyReadinessGuard bites) and --contract-status (WHO decides? — applyContractGuard,
+// DEC-DEV-0201). BACKWARD-COMPAT: an absent contractStatus leaves this command byte-for-byte the pre-fix one.
+const resolveCmd = `node ${AUTONOMY_LIB} resolve --operation-class deploy_staging --risk ${RISK} --env-tier ${ENV_TIER} --readiness ${readiness}${contractStatus ? ` --contract-status ${contractStatus}` : ''}${ACCEPT_DRAFT ? ' --accept-draft-contract' : ''}${AUTONOMY_POLICY_CFG ? ` --policy '${JSON.stringify(AUTONOMY_POLICY_CFG)}'` : ''}${AUTONOMY_OVERRIDE ? ` --override ${AUTONOMY_OVERRIDE}` : ''}`
 const disposition = await agent(
   `Resolve the authoritative autonomy disposition for THIS ${ENV_TIER} deploy (§3.2 ACCEPTANCE — the disposition is CODE; relay the JSON verbatim, do NOT judge or override it):\n` +
-  `node ${AUTONOMY_LIB} resolve --operation-class deploy_staging --risk ${RISK} --env-tier ${ENV_TIER} --readiness ${readiness}` +
-  `${AUTONOMY_POLICY_CFG ? ` --policy '${JSON.stringify(AUTONOMY_POLICY_CFG)}'` : ''}${AUTONOMY_OVERRIDE ? ` --override ${AUTONOMY_OVERRIDE}` : ''}\n` +
-  `Return its { disposition, level_applied, floor_hit, why } object exactly. (operation_class deploy_staging is NOT on the floor, so this is L-matrix-driven: L0/L1×staging→human-gate, L2→consilium-gate, L3→auto; a DEGRADED substrate downgrades auto→human-gate, ENV_NOT_READY→block.)`,
+  `${resolveCmd}\n` +
+  `Return its { disposition, level_applied, floor_hit, contract, why } object exactly. (operation_class deploy_staging is NOT on the floor, so this is L-matrix-driven: L0/L1×staging→human-gate, L2→consilium-gate, L3→auto; a DEGRADED substrate downgrades auto→human-gate, ENV_NOT_READY→block; and a DRAFT capability contract downgrades auto→human-gate — the first deploy through a contract no live run has verified is the owner's call, NOT a block.)`,
   { model: 'sonnet', schema: AUTONOMY_SCHEMA, phase: 'Gate', label: 'autonomy-resolve' },   // MDP: deterministic resolver JSON relay (mechanical transport)
 )
 // OBEDIENCE RULE (§5): the flip below is reached ONLY on a fresh disposition==='auto' from this call.
@@ -293,10 +365,14 @@ const disposition = await agent(
 // owner. A deploy that mutates without this gate is an E.B FAILURE, even if it "works".
 if (!disposition || disposition.disposition !== 'auto') {
   const d = disposition ? disposition.disposition : 'null'
-  log(`§3.2 GATE: disposition=${d} (not auto${disposition && disposition.floor_hit ? ', floor_hit' : ''}) — STOP. No mutation. flipped=false. Owner must approve (re-invoke --autonomy L2|L3) or the substrate must recover.`)
+  const escape = contractDraft && !ACCEPT_DRAFT
+    ? 'Owner must approve: re-invoke with acceptDraftContract:true (sanction the first deploy on the draft contract) and/or --autonomy L2|L3'
+    : 'Owner must approve (re-invoke --autonomy L2|L3)'
+  log(`§3.2 GATE: disposition=${d} (not auto${disposition && disposition.floor_hit ? ', floor_hit' : ''}) — STOP. No mutation. flipped=false. ${escape}, or the substrate must recover.`)
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
+    contract_status: contractStatus, contract_evidence: null,   // gated ⇒ nothing deployed ⇒ no live-evidence for the contract
     release: null, healthcheck: null,
     disposition, autonomy: disposition,   // payloadPath: autonomy — the envelope rides the evt:deploy.gated PA so the owner sees WHY
     disclosures: disclosures.concat([`deploy gated by autonomy-policy → ${d}${disposition && disposition.floor_hit ? ' (floor)' : ''}: ${(disposition && disposition.why && disposition.why.slice(-1)[0]) || 'see why[]'}`]),
@@ -313,6 +389,7 @@ const deployed = await agent(
   `Manifest steps: ${JSON.stringify((manifest && manifest.steps) || [])}. Release layout: ${JSON.stringify((manifest && manifest.release_layout) || {})}.\n` +
   `1) Acquire a deploy lockfile (A-9 belt — refuse if a parallel deploy holds it). 2) Build into a fresh releases/<timestamp> dir + wire the shared/.env symlink. 3) Run the prisma migrate deploy step IF the manifest marks it present/verified (skip cleanly if conditional+unverified — note it). 4) FLIP the \`current\` symlink to the new release (this is the atomic deploy — set flipped=true ONLY once current actually points at the new release). 5) systemctl restart the @app/* units (worker only if WORKER_AUTOSTART=1 is set).\n` +
   `CAPTURE-DON'T-FIX: if a step fails, STOP, record steps_done + partial + a diagnosis of what broke and whether \`current\` moved — do NOT retry-hack, edit code, or commit. Set flipped precisely: true iff the symlink now points at the new release, false otherwise.\n` +
+  `🔒 §8.3 BOUNDARY — NEVER WRITE UNDER \`.claude/integrator/**\`: you may READ the manifest and the CNT contract, but you must NOT edit either, and you must NOT flip a contract's status draft→active — not even after a perfect deploy, not "to close the loop". That flip is the INTEGRATOR's prerogative (docs/integrator-module/SPEC.md §8.3: Integrator EQUIPS, Orchestrator EXECUTES). This process REPORTS the live-evidence in its result; the Integrator acts on it.\n` +
   `Return flipped + release + migrated + partial + steps_done + diagnosis + observed.`,
   { model: 'opus', schema: DEPLOY_SCHEMA, phase: 'Deploy', label: 'deploy-flip' },   // MDP: real high-R mutation (build/migrate/flip/restart) + partial-deploy diagnosis (impl/depth)
 )
@@ -328,6 +405,7 @@ if (!flipped) {
   return {
     feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
     result: 'DEPLOY_FAILED', readiness, readiness_reasons: readinessReasons, flipped: false,
+    contract_status: contractStatus, contract_evidence: null,   // the flip never happened ⇒ the contract earned NO live-evidence
     release, healthcheck: null, disposition, autonomy: disposition,
     disclosures: disclosures.concat([`deploy failed before the flip: ${(deployed && deployed.diagnosis) || 'see observed'}`]),
   }
@@ -350,6 +428,30 @@ log(`healthcheck: ${healthy ? 'HEALTHY → DEPLOYED' : `UNHEALTHY (${(healthchec
 // ---- synthesize the two-axis result. INVARIANT: DEPLOYED ⇒ flipped ∧ healthy (both true by
 // construction on this path); an unhealthy flipped release is DEPLOY_FAILED + flipped (→ rollback).
 const result = healthy ? 'DEPLOYED' : 'DEPLOY_FAILED'
+
+// ---- CONTRACT LIVE-EVIDENCE (DEC-DEV-0201) — the other half of the deadlock. A draft CNT was waiting
+// for exactly one thing: a live run proving the deploy-setup works. A DEPLOYED + healthy run IS that
+// evidence, so the contract becomes flippable draft→active and the cycle CLOSES.
+//
+// 🔒 §8.3 IS THE LINE: we REPORT, we do NOT write. The Orchestrator never writes `.claude/integrator/**`
+// and never flips a CNT — that zone belongs to the Integrator (equip vs. execute). Mutating the contract
+// here "to close the loop" would buy convenience with the boundary that keeps the two modules honest.
+// The flip is a follow-up ACT BY THE INTEGRATOR, pointed at the evidence handle below (the RUN_ID).
+const cnt = (manifest && manifest.contract) || null
+const contractEvidence = (result === 'DEPLOYED' && contractDraft) ? {
+  contract: cnt,                        // the CNT id the manifest names — null if it names none (NEVER invented)
+  capability: CAPABILITY,
+  status_observed: contractStatus,      // what the contract said BEFORE this run (draft)
+  verdict: 'live-verified',             // the deploy the draft was waiting for happened, and came up healthy
+  run_id: RUN_ID || null,               // the evidence handle (ledger bracket) — null if the dispatcher did not forward it
+  evidence: { result: 'DEPLOYED', release, healthcheck_healthy: true, env_tier: ENV_TIER },
+  flip_to: 'active',                    // what the contract MAY now become…
+  flip_owner: 'integrator',             // …and who is allowed to write that flip. Not us (§8.3).
+} : null
+if (contractEvidence) {
+  log(`contract live-evidence: ${cnt || `the CNT governing "${CAPABILITY}"`} may now be flipped draft→active (run ${RUN_ID || '<runId not forwarded>'}). REPORTED, not written — the flip is the Integrator's (§8.3).`)
+}
+
 return {
   feature: FEATURE || null,
   capability: CAPABILITY,
@@ -357,10 +459,15 @@ return {
   result,                              // DEPLOYED | DEPLOY_FAILED (flipped) | BLOCKED (handled above)
   readiness,                           // READY | DEGRADED (ENV_NOT_READY returns above)
   readiness_reasons: readinessReasons, // WHY that readiness (env-probe reasons + any local downgrade) — the §3.2 gate must be auditable from run.json alone
+  contract_status: contractStatus,     // the TRUST axis as read from the capability (active | draft) — NOT a readiness input
+  contract_evidence: contractEvidence, // set iff a draft contract just earned its live-verify — REPORT ONLY (§8.3: the Integrator flips it)
   flipped,                             // true here — the charter routes DEPLOY_FAILED+flipped to auto-rollback
   release,
   healthcheck,                         // { healthy, failure_class, diagnosis, observed }
   disposition,                         // the §3.2 resolver envelope
   autonomy: disposition,               // alias (payloadPath: autonomy) — mirrors validate-feature-impl
-  disclosures: healthy ? disclosures : disclosures.concat([`post-flip healthcheck failed (${(healthcheck && healthcheck.failure_class) || 'unknown'}): ${(healthcheck && healthcheck.diagnosis) || 'see observed'} — auto-rollback (E.C)`]),
+  disclosures: (healthy ? disclosures : disclosures.concat([`post-flip healthcheck failed (${(healthcheck && healthcheck.failure_class) || 'unknown'}): ${(healthcheck && healthcheck.diagnosis) || 'see observed'} — auto-rollback (E.C)`]))
+    .concat(contractEvidence ? [
+      `${cnt || `the CNT governing "${CAPABILITY}"`} MAY now be flipped draft→active — evidence: run ${RUN_ID || '<runId was not forwarded; take it from this run\'s ledger bracket>'} deployed release ${release || '(unnamed)'} to ${ENV_TIER} and the healthcheck passed. §8.3: that flip is the INTEGRATOR's write (the deployer / /integrator:provision), never the Orchestrator's — this process only reports the evidence.`,
+    ] : []),
 }
