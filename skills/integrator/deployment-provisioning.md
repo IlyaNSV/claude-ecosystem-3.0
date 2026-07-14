@@ -1,10 +1,10 @@
 ---
-description: How the Integrator EQUIPS a deploy-capability (D3-05/06) for a fabric pilot — authors systemd unit templates (@app/api|web|worker running node dist/main.js under WORKER_AUTOSTART), a releases/<ts>+current symlink layout, a prisma migrate deploy step, and a healthcheck spec (reusing the P7 failure taxonomy) plus a CNT deploy-capability contract. Equips only; the Orchestrator deploy-to-stage process EXECUTES (§8.3). Used by the deployer subagent.
+description: How the Integrator EQUIPS a deploy-capability (D3-05/06) for a fabric pilot — authors systemd unit templates (@app/api|web|worker running node dist/main.js under WORKER_AUTOSTART; ExecStart only via absolute paths / {{NODE_BIN}}/{{PNPM_BIN}}), a releases/<ts>+current symlink layout, prisma codegen (generate) + migrate deploy steps, and a healthcheck spec (reusing the P7 failure taxonomy) plus a CNT deploy-capability contract. Equips only; the Orchestrator deploy-to-stage process EXECUTES (§8.3). Used by the deployer subagent.
 ---
 
 # Deployment Provisioning — Skill for Integrator
 
-**Equip** a deploy-capability for a fabric pilot under PMO zones **D3-05** (Environment Provisioning) and **D3-06** (Deployment & Release Execution). "Equip" = author the deploy **setup** (systemd unit templates, a releases/`<ts>`+`current` layout, a migrate step, a healthcheck spec) **plus** the machine-readable **CNT deploy-capability contract** that hands that setup to the Orchestrator. The equipped capability is **consumed** by `deploy-to-stage` (Orchestrator process, Epic E sub-phase E.B) — which is the thing that actually executes the deploy.
+**Equip** a deploy-capability for a fabric pilot under PMO zones **D3-05** (Environment Provisioning) and **D3-06** (Deployment & Release Execution). "Equip" = author the deploy **setup** (systemd unit templates, a releases/`<ts>`+`current` layout, a prisma codegen + migrate step pair, a healthcheck spec) **plus** the machine-readable **CNT deploy-capability contract** that hands that setup to the Orchestrator. The equipped capability is **consumed** by `deploy-to-stage` (Orchestrator process, Epic E sub-phase E.B) — which is the thing that actually executes the deploy.
 
 > **Reuse existing PMO zones — do NOT invent an ID.** D3-05/D3-06 already exist in `docs/pmo/pmo-map.md`; per DEC-DEV-0040 (phantom-ID prohibition) never coin `D3-deploy` or similar. If you think a zone is missing, note it and surface — do not fabricate.
 
@@ -51,10 +51,10 @@ Four equipment pieces, each a **parameterized template** (authored, not material
 
 ### 1. systemd unit templates — one per service
 
-Written as `<service>.service.template` with placeholders **`{{CURRENT_LINK}}`**, `{{ENV_FILE}}`, `{{PORT}}`, `{{NODE_BIN}}`. Shapes:
+Written as `<service>.service.template` with placeholders **`{{CURRENT_LINK}}`**, `{{ENV_FILE}}`, `{{PORT}}`, `{{NODE_BIN}}` (and `{{PNPM_BIN}}` only where a pnpm-mediated start is unavoidable — see the ExecStart box below). Shapes:
 
 - **`app-api.service.template`** — `ExecStart={{NODE_BIN}} dist/main.js`, `WorkingDirectory={{CURRENT_LINK}}/apps/api`, `EnvironmentFile={{ENV_FILE}}`, `After=network-online.target docker.service`, `Restart=on-failure`.
-- **`app-web.service.template`** — `ExecStart=pnpm --filter @app/web start` (or `{{NODE_BIN}} .next/standalone/server.js` if the app is standalone-built), `WorkingDirectory={{CURRENT_LINK}}/apps/web`, same `EnvironmentFile` / `After`.
+- **`app-web.service.template`** — `ExecStart={{NODE_BIN}} .next/standalone/server.js` (standalone-built Next.js — the preferred form: one resolver, no package-manager in the boot path). If the app is NOT standalone-built, `ExecStart={{PNPM_BIN}} --filter @app/web start` — **never bare `pnpm`** (see the ExecStart box below). `WorkingDirectory={{CURRENT_LINK}}/apps/web`, same `EnvironmentFile` / `After`.
 - **`app-worker.service.template`** — `ExecStart={{NODE_BIN}} dist/main.js`, `WorkingDirectory={{CURRENT_LINK}}/apps/worker`, **`Environment=WORKER_AUTOSTART=1`**, `EnvironmentFile={{ENV_FILE}}`. Add a note: the gate is authored INTO the template; **enabling/starting** this unit is the Orchestrator's `systemctl` call, not the deployer's.
 
 > #### 🔴 The unit MUST point at `current`, NEVER at `{{RELEASE_DIR}}` (DEC-DEV-0203 / FIND-B — a real, live defect)
@@ -69,6 +69,14 @@ Written as `<service>.service.template` with placeholders **`{{CURRENT_LINK}}`**
 >
 > The consumer now **enforces** this: `orchestrator/lib/deploy-manifest.cjs` reads every unit template and, if one is release-pinned, returns `blocking_defects: ['unit-template-release-pinned']` → `deploy-to-stage` refuses the deploy with `ENV_NOT_READY` ("mis-equipped") and tells the owner to re-provision. **A blocked deploy is the intended outcome of a broken template — do NOT "unblock" it by loosening the check; fix the template here.**
 
+> #### 🔴 `ExecStart*`/`ExecStartPre` — NEVER a bare command; absolute paths or `{{…}}` placeholders only (DEC-DEV-0205 / FIND-C2 — a real, live defect)
+>
+> The first real deploy shipped a web unit with **`ExecStart=pnpm --filter @app/web start`** — and that unit can never start. **systemd does not resolve commands through the user shell's PATH.** It uses a fixed compile-time search path that knows nothing about nvm, corepack shims or `~/.local/share/pnpm` — so the service dies at exec (`status=203/EXEC`) before serving a single request. The api-template's form was always right: `ExecStart={{NODE_BIN}} dist/main.js`.
+>
+> The rule: **the first token of every `ExecStart*` / `ExecStartPre` must be an absolute path or a `{{…}}` placeholder that materialises to one.** `{{NODE_BIN}}` and `{{PNPM_BIN}}` are substituted by the consumer's scene-bootstrap (`deploy-to-stage`, E.B) with `command -v node` / `command -v pnpm` — resolved in the ONE moment a user shell is actually present to answer. Prefer `{{NODE_BIN}} <built-entrypoint>` over `{{PNPM_BIN}}` entirely: every extra resolver in the boot path is another thing that can differ between the shell you tested in and the no-PATH world the unit boots in.
+>
+> The consumer **enforces** this: `orchestrator/lib/deploy-manifest.cjs` scans every unit template's `ExecStart*` directives and a bare first token returns `blocking_defects: ['unit-execstart-bare-command']` → `ENV_NOT_READY` ("mis-equipped"), remedy `/integrator:provision`. As with the `{{CURRENT_LINK}}` guard above: a blocked deploy is the intended outcome of a broken template — fix the template here, never the check.
+
 **State clearly in the emitted manifest:** these are `.service` **templates**. The deployer never writes to `/etc/systemd/`, never runs `systemctl daemon-reload` / `enable` / `start` — **materialising** the units (placeholder substitution → `/etc/systemd/system/` → `daemon-reload` → `enable`) is the Orchestrator's scene-bootstrap (E.B), on the far side of the §3.2 gate.
 
 ### 2. releases layout spec (Capistrano-style, D-4)
@@ -82,15 +90,27 @@ Authored as `deploy-manifest.yaml` describing the on-target directory shape:
   shared/            # persistent across releases: .env, logs, uploads (symlinked into each release)
 ```
 
-Idempotency token = the release-dir **timestamp** (per A-1..A-9). The deployer authors the **procedure** as an ordered step-list in the manifest — `build → migrate → flip → (re)start`, with `rollback = flip current to the prior releases/<ts> + restart` — but it **does NOT run any of it**. The step-list is data the consumer reads, not commands the deployer issues.
+Idempotency token = the release-dir **timestamp** (per A-1..A-9). The deployer authors the **procedure** as an ordered step-list in the manifest — `codegen → build → migrate → flip → (re)start` (codegen present when prisma is — §3; it sits FIRST because the per-release install has already happened in scene-bootstrap by the time the step-list runs), with `rollback = flip current to the prior releases/<ts> + restart` — but it **does NOT run any of it**. The step-list is data the consumer reads, not commands the deployer issues.
 
 > **Who BUILDS this tree (DEC-DEV-0203 / FIND-B).** The deployer *describes* the layout; it does not create it. **`deploy-to-stage` (E.B) materialises the whole scene** — expands `deploy_root`'s `~`, creates `releases/` + `shared/{.env,logs,uploads}`, lays out and installs `releases/<ts>`, symlinks shared into it, and installs the systemd units — **idempotently, and only after the §3.2 gate** (it is real mutation). For a while nobody did: the recipe was written and the kitchen was never built, so the first deploy was impossible in principle. If you are tempted to `mkdir` it yourself from here: **don't** — that is the §8.3 line, and the one-line test in the header answers it (*am I producing a file, or changing a live system?*).
 >
 > **`deploy_root` must be a path the consumer can actually resolve.** `~/deploy/<project>` is fine (E.B expands `~` → `$HOME` deterministically, via `deploy-manifest.cjs`). A `~otheruser/…` form is **refused, not guessed** — declare an absolute path instead.
 
-### 3. prisma migrate deploy step
+### 3. prisma codegen + migrate deploy steps
 
-Authored into the manifest as a build-time step: `pnpm --filter @app/db prisma migrate deploy` (resolve the actual db-package name at provision time — read `pnpm-workspace.yaml` / the package's `package.json`; do not hardcode `@app/db` if the pilot names it differently). Marked `conditional_on: packages/db schema present`. If the runtime check finds no schema → emit with `status: unverified` + a note (see the runtime-check warning above).
+Two prisma steps, governed by the **same** runtime check (the §"Spike facts" schema probe): schema present → both emitted normally; absent → both `conditional`/`status: unverified` + a note. They stand or fall together — one flag, two steps.
+
+**Codegen (`prisma generate`) is a MANIFEST step, not an environment assumption (DEC-DEV-0205 / FIND-C1 — a real, live defect).** The release is built in a **clean per-release `node_modules`** — the consumer's scene-bootstrap runs `pnpm install --frozen-lockfile` INSIDE `releases/<ts>` (the rollback-independence decision, DEC-DEV-0203) — so the generated Prisma client is **never there**. A manifest without a codegen step makes `pnpm -r build` fail deterministically (`packages/db: TS2305 — Module '"@prisma/client"' has no exported member 'PrismaClient'`). The pilot's dev checkout masked this for months: its client had been generated historically. Same class as DEC-DEV-0203 FIND-B — an obligation ("generate the client") with no addressee; if no manifest step owns codegen, nobody runs it. Author it as:
+
+```yaml
+- codegen: { command: "pnpm --filter @app/db exec prisma generate", working_directory: "{{RELEASE_DIR}}", on_failure: abort }
+```
+
+positioned **after the per-release install** (scene-bootstrap's job, already done when the step-list starts) and **before `build`** — i.e. first in the step-list.
+
+**Migrate:** `pnpm --filter @app/db exec prisma migrate deploy`. For both steps: resolve the actual db-package name at provision time — read `pnpm-workspace.yaml` / the package's `package.json`; do not hardcode `@app/db` if the pilot names it differently (real pilot: workspace `packages/db`, package `@app/db`). And **keep the literal `prisma` visible in the migrate command** — do not hide it behind an opaque package script (`db:migrate:deploy`): the consumer's codegen guard reads that token as the prisma signal, and an opaque script blinds it (blind ≠ found — the guard honestly refuses to guess what a script does).
+
+The consumer **enforces** the pair: `orchestrator/lib/deploy-manifest.cjs` returns `blocking_defects: ['manifest-missing-prisma-codegen']` for a manifest whose migrate step names prisma but whose step-list carries no codegen → `ENV_NOT_READY` ("mis-equipped"), remedy `/integrator:provision`. Fix the manifest here, never the check.
 
 ### 4. healthcheck spec — authored, NOT built
 
@@ -163,14 +183,16 @@ transformation:
   adapter_description: |
     No transform script. The deployer equips a deploy-setup: systemd unit templates
     (@app/api|web|worker; worker gated on WORKER_AUTOSTART=1), a releases/<ts>+current
-    symlink layout, a prisma migrate deploy step, and a healthcheck spec referencing the
-    P7 failure taxonomy (runtime-readiness.cjs). deploy-to-stage CONSUMES the manifest to
-    build → migrate → flip → (re)start. §8.3: producer equips, consumer executes.
+    symlink layout, prisma codegen + migrate deploy steps, and a healthcheck spec referencing
+    the P7 failure taxonomy (runtime-readiness.cjs). deploy-to-stage CONSUMES the manifest to
+    codegen → build → migrate → flip → (re)start. §8.3: producer equips, consumer executes.
 
 validation:
   pre:                             # deployer asserts BEFORE capability=ready (read-only)
     - check: "build entrypoints resolved (@app/api|web|worker → node dist/main.js | next start)"
     - check: "prisma schema presence verified in packages/db (or explicitly noted absent — runtime)"
+    - check: "codegen step (prisma generate) present in the step-list whenever the migrate step is — clean per-release node_modules has no generated client"
+    - check: "every unit-template ExecStart*/ExecStartPre starts with an absolute path or a {{...}} placeholder — systemd has no user PATH"
     - check: "env-tier declared (dev|staging|prod-stub); prod-stub marked human-gated (floor)"
     - check: "@app/worker unit template carries the WORKER_AUTOSTART=1 gate"
   post:                            # deploy-to-stage asserts AFTER executing (E.B — informational here)
@@ -212,6 +234,8 @@ Before marking the capability ready, the deployer asserts (all read-only — Glo
 
 - build entrypoints resolve (`@app/api|web|worker` → `node dist/main.js` | `next start`) — from `package.json` / `pnpm-workspace.yaml`;
 - prisma schema present in `packages/db` (or explicitly noted absent — the runtime check);
+- the step-list carries a `codegen` step whenever it carries a prisma migrate step, positioned before `build` (§3 — the clean per-release `node_modules` has no generated client);
+- every unit-template `ExecStart*`/`ExecStartPre` starts with an absolute path or a `{{…}}` placeholder (§1 box — systemd has no user PATH);
 - env-tier declared (`dev|staging|prod-stub`); prod-stub marked human-gated (floor);
 - the `@app/worker` unit template carries `WORKER_AUTOSTART=1`.
 
@@ -233,6 +257,9 @@ The `deploy-manifest.yaml` + `CNT-NNN.yaml` the deployer emits will materialize 
 7. **Marking the CNT `active` before a live verify exists.** The consumer (`deploy-to-stage`) does not exist until E.B and cannot be verified until the VM is restored (E.D). Ship `draft`.
 
    > **Shipping `draft` is SAFE — and if it ever looks like it blocks the first deploy, the bug is NOT here (DEC-DEV-0201).** The first live E.B run deadlocked exactly this way: `deploy-to-stage` read `draft` as a *readiness* fact (`ENV_NOT_READY` → `BLOCKED`), so the first deploy was impossible in principle — E.A must ship `draft`, E.B refused non-`active`, and only a deploy can produce the verify. **The fix went into the CONSUMER, not here:** a draft contract is a *trust* fact — it **human-gates** the deploy (`--contract-status draft` → `auto → human-gate`), it does not block it. So do NOT "solve" a blocked deploy by shipping `active` — that would be a lie about a contract nobody has verified, and it would hand an unverified capability a silent auto-deploy. Keep shipping `draft`.
+
+8. **🔴 A prisma manifest without a codegen step (DEC-DEV-0205 / FIND-C1).** The release's `node_modules` is per-release and CLEAN (`pnpm install --frozen-lockfile` inside `releases/<ts>`) — no manifest step generates the Prisma client ⇒ `pnpm -r build` fails deterministically (TS2305), and only there, never in the dev checkout (whose client was generated historically). Codegen sits first in the step-list (§3). The consumer blocks this (`blocking_defects: ['manifest-missing-prisma-codegen']`) — fix the manifest, never the check.
+9. **🔴 A bare command in `ExecStart*`/`ExecStartPre` (DEC-DEV-0205 / FIND-C2).** `ExecStart=pnpm …` dies at exec (`status=203/EXEC`): systemd has no user PATH. Absolute paths or `{{NODE_BIN}}`/`{{PNPM_BIN}}` placeholders only (§1 box; scene-bootstrap materialises them via `command -v node` / `command -v pnpm`). The consumer blocks this too (`blocking_defects: ['unit-execstart-bare-command']`).
 
 ## Who flips the CNT `draft → active` (and on what evidence)
 

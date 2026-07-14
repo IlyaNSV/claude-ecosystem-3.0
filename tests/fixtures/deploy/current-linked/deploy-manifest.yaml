@@ -3,6 +3,9 @@
 # FIXTURE: the SAME manifest, beside CORRECT unit templates — parameterized by {{CURRENT_LINK}},
 # so the units follow the `current` symlink. Flip + restart IS the deploy; the same flip backwards
 # IS the rollback (E.C). This is what skills/integrator/deployment-provisioning.md §1 now emits.
+# Per DEC-DEV-0205 the step-list also carries the prisma CODEGEN step first (FIND-C1: the clean
+# per-release node_modules has no generated client) and the migrate command keeps the literal
+# `prisma` visible (the consumer's codegen guard reads that token as the prisma signal).
 manifest_version: 1
 capability: deploy-staging
 env_tier: staging
@@ -18,9 +21,10 @@ layout:
   release_dir: "{{DEPLOY_ROOT}}/releases/{{TIMESTAMP}}"
   timestamp_format: "YYYYMMDDTHHmmssZ"
 
-steps:                             # 4, ordered
+steps:                             # 5, ordered — codegen FIRST (after the per-release install, before build)
+  - codegen: { command: "pnpm --filter @app/db exec prisma generate", working_directory: "{{RELEASE_DIR}}", status: verified, on_failure: abort }
   - build:   { command: "pnpm -r build", working_directory: "{{RELEASE_DIR}}", on_failure: abort }
-  - migrate: { command: "pnpm --filter @app/db db:migrate:deploy", status: verified, on_failure: abort }
+  - migrate: { command: "pnpm --filter @app/db exec prisma migrate deploy", status: verified, on_failure: abort }
   - flip:    { type: symlink_atomic }
   - restart: { units: [mft-api, mft-web, mft-worker], on_failure: rollback }
 
