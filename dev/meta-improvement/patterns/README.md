@@ -16,6 +16,7 @@
 | [Blind Pre-registered Comparison](blind-comparison-protocol.md) | Qualitative/semantic comparison where the verdict is a judgment (not a passing test), esp. when the evaluator has a stake | provisional | 1 (DEC-DEV-0132 — P2 jury vs 1-GP) |
 | [DA Subagent-Type Contract](da-subagent-type-contract.md) | Authoring/auditing any path that spawns the DA subagent; «Agent type not found» = loud error, no silent fallback | provisional | 2 audit clusters (DEC-DEV-0064) |
 | [Config-Failure-First Triage](config-failure-first-triage.md) | Agent/subagent/hook/process misbehaved — BEFORE blaming the model or patching the prompt blind, run the harness-cause checklist | provisional | 1 (DEC-DEV-0144 / VC-096 — FB-020) |
+| [Context Seam](context-seam.md) | Многосессионная единица работы; ~45%+ окна или симптомы потери контекста; продолжение трека с живым `dev/<track>/SEAM.md` | validated (R10-тест инстанса #3 = PARTIAL: содержательная передача чистая; SSOT — `dev/deferred/CONTEXT_SEAM_PROTOCOL.md`) | 3 (DEC-DEV-0197, 0202, 0207; промоушен — 0208) |
 
 ## How to use
 
