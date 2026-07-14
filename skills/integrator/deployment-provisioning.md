@@ -51,13 +51,25 @@ Four equipment pieces, each a **parameterized template** (authored, not material
 
 ### 1. systemd unit templates — one per service
 
-Written as `<service>.service.template` with placeholders `{{RELEASE_DIR}}`, `{{ENV_FILE}}`, `{{PORT}}`, `{{NODE_BIN}}`. Shapes:
+Written as `<service>.service.template` with placeholders **`{{CURRENT_LINK}}`**, `{{ENV_FILE}}`, `{{PORT}}`, `{{NODE_BIN}}`. Shapes:
 
-- **`app-api.service.template`** — `ExecStart={{NODE_BIN}} dist/main.js`, `WorkingDirectory={{RELEASE_DIR}}/apps/api`, `EnvironmentFile={{ENV_FILE}}`, `After=network-online.target docker.service`, `Restart=on-failure`.
-- **`app-web.service.template`** — `ExecStart=pnpm --filter @app/web start` (or `{{NODE_BIN}} .next/standalone/server.js` if the app is standalone-built), same `EnvironmentFile` / `After`.
-- **`app-worker.service.template`** — `ExecStart={{NODE_BIN}} dist/main.js`, `WorkingDirectory={{RELEASE_DIR}}/apps/worker`, **`Environment=WORKER_AUTOSTART=1`**, `EnvironmentFile={{ENV_FILE}}`. Add a note: the gate is authored INTO the template; **enabling/starting** this unit is the Orchestrator's `systemctl` call, not the deployer's.
+- **`app-api.service.template`** — `ExecStart={{NODE_BIN}} dist/main.js`, `WorkingDirectory={{CURRENT_LINK}}/apps/api`, `EnvironmentFile={{ENV_FILE}}`, `After=network-online.target docker.service`, `Restart=on-failure`.
+- **`app-web.service.template`** — `ExecStart=pnpm --filter @app/web start` (or `{{NODE_BIN}} .next/standalone/server.js` if the app is standalone-built), `WorkingDirectory={{CURRENT_LINK}}/apps/web`, same `EnvironmentFile` / `After`.
+- **`app-worker.service.template`** — `ExecStart={{NODE_BIN}} dist/main.js`, `WorkingDirectory={{CURRENT_LINK}}/apps/worker`, **`Environment=WORKER_AUTOSTART=1`**, `EnvironmentFile={{ENV_FILE}}`. Add a note: the gate is authored INTO the template; **enabling/starting** this unit is the Orchestrator's `systemctl` call, not the deployer's.
 
-**State clearly in the emitted manifest:** these are `.service` **templates**. The deployer never writes to `/etc/systemd/`, never runs `systemctl daemon-reload` / `enable` / `start`.
+> #### 🔴 The unit MUST point at `current`, NEVER at `{{RELEASE_DIR}}` (DEC-DEV-0203 / FIND-B — a real, live defect)
+>
+> The first version of this skill parameterized the units by **`{{RELEASE_DIR}}`** — a *concrete* `releases/<ts>`. That template is **worse than useless: it is silently, invisibly wrong.**
+>
+> A unit bolted to one release is **deaf to the flip.** `deploy-to-stage` moves `current` → the new release; the unit does not move with it; `systemctl restart` faithfully restarts **the old release**. And then the healthcheck **PASSES** — the old code is still serving, healthy, on the same port. The run reports `DEPLOYED`. **Nothing was deployed.** Worse: that false green is exactly the `contract_evidence` that flips a never-live-verified `draft` CNT to `active` — so a broken capability certifies *itself* as working. It also breaks **E.C rollback** for the same reason, in the same silence: flipping `current` back changes nothing either.
+>
+> The Capistrano contract is one line: **units reference `current`; the flip is the deploy.** `WorkingDirectory={{CURRENT_LINK}}/apps/api` — systemd `chdir()`s at *exec* time, so the symlink is resolved fresh on every (re)start. `{{RELEASE_DIR}}` still belongs in the **manifest's `build` step** (`working_directory: {{RELEASE_DIR}}` — a build DOES belong to one specific release). It must never appear in a **unit**.
+>
+> `{{ENV_FILE}}` follows the same rule: it points at **`{{DEPLOY_ROOT}}/shared/.env`** (persistent across releases), never into a release dir.
+>
+> The consumer now **enforces** this: `orchestrator/lib/deploy-manifest.cjs` reads every unit template and, if one is release-pinned, returns `blocking_defects: ['unit-template-release-pinned']` → `deploy-to-stage` refuses the deploy with `ENV_NOT_READY` ("mis-equipped") and tells the owner to re-provision. **A blocked deploy is the intended outcome of a broken template — do NOT "unblock" it by loosening the check; fix the template here.**
+
+**State clearly in the emitted manifest:** these are `.service` **templates**. The deployer never writes to `/etc/systemd/`, never runs `systemctl daemon-reload` / `enable` / `start` — **materialising** the units (placeholder substitution → `/etc/systemd/system/` → `daemon-reload` → `enable`) is the Orchestrator's scene-bootstrap (E.B), on the far side of the §3.2 gate.
 
 ### 2. releases layout spec (Capistrano-style, D-4)
 
@@ -71,6 +83,10 @@ Authored as `deploy-manifest.yaml` describing the on-target directory shape:
 ```
 
 Idempotency token = the release-dir **timestamp** (per A-1..A-9). The deployer authors the **procedure** as an ordered step-list in the manifest — `build → migrate → flip → (re)start`, with `rollback = flip current to the prior releases/<ts> + restart` — but it **does NOT run any of it**. The step-list is data the consumer reads, not commands the deployer issues.
+
+> **Who BUILDS this tree (DEC-DEV-0203 / FIND-B).** The deployer *describes* the layout; it does not create it. **`deploy-to-stage` (E.B) materialises the whole scene** — expands `deploy_root`'s `~`, creates `releases/` + `shared/{.env,logs,uploads}`, lays out and installs `releases/<ts>`, symlinks shared into it, and installs the systemd units — **idempotently, and only after the §3.2 gate** (it is real mutation). For a while nobody did: the recipe was written and the kitchen was never built, so the first deploy was impossible in principle. If you are tempted to `mkdir` it yourself from here: **don't** — that is the §8.3 line, and the one-line test in the header answers it (*am I producing a file, or changing a live system?*).
+>
+> **`deploy_root` must be a path the consumer can actually resolve.** `~/deploy/<project>` is fine (E.B expands `~` → `$HOME` deterministically, via `deploy-manifest.cjs`). A `~otheruser/…` form is **refused, not guessed** — declare an absolute path instead.
 
 ### 3. prisma migrate deploy step
 
@@ -207,6 +223,7 @@ The `deploy-manifest.yaml` + `CNT-NNN.yaml` the deployer emits will materialize 
 
 ## Anti-patterns
 
+0. **🔴 A unit template pinned to `{{RELEASE_DIR}}`** (or to any literal `releases/<ts>` path). The single most dangerous defect this skill can ship, because it fails *green*: the flip is inert, `restart` revives the OLD release, the healthcheck passes, and the run reports a `DEPLOYED` that never happened — then hands the draft CNT a fraudulent live-verify. Units reference **`{{CURRENT_LINK}}`**. See the boxed note in §1. The consumer blocks this (`blocking_defects: ['unit-template-release-pinned']`) — that block is *correct*; fix the template, never the check.
 1. **Running `systemctl` / `ssh` / `pnpm build` / `prisma migrate` / a symlink-flip from this capability.** §8.3 violation — the #1 failure mode of E.A. This skill authors files and a contract; it changes no live service.
 2. **Inventing a new pmo-map ID** instead of reusing D3-05/D3-06 (DEC-DEV-0040 phantom-ID prohibition).
 3. **Materializing `.service` files into `/etc/systemd/`** (or anywhere on the target). Templates are authored; installing them is E.B.

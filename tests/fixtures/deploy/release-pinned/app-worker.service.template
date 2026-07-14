@@ -1,0 +1,16 @@
+[Unit]
+Description=@app/worker (BullMQ) — my-first-test staging
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{RELEASE_DIR}}/apps/worker
+EnvironmentFile={{ENV_FILE}}
+Environment=WORKER_AUTOSTART=1
+ExecStart={{NODE_BIN}} dist/main.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

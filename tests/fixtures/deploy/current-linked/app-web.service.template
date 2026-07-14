@@ -1,0 +1,16 @@
+[Unit]
+Description=@app/web (Next.js) — my-first-test staging
+After=network-online.target docker.service mft-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory={{CURRENT_LINK}}/apps/web
+EnvironmentFile={{ENV_FILE}}
+Environment=PORT={{PORT}}
+ExecStart={{NODE_BIN}} .next/standalone/server.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

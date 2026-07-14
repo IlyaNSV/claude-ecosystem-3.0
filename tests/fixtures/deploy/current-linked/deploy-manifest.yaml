@@ -1,0 +1,37 @@
+# deploy-manifest.yaml — deploy-capability equipment (Integrator deployer, E.A).
+#
+# FIXTURE: the SAME manifest, beside CORRECT unit templates — parameterized by {{CURRENT_LINK}},
+# so the units follow the `current` symlink. Flip + restart IS the deploy; the same flip backwards
+# IS the rollback (E.C). This is what skills/integrator/deployment-provisioning.md §1 now emits.
+manifest_version: 1
+capability: deploy-staging
+env_tier: staging
+status: draft
+contract: CNT-005
+deploy_root: "~/deploy/my-first-test"
+
+layout:
+  releases_dir: "{{DEPLOY_ROOT}}/releases"
+  current_link: "{{DEPLOY_ROOT}}/current"
+  shared_dir:   "{{DEPLOY_ROOT}}/shared"
+  shared_contents: [.env, logs/, uploads/]
+  release_dir: "{{DEPLOY_ROOT}}/releases/{{TIMESTAMP}}"
+  timestamp_format: "YYYYMMDDTHHmmssZ"
+
+steps:                             # 4, ordered
+  - build:   { command: "pnpm -r build", working_directory: "{{RELEASE_DIR}}", on_failure: abort }
+  - migrate: { command: "pnpm --filter @app/db db:migrate:deploy", status: verified, on_failure: abort }
+  - flip:    { type: symlink_atomic }
+  - restart: { units: [mft-api, mft-web, mft-worker], on_failure: rollback }
+
+unit_templates:
+  mft-api:    app-api.service.template
+  mft-web:    app-web.service.template
+  mft-worker: app-worker.service.template
+
+healthcheck:
+  per_service:
+    api:    { url: "http://localhost:{{PORT}}/health", expect: 2xx, boot_window_sec: 30, retry: "3 x 10s" }
+    web:    { url: "http://localhost:{{PORT}}/", expect: 2xx }
+    worker: { method: process, check: "systemctl is-active mft-worker.service" }
+  failure_taxonomy: runtime-readiness.cjs::smokePlan.failure_classes
