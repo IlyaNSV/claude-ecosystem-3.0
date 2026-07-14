@@ -281,7 +281,7 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 3. **Проверь [ROADMAP.md](ROADMAP.md) секцию "Где мы сейчас"** — может быть устарела относительно git log
 4. **D7 ritual** (см. [`dev/meta-improvement/`](dev/meta-improvement/)):
    - **Фаза (kickoff / closure) и patch-cut здесь НЕ дублируются** — их триггеры и обязательства живут в SSOT-таблице «Process triggers» выше (строки «перед фазой / после фазы» и «собрался резать версию / доставлять в пилот»). Сами чеклисты: [`checklists/phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) (+ соответствующий readiness) · [`checklists/phase-closure.md`](dev/meta-improvement/checklists/phase-closure.md) · [`checklists/patch-cut.md`](dev/meta-improvement/checklists/patch-cut.md) (нарезка версии из CHANGELOG `[Unreleased]`; контракт накопления + cut — CONVENTIONS §11). *(Раньше эти три строки стояли и здесь, и в таблице — расходящимися формулировками; DEC-DEV-0197 / D12.)*
-   - **Паттерны — какой под какой триггер** (8 шт.; колонка «When applicable» в [`patterns/README.md`](dev/meta-improvement/patterns/README.md) — она же SSOT, если разойдётся с этим списком):
+   - **Паттерны — какой под какой триггер** (9 шт.; колонка «When applicable» в [`patterns/README.md`](dev/meta-improvement/patterns/README.md) — она же SSOT, если разойдётся с этим списком):
 
      | Триггер | Паттерн |
      |---|---|
@@ -293,6 +293,7 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
      | качественное/семантическое сравнение, где вердикт — суждение (особенно когда у судьи есть stake) | `blind-comparison-protocol.md` |
      | пишу/аудирую путь, спавнящий DA-субагента | `da-subagent-type-contract.md` |
      | агент/субагент/хук/процесс повёл себя не так — ДО того как винить модель | `config-failure-first-triage.md` |
+     | многосессионная единица; ~45%+ окна / симптомы потери контекста; живой `dev/<track>/SEAM.md` | `context-seam.md` (SSOT механизма — `dev/deferred/CONTEXT_SEAM_PROTOCOL.md`) |
 
    - При memory drift: [`skills/memory-sync.md`](dev/meta-improvement/skills/memory-sync.md)
    - Verify update outcome: [`scripts/verify-update.sh`](dev/meta-improvement/scripts/verify-update.sh)
