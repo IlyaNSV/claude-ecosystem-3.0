@@ -1,8 +1,8 @@
-# SEAM — PROD Readiness Campaign / Epic E live-валидация (DEC-DEV-0198 · 0199 · 0201 · 0203 · 0205)
+# SEAM — PROD Readiness Campaign / Epic E live-валидация (DEC-DEV-0198 · 0199 · 0201 · 0203 · 0205 · 0206)
 
 status: ACTIVE
 seam_written: 2026-07-14 (сессия Opus 4.8 → передача Fable 5)
-seam_updated: 2026-07-14 (сессия Fable 5, раунд 3: шаги 1-2 исполнены, S1 ×2 прогнан, фикс 0205 построен)
+seam_updated: 2026-07-14 поздний (сессия Fable 5, раунд 3: S1 ×3 прогнан, фиксы 0205+0206 смёржены; ПАУЗА по команде владельца — resume этой же сессии)
 track_ssot: `dev/plans/PROD_READINESS_CAMPAIGN.md`
 
 ## 🛑 СТОП-БЛОК
@@ -87,11 +87,14 @@ ssh -p 2222 -i /c/Users/pw201/.ssh/vm-claude-factory -o BatchMode=yes cc-dev@127
 
 ## Следующий шаг — В ИМПЕРАТИВЕ
 
-> **✅ Исполнено 2026-07-14 (раунд 3, сессия Fable 5):** шаг 1 — доставка `42827f8` (пилот sync `4fe8748`, verify Healthy, wipe-protection цела); шаг 2 — пере-провижн (CNT-005 draft, шаблоны `{{CURRENT_LINK}}`, коммит пилота `5375159`); флаки BR-079 пилота устранён правкой теста (`aa7a049`); **S1 прогнан дважды** (`kvikd4`: умер на префлайте из-за флаки; `kxe0ls`: §3.2-гейт auto@L3 + scene-bootstrap ВПЕРВЫЕ исполнены живьём и корректны — упал на build в чистом релизе: FIND-C1 нет `prisma generate` в манифесте, FIND-C2 bare ExecStart у web-юнита). **Фикс DEC-DEV-0205 построен, verify=0** (ветка `feat/epic-e-round3`, PR — см. журнал кампании). Снапшот VM `round3-pre-run` снят до всего.
+> **✅ Исполнено 2026-07-14 (раунд 3, сессия Fable 5, три захода S1):**
+> - Шаги 1-2 старого императива: доставка `42827f8` + пере-провижн (`5375159`) → флаки BR-079 устранён (`aa7a049`) → **заход 2 `kxe0ls`**: §3.2-гейт auto@L3 и scene-bootstrap ВПЕРВЫЕ живьём, упал на build в релизе → **фикс 0205** (PR #198, main `fa38f16`): codegen-шаг + запрет bare ExecStart + 2 гейта.
+> - Доставка `fa38f16` (sync `f9992a3`) + пере-провижн v2 (`1a774a6`, валидатор `blocking_defects: []`) → **заход 3 `l1fi9c`**: build зелёный, но **ложно-негативный DEPLOY_FAILED** — build-test-агент не дождался ~7.5-мин сьюта (сам поставил 5-мин таймаут, бросил фон; брошенный фон дошёл 100% зелёным: 865/865+92/92+14/14) → **фикс 0206** (ветка `fix/buildtest-gate-wait`): промпт-структура ожидания (пер-workspace блокирующие вызовы `timeout:600000`) + `suite_completed` (UNKNOWN → `BLOCKED×READY/test-gate-incomplete` → ре-ран, не escalate). Статус merge — см. журнал кампании (последняя запись).
+> - Снапшот VM `round3-pre-run`. Оба раза §8.3 чист, докер нетронут, самолечения нет (одна попытка ре-драйва остановлена оператором).
 
-**1-NEW. Домёржить PR фикса 0205** (мандат владельца на merge завершённых отрезков), затем **доставить в пилот** (`/ecosystem:update`) и **пере-провижнить** (`/integrator:provision deploy-staging` → манифест переавторится: codegen-шаг + прозрачный migrate + `{{PNPM_BIN}}`; текущий инстанс с opaque `db:migrate:deploy` начнёт флагаться гейтом — это правильно, лечится тем же провижном).
+**1-RESUME. Убедиться, что фикс 0206 в main и доставлен в пилот** (`git log origin/main` — merge PR ветки `fix/buildtest-gate-wait`; в пилоте `grep -c suite_completed .claude/orchestrator/processes/deploy-to-stage.mjs` ≥1 — если нет: `/ecosystem:update`). Ре-провижн НЕ нужен (0206 не трогает оснастку).
 
-**2-NEW. S1 третий заход** — та же команда: `/orchestrator:run deploy-to-stage --feature FM-006 --capability deploy-staging --env-tier staging --autonomy L3 --accept-draft-contract`. Ожидание: codegen → build → migrate → флип → рестарт юнитов → healthcheck 2xx → `DEPLOYED` + `contract_evidence`.
+**2-RESUME. S1 заход 4** — та же команда: `/orchestrator:run deploy-to-stage --feature FM-006 --capability deploy-staging --env-tier staging --autonomy L3 --accept-draft-contract`. Ожидание теперь полное: build-test (пер-workspace, ~8-10 мин) → §3.2 auto → scene (новый релиз) → codegen → build → migrate → флип `current` → рестарт юнитов → healthcheck 2xx → `DEPLOYED` + `contract_evidence`. Известное состояние сцены: старый релиз `20260714T174413Z` с упавшим build лежит в `releases/` — это норма, не чистить (прунинг — вопрос владельцу №2).
 
 **3. Раунд 3 остаток (порядок важен — сценарии связаны состоянием `releases/`):**
 - **S1 — happy deploy.** `/orchestrator:run deploy-to-stage`, args: `feature=FM-006, capability=deploy-staging, envTier=staging, autonomyOverride=L3, acceptDraftContract=true`. Ждать: Gate → `auto` · сцена материализуется (`~/deploy/my-first-test/{releases/<ts>, shared, current}`) · `pnpm install` **внутри** релиза · миграции · **атомарный флип** · systemd-юниты (на `current`!) · healthcheck `/health` 2xx · **`result: DEPLOYED`, `flipped: true`, `contract_evidence` заполнен**.
