@@ -140,20 +140,100 @@ function extractModelMap(source) {
 }
 
 /**
- * Compact the Workflow return value into the fields the ndjson line carries.
- * Opportunistic: pulls whatever of verdict / result / readiness / conflicts /
- * counts is present (processes return different shapes — P4 vs P6 vs P7). Never
- * throws on a missing/oddly-shaped field.
+ * OUTCOME-KEY CONTRACT (DEC-DEV-0200 — the ledger must not lose the outcome).
+ *
+ * The processes do NOT agree on one key for "how did the run end". They never did;
+ * the ledger just never reconciled with them, so it read `result` and silently wrote
+ * `null` for every process that names its outcome otherwise. That is not a cosmetic
+ * gap: a P7 run whose live boot FAILED (`p7_result: 'FAILS_TO_START'`) landed in
+ * `run.json` as `result: null` — indistinguishable from a green run. A ledger that
+ * greens a failure is not a trace (SUBSTRATE_GRADUATION_GATE component 2).
+ *
+ * These are the processes' OWN field names, in precedence order. The ledger READS
+ * them; it never renames them and never asks a process to adopt a new one
+ * (DEC-DEV-0012: do not "improve" a schema you only consume):
+ *   result    — P6 validate-feature-impl · deploy-to-stage (E.B) · rollback-release (E.C)
+ *   p7_result — P7 runtime-smoke-readiness            ← the mis-key that hid a failed boot
+ *   go_gate   — P5 feature-to-tdd-impl (which has NO top-level `result` at all; P6 also
+ *               carries go_gate as an alias, but its `result` wins first)
+ * P2 / P3 / P4 return no scalar outcome at all — for those `result: null` is CORRECT
+ * (nothing was lost), and `outcome_key: null` says so explicitly.
+ */
+const OUTCOME_KEYS = ['result', 'p7_result', 'go_gate'];
+
+/** Keys summarizeResult knowingly reads off a process return (`verdict` has its own column). */
+const READ_OUTCOME_KEYS = new Set(OUTCOME_KEYS.concat(['verdict']));
+
+/**
+ * An outcome-SHAPED key name: `result`, `p7_result`, `go_gate`, `verdict`, `x_verdict`…
+ * Used ONLY for the self-disclosure below — never to guess a value.
+ */
+const OUTCOME_SHAPED_KEY = /^(?:.*_)?(?:result|gate|verdict)$/;
+
+/** A plain object (not null, not an array) — the only thing worth descending into. */
+function isPlainObject(v) {
+  return !!v && typeof v === 'object' && !Array.isArray(v);
+}
+
+/**
+ * Resolve the run outcome + WHERE it was read from. Top-level keys first (the normal
+ * case), then one level down inside a `verdict` OBJECT — a real ledger-row shape: when
+ * the whole process return is passed wrapped, the outcome and readiness sit one level
+ * down and the old summary read `null` straight over the top of them.
+ * Returns { outcome, key } — key is the provenance (`p7_result`, `verdict.go_gate`, …).
+ */
+function pickOutcome(r) {
+  for (const k of OUTCOME_KEYS) {
+    if (r[k] != null) return { outcome: r[k], key: k };
+  }
+  if (isPlainObject(r.verdict)) {
+    for (const k of OUTCOME_KEYS) {
+      if (r.verdict[k] != null) return { outcome: r.verdict[k], key: `verdict.${k}` };
+    }
+  }
+  return { outcome: null, key: null };
+}
+
+/** Read `key` flat, else from inside a `verdict` object (the wrapped-envelope shape). */
+function pickFlatOrNested(r, key) {
+  if (r[key] != null) return r[key];
+  if (isPlainObject(r.verdict) && r.verdict[key] != null) return r.verdict[key];
+  return null;
+}
+
+/**
+ * Compact the Workflow return value into the fields run.json / the ndjson line carry.
+ * Opportunistic: pulls whatever of verdict / outcome / readiness / readiness_reasons /
+ * conflicts / counts is present (the processes return genuinely different shapes — P4 vs
+ * P5 vs P6 vs P7). Never throws on a missing/oddly-shaped field.
+ *
+ * The five original keys keep their exact meaning and position (`impl-evidence.cjs`
+ * reads verdict/result/readiness off `result_summary`) — this widens what is READ, it
+ * does not rename what is WRITTEN. Three things are new:
+ *   readiness_reasons — carried when the process gives them. deploy-to-stage and P7 both
+ *                       promise, in-code, that "the gate must be auditable from run.json
+ *                       alone"; the summary used to drop the field, so it was not.
+ *   outcome_key       — provenance: which key the outcome came from (null ⇒ the process
+ *                       returned no outcome — a P2/P3/P4-class run, not a lost one).
+ *   unread_outcome_keys — the self-disclosure. An outcome-shaped key the ledger does NOT
+ *                       read is exactly the defect that hid FAILS_TO_START for a whole
+ *                       live run. Had the ledger disclosed `['p7_result']` on day one, the
+ *                       mis-key would have been visible in the first run.json instead of
+ *                       being found by hand months later. Normally `[]`.
  */
 function summarizeResult(result) {
   const r = result && typeof result === 'object' ? result : {};
   const conflicts = Array.isArray(r.conflicts) ? r.conflicts.length : (r.conflicts != null ? undefined : 0);
+  const picked = pickOutcome(r);
   return {
-    verdict: r.verdict != null ? r.verdict : (r.result != null ? r.result : null),
-    result: r.result != null ? r.result : null,
-    readiness: r.readiness != null ? r.readiness : null,
+    verdict: r.verdict != null ? r.verdict : picked.outcome,
+    result: picked.outcome,
+    readiness: pickFlatOrNested(r, 'readiness'),
+    readiness_reasons: pickFlatOrNested(r, 'readiness_reasons'),
     conflicts: conflicts,
     counts: r.counts != null ? r.counts : null,
+    outcome_key: picked.key,
+    unread_outcome_keys: Object.keys(r).filter((k) => OUTCOME_SHAPED_KEY.test(k) && !READ_OUTCOME_KEYS.has(k)),
   };
 }
 
@@ -284,9 +364,16 @@ function finishRun(opts) {
     verdict: summary.verdict,
     result: summary.result,
     readiness: summary.readiness,
+    readiness_reasons: summary.readiness_reasons,   // WHY that readiness — greppable straight off the ndjson
+    outcome_key: summary.outcome_key,               // provenance of `result` (null ⇒ the process returned no outcome)
     conflicts: summary.conflicts,
     counts: summary.counts,
   };
+  // Alarm, not noise: only ever present when the ledger saw an outcome-shaped key it does
+  // not read — the one condition under which a row may be silently under-reporting a run.
+  if (summary.unread_outcome_keys && summary.unread_outcome_keys.length) {
+    ledgerEntry.unread_outcome_keys = summary.unread_outcome_keys;
+  }
   if (o.tokens != null) ledgerEntry.tokens = o.tokens;
   const app = appendLedgerLine(o.baseRoot, ledgerEntry);
 
@@ -408,6 +495,9 @@ if (require.main === module) {
 module.exports = {
   RUN_LEDGER_VERSION,
   STATUS,
+  OUTCOME_KEYS,          // the outcome-key contract — the process-source guard test reconciles against THIS
+  READ_OUTCOME_KEYS,
+  OUTCOME_SHAPED_KEY,
   defaultBaseRoot,
   slugifyProcess,
   deriveRunId,
