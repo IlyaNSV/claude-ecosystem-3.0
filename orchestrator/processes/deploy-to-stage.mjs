@@ -251,8 +251,18 @@ const BUILD_SCHEMA = {
   required: ['passed'],
   properties: {
     passed: { type: 'boolean' },                               // clean build AND suite both green (D-6)
+    // DEC-DEV-0206 (additive — NO field renamed, DEC-DEV-0012): a POSITIVE affirmation that the gate
+    // reached a FINAL exit code for the build AND every workspace of the suite. `false` ⇒ the
+    // MEASUREMENT did not finish (a Bash-timeout kill, an abandoned background poll, an "UNKNOWN"): the
+    // gate could not establish a verdict. That is a "could not judge" (→ BLOCKED, re-run), NOT a code
+    // RED (→ DEPLOY_FAILED, escalate) — collapsing the two is the DEC-DEV-0201 axis error one layer
+    // down (measurement-incomplete vs code-failed). ABSENT ⇒ treated as completed (back-compat: a RED
+    // from a relay that predates this field routes to DEPLOY_FAILED exactly as before). Only matters
+    // when `passed` is false — a green build is a completed measurement by construction.
+    suite_completed: { type: 'boolean' },
     build: { type: 'string' },
     suite: { type: 'string' },
+    per_workspace: { type: 'array', items: { type: 'object' } },  // [{ workspace, exit, passed, failed, duration_s }] — durable per-ws evidence + growth-headroom signal
     failures: { type: 'array', items: { type: 'string' } },
   },
 }
@@ -405,14 +415,35 @@ if (contractDraft) {
 // (c) clean build + full suite (D-6 — a deploy ships only green code). A RED build/test over a READY
 // substrate is a real DEPLOY_FAILED (code regression), NOT an env artifact → route escalate, nothing flipped.
 const build = await agent(
-  `Clean-build and test the deployable for the ${ENV_TIER} release (D-6 — the last code gate before a mutation).\n` +
-  `Run the monorepo build and the suite via Bash and relay the REAL exit results (do NOT infer green): ` +
-  `${JSON.stringify(VALIDATION) !== '{}' ? `commands: ${JSON.stringify(VALIDATION)}` : 'discover from the manifest step-list / repo manifests — typically `pnpm -r build` then the test script'}.\n` +
-  `passed = (build green AND suite green). List every failure verbatim in failures[]. Do NOT deploy, flip, migrate, or commit — this is the build gate only.`,
+  `Clean-build and run the FULL test suite for the ${ENV_TIER} release (D-6 — the LAST code gate before a mutation). This gate has ONE job: establish a TRUE verdict, and NEVER confuse "the code is RED" with "I could not finish measuring" (DEC-DEV-0206).\n` +
+  `\n` +
+  `WAIT-STRUCTURE — this is the CONTRACT, not advice. A stochastic wait strategy is exactly what produced a FALSE DEPLOY_FAILED on run l1fi9c: a 5-min Bash timeout KILLED a ~7.5-min suite, the retry was thrown to the background and abandoned mid-poll, and the gate returned passed:false on a suite that finished 100% GREEN six minutes later. A false negative here BURNS THE RUN to escalation over code that was fine.\n` +
+  `1) BUILD — ONE BLOCKING Bash call, and set the Bash tool \`timeout\` parameter to 600000 (10 min, the tool ceiling) EXPLICITLY. ${JSON.stringify(VALIDATION) !== '{}' && VALIDATION.build ? `Command: ${JSON.stringify(VALIDATION.build)}.` : 'Command: \`pnpm -r build\` (or the build the manifest step-list declares).'} Wait for its REAL exit code in-line. Do NOT infer green.\n` +
+  `2) SUITE — run it PER-WORKSPACE, SEQUENTIALLY: each workspace is a SEPARATE BLOCKING Bash call with the Bash tool \`timeout\` set to 600000 EXPLICITLY. ${JSON.stringify(VALIDATION) !== '{}' && VALIDATION.test ? `Base test command: ${JSON.stringify(VALIDATION.test)} — run it once per workspace.` : 'For each workspace run \`pnpm --filter <workspace> test\`.'} Enumerate the workspaces FIRST from \`pnpm-workspace.yaml\` (its \`packages:\` globs); if it is absent, from the actual package dirs (apps/*, packages/*). Run one workspace, WAIT for its exit code, record it, THEN start the next. Per-workspace calls are the DURABLE fix, not a nicety: the whole suite is already ~7.5 min and the tool ceiling is 10 min, so a single \`pnpm -r test\` call will one day exceed the ceiling and break this gate exactly as l1fi9c broke.\n` +
+  `\n` +
+  `HARD PROHIBITIONS:\n` +
+  `- NEVER launch the build or a test with \`run_in_background: true\`. A backgrounded suite whose completion you then poll-and-abandon IS the l1fi9c failure. Every build/test call is BLOCKING and you wait for its exit code in-line.\n` +
+  `- NEVER return a verdict for a workspace before you hold its FINAL exit code. "It was passing when I last looked" is not an exit code.\n` +
+  `- NEVER collapse an UNRESOLVED measurement into passed:false as if it were a code RED. If the build or ANY workspace did NOT reach a final exit code (a kill, a genuine 10-min timeout, an abandoned run — anything that leaves the result UNKNOWN), you MUST set suite_completed:false and name the unresolved step in failures[]. passed:false + suite_completed:false means "the gate could not judge" — that routes to a RE-RUN, not an escalation, and getting it wrong burns a good deploy.\n` +
+  `\n` +
+  `AGGREGATION:\n` +
+  `- passed = (build exit 0) AND (EVERY workspace test exit 0). One non-zero exit ⇒ passed:false.\n` +
+  `- suite_completed = the build AND every workspace each reached a FINAL exit code (whether 0 or not). true ⇒ this run is a real verdict (a clean green or a genuine RED); false ⇒ the measurement did not finish and the verdict is UNKNOWN.\n` +
+  `- per_workspace[] = one { workspace, exit, passed, failed, duration_s } per workspace you ran (take passed/failed from the reporter's summary line). List every failing test verbatim in failures[].\n` +
+  `Do NOT deploy, flip, migrate, or commit — this is the build gate only.`,
   { model: 'sonnet', schema: BUILD_SCHEMA, phase: 'Preflight', label: 'build-test' },   // MDP: run build+suite + relay exits (standard/mechanical)
 )
 const buildPassed = !!(build && build.passed)
-log(`clean build+test: ${buildPassed ? 'GREEN' : 'RED'}${build && build.failures && build.failures.length ? ` — ${build.failures.length} failure(s)` : ''}`)
+// DEC-DEV-0206 — the measurement/verdict split. `suite_completed:false` is the gate saying "I could not
+// reach a final exit code" (a kill, a genuine ceiling timeout, an abandoned background poll — the l1fi9c
+// false negative). That is a "could not JUDGE" (BLOCKED, re-run), NOT a code RED (DEPLOY_FAILED, escalate)
+// — collapsing them is the 0201 axis error one layer down. Only an EXPLICIT false diverts; ABSENT ⇒
+// completed (back-compat: a RED from a pre-0206 relay routes to DEPLOY_FAILED bit-for-bit). It matters
+// only when the build did NOT pass — a green build is a completed measurement by construction.
+const suiteIncomplete = !buildPassed && !!(build && build.suite_completed === false)
+const perWorkspace = (build && Array.isArray(build.per_workspace)) ? build.per_workspace : []
+const perWsDisclosures = perWorkspace.map((w) => `build/test [${(w && w.workspace) || '?'}]: exit ${w && w.exit}${w && (w.passed != null || w.failed != null) ? ` (${w.passed != null ? `${w.passed} passed` : ''}${w.failed ? `, ${w.failed} failed` : ''})` : ''}${w && w.duration_s != null ? ` in ${w.duration_s}s` : ''}`)
+log(`clean build+test: ${buildPassed ? 'GREEN' : (suiteIncomplete ? 'INCOMPLETE — measurement did not finish → re-run, NOT a failure' : 'RED')}${build && build.failures && build.failures.length ? ` — ${build.failures.length} failure(s)` : ''}${perWorkspace.length ? ` [${perWorkspace.length} workspace(s)]` : ''}`)
 
 // (d) pre-flip runtime-readiness RE-PROBE (readiness leg only — NOT a live boot, D-7). Keeps a
 // standalone deploy off a NOT_STARTABLE / ENV_NOT_READY target; the forwarded p7Verdict is a hint.
@@ -464,6 +495,31 @@ if (readiness === 'ENV_NOT_READY') {
     scene: null, deploy: null, blocking_defects: blockingDefects,
     disposition: null, autonomy: null,
     disclosures: disclosures.concat(['readiness=ENV_NOT_READY — the deploy could not be prepared/judged; this is NOT a deploy failure']),
+  }
+}
+
+// A build/test gate that could NOT complete its MEASUREMENT (a kill, a genuine 10-min timeout, an
+// abandoned background poll — the l1fi9c false negative) is a "could not JUDGE", NOT "the code is RED".
+// It returns result=BLOCKED (readiness untouched — this is not an env fact) → the ingest maps
+// BLOCKED×(READY|DEGRADED) to evt:deploy.gated → runtime_gate_retry (RE-RUN the suite), NEVER
+// DEPLOY_FAILED (which means "code failed" → escalate for a P5/P6 re-drive). Mixing the two is the
+// DEC-DEV-0201 axis error one layer down: measurement-incomplete vs code-failed demand OPPOSITE
+// reactions (re-run vs fix the code), exactly as "can we deploy" vs "who decides" did. Evaluated
+// BEFORE the real-RED branch so an UNKNOWN can never masquerade as a regression and burn the run.
+// failure_class carries the gate-incident class `test-gate-incomplete` — NOT a fabricated P7 boot-class
+// (nothing booted; the taxonomy is reused, never reinvented).
+if (suiteIncomplete) {
+  log('BLOCKED (test-gate-incomplete): the D-6 build/test gate did not reach a final exit code for every workspace (measurement UNKNOWN, not a code RED) — re-run the suite. A false DEPLOY_FAILED here would burn a good deploy to escalation (run l1fi9c).')
+  return {
+    feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
+    result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
+    contract_status: contractStatus, contract_evidence: null,
+    release: null, healthcheck: null, failure_class: 'test-gate-incomplete',   // gate-incident class, NOT a P7 boot-class (nothing booted)
+    scene: null, deploy: null, blocking_defects: blockingDefects,
+    disposition: null, autonomy: null,                       // the §3.2 gate was never reached — null is the HONEST value here, not a dropped field
+    disclosures: disclosures
+      .concat(['test-gate-incomplete: the D-6 suite did not finish measuring (UNKNOWN, not a code RED) → re-run the deploy; this is NOT a DEPLOY_FAILED (a false negative here burns the run — run l1fi9c)'])
+      .concat(perWsDisclosures),
   }
 }
 

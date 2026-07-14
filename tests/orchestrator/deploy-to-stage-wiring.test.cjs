@@ -307,6 +307,85 @@ test('FIND-D: failure_class is HOISTED to the top level (the one key a post-mort
     'a build failure never booted anything ⇒ no P7 class applies ⇒ null, NOT a fabricated class id');
 });
 
+// ---- DEC-DEV-0206: the test-gate MEASUREMENT/VERDICT split (run l1fi9c false negative) -----------
+//
+// The D-6 build/test gate returned a FALSE DEPLOY_FAILED: a 5-min Bash timeout KILLED a ~7.5-min suite,
+// the retry was thrown to the background and abandoned mid-poll, and the gate reported passed:false on a
+// suite that finished 100% GREEN six minutes later. A DEPLOY_FAILED burns the run to escalation — but the
+// code was fine; the MEASUREMENT did not finish. "could not judge" (BLOCKED, re-run) and "code RED"
+// (DEPLOY_FAILED, escalate) are as different as the 0201 axes, one layer down. These pins EVALUATE the
+// real branch expression (not a string match): a regression that re-collapses UNKNOWN into DEPLOY_FAILED,
+// or softens a real RED into a BLOCKED, fails here exactly as it would live.
+
+// Pull the `buildPassed` + `suiteIncomplete` expressions out of the source and run them as the code they are.
+function evalSuiteIncomplete(build) {
+  const m = SRC.match(/const buildPassed = ([^\n]+)\n[\s\S]*?const suiteIncomplete = ([^\n]+)/);
+  assert(m, 'could not locate the buildPassed/suiteIncomplete expressions (has the build gate been restructured?)');
+  // eslint-disable-next-line no-new-func
+  return new Function('build', `const buildPassed = ${m[1]}; return ${m[2]};`)(build);
+}
+
+test('0206: an INCOMPLETE measurement (suite_completed:false) is the incomplete arm — a re-run, not a RED', () => {
+  assert(evalSuiteIncomplete({ passed: false, suite_completed: false }) === true,
+    'passed:false + suite_completed:false IS the l1fi9c case: the gate could not JUDGE ⇒ BLOCKED (re-run), NEVER DEPLOY_FAILED');
+});
+
+test('0206: a real RED (suite_completed:true) is NOT the incomplete arm — it stays DEPLOY_FAILED', () => {
+  assert(evalSuiteIncomplete({ passed: false, suite_completed: true }) === false,
+    'a suite that RAN and failed is a real code RED ⇒ it must fall through to DEPLOY_FAILED, never be softened to BLOCKED');
+  // BACK-COMPAT: a relay that predates the field ⇒ treated as completed ⇒ RED routes to DEPLOY_FAILED bit-for-bit
+  assert(evalSuiteIncomplete({ passed: false }) === false,
+    'an ABSENT suite_completed must NOT divert a RED to BLOCKED (back-compat: the pre-0206 DEPLOY_FAILED path is unchanged)');
+  // a green build is a completed measurement by construction — it never enters the incomplete arm
+  assert(evalSuiteIncomplete({ passed: true, suite_completed: false }) === false,
+    'a green build never blocks on suite_completed (passed ⇒ the measurement finished)');
+});
+
+test('0206: the incomplete arm returns BLOCKED (re-run) BEFORE the DEPLOY_FAILED build-fail branch', () => {
+  const incIdx = SRC.indexOf('if (suiteIncomplete)');
+  const buildFailIdx = SRC.indexOf('if (!buildPassed)');
+  const envIdx = SRC.indexOf("if (readiness === 'ENV_NOT_READY')");
+  assert(incIdx !== -1, 'no suiteIncomplete branch — an UNKNOWN measurement would collapse into DEPLOY_FAILED (the l1fi9c defect)');
+  assert(envIdx !== -1 && envIdx < incIdx, 'ENV_NOT_READY (a down substrate) must still be decided before the incomplete-measurement arm');
+  assert(incIdx < buildFailIdx, 'the incomplete arm must be evaluated BEFORE the real-RED DEPLOY_FAILED branch, or an UNKNOWN never diverts');
+  const arm = SRC.slice(incIdx, incIdx + 900);
+  assert(/result: 'BLOCKED'/.test(arm) && /flipped: false/.test(arm) && !/result: 'DEPLOY_FAILED'/.test(arm),
+    'the incomplete arm must RETURN result:BLOCKED + flipped:false, NEVER result:DEPLOY_FAILED (measurement-incomplete is not code-failed)');
+  assert(/failure_class: 'test-gate-incomplete'/.test(arm), 'the incomplete arm must carry the gate-incident class test-gate-incomplete');
+  assert(/re-run/i.test(arm), 'the incomplete arm must say, in words, that the remedy is a re-run');
+  // ROUTING: a BLOCKED × READY routes to evt:deploy.gated → runtime_gate_retry (a RE-RUN), never escalate
+  const got = engine.applyIngest(CHARTER, 'deploy-to-stage', { result: 'BLOCKED', readiness: 'READY', flipped: false });
+  assert(JSON.stringify(got) === JSON.stringify(['evt:deploy.gated']),
+    `an incomplete-measurement BLOCKED must route to evt:deploy.gated (→ runtime_gate_retry, a re-run), got ${JSON.stringify(got)}`);
+  // and it must NOT route to the escalate/rollback events a real DEPLOY_FAILED does
+  const redRoute = engine.applyIngest(CHARTER, 'deploy-to-stage', { result: 'DEPLOY_FAILED', readiness: 'READY', flipped: false });
+  assert(JSON.stringify(redRoute) === JSON.stringify(['evt:deploy.preflight_failed']),
+    `a real RED must still route to evt:deploy.preflight_failed (escalate), got ${JSON.stringify(redRoute)}`);
+});
+
+test('0206: the build-test prompt STRUCTURES the wait (per-workspace blocking calls, explicit timeouts, no background)', () => {
+  const seg = SRC.slice(SRC.indexOf('const build = await agent'), SRC.indexOf("label: 'build-test'"));
+  assert(seg, 'no build-test agent');
+  assert(/600000/.test(seg) && /timeout/i.test(seg),
+    'the build/suite calls must set an explicit Bash timeout of 600000 (the l1fi9c kill was a ~5-min default-ish timeout)');
+  assert(/PER-WORKSPACE/i.test(seg) && /--filter <workspace>|per workspace/i.test(seg),
+    'the suite must run per-workspace (durable against the suite outgrowing the 10-min single-call ceiling)');
+  assert(/BLOCKING/i.test(seg), 'the calls must be BLOCKING (a backgrounded-then-abandoned poll is the l1fi9c failure)');
+  assert(/run_in_background/i.test(seg) && /NEVER/i.test(seg),
+    'the prompt must FORBID run_in_background for the build/suite');
+  assert(/suite_completed:false/i.test(seg) && /UNKNOWN/i.test(seg),
+    'the prompt must instruct that an unresolved measurement is suite_completed:false (an UNKNOWN, not a passed:false RED)');
+  assert(/final exit code/i.test(seg),
+    'the prompt must forbid a verdict before the final exit code of each workspace');
+});
+
+test('0206: BUILD_SCHEMA carries suite_completed (additive — no field renamed, DEC-DEV-0012)', () => {
+  const m = SRC.match(/const BUILD_SCHEMA = \{[\s\S]*?\n\}/);
+  assert(m, 'no BUILD_SCHEMA');
+  assert(/suite_completed:\s*\{\s*type:\s*'boolean'\s*\}/.test(m[0]), 'BUILD_SCHEMA must declare suite_completed:boolean');
+  assert(/passed:\s*\{\s*type:\s*'boolean'\s*\}/.test(m[0]), 'passed must remain unrenamed');
+});
+
 // ---- THE FIRST-DEPLOY CONTRACT DEADLOCK (first live E.B run, 2026-07-14 — DEC-DEV-0201) ----------
 //
 // E.A must ship the CNT `draft` (never claim `active` before a live verify). E.B refused to deploy a
