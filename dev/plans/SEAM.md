@@ -1,7 +1,8 @@
-# SEAM — PROD Readiness Campaign / Epic E live-валидация (DEC-DEV-0198 · 0199 · 0201 · 0203)
+# SEAM — PROD Readiness Campaign / Epic E live-валидация (DEC-DEV-0198 · 0199 · 0201 · 0203 · 0205)
 
 status: ACTIVE
 seam_written: 2026-07-14 (сессия Opus 4.8 → передача Fable 5)
+seam_updated: 2026-07-14 (сессия Fable 5, раунд 3: шаги 1-2 исполнены, S1 ×2 прогнан, фикс 0205 построен)
 track_ssot: `dev/plans/PROD_READINESS_CAMPAIGN.md`
 
 ## 🛑 СТОП-БЛОК
@@ -51,16 +52,16 @@ npm run next-dec-dev        # ждём: следующий свободный = 
 
 **⚠ Параллельная сессия** работает в своём worktree на ветке `feat/seam-protocol-v1` (**DEC-DEV-0202 — протокол контекстных швов**, по чьему шаблону написан этот файл). **Её файлы не трогать**; номер 0202 занят ею.
 
-**Пилот (VM):**
+**Пилот (VM)** *(обновлено раундом 3, 2026-07-14 вечер)*:
 ```bash
 ssh -p 2222 -i /c/Users/pw201/.ssh/vm-claude-factory -o BatchMode=yes cc-dev@127.0.0.1 \
-  'cd ~/projects/my-first-test && git log --oneline -1 && git branch --show-current && ls ~/deploy 2>&1 | head -1'
-# ждём: 8cc4dab · epic-e-live · "ls: невозможно получить доступ к '/home/cc-dev/deploy'"
+  'cd ~/projects/my-first-test && git log --oneline -1 && git branch --show-current && ls ~/deploy/my-first-test 2>&1'
+# ждём: aa7a049 · epic-e-live · releases/ + shared/ (current ОТСУТСТВУЕТ — flip ещё не был)
 ```
-- Ветка `epic-e-live` (запушена на origin пилота). Экосистема в пилоте = `fca121f` — **отстаёт на PR #194, доставить!**
-- **api ЖИВОЙ**: 2 DI-дефекта починены (`e602110`, `43361c4`), `GET /health` → **200**, сьют 865/865 PASS.
-- **Деплоя не было ни разу:** `~/deploy` не существует, systemd-юниты `mft-*` не ставились, порты 3000/3001/4000 свободны. **Мутаций мимо §3.2-гейта — ноль.**
-- Клиенты БД (`postgresql-client`, `redis-tools`) на VM установлены — без них `env-readiness` вечно `DEGRADED` ⇒ авто-деплой недостижим.
+- Ветка `epic-e-live`, HEAD `aa7a049` (флаки-фикс BR-079, запушен). Экосистема в пилоте = `42827f8` (доставлена раундом 3); деплой-оснастка пере-провижнена (`5375159`), но **после merge фикса 0205 нужны НОВАЯ доставка + НОВЫЙ пере-провижн** (манифест без codegen-шага, migrate opaque, web-юнит bare — гейт 0205 это флагает).
+- Сьют пилота: **92/92 стабильно** (флаки устранён). Клиенты БД установлены (`env-readiness` даёт READY).
+- **Сцена `~/deploy/my-first-test` СУЩЕСТВУЕТ** (создана scene-bootstrap'ом в `kxe0ls`): `releases/20260714T174413Z` (build упал внутри — релиз есть, flip не было), `shared/{.env,logs,uploads}` (`.env` mode 600), юниты `mft-{api,web,worker}` установлены (inactive; worker disabled). `current` НЕ существует. **Мутаций мимо §3.2-гейта — по-прежнему ноль** (kxe0ls мутировал ПОСЛЕ `disposition: auto`).
+- Снапшот VM `round3-pre-run` (офлайн, до доставки).
 
 **VM:** жива, нативный VT-x (владелец отключил Hyper-V/VBS — Волна F/F1). Снапшот `pre-epic-e-run`. **Цена: WSL2 и Docker Desktop на хосте сейчас НЕ работают.**
 
@@ -86,11 +87,13 @@ ssh -p 2222 -i /c/Users/pw201/.ssh/vm-claude-factory -o BatchMode=yes cc-dev@127
 
 ## Следующий шаг — В ИМПЕРАТИВЕ
 
-**1. Доставить `0b5e6f8` в пилот.** Claude-сессия на VM → `/ecosystem:update` (**без `--offline`**). Проверить по файлам: наличие `.claude/orchestrator/lib/deploy-manifest.cjs` и стадии `scene-bootstrap` в `deploy-to-stage.mjs`.
+> **✅ Исполнено 2026-07-14 (раунд 3, сессия Fable 5):** шаг 1 — доставка `42827f8` (пилот sync `4fe8748`, verify Healthy, wipe-protection цела); шаг 2 — пере-провижн (CNT-005 draft, шаблоны `{{CURRENT_LINK}}`, коммит пилота `5375159`); флаки BR-079 пилота устранён правкой теста (`aa7a049`); **S1 прогнан дважды** (`kvikd4`: умер на префлайте из-за флаки; `kxe0ls`: §3.2-гейт auto@L3 + scene-bootstrap ВПЕРВЫЕ исполнены живьём и корректны — упал на build в чистом релизе: FIND-C1 нет `prisma generate` в манифесте, FIND-C2 bare ExecStart у web-юнита). **Фикс DEC-DEV-0205 построен, verify=0** (ветка `feat/epic-e-round3`, PR — см. журнал кампании). Снапшот VM `round3-pre-run` снят до всего.
 
-**2. 🔴 ПЕРЕ-ПРОВИЖНИТЬ deploy-capability — БЕЗ ЭТОГО ДЕПЛОЙ НЕ ПОЙДЁТ.** `/integrator:provision deploy-staging` (approve-гейт → `Y`). Причина: в пилоте лежат **старые** systemd-шаблоны с `WorkingDirectory={{RELEASE_DIR}}`, а новый equipment-fitness gate их **отвергнет** (`blocking_defects: ['unit-template-release-pinned']` → `ENV_NOT_READY` → `BLOCKED`). **Это ожидаемое правильное поведение, а не регрессия.** Новые шаблоны обязаны нести `{{CURRENT_LINK}}` — иначе юнит **глух к флипу**: `current` двигается, юнит нет, `restart` оживляет **старый** релиз, **healthcheck проходит**, прогон рапортует `DEPLOYED`, не задеплоив ничего — и этим ложным зелёным `draft`-контракт **сертифицирует сам себя**.
+**1-NEW. Домёржить PR фикса 0205** (мандат владельца на merge завершённых отрезков), затем **доставить в пилот** (`/ecosystem:update`) и **пере-провижнить** (`/integrator:provision deploy-staging` → манифест переавторится: codegen-шаг + прозрачный migrate + `{{PNPM_BIN}}`; текущий инстанс с opaque `db:migrate:deploy` начнёт флагаться гейтом — это правильно, лечится тем же провижном).
 
-**3. Раунд 3 (порядок важен — сценарии связаны состоянием `releases/`):**
+**2-NEW. S1 третий заход** — та же команда: `/orchestrator:run deploy-to-stage --feature FM-006 --capability deploy-staging --env-tier staging --autonomy L3 --accept-draft-contract`. Ожидание: codegen → build → migrate → флип → рестарт юнитов → healthcheck 2xx → `DEPLOYED` + `contract_evidence`.
+
+**3. Раунд 3 остаток (порядок важен — сценарии связаны состоянием `releases/`):**
 - **S1 — happy deploy.** `/orchestrator:run deploy-to-stage`, args: `feature=FM-006, capability=deploy-staging, envTier=staging, autonomyOverride=L3, acceptDraftContract=true`. Ждать: Gate → `auto` · сцена материализуется (`~/deploy/my-first-test/{releases/<ts>, shared, current}`) · `pnpm install` **внутри** релиза · миграции · **атомарный флип** · systemd-юниты (на `current`!) · healthcheck `/health` 2xx · **`result: DEPLOYED`, `flipped: true`, `contract_evidence` заполнен**.
 - **S2 — СЕРДЦЕ.** Сломать `~/deploy/my-first-test/shared/.env` так, чтобы api задеплоился, но не поднялся (флип идёт **до** рестарта ⇒ получим `flipped: true` + провал healthcheck). Затем тот же деплой. Ждать: `DEPLOY_FAILED` → `rollback-release` → §3.2 даёт **`auto` на дефолтном L1** (это уже подтверждено в раунде 1) → `current` возвращается **на релиз из S1** → `curl /health` снова **2xx**. **После — восстановить `.env`.**
 - **S5 — просадка.** `docker stop mft-redis` → деплой → ждать `ENV_NOT_READY`, `flipped: false`, `readiness_reasons` называет Redis поимённо. → `docker start mft-redis`.
@@ -110,6 +113,9 @@ ssh -p 2222 -i /c/Users/pw201/.ssh/vm-claude-factory -o BatchMode=yes cc-dev@127
 
 ## Грабли среды
 
+- **🆕 Субагент-оператор, вооруживший фоновый монитор, ЗАСЫПАЕТ НАВСЕГДА (4/4 случая за раунд 3):** нотификация фоновой задачи субагента уходит main-координатору, а не самому субагенту. Прямой запрет в брифе НЕ помогает (знание ≠ исполнение). Рабочая форма ожидания в субагенте — только синхронный Bash `sleep N; ssh …capture…`, повторяемый вызовами. Координатору: планируй будить операторов через SendMessage.
+- **🆕 Ghost-текст в TUI — это dim-ПОДСКАЗКИ интерфейса, не буферизованный ввод:** не удаляются C-u/BSpace, принимаются только явным Enter. За раунд 3 всплывали ~5 раз, дважды с опасными action-директивами (`fix the flaky test then re-run`, `/integrator:provision deploy-staging --repair`). Протокол прежний: capture перед КАЖДЫМ Enter; после сабмита промпта — не жать Enter вообще; гасить сессию можно с ghost-текстом в инпуте.
+- **🆕 `node --check` НЕ применим к workflow-`.mjs`** (top-level return легален в async-обёртке харнесса) — «Illegal return statement» на них = ложная тревога (8/8 процессов чистого main так «падают»). Проверка чистоты доставки — sha256 с эталоном.
 - **Слэш-команда в TUI сабмитится ОДНИМ Enter** (при точном совпадении автокомплит принимается сам). Второй Enter **заквьюит дубль**. *(В скилле была прямая ошибка «ДВА Enter» — исправлена.)*
 - **tmux-скроллбэк непригоден** для съёма вывода (TUI на alternate-screen: `capture-pane -S -600` даёт только ~24 видимые строки). **Evidence — только из транскрипта** `~/.claude/projects/-home-cc-dev-projects-my-first-test/<uuid>.jsonl`.
 - **Ghost-текст в инпуте TUI** — трижды за прогон сам всплывал текст, которого оператор не вводил (`go ahead`, `commit the run records and push`). **Перед КАЖДЫМ Enter — `capture-pane` и глазами.**

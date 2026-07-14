@@ -22,6 +22,12 @@
  *  - THE 0201 DEADLOCK MUST NOT COME BACK. `present` is a question of FACT and must never read
  *    `status`; a `draft` manifest with a step-list is present:true.
  *
+ *  - THE THIRD RUN'S EQUIPMENT GUARDS (DEC-DEV-0205 / FIND-C1+C2, run kxe0ls). A prisma manifest
+ *    without a codegen step fails the build deterministically in the clean per-release
+ *    node_modules (TS2305); a bare ExecStart* dies at exec (203/EXEC — systemd has no user
+ *    PATH). Negatives are DERIVED from the committed real-form fixture at run time (real form
+ *    minus exactly one thing) — hand-written negatives encode their author's assumptions.
+ *
  * Fixtures are the REAL pilot manifest form (tests/fixtures/deploy/**). The CRLF twin is
  * GENERATED at run time rather than committed — a committed CRLF file is at the mercy of
  * core.autocrlf/.gitattributes, which is precisely the class of bug being tested.
@@ -68,19 +74,23 @@ console.log('orchestrator — deploy-manifest.cjs (DEC-DEV-0203: FIND-A determin
 // The real pilot manifest form — every fact the deploy contracts on
 // ---------------------------------------------------------------------------
 
-test('the REAL manifest form parses: present + a 4-step ordered list (the fact the LLM kept losing)', () => {
+test('the REAL manifest form parses: present + the ordered step-list (the fact the LLM kept losing)', () => {
   const m = read(LINKED);
   assert.strictEqual(m.present, true, 'the pilot manifest IS present (file + parse + step-list)');
-  assert.deepStrictEqual(m.steps.map((s) => s.name), ['build', 'migrate', 'flip', 'restart'],
-    'the ordered 4-step list — the live sonnet parse returned this once and an EMPTY list 18 min later');
-  const build = m.steps[0];
+  assert.deepStrictEqual(m.steps.map((s) => s.name), ['codegen', 'build', 'migrate', 'flip', 'restart'],
+    'the ordered step-list (codegen first per DEC-DEV-0205) — the live sonnet parse returned a full list once and an EMPTY list 18 min later');
+  const codegen = m.steps[0];
+  assert.strictEqual(codegen.command, 'pnpm --filter @app/db exec prisma generate',
+    'FIND-C1: codegen is a MANIFEST step — the clean per-release node_modules has no generated Prisma client');
+  assert.strictEqual(codegen.working_directory, '{{RELEASE_DIR}}');
+  const build = m.steps[1];
   assert.strictEqual(build.command, 'pnpm -r build');
   assert.strictEqual(build.working_directory, '{{RELEASE_DIR}}', 'the BUILD does run in the concrete release dir — that is correct');
   assert.strictEqual(build.on_failure, 'abort');
-  assert.strictEqual(m.steps[1].status, 'verified', 'the migrate step is verified (packages/db/schema.prisma exists in the pilot)');
-  assert.strictEqual(m.steps[2].type, 'symlink_atomic');
-  assert.deepStrictEqual(m.steps[3].units, ['mft-api', 'mft-web', 'mft-worker']);
-  assert.strictEqual(m.steps[3].on_failure, 'rollback');
+  assert.strictEqual(m.steps[2].status, 'verified', 'the migrate step is verified (packages/db/schema.prisma exists in the pilot)');
+  assert.strictEqual(m.steps[3].type, 'symlink_atomic');
+  assert.deepStrictEqual(m.steps[4].units, ['mft-api', 'mft-web', 'mft-worker']);
+  assert.strictEqual(m.steps[4].on_failure, 'rollback');
 });
 
 test('healthcheck / migrate / release_layout / contract survive the parse', () => {
@@ -167,9 +177,11 @@ test('FIND-B GUARD: {{RELEASE_DIR}}-pinned units are a BLOCKING defect (the flip
 
 test('…and the FIXED ({{CURRENT_LINK}}) units carry NO blocking defect — flip + restart is the deploy', () => {
   const m = read(LINKED);
-  assert.deepStrictEqual(m.blocking_defects, [], 'a current-linked unit follows the flip');
+  assert.deepStrictEqual(m.blocking_defects, [],
+    'the fully-correct equipment (current-linked units, {{NODE_BIN}} ExecStart, prisma codegen present) must carry ZERO defects — the guards must not overfire on the form the skill actually authors');
   for (const u of m.units) {
     assert.strictEqual(u.release_pinned, false, `${u.name} must not pin a release`);
+    assert.deepStrictEqual(u.execstart_bare, [], `${u.name}: a {{NODE_BIN}}-rooted ExecStart is scanned and CLEAN ([], not null)`);
     assert.ok(u.placeholders.includes('{{CURRENT_LINK}}'), `${u.name} must reference the current symlink`);
     assert.ok(u.placeholders.includes('{{ENV_FILE}}'), `${u.name} must take its env from shared/.env`);
     assert.ok(!u.placeholders.includes('{{RELEASE_DIR}}'), `${u.name} must NOT carry {{RELEASE_DIR}}`);
@@ -195,6 +207,175 @@ test('a unit hard-wired to a literal releases/<ts> path (no placeholder) is caug
   const m = read(path.join(tmp, 'deploy-manifest.yaml'));
   assert.strictEqual(m.units[0].release_pinned, true, 'a literal releases/<ts> is the same defect without the placeholder');
   assert.deepStrictEqual(m.blocking_defects, [BLOCKING_DEFECTS.UNIT_RELEASE_PINNED]);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+// ---------------------------------------------------------------------------
+// FIND-C (DEC-DEV-0205, third live run kxe0ls) — the deploy that got PAST the scene
+// bootstrap and died inside the fresh release, twice over:
+//   C1 — no prisma codegen step: the per-release node_modules is CLEAN (`pnpm install
+//        --frozen-lockfile` inside releases/<ts>), the Prisma client is never generated there,
+//        `pnpm -r build` fails deterministically (TS2305). Invisible in the dev checkout,
+//        whose client had been generated historically.
+//   C2 — bare `ExecStart=pnpm --filter @app/web start`: systemd has no user PATH; the unit
+//        dies at exec (203/EXEC) before serving one request.
+//
+// The NEGATIVES here are DERIVED at run time from the committed REAL-form fixture (the real
+// form minus exactly one thing), not hand-written — a hand-written negative encodes its
+// author's assumptions (the 0199/0200 lesson: fixtures written by the code's author lie).
+// ---------------------------------------------------------------------------
+
+const REAL_FILES = ['deploy-manifest.yaml', 'app-api.service.template', 'app-web.service.template', 'app-worker.service.template'];
+/** Copy the real current-linked capability into tmp, applying a per-file transform. */
+function deriveCapability(transform) {
+  const tmp = mkTmp();
+  for (const f of REAL_FILES) {
+    const body = fs.readFileSync(path.join(FIX, 'current-linked', f), 'utf8').replace(/\r\n/g, '\n');
+    fs.writeFileSync(path.join(tmp, f), transform(f, body));
+  }
+  return tmp;
+}
+
+test('FIND-C1 GUARD: the real manifest MINUS its codegen line is a BLOCKING defect (clean per-release node_modules ⇒ TS2305)', () => {
+  const tmp = deriveCapability((f, body) => (f === 'deploy-manifest.yaml'
+    ? body.split('\n').filter((l) => !/^\s*- codegen:/.test(l)).join('\n')
+    : body));
+  const m = read(path.join(tmp, 'deploy-manifest.yaml'));
+  assert.strictEqual(m.present, true, 'the equipment IS present — it is just WRONG (the build cannot succeed; a different axis)');
+  assert.deepStrictEqual(m.steps.map((s) => s.name), ['build', 'migrate', 'flip', 'restart'],
+    'exactly the codegen line was removed — everything else is the real form');
+  assert.deepStrictEqual(m.blocking_defects, [BLOCKING_DEFECTS.MANIFEST_MISSING_PRISMA_CODEGEN]);
+  const why = m.disclosures.join(' | ');
+  assert.ok(/prisma migrate but NO codegen/i.test(why), 'the disclosure must SAY what is missing');
+  assert.ok(/per-release node_modules/.test(why) && /TS2305/.test(why), 'and WHY the build then fails deterministically');
+  assert.ok(/prisma generate/.test(why), 'and name the remedy step');
+  assert.ok(/integrator:provision/.test(why) && /§8\.3/.test(why),
+    'and WHO fixes it — the Integrator re-equips; the Orchestrator does not rewrite manifests');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('FIND-C1: NO prisma signal ⇒ codegen is NOT required (a no-DB / flyway manifest must never be flagged)', () => {
+  const tmp = mkTmp();
+  // no migrate step at all — nothing implies a Prisma client
+  fs.writeFileSync(path.join(tmp, 'a.yaml'), [
+    'deploy_root: "~/d"',
+    'steps:',
+    '  - build: { command: "pnpm -r build" }',
+    '  - flip:  { type: symlink_atomic }',
+    '',
+  ].join('\n'));
+  assert.deepStrictEqual(read(path.join(tmp, 'a.yaml')).blocking_defects, [], 'no migrate ⇒ no prisma signal ⇒ no codegen requirement');
+  // a NON-prisma migration tool — codegen is a Prisma concept, not a deploy concept
+  fs.writeFileSync(path.join(tmp, 'b.yaml'), [
+    'deploy_root: "~/d"',
+    'steps:',
+    '  - build:   { command: "pnpm -r build" }',
+    '  - migrate: { command: "flyway migrate", on_failure: abort }',
+    '  - flip:    { type: symlink_atomic }',
+    '',
+  ].join('\n'));
+  assert.deepStrictEqual(read(path.join(tmp, 'b.yaml')).blocking_defects, [], 'a flyway migrate must NOT demand a Prisma client');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('FIND-C1 honest blind spot (pinned as DESIGN, not hoped away): an opaque package script hides the prisma signal', () => {
+  const tmp = mkTmp();
+  fs.writeFileSync(path.join(tmp, 'm.yaml'), [
+    'deploy_root: "~/d"',
+    'steps:',
+    '  - build:   { command: "pnpm -r build" }',
+    '  - migrate: { command: "pnpm --filter @app/db db:migrate:deploy", on_failure: abort }',
+    '',
+  ].join('\n'));
+  assert.deepStrictEqual(read(path.join(tmp, 'm.yaml')).blocking_defects, [],
+    'the guard reads the literal `prisma` token and does NOT guess what a package script does (blind ≠ found) — '
+    + 'which is exactly why the skill now prescribes the transparent `… exec prisma migrate deploy` form');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('FIND-C2 GUARD: the LIVE defect — bare `ExecStart=pnpm --filter @app/web start` — is a BLOCKING defect (systemd has no user PATH)', () => {
+  const tmp = deriveCapability((f, body) => (f === 'app-web.service.template'
+    ? body.replace(/^ExecStart=.*$/m, 'ExecStart=pnpm --filter @app/web start')   // the verbatim live form (run kxe0ls)
+    : body));
+  const m = read(path.join(tmp, 'deploy-manifest.yaml'));
+  assert.deepStrictEqual(m.blocking_defects, [BLOCKING_DEFECTS.UNIT_EXECSTART_BARE]);
+  const web = m.units.find((u) => u.name === 'mft-web');
+  assert.deepStrictEqual(web.execstart_bare, ['ExecStart=pnpm'], 'the offending directive + first token are named');
+  for (const u of m.units.filter((x) => x.name !== 'mft-web')) {
+    assert.deepStrictEqual(u.execstart_bare, [], `${u.name} is clean — the defect must be attributed to the RIGHT unit`);
+  }
+  const why = m.disclosures.join(' | ');
+  assert.ok(/203\/EXEC/.test(why) && /PATH/.test(why), 'the disclosure must SAY the unit dies at exec, and why');
+  assert.ok(/\{\{NODE_BIN\}\}/.test(why) && /\{\{PNPM_BIN\}\}/.test(why),
+    'and name the fix (placeholders scene-bootstrap materialises to absolute paths)');
+  assert.ok(/integrator:provision/.test(why) && /§8\.3/.test(why), 'and WHO fixes it');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('FIND-C2: absolute paths, systemd prefix chars, {{PNPM_BIN}} pass; a bare ExecStartPre is caught; comments are not judged', () => {
+  const tmp = mkTmp();
+  fs.writeFileSync(path.join(tmp, 'deploy-manifest.yaml'), [
+    'deploy_root: "~/deploy/x"',
+    'steps:',
+    '  - flip:    { type: symlink_atomic }',
+    '  - restart: { units: [svc-ok, svc-pre] }',
+    'unit_templates:',
+    '  svc-ok:  ok.service.template',
+    '  svc-pre: pre.service.template',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(tmp, 'ok.service.template'), [
+    '[Service]',
+    'WorkingDirectory={{CURRENT_LINK}}/apps/web',
+    'ExecStartPre=-/usr/bin/test -f {{ENV_FILE}}',            // systemd `-` prefix on an absolute path — legal
+    'ExecStart={{PNPM_BIN}} --filter @app/web start',          // placeholder-rooted — materialised absolute
+    '# ExecStart=pnpm start — a COMMENT is not a directive (same law as the {{RELEASE_DIR}} guard)',
+    '',
+  ].join('\n'));
+  fs.writeFileSync(path.join(tmp, 'pre.service.template'), [
+    '[Service]',
+    'WorkingDirectory={{CURRENT_LINK}}/apps/web',
+    'ExecStartPre=pnpm install',                               // bare — the guard covers the ExecStart* family
+    'ExecStart={{NODE_BIN}} dist/main.js',
+    '',
+  ].join('\n'));
+  const m = read(path.join(tmp, 'deploy-manifest.yaml'));
+  assert.deepStrictEqual(m.units.find((u) => u.name === 'svc-ok').execstart_bare, [],
+    'absolute (+prefix) and placeholder-rooted commands are all legal');
+  assert.deepStrictEqual(m.units.find((u) => u.name === 'svc-pre').execstart_bare, ['ExecStartPre=pnpm'],
+    'a bare ExecStartPre dies at exec exactly like a bare ExecStart');
+  assert.deepStrictEqual(m.blocking_defects, [BLOCKING_DEFECTS.UNIT_EXECSTART_BARE]);
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('FIND-C: BOTH third-run defects at once — manifest-level defect first, unit-level after (deterministic order)', () => {
+  const tmp = deriveCapability((f, body) => {
+    if (f === 'deploy-manifest.yaml') return body.split('\n').filter((l) => !/^\s*- codegen:/.test(l)).join('\n');
+    if (f === 'app-web.service.template') return body.replace(/^ExecStart=.*$/m, 'ExecStart=pnpm --filter @app/web start');
+    return body;
+  });
+  const m = read(path.join(tmp, 'deploy-manifest.yaml'));
+  assert.deepStrictEqual(m.blocking_defects,
+    [BLOCKING_DEFECTS.MANIFEST_MISSING_PRISMA_CODEGEN, BLOCKING_DEFECTS.UNIT_EXECSTART_BARE],
+    'this IS the equipment the third live run died on — both defects visible in ONE parse, no serial re-provisioning discovery');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('blind ≠ found: an unreadable template gives execstart_bare null (no verdict), never a defect', () => {
+  const tmp = mkTmp();
+  fs.writeFileSync(path.join(tmp, 'deploy-manifest.yaml'), [
+    'deploy_root: "~/d"',
+    'steps:',
+    '  - restart: { units: [svc-x] }',
+    'unit_templates:',
+    '  svc-x: gone.service.template',
+    '',
+  ].join('\n'));
+  const m = read(path.join(tmp, 'deploy-manifest.yaml'));
+  assert.strictEqual(m.units[0].template_found, false);
+  assert.strictEqual(m.units[0].release_pinned, null, 'no bytes ⇒ no verdict');
+  assert.strictEqual(m.units[0].execstart_bare, null, 'no bytes ⇒ no verdict (a guard must not flag what it cannot read)');
+  assert.deepStrictEqual(m.blocking_defects, [], 'absence of evidence is not evidence of a defect — the missing template is DISCLOSED instead');
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
@@ -235,8 +416,10 @@ test('FIND-A: the same capability with CRLF endings parses IDENTICALLY (a Window
   for (const k of ['present', 'status', 'contract', 'capability', 'blocking_defects', 'steps', 'healthcheck', 'release_layout']) {
     assert.deepStrictEqual(crlf[k], lf[k], `CRLF changed \`${k}\` — the EOL must not reach the semantics`);
   }
-  assert.deepStrictEqual(crlf.units.map((u) => [u.name, u.release_pinned]), lf.units.map((u) => [u.name, u.release_pinned]),
-    'a CRLF unit template must be scanned identically (it is normalized before the regex)');
+  assert.deepStrictEqual(
+    crlf.units.map((u) => [u.name, u.release_pinned, u.execstart_bare]),
+    lf.units.map((u) => [u.name, u.release_pinned, u.execstart_bare]),
+    'a CRLF unit template must be scanned identically (it is normalized before the regexes — incl. the ExecStart scan)');
   // …and the committed fixture parses the same way whichever EOL git handed us
   const asChecked = read(LINKED, { timestamp: 'TS' });
   assert.deepStrictEqual(asChecked.steps, lf.steps, 'the checked-out fixture must parse identically regardless of how git materialised it');

@@ -41,6 +41,34 @@
  * `skills/integrator/deployment-provisioning.md` — the Orchestrator does not paper over a
  * broken template (§8.3: we EXECUTE equipment, we do not silently correct it).
  *
+ * ── WHY IT ALSO GUARDS PRISMA CODEGEN + ExecStart (FIND-C1/C2, third live run, run kxe0ls) ─
+ * The first deploy that got PAST the scene bootstrap died inside the fresh release, twice over:
+ *
+ * FIND-C1 — the release installs a CLEAN per-release node_modules (`pnpm install
+ * --frozen-lockfile` INSIDE releases/<ts> — the rollback-independence decision, DEC-DEV-0203),
+ * so the generated Prisma client is NEVER there. A manifest that prescribes `prisma migrate`
+ * but no codegen step makes `pnpm -r build` fail DETERMINISTICALLY (packages/db: TS2305 —
+ * '@prisma/client' has no exported member 'PrismaClient'). The pilot's dev checkout hid this
+ * for months: its client had been generated historically. Same class as FIND-B / DEC-DEV-0201:
+ * an obligation ("generate the client") with no addressee. So: prisma signal (the migrate step
+ * names prisma) + no codegen step ⇒ `blocking_defects: ['manifest-missing-prisma-codegen']`.
+ * HONEST BLIND SPOT: the signal is the literal `prisma` token in the migrate step's values. A
+ * migrate hidden behind an opaque package script (`db:migrate:deploy`) is NOT detected — blind
+ * ≠ found, and this lib does not guess what a script does. The skill now prescribes the
+ * transparent form, so newly-provisioned equipment is always visible to this guard.
+ *
+ * FIND-C2 — the web unit template shipped `ExecStart=pnpm --filter @app/web start`. systemd
+ * does NOT resolve commands through the user shell's PATH (nvm / corepack / ~/.local/share/pnpm
+ * are invisible to it) — the unit dies at exec (status=203/EXEC) before serving one request.
+ * Every ExecStart-family directive (ExecStart / ExecStartPre / ExecStartPost) must start with an
+ * ABSOLUTE path or a `{{…}}` placeholder that the consumer's scene-bootstrap materialises to one
+ * ({{NODE_BIN}} → `command -v node`, {{PNPM_BIN}} → `command -v pnpm`). A bare first token ⇒
+ * `blocking_defects: ['unit-execstart-bare-command']`.
+ *
+ * Both are the same species as the release-pinned unit: equipment that is present but CANNOT
+ * execute a correct deploy — mis-equipped ⇒ ENV_NOT_READY, remedy = /integrator:provision
+ * (the Orchestrator does not rewrite Integrator templates, §8.3).
+ *
  * ── THE YAML SUBSET (honest about what it is) ────────────────────────────────────────────
  * Node stdlib ONLY (this lib is copied into a pilot's `.claude/orchestrator/lib/`, where there
  * is no node_modules), so there is no js-yaml — the parser below is a hand-rolled SUBSET, the
@@ -78,9 +106,12 @@ const path = require('node:path');
 
 const DEPLOY_MANIFEST_SCHEMA_VERSION = 1;
 
-/** Blocking defects — equipment that is present but CANNOT execute a correct deploy. */
+/** Blocking defects — equipment that is present but CANNOT execute a correct deploy.
+ *  Order in `blocking_defects`: manifest-level defects first, then unit-level (deterministic). */
 const BLOCKING_DEFECTS = {
-  UNIT_RELEASE_PINNED: 'unit-template-release-pinned',
+  UNIT_RELEASE_PINNED: 'unit-template-release-pinned',            // FIND-B: unit deaf to the flip
+  MANIFEST_MISSING_PRISMA_CODEGEN: 'manifest-missing-prisma-codegen', // FIND-C1: prisma without generate
+  UNIT_EXECSTART_BARE: 'unit-execstart-bare-command',             // FIND-C2: systemd has no user PATH
 };
 
 const isPlainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -497,6 +528,27 @@ function resolveUnits(doc, steps, manifestDir, readFile) {
     // {{RELEASE_DIR}}"). What binds a systemd service is its directives, and only those.
     const effective = body === null ? null
       : body.split('\n').filter((l) => !/^\s*[#;]/.test(l)).join('\n');
+    // THE FIND-C2 GUARD (DEC-DEV-0205). systemd resolves ExecStart through a fixed compile-time
+    // search path, NOT the user shell's PATH — `ExecStart=pnpm …` dies at exec (status=203/EXEC)
+    // on a stand where pnpm lives in the user's profile (nvm / corepack / ~/.local/share/pnpm).
+    // The first token must be an ABSOLUTE path or a `{{…}}` placeholder that scene-bootstrap
+    // materialises to one ({{NODE_BIN}} → `command -v node`, {{PNPM_BIN}} → `command -v pnpm`).
+    // Unreadable template ⇒ null, never a verdict (blind ≠ found — same law as release_pinned).
+    const bareExec = effective === null ? null : (() => {
+      const hits = [];
+      for (const line of effective.split('\n')) {
+        const m = line.match(/^\s*(ExecStart(?:Pre|Post)?)\s*=\s*(.*)$/);
+        if (!m) continue;
+        const value = m[2].trim();
+        if (!value) continue;                                   // `ExecStart=` reset form — no command
+        // strip systemd's special executable prefixes (-, @, :, !, !!, +) before judging the token
+        const token = (value.replace(/^[-@:!+]+/, '').split(/\s+/)[0] || '');
+        if (token.startsWith('/')) continue;                    // absolute — fine
+        if (/^\{\{[A-Za-z0-9_]+\}\}/.test(token)) continue;   // placeholder-rooted — materialised absolute
+        hits.push(`${m[1]}=${token}`);
+      }
+      return hits;
+    })();
     const rec = {
       name: unit,
       template: file,
@@ -506,6 +558,9 @@ function resolveUnits(doc, steps, manifestDir, readFile) {
       // move with it, and `systemctl restart` restarts the OLD code — while the healthcheck passes.
       release_pinned: effective === null ? null
         : (/\{\{\s*RELEASE_DIR\s*\}\}/.test(effective) || /\/releases\/[^\s/]+/.test(effective)),
+      // FIND-C2: every ExecStart*/ExecStartPre whose first token is neither absolute nor a
+      // {{…}} placeholder. null = template unreadable (no verdict), [] = scanned and clean.
+      execstart_bare: bareExec,
       placeholders: effective === null ? [] : Array.from(new Set((effective.match(/\{\{\s*[A-Z_]+\s*\}\}/g) || []).map((s) => s.replace(/\s+/g, '')))).sort(),
     };
     if (rec.release_pinned) {
@@ -515,6 +570,14 @@ function resolveUnits(doc, steps, manifestDir, readFile) {
         + 'A flip of `current` would NOT move this service — systemctl restart would restart the OLD release while the healthcheck passes, '
         + 'reporting a DEPLOYED that never happened (and laundering an unverified draft contract into `active`). '
         + 'The unit MUST reference the `current` symlink ({{CURRENT_LINK}}), per the Capistrano contract. '
+        + 'Fix the EQUIPMENT: re-run /integrator:provision (skills/integrator/deployment-provisioning.md §1) — the Orchestrator does not rewrite Integrator templates (§8.3).');
+    }
+    if (rec.execstart_bare && rec.execstart_bare.length) {
+      blocking.push(BLOCKING_DEFECTS.UNIT_EXECSTART_BARE);
+      disclosures.push(
+        `unit "${unit}" (${file}) carries a BARE command in ${rec.execstart_bare.join(', ')} — systemd resolves ExecStart through a fixed compile-time search path, NOT the user shell's PATH, `
+        + 'so the service dies at exec (status=203/EXEC) before serving a single request. ExecStart*/ExecStartPre must start with an ABSOLUTE path or a {{…}} placeholder that scene-bootstrap '
+        + 'materialises to one ({{NODE_BIN}} → `command -v node`, {{PNPM_BIN}} → `command -v pnpm`). '
         + 'Fix the EQUIPMENT: re-run /integrator:provision (skills/integrator/deployment-provisioning.md §1) — the Orchestrator does not rewrite Integrator templates (§8.3).');
     }
     if (!rec.template_found && file) disclosures.push(`unit "${unit}": template ${file} not readable beside the manifest`);
@@ -633,6 +696,46 @@ function readManifest(file, opts) {
 
   const migrateStep = steps.find((s) => s.name === 'migrate') || null;
 
+  // ── EQUIPMENT: prisma codegen (DEC-DEV-0205 / FIND-C1) ───────────────────
+  // The release is built in a CLEAN per-release node_modules (`pnpm install --frozen-lockfile`
+  // runs INSIDE releases/<ts> — the rollback-independence decision, DEC-DEV-0203), so the
+  // generated Prisma client is NEVER there. A manifest that prescribes prisma migrate but no
+  // codegen step makes `pnpm -r build` fail deterministically (TS2305: '@prisma/client' has no
+  // exported member 'PrismaClient') — the dev checkout hid this because its client had been
+  // generated historically. Same class as FIND-B: an obligation with no addressee. The codegen
+  // must be a MANIFEST step (after the per-release install, before build) — nothing else runs it.
+  //
+  // Signal = the literal `prisma` token in the migrate step's string values (command /
+  // conditional_on / tool / …). HONEST BLIND SPOT: a migrate hidden behind an opaque package
+  // script (`db:migrate:deploy`) is invisible — blind ≠ found; this lib does not guess what a
+  // script does. The skill prescribes the transparent form, so new equipment is always visible.
+  // No prisma signal ⇒ codegen is NOT required (a flyway/knex/no-DB manifest must never be
+  // flagged for a Prisma client it does not have).
+  const stepText = (s) => (isPlainObject(s) ? Object.values(s).filter((v) => typeof v === 'string').join(' ') : '');
+  const migrateRec = migrateStep || (isPlainObject(doc.migrate) ? doc.migrate : null);
+  const prismaSignal = !!(migrateRec && /\bprisma\b/i.test(stepText(migrateRec)));
+  const codegenStep = steps.find((s) => /\bprisma\b[\s\S]*\bgenerate\b/i.test(stepText(s))) || null;
+  const manifestBlocking = [];
+  if (present && prismaSignal && !codegenStep) {
+    manifestBlocking.push(BLOCKING_DEFECTS.MANIFEST_MISSING_PRISMA_CODEGEN);
+    disclosures.push(
+      'manifest prescribes prisma migrate but NO codegen step — the release is built in a CLEAN per-release node_modules '
+      + '(`pnpm install --frozen-lockfile` inside releases/<ts>), where the Prisma client has never been generated: '
+      + '`pnpm -r build` fails deterministically (TS2305: \'@prisma/client\' has no exported member). The dev checkout only '
+      + 'worked because its client was generated historically. Add a codegen step (e.g. `pnpm --filter <db-pkg> exec prisma generate`) '
+      + 'AFTER the per-release install and BEFORE build. '
+      + 'Fix the EQUIPMENT: re-run /integrator:provision (skills/integrator/deployment-provisioning.md §3) — the Orchestrator does not rewrite Integrator manifests (§8.3).');
+  }
+  if (present && prismaSignal && codegenStep) {
+    // order sanity (disclosure only — a mis-ordered codegen fails LOUD at build time, unlike the
+    // silent classes this lib blocks on): codegen must precede build in the step-list.
+    const buildIdx = steps.findIndex((s) => s.name === 'build');
+    const codegenIdx = steps.indexOf(codegenStep);
+    if (buildIdx !== -1 && codegenIdx > buildIdx) {
+      disclosures.push(`codegen step ("${codegenStep.name}") is declared AFTER the build step — the build compiles against a client that does not exist yet; move codegen before build`);
+    }
+  }
+
   return {
     deploy_manifest_schema_version: DEPLOY_MANIFEST_SCHEMA_VERSION,
     manifest: file,
@@ -650,7 +753,8 @@ function readManifest(file, opts) {
     deploy_root: rootDecl ? { declared: rootDecl, expanded: expanded.path || null } : null,
     scene,                                       // every absolute path the Deploy phase needs
     eol,
-    blocking_defects: unitInfo.blocking,         // equipment that CANNOT execute a correct deploy
+    // equipment that CANNOT execute a correct deploy — manifest-level first, then unit-level
+    blocking_defects: Array.from(new Set([...manifestBlocking, ...unitInfo.blocking])),
     disclosures,
   };
 }
@@ -693,7 +797,13 @@ function printHelp() {
     '  blocking_defects equipment that is present but CANNOT execute a correct deploy —',
     '                          `unit-template-release-pinned`: a systemd unit wired to a concrete',
     '                          releases/<ts> is deaf to the flip (restart brings back the OLD',
-    '                          release while the healthcheck passes ⇒ a false DEPLOYED).',
+    '                          release while the healthcheck passes ⇒ a false DEPLOYED);',
+    '                          `manifest-missing-prisma-codegen`: prisma migrate prescribed but no',
+    '                          codegen step — the clean per-release node_modules has no generated',
+    '                          client, so `pnpm -r build` fails deterministically (TS2305);',
+    '                          `unit-execstart-bare-command`: ExecStart*/ExecStartPre whose first',
+    '                          token is neither an absolute path nor a {{…}} placeholder — systemd',
+    '                          has no user PATH, the unit dies at exec (203/EXEC).',
     '',
     'Clock-free: the release timestamp is passed in (--timestamp), never read from a clock —',
     'so N parses of one file are byte-identical. Exit 0 for any parse (a broken manifest is DATA:',
