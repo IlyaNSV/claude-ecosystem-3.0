@@ -22,7 +22,7 @@ const { execFileSync } = require('child_process');
 const LIB_PATH = path.join(__dirname, '..', '..', 'orchestrator', 'lib', 'autonomy-policy.cjs');
 const lib = require(LIB_PATH);
 const {
-  resolve, resolveLevel, applyReadinessGuard, DEFAULT_FLOOR, BUILT_IN_DEFAULT_LEVEL,
+  resolve, resolveLevel, applyReadinessGuard, applyContractGuard, DEFAULT_FLOOR, BUILT_IN_DEFAULT_LEVEL,
   confidenceFromSynth, applyConsiliumVerdict, parseAutonomyConfig, loadAutonomyPolicy, DISPOSITIONS,
 } = lib;
 
@@ -400,6 +400,161 @@ test('unknown readiness treated as DEGRADED, loudly', () => {
   const r = applyReadinessGuard(auto, 'MAYBE');
   eq(r.disposition, 'human-gate');
   ok(r.why.some((w) => /env-readiness/.test(w)), 'why names the expected producer');
+});
+
+// ---- contract guard (DEC-DEV-0201) — the E.B first-deploy deadlock ------------------------------
+//
+// The defect these pin: `draft` on a capability contract was read as a READINESS fact (ENV_NOT_READY →
+// BLOCKED). E.A must ship the CNT draft; E.B refused to deploy anything not active; only a deploy can
+// produce the live verify that would flip it ⇒ the first deploy was impossible in principle. The guard
+// re-classifies draft as a TRUST fact: auto → human-gate (a gate the owner can pass), never a block.
+
+test('DEADLOCK REGRESSION: draft × auto → human-gate (a GATE the owner can pass), never block', () => {
+  const auto = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  eq(auto.disposition, 'auto', 'precondition: L3 × staging resolves auto');
+  const r = applyContractGuard(auto, 'draft');
+  eq(r.disposition, 'human-gate', 'a draft contract human-gates the deploy…');
+  assert.notStrictEqual(r.disposition, 'block', '…and NEVER blocks it (a block is unreachable-by-construction: only a deploy can clear it)');
+  passed += 1;
+  eq(r.contract.status, 'draft');
+  eq(r.contract.accepted_by_owner, false);
+  ok(r.why.some((w) => /NOT an env-readiness downgrade/.test(w)), 'why[] must separate the trust axis from the readiness axis');
+});
+
+test('OWNER SANCTION: --accept-draft-contract × draft × auto → auto (the human act IS the human-in-the-loop)', () => {
+  const auto = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  const r = applyContractGuard(auto, 'draft', { acceptDraft: true });
+  eq(r.disposition, 'auto', 'the owner explicitly sanctioned the first deploy → no downgrade');
+  eq(r.contract.accepted_by_owner, true, 'the sanction is RECORDED (audit-trail), not just honoured');
+  ok(r.why.some((w) => /OWNER explicitly sanctioned/.test(w)), 'why[] records who widened the autonomy');
+});
+
+test('active → unchanged (a live run has verified this contract)', () => {
+  const auto = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  const r = applyContractGuard(auto, 'active');
+  eq(r.disposition, 'auto');
+  eq(r.contract.status, 'active');
+});
+
+test('INVARIANT downgrade-only: draft never touches consilium-gate / human-gate / block', () => {
+  for (const [envelope, label] of [
+    [resolve('deploy_staging', 'HIGH', 'staging', {}, 'L2'), 'consilium-gate'],
+    [resolve('deploy_staging', 'HIGH', 'staging', {}, 'L1'), 'human-gate'],
+    [applyReadinessGuard(resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3'), 'ENV_NOT_READY'), 'block'],
+  ]) {
+    eq(envelope.disposition, label, `precondition: envelope is ${label}`);
+    eq(applyContractGuard(envelope, 'draft').disposition, label, `${label} must be left ALONE (the guard only downgrades auto)`);
+    // …and the owner's sanction cannot LIFT any of them either — it only ever skips a downgrade.
+    eq(applyContractGuard(envelope, 'draft', { acceptDraft: true }).disposition, label,
+      `--accept-draft-contract must not UPGRADE a ${label} (it skips a downgrade; it never promotes)`);
+  }
+});
+
+test('🔒 FLOOR IS UNTOUCHABLE: prod_deploy × L3 × draft → human-gate + floor_hit, WITH or WITHOUT the owner sanction', () => {
+  const floor = resolve('prod_deploy', 'HIGH', 'prod', {}, 'L3');
+  eq(floor.disposition, 'human-gate');
+  eq(floor.floor_hit, true);
+  for (const opts of [undefined, { acceptDraft: true }]) {
+    const r = applyContractGuard(floor, 'draft', opts);
+    eq(r.disposition, 'human-gate', `floor stays human-gate (acceptDraft=${!!(opts && opts.acceptDraft)})`);
+    eq(r.floor_hit, true, 'floor_hit survives the contract guard — the guard is BELOW the floor, never above it');
+  }
+  // the same at every level and env: a floor class can never be made auto by the contract axis
+  for (const lvl of ['L0', 'L1', 'L2', 'L3']) {
+    for (const env of ['dev', 'staging', 'prod']) {
+      for (const st of ['draft', 'active']) {
+        const r = applyContractGuard(resolve('prod_deploy', 'LOW', env, {}, lvl), st, { acceptDraft: true });
+        eq(r.disposition, 'human-gate', `prod_deploy @ ${lvl} × ${env} × ${st} + acceptDraft`);
+        eq(r.floor_hit, true, `floor_hit @ ${lvl} × ${env} × ${st}`);
+      }
+    }
+  }
+});
+
+test('BACKWARD-COMPAT: an absent contract_status is a NO-OP (deep-equal to the un-guarded envelope)', () => {
+  const base = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  for (const absent of [null, undefined, '']) {
+    assert.deepStrictEqual(applyContractGuard(base, absent), base,
+      `contract_status=${JSON.stringify(absent)} must leave the envelope byte-for-byte unchanged`);
+    passed += 1;
+  }
+});
+
+test('an unknown contract_status is conservatively draft, loudly (never widens autonomy)', () => {
+  const auto = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  const r = applyContractGuard(auto, 'probably-fine');
+  eq(r.disposition, 'human-gate');
+  ok(r.why.some((w) => /conservatively draft/.test(w)), 'why[] says it degraded conservatively');
+});
+
+test('--accept-draft-contract WITHOUT a contract_status is loudly ignored (nothing to accept)', () => {
+  const auto = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  const r = applyContractGuard(auto, null, { acceptDraft: true });
+  eq(r.disposition, 'auto', 'no contract axis in play → no-op');
+  ok(r.why.some((w) => /IGNORED/.test(w)), 'the ignored flag is disclosed, not silently swallowed');
+});
+
+test('guards COMPOSE: a down substrate still wins over a sanctioned draft (block, not auto)', () => {
+  // The owner may sanction an unverified contract; they cannot sanction a substrate that is not there.
+  const auto = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  const r = applyContractGuard(applyReadinessGuard(auto, 'ENV_NOT_READY'), 'draft', { acceptDraft: true });
+  eq(r.disposition, 'block', 'ENV_NOT_READY → block survives an owner-accepted draft contract');
+});
+
+test('contract guard: determinism (same inputs → deep-equal envelope)', () => {
+  const base = resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3');
+  assert.deepStrictEqual(applyContractGuard(base, 'draft'), applyContractGuard(base, 'draft'));
+  passed += 1;
+});
+
+// ---- CLI seam: the contract axis end-to-end (this is the seam deploy-to-stage actually calls) ----
+
+test('CLI: --contract-status draft × L3 × staging → human-gate (the deadlock is a GATE now, not a BLOCK)', () => {
+  const out = execFileSync('node', [
+    LIB_PATH, 'resolve', '--operation-class', 'deploy_staging', '--risk', 'HIGH',
+    '--env-tier', 'staging', '--readiness', 'READY', '--override', 'L3', '--contract-status', 'draft',
+  ], { encoding: 'utf8' });
+  const parsed = JSON.parse(out);
+  eq(parsed.disposition, 'human-gate');
+  eq(parsed.contract.status, 'draft');
+  eq(parsed.floor_hit, false);
+});
+
+test('CLI: + --accept-draft-contract → auto (the owner passes their own gate)', () => {
+  const out = execFileSync('node', [
+    LIB_PATH, 'resolve', '--operation-class', 'deploy_staging', '--risk', 'HIGH',
+    '--env-tier', 'staging', '--readiness', 'READY', '--override', 'L3',
+    '--contract-status', 'draft', '--accept-draft-contract',
+  ], { encoding: 'utf8' });
+  const parsed = JSON.parse(out);
+  eq(parsed.disposition, 'auto');
+  eq(parsed.contract.accepted_by_owner, true);
+});
+
+test('CLI: floor (prod_deploy) × draft × --accept-draft-contract × L3 → human-gate + floor_hit', () => {
+  const out = execFileSync('node', [
+    LIB_PATH, 'resolve', '--operation-class', 'prod_deploy', '--risk', 'HIGH',
+    '--env-tier', 'prod', '--readiness', 'READY', '--override', 'L3',
+    '--contract-status', 'draft', '--accept-draft-contract',
+  ], { encoding: 'utf8' });
+  const parsed = JSON.parse(out);
+  eq(parsed.disposition, 'human-gate', 'no flag combination crosses the floor');
+  eq(parsed.floor_hit, true);
+});
+
+test('CLI BACKWARD-COMPAT: no --contract-status ⇒ byte-for-byte the pre-DEC-DEV-0201 envelope', () => {
+  const out = execFileSync('node', [
+    LIB_PATH, 'resolve', '--operation-class', 'deploy_staging', '--risk', 'HIGH',
+    '--env-tier', 'staging', '--readiness', 'READY', '--override', 'L3',
+  ], { encoding: 'utf8' });
+  const parsed = JSON.parse(out);
+  // identical to the PURE resolver + readiness guard — i.e. the guard did not run at all
+  const expected = applyReadinessGuard(resolve('deploy_staging', 'HIGH', 'staging', {}, 'L3'), 'READY');
+  assert.deepStrictEqual(parsed, JSON.parse(JSON.stringify(expected)),
+    'a caller that knows nothing of contracts (P5/P6, the fabric) must be untouched by this change');
+  passed += 1;
+  eq(parsed.disposition, 'auto');
+  ok(!('contract' in parsed), 'no `contract` key is added when the axis is absent');
 });
 
 console.log(`\n${passed} assertions passed.`);

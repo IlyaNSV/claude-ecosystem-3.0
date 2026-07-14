@@ -34,13 +34,33 @@ resolve(operation_class, risk_tier, env_tier, policy, override)
 | `risk_tier` | `orchestrator/lib/gate-risk-classifier.cjs` → `classifyTask().tier` | `HIGH \| LOW` | консервативно `HIGH` + why |
 | substrate readiness | `orchestrator/lib/env-readiness.cjs` → `readiness` | `READY \| DEGRADED \| ENV_NOT_READY` | консервативно `DEGRADED` + why |
 | `env_tier` | вызывающий процесс (target-среда операции; ось orchestrator §7 env_tiers) | `dev \| staging \| prod` | консервативно `prod` + why |
+| `contract_status` (DEC-DEV-0201) | CNT `contract.status` capability (Integrator, `skills/integrator/deployment-provisioning.md`) | `active \| draft` | **absent → no-op** (байт-в-байт прежнее поведение); неизвестное → консервативно `draft` + why |
 
 Резолвер **не** инспектирует текст задач, маркеры M1-M3, профили или substrate — это
 переизобрело бы producer-логику и дало бы два расходящихся gate-policy механизма.
-Readiness потребляется отдельной чистой функцией **`applyReadinessGuard(envelope, readiness)`**,
-которая (зеркало собственного рельса env-readiness) **только даунгрейдит**: `READY` — без
-изменений; `DEGRADED` — `auto → human-gate`; `ENV_NOT_READY` — `block` (гейт не смог судить —
-и auto, и human-gate притворились бы, что смог).
+
+### Два guard'а — два РАЗНЫХ вопроса (не смешивать: смешение = дедлок)
+
+| Guard | Вопрос | Домен | Эффект |
+|---|---|---|---|
+| **`applyReadinessGuard(envelope, readiness)`** | **МОЖЕМ ли вообще?** (субстрат поднят? оснастка на месте и исполнима?) | `READY` / `DEGRADED` / `ENV_NOT_READY` | `READY` — без изменений; `DEGRADED` — `auto → human-gate`; `ENV_NOT_READY` — **`block`** (гейт не смог судить) |
+| **`applyContractGuard(envelope, contract_status, {acceptDraft})`** | **КТО решает?** (верифицировал ли хоть один живой прогон этот контракт capability?) | `active` / `draft` | `active` — без изменений; `draft` — `auto → human-gate` (**НЕ block**); `draft` + `acceptDraft` (явная санкция владельца) — без изменений |
+
+Оба **только даунгрейдят** — ни один не может поднять диспозицию и ни один не трогает floor
+(floor early-return'ится в `resolve()` **до** любого guard'а: floor-класс остаётся `human-gate` +
+`floor_hit: true` при любых флагах, включая `--accept-draft-contract`).
+
+**Почему `draft` — это gate, а не block (урок DEC-DEV-0201, живой прогон E.B).** Раньше `draft`
+читался как факт **готовности** («деплой не удалось подготовить» → `ENV_NOT_READY` → `BLOCKED`).
+Это категориальная ошибка, и она **дедлочила первый деплой в принципе**: E.A **обязан** отдать CNT
+`draft` (не вправе объявить `active` до живой верификации) → E.B отказывался деплоить не-`active` →
+а живая верификация возможна **только через деплой**. Замкнутый круг, из которого нет выхода.
+**Отсутствующая capability — это block. Отсутствующий человек — это gate.** Блок на оси доверия
+недостижим по построению: единственное, что могло бы его снять (живой прогон), он же и запрещает.
+
+`--accept-draft-contract` — **явный акт человека**: владелец санкционирует первый деплой по
+непроверенному контракту. Без этого акта `auto` по `draft` не бывает; с ним — guard не понижает
+(но и не повышает: floor как стоял, так и стоит).
 
 ## 3. Precedence (vision, дословно) и floor
 

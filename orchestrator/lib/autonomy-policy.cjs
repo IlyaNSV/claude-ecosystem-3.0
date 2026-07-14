@@ -31,6 +31,17 @@
  *     orchestrator/lib/env-readiness.cjs. Consumed via applyReadinessGuard() below,
  *     which only ever DOWNGRADES a disposition (mirror of env-readiness's own rail:
  *     never upgrade toward GO/auto).
+ *   - capability contract status ∈ {active, draft} — the CNT `contract.status` authored by the
+ *     Integrator (skills/integrator/deployment-provisioning.md). Consumed via applyContractGuard()
+ *     (DEC-DEV-0201), also downgrade-only. This lib never reads a CNT file itself.
+ *
+ * TWO GUARDS, TWO DIFFERENT QUESTIONS (the DEC-DEV-0201 lesson — they were once collapsed into one,
+ * and the collapse deadlocked the first deploy in principle):
+ *   readiness → CAN we act?     (substrate up? equipment present and executable?)   → DEGRADED/block
+ *   contract  → WHO decides?    (has a live run ever verified this contract?)       → human-gate
+ * A missing capability is a BLOCK. A missing human is a GATE. Never confuse the two: a block on the
+ * trust axis is unreachable by construction (the only thing that could clear it — a live run — is the
+ * very thing the block forbids).
  *
  * THE SINGLE LLM-JUDGMENT BOUNDARY (vision §Epic F): the content of a consilium verdict
  * (F2). The disposition DECISION is code — this file.
@@ -307,6 +318,83 @@ function applyReadinessGuard(envelope, readiness) {
   return Object.assign({}, e, { why });
 }
 
+// ---- contract guard (consumes the capability CNT status; DEC-DEV-0201) -------------------------
+
+/** Capability-contract statuses this guard understands (the CNT `contract.status` of an
+ * Integrator-equipped capability — skills/integrator/deployment-provisioning.md). */
+const CONTRACT_STATUSES = ['active', 'draft'];
+
+/**
+ * applyContractGuard(envelope, contractStatus, opts) — the TRUST axis, mirror-image of
+ * applyReadinessGuard. Both only ever DOWNGRADE; neither can lift a floor.
+ *
+ * WHY THIS EXISTS (the E.B first-deploy deadlock, DEC-DEV-0201 — a live-run defect):
+ * `draft` on a capability contract was being read as a READINESS fact ("the deploy could not be
+ * prepared" → ENV_NOT_READY → BLOCKED). It is not. Two DIFFERENT questions were collapsed into one:
+ *
+ *   readiness — CAN we deploy at all?      (is the substrate up? is the deploy-setup there and
+ *                                           executable?)                     → env-readiness axis
+ *   contract  — WHO decides to deploy?     (has any live run ever verified   → THIS axis
+ *                                           this capability contract?)
+ *
+ * Collapsing them deadlocked the first deploy in principle: E.A must ship the CNT `draft` (it may not
+ * claim `active` before a live verify), E.B refused to deploy anything not `active`, and the live verify
+ * can only come FROM a deploy. Nothing was wrong with the environment — the deploy-setup was on disk,
+ * parsed, with a full step-list. What was missing was a HUMAN, and a missing human is a gate, not a block.
+ *
+ *   active         → unchanged (a live run has verified this contract)
+ *   draft          → auto → human-gate. NOT `block`: the substrate is ready and the setup is in place;
+ *                    the FIRST deploy on a contract no live run has verified is simply the owner's call.
+ *                    consilium-gate / human-gate / block are left ALONE (downgrade-only).
+ *   draft + opts.acceptDraft  → NO downgrade. The owner explicitly sanctioned this first deploy
+ *                    (`--accept-draft-contract`). That human act IS the human-in-the-loop — without it,
+ *                    `auto` on a draft contract never happens.
+ *   absent (null)  → NO-OP (byte-for-byte the pre-DEC-DEV-0201 behaviour for every caller that does
+ *                    not know this axis: P5/P6, the fabric, any future consumer).
+ *   unknown value  → treated as `draft`, noted (conservative — an unreadable status never widens autonomy).
+ *
+ * FLOOR IS UNTOUCHABLE, BY CONSTRUCTION: this guard never returns a disposition MORE autonomous than the
+ * one it was given. `acceptDraft` only SKIPS a downgrade — it can never turn a floor human-gate into auto
+ * (resolve() already early-returned floor_hit before any guard runs). A floor operation stays human-gate
+ * with floor_hit:true no matter what the owner passes here.
+ */
+function applyContractGuard(envelope, contractStatus, opts) {
+  const e = envelope || { disposition: 'human-gate', why: [] };
+  const why = (e.why || []).slice();
+  const acceptDraft = !!(opts && opts.acceptDraft);
+
+  // absent axis → no-op (the backward-compat rail: a caller that knows nothing of contracts is unchanged)
+  if (contractStatus == null || String(contractStatus).trim() === '') {
+    if (acceptDraft) {
+      why.push('--accept-draft-contract given without a contract_status — there is no contract axis in play; the flag is IGNORED (nothing to accept)');
+    }
+    return Object.assign({}, e, { why });
+  }
+
+  let s = String(contractStatus).trim().toLowerCase();
+  if (CONTRACT_STATUSES.indexOf(s) === -1) {
+    why.push(`contract_status "${contractStatus}" is not ${CONTRACT_STATUSES.join('/')} (expected the capability CNT contract.status) — conservatively draft`);
+    s = 'draft';
+  }
+
+  if (s === 'active') {
+    why.push('capability contract active (verified by a live run) — disposition unchanged');
+    return Object.assign({}, e, { contract: { status: 'active', accepted_by_owner: false }, why });
+  }
+
+  // ---- draft --------------------------------------------------------------------------------
+  if (acceptDraft) {
+    why.push('capability contract draft, BUT --accept-draft-contract was given: the OWNER explicitly sanctioned this first deploy on a contract no live run has verified. No downgrade (this human act IS the human-in-the-loop). The floor is untouched — this guard never upgrades a disposition.');
+    return Object.assign({}, e, { contract: { status: 'draft', accepted_by_owner: true }, why });
+  }
+  if (e.disposition === 'auto') {
+    why.push('capability contract draft (no live run has verified it) — auto downgraded to human-gate. This is NOT an env-readiness downgrade: the substrate is fine and the deploy-setup is in place. The FIRST deploy on an unverified capability contract is the owner\'s call — sanction it with --accept-draft-contract, or flip the CNT to active once a live deploy has verified it.');
+    return Object.assign({}, e, { disposition: 'human-gate', contract: { status: 'draft', accepted_by_owner: false }, why });
+  }
+  why.push('capability contract draft — disposition is already consilium-gate/human-gate/block, unchanged (the contract-guard only ever downgrades auto → human-gate; it never lifts a gate or a floor)');
+  return Object.assign({}, e, { contract: { status: 'draft', accepted_by_owner: false }, why });
+}
+
 // ---- consilium verdict folding (F2, DEC-DEV-0193) ----------------------------------------------
 
 /**
@@ -497,9 +585,11 @@ module.exports = {
   DEFAULT_FLOOR,
   FLOOR_LOCKED,
   ENV_TIERS,
+  CONTRACT_STATUSES,
   resolveLevel,
   resolve,
   applyReadinessGuard,
+  applyContractGuard,
   confidenceFromSynth,
   applyConsiliumVerdict,
   parseAutonomyConfig,
@@ -529,6 +619,8 @@ function cliParse(argv) {
       case '--policy-file': a.policyFile = next(); break;
       case '--override': a.override = next(); break;
       case '--readiness': a.readiness = next(); break;
+      case '--contract-status': a.contractStatus = next(); break;              // DEC-DEV-0201: the TRUST axis
+      case '--accept-draft-contract': a.acceptDraftContract = true; break;     // …and the owner's explicit sanction (no value)
       case '--envelope': a.envelope = next(); break;
       case '--envelope-file': a.envelopeFile = next(); break;
       case '--synth': a.synth = next(); break;
@@ -559,7 +651,17 @@ function cliHelp() {
     'USAGE:',
     '  node autonomy-policy.cjs resolve --operation-class <c> --risk <HIGH|LOW> [--env-tier <dev|staging|prod>]',
     '        [--policy <json>|--policy-file <p>] [--override <L0|L1|L2|L3>] [--readiness <READY|DEGRADED|ENV_NOT_READY>]',
-    '     → resolve() (then applyReadinessGuard when --readiness is given) as JSON. The P5/P6 live-caller seam.',
+    '        [--contract-status <active|draft>] [--accept-draft-contract]',
+    '     → resolve(), then applyReadinessGuard when --readiness is given, then applyContractGuard when',
+    '       --contract-status is given. The P5/P6/E.B live-caller seam.',
+    '',
+    'THE TWO GUARDS (both downgrade-only; neither can lift the floor):',
+    '  --readiness        CAN we act?    DEGRADED → auto becomes human-gate; ENV_NOT_READY → block.',
+    '  --contract-status  WHO decides?   draft (no live run has verified this capability contract) → auto',
+    '                     becomes human-gate. NOT a block — the environment is fine; the first deploy on an',
+    '                     unverified contract is the owner\'s call (DEC-DEV-0201).',
+    '  --accept-draft-contract   the owner explicitly sanctions that first deploy → no contract downgrade.',
+    '                     It skips a downgrade; it can NEVER upgrade — a floor class stays human-gate.',
     '  node autonomy-policy.cjs resolve-consilium --envelope <json>|--envelope-file <p> --synth <json>|--synth-file <p>',
     '        [--threshold <0..1>]',
     '     → applyConsiliumVerdict() as JSON (fold an Epic D jury verdict into a consilium-gate disposition).',
@@ -578,7 +680,14 @@ function cliMain() {
     try { policy = cliReadJson(a.policy, a.policyFile, 'policy'); }
     catch (e) { process.stderr.write(`autonomy-policy: ${e.message}\n`); process.exit(2); }
     let envelope = resolve(a.operationClass, a.risk, a.envTier, policy || {}, a.override);
+    // Guards compose in this order — both are downgrade-only, so the order cannot widen autonomy:
+    // readiness (CAN we?) then contract (WHO decides?). Each is applied ONLY when its flag is present,
+    // so a caller that passes neither gets a byte-for-byte pre-guard envelope.
     if (a.readiness != null) envelope = applyReadinessGuard(envelope, a.readiness);
+    if (a.contractStatus != null || a.acceptDraftContract) {
+      envelope = applyContractGuard(envelope, a.contractStatus != null ? a.contractStatus : null,
+        { acceptDraft: !!a.acceptDraftContract });
+    }
     process.stdout.write(JSON.stringify(envelope, null, 2) + '\n');
     process.exit(0);
   }

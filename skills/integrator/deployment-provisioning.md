@@ -215,6 +215,15 @@ The `deploy-manifest.yaml` + `CNT-NNN.yaml` the deployer emits will materialize 
 6. **CNT field-name drift (B.1).** Use the canonical schema verbatim: `contract.id` (not `contract_id`), `data_flow.from/to` (not `source/target`), `transformation.type` (not `adapter_type`), `failure_modes[].symptom/likely_cause/action` (not `error/cause/fix`).
 7. **Marking the CNT `active` before a live verify exists.** The consumer (`deploy-to-stage`) does not exist until E.B and cannot be verified until the VM is restored (E.D). Ship `draft`.
 
+   > **Shipping `draft` is SAFE — and if it ever looks like it blocks the first deploy, the bug is NOT here (DEC-DEV-0201).** The first live E.B run deadlocked exactly this way: `deploy-to-stage` read `draft` as a *readiness* fact (`ENV_NOT_READY` → `BLOCKED`), so the first deploy was impossible in principle — E.A must ship `draft`, E.B refused non-`active`, and only a deploy can produce the verify. **The fix went into the CONSUMER, not here:** a draft contract is a *trust* fact — it **human-gates** the deploy (`--contract-status draft` → `auto → human-gate`), it does not block it. So do NOT "solve" a blocked deploy by shipping `active` — that would be a lie about a contract nobody has verified, and it would hand an unverified capability a silent auto-deploy. Keep shipping `draft`.
+
+## Who flips the CNT `draft → active` (and on what evidence)
+
+The flip is **the Integrator's write** — `.claude/integrator/**` is our zone, and the Orchestrator never writes it (§8.3). But the *evidence* for the flip can only come from the consumer:
+
+- On a successful staging deploy, `deploy-to-stage` returns **`contract_evidence`**: `{ contract: CNT-NNN, capability, status_observed: 'draft', verdict: 'live-verified', run_id, evidence: { result: 'DEPLOYED', release, healthcheck_healthy: true }, flip_to: 'active', flip_owner: 'integrator' }` — plus an owner-facing disclosure. It **reports**; it does not mutate the contract.
+- Acting on that evidence (setting `contract.status: active` + `last_verified: <date>` in `CNT-NNN.yaml`) is an Integrator act, keyed to a **real `run_id`** from the run-ledger. Never flip on a *promise* of a deploy, only on a deploy that actually happened and came up healthy.
+
 ## Cross-reference
 
 - `docs/integrator-module/SPEC.md` §5 (contract schema) + §8.3 (equip/execute boundary).

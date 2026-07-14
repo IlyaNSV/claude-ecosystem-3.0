@@ -271,10 +271,28 @@ Workflow({
     runtimeProbe: '.claude/orchestrator/lib/runtime-readiness.cjs', // DEC-DEV-0120: pre-flip re-probe + failure taxonomy
     envTier: 'staging',                         // prod is a floor-gated stub, NOT a mode of this process
     p6Verdict: 'GO', p7Verdict: 'READY_TO_SMOKE',                  // optional prior verdicts (informational / re-probe hint)
+    runId: "$RUN_ID",                           // the ledger run-id you just captured — the EVIDENCE HANDLE for a contract flip (⚠ below)
+    acceptDraftContract: false,                 // owner-only: sanction the FIRST deploy on a draft (never-verified) contract (⚠ below)
     autonomyOverride: '<the --autonomy level, if the owner approved a gated deploy>'  // RAISES the level → resolver reads auto
   }
 })
 ```
+
+> ⚠ **The draft-contract gate (DEC-DEV-0201 — the first live E.B run deadlocked here).** A capability's
+> CNT ships `status: draft` by construction: the Integrator may not claim `active` before a live run has
+> verified it (`deployment-provisioning.md` anti-pattern 7). E.B used to treat that draft as
+> **ENV_NOT_READY → BLOCKED** — but the only thing that could ever flip it to `active` is a successful
+> deploy, so **the first deploy was impossible in principle**.
+>
+> A draft contract is now a **trust** fact, not a **readiness** fact: the deploy is **human-gated**, not
+> blocked (`--contract-status draft` → the resolver downgrades `auto → human-gate`). Two ways past it —
+> both require a human, which is the point:
+> - **`acceptDraftContract: true`** — the owner explicitly sanctions this first deploy. (The floor is
+>   untouched: no flag combination makes a `prod_deploy` auto.)
+> - **flip the CNT to `active`** — after a deploy has actually verified it. On a `DEPLOYED` run, E.B
+>   returns **`contract_evidence`** (CNT id + `run_id` + verdict) and discloses that the contract may now
+>   be flipped. **§8.3: the Orchestrator only REPORTS this — it never writes `.claude/integrator/**`.**
+>   The flip is the Integrator's write. Pass `runId` so the evidence carries a handle back to the ledger.
 
 **E.C — `rollback-release`** (skills: `orchestrator-init`) — the staging auto-rollback cell. Also
 calls the **§3.2 resolver before the swap** (`rollback` class → staging auto, level-independent):
