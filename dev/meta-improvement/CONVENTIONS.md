@@ -91,6 +91,8 @@ dev/meta-improvement/
 │   ├── rails-session-start.js          # SessionStart — inject work-rails digest (DEC-DEV-0110)
 │   ├── context-map-session-start.js    # SessionStart — inject context-map digest: MAP.md + INFORMATION-MAP.yaml (DEC-DEV-0197/D1)
 │   ├── d7-hygiene-reminder.js          # SessionStart — warn: stale G25/G26/G27 feedback-contour backlog (DEC-DEV-0181)
+│   ├── seam-reinject-compact.js        # SessionStart(compact) — re-inject active context-seam STOP-blocks after compaction (DEC-DEV-0202)
+│   ├── seam-freshness-warn.js          # Stop (warn-only) — working tree changed >2h after the active seam (DEC-DEV-0202)
 │   └── session-audit.js                # SessionEnd marker writer (для pilot projects)
 ├── prompts/                     # Session Audit v2 auditor prompts
 ├── rubrics/                     # per-zone audit rubrics

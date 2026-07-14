@@ -14,6 +14,7 @@
 | **`v1_1_backlog.md`** | Living-список отложенного (post-MVP v1.1+) | живёт в корне `dev/`, обновляется per phase |
 | **`meta-improvement/`** | Модуль D7 (mechanisms + checklists + patterns + rubrics + scripts + audit-pipeline) | живой код, НЕ архивируется (CONVENTIONS §2) |
 | **`process-fabric/`** | Design-SSOT Process Fabric (CONCEPT + EXECUTION_ROADMAP + OD7-вердикты); исторический балласт — в `_archive/process-fabric/` | живые указатели |
+| **`semantic-continuity/`** | Трек «смысловая непрерывность»: активный SEAM-шов сессий трека (инстанс #2 протокола швов, DEC-DEV-0202) | живой шов (`status: ACTIVE`) → `CLOSED` = история |
 | **`scripts/`** | Вспомогательные dev-утилиты | живые |
 | **`_archive/`** | Завершённое прошлое (по фазам + треки: orchestrator, research, vision, plans, audit-reports…) | read-only история |
 
@@ -41,7 +42,7 @@
 
 - `PHASE_D_IMPLEMENTATION_PLAN.md` · `PHASE_D_DOCS_WIKI_READINESS.md` · `wiki-design.md` — Phase D Wiki initiative (DEFERRED to v1.1+, DEC-DEV-0046)
 - `D7_DEADWEIGHT_CLEANUP.md` — work-order прунинга D7; исполнен repo-wide deadweight-sweep'ом 2026-07-11 (см. статус в файле)
-- `CONTEXT_SEAM_PROTOCOL.md` — кандидат-механизм «протокол контекстных швов» (PROPOSED, не активирован; DEC-DEV-0196). В `CLAUDE.md`/память намеренно НЕ внесён до решения владельца
+- `CONTEXT_SEAM_PROTOCOL.md` — протокол контекстных швов, **AWAKENED 2026-07-14** (вариант A исполнен — DEC-DEV-0202; шаблон шва v2 + SEAM-ACK в проектном CLAUDE.md + 2 warn-хука; инстансы 2/3). Глобальный уровень и промоушен в паттерн — после валидации R10 (файл остаётся здесь как SSOT протокола до промоушена)
 
 ---
 
