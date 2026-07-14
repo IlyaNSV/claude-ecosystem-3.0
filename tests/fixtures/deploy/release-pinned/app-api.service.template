@@ -1,0 +1,19 @@
+[Unit]
+Description=@app/api (NestJS) — my-first-test staging
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# DEFECT (FIND-B): {{RELEASE_DIR}} pins this unit to ONE concrete releases/<ts>. Flipping
+# `current` does not move it — systemctl restart brings the OLD release back up, and the
+# healthcheck passes. The run reports DEPLOYED; nothing was deployed.
+WorkingDirectory={{RELEASE_DIR}}/apps/api
+EnvironmentFile={{ENV_FILE}}
+Environment=PORT={{PORT}}
+ExecStart={{NODE_BIN}} dist/main.js
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
