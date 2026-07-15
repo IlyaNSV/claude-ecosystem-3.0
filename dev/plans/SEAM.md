@@ -2,7 +2,7 @@
 
 status: ACTIVE
 seam_written: 2026-07-14 (сессия Opus 4.8 → передача Fable 5)
-seam_updated: 2026-07-15 (сессия Fable 5 после resume: **S1 ✅ DEPLOYED (`l62yt4`) · S2 СЕРДЦЕ ✅ (fail-после-флипа `l8m24o` + rollback auto@L1 `l9zt0w`) · триггер cut ВЫПОЛНЕН · S5 вскрыл FIND-E1/E2 (нет early-BLOCKED; стадия сама вылечила Redis) → фикс 0211 в сборке → ре-ран S5 → cut**; свежие вердикты и хроника — журнал кампании, последняя запись)
+seam_updated: 2026-07-15 — **РАУНД 3 ЗАКРЫТ, СМОУК EPIC E S1-S7 ПОЛНОСТЬЮ PASS, cut 1.12.0 РЕЖЕТСЯ ЭТИМ PR** (S1 DEPLOYED `l62yt4` · S2 сердце `l8m24o`+`l9zt0w` · S5 PASS с 3-го захода `le56c8` после фиксов 0211+0213). Следующая сессия: этот раздел «Следующий шаг» УСТАРЕВАЕТ после доставки тега — остаток кампании = догоны Волны 1 (E4 · E5-B · E1 · E2 · E6, чек-листы §9 трекера) + пост-cut хвосты (graduation-правки EPIC_E_READINESS/SUBSTRATE_GRADUATION_GATE; вопросы владельцу ниже + дрейф VM cpus=4→12). Хроника — журнал кампании.
 track_ssot: `dev/plans/PROD_READINESS_CAMPAIGN.md`
 
 ## 🛑 СТОП-БЛОК
