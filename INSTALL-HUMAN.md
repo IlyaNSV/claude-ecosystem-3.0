@@ -12,11 +12,14 @@ claude --version
 
 Если не установлен — https://docs.claude.com/claude-code/quickstart
 
-### A.2 Git установлен
+### A.2 Git и Node.js установлены
 
 ```bash
 git --version
+node --version
 ```
+
+Node.js (LTS) нужен обязательно: хуки экосистемы — `.js`/`.cjs`-скрипты, а инструменты Fabric/Orchestrator запускаются через `node`. Без него часть механики тихо не сработает. Если не установлен — https://nodejs.org/
 
 ### A.3 Глобальная установка Ecosystem 3.0
 
@@ -218,12 +221,17 @@ Bootstrap re-install option (b) Merge — DEPRECATED per [DEC-DEV-0019](DEV_JOUR
 
 После bootstrap можно добавлять любые MCP через `/integrator:add <mcp-name>`. Полный список рекомендованных — в [docs/integrator-module/SPEC.md §14](./docs/integrator-module/SPEC.md).
 
+### Реализатор cc-sdd (понадобится позже, готовить заранее не нужно)
+
+Когда дойдёшь до превращения handoff в код ([docs/guide/05-implementation.md](docs/guide/05-implementation.md)), понадобится внешний реализатор **cc-sdd**. Отдельной регистрации, аккаунта или API-ключа он не требует — команда `/integrator:add cc-sdd` сама установит и подключит его (с approve-гейтом перед установкой).
+
 ## Проверка готовности
 
 Перед запуском bootstrap убедись:
 
 - [ ] Claude Code работает (`claude --version`)
 - [ ] Git настроен (`git config user.name` возвращает имя)
+- [ ] Node.js установлен (`node --version`)
 - [ ] Глобальная установка сделана (Блок A.3) — `ls ~/.claude/commands/ecosystem/` показывает `bootstrap.md` и `verify.md`
 - [ ] У тебя на руках 3 ключа: Brave, Firecrawl, Exa
 - [ ] Папка под новый проект создана и пустая (или ты OK ставить `.claude/` рядом с существующим)
@@ -236,6 +244,15 @@ Bootstrap re-install option (b) Merge — DEPRECATED per [DEC-DEV-0019](DEV_JOUR
 - НЕ публикуй `.env` в репозитории
 - НЕ копируй ключи в чат с Claude — bootstrap их запросит и сохранит безопасно
 - Если случайно засветил ключ — ротируй его на сайте провайдера
+
+## Стоимость и лимиты
+
+Экосистема сама по себе бесплатна, но работает поверх **платного** Claude Code (подписка или API-биллинг) и жжёт токены пропорционально глубине работы:
+
+- **Discovery Quick** (`/product:init`) — обычный разговорный расход, самый дешёвый режим.
+- **Discovery Deep** (`--deep`) — research-субагенты + внешний поиск: заметно дороже; на ограниченной подписке может съесть существенную часть дневного лимита. Начинай с Quick, Deep запускай точечно.
+- **DA-ревью и Orchestrator-прогоны** (P3–P6) — тоже субагентные и токеноёмкие; планируй их на «свежий» лимит, а не в конец дня.
+- API-ключи Core MCP (Brave/Firecrawl/Exa) — free tier'ов хватает для пилота (см. Блок B.1).
 
 ## Сколько займёт первый запуск
 
