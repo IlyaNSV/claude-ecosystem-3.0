@@ -10,6 +10,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+### Fixed
+
+---
+
+## [1.12.0] — 2026-07-15
+
+> **Minor: Epic E — deploy/rollback-контур live-валидирован на VM-пилоте.** Накоплено с 1.11.0: первый живой staging-деплой линии (scene-bootstrap → codegen → build → migrate → атомарный флип → healthcheck), сердце fail-после-флипа → авто-rollback на `auto @ дефолтный L1`, floor непробиваем живьём; цепочка фиксов живого прогона — prisma codegen как шаг манифеста + запрет bare ExecStart (DEC-DEV-0205), структура ожидания build-test гейта + развод «не смог измерить»/«код провалил» (DEC-DEV-0206), ранний BLOCKED в точке вердикта env-пробы + structured capture-don't-fix во всех стадиях (DEC-DEV-0211) и у диспетчера (DEC-DEV-0213); смоук-агрегаты 0177 скорректированы независимым пересудом (DEC-DEV-0197 D13 / DEC-DEV-0204). Смоук Epic E: S1-S7 закрыты (SSOT — `dev/gates/EPIC_E_SMOKE_TEST_PLAN.md` + журнал кампании `dev/plans/PROD_READINESS_CAMPAIGN.md`).
+
+### Added
+
 - **Epic E · E.B — scene-bootstrap: деплой теперь СТРОИТ сцену, а не только описывает её.** Фаза `Deploy` процесса `deploy-to-stage` получила мутирующую стадию `scene-bootstrap` (**строго после гейта §3.2** — она создаёт каталоги, пишет файл секретов и ставит systemd-юниты, т.е. это мутация, и в префлайте она обошла бы floor): разворачивает `deploy_root` (`~` → `$HOME`), `mkdir -p` для `releases/` + `shared/{.env,logs,uploads}`, сеет `shared/.env` из корня проекта (staging v1 = dev-tier секреты; нет и там ⇒ честный `ENV_NOT_READY`, **никакой фабрикации**), выкладывает `releases/<ts>`, симлинкует `shared` внутрь релиза, материализует systemd-юниты из шаблонов (+ `daemon-reload` / `enable`). Идемпотентна (повторный деплой ничего не ломает и не дублирует; новый `releases/<ts>` — это и есть контракт Capistrano, он же делает возможным откат). Флип `current` — **атомарный** (`ln -sfn` + `mv -T`, никогда `rm && ln`).
 - **`orchestrator/lib/deploy-manifest.cjs` — детерминированное чтение deploy-манифеста (CLI-шов + агент-транспорт).** Парсер YAML-подмножества на голом Node (без зависимостей — либа копируется в пилот), CRLF-толерантный, **без часов** (timestamp приходит аргументом ⇒ N прогонов байт-идентичны). Отдаёт `present` / `status` / `steps` / `healthcheck` / `migrate` / `release_layout` (прежние поля, без переименований) + `deploy_root` (развёрнутый), `scene` (все абсолютные пути), `units`, `blocking_defects`. Вшит в цепь `verify` (`test:orchestrator`).
 
