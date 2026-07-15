@@ -39,6 +39,19 @@ live grade is a dogfood on the S7 fork `PA-040/042`.
 
 ## Pre-flight (read-only, before launching)
 
+**🚫 THE SUBSTRATE IS READ-ONLY FOR THE DISPATCHER — CAPTURE-DON'T-FIX (DEC-DEV-0213 / FIND-F).**
+You (the dispatcher session) never "prep", repair or normalize the substrate — not before the
+run, not between stages, not after a verdict. FORBIDDEN at all times: `docker start|stop|restart|run|compose`,
+`systemctl start|stop|restart` of backing services, package installs, edits to `shared/.env` or any
+substrate config. A degraded substrate is NOT an obstacle to clear — it is the EXACT condition the
+process's readiness gates exist to judge: a run that returns `BLOCKED × ENV_NOT_READY` on a down
+dependency is a **successful, valid run**, not a failure to remedy. WHY HARD-CODED: on run `ld6vrs`
+the dispatcher saw `mft-redis` exited, ran `docker start mft-redis` as "substrate prep" and thereby
+erased the scenario the operator had deliberately staged — invalidating the very gate under test
+(the in-process stages already carry this prohibition, DEC-DEV-0211; the dispatcher was the one
+actor left without it). Same rule after a terminal verdict: do NOT offer or perform env fixes /
+re-drives; report the verdict and stop — remediation is the owner's move.
+
 **Always (the cc-sdd processes P3–P7 — P2 is the exception, see its block below):** confirm cc-sdd is `active` in `.claude/integrator/active-tools.yaml`. If not →
 stop: these processes need cc-sdd; run `/integrator:add cc-sdd` first. Do NOT improvise a
 substitute.
