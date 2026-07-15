@@ -37,7 +37,7 @@
 | **Product Module** | D1 + D2-Behavioral: 24 типа артефактов, процессы P1-P5, handoff-генерация | ✅ SPEC v1.0 |
 | **Design Module** | D2-B04 UI Design: итеративная генерация через Stitch/HTML, conditional на `has_ui=true` | ✅ SPEC v1.0 |
 | **Integrator Module** | Подключение/замена внешних инструментов под PMO-карту («сисадмин») | ✅ SPEC v1.0 |
-| **Orchestrator Module** | Runtime-владелец D2-Technical + D3+: проводит PMO-процессы end-to-end силами role-агентов по регламентам | 🚧 процессы P3–P6 построены + live-validated (DEC-DEV-0073…0104); P2/P7 + §6-канал отложены — живой статус в [ROADMAP](ROADMAP.md#где-мы-сейчас) |
+| **Orchestrator Module** | Runtime-владелец D2-Technical + D3+: проводит PMO-процессы end-to-end силами role-агентов по регламентам | ✅ полное семейство процессов P1–P7 + §6-канал построены и live-validated — живой статус в [ROADMAP](ROADMAP.md#где-мы-сейчас) |
 
 ## Что входит в репозиторий
 
