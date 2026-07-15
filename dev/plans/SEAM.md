@@ -2,7 +2,7 @@
 
 status: ACTIVE
 seam_written: 2026-07-14 (сессия Opus 4.8 → передача Fable 5)
-seam_updated: 2026-07-14 поздний (сессия Fable 5, раунд 3: S1 ×3 прогнан, фиксы 0205+0206 смёржены; ПАУЗА по команде владельца — resume этой же сессии)
+seam_updated: 2026-07-15 (сессия Fable 5 после resume: **S1 ✅ DEPLOYED (`l62yt4`) · S2 СЕРДЦЕ ✅ (fail-после-флипа `l8m24o` + rollback auto@L1 `l9zt0w`) · триггер cut ВЫПОЛНЕН · S5 вскрыл FIND-E1/E2 (нет early-BLOCKED; стадия сама вылечила Redis) → фикс 0211 в сборке → ре-ран S5 → cut**; свежие вердикты и хроника — журнал кампании, последняя запись)
 track_ssot: `dev/plans/PROD_READINESS_CAMPAIGN.md`
 
 ## 🛑 СТОП-БЛОК

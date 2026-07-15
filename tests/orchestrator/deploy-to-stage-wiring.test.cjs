@@ -386,6 +386,107 @@ test('0206: BUILD_SCHEMA carries suite_completed (additive — no field renamed,
   assert(/passed:\s*\{\s*type:\s*'boolean'\s*\}/.test(m[0]), 'passed must remain unrenamed');
 });
 
+// ---- DEC-DEV-0211: the preflight SHORT-CIRCUIT + the substrate-mutation ban (run lah60w) ---------
+//
+// The env-readiness probe CORRECTLY returned ENV_NOT_READY (mft-redis stopped by the operator) — and
+// the run did NOT stop: manifest-parse and build-test ran as if nothing happened, and the build-test
+// agent, hitting the Redis-down suite (8 red api tests), SELF-HEALED the substrate ("Start redis
+// container required by api test suite" → `docker start mft-redis`), waited for healthy, and prepared
+// to re-run the suite green. Two defects, one disease:
+//   FIND-E1 — the ENV_NOT_READY invariant arm sat AFTER manifest-parse/build-test, so a substrate the
+//             gate had already judged DOWN was handed to later stages "to try anyway";
+//   FIND-E2 — no stage prompt named substrate mutation as forbidden, so a stage whose success criterion
+//             depends on the substrate repaired it — erasing the readiness gate one layer down (the
+//             "dispatcher self-heals the substrate" precedent, now at STAGE level).
+// The fix is STRUCTURE, not hope (lessons 39/47): an ENV_NOT_READY-exact early return straight after
+// the probe, plus ENUMERATED forbidden command classes in every substrate-adjacent prompt.
+// ⚠ THE S5 AXIS: DEGRADED must NOT short-circuit — it is the DECISION axis that rides to the §3.2
+// resolver, where applyReadinessGuard downgrades auto→human-gate. These pins EVALUATE the real
+// predicate (new Function), so a mutation that removes the short-circuit OR widens it to DEGRADED
+// fails here exactly as it would live.
+
+// Pull `const envProbeBlocks = <expr>` out of the source and run it as the code it is.
+function evalEnvProbeBlocks(readiness) {
+  const m = SRC.match(/const envProbeBlocks = ([^\n]+)/);
+  assert(m, 'could not locate the envProbeBlocks expression (has the preflight short-circuit been removed?)');
+  // eslint-disable-next-line no-new-func
+  return new Function('readiness', `return ${m[1]};`)(readiness);
+}
+
+test('E1: an ENV_NOT_READY probe SHORT-CIRCUITS the preflight — the early return sits BEFORE manifest-parse and build-test', () => {
+  const probeIdx = SRC.indexOf("label: 'env-readiness'");
+  const scIdx = SRC.indexOf('if (envProbeBlocks)');
+  const manifestIdx = SRC.indexOf("label: 'manifest-parse'");
+  const buildIdx = SRC.indexOf("label: 'build-test'");
+  assert(scIdx !== -1, 'no early short-circuit — a substrate the probe judged DOWN would be handed to build-test "to try anyway" (run lah60w)');
+  assert(probeIdx !== -1 && probeIdx < scIdx, 'the short-circuit must come AFTER the env-readiness probe (it needs the verdict)');
+  assert(manifestIdx !== -1 && scIdx < manifestIdx, 'the short-circuit must come BEFORE manifest-parse — no later stage runs on a dead substrate');
+  assert(buildIdx !== -1 && scIdx < buildIdx, 'the short-circuit must come BEFORE build-test — the stage that self-healed the substrate on lah60w');
+  const arm = SRC.slice(scIdx, scIdx + 1600);
+  assert(/result: 'BLOCKED'/.test(arm) && /flipped: false/.test(arm) && !/DEPLOY_FAILED/.test(arm),
+    'the early arm must be BLOCKED + flipped:false, never DEPLOY_FAILED (a down substrate is "could not prepare", not a deploy failure)');
+  assert(/failure_class: 'env-not-ready-preflight'/.test(arm),
+    'the early arm must carry the gate-incident class env-not-ready-preflight (NOT a fabricated P7 boot-class — nothing booted)');
+  assert(/readiness_reasons: readinessReasons/.test(arm), 'the early arm must carry the probe\'s named reasons (an unexplained block is unauditable)');
+  assert(/disposition: null, autonomy: null/.test(arm),
+    'the §3.2 gate was never reached — disposition/autonomy must be an HONEST null, not a fabricated envelope');
+  assert(/re-run|resume/i.test(arm), 'the early arm must name the remedy in words (bring the substrate up → re-run/resume)');
+  // ROUTING: the same event as any ENV_NOT_READY block — substrate up → re-run, never escalate
+  const got = engine.applyIngest(CHARTER, 'deploy-to-stage', { result: 'BLOCKED', readiness: 'ENV_NOT_READY', flipped: false });
+  assert(JSON.stringify(got) === JSON.stringify(['evt:deploy.env_not_ready']),
+    `an early-blocked run must route to evt:deploy.env_not_ready, got ${JSON.stringify(got)}`);
+});
+
+test('E1: the short-circuit predicate is ENV_NOT_READY-EXACT — DEGRADED does NOT short-circuit (the S5 axis lives)', () => {
+  assert(evalEnvProbeBlocks('ENV_NOT_READY') === true,
+    'an ENV_NOT_READY probe verdict must trip the short-circuit (FIND-E1: "cannot deploy AT ALL" blocks before any later stage runs)');
+  assert(evalEnvProbeBlocks('DEGRADED') === false,
+    'THE S5 TRAP: DEGRADED must NOT short-circuit — it is the DECISION axis that must ride to the §3.2 resolver '
+    + '(applyReadinessGuard: auto→human-gate). Widening the predicate to `!== READY` deletes the whole DEGRADED deploy path');
+  assert(evalEnvProbeBlocks('READY') === false, 'READY must never block');
+  // …and a DEGRADED run still reaches the resolver carrying its readiness (the applyReadinessGuard seam)
+  const cmd = composeResolveCmd({
+    AUTONOMY_LIB: 'A.cjs', RISK: 'HIGH', ENV_TIER: 'staging', readiness: 'DEGRADED',
+    contractStatus: null, ACCEPT_DRAFT: false, AUTONOMY_POLICY_CFG: null, AUTONOMY_OVERRIDE: null,
+  });
+  assert(/--readiness DEGRADED/.test(cmd), `a DEGRADED readiness must ride to the resolver, got: ${cmd}`);
+});
+
+test('E2: the build-test prompt BANS substrate mutation as ENUMERATED command classes — env failures are EVIDENCE', () => {
+  const seg = SRC.slice(SRC.indexOf('const build = await agent'), SRC.indexOf("label: 'build-test'"));
+  assert(/SUBSTRATE IS READ-ONLY/.test(seg),
+    'the build-test agent has NO mandate to mutate the environment — on lah60w it ran `docker start mft-redis` to green a suite');
+  assert(/docker start/.test(seg) && /systemctl start/.test(seg) && /install/i.test(seg),
+    'the ban must ENUMERATE the forbidden command classes (docker start/restart, systemctl start, package installs) — text does not compel, structure does (lesson 47)');
+  assert(/EVIDENCE, NOT AN OBSTACLE/.test(seg),
+    'the prompt must state that environment-caused failures are EVIDENCE to record, not an obstacle to clear');
+  assert(/does NOT make the measurement incomplete/.test(seg),
+    'a dependency-down RED reached an exit code ⇒ it is a COMPLETED red — suite_completed (0206) must not be abused to soften it into a re-run');
+});
+
+test('E2: the read-only probes (env-readiness + runtime-readiness) carry the read-only mandate in words', () => {
+  const envSeg = SRC.slice(SRC.indexOf('const envProbe = await agent'), SRC.indexOf("label: 'env-readiness'"));
+  assert(/READ-ONLY/.test(envSeg) && /never REPAIR/.test(envSeg) && /docker start/.test(envSeg),
+    'the env-readiness relay must be told it MEASURES the substrate and never repairs it (enumerated classes, not tone)');
+  const preSeg = SRC.slice(SRC.indexOf('const preflight = await agent'), SRC.indexOf("label: 'runtime-readiness'"));
+  assert(/READ-ONLY/.test(preSeg) && /docker start/.test(preSeg),
+    'the runtime-readiness relay must carry the same read-only mandate (an honest NOT_STARTABLE is the job, not a defect to fix)');
+});
+
+test('E2: the LEGITIMATE mutators (scene-bootstrap + deploy-flip + healthcheck) are fenced to DEPLOY mutations only', () => {
+  const sceneSeg = SRC.slice(SRC.indexOf('const scene = await agent'), SRC.indexOf("label: 'scene-bootstrap'"));
+  assert(/MUTATION BOUNDARY/.test(sceneSeg) && /docker start/.test(sceneSeg),
+    'scene-bootstrap mutates LEGITIMATELY (dirs, .env seed, units) — but the ban on NON-deploy mutation (docker/infra/packages) must be in words');
+  const deploySeg = SRC.slice(SRC.indexOf('const deployed = await agent'), SRC.indexOf("label: 'deploy-flip'"));
+  assert(/MUTATION BOUNDARY/.test(deploySeg) && /docker start/.test(deploySeg),
+    'deploy-flip may only run MANIFEST STEPS — starting/repairing backing services is not a manifest step');
+  assert(/ONLY systemctl you run/.test(deploySeg),
+    'the app-unit restart is the ONE legitimate systemctl — the fence must say so, or the ban reads as contradicting step 6');
+  const hcSeg = SRC.slice(SRC.indexOf('const healthcheck = await agent'), SRC.indexOf("label: 'healthcheck'"));
+  assert(/do NOT start\/restart ANY service/.test(hcSeg) && /docker start/.test(hcSeg),
+    'the healthcheck must not coax a 2xx by starting services — a dependency-not-up diagnosis is EVIDENCE for the rollback decision');
+});
+
 // ---- THE FIRST-DEPLOY CONTRACT DEADLOCK (first live E.B run, 2026-07-14 — DEC-DEV-0201) ----------
 //
 // E.A must ship the CNT `draft` (never claim `active` before a live verify). E.B refused to deploy a
