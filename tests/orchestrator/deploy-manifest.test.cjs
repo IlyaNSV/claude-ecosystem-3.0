@@ -501,6 +501,132 @@ test('a nested contract block is read too (status: contract.status; id: contract
 });
 
 // ---------------------------------------------------------------------------
+// DEC-DEV-0215 — CONTRACT-STATUS SSOT. The manifest's `status:` is a COPY; the canonical trust state
+// lives in the CNT file (.claude/integrator/contracts/<CNT>.yaml — the Integrator's zone, §8.3).
+// Live E5-B defect (run lymzao): the Integrator flipped CNT-005 → active on live evidence, but the
+// manifest copy stayed `draft`, so the deploy gate kept demanding --accept-draft-contract for an
+// already-trusted contract. The lib now takes `status` FROM the CNT file, manifest copy as fallback.
+// ---------------------------------------------------------------------------
+
+const CNT_MANIFEST = [
+  'manifest_version: 1',
+  'capability: deploy-staging',
+  'status: draft',                 // the manifest COPY — stale on purpose
+  'contract: CNT-005',
+  'deploy_root: "~/deploy/x"',
+  'steps:',
+  '  - build: { command: "pnpm -r build" }',
+  '  - flip:  { type: symlink_atomic }',
+  '',
+].join('\n');
+
+/** Build a tmp with the REAL integrator shape so DEFAULT contracts-dir resolution is exercised:
+ *  <tmp>/integrator/deploy/staging/deploy-manifest.yaml + (optional) <tmp>/integrator/contracts/. */
+function mkCntScene(cntBody /* string|null */) {
+  const tmp = mkTmp();
+  const dep = path.join(tmp, 'integrator', 'deploy', 'staging');
+  fs.mkdirSync(dep, { recursive: true });
+  fs.writeFileSync(path.join(dep, 'deploy-manifest.yaml'), CNT_MANIFEST);
+  if (cntBody !== null) {
+    const con = path.join(tmp, 'integrator', 'contracts');
+    fs.mkdirSync(con, { recursive: true });
+    fs.writeFileSync(path.join(con, 'CNT-005.yaml'), cntBody);
+  }
+  return { tmp, manifest: path.join(dep, 'deploy-manifest.yaml') };
+}
+
+test('0215 SSOT: the CNT file wins over the manifest copy (CNT active + manifest draft ⇒ status=active, source=cnt)', () => {
+  const { tmp, manifest } = mkCntScene('contract:\n  id: CNT-005\n  status: active\n');
+  const m = read(manifest);   // DEFAULT contracts-dir resolution walks up to <tmp>/integrator/contracts
+  assert.strictEqual(m.status, 'active',
+    'THE E5-B DEFECT: the CNT file is the SSOT — its `active` must win over the manifest copy `draft`, or the gate demands --accept-draft-contract for an already-trusted contract');
+  assert.strictEqual(m.contract_status_source, 'cnt', 'the provenance must name the CNT file as the source');
+  assert.strictEqual(m.status_source, 'status',
+    'the WITHIN-MANIFEST declaration site is still reported unchanged (DEC-DEV-0012) — the manifest DID declare draft at `status`');
+  assert.strictEqual(m.contract, 'CNT-005');
+  assert.strictEqual(m.present, true, 'the trust axis never touches present');
+  const why = m.disclosures.join(' | ');
+  assert.ok(/CNT|SSOT|authoritative/i.test(why) && /active/.test(why) && /draft/.test(why),
+    'a CNT-vs-manifest divergence must be DISCLOSED so the gate decision is auditable from the parse alone');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('0215: when the CNT and the manifest AGREE the CNT is still the source, but no divergence is disclosed (no noise)', () => {
+  const { tmp, manifest } = mkCntScene('contract:\n  id: CNT-005\n  status: draft\n');
+  const m = read(manifest);
+  assert.strictEqual(m.status, 'draft');
+  assert.strictEqual(m.contract_status_source, 'cnt', 'the SSOT is still the source even when it agrees with the manifest');
+  assert.ok(!/wins|authoritative/i.test(m.disclosures.join(' | ')), 'agreement needs no divergence disclosure');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('0215 blind ≠ found: an ABSENT CNT file falls back to the manifest status + DISCLOSES (never crashes)', () => {
+  const { tmp, manifest } = mkCntScene(null);   // manifest names CNT-005; no contracts dir exists
+  const m = read(manifest);
+  assert.strictEqual(m.status, 'draft', 'no CNT SSOT on disk ⇒ the manifest\'s own status is the fallback');
+  assert.strictEqual(m.contract_status_source, 'manifest', 'and the provenance says the status came from the manifest copy');
+  const why = m.disclosures.join(' | ');
+  assert.ok(/not found/i.test(why) && /CNT-005/.test(why) && /SSOT/.test(why),
+    'a missing SSOT must be DISCLOSED (the contract the manifest names could not be resolved)');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('0215 blind ≠ found: an UNREADABLE CNT file falls back + discloses the read error (not a crash)', () => {
+  const { tmp, manifest } = mkCntScene('contract:\n  id: CNT-005\n  status: active\n');
+  // a reader that CAN read the manifest but throws EACCES for the CNT file (deterministic, cross-platform)
+  const guardedRead = (p) => {
+    if (String(p).replace(/\\/g, '/').endsWith('/contracts/CNT-005.yaml')) {
+      throw Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
+    }
+    return fs.readFileSync(p, 'utf8');
+  };
+  const m = read(manifest, { readFile: guardedRead });
+  assert.strictEqual(m.status, 'draft', 'an UNREADABLE SSOT ⇒ fall back to the manifest status (blind ≠ found — never crash)');
+  assert.strictEqual(m.contract_status_source, 'manifest');
+  assert.ok(/not readable|EACCES/i.test(m.disclosures.join(' | ')), 'the read error must be DISCLOSED, not swallowed');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('0215: a name-based CNT file (SPEC §5.1 form) is found by its parsed contract.id, not only by filename', () => {
+  const tmp = mkTmp();
+  const dep = path.join(tmp, 'integrator', 'deploy', 'staging');
+  const con = path.join(tmp, 'integrator', 'contracts');
+  fs.mkdirSync(dep, { recursive: true });
+  fs.mkdirSync(con, { recursive: true });
+  fs.writeFileSync(path.join(dep, 'deploy-manifest.yaml'), CNT_MANIFEST);
+  // filename is NOT CNT-005.yaml — the id lives inside (the §5.1 `product-handoff-to-cc-sdd.yaml` shape)
+  fs.writeFileSync(path.join(con, 'staging-deploy.yaml'), 'contract:\n  id: CNT-005\n  status: active\n');
+  const m = read(path.join(dep, 'deploy-manifest.yaml'));
+  assert.strictEqual(m.status, 'active', 'the id-based scan must find a CNT whose filename is not <id>.yaml');
+  assert.strictEqual(m.contract_status_source, 'cnt');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('0215 CLI seam: --contracts-dir resolves the CNT and the resolved status survives the JSON the agent relays', () => {
+  const tmp = mkTmp();
+  const con = path.join(tmp, 'contracts');
+  fs.mkdirSync(con, { recursive: true });
+  fs.writeFileSync(path.join(con, 'CNT-005.yaml'), 'contract:\n  id: CNT-005\n  status: active\n');
+  const man = path.join(tmp, 'deploy-manifest.yaml');
+  fs.writeFileSync(man, CNT_MANIFEST);
+  const out = execFileSync(process.execPath,
+    [LIB, 'parse', '--manifest', man, '--home', HOME, '--contracts-dir', con], { encoding: 'utf8' });
+  const j = JSON.parse(out);
+  assert.strictEqual(j.status, 'active', 'the CNT-resolved status must survive the CLI JSON seam the deploy agent relays');
+  assert.strictEqual(j.contract_status_source, 'cnt', 'and so must its provenance');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+test('0215: resolveContractsDir walks up to the `integrator/` ancestor (the real .claude/integrator/deploy/<cap>/ shape)', () => {
+  const { resolveContractsDir } = lib;
+  assert.strictEqual(
+    resolveContractsDir(path.join('.claude', 'integrator', 'deploy', 'cc-sdd-deploy')),
+    path.join('.claude', 'integrator', 'contracts'),
+    'the CNT files live at the contracts/ sibling of the integrator/ ancestor');
+  assert.strictEqual(resolveContractsDir('/x/y', '/explicit/override'), '/explicit/override', 'an explicit override wins');
+});
+
+// ---------------------------------------------------------------------------
 // The YAML subset itself — the constructs the real manifest actually uses
 // ---------------------------------------------------------------------------
 

@@ -204,7 +204,8 @@ const MANIFEST_SCHEMA = {
   required: ['present'],
   properties: {
     present: { type: 'boolean' },                              // FACT: file exists + parseable + carries an executable step-list
-    status: { type: ['string', 'null'] },                      // TRUST: draft | active | stub — NOT an input to `present`
+    status: { type: ['string', 'null'] },                      // TRUST: draft | active | stub — from the CNT SSOT, manifest copy as fallback (DEC-DEV-0215). NOT an input to `present`
+    contract_status_source: { type: ['string', 'null'] },      // provenance of `status`: cnt | manifest | null (DEC-DEV-0215) — the lib names WHERE trust was read
     contract: { type: ['string', 'null'] },                    // the CNT id the manifest names (e.g. "CNT-005"), or null — never invented
     steps: { type: 'array', items: { type: 'object' } },       // ordered build → migrate → flip → (re)start
     healthcheck: { type: ['object', 'null'] },                 // { url, boot_window_sec, expect, failure_taxonomy }
@@ -377,7 +378,7 @@ if (envProbeBlocks) {
 const manifest = await agent(
   `Relay the DETERMINISTIC deploy-manifest read for capability "${CAPABILITY}". Run this via Bash and return its JSON VERBATIM:\n` +
   `node ${MANIFEST_LIB} parse --manifest ${MANIFEST} --capability ${CAPABILITY}\n` +
-  `Return its { present, status, contract, capability, steps, healthcheck, migrate, release_layout, unit_templates, units, deploy_root, scene, blocking_defects, disclosures } object EXACTLY as printed.\n` +
+  `Return its { present, status, contract_status_source, contract, capability, steps, healthcheck, migrate, release_layout, unit_templates, units, deploy_root, scene, blocking_defects, disclosures } object EXACTLY as printed.\n` +
   `⚠ YOU ARE A TRANSPORT, NOT A PARSER. Do NOT open the .yaml, do NOT re-derive, re-interpret, "sanity-check" or summarize any field — relay what the lib printed, byte for byte. If the command itself fails to run (node missing, lib path wrong), SAY SO and return present:false with that as the disclosure; do NOT substitute your own reading of the file as a fallback.\n` +
   `WHY (DEC-DEV-0203 / FIND-A — this used to be your job and it did not work): an LLM parsed this SAME unchanged file as a full 4-step list in one run and as an EMPTY step-list 18 minutes later, and once returned the self-contradictory pair present:true + steps:[]. "Does this file carry a step-list" is a deterministic FACT ABOUT BYTES sitting behind a readiness gate — a stochastic answer randomly blocks good deploys (false negative) AND would wave a mangled manifest through into a real mutation (false positive). The lib is CRLF-tolerant (the .yaml materialises CRLF on a Windows pilot — campaign §8.2 pt 7 / G36, the capability-probe.cjs extractManifest pattern), it FAILS LOUD rather than fabricating a step-list, and it keeps \`present\` (FACT) strictly independent of \`status\` (TRUST) — collapsing those made the first deploy impossible in principle (DEC-DEV-0201).\n` +
   `Do NOT run any deploy step; do NOT commit. READ-ONLY on \`.claude/integrator/**\` — never edit a manifest, a unit template, or a CNT contract (§8.3: that zone is the Integrator's).`,
@@ -426,16 +427,21 @@ if (manifestOk && blockingDefects.length) {
 // which turns `auto` into `human-gate` — a gate the owner can pass, not a wall that cannot be passed.
 // An absent/unknown status on a present manifest ⇒ conservatively `draft`: an undeclared contract must
 // never WIDEN autonomy (same rail as the resolver's own "absent → conservative" inputs).
+// The status the lib resolved is CNT-SSOT-first (manifest copy as fallback) — DEC-DEV-0215. We read
+// it verbatim and carry its PROVENANCE (contract_status_source: cnt|manifest) into the trail, so the
+// gate decision is auditable: the E5-B defect was a live-flipped CNT `active` that a stale manifest
+// `draft` masked, and the run.json must show WHERE the trust came from.
 const contractStatus = manifestOk
   ? (((manifest && manifest.status) ? String(manifest.status).trim().toLowerCase() : '') || 'draft')
   : null
+const contractStatusSource = (manifest && manifest.contract_status_source) || null
 const contractDraft = !!(contractStatus && contractStatus !== 'active')
 if (contractDraft) {
   readinessReasons.push(
-    `capability contract for "${CAPABILITY}" is status=${contractStatus} (no live run has verified it) → readiness UNCHANGED (${readiness}). ` +
+    `capability contract for "${CAPABILITY}" is status=${contractStatus}${contractStatusSource ? ` (source: ${contractStatusSource})` : ''} (no live run has verified it) → readiness UNCHANGED (${readiness}). ` +
     `This is a TRUST axis (who decides: auto or the owner), NOT a readiness axis (can we deploy at all) — the deploy-setup is present, parseable and carries a step-list. ` +
     `It rides to the §3.2 resolver as --contract-status ${contractStatus} (auto → human-gate), it does NOT block the deploy.`)
-  log(`capability contract: ${contractStatus} → §3.2 contract-guard (auto → human-gate)${ACCEPT_DRAFT ? ' — OVERRIDDEN: the owner passed acceptDraftContract (explicit sanction of a first deploy on an unverified contract)' : ''}. Readiness is untouched.`)
+  log(`capability contract: ${contractStatus}${contractStatusSource ? ` (from ${contractStatusSource})` : ''} → §3.2 contract-guard (auto → human-gate)${ACCEPT_DRAFT ? ' — OVERRIDDEN: the owner passed acceptDraftContract (explicit sanction of a first deploy on an unverified contract)' : ''}. Readiness is untouched.`)
 }
 
 // (c) clean build + full suite (D-6 — a deploy ships only green code). A RED build/test over a READY
