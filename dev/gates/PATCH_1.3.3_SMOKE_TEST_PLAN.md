@@ -1,5 +1,7 @@
 # Patch 1.3.3 Smoke Test Plan
 
+> **Статус: ✅ ЗАКРЫТ 2026-07-15 (догон E1 кампании до-PROD).** Итог по всем сценариям: **S1 PARTIAL** (пересуд DEC-DEV-0204) · **S2 PASS** (4/4 критерия: no-op без маркера / warn+PA-065 с маркером / cleanup / warn-only) · **S3 PASS** (0177) · **S4 PARTIAL** — N/A снят (полный поток add: profiler → propose → жёсткий approve-гейт → отмена → cleanup работают на greenfield `vercel@latest`), но §4.2.1-deliverable (пер-тир env-блок в Stage-2 propose + prod-only warning) **структурно не подключён в `add.md`/`installation-protocol`** — совпадает с задокументированным fail-pattern, решение за владельцем · **S5 PASS** (dedup-окно 1 мин доказано конклюзивно: 4 ключа ↔ 4 PA, rollover и same-minute collapse). Попутная находка: research-флоу чистит session-маркер у ПРЕЗЕНТАЦИИ гейта, а не после резолюции (класс исходного N/A). Evidence — отчёт оператора E1, транскрипты пилота 2026-07-15.
+>
 > **Goal:** validate end-to-end that patch 1.3.3 deliverables (B-1..B-4) work in a pilot project. Static smoke (Sub-phase D — `node dev/meta-improvement/scripts/smoke-hooks.js`) already green; this plan covers runtime scenarios that static smoke can't catch.
 >
 > **Context:** patch 1.3.3 was driven by pilot session `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` (2026-05-27 on `my-first-test/`). Re-running the same pilot context after `/ecosystem:update` should now show all 4 fixes active.
