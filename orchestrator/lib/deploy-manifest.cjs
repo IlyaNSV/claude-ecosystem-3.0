@@ -89,11 +89,23 @@
  * `{{TIMESTAMP}}` placeholder. That is what makes the determinism testable (N runs ⇒ byte-identical
  * stdout) and is the same rail as the harness's own "the script may not read a clock".
  *
+ * ── WHY IT RESOLVES CONTRACT-STATUS FROM THE CNT FILE, NOT THE MANIFEST (DEC-DEV-0215, run lymzao) ─
+ * The manifest carries a `status:` field, but it is only a COPY. The CANONICAL trust state lives in
+ * the CNT file the manifest NAMES (`contract: CNT-NNN` → `.claude/integrator/contracts/CNT-NNN.yaml`
+ * — the Integrator's zone, §8.3). The live E5-B defect: the Integrator flipped `CNT-005` → `active`
+ * on live evidence, but the manifest copy stayed `draft`, so the deploy gate kept demanding
+ * `--accept-draft-contract` for a contract that was already trusted. `status` is now taken FROM the
+ * CNT SSOT; the manifest field is the FALLBACK when the CNT is absent/unreadable (blind ≠ found:
+ * degrade + DISCLOSE, never crash). `contract_status_source` (cnt|manifest|null) carries the
+ * provenance; `status_source` still reports the within-manifest declaration site (no field renamed —
+ * DEC-DEV-0012).
+ *
  * CLI (the seam an agent relays):
  *   node deploy-manifest.cjs parse --manifest <path> [--capability <slug>] [--home <dir>]
- *                                  [--timestamp <ts>] [--no-units]
- *     → JSON { present, status, contract, steps, healthcheck, migrate, release_layout,
- *              unit_templates, units, deploy_root, scene, blocking_defects, disclosures, … }
+ *                                  [--timestamp <ts>] [--contracts-dir <dir>] [--no-units]
+ *     → JSON { present, status, status_source, contract_status_source, contract, steps, healthcheck,
+ *              migrate, release_layout, unit_templates, units, deploy_root, scene, blocking_defects,
+ *              disclosures, … }
  *   Exit 0 always for a parse (a missing/broken manifest is DATA: present:false + why), 2 on usage.
  *
  * Tests: tests/orchestrator/deploy-manifest.test.cjs (incl. the real pilot manifest form as a
@@ -587,6 +599,108 @@ function resolveUnits(doc, steps, manifestDir, readFile) {
   return { units, disclosures, blocking: Array.from(new Set(blocking)) };
 }
 
+// ---------------------------------------------------------------------------
+// Contract-status SSOT (DEC-DEV-0215)
+// ---------------------------------------------------------------------------
+
+/**
+ * Locate `.claude/integrator/contracts/` from the manifest path. The manifest lives at
+ * `.claude/integrator/deploy/<capability>/deploy-manifest.yaml`, so the CNT files sit at the
+ * `contracts/` sibling of the `integrator/` ancestor. Walk up to the nearest dir named `integrator`
+ * and take `<it>/contracts`; if none is found, fall back to the standard two-up shape
+ * (`<manifestDir>/../../contracts`). An explicit `override` (opts.contractsDir / --contracts-dir) wins.
+ */
+function resolveContractsDir(manifestDir, override) {
+  if (override) return String(override);
+  if (!manifestDir) return null;
+  let dir = manifestDir;
+  for (let guard = 0; guard < 64; guard += 1) {
+    if (path.basename(dir) === 'integrator') return path.join(dir, 'contracts');
+    const parent = path.dirname(dir);
+    if (parent === dir) break;                                 // reached the filesystem / relative root
+    dir = parent;
+  }
+  return path.resolve(manifestDir, '..', '..', 'contracts');
+}
+
+/**
+ * Resolve the CANONICAL contract-trust status from the CNT file — the SSOT (the Integrator's zone,
+ * §8.3) — and NOT from the manifest's `status:`, which is only a COPY.
+ *
+ * ── WHY (DEC-DEV-0215, live E5-B run `lymzao`) ───────────────────────────────────────────────
+ * The Integrator flipped `CNT-005.yaml` → `status: active` on live evidence, but the manifest still
+ * said `status: draft`. The deploy gate read the manifest copy, so it kept demanding
+ * `--accept-draft-contract` for a contract that was already trusted. The trust state lived in two
+ * places and the gate read the wrong one. So: take `status` FROM the CNT file the manifest NAMES
+ * (`contract: CNT-NNN`), and keep the manifest's own field only as a FALLBACK.
+ *
+ * BLIND ≠ FOUND: an absent / unreadable CNT file, or a name-mismatch, degrades to the manifest copy
+ * WITH a disclosure — it never throws and never fabricates a status. The returned `source`
+ * (`cnt` | `manifest` | null) is the provenance of the RETURNED status; the caller keeps the
+ * within-manifest `status_source` untouched (DEC-DEV-0012 — no field renamed).
+ *
+ * Returns { status, source, disclosure, cnt_path }.
+ */
+function resolveContractStatus(opts) {
+  const o = opts || {};
+  const contract = o.contract || null;
+  const contractsDir = o.contractsDir || null;
+  const manifestStatus = o.manifestStatus != null ? o.manifestStatus : null;
+  const rf = o.readFile || ((p) => fs.readFileSync(p, 'utf8'));
+  const fallback = (why) => ({
+    status: manifestStatus,
+    source: manifestStatus != null ? 'manifest' : null,
+    disclosure: why || null,
+    cnt_path: null,
+  });
+
+  if (!contract) return fallback(null);                        // the manifest names no CNT — nothing to resolve
+  if (!contractsDir) {
+    return fallback(`manifest names contract "${contract}" but no contracts dir could be located from the manifest path — using the manifest's own status ("${manifestStatus || 'undeclared'}") as a fallback`);
+  }
+
+  // PRIMARY: <contractsDir>/<CNT-id>.yaml — the live convention (installation-protocol `CNT-*.yaml`,
+  // pilot `CNT-005.yaml`). SECONDARY (blind ≠ found): a name-based CNT file whose parsed `contract.id`
+  // matches (SPEC §5.1's `product-handoff-to-cc-sdd.yaml` form).
+  const direct = path.join(contractsDir, `${contract}.yaml`);
+  let raw = null;
+  let directErrCode = null;
+  try { raw = String(rf(direct)); } catch (e) { raw = null; directErrCode = (e && (e.code || e.message)) || 'read-error'; }
+  let cntFile = direct;
+  if (raw === null) {
+    let entries = [];
+    try { entries = fs.readdirSync(contractsDir); } catch (_e) { entries = []; }
+    for (const f of entries.filter((n) => /\.ya?ml$/i.test(n)).sort()) {
+      const p = path.join(contractsDir, f);
+      let body = null;
+      try { body = String(rf(p)); } catch (_e2) { body = null; }
+      if (body === null) continue;
+      const d = parseYamlText(body);
+      const id = (isPlainObject(d.contract) ? d.contract.id : undefined) || d.id;
+      if (typeof id === 'string' && id.trim() === contract) { raw = body; cntFile = p; break; }
+    }
+  }
+  if (raw === null) {
+    const unreadable = directErrCode && directErrCode !== 'ENOENT';
+    return fallback(unreadable
+      ? `contract "${contract}" not readable at ${direct} (${directErrCode}) — the CNT file is the SSOT for contract trust; falling back to the manifest's own status ("${manifestStatus || 'undeclared'}"). Repair it via /integrator:provision.`
+      : `contract "${contract}" named by the manifest was not found at ${direct} (nor by id in ${contractsDir}) — the CNT file is the SSOT for contract trust; falling back to the manifest's own status ("${manifestStatus || 'undeclared'}"). Provision it via /integrator:provision.`);
+  }
+
+  const cntDoc = parseYamlText(raw);
+  const cntStatusRaw = (isPlainObject(cntDoc.contract) ? cntDoc.contract.status : undefined) || cntDoc.status;
+  const cntStatus = (typeof cntStatusRaw === 'string' && cntStatusRaw.trim()) ? cntStatusRaw.trim() : null;
+  if (!cntStatus) {
+    return fallback(`CNT file ${cntFile} declares no contract status — the SSOT is silent; using the manifest's own status ("${manifestStatus || 'undeclared'}") as a fallback`);
+  }
+  // The CNT wins. Disclose ONLY a real divergence (the E5-B defect: CNT active, manifest draft) —
+  // agreement needs no noise.
+  const disclosure = (manifestStatus != null && manifestStatus !== cntStatus)
+    ? `contract-status resolved from the CNT SSOT ${cntFile}: "${cntStatus}" — the manifest's own status field says "${manifestStatus}". The CNT file is authoritative (§8.3: contract trust lives in the Integrator zone), so "${cntStatus}" wins.`
+    : null;
+  return { status: cntStatus, source: 'cnt', disclosure, cnt_path: cntFile };
+}
+
 /**
  * The full deploy-setup read. `present` is a QUESTION OF FACT (is the equipment here and
  * executable?) and NEVER reads `status` — collapsing the two made the first deploy impossible in
@@ -601,6 +715,7 @@ function readManifest(file, opts) {
     present: false,
     status: null,
     status_source: null,
+    contract_status_source: null,
     contract: null,
     capability: null,
     steps: [],
@@ -642,10 +757,12 @@ function readManifest(file, opts) {
   }
 
   // ── TRUST axis (never touches `present`) ──────────────────────────────────
-  // Read the declared status from a small, ordered set of places; NEVER invent one. An absent
-  // status is null here — the consumer conservatively reads null as `draft` (an undeclared
-  // contract must never WIDEN autonomy).
-  let status = null;
+  // The MANIFEST'S OWN declared status — read from a small, ordered set of places; NEVER invented.
+  // This is only a COPY: the CANONICAL trust state is the CNT file (resolved below). It stays here as
+  // the FALLBACK, and `status_source` reports WHERE IN THE MANIFEST it was declared (unchanged —
+  // DEC-DEV-0012). An absent status is null — the consumer conservatively reads null as `draft` (an
+  // undeclared contract must never WIDEN autonomy).
+  let manifestStatus = null;
   let statusSource = null;
   const statusCandidates = [
     ['status', doc.status],
@@ -653,7 +770,7 @@ function readManifest(file, opts) {
     ['capability_contract.status', isPlainObject(doc.capability_contract) ? doc.capability_contract.status : undefined],
   ];
   for (const [src, v] of statusCandidates) {
-    if (typeof v === 'string' && v.trim()) { status = v.trim(); statusSource = src; break; }
+    if (typeof v === 'string' && v.trim()) { manifestStatus = v.trim(); statusSource = src; break; }
   }
 
   // The CNT id the manifest NAMES — never guessed from a directory listing.
@@ -668,6 +785,20 @@ function readManifest(file, opts) {
   for (const c of contractCandidates) {
     if (typeof c === 'string' && /^CNT-\S+/i.test(c.trim())) { contract = c.trim(); break; }
   }
+
+  // ── CONTRACT-STATUS SSOT (DEC-DEV-0215) ───────────────────────────────────
+  // The manifest's `status:` is a copy; the CANONICAL trust state lives in the CNT file the manifest
+  // NAMES (.claude/integrator/contracts/<CNT>.yaml — the Integrator's zone, §8.3). The live E5-B
+  // defect: the Integrator flipped CNT-005 → active on live evidence, but the manifest still said
+  // draft, so the deploy gate kept demanding --accept-draft-contract. Take `status` FROM the CNT
+  // file; the manifest field is the fallback when the CNT is absent/unreadable (blind ≠ found: we
+  // degrade + DISCLOSE, never crash). `contract_status_source` (cnt|manifest|null) is the provenance
+  // of the RETURNED `status`; `status_source` above is left as the within-manifest declaration site.
+  const contractsDir = resolveContractsDir(file ? path.dirname(file) : null, o.contractsDir);
+  const resolvedStatus = resolveContractStatus({ contract, contractsDir, readFile, manifestStatus });
+  const status = resolvedStatus.status;
+  const contractStatusSource = resolvedStatus.source;
+  if (resolvedStatus.disclosure) disclosures.push(resolvedStatus.disclosure);
 
   // ── SCENE ────────────────────────────────────────────────────────────────
   const layout = isPlainObject(doc.layout) ? doc.layout : (isPlainObject(doc.release_layout) ? doc.release_layout : null);
@@ -740,8 +871,9 @@ function readManifest(file, opts) {
     deploy_manifest_schema_version: DEPLOY_MANIFEST_SCHEMA_VERSION,
     manifest: file,
     present,                                     // FACT — file + parse + step-list. Never reads `status`.
-    status,                                      // TRUST — verbatim or null. Never invented.
-    status_source: statusSource,
+    status,                                      // TRUST — CNT SSOT first, manifest copy as fallback. Never invented.
+    status_source: statusSource,                 // WHERE IN THE MANIFEST the manifest's own status was declared (unchanged)
+    contract_status_source: contractStatusSource, // provenance of the RETURNED status: cnt | manifest | null (DEC-DEV-0215)
     contract,                                    // the CNT id the manifest names, or null
     capability,
     steps,                                       // ordered, flattened: [{ name, … }]
@@ -783,15 +915,22 @@ function printHelp() {
     'deploy-manifest.cjs — deterministic reader of the E.A deploy-setup (DEC-DEV-0203).',
     '',
     'PARSE:  node deploy-manifest.cjs parse --manifest <path> [--capability <slug>]',
-    '                                        [--home <dir>] [--timestamp <ts>] [--no-units]',
-    '  → JSON { present, status, contract, steps, healthcheck, migrate, release_layout,',
-    '           unit_templates, units, deploy_root, scene, blocking_defects, disclosures }',
+    '                                        [--home <dir>] [--timestamp <ts>] [--contracts-dir <dir>]',
+    '                                        [--no-units]',
+    '  → JSON { present, status, status_source, contract_status_source, contract, steps, healthcheck,',
+    '           migrate, release_layout, unit_templates, units, deploy_root, scene, blocking_defects,',
+    '           disclosures }',
     '',
     '  present          FACT  — the file exists, parses, and carries an executable step-list.',
     '                          NEVER reads `status` (collapsing the two deadlocked the first',
     '                          deploy — DEC-DEV-0201). A step-list is never fabricated.',
     '  status           TRUST — draft | active | stub, verbatim, or null (⇒ the consumer reads',
-    '                          null conservatively as draft). Rides to the §3.2 resolver.',
+    '                          null conservatively as draft). Taken from the CNT SSOT the manifest',
+    '                          names, with the manifest copy as fallback (DEC-DEV-0215). Rides to',
+    '                          the §3.2 resolver.',
+    '  contract_status_source  provenance of `status`: cnt (the CNT file) | manifest (fallback) | null.',
+    '                          --contracts-dir overrides where CNT files are looked up (default:',
+    '                          the `contracts/` sibling of the manifest\'s `integrator/` ancestor).',
     '  scene            every absolute path the Deploy phase materialises (deploy_root with `~`',
     '                          expanded, releases/, current, shared/{.env,logs,uploads}).',
     '  blocking_defects equipment that is present but CANNOT execute a correct deploy —',
@@ -825,6 +964,7 @@ function main() {
       home: typeof a.home === 'string' ? a.home : undefined,
       timestamp: typeof a.timestamp === 'string' ? a.timestamp : null,
       capability: typeof a.capability === 'string' ? a.capability : null,
+      contractsDir: typeof a.contractsDir === 'string' ? a.contractsDir : undefined,
       units: a.units !== false,
     });
     process.stdout.write(JSON.stringify(out, null, 2) + '\n');
@@ -849,6 +989,8 @@ module.exports = {
   expandHome,
   resolveScene,
   resolveUnits,
+  resolveContractsDir,
+  resolveContractStatus,
   readManifest,
   posixJoin,
 };

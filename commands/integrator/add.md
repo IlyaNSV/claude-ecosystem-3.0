@@ -64,6 +64,25 @@ Present to user, in this order:
 3. **Conflicts** (if any) — render with severity emoji (🔴 blocking, 🟡 warning), present resolution options per conflict
 4. **Contracts to create** — preview (e.g., "CNT-NNN: product-handoff → cc-sdd /kiro:spec-init")
 5. **PMO coverage delta** — what gaps this closes, what stays uncovered
+6. **Environment applicability** (`environment_tiers`, per SPEC §4.2.1 / DEC-DEV-0047) — render the per-tier `suitability` + `notes` the Stage-1 profiler collected, so the user sees WHERE the tool fits before approving. Read the block from the profile and present it as a table:
+
+   ```
+   Environment applicability:
+   | Tier        | Suitability          | Notes |
+   |-------------|----------------------|-------|
+   | local_dev   | full | partial | none | <notes from profile> |
+   | staging     | full | partial | none | <notes from profile> |
+   | production  | full | partial | none | <notes from profile> |
+   ```
+
+   - If the profile carries `environment_agnostic: true` instead of the block, render a single line — `Environment-agnostic: <rationale>` — and skip the table (the tool works the same in every tier; DEC-DEV-0047).
+   - If the profile has NEITHER (a stale profile predating patch 1.3.3) — say so explicitly («profile has no `environment_tiers` — it predates env-tier applicability; re-profile to populate») and do NOT fabricate suitabilities. Backward-compat: such profiles are lazy-regenerable on next profiling (SPEC §4.2.1).
+
+   **🔴 Prod-only warning — MUST (SPEC §4.2.1 «Install integration»).** If the profile declares `local_dev.suitability: none`, surface this warning EXPLICITLY, on its own line, BEFORE the approve gate — do not bury it inside the table:
+
+   > ⚠️ Этот tool не подходит для local dev — обсудить parallel/separate dev решение (mock service, lighter tool, staging-shared)?
+
+   Rationale (patch 1.3.3 / pilot 2026-05-27): a user who builds a PROD-only stack before local_dev/staging risks vendor lock-in + cost commitment before validation. The user must see this and may respond via `details` before `y` — it is a surfaced concern, not a hard block.
 
 End with **approve gate**:
 
