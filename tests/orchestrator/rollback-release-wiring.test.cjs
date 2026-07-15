@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Static guard for the Orchestrator E.C `rollback-release` process wiring (PROD readiness campaign
- * DEC-DEV-0198; design SSOTs dev/plans/PROD_READINESS_CAMPAIGN.md §3.2 + §8.2 pt 3 +
+ * DEC-DEV-0198; design SSOTs dev/_archive/campaign-prod/PROD_READINESS_CAMPAIGN.md §3.2 + §8.2 pt 3 +
  * dev/gates/EPIC_E_READINESS.md D-4).
  *
  * The .mjs is a harness Workflow script; this asserts structural invariants at the source level:

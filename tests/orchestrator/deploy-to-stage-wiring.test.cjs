@@ -1,7 +1,7 @@
 'use strict';
 /**
  * Static guard for the Orchestrator E.B `deploy-to-stage` process wiring (PROD readiness campaign
- * DEC-DEV-0198; design SSOTs dev/plans/PROD_READINESS_CAMPAIGN.md §3.2 + dev/gates/EPIC_E_READINESS.md
+ * DEC-DEV-0198; design SSOTs dev/_archive/campaign-prod/PROD_READINESS_CAMPAIGN.md §3.2 + dev/gates/EPIC_E_READINESS.md
  * D-1/D-6/D-7/D-9).
  *
  * The .mjs is a harness Workflow script (agent/phase globals + top-level return) and cannot run
