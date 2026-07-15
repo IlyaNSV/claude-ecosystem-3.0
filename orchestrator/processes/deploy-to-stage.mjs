@@ -332,7 +332,7 @@ phase('Preflight')
 // (a) substrate readiness axis (CODE, not LLM initiative) — the deterministic env-readiness probe.
 const envProbe = await agent(
   `Run the env-readiness probe for the ${ENV_TIER} deploy target: \`node ${ENV_PROBE}\` via Bash and relay its JSON verbatim (readiness + reasons). ` +
-  `Do NOT start any substrate yourself — just report whether what the target uses (Postgres/Redis/docker) is up.`,
+  `🚫 READ-ONLY — CAPTURE-DON'T-FIX (FIND-E2): you MEASURE the substrate, you never REPAIR it. Do NOT start, restart, create or install ANYTHING (no \`docker start|run|compose up\`, no \`systemctl start\`, no package install, no .env edit) to make a down substrate look up — a substrate that is down is EVIDENCE, and reporting ENV_NOT_READY IS the whole job. Just report whether what the target uses (Postgres/Redis/docker) is up.`,
   { model: 'sonnet', schema: ENV_READINESS_SCHEMA, phase: 'Preflight', label: 'env-readiness' },   // MDP: env-probe JSON relay (mechanical transport)
 )
 let readiness = (envProbe && envProbe.readiness) || 'DEGRADED'   // unknown/absent → conservatively DEGRADED (never silently READY)
@@ -342,6 +342,32 @@ let readiness = (envProbe && envProbe.readiness) || 'DEGRADED'   // unknown/abse
 // DEGRADED was a missing pg_isready/redis-cli, not an outage. Every downgrade below appends its reason.
 const readinessReasons = [...((envProbe && envProbe.reasons) || [])]
 log(`pre-flight env-readiness: ${readiness}${readinessReasons.length ? ` — ${readinessReasons.join('; ')}` : ''}`)
+
+// (a.1) EARLY SHORT-CIRCUIT (DEC-DEV-0211 / FIND-E1) — an ENV_NOT_READY straight from the env-readiness
+// probe is "the substrate is DOWN; we cannot deploy AT ALL". It must BLOCK right HERE, BEFORE manifest-
+// parse / build-test / the pre-flip re-probe ever run. Live run lah60w: `mft-redis` was stopped, the probe
+// CORRECTLY returned ENV_NOT_READY — but the run did NOT short-circuit, so build-test ran anyway, its agent
+// hit the Redis-down suite and "helpfully" SELF-HEALED the substrate (`docker start mft-redis`), then re-ran
+// the suite green. That is the readiness gate being erased one layer down — the exact disease as a deploy
+// that mutates without asking the §3.2 resolver, now at the STAGE level. A down substrate is not something
+// a later stage can judge; asking it to try is precisely what invites the remediation (a stage running a
+// suite will do whatever the suite "needs"). ⚠ THE S5 AXIS — DO NOT BREAK IT: ONLY ENV_NOT_READY short-
+// circuits. DEGRADED does NOT — DEGRADED is the DECISION axis that must ride to the §3.2 resolver, where
+// applyReadinessGuard downgrades auto→human-gate. Short-circuiting DEGRADED would delete the whole
+// DEGRADED→human-gate deploy path (the S5 branch). So this predicate is ENV_NOT_READY-EXACT, never `!== READY`.
+const envProbeBlocks = readiness === 'ENV_NOT_READY'
+if (envProbeBlocks) {
+  log('BLOCKED (ENV_NOT_READY at the env-readiness probe): the substrate is down — short-circuit BEFORE manifest-parse/build-test so NO later stage tries to "help" by starting or repairing it (run lah60w). No manifest read, no build, no mutation. flipped=false. Bring the substrate up (start the service the reasons name) and re-run (or resume the ledger bracket).')
+  return {
+    feature: FEATURE || null, capability: CAPABILITY, env_tier: ENV_TIER,
+    result: 'BLOCKED', readiness, readiness_reasons: readinessReasons, flipped: false,
+    contract_status: null, contract_evidence: null,          // the manifest was never parsed — contract trust is UNKNOWN (honest null, NOT "draft")
+    release: null, healthcheck: null, failure_class: 'env-not-ready-preflight',
+    scene: null, deploy: null, blocking_defects: [],         // equipment fitness was never assessed (we stopped before the manifest) — honest empty, NOT a claim of "no defects"
+    disposition: null, autonomy: null,                       // the §3.2 gate was never reached — null is the HONEST value, not a dropped field
+    disclosures: ['readiness=ENV_NOT_READY at the pre-flight substrate probe — the deploy could not even be PREPARED; this is NOT a deploy failure. No manifest was read, no build was run, no mutation was attempted. Remedy: bring the substrate up (start the container/service named in readiness_reasons) and re-run, or resume the ledger bracket.'],
+  }
+}
 
 // (b) read the E.A deploy-manifest — THROUGH A DETERMINISTIC LIB, not by LLM inspection
 // (DEC-DEV-0203 / FIND-A). The agent is a TRANSPORT: it runs the CLI seam and relays the JSON. The
@@ -430,6 +456,12 @@ const build = await agent(
   `- passed = (build exit 0) AND (EVERY workspace test exit 0). One non-zero exit ⇒ passed:false.\n` +
   `- suite_completed = the build AND every workspace each reached a FINAL exit code (whether 0 or not). true ⇒ this run is a real verdict (a clean green or a genuine RED); false ⇒ the measurement did not finish and the verdict is UNKNOWN.\n` +
   `- per_workspace[] = one { workspace, exit, passed, failed, duration_s } per workspace you ran (take passed/failed from the reporter's summary line). List every failing test verbatim in failures[].\n` +
+  `\n` +
+  `🚫 SUBSTRATE IS READ-ONLY — CAPTURE-DON'T-FIX (DEC-DEV-0211 / FIND-E2). You MEASURE the code; you have NO mandate to mutate the ENVIRONMENT. These command classes are FORBIDDEN even when they would turn a RED suite green:\n` +
+  `- starting/creating/repairing services or containers: \`docker start|restart|run|compose up\`, \`podman …\`, \`systemctl start|restart\` of a backing service, \`service … start\`, \`pg_ctl\` / \`redis-server\` / \`brew services\`;\n` +
+  `- installing or changing packages/toolchains: \`apt|apk|yum|brew install\`, \`npm i -g\`, editing a lockfile;\n` +
+  `- editing the environment: writing/patching \`.env\`, exporting secrets, opening ports, editing a service config.\n` +
+  `AN ENVIRONMENT FAILURE IS EVIDENCE, NOT AN OBSTACLE. A workspace whose tests fail because Postgres/Redis/a dependency is DOWN is a RECORDED failure — name it in failures[] with the honest cause (e.g. "api: 8 failed — Redis 127.0.0.1:6379 connection refused"). That workspace still reached a final exit code, so it does NOT make the measurement incomplete: suite_completed is about whether you got an exit code (DEC-DEV-0206), and a RED caused by a down dependency is a COMPLETED red — never a reason to start the service. WHY THIS IS HARD-CODED: on run lah60w this exact gate hit a Redis-down suite and ran \`docker start mft-redis\` ("Start redis container required by api test suite"), waited for healthy, and re-ran — silently invalidating the env-readiness gate that runs BEFORE you. Whether the substrate is up is the readiness gate's verdict to make, never yours to erase.\n` +
   `Do NOT deploy, flip, migrate, or commit — this is the build gate only.`,
   { model: 'sonnet', schema: BUILD_SCHEMA, phase: 'Preflight', label: 'build-test' },   // MDP: run build+suite + relay exits (standard/mechanical)
 )
@@ -450,7 +482,8 @@ log(`clean build+test: ${buildPassed ? 'GREEN' : (suiteIncomplete ? 'INCOMPLETE 
 const preflight = await agent(
   `Run the runtime-smoke READINESS leg (deterministic — NOT a live boot; the live boot is the P7 runtime_gate, do NOT duplicate it): ` +
   `\`node ${RUNTIME_PROBE}${FEATURE ? ` --feature ${FEATURE}` : ''} --root .${APP ? ` --app ${APP}` : ''} --env ${readiness}${P7_VERDICT ? ` --p6 ${P7_VERDICT}` : (P6_VERDICT ? ` --p6 ${P6_VERDICT}` : '')}\` via Bash and relay its JSON verbatim (verdict + run_target + disclosures). ` +
-  `This is the cheap re-check that the target is still startable (run-target present, env up, §6 boot-caps satisfied) before we deploy. Do NOT boot, provision, or mock — just relay.`,
+  `This is the cheap re-check that the target is still startable (run-target present, env up, §6 boot-caps satisfied) before we deploy. Do NOT boot, provision, or mock — just relay.\n` +
+  `🚫 READ-ONLY — CAPTURE-DON'T-FIX (FIND-E2): you MEASURE readiness, you never REPAIR it. Do NOT start, restart, create or install anything to improve the verdict (no \`docker start|run|compose up\`, no \`systemctl start\`, no package install, no .env edit) — a NOT_STARTABLE / ENV_NOT_READY verdict is EVIDENCE, and relaying it honestly IS the whole job.`,
   { model: 'sonnet', schema: ASSESS_SCHEMA, phase: 'Preflight', label: 'runtime-readiness' },   // MDP: runtime-readiness.cjs JSON relay (mechanical transport)
 )
 const preVerdict = (preflight && preflight.verdict) || 'ENV_NOT_READY'
@@ -614,6 +647,7 @@ const scene = await agent(
   `\n` +
   `⚠ DO NOT FLIP \`current\` HERE, and do not build, migrate, or restart. That is the manifest's own step-list and it runs in the NEXT step. Your job ends with: the scene exists, the release is laid out and installed, the units are loaded.\n` +
   `CAPTURE-DON'T-FIX: if something fails, STOP and report it — do NOT retry-hack, patch the app, or commit. Classify honestly with blocker_class: 'env-not-ready' (a substrate/provisioning gap we cannot fill without inventing something — no .env anywhere, no sudo, an unresolvable port) vs 'deploy-failed' (the deploy machinery itself broke — a copy failed, pnpm install failed, a disk filled).\n` +
+  `🚫 MUTATION BOUNDARY (DEC-DEV-0211 / FIND-E2): your mandate covers the DEPLOY SCENE ONLY — the scene dirs, the shared/.env seed, the release layout + its per-release \`pnpm install\`, the unit files + daemon-reload/enable. The BACKING SUBSTRATE is not yours: do NOT start, restart or repair backing services or containers (no \`docker start|restart|run|compose up\`, no \`systemctl start\` of postgres/redis/anything that is not one of the units you just installed), do NOT install system packages (apt/yum/brew), do NOT edit substrate configs. A down dependency discovered here is EVIDENCE → ready:false, blocker_class:'env-not-ready' — bringing it up yourself would silently erase the env-readiness gate that ran before you (run lah60w).\n` +
   `🔒 §8.3 — READ-ONLY on \`.claude/integrator/**\`: read the manifest and the unit templates, but NEVER edit them. If a template looks wrong, SAY SO — do not "fix" it (that zone is the Integrator's; the Orchestrator executes equipment, it does not author it).\n` +
   `Return ready + blocker + blocker_class + release + release_dir + env_source + created[] + reused[] + units_installed[] + diagnosis + observed.`,
   { model: 'opus', schema: SCENE_SCHEMA, phase: 'Deploy', label: 'scene-bootstrap' },   // MDP: real high-R mutation (dirs, secrets file, systemd units) + honest env/deploy failure classification (impl/depth)
@@ -657,6 +691,7 @@ const deployed = await agent(
   `Manifest steps (ordered — run them IN THIS ORDER, substituting the paths above): ${JSON.stringify((manifest && manifest.steps) || [])}.\n` +
   `1) Acquire a deploy lockfile (A-9 belt — refuse if a parallel deploy holds it). 2) CODEGEN: if the step-list carries a codegen step (prisma generate — the per-release node_modules is CLEAN and has NO generated client, DEC-DEV-0205/FIND-C1), run it exactly as specified, in its working_directory, BEFORE the build; skip cleanly if conditional+unverified — note it. 3) BUILD: run the build step's command with its working_directory ({{RELEASE_DIR}} — the concrete new release; that is correct, a build belongs to ONE release). 4) MIGRATE: run the migrate step IF the manifest marks it verified (skip cleanly if conditional+unverified — note it); it reads DATABASE_URL through the release's .env symlink into shared/.env. 5) FLIP \`current\` to the new release — ATOMICALLY: \`ln -sfn <release_dir> <current>.tmp && mv -T <current>.tmp <current>\` (mv -T on the same filesystem is a single rename(2) — it REPLACES the symlink in one step). Do NOT \`rm current && ln -s …\`: that leaves a window where \`current\` does not exist, and a service restarting in that window dies. Set flipped=true ONLY once \`readlink -f current\` actually resolves to the new release. 6) RESTART the units (\`sudo systemctl restart <unit>\`) — the worker only if it was enabled. The units follow \`current\`, so the restart is what makes the flip take effect.\n` +
   `CAPTURE-DON'T-FIX: if a step fails, STOP, record steps_done + partial + a diagnosis of what broke and whether \`current\` moved — do NOT retry-hack, edit code, or commit. Set flipped precisely: true iff the symlink now points at the new release, false otherwise.\n` +
+  `🚫 MUTATION BOUNDARY (DEC-DEV-0211 / FIND-E2): every mutation you may make is a MANIFEST STEP above (codegen/build/migrate/flip/restart of the app units). The BACKING SUBSTRATE is not yours: do NOT start, restart or repair backing services or containers (no \`docker start|restart|run|compose up\`, no \`systemctl start\` of postgres/redis — restarting the APP units in step 6 is the ONLY systemctl you run), do NOT install system packages, do NOT edit shared/.env or substrate configs. A step failing because a dependency is DOWN is EVIDENCE — record it in the diagnosis and stop; do NOT bring the dependency up to make the step pass (run lah60w: that silently erases the env-readiness gate).\n` +
   `🔒 §8.3 BOUNDARY — NEVER WRITE UNDER \`.claude/integrator/**\`: you may READ the manifest and the CNT contract, but you must NOT edit either, and you must NOT flip a contract's status draft→active — not even after a perfect deploy, not "to close the loop". That flip is the INTEGRATOR's prerogative (docs/integrator-module/SPEC.md §8.3: Integrator EQUIPS, Orchestrator EXECUTES). This process REPORTS the live-evidence in its result; the Integrator acts on it.\n` +
   `Return flipped + release + migrated + partial + steps_done + diagnosis + observed.`,
   { model: 'opus', schema: DEPLOY_SCHEMA, phase: 'Deploy', label: 'deploy-flip' },   // MDP: real high-R mutation (build/migrate/flip/restart) + partial-deploy diagnosis (impl/depth)
@@ -689,7 +724,7 @@ const healthcheck = await agent(
   `Healthcheck the freshly-flipped ${ENV_TIER} release (VM-gated — POST-deploy nog, D-5; capture-don't-fix).\n` +
   `Spec: ${JSON.stringify((manifest && manifest.healthcheck) || { url: 'http://localhost:<port>/health', boot_window_sec: 30, expect: '2xx' })}.\n` +
   `Hit the healthcheck url and wait up to boot_window_sec for a 2xx. If it does NOT come healthy, diagnose the failure against the P7 failure taxonomy (runtime-readiness.cjs::smokePlan.failure_classes — reuse, do NOT reinvent): env-not-loaded (500 / config-secret undefined at runtime — the RUN 01 root cause), missing-migration (DB schema/relation error), port-in-use (EADDRINUSE), missing-runtime-secret (cannot resolve an external client), dependency-not-up (connection refused to DB/cache).\n` +
-  `Do NOT remediate, edit code, or commit — SURFACE the diagnosis (a flipped-but-unhealthy release will be auto-rolled-back by E.C). Return healthy + failure_class (a taxonomy id or null) + diagnosis + observed.`,
+  `Do NOT remediate, edit code, or commit — and do NOT start/restart ANY service or container to coax a 2xx (no \`docker start\`, no \`systemctl start|restart\` — FIND-E2): a dependency-not-up diagnosis is EVIDENCE for the rollback decision, not an invitation to repair the substrate. SURFACE the diagnosis (a flipped-but-unhealthy release will be auto-rolled-back by E.C). Return healthy + failure_class (a taxonomy id or null) + diagnosis + observed.`,
   { model: 'opus', schema: HEALTHCHECK_SCHEMA, phase: 'Healthcheck', label: 'healthcheck' },   // MDP: live probe + diagnosis against the failure taxonomy (judgment/depth, like P7 boot-smoke)
 )
 const healthy = !!(healthcheck && healthcheck.healthy)
