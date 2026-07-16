@@ -576,12 +576,27 @@ function collectPending(productDir, index, notes) {
     catch (e) { parsed = { entries: [], listCount: 0, unparseable: true }; notes.push(`${file}: parse error (${e.message})`); }
 
     if (parsed.unparseable || parsed.entries.length === 0) {
+      const norm = normalize(content);
       // Fallback: count raw list dashes so a malformed queue still surfaces a size.
-      const rawCount = (normalize(content).match(/^\s*-\s+/gm) || []).length;
-      q.entries = rawCount;
-      q.note = 'unparseable';
-      if (rawCount > 0) notes.push(`${file}: parsed 0 structured entries, ${rawCount} raw list item(s) — see note`);
-      totalEntries += rawCount;
+      const rawCount = (norm.match(/^\s*-\s+/gm) || []).length;
+      // A drained queue is a VALID state, not a parse failure: `entries: []`,
+      // `candidates: []`, a bare `[]` document, or a lone `key:` with nothing
+      // under it (live precedent: the ghost-cleanup pass leaves exactly these
+      // forms behind, and they were misreported as 'unparseable').
+      const looksEmptyList = rawCount === 0 && (
+        /^\s*[\w-]+:\s*\[\s*\]\s*$/m.test(norm)
+        || /^\s*\[\s*\]\s*$/m.test(norm)
+        || norm.split('\n').every((l) => l.trim() === '' || l.trim().startsWith('#') || /^[\w-]+:\s*$/.test(l.trim()))
+      );
+      if (!parsed.unparseable && looksEmptyList) {
+        q.entries = 0; // legitimately empty queue — no note
+      } else {
+        q.entries = rawCount;
+        q.note = 'unparseable';
+        if (rawCount > 0) notes.push(`${file}: parsed 0 structured entries, ${rawCount} raw list item(s) — see note`);
+        else notes.push(`${file}: no parseable entries and not an empty-list form — inspect manually`);
+      }
+      totalEntries += q.entries;
       queues.push(q);
       continue;
     }
