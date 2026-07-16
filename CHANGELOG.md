@@ -10,8 +10,6 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- **`check-counts.js` расширен с 2 канонических счётчиков до 6 — команды (+ per-namespace), хуки (+ per-namespace), скиллы, агенты, паттерны (DEC-DEV-0220).** Ground truth вычисляется с диска (namespace'ы обнаруживаются, не захардкожены); счётчик в доке модуля сверяется со счётчиком ЭТОГО модуля, а не с тоталом репо. **Extended-виды въезжают warn-only** (`exit 0`) — скрипт вызывается блокирующим `process-gate`, где ложное срабатывание останавливает коммиты всем; флип за владельцем: `--strict-extended` / `COUNTS_EXTENDED_STRICT=1`, отключение — `--core-only` / `COUNTS_EXTENDED=0`. Вид, для которого ground truth недоступен (sparse checkout), **пропускается, а не роняет** («чекер ослеп» ≠ «нашёл дрейф»). Kind `pattern` для сканера прозы сознательно НЕ покрыт — омоним (D7-паттерны / словарь анти-паттернов линтера / regex) даёт неустранимые ложные.
-
 ### Fixed
 
 - **Счётчики команд и хуков в consumer-zone докaх приведены к факту (DEC-DEV-0220).** `README.md` — `/integrator:*` 9 → **13**; `docs/product-module/SPEC.md` — 22 → **23** команды и 12 → **13** hooks; `docs/integrator-module/SPEC.md` — 12 → **13** команд; `docs/design-module/SPEC.md` — 5 → **7** slash-команд (последнее не нашёл даже LLM-аудит — поймал новый детерминированный чекер). Все пять были невидимы для гейтов: `check-counts` знал только типы артефактов и правила валидации, `gen:catalog:check` владеет лишь сгенерированным каталогом гида.
