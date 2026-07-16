@@ -10,6 +10,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+### Fixed
+
+---
+
+## [1.12.1] — 2026-07-17
+
+> **Patch: `/product:status` стал детерминированным + hook-гигиена по следам live-валидации.** Накоплено с 1.12.0: детерминированный status-collector с ghost-check очередей и подключённым G22-staleness (DEC-DEV-0217 + addendum «дренированная очередь ≠ unparseable»); `bg-extractor` переведён на allowlist зон-источников после live-фоллаута 223 мусорных кандидатов из перегенерированных handoff'ов (DEC-DEV-0219); `/integrator:add` рендерит `environment_tiers` + prod-only warning (DEC-DEV-0214); deploy-гейт читает contract-status из CNT SSOT (DEC-DEV-0215). Канон: SPEC Integrator §8.4 «internal capability provider — санкционированный fallback» + вердикт сравнительного ресерча деплой-инструментов (DEC-DEV-0218).
+
+### Added
+
 - **`/product:status` — детерминированный collector + ghost-check очередей (DEC-DEV-0217).** Новый `.claude/hooks/product/lib/status-collector.cjs` (dependency-free, read-only, tolerant, exit 0 — паттерн `handoff-staleness.cjs`): цензус артефактов со статусами + NFR-split, синглтон-метрики (RPM roles / DS tokens+components / BG term sections), handoffs со staleness-вердиктом через реюз G22-lib (всегда БЕЗ `--write`), pending-очереди с пометкой **ghost-записей** (entry ссылается на артефакт, отсутствующий на диске — осадок хук-записей от прогонов на изолированных ref/worktree), session-снапшот (+ `last_artifact_exists`), инвентарь DA-находок, stale drafts >14d, Integrator `tools_count` + PA-тоталы. Команда `status.md` переписана: все счётчики — только из collector'а (fallback «degraded manual mode» с пометкой approximate, без фабрикации collector-only полей); шаблон выровнен с фактическими форматами артефактов (RM без `stage`-поля, BG-термины без статусов, session без `process`/`step`, DA-находки в их родных шкалах severity); PENDING-тотал определён = queue entries (PA — отдельной строкой, не суммируется); секция RECENT DA FINDINGS и ghost-warning обязательны при ненулевых данных; нереалистичный перф-контракт «under 2 seconds» заменён честным (collector <2s, полный проход ~1-2 мин). Live-валидировано на слепке пилота против независимого эталона (2 recon-субагента + детерминированный цензус).
 
 ### Fixed
