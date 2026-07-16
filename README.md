@@ -55,7 +55,7 @@ claude-ecosystem-3.0/
 │       └── artifacts/                      # 24 типа артефактов
 ├── commands/                               # slash-команды → .claude/commands/
 │   ├── ecosystem/                          # /ecosystem:bootstrap, /ecosystem:verify
-│   └── integrator/                         # /integrator:* (9 команд)
+│   └── integrator/                         # /integrator:* (13 команд)
 ├── skills/                                 # methodology → .claude/skills/
 ├── agents/                                 # subagents → .claude/agents/
 ├── hooks/                                  # automation → .claude/hooks/

@@ -177,7 +177,7 @@ Product Module P2 F.8 triggers
 
 ## 3. Commands Catalog
 
-5 slash-команд в namespace `/design:*`.
+7 slash-команд в namespace `/design:*`.
 
 ### 3.1 `/design:start <FM-id>`
 

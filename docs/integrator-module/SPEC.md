@@ -53,7 +53,7 @@ Integrator — гибрид, как и Product Module:
 
 | Примитив | Назначение | Где |
 |---|---|---|
-| **Slash-commands** | UX для пользователя (12 команд) | `.claude/commands/integrator/` |
+| **Slash-commands** | UX для пользователя (13 команд) | `.claude/commands/integrator/` |
 | **Skills** | Методология: research protocol, profiling, contract design | `.claude/skills/integrator/` |
 | **Subagents** | Research-heavy задачи (изучение инструмента в свежем контексте) | `.claude/agents/integrator/` |
 | **Hooks** | Drift detection, журналирование | `.claude/hooks/integrator/` (per `hooks/<module>/` convention) |
