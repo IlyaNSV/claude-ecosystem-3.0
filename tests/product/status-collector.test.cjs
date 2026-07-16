@@ -201,6 +201,24 @@ test('tolerant on malformed .pending yaml — note, never a throw', () => {
   assert.ok(typeof q.entries === 'number');
 });
 
+test('drained queue forms are EMPTY, not unparseable (post-cleanup shapes)', () => {
+  const root = seed();
+  const pend = path.join(root, '.product', '.pending');
+  fs.writeFileSync(path.join(pend, 'empty-key.yaml'), '# managed by hook\n\nentries: []\n', 'utf8');
+  fs.writeFileSync(path.join(pend, 'empty-cand.yaml'), '# comment\ncandidates: []\n', 'utf8');
+  fs.writeFileSync(path.join(pend, 'empty-bare.yaml'), '# Pending DS proposals\n# Process via review\n\n[]\n', 'utf8');
+  fs.writeFileSync(path.join(pend, 'empty-lone-key.yaml'), '# comment\nentries:\n', 'utf8');
+  fs.writeFileSync(path.join(pend, 'garbage.yaml'), '{{{ not yaml at all\nzzz\n', 'utf8');
+  const r = collect(root, new Date('2026-07-17T00:00:00Z'));
+  for (const f of ['empty-key.yaml', 'empty-cand.yaml', 'empty-bare.yaml', 'empty-lone-key.yaml']) {
+    const q = r.pending.queues.find((x) => x.file === f);
+    assert.strictEqual(q.entries, 0, `${f}: 0 entries`);
+    assert.strictEqual(q.note, undefined, `${f}: a drained queue carries NO unparseable note`);
+  }
+  const g = r.pending.queues.find((x) => x.file === 'garbage.yaml');
+  assert.strictEqual(g.note, 'unparseable', 'true garbage still flagged');
+});
+
 test('config + integrator reads', () => {
   const root = seed();
   const r = collect(root, new Date('2026-07-17T00:00:00Z'));
