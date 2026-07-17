@@ -10,6 +10,14 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+### Fixed
+
+---
+
+## [1.12.2] — 2026-07-17
+
+> **Patch: когерентность репо (аудит DEC-DEV-0220, волны A+B+C).** Накоплено с 1.12.1: 48 подтверждённых противоречий реестра закрыты правками + механизмами — установщики печатают настоящую версию вместо «Unreleased» (0220-c); 6 копий ship-default гейта уроков перестали обещать warn там, где вызов отклоняется (0220-b); счётчики команд/хуков приведены к диску и защищены strict-гейтом `check-counts` (0220-a); спеки приведены к поставке (фантомная `/integrator:replace` ⏳, `provision` в каталоге, Deep mode построен, зона делегирования D3-D5); конвенция B.1 добита в 4 скилла; V-09 перенесён на исполнимый чекпойнт D1.4a + обязательный backfill-шаг в vp-design (0220-e); новый link-checker в `verify`. Словарь секций отныне Keep-a-Changelog: `Added | Changed | Fixed`.
+
 ### Changed
 
 - **V-09 (SEG ↔ VP, 1:1): чекпойнт перенесён с «Approve gate (SEG)» на выход D1.4a (DEC-DEV-0220-e).** Прежняя формулировка была невыполнима конвейером по построению: SEG становится `active` на G4, а его VP создаётся только на СЛЕДУЮЩЕМ шаге D1.4a — 🔴-блокирующее правило требовало сослаться на артефакт, которого ещё не существует. Инвариант 1:1 (DEC-ART03) не менялся — переехала только точка проверки, туда, где пара впервые полна. Радиус: `docs/pmo/validation.md` (Statement/When), `docs/pmo/artifacts/SEG.md` (`value_proposition: null` легитимен до D1.4a), `hooks/product/artifact-validate.js` (inline-нога теперь проверяет активный VP на наличие `segment`, а не активный SEG на наличие VP), `skills/product/vp-design.md` (новый обязательный шаг backfill: на G4a-approve VP скилл заполняет `value_proposition` родительского SEG — раньше обратную ссылку не писал НИКТО), `skills/product/segment-discovery.md` (шаблон объявляет `null`-семантику), `skills/product/validation-runner.md` (строка каталога).
