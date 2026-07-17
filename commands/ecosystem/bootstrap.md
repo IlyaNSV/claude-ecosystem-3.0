@@ -782,7 +782,7 @@ auto_approve_confirmation_artifacts:
 draft_mode_quiet_hooks: true
 
 # Ecosystem metadata
-ecosystem_version: <read from .claude/CHANGELOG.md first entry>
+ecosystem_version: <first RELEASED version from .claude/CHANGELOG.md — the first `## [X.Y.Z]` heading, SKIPPING `## [Unreleased]`; same rule as /ecosystem:update Step 5c>
 ecosystem_source: "https://github.com/IlyaNSV/claude-ecosystem-3.0"
 installed_at: <ISO timestamp of bootstrap>
 ```

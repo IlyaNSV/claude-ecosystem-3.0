@@ -10,11 +10,11 @@
 
 ## Status banner
 
-🟠 **Прогнан частично 2026-07-11 (smoke-batch, DEC-DEV-0177; вердикты судьи — `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome).** S1/S3 PASS; S2/S4/S5 = N/A (не упражнены по вине оркестровки прогона, НЕ FAIL кода). Догон-требования — в Run notes.
+🟠 **Прогнан частично 2026-07-11 (smoke-batch, DEC-DEV-0177; вердикты судьи — `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome).** Вердикты этого прогона — **только** в `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome (учитывает пересуд DEC-DEV-0204); инлайн-копия здесь намеренно не держится. Итоговое состояние гейта после догона E1 — в шапке файла. Догон-требования — в Run notes.
 
 | Scenario | Status | Run notes |
 |---|---|---|
-| S1 — research per-tier + approve gate | ✅ PASS 2026-07-11 | silent-ignore 3.5 мин — ждала; defer — кэш DEFERRED, без chain; «1» — decision без авто-add |
+| S1 — research per-tier + approve gate | ⚠ PARTIAL 2026-07-11 (понижен пересудом DEC-DEV-0204; было PASS) | silent-ignore 3.5 мин — ждала; defer — кэш DEFERRED, без chain; «1» — decision без авто-add. Не подтверждён evidence: per-tier-таблица research |
 | S2 — forbidden-path write → hook warn + PA append | ⚠ N/A — догон | ядро не упражнено: `/integrator:scan` снял marker на Final-cleanup ДО записи → no-op легитимен. Догон: запись при ЖИВОМ маркере (не после scan) |
 | S3 — `/ecosystem:pending-actions` default filter | ✅ PASS 2026-07-11 | 12 pending / 63 all / 0 --source integrator / help; sentinel скрыт. Находка: PA-050/051 без `Status` (data-hygiene) |
 | S4 — `/integrator:add` env_tier preview + prod-only warning | ⚠ N/A — догон | idempotent re-verify path не рендерит Stage-2 propose. Догон: свежий install инструмента с профилем (идеально `local_dev: none`) |
