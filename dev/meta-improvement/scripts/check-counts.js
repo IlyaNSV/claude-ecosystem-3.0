@@ -11,21 +11,24 @@
  *   - artifact types = (# of docs/pmo/artifacts/*.md) − 1 (README.md)
  *   - validation rules = SSOT number parsed from docs/pmo/validation.md ("N активных правил")
  *
- *   EXTENDED (warn-only by default — added 2026-07-17 by the coherence audit, S1):
+ *   EXTENDED (added 2026-07-17 by the coherence audit, S1; BLOCKING since the owner's flip):
  *   - commands       = # of .md under commands/<ns>/, total and per namespace
  *   - hooks          = # of `- id:` entries across hooks/<module>/manifest.yaml
  *   - skills         = # of .md under skills/ (recursive)
  *   - agents         = # of .md under agents/ (recursive)
  *   - patterns       = # of .md under dev/meta-improvement/patterns/ − 1 (README.md)
  *
- * WHY EXTENDED IS WARN-ONLY BY DEFAULT: this script is called by process-gate.js, a BLOCKING
- * commit-msg gate. A false positive here does not annoy — it stops every commit in the repo,
- * for everyone. Core patterns (artifact/rule) earned blocking status over a year of use; the
- * extended patterns match freer prose ("13 команд", "12 hooks") and have not. They therefore
- * report loudly and exit 0 until the owner flips them, mirroring how `check-inventory-sync.cjs`
- * and `lesson-presence-gate.js` were introduced.
- *   Flip to blocking:  --strict-extended   or   COUNTS_EXTENDED_STRICT=1
- *   Silence entirely:  --core-only         or   COUNTS_EXTENDED=0
+ * WHY EXTENDED SHIPPED WARN-ONLY FIRST, AND WHY IT BLOCKS NOW: this script is called by
+ * process-gate.js, a BLOCKING commit-msg gate. A false positive here does not annoy — it stops
+ * every commit in the repo, for everyone. Core patterns (artifact/rule) earned blocking status
+ * over a year of use; the extended patterns match freer prose ("13 команд", "12 hooks") and had
+ * not. They therefore rode one cycle reporting loudly at exit 0 — the same on-ramp used by
+ * `check-inventory-sync.cjs` and `lesson-presence-gate.js`. That cycle came back clean (zero
+ * false positives against the live repo, five real drifts caught), so the owner flipped them
+ * on 2026-07-17. The empirical on-ramp is the point: a pattern earns the right to block by
+ * being quiet on a real corpus first, never by its author being confident.
+ *   Downgrade to warn:  --warn-extended     or   COUNTS_EXTENDED_STRICT=0
+ *   Silence entirely:   --core-only         or   COUNTS_EXTENDED=0
  *
  * A kind whose ground truth cannot be established (directory absent — sparse checkout, partial
  * clone) is SKIPPED, never failed: "чекер ослеп" ≠ "нашёл дрейф" — a gate must not fail on what
@@ -42,7 +45,7 @@
  * Usage:
  *   node dev/meta-improvement/scripts/check-counts.js                    # human report
  *   node dev/meta-improvement/scripts/check-counts.js --json             # machine-readable
- *   node dev/meta-improvement/scripts/check-counts.js --strict-extended  # extended kinds block too
+ *   node dev/meta-improvement/scripts/check-counts.js --warn-extended    # extended kinds warn, do not block
  *   node dev/meta-improvement/scripts/check-counts.js --core-only        # core kinds only
  *
  * Exit: 0 = all consistent (or only extended drift, warn-mode) · 1 = blocking drift found
@@ -66,9 +69,16 @@ function repoRoot() {
 const ROOT = repoRoot();
 const JSON_MODE = process.argv.includes('--json');
 const CORE_ONLY = process.argv.includes('--core-only') || process.env.COUNTS_EXTENDED === '0';
-const EXTENDED_STRICT = process.argv.includes('--strict-extended') || process.env.COUNTS_EXTENDED_STRICT === '1';
+// STRICT is the default since the owner's flip (2026-07-17). The escape hatch is deliberate and
+// must stay: a gate on a shared resource with no off-switch eventually wedges someone else's
+// cycle — and the one who pays is not the one who broke it (same law as INVENTORY_SYNC_STRICT=0).
+// `--strict-extended` is still accepted as a no-op: it is the default now, but it appears in
+// merged CHANGELOG/journal prose and in muscle memory, and silently rejecting it would be rude.
+const EXTENDED_STRICT = !(
+  process.argv.includes('--warn-extended') || process.env.COUNTS_EXTENDED_STRICT === '0'
+);
 
-// Kinds whose drift BLOCKS. Extended kinds join only when the owner flips them (see header).
+// Kinds whose drift BLOCKS. Since the flip, extended kinds block too — unless downgraded above.
 const CORE_KINDS = new Set(['artifact', 'rule']);
 const isBlocking = (kind) => CORE_KINDS.has(kind) || EXTENDED_STRICT;
 
@@ -175,10 +185,11 @@ const PATTERNS = [
   { kind: 'rule', re: /(\d+)\s*validation\s*rules?/gi },
   { kind: 'rule', re: /\(\s*(\d+)\s*rules?\b/gi },
 
-  // ── EXTENDED (warn-only by default) ──
+  // ── EXTENDED (blocking since the owner's flip, 2026-07-17) ──
   // Deliberately NARROW. A missed count is a doc that stays stale one more day; a false
   // positive is a gate that cries wolf and gets switched off — costing every future count.
-  // Prefer under-matching: `--strict-extended` is only earned by a quiet warn period.
+  // Prefer under-matching: blocking status was earned by a quiet warn period, and any pattern
+  // widened later owes the same on-ramp before it may block.
   //
   // NB the `(?<![\w.§×~-])` guard on every number. Without it the first empirical run drowned in
   // noise, and the noise was instructive: "### 14.1 Skills" matched as 1 skill, "A11 hook" as 11
@@ -379,8 +390,8 @@ function main() {
     for (const m of warnings) {
       w.write(`  ${m.file}:${m.line}  [${m.kind}] found ${m.found}, expected ${m.expected}\n      ${m.text}\n`);
     }
-    w.write(`\n  These do not fail the gate. Flip with --strict-extended / COUNTS_EXTENDED_STRICT=1\n`);
-    w.write(`  once the list is clean and quiet. Silence entirely with --core-only / COUNTS_EXTENDED=0.\n`);
+    w.write(`\n  These do not fail the gate — extended kinds are downgraded to warn in this run.\n`);
+    w.write(`  Drop --warn-extended / COUNTS_EXTENDED_STRICT=0 to restore blocking (the default).\n`);
   }
 
   if (skipped.length > 0 && !CORE_ONLY) {
