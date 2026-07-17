@@ -1,6 +1,6 @@
 # Ecosystem 3.0
 
-> **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D6 внешним инструментам через универсальный handoff.
+> **PMO-слой для управления продуктовыми проектами через Claude Code.** Тонкий контроль D1-D2 (Discovery + Behavioral specification), tool-agnostic делегирование D2-Tech и D3-D5 внешним инструментам через универсальный handoff.
 
 **Статус:** единственный источник — [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) (verify против `git log`). Краткая история релизов — [CHANGELOG.md](CHANGELOG.md). _Здесь статус намеренно не дублируется — pointer-collapse против triple-declaration drift (Tier-1 doc reform)._
 **Целевая аудитория:** solo-разработчики, ведущие продуктовые проекты с Claude Code как primary tool.
@@ -24,7 +24,7 @@
 
 ## Концепция в одной строке
 
-Я детально контролирую процессы D1-D2 (продуктовая стратегия + поведенческая спецификация) через **Product Module** и **Design Module**, а внешние инструменты (D2-Technical, D3-D6) подключаются через **Integrator Module** и работают по принципу «я дал тебе всё о продукте через handoff — ты качественно выполнил свою зону».
+Я детально контролирую процессы D1-D2 (продуктовая стратегия + поведенческая спецификация) через **Product Module** и **Design Module**, а внешние инструменты (D2-Technical, D3-D5) подключаются через **Integrator Module** и работают по принципу «я дал тебе всё о продукте через handoff — ты качественно выполнил свою зону».
 
 ## Agent = Model + Harness
 
@@ -122,7 +122,7 @@ Sync ecosystem zone (commands, skills, agents, hooks, docs, templates) к latest
 ## Ключевые принципы
 
 1. **Assistant-led, human-approved** (DEC-P13). ИИ делает работу — человек принимает решения.
-2. **Tool-agnostic для D2-Tech и D3-D6** (DEC-A06). Внешние инструменты заменяемы через Integrator.
+2. **Tool-agnostic для D2-Tech и D3-D5** (DEC-A06). Внешние инструменты заменяемы через Integrator.
 3. **Self-contained handoff**. Универсальный markdown-snapshot для передачи фичи в любой реализатор.
 4. **Continuous consistency**. BG extraction, cascade protocol, bi-dir refs работают в фоне.
 5. **Adversarial validation**. Product DA review, adaptive-depth триггеры (refactored DEC-DEV-0012 — single subagent invocation, self-classification), 6 lenses.

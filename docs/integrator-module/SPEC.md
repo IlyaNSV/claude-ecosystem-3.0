@@ -107,7 +107,7 @@ Integrator — гибрид, как и Product Module:
 
 ## 3. Каталог команд
 
-13 slash-команд разделены на три группы (добавлена `/integrator:scan` в итерации 3).
+13 slash-команд разделены на три группы (добавлена `/integrator:scan` в итерации 3). Число = поставка на диске (`commands/integrator/`); пункты с пометкой ⏳ спроектированы, но не поставлены и в это число НЕ входят.
 
 ### 3.1. Группа «Read-only» (безопасные, без side effects)
 
@@ -147,13 +147,20 @@ Integrator — гибрид, как и Product Module:
 - Вход: имя активного инструмента
 - Этапы: impact analysis → approve → migrate data (если возможно) → uninstall → cleanup contracts → update mapping
 
-**`/integrator:replace <old> <new>`** — заменить один инструмент другим
+**`/integrator:replace <old> <new>`** ⏳ — заменить один инструмент другим
 - Комбинация remove + add, но с миграцией данных и переносом контрактов
+- ⏳ **Спроектирована, НЕ поставлена** (cut v1.1+, DEC-DEV-0176; trigger — 2-й D2-Tech инструмент). `commands/integrator/replace.md` отсутствует; в число поставленных команд не входит. См. §9 и §13.1
 
 **`/integrator:update <tool>`** — обновить версию инструмента (OQ-I6)
 - Вход: имя + опционально целевая версия
 - Этапы: backup config → install new → verify contracts → detect drift → update contracts → verify → approve
 - Если drift нерешаемый — rollback
+
+**`/integrator:provision <capability>`** — оснастить deploy-capability (D3-05 / D3-06) для пилота фабрики
+- Вход: `deploy-staging` | `deploy-prod-stub`
+- Спавнит субагента `deployer`: авторит systemd-шаблоны + `releases/<ts>`+`current` layout + prisma-migrate шаг + healthcheck-спеку + DRAFT CNT-контракт; персистит под approve-гейтом
+- **Только оснащает, НЕ исполняет деплой** (граница §8.3): исполнение — процесс Оркестратора `deploy-to-stage`
+- Internal capability provider — санкционированный fallback, см. §8.4 (DEC-DEV-0218)
 
 ### 3.3. Группа «Maintenance» (поддержка инфраструктуры)
 
@@ -1043,7 +1050,7 @@ DEC-INT-0016), Integrator вправе оснастить зону **internal-и
 | **Maintenance** | `/integrator:verify`, `:debug`; drift-detection skill + drift-check hook | Phase 7 ✅ (DEC-DEV-0176) |
 | **Export для Orchestrator** | `/integrator:docs`; tool-docs generator | Phase 7 ✅ (DEC-DEV-0176) |
 
-**Открытый вопрос (Phase 5 kickoff):** `/integrator:update` — ROADMAP относит его к Phase 5 (вместе с Installation, acceptance «detects drift»), историческая группировка модуля — к Maintenance. Финальное размещение подтверждается на kickoff (см. `dev/PHASE_5_READINESS.md` §C.6).
+**Вопрос закрыт (DEC-DEV-0040 Q2, 2026-05-25):** `/integrator:update` оставлен в **Phase 5** (вместе с Installation, acceptance «detects drift»), а не в Maintenance. Подтверждают: архивный readiness (`dev/_archive/phase-5/PHASE_5_READINESS.md` §C.6), frontmatter `commands/integrator/update.md` («kept in Phase 5, not Maintenance»), таблица групп выше.
 
 **Что даёт каждая группа:**
 - *Read-only* — изучать инструменты и видеть gaps, ничего не ломая.
@@ -1095,11 +1102,12 @@ DEC-INT-0016), Integrator вправе оснастить зону **internal-и
 .claude/
 ├── commands/integrator/
 │   ├── research.md
+│   ├── scan.md
 │   ├── add.md
+│   ├── provision.md
 │   ├── map.md
 │   ├── gaps.md
 │   ├── remove.md
-│   ├── replace.md
 │   ├── update.md
 │   ├── verify.md
 │   ├── debug.md

@@ -338,7 +338,6 @@ Product Module P2 F.8 triggers
 
 - `figma-workflow.md` (когда Figma MCP интегрируем)
 - `penpot-workflow.md` (open-source alternative)
-- `html-fallback.md` (когда все MCP недоступны — HTML/React artifact generation)
 - `ir-export.md` / `ir-import.md` (v2 — IR neutral representation, §16)
 
 ---
@@ -890,7 +889,7 @@ stitch_usage:
 
 ### 14.3 HTML Fallback
 
-- [ ] Skill `html-fallback.md` (resilience путь)
+- [x] Skill `html-fallback.md` (resilience путь) — построен (v1.0 minimal per DEC-DEV-0052 C4)
 - [ ] Acceptance: отключить Stitch MCP временно, выполнить design session с HTML fallback
 
 ### 14.4 Integration with Handoff

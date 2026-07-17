@@ -45,12 +45,13 @@ Ask in 2-3 batches (не все 8 сразу — overwhelming). Focus on:
 - Сколько человек приблизительно страдают (region / global / niche)?
 - Что они сейчас делают, чтобы справляться (workarounds, альтернативы)?
 
-**Batch 3: Context & Evidence**
+**Batch 3: Timing & Evidence**
+- Почему решать именно СЕЙЧАС? Что изменилось — новые технологии, тренды рынка, сдвиги в аудитории/поведении? (→ секция «Why now»)
 - Видел ли эту проблему лично, или это hypothesis?
 - Какие у тебя есть доказательства (интервью, посты на форумах, статистика)?
 - Что думают existing решения не решают правильно?
 
-Stop at 5-8 questions total. Don't overexplore in D1.1 — more research comes в D1.2 MR.
+Stop at 5-8 questions total (batches above are a menu — pick, don't ask all). The «Why now» timing question is not optional: PS requires a `Why now` section, so it must be among the ones you ask. Don't overexplore in D1.1 — more research comes в D1.2 MR.
 
 ### Step 3: Draft PS
 
@@ -83,23 +84,20 @@ version: 1
 ```markdown
 # Problem Statement
 
-## Кто страдает
-<Profile of primary sufferer — role, situation, context. Не абстрактное «users», а specific: «Freelance translators working 3-8 клиентов параллельно»>
+## Problem
+<Who suffers + the concrete pain, as one phenomenon. Specific profile, не абстрактное «users»: «Freelance translators working с 3-8 клиентами параллельно». Pain: «takes 2-3 hours per week because Y, causing Z consequence». Problem как явление, не решение.>
 
-## В чём боль
-<Concrete pain description. Не «it's hard to X», а «takes 2-3 hours per week because Y, causing Z consequence»>
+## Context
+<In what situations the problem arises: triggers, frequency, and scale (how many, how often). Use concrete numbers from user's input or explicitly mark [оценочно] if guessed.>
 
-## Масштаб и частота
-<How many, how often. Use concrete numbers from user's input or explicitly mark [оценочно] if guessed>
+## Current alternatives
+<How people cope now — workarounds, existing alternatives (including «никак»), their pros/cons.>
 
-## Как справляются сейчас
-<Workarounds, existing alternatives, their pros/cons>
+## Consequences
+<What happens if the problem is not solved: time, money, emotional, opportunity cost. Includes its dual — what changes if it IS solved («what problem goes away»); desired future state lives here, not as a separate section (PS — про проблему, not solution yet).>
 
-## Почему это важно
-<Consequence of unsolved problem: time, money, emotional, opportunity cost>
-
-## Что мы хотим изменить
-<Brief statement of desired future state — not solution yet, just «what problem goes away»>
+## Why now
+<Why solve this now: trends, technology shifts, changes in the audience/market. Not «always been like this» — what makes this the right moment. Feeds PS «Why now».>
 ```
 
 ### Step 4: Content rules (per PS.md)

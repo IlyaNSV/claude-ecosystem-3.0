@@ -146,9 +146,10 @@ classes:
     verify: "таблица в CLAUDE.md; gate — dev/meta-improvement/scripts/process-gate.js"
 
   - id: dev-conventions
-    asks: "Конвенции коммитов/именования/записи? Когда CHANGELOG vs DEV_JOURNAL?"
-    ssot: "CLAUDE.md §«Конвенции репозитория» + dev/meta-improvement/CONVENTIONS.md"
-    verify: "обе секции; D6/D7 disambiguation — CONVENTIONS.md §1.3"
+    asks: "Конвенции коммитов/именования/записи?"
+    ssot: "dev/meta-improvement/CONVENTIONS.md"
+    note: "«Когда CHANGELOG vs DEV_JOURNAL» — НЕ здесь: триггеры обязательств живут в классе process-triggers (CLAUDE.md §«Process triggers»). CLAUDE.md §«Конвенции репозитория» — указатель, правил не держит (DEC-DEV-0197 / D12)."
+    verify: "CONVENTIONS.md; D6/D7 disambiguation — §1.3"
 
   - id: phase-gates
     asks: "Готовность фазы N? Smoke-план? Что блокирует следующий шаг?"

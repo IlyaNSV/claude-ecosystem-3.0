@@ -1,7 +1,7 @@
 # Audit Watch — полу-авто триггер Session Audit v2 (G1)
 
 > **Назначение:** держать универсальный аудит сессий «почти на автомате», пока Claude открыт.
-> Drop-in поверх Инкр.1 (`--classify`) + Инкр.2 (effect-probe). Решение: [DEC-DEV-0057](../../DEV_JOURNAL.md).
+> Drop-in поверх Инкр.1 (`--classify`) + Инкр.2 (effect-probe). Решение: [DEC-DEV-0057](../../../DEV_JOURNAL.md).
 > **Принадлежность:** D7 meta-improvement, dev-only (CONVENTIONS §2/§9). НЕ деплоится в пользовательские проекты.
 > **Owner:** developer. **Запуск:** из корня репо экосистемы (`cwd=claude-ecosystem-3.0`).
 

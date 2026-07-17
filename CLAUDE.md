@@ -42,15 +42,15 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 **Precedence — объявлена ТЕКСТОМ, а не порядком строк** (DEC-DEV-0197 / D12; на порядок правил в файле полагаться ЗАПРЕЩЕНО — знание, «спрятанное» в порядке, не читается):
 1. **Код гейта > эта таблица.** Что принуждается на самом деле — в `dev/meta-improvement/scripts/process-gate.js`. Разошлись — **прав код**, таблица = баг, чинить таблицу.
-2. **Эта таблица > любое другое место этого файла.** Обязательства «что я обязан сделать в коммите» живут ЗДЕСЬ и только здесь. Прецедент: §«Обновление CHANGELOG vs DEV_JOURNAL» держал вторую, расходящуюся копию тех же правил (для `fix:` обещала CHANGELOG **без** квалификатора consumer-zone — то есть строже кода) → свёрнута в указатель, уникальные строки (`refactor:` / `docs:` / имена секций CHANGELOG) подняты сюда.
+2. **Эта таблица > любое другое место этого файла И любого dev-дока** (кросс-файловая precedence — S5, DEC-DEV-0220-e; прежнее самоограничение «этого файла» оставляло копии в `CONVENTIONS.md`/`checklists/`/module-SPEC вне решётки SSOT, и они расходились — урок 70 стоил неверной записи в release notes). Обязательства «что я обязан сделать в коммите» живут ЗДЕСЬ и только здесь; копия в другом доке — указатель, не вторая редакция. **Граница поглощения:** предметные каноны этим правилом НЕ поглощаются — у них свои SSOT (структура артефактов — `docs/pmo/artifacts/`; ростер паттернов — `patterns/README.md`; validation-правила — `docs/pmo/validation.md`; реестры долгов — `dev/tech-debt/`). Прецедент: §«Обновление CHANGELOG vs DEV_JOURNAL» держал вторую, расходящуюся копию тех же правил (для `fix:` обещала CHANGELOG **без** квалификатора consumer-zone — то есть строже кода) → свёрнута в указатель, уникальные строки (`refactor:` / `docs:` / имена секций CHANGELOG) подняты сюда.
 3. **🔒 = принуждается кодом, а не тоном.** Тон (IMPORTANT/MUST/ВСЕГДА) и позиция в файле на исполнение почти не влияют. Работает ровно две вещи: детерминированный гейт — либо явный **триггер + scope** в тексте самого правила.
 
 | Когда я делаю это… | …обязан (в том же / связанном коммите) | Деталь |
 |---|---|---|
 | `fix:` (багфикс) | 🔒 DEV_JOURNAL (root cause + lesson) + 🔒 CHANGELOG `[Unreleased] ### Fixed` **если тронут consumer-zone** | §1; CONVENTIONS §11.1 |
-| `feat:` в consumer-zone (`commands/skills/agents/hooks/docs/templates/adapters/orchestrator` + root README/ROADMAP/install) | 🔒 CHANGELOG `[Unreleased] ### Added` + DEV_JOURNAL если был tradeoff ≥2 вариантов | accumulation contract |
+| `feat:` в consumer-zone (`commands/skills/agents/hooks/docs/templates/adapters/orchestrator` + root README/ROADMAP/install + `.env.template`/`gitignore.template`; membership — регексы `CONSUMER`/`CONSUMER_ROOT` в `process-gate.js`, прав код) | 🔒 CHANGELOG `[Unreleased] ### Added` + DEV_JOURNAL если был tradeoff ≥2 вариантов | accumulation contract |
 | сообщение коммита упоминает `DEC-DEV-N` (**любой** тип коммита, не только `fix:`) | 🔒 DEV_JOURNAL (rationale решения) | `process-gate.js` — условие `isFix \|\| mentionsDecDev` |
-| spec / scope-change | DEV_JOURNAL (rationale + impact) + CHANGELOG `### Modified` если влияет на consumers | §1 триггеры |
+| spec / scope-change | DEV_JOURNAL (rationale + impact) + CHANGELOG `### Changed` если влияет на consumers | §1 триггеры; словарь секций — D-3 ниже |
 | `refactor:` | CHANGELOG — **только если меняет behavior**; DEV_JOURNAL — если non-trivial | дисциплина (гейт не ловит: он смотрит только `feat:`/`fix:`) |
 | `docs:` / typo / dependency bump | **ничего** — это НЕ триггеры | §1 «НЕ триггеры» |
 | добавил/убрал артефакт-тип или validation-правило | 🔒 count-sweep всех ~10 count-доков (`node dev/meta-improvement/scripts/check-counts.js` зелёный) | [[reference_pmo_canonical_counts]] |
@@ -214,7 +214,9 @@ claude-ecosystem-3.0/
 
 **SSOT — таблица «Process triggers — harness contract (D7)» выше. Здесь правил НЕТ, только указатель.**
 
-Раньше здесь стояла вторая таблица тех же обязательств — и она **разошлась** с первой: обещала CHANGELOG на любой `fix:` **без** квалификатора consumer-zone, т.е. строже, чем принуждает `process-gate.js` (условие в коде — `(isFeat || isFix) && touchesConsumer`). Классический дефект «одно правило записано дважды». Свёрнута в указатель (DEC-DEV-0197 / D12); её уникальные строки — `refactor:`, `docs:`, имена секций `### Added | Fixed | Modified` — **подняты в SSOT-таблицу, не потеряны**.
+Раньше здесь стояла вторая таблица тех же обязательств — и она **разошлась** с первой: обещала CHANGELOG на любой `fix:` **без** квалификатора consumer-zone, т.е. строже, чем принуждает `process-gate.js` (условие в коде — `(isFeat || isFix) && touchesConsumer`). Классический дефект «одно правило записано дважды». Свёрнута в указатель (DEC-DEV-0197 / D12); её уникальные строки — `refactor:`, `docs:`, имена секций — **подняты в SSOT-таблицу, не потеряны**.
+
+**Словарь секций CHANGELOG (D-3, DEC-DEV-0220-e):** `Added | Changed | Fixed` (+ `Removed` / `Deprecated` / `Security` по Keep a Changelog 1.1.0, когда понадобятся). CHANGELOG сам объявляет «Format based on Keep a Changelog» — в этом стандарте `Changed` штатная секция, а прежняя `Modified` — выдуманная. Выпущенная секция `Modified` в `[1.10.0]` остаётся как археология (append-only), ретроспективно не переименовывается.
 
 **Разделение по адресату** (единственное, что нужно держать в голове сверх таблицы):
 - **CHANGELOG** — для **consumers**: что изменилось в поставке. Триггер — тронут consumer-zone.

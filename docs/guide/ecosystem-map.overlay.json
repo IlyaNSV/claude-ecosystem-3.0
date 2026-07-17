@@ -394,7 +394,7 @@
   },
 
   "glossary": [
-    ["D1–D6", "Шесть управленческих доменов PMO: Discovery → Behavioral → Tech → Build → QA → Ops/Meta."],
+    ["D1–D6", "Шесть управленческих доменов PMO: D1 Discovery → D2 Requirements&Design (сплит B/T/UI) → D3 Build → D4 QA → D5 Ops → D6 Meta/Governance. Раскладка и владение (owned / delegated) — SSOT docs/pmo/pmo-map.md."],
     ["handoff.md", "Универсальный 13-секционный snapshot фичи — самодостаточная передача в любой реализатор."],
     ["DoR", "Definition of Ready — критерий готовности handoff (draft = 3 блокера, production = 8)."],
     ["DA", "Devil's Advocate — adversarial-ревью в изолированном контексте перед вложением в имплементацию."],
@@ -420,7 +420,7 @@
     {"axis": "Процессы Orchestrator P1–P7", "what": "Рантайм-процессы Orchestrator", "values": "P1 init · P2 decide-architecture · P3 batch→cc-sdd · P4 audit-fidelity · P5 tdd-impl · P6 validate-impl · P7 runtime-smoke", "notWith": "Product `P1–P5`. В картах — суффикс `o` (`P4o`); оператор обычно видит `P3o–P6o` (+P7-leg внутри P6)"},
     {"axis": "Артефакты — 24 типа", "what": "ID-префиксы типов артефактов PMO", "values": "PS MR CA SEG VP HYP MVP RM RL · FM · SC BR LC RPM VC IC NFR · MK DS NM AM · BG NOTE LESSON", "notWith": "`MVP`-тип ≠ стадия продукта ≠ `validation_tier=mvp`"},
     {"axis": "Домены артефактов", "what": "Группировка 24 артефактов в карте/глоссарии", "values": "D1 · bridge (FM) · D2-B · D2-UI · cross", "notWith": "домены пайплайна `D1–D6` (имена частично пересекаются)"},
-    {"axis": "Модули", "what": "Top-level модули / namespace команд", "values": "Product · Design · Integrator · Orchestrator · Ecosystem", "notWith": "мета-слой = `D6` в PMO-карте, но `D7` в dev-доках (CLAUDE.md)"},
+    {"axis": "Модули", "what": "Top-level модули / namespace команд", "values": "Product · Design · Integrator · Orchestrator · Ecosystem", "notWith": "`D6` Meta: Ecosystem Governance (управление PMO проекта — Integrator Module + человек) ≠ `D7` meta-improvement (разработка самой экосистемы — dev-only, НЕ деплоится). Разные слои, не синонимы"},
     {"axis": "Уровни ревью", "what": "Строгость approve-ревью артефакта", "values": "🔴 Critical · 🟠 Strategic · 🟡 Standard · 🟢 Confirmation", "notWith": "`validation_tier` · `product_tier` — тоже зовутся «tier»"},
     {"axis": "product_tier / validation_tier", "what": "Зрелость продукта / охват inline-валидации", "values": "product_tier: ИДЕЯ→MVP→MMP→GROWTH→MATURE · validation_tier: pilot / mvp / full", "notWith": "review-уровни 🔴🟠🟡🟢 (третий смысл слова «tier»)"},
     {"axis": "Вердикты Orchestrator", "what": "Исход гейта — две независимые оси + conflicts", "values": "result: GO / NO-GO / MANUAL_VERIFY · readiness: READY / DEGRADED / ENV_NOT_READY · conflicts[] понижает GO→MANUAL_VERIFY", "notWith": ""},

@@ -451,10 +451,12 @@
 - **`note-capture.md`** (D3) — quick capture flow для NOTE-* (≤30 sec from idea to saved file)
 - **`note-promote.md`** (D3) — converts NOTE-* to structured artifact, copies content, updates references
 
-### 4.5 Deep Research skills (2, используются в Deep mode)
+### 4.5 Deep Research skills — CUT (DEC-DEV-0186)
 
-- **`deep-research-8-phase.md`** — адаптация 199-biotechnologies для MR Deep
-- **`competitive-intel.md`** — pipeline для CA Deep (semantic search + scraping + synthesis)
+Отдельные скиллы `deep-research-8-phase.md` / `competitive-intel.md` **не строились и не будут**:
+8-фазный пайплайн MR и 6-стадийный пайплайн CA легли **внутрь** промптов субагентов
+`agents/product/market-researcher.md` / `agents/product/competitor-analyst.md` — отдельный
+lazy-load skill-слой не нужен. См. `dev/v1_1_backlog.md` и DEV_JOURNAL DEC-DEV-0186.
 
 ### 4.6 Skill loading strategy
 
@@ -1052,8 +1054,8 @@ Deadlock protection (OQ-P4):
 
 - [x] `.claude/commands/product/plan.md`
 - [x] Skills: planning-session, mvp-scoping, roadmap-planning, release-planning
-- [ ] Subagents: `market-researcher.md`, `competitor-analyst.md` — Deep mode (v1.1)
-- [ ] Skills: deep-research-8-phase, competitive-intel — Deep mode (v1.1)
+- [x] Subagents: `market-researcher.md`, `competitor-analyst.md` — Deep mode **построен** (bring-forward DEC-DEV-0186; 8-фазный MR + 6-стадийный CA пайплайн внутри промптов агентов; смоук `tests/product/deep-discovery-agents-wiring.test.cjs`)
+- ~~Skills: deep-research-8-phase, competitive-intel~~ — **CUT (DEC-DEV-0186)**: пайплайн встроен в промпты субагентов; отдельный skill-слой не нужен
 - [ ] MCP: Firecrawl, Exa AI активны — Deep mode (v1.1)
 - [x] Артефакты: MVP, RM, RL, FM (skeletons)
 - [ ] Acceptance: Deep Discovery + Planning на реальной теме с credibility-scored research — Planning часть validated DEC-DEV-0023; Deep часть → v1.1

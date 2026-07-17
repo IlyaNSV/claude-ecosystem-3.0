@@ -3,7 +3,7 @@
 > **Что это:** data-driven реестр **zone-references** для универсального аудита **продуктовых** сессий (`audit-smoke.js --classify`).
 > Каждый файл = одна **owned PMO-зона** (или `mixed-uncertain` fallback): с чем сравнивать (`baseline`), по каким критериям (`criteria`), что проверять в продукте (`effect_focus`).
 > **Принадлежность:** D7 meta-improvement, dev-only (CONVENTIONS §2/§9). НЕ деплоится.
-> Дизайн: [`../../SESSION_AUDIT_V2_DESIGN.md`](../../SESSION_AUDIT_V2_DESIGN.md) §6.0 · решения: DEC-DEV-0056 (Инкр.1) → **DEC-DEV-0059 (Инкр.3a re-anchor)**.
+> Дизайн: [`../../_archive/session-audit-v2/SESSION_AUDIT_V2_DESIGN.md`](../../_archive/session-audit-v2/SESSION_AUDIT_V2_DESIGN.md) §6.0 · решения: DEC-DEV-0056 (Инкр.1) → **DEC-DEV-0059 (Инкр.3a re-anchor)**.
 
 ## Модель: две оси (DEC-DEV-0059)
 

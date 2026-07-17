@@ -131,13 +131,17 @@ const quietDraft = config.draft_mode_quiet_hooks !== false; // default true
 
 const findings = [];
 
-// V-09: SEG has exactly 1 VP
-if (fm.type === 'segment' && fm.status === 'active') {
-  if (!fm.value_proposition) {
+// V-09: SEG↔VP pair completeness (1:1, DEC-ART03) — checkpoint at the VP side / D1.4a exit
+// (DEC-DEV-0220-e). SEG goes active at G4 BEFORE its VP exists (D1.4a is the NEXT pipeline step),
+// so an active SEG with value_proposition: null is a legitimate transient state — flagging it here
+// made a 🔴-blocking rule the pipeline could never satisfy. Inline (single-file) leg: an active VP
+// must name its SEG; the SEG-side backfill is checked corpus-level (validation-runner / effect-probe).
+if (fm.type === 'value-proposition' && fm.status === 'active') {
+  if (!fm.segment) {
     findings.push({
       rule: 'V-09',
       severity: 'blocking',
-      message: `SEG ${fm.id} active but missing value_proposition in frontmatter`,
+      message: `VP ${fm.id} active but missing segment in frontmatter (1:1 SEG↔VP)`,
     });
   }
 }

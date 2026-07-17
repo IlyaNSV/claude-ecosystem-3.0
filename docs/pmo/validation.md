@@ -294,12 +294,12 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 
 #### V-09: SEG has exactly 1 VP
 - **Tier:** 🔴 Blocking
-- **Statement:** Каждый SEG-* в status=active должен иметь exactly one VP-* referenced в frontmatter.value_proposition.
+- **Statement:** Каждый SEG-* в status=active должен иметь exactly one VP-* referenced в frontmatter.value_proposition — **начиная с выхода D1.4a**. До D1.4a `value_proposition: null` — легитимное переходное состояние: SEG становится active на G4, а его VP создаётся только на следующем шаге конвейера (D1.4a, «VP design per active SEG»).
 - **Artifacts affected:** SEG-*, VP-*
 - **Automation:** ✅ Fully
-- **When:** Approve gate (SEG), On-demand
-- **On failure:** SEG cannot be active без VP.
-- **Rationale:** DEC-ART03 установил 1:1 отношение SEG↔VP. Без VP сегмент без ценностного предложения.
+- **When:** Approve gate (VP) / выход D1.4a, On-demand. *(Чекпойнт перенесён с Approve gate (SEG): на G4 правило невыполнимо по построению — конвейер не может сослаться на VP, которого ещё нет. Инвариант 1:1 не менялся; DEC-DEV-0220-e.)*
+- **On failure:** VP cannot be active без обратной ссылки из его SEG; активный SEG после D1.4a без VP — blocking finding.
+- **Rationale:** DEC-ART03 установил 1:1 отношение SEG↔VP. Без VP сегмент без ценностного предложения. Проверка ставится там, где пара впервые полна и правило впервые выполнимо.
 
 #### V-10: FM has SEG and JTBD
 - **Tier:** 🔴 Blocking

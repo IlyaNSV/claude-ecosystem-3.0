@@ -143,4 +143,4 @@ TAM: $500B (global translation industry)                    ❌ нерелева
 ## Related Skills
 
 - [`market-research-protocol-quick.md`](../../../skills/product/market-research-protocol-quick.md) — Quick mode
-- `deep-research-8-phase.md` (deferred to v1.1+ — Deep mode subagents, см. [`dev/v1_1_backlog.md`](../../../dev/v1_1_backlog.md))
+- Deep mode — субагент [`market-researcher.md`](../../../agents/product/market-researcher.md) (8-фазный пайплайн встроен в промпт агента; отдельный скилл `deep-research-8-phase.md` — CUT, DEC-DEV-0186)
