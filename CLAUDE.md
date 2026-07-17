@@ -21,7 +21,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 **Единственный источник статуса** — [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) (verify против `git log`). Снапшот здесь намеренно **не дублируется**: pointer-collapse против triple-declaration drift (Tier-1 doc reform; ранее README/CLAUDE/ROADMAP держали три расходящиеся копии).
 
-`last memory-sync: 2026-07-12` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
+`last memory-sync: 2026-07-17` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
 
 **Реестр открытых readiness / smoke-гейтов** (само обязательство «перед фазой — [`phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) + readiness» живёт в SSOT-таблице «Process triggers» ниже и здесь намеренно НЕ повторяется — DEC-DEV-0197 / D12; ниже — только состояние):
 - `dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — ✅ ЗАКРЫТ 2026-07-15 (догон E1 кампании: S2/S5 PASS, S4 PARTIAL — §4.2.1 env-блок структурно не подключён в add.md, решение владельца; S1 PARTIAL/S3 PASS с 0177/0204)
