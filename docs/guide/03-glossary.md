@@ -89,6 +89,7 @@ doc_type: reference
 | **D1–D6** | Шесть управленческих доменов PMO: D1 Discovery → D2 Requirements&Design (сплит B/T/UI) → D3 Build → D4 QA → D5 Ops → D6 Meta/Governance. Раскладка и владение (owned / delegated) — SSOT docs/pmo/pmo-map.md. |
 | **handoff.md** | Универсальный 13-секционный snapshot фичи — самодостаточная передача в любой реализатор. |
 | **DoR** | Definition of Ready — критерий готовности handoff (draft = 3 блокера, production = 8). |
+| **Release DoD** | Definition of Done релиза — терминальный предикат релизного цикла: ссылочный 6-категорийный чеклист (опциональная body-секция RL, soft-миграция); зелёный DoD + owner ratify — единственный легитимный выход в released. SSOT шаблона — docs/pmo/artifacts/RL.md. |
 | **DA** | Devil's Advocate — adversarial-ревью в изолированном контексте перед вложением в имплементацию. |
 | **BG** | Business Glossary — сквозной словарь; пополняется из любого артефакта, каскадный rename. |
 | **cc-sdd** | Внешний spec-driven инструмент-реализатор; подключается через /integrator:add. |
