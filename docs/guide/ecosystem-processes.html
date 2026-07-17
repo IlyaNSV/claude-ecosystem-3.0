@@ -171,8 +171,8 @@
 <!-- Data island: generator replaces the single token below with JSON.stringify(DATA). -->
 <script id="proc-data" type="application/json">{
   "_build": {
-    "date": "2026-07-11",
-    "sha": "339a7ac",
+    "date": "2026-07-17",
+    "sha": "de60546",
     "lanes": 5,
     "processes": 21,
     "steps": 112,
@@ -5502,8 +5502,8 @@
         "event": "PreToolUse",
         "blocking": true,
         "module": "product",
-        "what": "В strict-режиме отказывает мутирующим инструментам (Write|Edit|Bash|NotebookEdit) при открытых LESSON-*.md; в warn (дефолт) — только предупреждает.",
-        "bypass": "env LESSON_GATE_MODE=warn (дефолт) | off; маркер lesson-in-progress пропускает /product:lesson.",
+        "what": "В strict-режиме (дефолт с 2026-07-11) отказывает мутирующим инструментам (Write|Edit|Bash|NotebookEdit) при открытых LESSON-*.md; в warn — только предупреждает.",
+        "bypass": "env LESSON_GATE_MODE=warn | off; маркер lesson-in-progress и правки самих LESSON-* пропускают /product:lesson.",
         "source": "hooks/product/lesson-presence-gate.js"
       },
       "artifact-validate": {
