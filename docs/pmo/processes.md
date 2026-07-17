@@ -1220,7 +1220,7 @@ NFR на solo-уровне — **очертания достаточности, 
 - `br-change-trigger.js` — P-RULE-02 enforcement (adaptive-depth, см. §6.2; refactored DEC-DEV-0012)
 - `cascade-check.js` — на approve
 - `lesson-gate.js` — **Stop** event; LESSON-* non-deferrability gate (PRONG A). The **first blocking hook** (DEC-DEV-0062 departure from «Hook never blocks», scoped to corrective lessons). Default strict (`exit 2`) blocks clean session close while any LESSON is `status: open` or write-truncated; `LESSON_GATE_MODE=warn` downgrades.
-- `lesson-presence-gate.js` — **PreToolUse** + **UserPromptSubmit** backstop (PRONG B). Ships **warn** (re-surfaces open lessons each turn; PreToolUse nag); `LESSON_GATE_MODE=strict` enables `permissionDecision:deny` on mutating calls with `lesson-in-progress` marker-exemption (pending S-LE live smoke).
+- `lesson-presence-gate.js` — **PreToolUse** + **UserPromptSubmit** backstop (PRONG B). Ships **strict** (flipped 2026-07-11 after the S-LE re-run PASS; DEC-DEV-0177): `permissionDecision:deny` on mutating calls, with `lesson-in-progress` marker-exemption + target carve-out (writes to `.product/lessons/**` always allowed — self-deadlock breaker, DEC-DEV-0143). UserPromptSubmit re-surfaces open lessons each turn (never blocks a prompt). `LESSON_GATE_MODE=warn` downgrades to stderr nag, `=off` silences.
 
 **B2: Quiet draft hooks behavior.** Все hooks при artifact `status: draft` работают в **quiet mode**:
 - Validation/extraction результаты НЕ surfacing inline (не прерывают flow)

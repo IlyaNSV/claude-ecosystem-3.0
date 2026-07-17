@@ -104,8 +104,8 @@
 
 | План | Прогон 2026-07-11 | Статус |
 |---|---|---|
-| [`PATCH_1.3.3_SMOKE_TEST_PLAN.md`](PATCH_1.3.3_SMOKE_TEST_PLAN.md) | S1/S3 PASS; S2/S4/S5 не дошли (тест-дизайн-гэп: `/integrator:scan` снял session-marker перед записью) | 🟠 частично прогнан; точечный догон S2/S4/S5 (запись при живом маркере + свежий install с профилем) |
-| [`PHASE_6_SMOKE_TEST_PLAN.md`](PHASE_6_SMOKE_TEST_PLAN.md) | S4/S5/S7 PASS, S2 PARTIAL; S1/S3 N/A-substrate | 🟠 частично прогнан; точечный догон S1/S3 (честная UI FM без готового дизайна) |
+| [`PATCH_1.3.3_SMOKE_TEST_PLAN.md`](PATCH_1.3.3_SMOKE_TEST_PLAN.md) | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E1 — состояние в шапке плана |
+| [`PHASE_6_SMOKE_TEST_PLAN.md`](PHASE_6_SMOKE_TEST_PLAN.md) | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E2 — состояние в шапке плана |
 | ~~[`S_LE_LESSON_GATE_SMOKE.md`](S_LE_LESSON_GATE_SMOKE.md)~~ | S-LE.3 полный PASS (самодедлок 0143 live-устранён), S-LE.1 = known CC-caveat | ✅ **закрыт**; чеклист архивирован → `dev/_archive/s-le/`; флип `lesson-presence-gate.js` warn→strict выполнен (PR #162) |
 | ~~`PHASE_7_SMOKE_TEST_PLAN.md`~~ | S1/S2/S3/S5 PASS, S4 PARTIAL (DEF-SMK-1, пофикшен DEC-DEV-0178/PR #163) | ✅ **validated**; план архивирован → `dev/_archive/phase-7/` |
 

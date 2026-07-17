@@ -93,9 +93,11 @@ if (Test-Path (Join-Path $EcosystemDir "commands\ecosystem")) {
 $version = "unknown"
 $changelogPath = Join-Path $EcosystemDir "CHANGELOG.md"
 if (Test-Path $changelogPath) {
-    $match = Select-String -Path $changelogPath -Pattern '^## \[([^\]]+)\]' | Select-Object -First 1
+    # Первая ВЫПУЩЕННАЯ версия — `## [X.Y.Z]`, пропуская `## [Unreleased]` (он всегда первый).
+    # Референс-реализация правила: commands/ecosystem/update.md Step 5c.
+    $match = Select-String -Path $changelogPath -Pattern '^##\s+\[(\d+\.\d+\.\d+)\]' | Select-Object -First 1
     if ($match) {
-        $version = $match.Matches.Groups[1].Value
+        $version = $match.Matches[0].Groups[1].Value
     }
 }
 
