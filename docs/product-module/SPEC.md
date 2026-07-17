@@ -109,7 +109,7 @@
 | **Slash-commands** | 23 команды UX для пользователя (вкл. Epic B/C-i/D + impl-sync reverse-flow — §3.2/§3.2b) | `.claude/commands/product/` |
 | **Skills** | ~20 methodology files, lazy-loaded per процесс (вкл. `completeness-loop.md` — Epic B wave-контракт) | `.claude/skills/product/` |
 | **Subagents** | 3 research/isolated агента + 3 profile-persona reviewers (Epic A — §5.4; `ux-advisor` живёт в `agents/design/`) | `.claude/agents/product/` |
-| **Hooks** | 12 hooks automation / enforcement / completeness-loop-routing (ключевые — §6; router — §6.8) | `.claude/hooks/product/` |
+| **Hooks** | 13 hooks automation / enforcement / completeness-loop-routing (ключевые — §6; router — §6.8) | `.claude/hooks/product/` |
 | **Memory directory** | Долгоживущие уроки, shared между сессиями | `~/.claude/memory/product/` |
 | **Config** | Global + per-project settings | `~/.claude/product-config.yaml` + `.claude/product.yaml` |
 
@@ -202,7 +202,7 @@
 
 ## 3. Commands Catalog
 
-22 команды, сгруппированных по функциональным блокам.
+23 команды, сгруппированных по функциональным блокам.
 
 ### 3.1 Главные процессы (5)
 
