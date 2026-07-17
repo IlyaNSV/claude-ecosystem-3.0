@@ -57,7 +57,7 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 | V-06 | 🟡 Warning | LC | `all(transitions has trigger or guard)` | LC transitions have trigger/guard |
 | V-07 | 🟡 Warning | SC, VC | count VC per SC.flow_type ≥ 1 per type | VC covers main + alt + error flows |
 | V-08 | 🟡 Warning | SC, BR, LC, BG | regex `**term**` extract + BG lookup | Bold terms defined в BG |
-| V-09 | 🔴 Blocking | SEG | exactly one VP referenced | SEG has exactly 1 VP |
+| V-09 | 🔴 Blocking | SEG, VP | exactly one VP referenced; чекпойнт — выход D1.4a (`null` легитимен до создания VP, см. validation.md V-09; DEC-DEV-0220-e) | SEG has exactly 1 VP |
 | V-10 | 🔴 Blocking | FM | `FM.segment` set + `FM.jtbd[]` non-empty | FM has SEG and JTBD |
 | V-11 | 🔴 Blocking (auto-fix) | all | bi-dir refs consistent | Bi-dir references consistent |
 | V-12 | 🟡 Warning | all draft | `now - frontmatter.updated > stale_draft_days` | No stale drafts (>14 дней default) |

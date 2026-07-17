@@ -65,7 +65,7 @@ dev/meta-improvement/
 │   ├── audit-smoke-workflow.md  # phase smoke→audit ритуал (Phase 4.1)
 │   ├── audit-watch.md           # semi-auto session-audit watcher (Audit v2 Incr.2)
 │   └── live-run-validation.md   # live-прогон (dogfood) validation protocol (DEC-DEV-0086)
-├── patterns/                    # 8 patterns + index
+├── patterns/                    # паттерны + index (ростер и счёт — SSOT patterns/README.md, здесь не дублируются)
 │   ├── README.md
 │   ├── spec-drift-sweep.md
 │   ├── readiness-gate.md
@@ -115,8 +115,8 @@ dev/meta-improvement/
 
 **v1.0 status (mechanism mix):**
 - **Checklists** (default): phase-closure.md, phase-kickoff.md, audit-smoke-workflow.md (Phase 4.1), live-run-validation.md (dogfood live-run protocol, DEC-DEV-0086)
-- **Patterns** (Stage 3, mostly provisional): 5 в `patterns/`
-- **Skills** (Stage 4): memory-sync.md (formalizes phase-closure Step 5; manual run still default)
+- **Patterns** (Stage 3): состав и статусы — SSOT [`patterns/README.md`](patterns/README.md) (счёт здесь не дублируется — копия числа разошлась дважды, DEC-DEV-0220-e)
+- **Skills** (Stage 4): memory-sync.md (formalizes phase-closure Step 5; **авто-триггер** в конце сессии при сдвиге статус-файлов — DEC-DEV-0100, SSOT `CLAUDE.md` §«Auto memory-sync»; ручной запуск — fallback)
 - **Scripts** (Stage 4 + Phase 4.1 + Audit v2): verify-update.sh / .ps1 (post-/ecosystem:update verification); audit-smoke.js + audit-index.js (Phase 4.1 D7 conformance auditor CLI); classify.js + effect-probe.js + audit-watch.js (Session Audit v2 Incr.1-2 — universal session auditor: deterministic classifier, effect-on-product probe, semi-auto watcher; DEC-DEV-0056/0057)
 - **Hooks** (Stage 4 + Phase 4.1): phase-closure-reminder.js (PostToolUse on Bash; surfaces stderr reminder when phase-completion commit detected без closure entry); session-audit.js (SessionEnd marker writer for pilot projects, Phase 4.1)
 - **Slash commands** (Phase 4.1): `/meta:audit-smoke` (.claude/commands/meta/, ecosystem-repo-local), `/ecosystem:enable-d7-audit` (deployable but D7-internal — opt-in setup для pilot)
@@ -141,7 +141,7 @@ dev/meta-improvement/
 | `phase-closure.md` | After Phase N implementation, before Phase N+1 readiness gate | Once per phase | Manual (user types invocation) |
 | `patch-cut.md` | Before accumulated `[Unreleased]` must reach pilot (i.e. before `/ecosystem:update` in a product project / live run) | Per delivery event (NOT scheduled / not «N features») | Manual (developer runs) |
 | `live-run-validation.md` | After a non-trivial change is built + static smoke green, before declaring it validated / dropping «pending runtime smoke» | Per non-trivial change (skip tiny edits) | Manual (operator runs; reviewer grades post-hoc — executor/reviewer separation) |
-| `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | Manual (user types invocation) |
+| `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | **Auto** (DEC-DEV-0100: сам в конце сессии при сдвиге статус-файлов; SSOT — `CLAUDE.md` §«Auto memory-sync»); ручной запуск — fallback |
 | `scripts/verify-update.sh` | Post-/ecosystem:update | Per update | Manual (user runs externally) |
 | `hooks/phase-closure-reminder.js` | PostToolUse on Bash matching `git commit` с phase-completion pattern | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
 | `hooks/d7-hygiene-reminder.js` | SessionStart — stale G25 audit-Pending (≥7d) / G26 open FB-ledger intake / G27 survived patch-candidate idle at `gate: pending` (≥14d) | Once per session (if any arm stale) | **Auto** (registered в .claude/settings.local.json; detect-only warn, toggle env `D7_HYGIENE_REMINDER=0`; DEC-DEV-0181) |
@@ -216,7 +216,7 @@ git commit -m "chore(meta-improvement): archive PHASE_<N>_READINESS post-closure
 
 ## 6. Memory MCP sync
 
-**Convention:** manual review at phase closure (Step 5 of `phase-closure.md`); skill formalization shipped Stage 4 (`skills/memory-sync.md`).
+**Convention:** авто-синк по DEC-DEV-0100 — SSOT правила: `CLAUDE.md` §«Auto memory-sync» (в конце сессии при коммите статус-несущих файлов; detect-подсказка — `memory-drift-reminder.js`). Phase closure Step 5 — фазовый чекпоинт того же контракта; skill formalization shipped Stage 4 (`skills/memory-sync.md`). *(Прежняя формулировка «manual review» держалась здесь в трёх копиях после флипа 0100 — схлопнуто, DEC-DEV-0220-e.)*
 
 **Skill provides:** standalone procedure для phase-closure Step 5 OR ad-hoc invocation (long break return, AI cites stale data). ~10 min budget. Promotion к scheduled hook on DEV_JOURNAL.md write — deferred unless 3+ closures show «forgot to sync memory» pattern.
 
@@ -230,14 +230,9 @@ git commit -m "chore(meta-improvement): archive PHASE_<N>_READINESS post-closure
 
 ## 7. Pattern library
 
-**Convention:** Stage 3 shipped (2026-04-28). 5 patterns в `patterns/` directory. Most marked **provisional** (early extraction per user request override of SPEC §4.2 «pattern emerge before formalize» 3-instance rule). Refinement к validated status when 3+ instances accumulate per pattern.
+**Convention:** Stage 3 shipped (2026-04-28); early extraction per user request override of SPEC §4.2 «pattern emerge before formalize» 3-instance rule. Refinement к validated status when 3+ instances accumulate per pattern.
 
-**Patterns shipped:**
-- [Spec Drift Sweep](patterns/spec-drift-sweep.md) (provisional, 2 instances)
-- [Readiness Gate](patterns/readiness-gate.md) (provisional, 2 instances)
-- [B.1 Frontmatter Convention](patterns/b1-frontmatter-convention.md) (validated, codified в CLAUDE.md)
-- [Cuttable Scope Discipline](patterns/cuttable-scope-discipline.md) (provisional, 3 instances)
-- [Smoke Test Plan](patterns/smoke-test-plan.md) (provisional, 1 instance)
+**Ростер, счёт и статусы паттернов — SSOT [`patterns/README.md`](patterns/README.md); здесь НЕ дублируются.** *(Прежняя редакция держала перечень «5 patterns» в трёх местах этого файла; факт разошёлся до 9 — копии счёта схлопнуты в указатели, DEC-DEV-0220-e. Счётчик-чекер для паттернов сознательно НЕ строится: слово «pattern» — неустранимый омоним, `check-counts.js` от вида `pattern` отказался.)*
 
 **Refinement triggers** (per pattern):
 - 3rd+ instance accumulated → status moves «provisional» → «validated»
@@ -298,15 +293,20 @@ Updates committed как `chore(meta-improvement): D7 refinement post-Phase-<N> 
 
 ### 11.1 Контракт накопления (per-change)
 
-**Convention:** каждое смёрженное изменение несёт запись в `CHANGELOG.md [Unreleased]`
-(consumer-facing, `### Added | Fixed | Modified`) + при наличии rationale — `DEC-DEV-NNNN`
-в `DEV_JOURNAL.md`. Это per-change дисциплина, не только фазовая (`phase-closure.md`
-Pre-flight/Step 4 — фазовый чекпоинт того же контракта; для ad-hoc работы вне фаз контракт
-тот же).
+**Convention — указатель, правил здесь НЕТ:** триггеры «что обязано попасть в CHANGELOG /
+DEV_JOURNAL» и словарь секций (`Added | Changed | Fixed`) живут в **SSOT-таблице
+`CLAUDE.md` §«Process triggers»**; принуждает `process-gate.js` (прав код). Per-change
+дисциплина, не только фазовая (`phase-closure.md` Pre-flight/Step 4 — фазовый чекпоинт
+того же контракта).
+
+*(Прежняя редакция держала здесь вторую формулировку: «**каждое** смёрженное изменение несёт
+запись в CHANGELOG» — универсальный квантор строже кода (код требует CHANGELOG только при
+касании consumer-zone) — и словарь с выдуманной секцией `Modified`. Эта копия УЖЕ увела
+исполнителя один раз — урок 70: dev-only скрипт лёг в `[Unreleased]`. Схлопнуто в указатель,
+DEC-DEV-0220-e.)*
 
 **Rationale:** `[Unreleased]` — единственная «корзина», из которой режется патч. Пропущенная
-запись = тихо потерянная из release-notes фича. Разделение CHANGELOG↔DEV_JOURNAL — по
-таблице в `CLAUDE.md` (что/где).
+запись = тихо потерянная из release-notes фича.
 
 ### 11.2 Модель доставки (важно — снимает недопонимание)
 

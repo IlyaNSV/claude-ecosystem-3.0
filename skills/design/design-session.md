@@ -327,7 +327,34 @@ Skill walks через each interactive component identified в Screen Inventory
 **A6 atomic write order** per DEC-DEV-0052:
 
 1. **MK first (draft status):**
-   - Construct MK frontmatter (id, type, feature, scenarios, scenario_steps, roles, platform, design_tool, tool_project_url, status: draft, iteration: <total>, confidence)
+   - Construct MK frontmatter — **explicit inline template** (ВСЕ canonical поля per [MK.md artifact spec](../../docs/pmo/artifacts/MK.md); имена байт-в-байт, НЕ варьировать):
+
+     ```yaml
+     ---
+     id: MK-<NNN>
+     type: mockup-package
+     title: "Короткое имя экрана/flow"
+     feature: FM-<NNN>
+     scenarios: [SC-<NNN>, ...]                      # какие SC визуализирует
+     scenario_steps: {SC-<NNN>: [1, 2, 3]}           # какие шаги конкретно
+     roles: [R-<role>, ...]                          # какие роли видят UI
+     platform: web | mobile | responsive | desktop
+     design_tool: stitch | open-design | claude-design | figma | penpot | html
+     tool_project_url: "https://..."                 # ссылка на внешний макет (current tool)
+     status: draft                                   # D.5 создаёт draft; →active только через 🟠 approve gate
+     iteration: <total>                              # счётчик итераций из progress.yaml
+     confidence: high | medium | low                 # C2 — ОБЯЗАТЕЛЬНО: артефакт в active без confidence детерминированно упрётся в hooks/product/artifact-validate.js
+     confidence_notes: "string"                      # REQUIRED если confidence != high
+     previous_tools: []                              # migration trail — INIT пустым; пишется ТОЛЬКО /design:migrate (Anti-pattern #3), design-session НЕ трогает
+     tool_switched_at: null                          # ISO timestamp последнего switch; null пока не мигрировал
+     ir_snapshot_path: null                          # populated только если design.yaml ir_export.enabled=true (v2 hook)
+     created: YYYY-MM-DD
+     updated: YYYY-MM-DD
+     version: 1
+     ---
+     ```
+
+     **Anti-pattern warnings — запрещённые соседние имена полей** (AI склонен переименовать «для естественности» — НЕ переименовывать; схема в MK.md зафиксирована, drift на уровне field names ломает tier-aware validation): `confidence` — **не** `confidence_level` / `conf`; `confidence_notes` — **не** `confidence_rationale` / `rationale` / `confidence_reasoning`; `title` — **не** `name` / `screen_name`; `tool_project_url` — **не** `url` / `project_url` / `figma_url`; migration trail — ровно `previous_tools[]` + `tool_switched_at` + `ir_snapshot_path`, **запрещены** `design_history` / `migration_notes` / `prev_tool` (MK.md Anti-patterns #4/#7). Filename slug — ASCII, per [artifacts/README.md § Slug derivation rule](../../docs/pmo/artifacts/README.md); Cyrillic в имени файла запрещён.
    - Construct body 7 sections (Screen Inventory, Component State Matrix, Interaction Spec, Responsive Notes, Accessibility Notes, Edge Cases, Design Decisions Log)
    - Write `.product/mockups/MK-NNN-<ascii-slug>.md` (per A1 — ASCII slug per Phase 2 PS drift precedent DEC-DEV-0011)
    - Hook `design-artifact-validate.js` fires PostToolUse — за `status: draft` queues findings к `.product/.pending/validation-pending.yaml` (per SPEC §B2 quiet-draft mode)
@@ -340,7 +367,26 @@ Skill walks через each interactive component identified в Screen Inventory
    - Write `.product/design-system.md`
 
 3. **NM derivation third** — auto-derived from MK Screen Inventory + LC guards + RPM entry points:
-   - Construct NM frontmatter (id, type, feature, mockups[], roles[], status: draft)
+   - Construct NM frontmatter — **explicit inline template** (ВСЕ canonical поля per [NM.md artifact spec](../../docs/pmo/artifacts/NM.md); имена байт-в-байт):
+
+     ```yaml
+     ---
+     id: NM-<NNN>
+     type: navigation-map
+     title: "Navigation: <flow name>"
+     feature: FM-<NNN>
+     mockups: [MK-<NNN>, MK-<NNN>, ...]              # все MK задействованные в flow
+     roles: [R-<role>, ...]                          # роли, для которых flow
+     status: draft                                   # D.5 создаёт draft; →active авто по 🟢 если matches A1
+     confidence: high | medium | low                 # C2 — ОБЯЗАТЕЛЬНО: артефакт в active без confidence детерминированно упрётся в hooks/product/artifact-validate.js
+     confidence_notes: "string"                      # REQUIRED если confidence != high
+     created: YYYY-MM-DD
+     updated: YYYY-MM-DD
+     version: 1
+     ---
+     ```
+
+     **Anti-pattern warnings — запрещённые соседние имена полей** (НЕ переименовывать «для естественности»; drift на уровне field names ломает tier-aware validation): `confidence` — **не** `confidence_level` / `conf`; `confidence_notes` — **не** `confidence_rationale` / `rationale` / `confidence_reasoning`; `title` — **не** `name` / `flow_name`; `mockups` — **не** `mk` / `screens` / `mockup_ids`. Filename slug — ASCII, per [artifacts/README.md § Slug derivation rule](../../docs/pmo/artifacts/README.md); Cyrillic в имени файла запрещён.
    - Body 4 sections (Flow Diagram via mermaid, Entry Points, Screen Transitions, Dead Ends & Error Flows)
    - Write `.product/mockups/NM-NNN-<ascii-slug>.md`
    - 🟢 Confirmation — auto-approve если matches A1 criteria

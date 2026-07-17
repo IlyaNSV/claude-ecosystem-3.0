@@ -114,7 +114,7 @@
 
 **D5 Operations & Feedback** — отложен v2 (DEC-P08). Функциональная декомпозиция per role (SRE/DevOps/Ops) будет добавлена при активации.
 
-**D6 Meta: Ecosystem Governance** — owned: Integrator Module + человек (D7 meta-improvement subsystem). Detailed decomposition — в `dev/meta-improvement/`.
+**D6 Meta: Ecosystem Governance** — owned: Integrator Module + человек. Governance над PMO **пользователя** (deployed в проект). Функциональная декомпозиция D6-NN пока не детализирована (статус «Проектируется»; на практике — Integrator manual). **Не путать с D7 (meta-improvement)** — управление разработкой самой экосистемы: другой слой, живёт в `dev/` этого репо и в пользовательские проекты НЕ деплоится.
 
 ## Activation Matrix (когда включать что)
 

@@ -126,10 +126,29 @@ Per approved segment:
   title: "<short name>"
   status: active
   priority: primary | secondary | exploratory
+  value_proposition: null                   # null допустим до D1.4a — backfilled at D1.4a (VP создаётся ПОСЛЕ approve сегмента)
+  jtbd_count: N                             # количество JTBD в сегменте
   confidence: high | medium | low
-  confidence_notes: "<what's evidence-based vs assumed>"
-  ...
+  confidence_notes: "<what's evidence-based vs assumed>"   # required если confidence != high
+  created: YYYY-MM-DD
+  updated: YYYY-MM-DD
+  version: 1
   ```
+
+**Canonical field names — НЕ варьировать** (lesson DEC-DEV-0011: AI-склонность переименовать поле «для естественности» ломает tier-aware validation и cross-artifact checks; схема зафиксирована в [SEG.md § Frontmatter Schema](../../docs/pmo/artifacts/SEG.md)):
+
+- ❌ `vp` / `vp_ref` / `value_prop` → canonical **`value_proposition`**
+- ❌ `jtbd_n` / `jtbds` / `job_count` → canonical **`jtbd_count`**
+- ❌ `confidence_rationale` / `rationale` / `confidence_reasoning` → canonical **`confidence_notes`**
+- ❌ `confidence_level` / `conf` → canonical **`confidence`**
+- ❌ `state` / `lifecycle` → canonical **`status`**
+- ❌ `name` / `segment_title` → canonical **`title`**
+- ❌ `created_at` / `date_created` → canonical **`created`**; `updated_at` / `modified` → canonical **`updated`**
+
+`value_proposition: null` — легитимное **переходное** состояние: SEG становится `active` на G4, а связанный VP создаётся только на следующем шаге D1.4a (1:1, ПОСЛЕ approve сегмента). Поле backfill'ится на `VP-<NNN>` в D1.4a; до этого `null`, не `TBD`-строка и не пропуск поля.
+
+Filename slug — по ASCII slug rule из [`docs/pmo/artifacts/README.md`](../../docs/pmo/artifacts/README.md) («Slug derivation rule», DEC-DEV-0012): `.product/segments/SEG-00N-<slug>.md`.
+
 - Body per SEG.md artifact spec
 
 **Confidence articulation (C2):** at approve, state:

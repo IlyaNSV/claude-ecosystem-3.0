@@ -26,7 +26,7 @@ doc_type: reference
 | **Процессы Orchestrator P1–P7** | Рантайм-процессы Orchestrator | P1 init · P2 decide-architecture · P3 batch→cc-sdd · P4 audit-fidelity · P5 tdd-impl · P6 validate-impl · P7 runtime-smoke | Product `P1–P5`. В картах — суффикс `o` (`P4o`); оператор обычно видит `P3o–P6o` (+P7-leg внутри P6) |
 | **Артефакты — 24 типа** | ID-префиксы типов артефактов PMO | PS MR CA SEG VP HYP MVP RM RL · FM · SC BR LC RPM VC IC NFR · MK DS NM AM · BG NOTE LESSON | `MVP`-тип ≠ стадия продукта ≠ `validation_tier=mvp` |
 | **Домены артефактов** | Группировка 24 артефактов в карте/глоссарии | D1 · bridge (FM) · D2-B · D2-UI · cross | домены пайплайна `D1–D6` (имена частично пересекаются) |
-| **Модули** | Top-level модули / namespace команд | Product · Design · Integrator · Orchestrator · Ecosystem | мета-слой = `D6` в PMO-карте, но `D7` в dev-доках (CLAUDE.md) |
+| **Модули** | Top-level модули / namespace команд | Product · Design · Integrator · Orchestrator · Ecosystem | `D6` Meta: Ecosystem Governance (управление PMO проекта — Integrator Module + человек) ≠ `D7` meta-improvement (разработка самой экосистемы — dev-only, НЕ деплоится). Разные слои, не синонимы |
 | **Уровни ревью** | Строгость approve-ревью артефакта | 🔴 Critical · 🟠 Strategic · 🟡 Standard · 🟢 Confirmation | `validation_tier` · `product_tier` — тоже зовутся «tier» |
 | **product_tier / validation_tier** | Зрелость продукта / охват inline-валидации | product_tier: ИДЕЯ→MVP→MMP→GROWTH→MATURE · validation_tier: pilot / mvp / full | review-уровни 🔴🟠🟡🟢 (третий смысл слова «tier») |
 | **Вердикты Orchestrator** | Исход гейта — две независимые оси + conflicts | result: GO / NO-GO / MANUAL_VERIFY · readiness: READY / DEGRADED / ENV_NOT_READY · conflicts[] понижает GO→MANUAL_VERIFY | — |
@@ -86,7 +86,7 @@ doc_type: reference
 
 | Термин | Значение |
 |---|---|
-| **D1–D6** | Шесть управленческих доменов PMO: Discovery → Behavioral → Tech → Build → QA → Ops/Meta. |
+| **D1–D6** | Шесть управленческих доменов PMO: D1 Discovery → D2 Requirements&Design (сплит B/T/UI) → D3 Build → D4 QA → D5 Ops → D6 Meta/Governance. Раскладка и владение (owned / delegated) — SSOT docs/pmo/pmo-map.md. |
 | **handoff.md** | Универсальный 13-секционный snapshot фичи — самодостаточная передача в любой реализатор. |
 | **DoR** | Definition of Ready — критерий готовности handoff (draft = 3 блокера, production = 8). |
 | **DA** | Devil's Advocate — adversarial-ревью в изолированном контексте перед вложением в имплементацию. |

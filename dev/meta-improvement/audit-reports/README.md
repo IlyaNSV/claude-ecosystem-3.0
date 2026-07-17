@@ -1,6 +1,6 @@
 # Audit reports
 
-Output directory for [`/meta:audit-smoke`](../commands/audit-smoke.md) and [`scripts/audit-smoke.js`](../scripts/audit-smoke.js).
+Output directory for [`/meta:audit-smoke`](../../../.claude/commands/meta/audit-smoke.md) and [`scripts/audit-smoke.js`](../scripts/audit-smoke.js).
 
 Two kinds of files live here:
 

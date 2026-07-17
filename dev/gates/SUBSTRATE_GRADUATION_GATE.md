@@ -106,7 +106,7 @@
 |---|---|---|
 | [`PATCH_1.3.3_SMOKE_TEST_PLAN.md`](PATCH_1.3.3_SMOKE_TEST_PLAN.md) | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E1 — состояние в шапке плана |
 | [`PHASE_6_SMOKE_TEST_PLAN.md`](PHASE_6_SMOKE_TEST_PLAN.md) | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E2 — состояние в шапке плана |
-| ~~[`S_LE_LESSON_GATE_SMOKE.md`](S_LE_LESSON_GATE_SMOKE.md)~~ | S-LE.3 полный PASS (самодедлок 0143 live-устранён), S-LE.1 = known CC-caveat | ✅ **закрыт**; чеклист архивирован → `dev/_archive/s-le/`; флип `lesson-presence-gate.js` warn→strict выполнен (PR #162) |
+| ~~[`S_LE_LESSON_GATE_SMOKE.md`](../_archive/s-le/S_LE_LESSON_GATE_SMOKE.md)~~ | S-LE.3 полный PASS (самодедлок 0143 live-устранён), S-LE.1 = known CC-caveat | ✅ **закрыт**; чеклист архивирован → `dev/_archive/s-le/`; флип `lesson-presence-gate.js` warn→strict выполнен (PR #162) |
 | ~~`PHASE_7_SMOKE_TEST_PLAN.md`~~ | S1/S2/S3/S5 PASS, S4 PARTIAL (DEF-SMK-1, пофикшен DEC-DEV-0178/PR #163) | ✅ **validated**; план архивирован → `dev/_archive/phase-7/` |
 
 Долг снижен с 4 до **2** (PHASE_7 validated+архивирован; S_LE закрыт с флипом
