@@ -159,28 +159,39 @@ const SECTIONS = [
 ];
 
 function parseArgs(argv) {
-  const args = { budget: DEFAULT_BUDGET_TOKENS, list: false, only: null, skip: [] };
+  const args = { budget: DEFAULT_BUDGET_TOKENS, list: false, only: null, skip: [], out: null };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--list') args.list = true;
     else if (a === '--budget') args.budget = parseInt(argv[++i], 10) || DEFAULT_BUDGET_TOKENS;
     else if (a === '--only') args.only = String(argv[++i] || '').split(',').map((s) => s.trim()).filter(Boolean);
     else if (a === '--skip') args.skip = String(argv[++i] || '').split(',').map((s) => s.trim()).filter(Boolean);
+    else if (a === '--out') {
+      // путь опционален: `--out` без значения → дефолтный temp-файл
+      const next = argv[i + 1];
+      if (next && !next.startsWith('--')) { args.out = next; i++; }
+      else args.out = defaultOutPath();
+    }
     else if (a === '--help' || a === '-h') { args.help = true; }
   }
   return args;
 }
 
-function main() {
-  const args = parseArgs(process.argv);
-  if (args.help) {
-    console.log('Использование: node host-onboard.cjs [--list] [--only k1,k2] [--skip k1,k2] [--budget N]');
-    console.log('Секции: ' + SECTIONS.map((s) => s.key).join(', '));
-    return;
-  }
+function defaultOutPath() {
+  return path.join(os.tmpdir(), 'claude-host-onboard-pack.md');
+}
+
+/**
+ * Сборка пака. opts: { only?: string[], skip?: string[], budget?: number }.
+ * Возвращает { header, summary, built[], total, overBudget, text }.
+ */
+function buildPack(opts = {}) {
+  const only = opts.only || null;
+  const skip = opts.skip || [];
+  const budget = opts.budget || DEFAULT_BUDGET_TOKENS;
 
   const picked = SECTIONS.filter((s) =>
-    (args.only ? args.only.includes(s.key) : true) && !args.skip.includes(s.key)
+    (only ? only.includes(s.key) : true) && !skip.includes(s.key)
   );
 
   const built = picked.map((s) => {
@@ -196,7 +207,7 @@ function main() {
     `| | **итого (оценка)** | **~${total}** |`,
   ].join('\n');
 
-  const overBudget = total > args.budget;
+  const overBudget = total > budget;
 
   const header = `# ОНБОРДИНГ-ПАК ХОСТ-СЕССИИ (кондуктор / ассист-пульт — Волна 0)
 
@@ -209,16 +220,43 @@ function main() {
 2. **Version-skew:** про поведение проекта на VM — добор из ЕГО \`.claude/\`; про канон — из host-клона ecosystem.
 3. **Пак может отставать от репо в момент долгой сессии** — статус и историю перед решением верифицируй git log + хвост DEV_JOURNAL, не паком.
 
-${overBudget ? `🛑 БЮДЖЕТ ПРЕВЫШЕН: ~${total} > ${args.budget} токенов — урежь через --skip (кандидаты: vm, concepts, catalogs) или --budget.\n\n` : ''}${summary}
+${overBudget ? `🛑 БЮДЖЕТ ПРЕВЫШЕН: ~${total} > ${budget} токенов — урежь через --skip (кандидаты: vm, concepts, catalogs) или --budget.\n\n` : ''}${summary}
 `;
 
-  if (args.list) {
-    console.log(header);
+  const text = [header, ...built.map((b, i) => `\n\n# ═══ ${i + 1}/${built.length} · ${b.key} — ${b.title} ═══\n\n${b.body}`)].join('');
+  return { header, summary, built, total, overBudget, text };
+}
+
+function main() {
+  const args = parseArgs(process.argv);
+  if (args.help) {
+    console.log('Использование: node host-onboard.cjs [--list] [--only k1,k2] [--skip k1,k2] [--budget N] [--out [файл]]');
+    console.log('Секции: ' + SECTIONS.map((s) => s.key).join(', '));
     return;
   }
 
-  const out = [header, ...built.map((b, i) => `\n\n# ═══ ${i + 1}/${built.length} · ${b.key} — ${b.title} ═══\n\n${b.body}`)];
-  console.log(out.join(''));
+  const pack = buildPack(args);
+
+  if (args.list) {
+    console.log(pack.header);
+    return;
+  }
+
+  if (args.out) {
+    // режим для хука/слэш-команды: пак — в файл (вывод хука ограничен ~10k символов,
+    // Bash-тул режет ~30k — полный пак доносится до контекста только через Read файла)
+    fs.writeFileSync(args.out, pack.text, 'utf8');
+    const lines = pack.text.split('\n').length;
+    console.log(`ОНБОРДИНГ-ПАК ЗАПИСАН: ${args.out}`);
+    console.log(`~${pack.total} токенов · ${lines} строк${pack.overBudget ? ' · 🛑 БЮДЖЕТ ПРЕВЫШЕН' : ''}`);
+    console.log(`→ Прочитай файл инструментом Read ЦЕЛИКОМ${lines > 2000 ? ' (строк >2000 — дочитай offset-вызовами)' : ' (один вызов Read)'}.`);
+    console.log('');
+    console.log(pack.summary);
+    return;
+  }
+
+  console.log(pack.text);
 }
 
-main();
+if (require.main === module) main();
+module.exports = { buildPack, SECTIONS, defaultOutPath };
