@@ -10,6 +10,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **`/product:init --from-validated <package-path>` — import-mode для пакетов Validation Layer (DEC-DEV-0224).** Пятый режим входа Discovery: ингест пред-валидированного пакета (тезис радара §5.4 + VERDICT полевой валидации + `validated_channel` + EXP-снапшот + опционально PS/HYP-скелеты D1-lite) вместо discovery с нуля. VERDICT входит в HYP как полевая улика (`field-signal: VERDICT-<id>`); оси `field_verdict`/`realism` раздельны (anti-contamination); гейт D1.0b domain_fit сохраняется (либо явный акцепт C8 пре-чека), human-гейты G1/G4/G5 не обходятся (DEC-P13). Контракты EXP/VERDICT — репо product-radar, `validation-layer/CONCEPT-VL.md` §6.
+
 - **Release DoD — термин в каноне + опциональная body-секция RL (DEC-DEV-0221; R0 трека release-dod).** `docs/pmo/artifacts/RL.md`: определение термина, ссылочный 6-категорийный чеклист-шаблон (состав ратифицирован DEC-DEV-0216) с колонкой SSOT-источника вердикта, правило «зелёный DoD + owner ratify — единственный легитимный выход в `released`» (при наличии секции), ручной loop-контракт незакрытых пунктов. Soft-миграция: секция опциональна, absent == прежнее поведение 1:1. Детерминированный агрегатор-отчёт — этап R1.
 
 ### Fixed
