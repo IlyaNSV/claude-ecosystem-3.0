@@ -4,6 +4,19 @@ status: NOTE (шов на продолжение; заведён 2026-07-20 по
 related: `dev/global-loop/SEAM.md` (живой шов трека) · `dev/global-loop/ASSIST_LOG.md` (RUN-A.1..A.38 — как дошли сюда) · `dev/release-dod/TRACK.md` (DoD-предикат)
 scope: это горизонт работ **над пилотом** (продуктовый проект), а не над самой экосистемой. Механизмы экосистемы, если понадобятся (шаг 3), заводятся отдельно — с coverage-check по CLAUDE.md DEC-DEV-0222.
 
+## Решения владельца 2026-07-22 (RUN-B) — развилки закрыты, вход в исполнение
+
+- **Развилка порядка РЕШЕНА: bring-forward real в RL-001.** RL-001 остаётся `in-progress`;
+  Mock→real свапы медиа-конвейера (шаг 1) возвращаются в его состав; `released` — после
+  real-пайплайна. FB-013 (splice/reassembly) — bring-forward из RL-002 обратно. Owner-финал
+  (impl-sync `[Y]` + ratify) сдвигается на конец шага 1.
+- **Провайдеры (директива владельца — связка Translate-It, «они работали»):** транскрипция =
+  OpenAI Whisper API · перевод = OpenAI `gpt-4o` (`OpenAITranslationAdapter`) · TTS =
+  **Google Cloud TTS** (SA JSON из Translate-It, роль Cloud TTS User; НЕ Sber — живого
+  ключа нет) · object-store кандидат = GCS, тот же SA.
+- **Платежи: Mock до public launch** — real Stripe + 5-txn dry-run отдельной единицей.
+- Ledger: `ASSIST_LOG.md` RUN-B.1..B.2.
+
 ## Интенция владельца — ДОСЛОВНО (2026-07-20; цитировать, не пересказывать)
 
 > «оставь заметку или шов на продолжение по следующим шагам: 1) полная доработка до
