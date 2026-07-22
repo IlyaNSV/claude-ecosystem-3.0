@@ -497,7 +497,7 @@ test('GUARD is not vacuous: it CATCHES a mis-keyed outcome (the p7_result defect
 
 test('GUARD: the ledger reads exactly the keys the processes use today (contract snapshot)', () => {
   // Pins the CURRENT contract so a silent widening/narrowing of OUTCOME_KEYS is a red test.
-  assert.deepStrictEqual(lib.OUTCOME_KEYS, ['result', 'p7_result', 'go_gate'],
+  assert.deepStrictEqual(lib.OUTCOME_KEYS, ['result', 'p7_result', 'go_gate', 'uja_result'],
     'OUTCOME_KEYS changed — is a process actually returning the new key? (update the guard + DEV_JOURNAL)');
 });
 

@@ -93,7 +93,8 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 | **P5** | `feature-to-tdd-impl` | D3 | spec готов, depth=до-кода | tdd-implementer, adversarial-reviewer | ⚠ нужен env-стек (Docker/PG/Redis); реализуется нативно (§2-bis) |
 | **P6** | `validate-feature-impl` (GO-gate) | D3 verify | последняя задача `[x]` | 3 валидатора | ✅ |
 | **P7** | `runtime-smoke-readiness` | D3+ runtime | «стартует ли dev?» | — (+capability→Integrator) | ⚠ readiness-нога построена (DEC-DEV-0120); живой boot substrate-gated (нужен D3-runtime) |
-| — | `deploy-to-stage` / `rollback-release` | D3-05/06 | выкатка/откат | — | ❌ нужны D3-инструменты (не достигнуты в RUN 01) |
+| **E.B/E.C** | `deploy-to-stage` / `rollback-release` | D3-05/06 | выкатка/откат staging | — | ✅ построены (DEC-DEV-0198, fabric deploy-брекет: §3.2-гейт → build/flip/healthcheck → auto-rollback); живой деплой VM-gated |
+| **P8** | `user-journey-acceptance` | D3+ acceptance | приёмка user-journey после `DEPLOYED` (перед `done`) | — | ✅ построена (DEC-DEV-0225): детерминированные Playwright-журнеи `tests/uja/*.spec.ts` против staging-URL → PASS/FAIL/ENV_NOT_READY; живой прогон VM-gated |
 
 `P2` опционален (нужен при нерешённой архитектурной развилке) — **построен** (DEC-DEV-0129: жюри ×3 velocity/fidelity/integrity → детерминир. синтез `consilium-synth.cjs` matrix+rank+veto → recommendation-пакет + DRAFT DEC владельцу; рекомендация, не авто-решение); `P7` — **readiness-нога построена** (DEC-DEV-0120: детерминир. `runtime-readiness.cjs` — run-target + §6 boot-caps + env → verdict; §6 boot-caps переиспользуют capability-probe), но **EXECUTION-нога не оснащена** (живой boot + полный Epic E deploy ждут D3-runtime инструментов Интегратора). Детерминированные shape-скелеты P3 и P5 (с разметкой `[S]`/`agent()`/`[GATE]`/`[AUTONOMY]`) — в harvest-логе §3 / `out-dim-1`.
 

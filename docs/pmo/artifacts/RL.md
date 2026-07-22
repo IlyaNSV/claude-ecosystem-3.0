@@ -74,9 +74,9 @@ version: 1
 |---|---|---|---|---|
 | 1 | Требования | Все `features[]` shipped через `/product:impl-sync` (disposition `ready-to-ship` → applied; ни одного `no-evidence` / `gate-not-passed` / `validation-blocked`) | FM frontmatter `impl_sync{}` | ❌ |
 | 2 | Тесты | По каждой FM: P6 `result: GO` × `readiness: READY`, `conflicts[] = ∅`; NFR-статусы зелёные | `.claude/orchestrator/runs/<RUN_ID>/run.json` + `runs/ledger.ndjson` | ❌ |
-| 3 | Stage | `DEPLOYED × READY` (healthcheck 2xx) на текущем составе релиза; rollback этого контура проверен (`ROLLED_BACK` хотя бы раз) | deploy/rollback `run.json` | ❌ |
+| 3 | Stage | `DEPLOYED × READY` (healthcheck 2xx) на текущем составе релиза; rollback этого контура проверен (`ROLLED_BACK` хотя бы раз); **UJA PASS** на текущем составе релиза (P8 `user-journey-acceptance`: user-journey реально проходят против staging, а не только `/health` отвечает) | deploy/rollback `run.json` + P8 `run.json` (`uja_result: PASS`) | ❌ |
 | 4 | Целостность | DA release-scope (`/product:da-review RL-NNN`) прогнан; findings разрешены (Act/Defer с решением, не молча); HYP coverage подтверждён; rollout deps закрыты | `.product/.da-findings/RL-NNN-*` | ❌ |
-| 5 | Prod-готовность | Гейт production-готовности субстрата пройден; Mock-оговорки (`concerns[]` из P6) отсутствуют или явно приняты владельцем; Rollout/Rollback plan заполнены содержательно (не «просто задеплоить») | гейт-док субстрата + это тело RL | ❌ |
+| 5 | Prod-готовность | Гейт production-готовности субстрата пройден; Mock-оговорки (`concerns[]` из P6) отсутствуют или явно приняты владельцем; Rollout/Rollback plan заполнены содержательно (не «просто задеплоить»); **для `has_ui`-релизов** — journey-скриншоты/трейс приложены как visual-conformance артефакт (owner-ревью реализации против дизайн-MK; авто-diff MK — v1.1) | гейт-док субстрата + это тело RL + P8 `artifacts_dir` | ❌ |
 | 6 | Санкция | Owner ratify → `status: released` + `released_on` | владелец (прямой пункт) | ❌ |
 ```
 

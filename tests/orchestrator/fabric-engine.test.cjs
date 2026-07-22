@@ -190,6 +190,9 @@ test('ingest mapping covers every result branch (first matching rule wins)', () 
     ['runtime-smoke-readiness', { verdict: 'BLOCKED_ON_CAPABILITY' }, 'evt:runtime.blocked_capability'],
     ['runtime-smoke-readiness', { verdict: 'ENV_NOT_READY' }, 'evt:runtime.env_not_ready'],
     ['runtime-smoke-readiness', { verdict: 'NOT_STARTABLE' }, 'evt:fidelity.product_routed'],
+    ['user-journey-acceptance', { uja_result: 'PASS' }, 'evt:journey.passed'],           // P8 (charter v6, DEC-DEV-0225)
+    ['user-journey-acceptance', { uja_result: 'FAIL' }, 'evt:journey.failed'],
+    ['user-journey-acceptance', { uja_result: 'ENV_NOT_READY' }, 'evt:journey.env_not_ready'],
   ];
   for (const [proc, result, expected] of cases) {
     assert.deepStrictEqual(applyIngest(charter, proc, result), [expected], `${proc} ${JSON.stringify(result)}`);
@@ -371,7 +374,7 @@ test('deriveInstanceId is deterministic and shaped from the timestamp (no Math.r
 
 // ==== CLI ========================================================================================
 
-test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → deploy → done (charter v5, E.B)', () => {
+test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → deploy → journey → done (charter v6, P8)', () => {
   const base = mkTmp();
   const id = initInstance(base, 'FM-3');
   assert.ok(/-fm-3-/.test(id), `instance id shape: ${id}`);
@@ -381,13 +384,32 @@ test('CLI happy path: init → line.start → P3→P4→P5(GO)→P7 → deploy �
   assert.strictEqual(ingest(base, id, 'batch-features-to-cc-sdd', {}).json.ticks[0].to, 'fidelity_audit');
   assert.strictEqual(ingest(base, id, 'audit-spec-fidelity', { impl_ready: ['FM-3'] }).json.ticks[0].to, 'implementing');
   assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'GO' }).json.ticks[0].to, 'runtime_gate');
-  // charter v5 (E.B, DEC-DEV-0198): a P7 PASS now routes to the deploy cell, not straight to `done`.
+  // charter v5 (E.B, DEC-DEV-0198): a P7 PASS routes to the deploy cell, not straight to `done`.
   assert.strictEqual(ingest(base, id, 'runtime-smoke-readiness', { verdict: 'READY_TO_SMOKE' }).json.ticks[0].to, 'deploying_staging');
-  // a clean staging deploy (flipped + healthy) is the shipped sink — done stays the terminal.
-  const last = ingest(base, id, 'deploy-to-stage', { result: 'DEPLOYED', readiness: 'READY', flipped: true });
+  // charter v6 (P8, DEC-DEV-0225): a DEPLOYED staging deploy routes to the journey-acceptance gate, not done.
+  assert.strictEqual(ingest(base, id, 'deploy-to-stage', { result: 'DEPLOYED', readiness: 'READY', flipped: true }).json.ticks[0].to, 'journey_acceptance');
+  // a green user-journey run is the shipped sink — done stays the terminal.
+  const last = ingest(base, id, 'user-journey-acceptance', { uja_result: 'PASS' });
   assert.strictEqual(last.json.ticks[0].to, 'done');
   assert.deepStrictEqual(last.json.ticks[0].prescription, { kind: 'none', final: true, state: 'done' });
   assert.strictEqual(readState(base, id).state, 'done');
+});
+
+test('CLI P8 FAIL: a failed journey parks the line in awaiting_journey_fix (owner-queued), NOT done', () => {
+  const base = mkTmp();
+  const id = reachImplementing(base, 'FM-UJA');
+  assert.strictEqual(ingest(base, id, 'feature-to-tdd-impl', { go_gate: 'GO' }).json.ticks[0].to, 'runtime_gate');
+  assert.strictEqual(ingest(base, id, 'runtime-smoke-readiness', { verdict: 'READY_TO_SMOKE' }).json.ticks[0].to, 'deploying_staging');
+  assert.strictEqual(ingest(base, id, 'deploy-to-stage', { result: 'DEPLOYED', readiness: 'READY', flipped: true }).json.ticks[0].to, 'journey_acceptance');
+  // a FAILED journey is the first-user-touch breaking (the P7-green-but-404 class) — it must NOT ship.
+  const fail = ingest(base, id, 'user-journey-acceptance', { uja_result: 'FAIL' });
+  assert.strictEqual(fail.json.emitted[0], 'evt:journey.failed');
+  assert.strictEqual(fail.json.ticks[0].to, 'awaiting_journey_fix');
+  assert.strictEqual(readState(base, id).state, 'awaiting_journey_fix');
+  assert.strictEqual(readOwnerQueue(base).length, 1, 'the journey failure queues the owner');
+  // the owner re-drives the fix through implementing (mirrors escalated/rolled_back)
+  const st = cli(['status', '--base-root', base]);
+  assert.ok(st.json.owner_queue.some((e) => e.state === 'awaiting_journey_fix'), 'awaiting_journey_fix is on the owner-queue');
 });
 
 test('CLI P7 NOT_STARTABLE routes out of runtime_gate (no dead-end stall)', () => {
@@ -757,6 +779,7 @@ test('DEF-OD7-CLOSE (charter v5): evt:owner.close exists on EVERY park gate, res
     ['runtime_gate_retry', 'evt:env.up'],
     ['escalated', 'evt:owner.resume'],
     ['rolled_back', 'evt:owner.resume'],
+    ['awaiting_journey_fix', 'evt:owner.resume'],   // P8 journey-failure park (charter v6, DEC-DEV-0225)
   ];
   for (const [state, resume] of gates) {
     const on = charter.states[state].on;
