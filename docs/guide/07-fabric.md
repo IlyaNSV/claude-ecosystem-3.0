@@ -29,7 +29,7 @@ doc_type_secondary: explanation
 | **Owner-queue** | Единая приоритизированная очередь твоих гейтов со всех линий (floor > conflict > gate > review) | `owner-queue.json`, показывает `status` |
 | **Лимиты (WIP)** | Backpressure: одна orchestrator-линия на репозиторий (FB-004) — отклонённый старт это очередь, не ошибка | `limits.json` |
 
-Первый (и пока единственный) charter — `feature-production-line`: сквозная линия фичи `handoff → authoring (P3) → fidelity-гейт (P4) → имплементация (P5/P6) → runtime-гейт (P7) → done`, с парковками на человеческих гейтах.
+Первый (и пока единственный) charter — `feature-production-line`: сквозная линия фичи `handoff → authoring (P3) → fidelity-гейт (P4) → имплементация (P5/P6) → runtime-гейт (P7) → деплой на staging (E.B) → приёмка user-journey (P8) → done`, с парковками на человеческих гейтах (в т.ч. `awaiting_journey_fix` — журней сломался, чинит владелец).
 
 ---
 

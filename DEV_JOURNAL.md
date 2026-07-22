@@ -3073,3 +3073,44 @@ Mini-readiness (паттерн `readiness-gate.md`, 3 решения под уж
 **Impact:** Волна 0 получает штатный прогрев сессии-кондуктора (PLAN.md §1-bis дополнен, SEAM.md «Состояние» актуализирован — включая догон факта «R0 исполнен» из PR #229, который шов не отражал); новые предложения владельца проходят AS IS-проверку по правилу таблицы. Декларация доступов сверх обязательных чтений шва (v3): recon-субагент по репо (инвентаризация онбординг-механизмов + размеры файлов), grep/чтение DEV_JOURNAL (0216, 0221), `ls dev/global-loop`, прогоны собранного скрипта.
 
 **Addendum (2026-07-19, та же единица) — авто-активация: env-гейт хук + слэш-команда (запрос владельца после сдачи v1).** Ручной запуск оставлен, добавлены два пути: **(а)** SessionStart-хук `dev/meta-improvement/hooks/host-onboard-session-start.js` — fires только при `CONDUCTOR_SESSION=1` (обычные сессии — тихий exit 0); ветвление по `source`: startup/clear → полный цикл, compact → короткое напоминание-указатель, resume → тишина; регистрация в `.claude/settings.local.json` (локальная — файл не коммитится, JSON-сниппет в шапке хука); **(б)** проектная слэш-команда `/host:onboard` (`.claude/commands/host/onboard.md`, прецедент трекинга — `/meta:audit-smoke`). **Ключевой конструктивный факт (добор через claude-code-guide, docs hooks.md):** лимит вывода хука ~10k символов, Bash-тул режет ~30k — полный пак (~178KB) через них не проходит ⇒ оба пути переведены на паттерн **«пак → temp-файл → императив Read»** (`--out [файл]` в скрипте, дефолт `%TEMP%/claude-host-onboard-pack.md`; Read без обрезки, пак 1557 строк < 2000-строчного дефолта Read). Скрипт отрефакторен: `buildPack()` экспортирован, CLI через `require.main`. Тест-грабля зафиксирована: `echo '{...}' | node hook.js` в PowerShell 5.1 не доносит stdin до `readFileSync(0)` (хук падал в дефолт-ветку startup) — ветвление по source проверяй `spawnSync(...,{input})`, как передаёт харнесс; сам паттерн чтения идентичен боевому `seam-reinject-compact.js` (config-failure-first-triage: сначала тест-канал, потом код).
+
+---
+## DEC-DEV-0225 — P8 `user-journey-acceptance`: браузерная приёмка user-journey как обязательный этап перед `done`
+
+**Date:** 2026-07-22
+**Trigger:** решение владельца — в приёмку встраивается финальное тестирование с реалистичной имитацией пользователя (браузерный user-journey), как обязательный этап перед `done`. Инструмент ядра одобрен после ресерча.
+**Tag:** #architecture #orchestrator #process-fabric #acceptance #pilot-finding
+
+### Context — почему P7-зелёный ≠ «работает»
+
+Живой прецедент на пилоте (RUN-2026-07-17-A, первый релиз RL-001): P6 `GO`, P7 `READY_TO_SMOKE`, деплой `DEPLOYED` и `/health` 2xx — **а первое касание пользователя было битым** (пост-логин 404, нет домашней страницы). Разрыв структурный: P7 меряет только HTTP-liveness (`orchestrator/lib/runtime-readiness.cjs:293-304`); DoD не имел journey-ноги; Design Module не обещает сверку реализация↔MK. «223 теста зелёные ≠ приложение стартует» (урок P7) имеет продолжение: «деплой зелёный + /health 2xx ≠ пользователь проходит поток». P8 закрывает именно это: между `deploying_staging` (E.B `DEPLOYED`) и `done` встаёт браузерный user-journey гейт.
+
+### Options considered — инструмент ядра (research-вердикт 2026-07-22)
+
+1. **Playwright npm (`@playwright/test`) — ВЫБРАНО (approve владельца).** Детерминированные journey-скрипты с реальными assertions, воспроизводимый вердикт (байт-редукция по JSON-репорту, не суждение LLM). Ложится ровно на двухногую модель P7/E.B: детерминированная readiness/detect-нога сейчас + substrate-gated execution-нога против живого staging.
+2. **Playwright MCP основным драйвером — отвергнуто (позже, не в этой единице).** Нет download-тула (issue #154 закрыт без фикса), слабее assertions. MCP — кандидат на v1.1+ (exploratory-слой поверх детерминированного ядра).
+3. **Stagehand — отвергнуто:** silent-failure кэша + LLM-цена за каждый экшен (недетерминизм + стоимость в петле приёмки).
+4. **browser-use — отвергнуто:** exploratory-класс, недетерминирован — не гейт.
+5. **Chrome DevTools MCP — отвергнуто:** debugging-first, нет diff/вердикта.
+
+### Coverage-check AS IS (правило DEC-DEV-0222)
+
+Покрыто частично: fabric-линия + деплой-брекет E.B/E.C (0198) дают точку вставки и паттерн ячейки; run-ledger/ingest — контракт результата; RL-DoD (0216/0221) — место для критерия приёмки. **НЕ покрыто:** самой ноги приёмки user-journey не было — линия шла `deploying_staging → done` мимо проверки реального касания. Построена именно дельта (новая ячейка + процесс + lib + DoD-нога), без нового event-store и без ухода с CC.
+
+### Decision — что построено (v0, cuttable)
+
+- **`orchestrator/lib/uja-report.cjs`** — детерминированное ядро (zero-deps): `preflight` (DoR: Playwright подключён? журнеи есть? — факты о FS) + `parse` (редукция Playwright-JSON-репорта → вердикт). Юнит-тест на парсер (pass/fail/empty, 19 проверок). **Правило нуля-доказательств** (несущее, зеркалит «ложный DEPLOYED» 0203): репорт с 0 журнеев/нечитаемый → `ENV_NOT_READY` (не смог судить), **никогда не PASS** — зелёный гейт над «ничего не прогнали» = ложный зелёный.
+- **`orchestrator/processes/user-journey-acceptance.mjs`** — harness-Workflow по образу P7: preflight→(gate|run)→report, всё через transport-агентов (LLM-суждения НЕТ в v0 — вердикт считает lib). Capture-don't-fix; бюджет-guard как DoR-контракт (журнеи бьют по реальному приложению → минимальные фикстуры, не floor). Substrate-gated live-прогон.
+- **Charter v6:** состояние `journey_acceptance` МЕЖДУ `deploying_staging` и `done` (auto, как runtime_gate); `evt:deploy.succeeded` теперь → `journey_acceptance` (не `done`); `uja_result` PASS→done / FAIL→парковка `awaiting_journey_fix` (queue_owner, ре-драйв через `implementing`) / ENV_NOT_READY→`runtime_gate_retry`. **Safe resume-event** `evt:owner.close` первым ключом (как `deploying_staging`, 0198): случайный `pa-scan` гейта под L0 не может пометить фичу done без прогона журнеев.
+- **DoD-нога (RL.md):** категория 3 «Stage» — «UJA PASS на текущем составе релиза» (SSOT = P8 `run.json` `uja_result: PASS`); категория 5 — для `has_ui` подстрока «journey-скриншоты как visual-conformance артефакт» (owner-ревью против MK; авто-diff MK — v1.1).
+- **run-ledger:** `uja_result` добавлен в `OUTCOME_KEYS` — детерминированный GUARD (`run-ledger.test.cjs`) сканит return'ы процессов и **требует** этого (иначе вердикт суммаризовался бы в `null` — ровно класс дефекта p7_result, DEC-DEV-0200). Снапшот `OUTCOME_KEYS` в тесте обновлён.
+
+### Outcome
+
+`npm run verify` EXIT 0. Ново: 2 lib-функции (`assessPreflight`/`parseReport`) + процесс + charter-ячейка + 2 теста (uja-report 19 + wiring 14), fabric happy-path переписан на `deploy → journey → done` + FAIL-парковку. Живой прогон — VM-gated (нужен DEPLOYED staging + журнеи), план: `dev/gates/UJA_SMOKE_TEST_PLAN.md` (несущий сценарий S2 — на битом первом касании UJA обязан вернуть FAIL). Доставка в пилот — отдельно.
+
+### Lessons
+
+1. **Каждый уровень гейта ловит свой класс, и «зелёный ниже» ≠ «работает выше».** Тесты → сборка → старт (P7) → деплой+healthcheck (E.B) → **реальное касание (P8)**: каждый предыдущий необходим, но не достаточен для следующего. Пропуск journey-ноги оставлял «зелёный до prod» над 404 — тот же скелет, что «223 теста зелёные ≠ стартует».
+2. **Вердикт приёмки — факт о байтах, не суждение LLM.** Стохастический парс за гейтом — монетка в обе стороны: ложный FAIL блокирует хороший релиз, ложный PASS отгружает битый journey. Парс живёт в `uja-report.cjs`, агент — транспорт (тот же урок, что deploy-manifest.cjs/0203).
+3. **Правило нуля-доказательств — несущее.** Гейт, зеленеющий над «0 журнеев прогнано», хуже отсутствия гейта: он легитимизирует пустоту. 0 журнеев → ENV_NOT_READY, никогда не PASS.
