@@ -6,6 +6,8 @@
 'use strict';
 
 module.exports = [
+  // Vendored third-party bundles (marked/minisearch UMD, DEC-DEV-0226) — not lint targets.
+  { ignores: ['hooks/**/vendor/**'] },
   {
     files: ['hooks/**/*.js', 'dev/meta-improvement/scripts/*.js'],
     languageOptions: {

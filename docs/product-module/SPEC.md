@@ -202,7 +202,7 @@
 
 ## 3. Commands Catalog
 
-23 команды, сгруппированных по функциональным блокам.
+25 команд, сгруппированных по функциональным блокам.
 
 ### 3.1 Главные процессы (5)
 
@@ -252,7 +252,7 @@
   - `--scope FM-003` — проверить только один артефакт и его dependencies
   - `--fix` — auto-fix где возможно (V-11 bi-dir)
 
-### 3.2 Поддерживающие операции (7)
+### 3.2 Поддерживающие операции (9)
 
 **`/product:status`**
 - Dashboard текущего `.product/` состояния
@@ -262,6 +262,18 @@
 - Pending DA reviews
 - Handoff status per FM
 - Last Discovery / Planning / Feature sessions
+
+**`/product:browse [--open] [--out <path>]`** (DEC-DEV-0226)
+- Self-contained HTML-браузер `.product/` (`browser.html`) — «solo Confluence»-вид: дерево типов с фильтрами (status/confidence/type), детальный вид (frontmatter + rendered body), ID-кросслинки + backlinks, полнотекстовый поиск (minisearch), панель «Работа» (handoffs+staleness, pending+ghosts, статусборд FM/RL, stale drafts)
+- Тонкая команда над детерминированным генератором `hooks/product/lib/product-browser-html.cjs` (exit 0/2, single-file, офлайн); все числа — из status-collector (DEC-DEV-0217)
+- Read-only к артефактам; `browser.html` — генерённый снапшот (gitignored, «never hand-edited»)
+- **Command:** `commands/product/browse.md`
+
+**`/product:ask "<вопрос>" [--scope <TYPE|ID>] [--deep]`** (DEC-DEV-0226)
+- Q&A по продуктовому корпусу через «лестницу добора» (структурный retrieval, без векторов — deferred `dev/deferred/RAG_LAYER.md`): счётное — только из collector JSON; содержательное — тип-роутер → frontmatter-сужение → grep → чтение top-N (≤5); вне корпуса — честный отказ
+- K0-правило: каждое несущее утверждение — с указателем (ID + путь файла); регистры «из артефактов / инференс / не найдено» разделены явно
+- `--deep` — fan-out recon-субагентов (model=sonnet, сбор фактов), синтез в основной сессии
+- **Skill:** `skills/product/corpus-qa.md`
 
 **`/product:cleanup [--dry-run] [--pending-hygiene | --full]`** (Phase 4.G per DEC-DEV-0027)
 - Default (без флагов): V-15 orphan detection — graph analysis по reverse-refs, per-orphan recommendation (archive / re-link / delete).
