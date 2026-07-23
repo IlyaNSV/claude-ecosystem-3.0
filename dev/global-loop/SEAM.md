@@ -63,7 +63,9 @@ ledger-запись RUN-B.NN (в этой ветке) → push (сеть: danger
 | Пилот main | ssh VM: `git -C ~/projects/my-first-test log --oneline -3` | `5343c94` (s33) + возможные `.product`-коммиты s34 поверх |
 | Staging | хост: `curl 127.0.0.1:3001/health` и `:3000/health` | 200/200; релиз `20260723T150800Z`; NAT-форварды web 3001/api 3000 стоят (VBoxManage natpf1) |
 | Outbox | env воркера | `BILLING_OUTBOX_DRAIN_ENABLED=false` (DEC-PLAN-047; NFR-014 ALERT в журнале — by design) |
-| cond-s34 | ssh VM: `tmux ls` + capture cond-s34 | НА МОМЕНТ ШВА: РАБОТАЕТ (многоагентный UI-аудит, стадии B-D; стартовала 19:32 после 2 API-обрывов+recovery). Если завершилась — SUMMARY-COND-S34 в транскрипте `838e8a5e-…jsonl` |
+| cond-s34 | — | ✅ ЗАВЕРШЕНА и погашена 20:50 (RUN-B.53): 13 D-STALE починено (коммиты `e689479`→`0af151d`), 16 C-DRIFT → `.product/notes/NOTE-032`, 2 AMBIG ждут владельца; транскрипт в harvest |
+| cond-s35 | транскрипт на VM `6d019763-44ba-4151-8862-f009de3e8761.jsonl` | ⏸ ОСТАНОВЛЕНА КОРРЕКТНО 20:56 под плановый ребут VM (распоряжение владельца): 0 коммитов, диск чист, RESUME-заметка — ПОСЛЕДНЕЕ сообщение транскрипта (факты разведки: контуры list-endpoint, guard-стек, пагинация; admin-примитив `AdminAuthService.provisionIfAbsent` уже существует — seed строить совместимым). **Продолжение:** `tmux new -d -s cond-s35 -c ~/projects/my-first-test` → `~/.local/bin/claude --dangerously-skip-permissions --resume 6d019763-44ba-4151-8862-f009de3e8761` → промпт «продолжай с пункта 1 брифа по своей RESUME-заметке». Бриф: `vm-harvests/RUN-2026-07-22-B/prompt-s35.txt`; partial-транскрипт скопирован на хост |
+| VM после ребута | ssh-проба + `docker ps` + `systemctl is-active mft-*` + health 200/200 | перезагружена 2026-07-23 ~20:57; проверить, что СУБД-контейнеры поднялись (restart-policy может НЕ поднять — тогда `docker start mft-postgres mft-redis` и рестарт юнитов); NAT-форварды персистентны |
 | Harvest s31-s33 | `ls ../vm-harvests/RUN-2026-07-22-B/` | транскрипты s31 (1.37M) / s32 (841K) / s33 (481K) + prompt-s31..s34 + owner-visual-pack (макеты, UJA-трейсы, repro чип-бага) |
 | Чужое НЕ трогать | ssh VM: `tmux ls` | `radar-b8` — сессия другого проекта |
 
@@ -72,23 +74,23 @@ admin-учётки НЕТ (нет seed — стройка в s35). Trial cap dem
 
 ## Очередь (императив — продолжатель начинает ЗДЕСЬ после SEAM-ACK)
 
-1. **Проверь s34**: если работает — мониторь поллером (скрипт-референс:
-   `scratchpad поллер v3` этой сессии; критерии в Граблях ниже — можно пересобрать);
-   если ERROR-STALL — recovery-промпт; если завершилась — harvest по циклу
-   (SUMMARY-COND-S34: счётчики [D-STALE]/[C-DRIFT]/[AMBIG], синк-коммиты).
-2. **[AMBIG]-вопросы из s34 — владельцу** («буду вопросы — зови меня»), НЕ решать самому.
-3. **Диспатч cond-s35 — батч строек** (го владельца уже дан, RUN-B.52): (а) jobs
-   library spec-first: owner-scoped list-endpoint + список работ на dashboard по MK-002
-   (known residual s29; после — обновить UJA j1: empty-state перестанет быть валидным
-   маркером при данных, и перегнать UJA); (б) чип-фикс языков /localizations/new
-   (auto-deselect при смене source; RUN-B.50: root cause NewLocalizationView.tsx);
-   (в) admin seed каноном (packages/db/prisma/seed.ts + db:seed + SEED_ADMIN_*);
-   (г) канонический сброс trial-квоты demo. Полный брекет гейтов по конвейеру; учесть
-   [C-DRIFT]-реестр s34 (что вошло в батч — чинить, остальное — ESCALATE-очередь).
-4. **После s35**: harvest → доклад владельцу → его ручная проверка продолжается
-   (admin-realm станет проходим).
+1. **Проверь стенд после ребута VM** (строка таблицы выше): ssh → docker СУБД
+   (при needе `docker start mft-postgres mft-redis` + `sudo systemctl restart
+   mft-api mft-web mft-worker`) → health 200/200 изнутри И с хоста (форварды).
+2. **Возобнови cond-s35** (`--resume`, команда в таблице выше) — батч по «го»
+   владельца (RUN-B.52): library + чип-фикс + admin-seed + сброс квоты + deploy
+   + полный UJA. Бриф и границы — prompt-s35.txt; RESUME-заметка сессии — в её
+   транскрипте. Мониторь поллером v3 (Грабли), harvest по циклу.
+3. **[AMBIG]-вопросы s34 — владельцу** (заданы в докладе 2026-07-23 ~21:00, ответ
+   мог не поступить): AMBIG-01 resend-confirmation (билд vs NM-001 §2), AMBIG-02
+   billing-portal `/settings/billing` vs `/billing`. НЕ решать самому.
+4. **После s35**: harvest → доклад владельцу (обязательно: admin-учётка
+   логин/пароль из SUMMARY — владелец ждёт вход в /admin) → его ручная проверка
+   продолжается.
 5. Фоново: находки #7 (live-devtools мост, chrome-devtools MCP кандидат) и #8
-   (UJA из полного дизайн-состава) — в канон-пакет доработок экосистемы; PA-118 — owner.
+   (UJA из полного дизайн-состава) — в канон-пакет доработок экосистемы;
+   PA-118 — owner; SI-png regen backlog (ESCALATE s34) — отдельная design-единица;
+   CD-14 (billing UI) / CD-15 / CD-12 — отдельные стройки по «го».
 
 ## Отброшено / решено (не переоткрывать)
 
