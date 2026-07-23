@@ -10,6 +10,7 @@
 .product/.sessions/
 .product/.pending/
 .product/.reports/                       # /product:validate output (regeneratable)
+.product/browser.html                    # /product:browse output (regeneratable snapshot)
 .claude/integrator/baseline.yaml
 .claude/orchestrator/runs/               # per-run Orchestrator logs (ephemeral)
 

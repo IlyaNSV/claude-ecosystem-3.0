@@ -9,7 +9,7 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `skills/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-skill-catalog.cjs`. Скиллы — **lazy-loaded методология**: их не вызывают как команды, их подгружает ассистент под задачу (3-5 за раз). Путь на диске — `skills/<скилл>.md`. Команды — [02-commands.md](02-commands.md). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 64 скилла** в 5 модулях.
+**Всего: 65 скиллов** в 5 модулях.
 
 ## skills/ecosystem/ (5)
 
@@ -23,7 +23,7 @@ doc_type: reference
 | `ecosystem/self-correction` | Non-deferrable self-correction mandate — the instant a task/artifact/decision is found to be done INCORRECTLY (and is fixable now), run /product:lesson BEFORE any other work. Synced surface so existing installs receive the trigger via /ecosystem:update. Companion to skills/product/lesson-capture.md. |
 | `ecosystem/user-action-tracker` | How to append, mutate, and list pending user-action entries (PA-NNN) in .claude/pending-actions.md. Ecosystem-wide; any module can write. |
 
-## skills/product/ (34)
+## skills/product/ (35)
 
 Ядро ежедневной работы — D1 Discovery + D2-Behavioral
 
@@ -35,6 +35,7 @@ doc_type: reference
 | `product/cleanup-detector` | Phase 4.G skill — V-15 orphan detection + optional pending hygiene sweep (--pending-hygiene flag) для /product:cleanup. Default mode = orphan only (быстро, predictable). Hygiene mode = cascade revalidate + validation-pending purge verify + da-pending stale flag. Design module (MK/DS/NM) проверки активируются conditionally если commands/design/ установлен. |
 | `product/competitive-analysis-protocol-quick` | D1.3 Quick mode — lightweight competitive landscape via Exa + Brave + selective Firecrawl. 30-45 min. Deep mode spawns competitor-analyst subagent. |
 | `product/completeness-loop` | Bounded completeness-loop for D1-D2B artifacts (Autonomous Pipeline Vision, Epic B / B1). Drives a feature's spec to handoff-DoR-sufficient completeness in bounded waves — runs the deterministic completeness-oracle for the stop-signal, fires the heterogeneous profile personas (architect/qa/ux-advisor) on each zone's gaps, auto-resolves the resolvable and escalates real decisions. Stop is external + bounded (cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0)), never the generator grading itself. Invoked by /product:complete <FM-id>. v1 core/skeleton. |
+| `product/corpus-qa` | Retrieval-ladder Q&A over the .product/ corpus — deterministic counts from the collector, structural (non-vector) routing to artifact types, and a mandatory pointer (ID + path) behind every load-bearing claim. Read-only; creates no artifacts. |
 | `product/discovery-session` | P1.A Discovery Session orchestrator. Manages D1.1-D1.5z steps, gates G1/G4/G4a/G5, and Discovery Review Checkpoint (A2 modification). |
 | `product/domain-fit` | Domain Fit Assessment (D1.0b) — classify the product idea into one of 96 registry subcategories (max granularity), look up the aggregate ecosystem-fit score, apply the gate threshold (default 75) and record the domain_fit block in product.yaml. Two modes — discovery (called by discovery-session after D1.0) and assess (standalone backfill / re-assessment). The ONLY class-based gate in the ecosystem; owner override always legal and recorded. |
 | `product/drift-detector` | C1 modification — structural self-audit methodology. Used by /product:drift-check to compare recent artifacts vs anchor (PS + primary HYP + MVP). |

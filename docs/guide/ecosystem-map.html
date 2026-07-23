@@ -300,9 +300,9 @@
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">{
   "_build": {
-    "date": "2026-07-17",
-    "sha": "c35ec61",
-    "commands": 51,
+    "date": "2026-07-23",
+    "sha": "04f5d3c",
+    "commands": 53,
     "artifacts": 24,
     "rules": 44,
     "gates": 18,
@@ -390,6 +390,21 @@
       "blurb": "Discovery → Planning → спецификация фич → handoff. Ядро ежедневной работы.",
       "commands": [
         {
+          "cmd": "/product:ask",
+          "id": "product:ask",
+          "module": "product",
+          "name": "ask",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Ask a question about the product corpus (.product/) — answered by the corpus-qa \"retrieval ladder\" skill, with a pointer (ID + file path) behind every load-bearing claim. Read-only; no hallucination — if it's not in the corpus, it says so.",
+          "arg": "\"\u003cвопрос>\" [--scope \u003cTYPE|ID>] [--deep]",
+          "when": "Q&A по корпусу .product/ через лестницу добора; каждое утверждение — с указателем ID+путь.",
+          "tags": "вопрос ответ qa поиск retrieval указатели",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/ask.md"
+        },
+        {
           "cmd": "/product:batch-enrich",
           "id": "product:batch-enrich",
           "module": "product",
@@ -451,6 +466,21 @@
             "NOTE"
           ],
           "source": "commands/product/bg-review.md"
+        },
+        {
+          "cmd": "/product:browse",
+          "id": "product:browse",
+          "module": "product",
+          "name": "browse",
+          "st": "maint",
+          "status": "shipped",
+          "desc": "Generate a self-contained visual browser (.product/browser.html) over all product artifacts — a solo-Confluence view with search, cross-links and a work panel. Read-only over artifacts; writes only the generated HTML.",
+          "arg": "[--open] [--out \u003cpath>]",
+          "when": "Self-contained HTML-браузер .product/ (solo-Confluence вид): дерево типов, фильтры, кросслинки, поиск, панель работ.",
+          "tags": "браузер вьюер просмотр html confluence поиск",
+          "produces": [],
+          "consumes": [],
+          "source": "commands/product/browse.md"
         },
         {
           "cmd": "/product:cascade",
