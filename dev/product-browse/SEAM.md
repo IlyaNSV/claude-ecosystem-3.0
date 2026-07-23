@@ -41,11 +41,17 @@ track: /product:browse + /product:ask — встроенный «solo Confluence
 
 <!-- SEAM-REINJECT-END -->
 
-## Состояние (на момент записи шва; ПРОВЕРЬ фактическое — Recovery-протокол)
+## Состояние (обновлено 2026-07-23 после PR; ПРОВЕРЬ фактическое — Recovery-протокол)
 
-- Ветка: `feat/product-browse-ask` (от origin/main, upstream настроен). Проверка:
-  `git branch --show-current` → ожидаемо `feat/product-browse-ask`.
-- **Ничего не закоммичено** — вся работа uncommitted. `git status` должен показать:
+- **ВСЁ ЗАКОММИЧЕНО И ОТПРАВЛЕНО: коммит `4f90075` на `feat/product-browse-ask`, PR #235
+  открыт (https://github.com/IlyaNSV/claude-ecosystem-3.0/pull/235), база main.**
+  `npm run verify` EXIT 0 на момент коммита; pre-commit smoke 47/47 PASS.
+  Остаток трека = merge владельцем → после merge: шов → CLOSED, при желании — companion-фикс
+  M-1 в `app-map-html.js` отдельным треком.
+- Пофикшены попутно (в том же коммите): eslint.config.js (+ignores vendor);
+  `docs/guide/ecosystem-map.overlay.json` (+2 записи); память
+  (2 протухшие координаты чужих треков — ASSIST_LOG/PARALLEL_SESSIONS — аннотированы).
+- Исходный состав работы (история; всё уже в коммите `4f90075`):
   - `dev/product-browse/DESIGN.md` (дизайн, approved владельцем) + этот SEAM.md
   - `dev/deferred/RAG_LAYER.md` (решение «без векторов» + триггеры)
   - `commands/product/browse.md`, `commands/product/ask.md`,
@@ -84,20 +90,15 @@ track: /product:browse + /product:ask — встроенный «solo Confluence
 
 ## Следующий шаг (императив, по порядку)
 
-1. **Проверь диск:** `git status` + `ls hooks/product/lib/` — существует ли
-   `product-browser-html.cjs` и в каком состоянии (W1 мог дописать после записи шва).
-2. Если генератора нет/неполон — перезапусти исполнителя W1 (opus) с брифом из
-   `DESIGN.md` §1 (бриф-требования продублированы в DESIGN; самопроверка обязательна).
-3. Ревью генератора (main, спот-чек): XSS-меры (инвариант 5), graceful degradation
-   (пустой корпус, упавший коллектор), ID-кросслинки, exit-коды.
-4. Независимый смоук S1-S4 по `DESIGN.md` §3 (не доверять самопроверке W1; S3 = XSS).
-5. DEV_JOURNAL: заголовок `DEC-DEV-0226` (rationale: детерминированный генератор vs
-   LLM-рендер; структурный retrieval vs вектора; отказ от MkDocs/готовых AI-wiki) +
-   CHANGELOG `[Unreleased] ### Added` (consumer-zone feat — 🔒 process-gate).
-6. `npm run verify` (в т.ч. `gen:catalog:check`/`gen:skills:check` — должны быть зелёные).
-7. Коммит **только файлов трека** (инвариант 7), push + PR (`dangerouslyDisableSandbox:
-   true`), стоп перед merge — сообщить владельцу «PR #N готов».
-8. Memory-sync (статус-несущие файлы коммичены) + при закрытии трека — этот шов → CLOSED.
+1. **Проверь фактическое состояние PR #235** (`gh pr view 235 --json state,mergedAt`) —
+   шаги стройки/смоука/журнала/PR ВСЕ выполнены (см. Состояние), не переделывай.
+2. Если PR merged владельцем → этот шов `status: CLOSED` + доставка в пилот по обычному
+   циклу (patch-cut при нарезке версии); memory-sync записи трека.
+3. Если владелец вернул замечания по PR → правки в этой же ветке, verify, push (PR
+   обновится сам).
+4. Событийно (НЕ без запроса): companion-фикс M-1 в `app-map-html.js` тем же приёмом
+   (блокирующий эскейп `<` в DATA-блобе) — отдельная ветка/PR; RAG — только по
+   триггерам из `dev/deferred/RAG_LAYER.md`.
 
 ## Отброшено (невосстановимо из git — не переоткрывать)
 
