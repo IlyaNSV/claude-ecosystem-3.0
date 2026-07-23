@@ -1,7 +1,8 @@
 # SEAM — product-browse/ask (DEC-DEV-0226)
 
-status: ACTIVE
+status: CLOSED
 created: 2026-07-23
+closed: 2026-07-23 — трек завершён: PR #235 merged по явному поручению владельца; остаток — только событийные хвосты (см. «Следующий шаг» п.4)
 track: /product:browse + /product:ask — встроенный «solo Confluence» + Q&A по .product/
 
 ## 🛑 СТОП-БЛОК
