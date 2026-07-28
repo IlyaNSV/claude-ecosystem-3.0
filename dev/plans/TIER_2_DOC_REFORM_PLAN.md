@@ -62,7 +62,7 @@
 **Триггер:** GATE пройден И/ИЛИ журнал ощутимо болит. Сейчас 4520 строк — навигабельно с индексом; пагинацию/split НЕ делать до ~15-30k (premature, cross-file friction).
 
 **Шаги (с поправками всех трёх линз):**
-1. Индекс в **отдельном файле** `dev/meta-improvement/DEV_JOURNAL_INDEX.md` (НЕ инлайн наверху журнала — инлайн ToC ложно матчит `phase-closure-reminder.js`, который сканирует DEV_JOURNAL на closure-записи → подавит будущий reminder).
+1. Индекс в **отдельном файле** `dev/meta-improvement/DEV_JOURNAL_INDEX.md` (НЕ инлайн наверху журнала — инлайн ToC ложно матчил `phase-closure-reminder.js`, который сканировал DEV_JOURNAL на closure-записи → подавил бы будущий reminder). _Ограничение снято 2026-07-28: хук удалён (CONVENTIONS §13). Довод «отдельный файл» остаётся в силе по другой причине — инлайн-ToC в накопительном каноне сам становится источником дрейфа._
 2. Генератор переиспользует **существующий идиом** `scripts/audit-index.js` (sentinel-region `<!-- ... -->` + node regen), а не новый one-off скрипт. Ship **dual** `journal-index.js` + `.ps1` (конвенция репо: `capture-pilot-state.{sh,ps1}`, `verify-update.{sh,ps1}`).
 3. Якоря: **GitHub auto-slug** из существующих `## DEC-DEV-NNNN` заголовков. **Не** вводить `{#id}` — GitHub его игнорирует (404 для downstream-пилотов), плюс half-anchored state — сам по себе drift.
 4. Numbering-collision (корень — параллельные same-day сессии, DEC-DEV-0050): либо одна строка политики «inline-renumber on conflict» в `CONVENTIONS.md`, либо **pre-commit grep** на дубль `## DEC-DEV-NNNN`. Чеклист-строка от race не спасает (не защищает concurrent-сессию, которая её не читает).
