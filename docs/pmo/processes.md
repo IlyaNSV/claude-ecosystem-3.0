@@ -400,25 +400,25 @@ auto_approve_confirmation_artifacts:
    - Human подтверждает покрытие (V-07 check)
    - Выход: `.product/verification/VC-00N-*.md` в active
 
-9. **F.7 Role & Permission Model Update**
+8. **F.7 Role & Permission Model Update**
    - Если появились новые роли в SC.actors — добавить в RPM
    - Actions из SC steps → в RPM matrix
    - Conditional permissions → ссылки на active BR
    - RPM update → human confirm
    - Выход: `.product/rpm.md` обновлён
 
-10. **F.8 Design Module (if has_ui=true) → P2.5**
-    - Параллельно с F.2-F.7 запускается P2.5 (см. §3.3)
-    - Создание MK-* (Design Package), обновление DS, создание NM-*, обновление AM (app-map singleton)
+9. **F.8 Design Module (if has_ui=true) → P2.5**
+   - Параллельно с F.2-F.7 запускается P2.5 (см. §3.3)
+   - Создание MK-* (Design Package), обновление DS, создание NM-*, обновление AM (app-map singleton)
 
-11. **F.9 Product DA Review (optional, recommended для complex фич)**
+10. **F.9 Product DA Review (optional, recommended для complex фич)**
     - Запускается перед handoff
     - 6 линз (§6): scalability, reliability, edge cases, security, alternatives, user assumptions
     - **NFR realism:** дополнительная линза при Product DA — проверка NFR на enterprise-copypasta
     - Findings в 3 tier (🔴/🟡/🔵)
     - Human решает, что доработать перед handoff
 
-12. **F.10 FM status transition**
+11. **F.10 FM status transition**
     - Когда все SC/BR/LC/VC/IC/NFR в active, RPM обновлена, MK (если has_ui) в active
     - FM status: planned → in-progress
     - Ассистент проверяет DoR из handoff-spec §7 (включая V-16 NFR coverage)
@@ -459,21 +459,21 @@ auto_approve_confirmation_artifacts:
 
 **Триггер:** F.8 в P2, если FM.has_ui=true. Также standalone: `/design:start FM-xxx`.
 
-**6 шагов (краткая версия; детали — в будущем `design-module/SPEC.md`):**
+**6 шагов (краткая версия; детали — [design-module/SPEC.md §7](../design-module/SPEC.md)):**
 
 1. **D.1 Design Brief Generation** (🟡 Review gate)
    - Ассистент из SC + BR + LC + BG + RPM формирует design brief
    - Human ревьюит, может корректировать (это редактируемый документ, не финальный артефакт)
 
 2. **D.2 Screen Generation** (first iteration, 🟠 Strategic gate)
-   - Spawn `screen-generator` subagent через Stitch MCP (или HTML fallback)
+   - Генерация inline в `design-session.md` через Stitch MCP (primary) или HTML fallback
    - Генерация первого variant экранов для каждого SC-шага с UI
    - Human смотрит в Stitch/HTML, даёт feedback
+   - ⚠ Субагент `screen-generator` (design-module/SPEC.md §5.1) **НЕ построен** (G36) — deferred к v1.1; в v1.0 D.2/D.3/D.5 работают inline, без spawn
 
 3. **D.3 Iterative Refinement** (🟠 Strategic gate at final)
    - Циклический диалог: human feedback → правки
-   - Мелкие правки — ассистент через Stitch MCP один вызов
-   - Крупные — spawn subagent снова
+   - Правки любого размера — inline через Stitch MCP / HTML fallback (batch-режим субагента — v1.1, см. выше)
    - Повторяется до approve
 
 4. **D.4 Component State Matrix** (🟢 Confirmation gate)
@@ -500,7 +500,7 @@ auto_approve_confirmation_artifacts:
 **Почему:** D5 (Operations & Feedback) на ~5% покрытии; нет pipeline для сбора и обработки feedback.
 
 **Что делается вместо:**
-- Feedback из пилотов TranslateIT — manually через дописывание артефактов (human всё равно использует P2 или P1-pivot для обновлений)
+- Feedback из пилотов — manually через дописывание артефактов (human всё равно использует P2 или P1-pivot для обновлений)
 - Нет `/product:feedback` команды в v1
 - Нет автоматического триггера на HYP invalidation
 
@@ -517,7 +517,7 @@ auto_approve_confirmation_artifacts:
 **Краткая версия:**
 
 1. **Trigger:** любое active артефакт изменяется (approve новой версии, change parameters, etc.)
-2. **Identify dependents:** через bi-dir refs (V-11 gwarantuje consistency)
+2. **Identify dependents:** через bi-dir refs (V-11 гарантирует consistency)
 3. **BFS traversal:** в порядке priority (Critical → Strategic → Standard → Confirmation)
 4. **Per-dependent re-validation:** applicable rules
 5. **Collect changes:** status transitions, re-approve needed, requires_review flags
@@ -698,23 +698,24 @@ Per-term actions:
 
 Когда BG term нужно переименовать (например, решили, что «Revision» → «Edit»):
 
-**Команда:** `/product:bg-rename "Revision" "Edit"`
+**Команда:** `/product:bg-rename "Revision" "Edit"` (preview) → `--commit` после ручного применения.
 
-**Алгоритм:**
+> ⚠ **v1 — manual preview workflow, не атомарная транзакция.** Команда показывает diff-preview и
+> предлагает sed/IDE find-replace; применяет правки **человек**. Атомарный apply (single commit +
+> rollback) **deferred к v1.1** — см. фронтматтер [`commands/product/bg-rename.md`](../../commands/product/bg-rename.md)
+> и `dev/v1_1_backlog.md`.
 
-1. **Identify affected artifacts** через `used_in` field в BG entry
+**Алгоритм (v1):**
+
+1. **Identify affected artifacts** через `used_in` field в BG entry (hint, не authoritative)
 2. **Generate patch preview:**
-   - Для каждого affected артефакта — diff (replace all instances of bold `**Revision**` with `**Edit**`)
-   - Показывает counts: «Will update: SC-005 (3 occurrences), SC-006 (2), BR-010 (5), LC-002 (7), FM-003 (4)»
-3. **Human approves:**
-   - Bundle approve (все сразу)
-   - Per-artifact approve (с возможностью skip)
-4. **Apply atomically:**
-   - Все артефакты обновляются
-   - BG entry переименовывается (old name → alt_term; new name → primary)
-   - BG version++
-   - Создаётся single git commit «BG rename: Revision → Edit»
-5. **Cascade check:** после rename запускается cascade (V-11 bi-dir, V-08 terminology, etc.)
+   - Для каждого affected артефакта — counts bold-вхождений: «SC-005 (3 occurrences), SC-006 (2), BR-010 (5), LC-002 (7), FM-003 (4)»
+   - Выдаётся sed-подсказка + вариант IDE find-replace (переименовываются только `**term**` / `__term__`)
+3. **Manual apply:** человек применяет find-replace и проверяет результат
+4. **`--commit`:** команда ре-сканирует артефакты (старый термин ушёл, новый есть), обновляет BG entry
+   (heading, `❌ old` в alt-terms, version++) и пишет запись в decision journal.
+   При неполном применении — опции [F] force / [A] abort / [C] cancel
+5. **Cascade check:** на запись BG.md срабатывает `cascade-check.js` (V-08 terminology, V-11 bi-dir)
 
 ### 5.4 BG Versioning
 
@@ -737,7 +738,7 @@ Per-term actions:
 
 ### 6.1 Роль
 
-**Adversarial review** бизнес-артефактов — противовес confirmation bias ассистента и человека. Использует существующий `.claude/agents/devils-advocate.md` с business-prompts (DEC-I05).
+**Adversarial review** бизнес-артефактов — противовес confirmation bias ассистента и человека. Использует существующий `agents/product/devils-advocate.md` с business-prompts (DEC-I05).
 
 ### 6.2 Когда запускается (adaptive-depth, every change)
 
@@ -829,7 +830,7 @@ semantic change / rewrite» (правка прозы неотличима рег
 DA генерирует findings в 3 tiers:
 
 ```markdown
-## DA Findings: FM-003 Revisions inbox
+DA Findings: FM-003 Revisions inbox
 
 ### 🔴 CRITICAL (2)
 1. **Scalability:** BR-012 batch window 2h hard-coded. При 5k revisions/день 
@@ -888,7 +889,9 @@ draft ──(G5)──▶ testing ─┬──▶ validated
                          └──(deferred zone)──▶ deferred (continue testing)
 ```
 
-Transitions управляются через `/product:hyp <HYP-id> --status <new-status>` с mandatory supporting data.
+Transitions в v1 выполняются **правкой самого артефакта** (`status:` в frontmatter + supporting data в теле);
+отдельной команды `/product:hyp` не существует. Автоматический триггер на invalidation придёт с
+P3 Feedback Integration (§3.4 — отложен до появления D5-инструментов).
 
 ### 7.3 FM (workflow)
 
@@ -974,67 +977,24 @@ Mapping команды → процессы → артефакты:
 
 ---
 
-## 9. Interaction Patterns (examples)
+## 9. Interaction Patterns (example)
 
-### 9.1 Типичный Discovery Session
+> **Операционный диалог — не здесь.** Пошаговые сценарии сессий живут в скиллах-исполнителях:
+> [`skills/product/discovery-session.md`](../../skills/product/discovery-session.md) (P1.A),
+> [`skills/product/planning-session.md`](../../skills/product/planning-session.md) (P1.B),
+> [`skills/product/feature-session.md`](../../skills/product/feature-session.md) (P2.A/B),
+> [`commands/product/bg-rename.md`](../../commands/product/bg-rename.md) (mass-rename).
+> Ниже — один пример, показывающий **связку approve → BG → cascade** (то, чем владеет этот документ).
 
-```
-> /product:init "Инструмент для фрилансеров-переводчиков"
-
-[Assistant]
-Discovery Session started. Mode: [Q]uick | [D]eep | [C]onfig? 
-> Q
-
-[Assistant]
-D1.1 Problem Discovery. Let me ask a few questions...
-
-Q1: Кто основной страдающий? (фрилансеры, клиенты, агентства, все?)
-Q2: В чём главная боль — коммуникация, организация, оплата, качество?
-Q3: Сколько клиентов ведёт типичный переводчик параллельно?
-...
-
-> [human answers 5-8 questions]
-
-[Assistant]
-Draft Problem Statement ready:
-[shows draft PS]
-
-Iteration 1 — what to adjust?
-> [feedback]
-
-[Assistant]
-Updated draft PS:
-[shows v2]
-
-Iteration 2 — ok?
-> approve
-
-[Assistant]
-✓ G1 passed. PS → active (version 1).
-✓ BG extraction: 3 terms candidates pending.
-✓ Cascade: N/A (PS is root).
-
-Continuing to D1.2 Market Research (Quick mode, ~15 min)...
-[runs parallel research]
-
-Draft Market Research ready (sources: 7, coverage: TAM/SAM/SOM, trends, barriers):
-[shows draft MR]
-
-...
-```
-
-### 9.2 Feature Definition с cascade
+### 9.1 Feature Definition с cascade
 
 ```
 > /product:feature FM-003
 
 [Assistant]
 Loading FM-003 Revisions inbox context...
-- SEG-001 (freelancers), JTBD-1 (revisions collection)
-- HYP-001 (conversion), Priority MUST
+- SEG-001 (freelancers), JTBD-1; HYP-001, Priority MUST
 - has_ui=true → P2.5 Design Module in parallel
-
-Let's start with Scenario Authoring.
 
 F.2.1: Main flow — receiving revision via email?
 [proposes draft SC-005 with 6 steps]
@@ -1042,9 +1002,7 @@ F.2.1: Main flow — receiving revision via email?
 > [human edits step 4, adds alt flow]
 
 [Assistant]
-Updated. Adding alt flow SC-005a (multiple project match).
-
-Approve SC-005 (main)?
+Updated. Adding alt flow SC-005a (multiple project match). Approve SC-005 (main)?
 > Y
 
 [Assistant]
@@ -1052,56 +1010,17 @@ Approve SC-005 (main)?
 ✓ BG extraction: terms "Revision", "Client email", "Project" added pending.
 ✓ Cascade: FM-003 scenarios[] updated (bi-dir).
 
-Extracting Business Rules from SC-005 steps...
-[identifies BR-010, BR-012 candidates]
-
 ... (continues through F.2-F.10)
 
 [Later, after BR-010 approved]
-
-[Assistant]
 BR-010 active. Running cascade check:
   - SC-005: bi-dir updated ✓
-  - LC-002: guards reference OK (derived after BR approve) ✓
+  - LC-002: guards reference OK ✓
   - IC-003: P-RULE-01 DA review required before IC active
   - FM-003: scenarios[] & rules[] updated ✓
 
 Pending: IC-003 DA review (triggered by BR-010 change).
 Continue to F.5 IC identification? [Y/N]
-```
-
-### 9.3 Mass-rename BG
-
-```
-> /product:bg-rename "Revision" "Edit"
-
-[Assistant]
-BG mass-rename preview:
-  Target BG entry: "Revision" → "Edit"
-  
-  Affected artifacts (used_in):
-    - SC-005 (3 occurrences)
-    - SC-006 (2)
-    - BR-010 (5)
-    - BR-011 (1)
-    - LC-002 (7)
-    - FM-003 (4)
-  
-  Total: 22 replacements across 6 files.
-  
-  Alt terms (won't change): "edit", "comment", "feedback" (still in reject list)
-
-Approve rename? [Y]es bundle | [P]er-artifact | [N]o cancel
-> Y
-
-[Assistant]
-✓ BG: "Revision" renamed to "Edit" (version 4)
-✓ 6 artifacts updated in single commit
-✓ Cascade: V-11 bi-dir refs consistent, V-08 terminology consistent
-✓ 2 pending handoffs (FM-003) marked stale due to BG changes
-  Suggested: /product:handoff FM-003 --regenerate
-
-Commit: "BG rename: Revision → Edit (22 refs updated across 6 artifacts)"
 ```
 
 ---
@@ -1134,7 +1053,7 @@ Commit: "BG rename: Revision → Edit (22 refs updated across 6 artifacts)"
 
 NFR-* как артефакт введён в итерации 8 (см. [NFR.md](artifacts/NFR.md)). Интегрирован во все точки:
 
-- **В каталоге** — 21-й тип артефактов (было 20)
+- **В каталоге** — добавлен как 21-й тип артефактов (каталог с тех пор вырос до 24, см. [artifacts/README.md](artifacts/README.md))
 - **В processes** — F.5a step (NFR identification) между F.5 (IC) и F.6 (VC)
 - **В validation** — V-16 восстановлен с tier-aware severity (🟡 MVP / 🔴 MMP+)
 - **В handoff-spec §11** — embedded NFR-* excerpts (больше не placeholder)
@@ -1155,7 +1074,7 @@ NFR на solo-уровне — **очертания достаточности, 
 - Human approves per NFR или bundle
 - version++ per NFR
 
-Команда: `/product:nfr-upgrade-tier mvp mmp` (в будущей реализации).
+Команда: [`/product:nfr-upgrade-tier mvp mmp`](../../commands/product/nfr-upgrade-tier.md).
 
 ---
 
@@ -1163,7 +1082,7 @@ NFR на solo-уровне — **очертания достаточности, 
 
 Что если сессия прерывается?
 
-- **Hook `product-session-state.js`** сохраняет progress в `.product/.sessions/<timestamp>.yaml`:
+- **Hook `session-state.js`** сохраняет progress в `.product/.sessions/<timestamp>.yaml`:
   - Current process (P1.A / P1.B / P2.A / P2.5)
   - Current step (D1.2 / F.3 / D.3)
   - Last approved artifact
@@ -1198,27 +1117,17 @@ NFR на solo-уровне — **очертания достаточности, 
 
 ## 14. Implementation Notes
 
-### 14.1 Skills структура
+### 14.1 Skills и hooks — реестры не здесь
 
-Каждый процесс имеет свой skill в `product-module/skills/`:
+> **Поштучные реестры этот документ НЕ держит** (ручная инвентаризация неизбежно дрейфует):
+> - **Skills** — `skills/product/*.md`; разбор по группам — [product-module/SPEC.md §4](../product-module/SPEC.md); генерируемый каталог — [docs/guide/08-skills.md](../guide/08-skills.md) (гейт `gen:skills:check`)
+> - **Hooks** — SSOT регистрации `hooks/product/manifest.yaml`; разбор — [product-module/SPEC.md §6](../product-module/SPEC.md)
+> - **Subagents** — `agents/product/*.md` + `agents/design/*.md`; разбор — [product-module/SPEC.md §5](../product-module/SPEC.md)
+>
+> Ниже — только то, что нормативно **процессно** и в реестрах не выражается.
 
-- `discovery-session.md` — P1.A methodology
-- `planning-session.md` — P1.B
-- `feature-enrichment.md` — P2.A
-- `feature-creation.md` — P2.B (с D1-alignment)
-- `bg-extraction.md` — Phase 1-5 algorithm
-- `cascade-protocol.md` — детальный BFS обход (интегрирован из validation §6)
-- `product-da-review.md` — F.9 workflow, 6 lenses, findings format
-- `mass-rename.md` — BG workflow
+### 14.2 Блокирующие LESSON-гейты (семантика)
 
-### 14.2 Hooks
-
-- `bg-extractor.js` — PostToolUse на `.product/**/*.md` save
-- `product-artifact-validate.js` — inline validation (tier-aware per `validation_tier` config)
-- `product-session-state.js` — session progress snapshot
-- `ic-change-trigger.js` — P-RULE-01 enforcement (adaptive-depth single subagent invocation, см. §6.2; refactored DEC-DEV-0012)
-- `br-change-trigger.js` — P-RULE-02 enforcement (adaptive-depth, см. §6.2; refactored DEC-DEV-0012)
-- `cascade-check.js` — на approve
 - `lesson-gate.js` — **Stop** event; LESSON-* non-deferrability gate (PRONG A). The **first blocking hook** (DEC-DEV-0062 departure from «Hook never blocks», scoped to corrective lessons). Default strict (`exit 2`) blocks clean session close while any LESSON is `status: open` or write-truncated; `LESSON_GATE_MODE=warn` downgrades.
 - `lesson-presence-gate.js` — **PreToolUse** + **UserPromptSubmit** backstop (PRONG B). Ships **strict** (flipped 2026-07-11 after the S-LE re-run PASS; DEC-DEV-0177): `permissionDecision:deny` on mutating calls, with `lesson-in-progress` marker-exemption + target carve-out (writes to `.product/lessons/**` always allowed — self-deadlock breaker, DEC-DEV-0143). UserPromptSubmit re-surfaces open lessons each turn (never blocks a prompt). `LESSON_GATE_MODE=warn` downgrades to stderr nag, `=off` silences.
 
@@ -1243,13 +1152,6 @@ NFR на solo-уровне — **очертания достаточности, 
   - Inconsistent BR categories для similar rules
   - Stale draft accumulation
   - Over-parameterization (BR с 8+ parameters — split candidate)
-
-### 14.3 Subagents
-
-- `screen-generator` (для P2.5 D.2)
-- `market-researcher` (для P1.A D1.2 Deep)
-- `competitor-analyst` (для P1.A D1.3 Deep)
-- `product-devils-advocate` (для F.9) — использует `.claude/agents/devils-advocate.md` с business prompts
 
 ---
 

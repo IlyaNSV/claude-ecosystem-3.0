@@ -64,9 +64,12 @@
  *     (blocking, in `npm run verify`). This linter adds the one thing those catalogs cannot see:
  *     the NAMESPACE SET itself (a whole commands/<ns>/ dir appearing or vanishing).
  *   · Artifact counts in verify.md (Step 3 «25 files») — already covered by check-counts.js.
- *   · `status.md` / `docs/MAP.md` (the other half of Row 5): docs/MAP.md is gated by
- *     `gen:map:check`; the status.md overview templates need a judgment call («does this new
- *     command belong in the overview?») and are deliberately left to the human.
+ *   · `status.md` / `docs/MAP.md` (the other half of Row 5): BOTH are ungated. The status.md
+ *     overview templates need a judgment call («does this new command belong in the overview?»)
+ *     and are deliberately left to the human. docs/MAP.md is hand-written and gated by NOTHING —
+ *     this comment used to claim `gen:map:check` covered it, which was false: that generator
+ *     emits docs/guide/ecosystem-map.html, a different file (corrected DEC-DEV-0227). A false
+ *     «covered» is worse than an honest «not covered» — it retires vigilance where no guard exists.
  *
  * ── Enforcement posture ──
  * STRICT, wired into `npm run verify` as `check:inventory:strict` (owner's flip, 2026-07-13).

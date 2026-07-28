@@ -13,7 +13,7 @@
 Ecosystem 3.0 — PMO-слой над Claude Code:
 - **Детальный контроль** D1 (Discovery) и D2-Behavioral (поведенческая спецификация)
 - **Tool-agnostic делегирование** D2-Technical и D3-D6 во внешние инструменты через универсальный `handoff.md`
-- **4 модуля:** Product, Design (conditional), Integrator, Orchestrator (планируется)
+- **4 модуля:** Product, Design (conditional), Integrator, Orchestrator (P1–P8 + §6-канал построены и live-validated)
 
 Подробнее: [README.md](README.md), [ROADMAP.md](ROADMAP.md).
 
@@ -23,13 +23,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 `last memory-sync: 2026-07-17` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
 
-**Реестр открытых readiness / smoke-гейтов** (само обязательство «перед фазой — [`phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) + readiness» живёт в SSOT-таблице «Process triggers» ниже и здесь намеренно НЕ повторяется — DEC-DEV-0197 / D12; ниже — только состояние):
-- `dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md` — ✅ ЗАКРЫТ 2026-07-15 (догон E1 кампании: S2/S5 PASS, S4 PARTIAL — §4.2.1 env-блок структурно не подключён в add.md, решение владельца; S1 PARTIAL/S3 PASS с 0177/0204)
-- `dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md` — DEFERRED; resumption при bring-forward trigger
-- `dev/gates/PHASE_6_SMOKE_TEST_PLAN.md` — ✅ ЗАКРЫТ 2026-07-15 (догон E2 кампании: S1/S3 PASS на свежей UI FM-008, fallback-цепочка честно деградировала до html; S5/S7 PASS, S2/S4 PARTIAL с 0177/0204)
-- Phase 7 — ✅ built + **validated** 2026-07-11 (смоук прогнан, S4 PARTIAL/DEF-SMK-1; план и readiness archived → `dev/_archive/phase-7/`; DEC-DEV-0176/0177)
-- S-LE — ✅ ЗАКРЫТ 2026-07-11: ре-прогон PASS (самодедлок 0143 устранён) → **флип `lesson-presence-gate.js` warn→strict выполнен** (решение владельца; чеклист архивирован → `dev/_archive/s-le/`; S-LE.1 = known CC-caveat; DEC-DEV-0177)
-- `dev/deferred/D7_DEADWEIGHT_CLEANUP.md` — ✅ EXECUTED 2026-07-11 как полоса A repo-wide deadweight-sweep (DEC-DEV-0185): все D7-механизмы KEEP; audit-reports ротированы в `_archive/`
+**Открытые readiness / smoke-гейты — состояние живёт в самих файлах** (`dev/gates/` + `dev/deferred/`), а не здесь. Реестр в always-on файле не окупается: к моменту чистки 2026-07-28 пять его шести строк были `✅ ЗАКРЫТ`/`EXECUTED`, то есть он занимал контекст каждой сессии, чтобы перечислить сделанное (DEC-DEV-0227). Открыто сейчас — [`dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md`](dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md) (DEFERRED, resumption по bring-forward-триггеру); закрытые уехали в `dev/_archive/`. Обязательство «перед фазой — [`phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) + readiness» — в SSOT-таблице «Process triggers» ниже.
 
 ## Process triggers — harness contract (D7)
 
@@ -67,12 +61,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 🔒 = hard-enforced **кодом** (`process-gate.js`, блокирующий `commit-msg`). ⚙ = принуждается **другой** блокирующей цепью — `npm run verify` (коммит пройдёт, verify упадёт). Остальное — дисциплина (+ warn-only PostToolUse напоминалки `dev-journal-reminder.js` / `phase-closure-reminder.js` / `memory-drift-reminder.js`).
 
-**Сноска к строке «добавил/убрал команду / namespace / скилл / хук»** (DEC-DEV-0197 / D11 — единственное правило таблицы, у которого не было НИ гейта, НИ warn-хука):
-- `node dev/meta-improvement/scripts/check-inventory-sync.cjs` — детерминированно сверяет `verify.md` с репо: набор namespace'ов (Step 4 **и** Step 9 summary), floor'ы runtime-дир, маркеры Step 4.5/4.6 (реально ли строка есть в `.mjs`), хуки Step 8.5 (есть ли в `hooks/*/manifest.yaml` с заявленным событием).
-- **⚙ STRICT** (флип владельца 2026-07-13): в цепи `npm run verify` как `check:inventory:strict`. **НЕ** в `process-gate` — коммит пройдёт, упадёт `verify`. Аварийный тумблер: `INVENTORY_SYNC_STRICT=0 npm run verify` (гейт на общем ресурсе без выключателя однажды склинит чужой цикл — и виноват будет не тот, кто падает).
-- **«Чекер ослеп» ≠ «нашёл дрейф».** Непарсящийся якорь (`verify.md` реструктурировали) или недоступный ground truth (частичный / sparse checkout — файл в индексе git, но не на диске) → громкий warn «обнови парсер», **exit 0, никогда не гейтит**. Тот же закон, что у сторожа координат: *отсутствие доказательства ≠ доказательство отсутствия*; гейт не имеет права падать на том, чего не может знать.
-- **Скиллы — гейтятся по ИМЕНАМ; пронг закрыт** (`DEF-CTX-5` **[FIXED]** 2026-07-13, DEC-DEV-0198). Floor'а скиллов `verify.md` Step 4 больше НЕ держит: каталог `docs/guide/08-skills.md` генерируется из frontmatter `skills/**/*.md` (`gen-skill-catalog.cjs`) и принуждается `gen:skills:check` в цепи `npm run verify` — на **поштучной** гранулярности. Каталог несёт *имена*, поэтому swap/переименование скилла с сохранением числа **ловится** (прежняя floor-затычка его пропускала). Класс `[6] SKILL-FLOOR` из `check-inventory-sync.cjs` снят: два механизма на одно обязательство — сами по себе источник дрейфа, слабый ушёл.
-- **Чего чекер НЕ покрывает (честно):** хуки помимо пары LESSON-*; `status.md`-шаблоны (нужно суждение). Поштучно команды гейтит `gen:catalog:check`, скиллы — `gen:skills:check`, `docs/MAP.md` — `gen:map:check`. Счётчики команд/хуков/скиллов/агентов в живых доках — блокирующий `check-counts` (6 видов; режим — у скрипта, `--json` → `extended_mode`, DEC-DEV-0220).
+**Устройство чекера `check-inventory-sync.cjs`** (что именно сверяет · strict-режим и аварийный тумблер · «ослеп ≠ нашёл дрейф» · чего НЕ покрывает — в т.ч. `docs/MAP.md`, который **ничем не гейтится**, вопреки прежнему утверждению здесь) — [`CONVENTIONS.md §12`](dev/meta-improvement/CONVENTIONS.md#12-inventory-sync-checker-d11).
 
 ## Autoflow — git / память / sync без отдельных команд (DEC-DEV-0100)
 
@@ -172,36 +161,7 @@ Ecosystem 3.0 — система для управления продуктов�
 
 ## Repository structure (для AI)
 
-```
-claude-ecosystem-3.0/
-├── README.md, BOOTSTRAP.md, INSTALL-HUMAN.md, CHANGELOG.md, ROADMAP.md
-├── DEV_JOURNAL.md           # этот журнал (создан 2026-04-19)
-├── CLAUDE.md                # этот файл — context для AI
-├── dev/                                  # docs про разработку самой экосистемы
-│   ├── meta-improvement/                 # D7 module (SPEC + checklists + CONVENTIONS)
-│   ├── PHASE_<N>_READINESS.md            # readiness gate per phase
-│   ├── PHASE_<N>_SMOKE_TEST_PLAN.md      # smoke test plan (active until run)
-│   ├── v1_1_backlog.md                   # preserved deferred context
-│   └── _archive/                         # archived past-phase docs
-├── install.sh, install.ps1  # global installers
-├── .env.template, settings.json.template, gitignore.template
-├── docs/
-│   ├── product-module/SPEC.md, handoff-spec.md
-│   ├── design-module/SPEC.md
-│   ├── integrator-module/SPEC.md
-│   └── pmo/
-│       ├── pmo-map.md, processes.md, validation.md
-│       └── artifacts/        # 24 типа артефактов
-├── commands/                 # → пользовательский .claude/commands/
-│   ├── ecosystem/, integrator/, product/  # design/ — Phase 6
-├── skills/                   # → .claude/skills/ (lazy-loaded methodology)
-├── agents/                   # → .claude/agents/ (subagents с isolated context)
-├── hooks/                    # → .claude/hooks/ (с manifest.yaml для auto-registration)
-├── adapters/                 # reference-адаптеры handoff → external tool (Phase 5+)
-│   └── handoff-to-ccsdd.js   # source-of-truth; instance копируется в .claude/integrator/adapters/ при /integrator:add
-└── templates/
-    └── project/CLAUDE.md.template  # для END-USER projects, НЕ путать с этим файлом
-```
+**Дерево здесь намеренно не разворачивается.** Развёрнутая копия жила в этом файле и в `README.md`, обе устаревали независимо: держали `dev/PHASE_<N>_*.md` в корне `dev/` через год после переезда в `dev/gates/`, писали «`design/` — Phase 6» при построенном Design-модуле и не знали `orchestrator/`, `product/`, `tests/` (DEC-DEV-0227). Фактическое дерево даёт `ls`; назначение зон — §«Файловая иерархия» ниже; топология визуально — [docs/MAP.md](docs/MAP.md) §2.
 
 ## Конвенции репозитория
 
@@ -215,7 +175,7 @@ claude-ecosystem-3.0/
 
 **SSOT — таблица «Process triggers — harness contract (D7)» выше. Здесь правил НЕТ, только указатель.**
 
-Раньше здесь стояла вторая таблица тех же обязательств — и она **разошлась** с первой: обещала CHANGELOG на любой `fix:` **без** квалификатора consumer-zone, т.е. строже, чем принуждает `process-gate.js` (условие в коде — `(isFeat || isFix) && touchesConsumer`). Классический дефект «одно правило записано дважды». Свёрнута в указатель (DEC-DEV-0197 / D12); её уникальные строки — `refactor:`, `docs:`, имена секций — **подняты в SSOT-таблицу, не потеряны**.
+_Прецедент: вторая таблица тех же обязательств стояла здесь и разошлась с первой (обещала CHANGELOG на любой `fix:` без квалификатора consumer-zone — строже, чем принуждает код). Свёрнута в указатель, уникальные строки подняты в SSOT-таблицу (DEC-DEV-0197 / D12)._
 
 **Словарь секций CHANGELOG (D-3, DEC-DEV-0220-e):** `Added | Changed | Fixed` (+ `Removed` / `Deprecated` / `Security` по Keep a Changelog 1.1.0, когда понадобятся). CHANGELOG сам объявляет «Format based on Keep a Changelog» — в этом стандарте `Changed` штатная секция, а прежняя `Modified` — выдуманная. Выпущенная секция `Modified` в `[1.10.0]` остаётся как археология (append-only), ретроспективно не переименовывается.
 
@@ -226,9 +186,11 @@ claude-ecosystem-3.0/
 ### Файловая иерархия
 
 - **commands/, skills/, agents/, hooks/** — артефакты, которые **попадают в `.claude/` пользователя** при bootstrap. Должны быть production-ready (никаких WIP).
-- **docs/** — SPEC и каталоги. Source of truth для archteture.
+- **orchestrator/, product/** — top-level runtime-директории: Workflow-скрипты и детерминированные хелперы. Тоже едут в поставку.
+- **docs/** — SPEC и каталоги. Source of truth для архитектуры.
+- **adapters/** — reference-адаптеры `handoff.md` → внешний инструмент; instance копируется в `.claude/integrator/adapters/` при `/integrator:add`.
 - **templates/** — шаблоны, инстанциируемые при bootstrap (substitute placeholders).
-- **dev/** — внутренние документы про разработку **самой экосистемы**. Не попадают в пользовательские проекты.
+- **dev/, tests/** — разработка **самой экосистемы**. В пользовательские проекты не попадают (фильтруются denylist'ом bootstrap).
 
 ### Hook конвенции
 

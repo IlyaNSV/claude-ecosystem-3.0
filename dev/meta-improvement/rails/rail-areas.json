@@ -50,8 +50,6 @@
     [".env.template", "install-config"],
     ["settings.json.template", "install-config"],
     ["gitignore.template", "install-config"],
-    [".claude/", "dotclaude-instance"],
-    [".obsidian/", "obsidian"],
-    ["HOME.md", "obsidian"]
+    [".claude/", "dotclaude-instance"]
   ]
 }

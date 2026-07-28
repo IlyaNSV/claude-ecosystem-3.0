@@ -1,6 +1,6 @@
 # Ecosystem Vision — Wave B (full completeness-loop) · Execution Batch (next-session work-order)
 
-> **Назначение:** самодостаточный execution-brief для следующей сессии. Реализует **полную волну Epic B** принятого [ECOSYSTEM_VISION.md](ECOSYSTEM_VISION.md): докрутка bounded completeness-loop из `v1 core/skeleton` (Increment 1) в **рабочий, откалиброванный на пилоте** механизм доведения спеки D1-D2B до handoff-DoR.
+> **Назначение:** самодостаточный execution-brief для следующей сессии. Реализует **полную волну Epic B** принятого [ECOSYSTEM_VISION.md](../../ECOSYSTEM_VISION.md): докрутка bounded completeness-loop из `v1 core/skeleton` (Increment 1) в **рабочий, откалиброванный на пилоте** механизм доведения спеки D1-D2B до handoff-DoR.
 > **Статус:** `ready-to-run` (2026-07-01). Kickoff = DEC-DEV-0136. Vision принят (`accepted`).
 > **Граница:** own-zone (Product/Design + cross-cutting). Epic D (консилиум-escalation-channel) и F2/C — НЕ здесь (граф §5.1 vision, позже `(C ∥ D)`). **`orchestrator/` не трогать** без сверки с оркестратор-треком.
 > **Принцип коммитов:** каждый пункт = отдельный коммит на чистом шве → разрыв стоит ≤1 пункт. Блокирующий `commit-msg` gate активен — соблюдай §Process-обязательства.

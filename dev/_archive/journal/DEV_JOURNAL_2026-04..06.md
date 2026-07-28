@@ -7,7 +7,7 @@
 ---
 ## Backfill (retroactive entries из CHANGELOG)
 
-Эти записи восстановлены из существующих коммитов и [CHANGELOG.md](CHANGELOG.md) для baseline. Будущие записи делаются по ходу работы.
+Эти записи восстановлены из существующих коммитов и [CHANGELOG.md](../../../CHANGELOG.md) для baseline. Будущие записи делаются по ходу работы.
 
 ---
 
@@ -1686,7 +1686,7 @@ Step 2e «Note on preserved files» updated с explicit «NOT copied (filtered)�
 
 ### Context
 
-[CHANGELOG 1.1.0](CHANGELOG.md) shipped Phase 3 (Planning Module + Feature Definition Module + cascade detection + adaptive-depth DA + BG extraction Phase 1) с note «Real-world smoke test pending — see `dev/PHASE_3_SMOKE_TEST_PLAN.md` (run by user в interactive Claude Code session)». Plan was queued, never executed before Phase 4 work began. User executed real run 2026-04-29 — first time hook code touched real product workflow at scale (~70 markdown writes, 23 BR + 7 SC + 7 IC + 7 VC + 3 LC).
+[CHANGELOG 1.1.0](../../../CHANGELOG.md) shipped Phase 3 (Planning Module + Feature Definition Module + cascade detection + adaptive-depth DA + BG extraction Phase 1) с note «Real-world smoke test pending — see `dev/PHASE_3_SMOKE_TEST_PLAN.md` (run by user в interactive Claude Code session)». Plan was queued, never executed before Phase 4 work began. User executed real run 2026-04-29 — first time hook code touched real product workflow at scale (~70 markdown writes, 23 BR + 7 SC + 7 IC + 7 VC + 3 LC).
 
 Findings from session JSONL log + artifact inspection:
 
@@ -2209,7 +2209,7 @@ Pre-decision проверено: в существующих планах (ROADM
 ## DEC-DEV-0030 — Phase 4 pre-implementation kickoff: ambiguity resolutions + scope cuts (Sections 2-5 outcomes)
 
 **Date:** 2026-05-12
-**Trigger:** Fresh-session Phase 4 implementation kickoff (per [`dev/meta-improvement/checklists/phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) Sections 2-5) после finalized DEC-DEV-0024..0029 архитектурного gate. Анти-bias guard на «we already committed» — pre-implementation ambiguity sweep + drift sweep + scope discipline + plan refinement.
+**Trigger:** Fresh-session Phase 4 implementation kickoff (per [`dev/meta-improvement/checklists/phase-kickoff.md`](../../meta-improvement/checklists/phase-kickoff.md) Sections 2-5) после finalized DEC-DEV-0024..0029 архитектурного gate. Анти-bias guard на «we already committed» — pre-implementation ambiguity sweep + drift sweep + scope discipline + plan refinement.
 **Tag:** #architecture #scope-decision #spec-revision #kickoff
 
 ### Context
@@ -2521,7 +2521,7 @@ Implementation выполнялась в 8 sub-phase commits (A-H) + 1 static sm
 
 ### Context
 
-Phase 4 implementation closure (Unit 1) shipped в DEC-DEV-0032 (ee9bbca). Per [`phase-closure.md`](dev/meta-improvement/checklists/phase-closure.md) discipline, Unit 2 (D7 6-step ritual) выделен в отдельную fresh-session run per anti-bias guard — текущая AI которая designed Phase 4 могла rationalize findings («это intentional», «edge case acceptable»). Substrate: CHANGELOG `[1.2.0]` + ROADMAP § «Где мы сейчас» + DEV_JOURNAL last 5 entries (DEC-DEV-0028..0032) + CONVENTIONS.md + phase-closure.md.
+Phase 4 implementation closure (Unit 1) shipped в DEC-DEV-0032 (ee9bbca). Per [`phase-closure.md`](../../meta-improvement/checklists/phase-closure.md) discipline, Unit 2 (D7 6-step ritual) выделен в отдельную fresh-session run per anti-bias guard — текущая AI которая designed Phase 4 могла rationalize findings («это intentional», «edge case acceptable»). Substrate: CHANGELOG `[1.2.0]` + ROADMAP § «Где мы сейчас» + DEV_JOURNAL last 5 entries (DEC-DEV-0028..0032) + CONVENTIONS.md + phase-closure.md.
 
 ### Findings — 9 total
 
@@ -2637,15 +2637,15 @@ Phase 4.1 (patch release 1.2.1) расширяет D7 session-audit протот
 
 | Component | File | Status |
 |---|---|---|
-| Marker-writer hook (refactor) | [`hooks/session-audit.js`](dev/meta-improvement/hooks/session-audit.js) | refactored: убран spawn, добавлен write в audit-index |
-| Per-session auditor prompt (extend) | [`prompts/session-audit.md`](dev/meta-improvement/prompts/session-audit.md) | extended: Step 0 identify phase + Step 2.5 coverage trace + расширенный schema; 7 existing checks → secondary catalog |
-| Phase aggregator prompt (new) | [`prompts/phase-audit-summary.md`](dev/meta-improvement/prompts/phase-audit-summary.md) | new: input script-computed JSON + per-session reports + plan; output narrative с conflict resolution |
-| CLI orchestrator (new) | [`scripts/audit-smoke.js`](dev/meta-improvement/scripts/audit-smoke.js) | new Node CLI: parse plan, query index, transcript pre-process, spawn auditor, compute aggregate, spawn aggregator |
-| Index helper (new) | [`scripts/audit-index.js`](dev/meta-improvement/scripts/audit-index.js) | new Node module: addPending / markProcessed / listPending / listProcessed |
-| Slash command D7-internal (new) | [`commands/audit-smoke.md`](dev/meta-improvement/commands/audit-smoke.md) | new: wrapper над `node scripts/audit-smoke.js`; не deployed, доступен из cwd репо экосистемы |
-| Enable command для пилота (new) | [`commands/ecosystem/enable-d7-audit.md`](commands/ecosystem/enable-d7-audit.md) | new opt-in: пишет SessionEnd hook entry в пилотный `.claude/settings.local.json` с абсолютным путём к ecosystem repo |
-| Audit journal (new) | [`audit-index.md`](dev/meta-improvement/audit-index.md) | new Markdown: Pending + Processed sections |
-| User instruction + checklist (new) | [`checklists/audit-smoke-workflow.md`](dev/meta-improvement/checklists/audit-smoke-workflow.md) | new: smoke-then-audit ritual для developer |
+| Marker-writer hook (refactor) | [`hooks/session-audit.js`](../../meta-improvement/hooks/session-audit.js) | refactored: убран spawn, добавлен write в audit-index |
+| Per-session auditor prompt (extend) | [`prompts/session-audit.md`](../../meta-improvement/prompts/session-audit.md) | extended: Step 0 identify phase + Step 2.5 coverage trace + расширенный schema; 7 existing checks → secondary catalog |
+| Phase aggregator prompt (new) | [`prompts/phase-audit-summary.md`](../../meta-improvement/prompts/phase-audit-summary.md) | new: input script-computed JSON + per-session reports + plan; output narrative с conflict resolution |
+| CLI orchestrator (new) | [`scripts/audit-smoke.js`](../../meta-improvement/scripts/audit-smoke.js) | new Node CLI: parse plan, query index, transcript pre-process, spawn auditor, compute aggregate, spawn aggregator |
+| Index helper (new) | [`scripts/audit-index.js`](../../meta-improvement/scripts/audit-index.js) | new Node module: addPending / markProcessed / listPending / listProcessed |
+| Slash command D7-internal (new) | [`commands/audit-smoke.md`](../../../.claude/commands/meta/audit-smoke.md) | new: wrapper над `node scripts/audit-smoke.js`; не deployed, доступен из cwd репо экосистемы |
+| Enable command для пилота (new) | [`commands/ecosystem/enable-d7-audit.md`](../../../commands/ecosystem/enable-d7-audit.md) | new opt-in: пишет SessionEnd hook entry в пилотный `.claude/settings.local.json` с абсолютным путём к ecosystem repo |
+| Audit journal (new) | [`audit-index.md`](../../meta-improvement/audit-index.md) | new Markdown: Pending + Processed sections |
+| User instruction + checklist (new) | [`checklists/audit-smoke-workflow.md`](../../meta-improvement/checklists/audit-smoke-workflow.md) | new: smoke-then-audit ritual для developer |
 
 **Connection экосистема ↔ пилот:** hook script лежит в ecosystem repo `dev/meta-improvement/hooks/session-audit.js`; пилот регистрирует его в своём `.claude/settings.local.json` SessionEnd hook через абсолютный путь (one-time setup, либо `/ecosystem:enable-d7-audit`, либо вручную). Отчёты пишутся обратно в ecosystem repo, отдельно от пилотного `.product/`. Соблюдает CONVENTIONS §2.
 
@@ -2704,7 +2704,7 @@ Phase 4.1 shipped (1.2.1) через 3 commits:
 
 ### Context
 
-`audit-smoke.js` (Phase 4.1, DEC-DEV-0034) дизайнился под happy path: один batch → discover Pending → per-session spawn → aggregate computed from current-batch successes → claude -p aggregator. Логика на [`scripts/audit-smoke.js:655`](dev/meta-improvement/scripts/audit-smoke.js): `if (succeeded.length > 0 && plan && args.phase != null && !args.skipAggregate)` — где `succeeded` — array только текущего прогона.
+`audit-smoke.js` (Phase 4.1, DEC-DEV-0034) дизайнился под happy path: один batch → discover Pending → per-session spawn → aggregate computed from current-batch successes → claude -p aggregator. Логика на [`scripts/audit-smoke.js:655`](../../meta-improvement/scripts/audit-smoke.js): `if (succeeded.length > 0 && plan && args.phase != null && !args.skipAggregate)` — где `succeeded` — array только текущего прогона.
 
 Retry path не был explicit'но продуман: при `--session-id=X --force` script правильно re-audit'ит X и moves to Processed, но aggregator снова compute'ит только {X} вместо {все Processed для phase}. Корректный summary существовал короткое окно (после первого батча), но retry overwrote aggregate JSON и attempted aggregator с single-session input.
 
@@ -2753,7 +2753,7 @@ CLI exit semantics preserved:
 
 Анализ skill text revealed два concurring факторов:
 
-1. **Implementation leak.** [`skills/product/cleanup-detector.md:88-91`](skills/product/cleanup-detector.md) (до фикса) описывала **HOW** делегированная команда `/product:cascade --pending --revalidate` работает внутри:
+1. **Implementation leak.** [`skills/product/cleanup-detector.md:88-91`](../../../skills/product/cleanup-detector.md) (до фикса) описывала **HOW** делегированная команда `/product:cascade --pending --revalidate` работает внутри:
    > Логика `/product:cascade --pending --revalidate`:
    > - Wipe `cascade-pending.yaml` entries
    > - Per active artifact — re-trigger `cascade-check.js` через no-op Read+Write
@@ -4591,7 +4591,7 @@ Ship **Tier 1** = чистые one-time moves. 4 пункта реализова
 
 ### Decision
 
-Принять дизайн «замкнутого цикла» Session Audit v2 (см. [`dev/SESSION_AUDIT_V2_DESIGN.md`](dev/SESSION_AUDIT_V2_DESIGN.md)): эволюция движка, а не переписывание. Активная работа — **Инкремент 1**: пре-классификатор сессий + реестр рубрик (baseline/criteria/effect-focus per session-class) поверх существующего `--no-plan`; выбор рубрики становится результатом классификации, а не аргументом `--phase`. Целевой триггер — полу-авто (`/loop`/`CronCreate`), Инкр.2. Журнал+синтез патчей — Инкр.3. Все находки фиксируются surface-only; патчи применяет человек через DEC-DEV.
+Принять дизайн «замкнутого цикла» Session Audit v2 (см. [`dev/SESSION_AUDIT_V2_DESIGN.md`](../session-audit-v2/SESSION_AUDIT_V2_DESIGN.md)): эволюция движка, а не переписывание. Активная работа — **Инкремент 1**: пре-классификатор сессий + реестр рубрик (baseline/criteria/effect-focus per session-class) поверх существующего `--no-plan`; выбор рубрики становится результатом классификации, а не аргументом `--phase`. Целевой триггер — полу-авто (`/loop`/`CronCreate`), Инкр.2. Журнал+синтез патчей — Инкр.3. Все находки фиксируются surface-only; патчи применяет человек через DEC-DEV.
 
 ### Outcome
 
@@ -5962,7 +5962,7 @@ Sweep ссылок по семантике: обычные `product:meta-feedbac
 Три подряд P4-прогона над одной нереконсилированной спекой `localization` породили три почти-дубликата pending-actions (PA-013/014/015): процесс слепо аппендит + коммитит новую PA вместо «уже-роутнуто → обнови существующую». Счётчик дрейфов недетерминирован (5→4→3) из-за LLM-группировки; severity NFR прыгнул medium→high между прогонами. Контроллер во 2-й сессии честно диагностировал «PA-016 будет шум» — т.е. человек поймал то, что процесс не поймал.
 
 ### Decision
-Записать как earmark, закрывающий дырку 0089 из DEC-DEV-0090. Фикс: dedup pre-filter в `audit-spec-fidelity` — перед эмитом PA проверить, есть ли открытая PA, роутящая тот же `(zone, artifact, signature)`, и обновить её вместо аппенда. Деталь = FB-LR-10 в [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md); фикс — дешёвый rider в N+2 work-order.
+Записать как earmark, закрывающий дырку 0089 из DEC-DEV-0090. Фикс: dedup pre-filter в `audit-spec-fidelity` — перед эмитом PA проверить, есть ли открытая PA, роутящая тот же `(zone, artifact, signature)`, и обновить её вместо аппенда. Деталь = FB-LR-10 в [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md); фикс — дешёвый rider в N+2 work-order.
 
 ### Outcome (built 2026-06-23 — cheap riders, N+2 хвост)
 **PA-dedup (FB-LR-10):** PA пишутся внутри агент-промптов (нет детерминир. PA-store; D.1 — FS только в агенте), поэтому фикс — НЕ либа, а dedup-инструкция в обоих PA-эмитящих промптах `audit-spec-fidelity.mjs` (product-route + coverage-route): «сначала просканируй открытые PA, при совпадении сигнатуры `(feature, route, ids/paths)` — обнови на месте, аппендь только если совпадения нет; матчинг по (feature, route, ids), НЕ по формулировке дрейфа (она дрейфует от прогона к прогону)». Деталь дрейфа намеренно вне ключа — иначе LLM-джиттер группировки побеждает дедуп. **Co-located rider — rename `fabricated-trace` → `missing-trace-source` (FB-LR-12):** старое имя — мисномер (клеймило реальные owned-контракты BR-074/IC-028, у которых корректны и routing, и detail — отсутствует лишь *source* в `.product`). Load-bearing тройка emit↔guard↔test переименована вместе; `fidelity-oracle.cjs` литерал не содержит (имя минтит relay-агент). Тесты: `audit-fidelity-wiring` 10→11 (+dedup-ассерт, переименован exempt-ассерт); verify зелёный; counts 24/44 (промпт-правки + переименование строки-константы — не новый artifact-type/rule).
@@ -5981,7 +5981,7 @@ Sweep ссылок по семантике: обычные `product:meta-feedbac
 **Tag:** #orchestrator #live-run #audit #gate-contract #architecture #p5 #p6
 
 ### Context
-A = `audit-spec-fidelity --feature localization` (P4, ×2). B = `validate-feature-impl --feature billing` (P6 standalone). C = `feature-to-tdd-impl --feature admin` (P5→P6 nesting, ~11ч / 88+ агентов / 4 воркфлоу). Грейд: 3 мульти-агентных форензик-воркфлоу (extract → ground-truth code-verify → rubric grade → adversarial refute), 2 эмпирич. nesting-теста, консилиум из 4 ленз. **Контур обратной связи был разомкнут** — все ~14 находок жили только в пилотном git (`grep FB-028` по эко = 0). Дискретные находки: [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Следующий инкремент: [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
+A = `audit-spec-fidelity --feature localization` (P4, ×2). B = `validate-feature-impl --feature billing` (P6 standalone). C = `feature-to-tdd-impl --feature admin` (P5→P6 nesting, ~11ч / 88+ агентов / 4 воркфлоу). Грейд: 3 мульти-агентных форензик-воркфлоу (extract → ground-truth code-verify → rubric grade → adversarial refute), 2 эмпирич. nesting-теста, консилиум из 4 ленз. **Контур обратной связи был разомкнут** — все ~14 находок жили только в пилотном git (`grep FB-028` по эко = 0). Дискретные находки: [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Следующий инкремент: [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](../orchestrator/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md).
 
 ### Verdict
 - **P6 как standalone-гейт = live-validated** (B + C): мех-слой реально гонял suite+build через Bash (реальный RED в B/C = доказательство исполнения, не штамповки), 3 валидатора RA-8/9/10 parallel, verify-finding-before-act дропает реальные false-positive, GO-синтез детерминир., FB-013 concerns дисклоузнуты. **Ключевая ценность доказана:** C P6#1 (NO-GO) поймал реальную cross-feature регрессию, которую advisory-fallback GO'нул над тем же деревом (коммит `e02200a`: «Surfaced by P6 mechanical gate … NO-GO»).
@@ -6011,7 +6011,7 @@ A = `audit-spec-fidelity --feature localization` (P4, ×2). B = `validate-featur
 ## DEC-DEV-0092 — Orchestrator N+2: ось `readiness` + общий env-readiness probe (тело gate-contract)
 
 **Date:** 2026-06-23
-**Trigger:** Тело инкремента N+2 по work-order [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](dev/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md); решение о двух осях принято в [[DEC-DEV-0091]] (T1). Закрывает FB-LR-02/04/09 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md) — headline-баг B: выключенная БД → ложный NO-GO.
+**Trigger:** Тело инкремента N+2 по work-order [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](../orchestrator/ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md); решение о двух осях принято в [[DEC-DEV-0091]] (T1). Закрывает FB-LR-02/04/09 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md) — headline-баг B: выключенная БД → ложный NO-GO.
 
 **Tag:** #orchestrator #gate-contract #p5 #p6 #readiness #false-no-go #soft-migration
 
@@ -6041,7 +6041,7 @@ Live-run B (DEC-DEV-0091): build GREEN, но 181 `PrismaClientInitializationErro
 ## DEC-DEV-0093 — Order-aware verify-finding-before-act (TOCTOU): pre-gate baseline + 3-way disposition
 
 **Date:** 2026-06-23
-**Trigger:** P2 очереди N+2 ([[project_orchestrator_next_queue]]) — **T2**, худший failure-класс из live-run аудита: FB-LR-03/13 в [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Решение о двух осях/контракте — [[DEC-DEV-0091]]; тело readiness — [[DEC-DEV-0092]].
+**Trigger:** P2 очереди N+2 ([[project_orchestrator_next_queue]]) — **T2**, худший failure-класс из live-run аудита: FB-LR-03/13 в [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Решение о двух осях/контракте — [[DEC-DEV-0091]]; тело readiness — [[DEC-DEV-0092]].
 
 **Tag:** #orchestrator #verify-finding #toctou #p4 #p6 #order-aware #silent-wrong-verdict
 
@@ -6071,7 +6071,7 @@ P6: ремедиация сидится из `present`; post-fix recheck кей�
 ## DEC-DEV-0094 — FB-028 real fix: RA-8 finding `kind` → defect enum + polarity-gated verify
 
 **Date:** 2026-06-23
-**Trigger:** P3 очереди N+2 ([[project_orchestrator_next_queue]]) — FB-028 / FB-LR-06 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Та же verify-layer-поверхность, что [[DEC-DEV-0093]] (T2).
+**Trigger:** P3 очереди N+2 ([[project_orchestrator_next_queue]]) — FB-028 / FB-LR-06 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Та же verify-layer-поверхность, что [[DEC-DEV-0093]] (T2).
 
 **Tag:** #orchestrator #p6 #ra-8 #verify-finding #false-positive #fb-028
 
@@ -6096,7 +6096,7 @@ P6 `validate-feature-impl`: `DEFECT_KINDS` enum (uncovered-requirement / missing
 ## DEC-DEV-0095 — T4: design→tasks structural-coverage gate (P4) — ловит несмонтированный модуль до impl
 
 **Date:** 2026-06-23
-**Trigger:** P4 очереди N+2 ([[project_orchestrator_next_queue]]) — T4 / FB-LR-05 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md).
+**Trigger:** P4 очереди N+2 ([[project_orchestrator_next_queue]]) — T4 / FB-LR-05 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md).
 
 **Tag:** #orchestrator #p4 #coverage #design-to-tasks #fb-lr-05 #pre-impl-gate
 
@@ -6125,7 +6125,7 @@ Live-run C: design.md перечислял модуль (`admin.module.ts`), н�
 ## DEC-DEV-0096 — T5: remediation-discretion guardrails (P5+P6) — escalate cross-spec/design конфликты, не self-resolve; bounded transient retry
 
 **Date:** 2026-06-23
-**Trigger:** P5 очереди N+2 ([[project_orchestrator_next_queue]]) — T5 / FB-LR-07 + FB-LR-08 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](dev/ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Самый рискованный пункт очереди (agent concurrency), наименее валидируемый статикой.
+**Trigger:** P5 очереди N+2 ([[project_orchestrator_next_queue]]) — T5 / FB-LR-07 + FB-LR-08 из [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md). Самый рискованный пункт очереди (agent concurrency), наименее валидируемый статикой.
 
 **Tag:** #orchestrator #p5 #p6 #remediation #single-writer #concurrency #fb-lr-07 #fb-lr-08
 
@@ -6196,7 +6196,7 @@ DEC-DEV-0090 разнёс фидбэк на локальный (`/product:valida
 ## DEC-DEV-0098 — Autonomous Pipeline Vision принят + kickoff Increment 1 (Epic A + B4 + B1-core)
 
 **Date:** 2026-06-24
-**Trigger:** Старт Epic A по принятому концепту [ECOSYSTEM_VISION.md](dev/ECOSYSTEM_VISION.md) (`accepted`, §7 10/10, PR #52). Формализация была сознательно отложена (vision §8, вариант I) «в пакете с kickoff Epic A» — этот kickoff и есть триггер. Work-order: [ECOSYSTEM_VISION_BATCH_1.md](dev/ECOSYSTEM_VISION_BATCH_1.md) Step 0.
+**Trigger:** Старт Epic A по принятому концепту [ECOSYSTEM_VISION.md](../../ECOSYSTEM_VISION.md) (`accepted`, §7 10/10, PR #52). Формализация была сознательно отложена (vision §8, вариант I) «в пакете с kickoff Epic A» — этот kickoff и есть триггер. Work-order: [ECOSYSTEM_VISION_BATCH_1.md](../orchestrator/ECOSYSTEM_VISION_BATCH_1.md) Step 0.
 
 **Tag:** #vision #autonomous-pipeline #epic-a #completeness-loop #personas #kickoff #roadmap
 

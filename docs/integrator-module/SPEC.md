@@ -2,7 +2,7 @@
 
 > **Статус:** v1.0 (2026-04-18)
 > **Роль:** «Сисадмин» экосистемы — устанавливает, настраивает, соединяет и поддерживает внешние инструменты под PMO-картой. Сам работу не выполняет.
-> **Не путать с:** Orchestrator Module (будущий модуль, который запускает инструменты и координирует их работу — проектируется позже).
+> **Не путать с:** Orchestrator Module (запускает инструменты и координирует их работу — **построен**, P1–P8 + Epic E deploy/rollback; см. [orchestrator-module/SPEC.md](../orchestrator-module/SPEC.md)).
 > **v1 modifications:**
 > - C3 (`/product:validation-tune`) — Integrator владеет `validation-config.yaml`. Когда Product Module accept-ит tuning proposal, Integrator updates config + journal entry.
 > - D2 (`approve_overrides`) — Integrator validates contracts с учётом overrides (если handoff содержит `dor_overrides[]`, Integrator адаптер отображает их receiver-у).
@@ -24,7 +24,7 @@
 - **Обновляет, заменяет, удаляет** инструменты с переносом контрактов
 - **Детектит дрифт** (инструмент обновился → контракт сломался)
 - **Ведёт журнал решений** чтобы не повторять ошибки
-- **Готовит документацию** для Orchestrator Module (будущий модуль, который будет запускать инструменты)
+- **Готовит документацию** для Orchestrator Module (модуль, который запускает инструменты)
 
 ### 1.2. Что Integrator НЕ делает
 
@@ -88,7 +88,7 @@ Integrator — гибрид, как и Product Module:
 │    (артефакты)           (MK/DS/NM)            integrator/  │
 │                                                     │       │
 │                                                     ▼       │
-│                       Будущий Orchestrator Module          │
+│                          Orchestrator Module               │
 │                       (запуск инструментов)                │
 │                                                     │       │
 └─────────────────────────────────────────────────────┼───────┘
@@ -101,7 +101,7 @@ Integrator — гибрид, как и Product Module:
 
 **Стыковка с Product Module:** Integrator настраивает первый D2-Technical инструмент так, чтобы он принимал универсальный handoff.md из Product Module. Это один из контрактов.
 
-**Стыковка с будущим Orchestrator Module:** Integrator после каждого add/update/replace генерирует `.claude/integrator/tool-docs/<tool>.md` — техническую документацию «как управлять этим инструментом». Orchestrator будет это читать и оркестрировать.
+**Стыковка с Orchestrator Module:** Integrator после каждого add/update/replace генерирует `.claude/integrator/tool-docs/<tool>.md` — техническую документацию «как управлять этим инструментом». Orchestrator это читает и оркестрирует.
 
 ---
 
@@ -934,7 +934,7 @@ Consilium разрешён **только** при scope, явно объявл�
 - При первом `/integrator:add` D2-Tech инструмента — Integrator читает пример handoff.md чтобы понять формат
 - При `/integrator:update` — проверяет, не сломалась ли совместимость с handoff
 
-### 8.2. С будущим Orchestrator Module
+### 8.2. С Orchestrator Module
 
 **Что Integrator отдаёт Orchestrator:**
 - `.claude/integrator/tool-docs/<tool>.md` — полный manual на инструмент:
@@ -997,11 +997,11 @@ Consilium разрешён **только** при scope, явно объявл�
 - Если timeout — увеличить CLAUDE_CODE_TIMEOUT в config
 ```
 
-Orchestrator в будущем будет читать этот файл и понимать, как ТОЧНО запустить инструмент в нужной последовательности.
+Orchestrator читает этот файл и понимает, как ТОЧНО запустить инструмент в нужной последовательности.
 
 ### 8.3. Граница ответственности
 
-| Действие | Integrator | Orchestrator (будущий) | Product Module |
+| Действие | Integrator | Orchestrator | Product Module |
 |---|---|---|---|
 | Установить инструмент | ✅ | ❌ | ❌ |
 | Настроить инструмент | ✅ | ❌ | ❌ |
@@ -1056,7 +1056,7 @@ DEC-INT-0016), Integrator вправе оснастить зону **internal-и
 - *Read-only* — изучать инструменты и видеть gaps, ничего не ломая.
 - *Installation* — подключать инструменты под PMO; пилот на cc-sdd.
 - *Maintenance* — долгоживущая инфраструктура: обновления, починки.
-- *Export* — фундамент для будущего Orchestrator Module.
+- *Export* — фундамент для Orchestrator Module.
 
 ---
 
@@ -1117,15 +1117,20 @@ DEC-INT-0016), Integrator вправе оснастить зону **internal-и
 ├── agents/integrator/
 │   ├── tool-researcher.md            # research subagent
 │   ├── tool-profiler.md              # add/update profiling
-│   └── contract-designer.md          # contract creation
+│   ├── contract-designer.md          # contract creation
+│   └── deployer.md                   # deploy-capability equipping (D3-05/06, DEC-DEV-0060) — EQUIPS only, никогда не деплоит (§8.3)
 ├── skills/integrator/
 │   ├── research-protocol.md
 │   ├── tool-profiling.md
 │   ├── contract-design.md
-│   └── drift-detection.md
+│   ├── drift-detection.md
+│   ├── installation-protocol.md      # 6-стадийный add-flow (lazy-init, backup, conflict resolution, rollback) — §9
+│   ├── deployment-provisioning.md    # как Integrator EQUIPS deploy-capability (D3-05/06)
+│   └── tool-docs-generator.md        # генерация tool-docs/<tool>.md по §14
 └── hooks/integrator/
     ├── journal-hook.js                # PostToolUse — журналирование решений
     ├── drift-check.js                 # SessionStart — drift detection (shipped Phase 7, DEC-DEV-0176; detect-only/warn-only)
+    ├── scope-guard.js                 # PreToolUse — scope-boundary guard (DEC-DEV-0047, patch 1.3.3 B-2); warn-only, активен только при маркере сессии
     ├── lib/drift-checks.cjs           # разделяемая D1/D2/D3+staleness либа (hook + /integrator:verify CLI-seam)
     ├── contract-validate.js           # PreToolUse — CUT v1.1+ (DEC-DEV-0176; trigger: живой битый контракт мимо drift-check/verify; warn-only конвенция исключает «блокировки»)
     └── manifest.yaml                  # auto-registration (см. hooks/product/manifest.yaml)
@@ -1173,7 +1178,7 @@ DEC-INT-0016), Integrator вправе оснастить зону **internal-и
 - [ ] Хотя бы 2 инструмента подключены через Фазу 2 (для осмысленного verify)
 
 **Перед стартом Фазы 4:**
-- [ ] Концепт Orchestrator Module продуман (чтобы знать, что именно ему нужно от tool-docs)
+- [x] Концепт Orchestrator Module продуман — модуль построен (P1–P8), см. [orchestrator-module/SPEC.md](../orchestrator-module/SPEC.md)
 
 ---
 
@@ -1493,10 +1498,10 @@ Orchestrator читает это, знает когда и как вызыват
 - Пример: `🔧 5 tools ✓ | 📋 12 contracts ✓ | ⚠ 1 update pending`
 - Обновляется через statusline hook при SessionStart и после `/integrator:*` команд
 
-**Output styles**
-- Единый формат для отчётов `/integrator:research`, `/integrator:map`, `/integrator:status`
+**Output styles** — *запланировано, НЕ построено*
+- Целевой единый формат для отчётов `/integrator:research`, `/integrator:map`, `/integrator:status`
 - Консистентные таблицы, цвета для confidence levels, эмоджи для статусов
-- Файл: `.claude/output-styles/integrator-report.md`
+- Файла `.claude/output-styles/integrator-report.md` не существует; каталог `output-styles/` убран из поставки по DEC-DEV-0055 (forward-reference сохранён намеренно)
 
 **ScheduleWakeup / периодические проверки**
 - Интегратор сам себе планирует еженедельную `/integrator:verify --light`
@@ -1549,4 +1554,6 @@ Core стэк (6 MCP) — установить при первой актива�
 
 **Конец спецификации.**
 
-Статус: **готов к утверждению и началу Фазы 1.**
+Статус: **отгружен.** Read-only — Phase 1 ✅, Installation — Phase 5 ✅, Maintenance и Export для
+Orchestrator — Phase 7 ✅ (DEC-DEV-0176); см. таблицу групп §9. Живой статус — [ROADMAP «Где мы
+сейчас»](../../ROADMAP.md#где-мы-сейчас).

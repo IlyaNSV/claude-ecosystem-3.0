@@ -6,7 +6,7 @@
 > 3-profiled-subagent architecture jury (velocity/fidelity/integrity + deterministic
 > veto/synthesis) versus 1 undifferentiated general-purpose (GP) subagent?**
 >
-> **Method instance of:** [`patterns/blind-comparison-protocol.md`](meta-improvement/patterns/blind-comparison-protocol.md)
+> **Method instance of:** [`patterns/blind-comparison-protocol.md`](../../meta-improvement/patterns/blind-comparison-protocol.md)
 > (the reusable unbiased-comparison pattern this study also codified). DEC-DEV-0132.
 >
 > **Honesty note:** I (the reviewer) built the P2 jury → I have a stake → I did **not** score.

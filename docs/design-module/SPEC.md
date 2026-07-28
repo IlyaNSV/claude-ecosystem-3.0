@@ -254,7 +254,8 @@ Product Module P2 F.8 triggers
 
 ## 4. Skills Library
 
-6 skills, lazy-loaded per задаче:
+10 skills, lazy-loaded per задаче (поштучный SSOT — `skills/design/*.md` + генерируемый каталог
+[docs/guide/08-skills.md](../guide/08-skills.md), гейт `gen:skills:check`):
 
 ### 4.1 `design-session.md` (core)
 
@@ -333,6 +334,16 @@ Product Module P2 F.8 triggers
 - Runs при D.5 finalization + `/design:export`
 - Integrates с design-artifact-validate hook
 - Reporting формат
+
+### 4.5a `html-fallback.md`
+
+- HTML emergency fallback за D.2/D.3 generation, когда Stitch недоступен И подписки Claude Design нет
+- v1.0 minimal: single HTML page, DS-токены через CSS-переменные
+
+### 4.5b `app-map-generate.md` (DEC-DEV-0066)
+
+- D2-B04 — сборка/обновление App Map (AM) L0-вида; загружается `/design:map`
+- Механический слой — `app-map-scan.js` (glob FM/NM); редакторский (`cross_module_edges`, `primary_journeys`, `cjm_stages`) — из frontmatter `app-map.md`
 
 ### 4.6 Future skills (если нужно)
 
@@ -700,9 +711,11 @@ Fallback chain — из `design.yaml` `mcp_preferences.fallback_chain`. Default:
 
 **Генерируется автоматически** в `/product:handoff` если FM.has_ui=true.
 
-### 10.3 Sync Protocols (via /eco:sync pairs)
+### 10.3 Sync Protocols
 
-Новые sync-пары (от Integrator при MK/DS/NM изменениях):
+Пары «источник ↔ целевое», проверяемые при изменениях MK/DS/NM. Отдельной команды синка
+(namespace `/eco:*`) **не существует**: проверки исполняются через V-MK-* (D.5 / `/design:export`)
+и через adapter при `/product:handoff`.
 
 | Пара | Источник | Целевое | Проверка |
 |---|---|---|---|
@@ -736,13 +749,15 @@ external_mcp_required:
 
 Integrator при add — настраивает Stitch MCP config, генерирует adapter если target implementation tool (cc-sdd) ожидает design.md в специфическом формате.
 
-### 10.5 С будущим Orchestrator
+### 10.5 С Orchestrator
 
 Orchestrator читает MK/DS/NM при маршрутизации:
 - «Эта фича has_ui=true → routing включает шаг design verification»
 - «Change в MK → trigger sync с cc-sdd design.md»
 
-Не в v1 scope.
+**Статус связки:** Orchestrator построен (P1–P8), но маршрутизация по `has_ui` и sync-триггер на MK
+**не реализованы**. Единственная фактическая точка контакта — P8 `user-journey-acceptance`: скриншоты
+шагов служат владельцу evidence для сверки «реальность ↔ MK»; автоматический MK-diff — v1.1.
 
 ---
 
@@ -878,10 +893,10 @@ stitch_usage:
 
 ### 14.2 First UI feature end-to-end
 
-- [ ] `.claude/commands/design/start.md`, `iterate.md`, `system.md`, `export.md`, `status.md`
-- [ ] Skills: design-session, component-states, design-system-rules, stitch-workflow, design-validation
-- [ ] Subagent: `screen-generator.md`
-- [ ] Hook: `design-artifact-validate.js`
+- [x] `.claude/commands/design/` — 7 команд: `start`, `iterate`, `system`, `export`, `status`, `map`, `migrate`
+- [x] Skills: 10 файлов `skills/design/` (design-session, component-states, design-system-rules, stitch-workflow, claude-design-workflow, open-design-viewer, open-design-workflow, html-fallback, app-map-generate, design-validation)
+- [ ] Subagent: `screen-generator.md` — **НЕ построен** (G36, §5.1); v1.0 D.2 работает inline
+- [x] Hook: `design-artifact-validate.js`
 - [ ] Stitch MCP работает (smoke test: generation одного экрана)
 - [ ] Artifacts MK, DS, NM — создаются end-to-end
 - [ ] Handoff §10 UI Specification заполняется корректно
@@ -1041,6 +1056,9 @@ IR-слой имеет нетривиальные costs (8-15ч design + 4-8ч p
 - ✅ Integrator Module SPEC
 - ✅ Product Module SPEC
 - ✅ **Design Module SPEC v1.1 (этот документ; addendum 2026-05-27 — Claude Design + IR groundwork)**
-- 🔜 Orchestrator Module концепт (после MVP Integrator)
+- ✅ Orchestrator Module (P1–P8 + Epic E deploy/rollback)
 
-**Ядро Ecosystem 3.0 полностью задокументировано.** Готово к имплементации (Phase 6 — conditional, активируется на первой FM с has_ui=true).
+**Ядро Ecosystem 3.0 полностью задокументировано и отгружено.** Design Module (Phase 6) построен
+2026-05-28 (DEC-DEV-0053, релиз 1.4.0), смоук-план закрыт 2026-07-15: на диске 7 команд
+`commands/design/`, 10 файлов в `skills/design/`, агент `agents/design/ux-advisor.md`, хук
+`hooks/design/design-artifact-validate.js`. Живой статус — [ROADMAP «Где мы сейчас»](../../ROADMAP.md#где-мы-сейчас).

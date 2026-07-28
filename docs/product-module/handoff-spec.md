@@ -538,7 +538,8 @@ Receiver видит, что blocker был «overridden by author with rationale
 
 ## 8. Handoff Validation Rules (V-H-*)
 
-Специфичные для handoff правила валидации (в дополнение к артефактным V-01..V-17).
+Специфичные для handoff правила валидации (в дополнение к артефактным V-01..V-18 и, при `has_ui`, V-MK-*;
+полный ростер namespace'ов — [validation.md §0](../pmo/validation.md)).
 
 | # | Правило | Уровень |
 |---|---|---|
@@ -942,7 +943,7 @@ Explicitly NOT part of this feature:
 ### С Product Module
 
 - **Создание:** через `/product:handoff <FM-ID>` команду Product Module
-- **DoR проверки:** перед генерацией используются те же валидации, что во всём Product Module (V-01..V-17)
+- **DoR проверки:** перед генерацией используются те же валидации, что во всём Product Module (V-01..V-18 + V-MK-* при `has_ui`)
 - **Hash computation:** Product Module вычисляет SHA текущих артефактов при генерации
 
 ### С Integrator Module
@@ -951,9 +952,9 @@ Explicitly NOT part of this feature:
 - **Drift check:** Integrator при `/integrator:verify` проверяет, что handoff'ы актуальны — через `hooks/integrator/lib/handoff-staleness.cjs` (пересчёт embedded `artifact_hashes` от `.product/`, read-only; G22 / DEC-DEV-0179). `/integrator:add` и `/integrator:update` персистят снапшот вердикта в `.claude/integrator/handoff-staleness.yaml`.
 - **Environment scanner:** Integrator перед передачей handoff во внешний tool проверяет совместимость через Environment Scanner
 
-### С будущим Orchestrator Module
+### С Orchestrator Module
 
-- Orchestrator будет читать handoff напрямую (без adapter) при маршрутизации задач
+- Orchestrator читает handoff напрямую (без adapter) при маршрутизации задач
 - Использует frontmatter для понимания состава фичи
 - `target_adapter=universal` говорит Orchestrator: «handoff в универсальном формате, выбирай adapter для доступного D2-Tech инструмента»
 

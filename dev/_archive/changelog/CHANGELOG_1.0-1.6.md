@@ -233,7 +233,7 @@ Combined release: (1) Integrator scope discipline + environment tiers + pending-
 
 ## [1.3.2] — 2026-05-26
 
-Patch release: Phase 5 runtime smoke closure + Phase 5.1 patch. 3 bugs fixed end-to-end (skill+agent narrow-glob; bootstrap/update deploy gap; journal-hook Windows path regex) + bug 4 fix (local-only drift detection refactor) + C-03 generator regex cosmetic. Architectural refinement: Q1 dual-location → tri-location adapter pattern. Per [DEC-DEV-0044, 0045](DEV_JOURNAL.md).
+Patch release: Phase 5 runtime smoke closure + Phase 5.1 patch. 3 bugs fixed end-to-end (skill+agent narrow-glob; bootstrap/update deploy gap; journal-hook Windows path regex) + bug 4 fix (local-only drift detection refactor) + C-03 generator regex cosmetic. Architectural refinement: Q1 dual-location → tri-location adapter pattern. Per [DEC-DEV-0044, 0045](../../../DEV_JOURNAL.md).
 
 ### Fixed
 
@@ -267,7 +267,7 @@ Phase 5 implementation (DEC-DEV-0041, 1.3.0) shipped с sub-phase J static smoke
 
 ## [1.3.1] — 2026-05-26
 
-Patch release: `/ecosystem:update` closed-list cleanup of obsolete contamination from pre-DEC-DEV-0019 bootstraps. Per [DEC-DEV-0042](DEV_JOURNAL.md).
+Patch release: `/ecosystem:update` closed-list cleanup of obsolete contamination from pre-DEC-DEV-0019 bootstraps. Per [DEC-DEV-0042](../../../DEV_JOURNAL.md).
 
 ### Modified
 
@@ -285,7 +285,7 @@ Phase 5 runtime smoke prep вскрыл gap: pilot `my-first-test/.claude/` со
 
 ## [1.3.0] — 2026-05-25
 
-Phase 5 release: **Integrator Installation + first cc-sdd reference adapter** (Phase 2 of Integrator Module). 3 new commands + 4 new/refactored skills + 2 new subagents + 1 new hook + 1 reference adapter + dual-location pattern. Ships through 10 sub-phase commits A-J. Per [DEC-DEV-0040..0041](DEV_JOURNAL.md).
+Phase 5 release: **Integrator Installation + first cc-sdd reference adapter** (Phase 2 of Integrator Module). 3 new commands + 4 new/refactored skills + 2 new subagents + 1 new hook + 1 reference adapter + dual-location pattern. Ships through 10 sub-phase commits A-J. Per [DEC-DEV-0040..0041](../../../DEV_JOURNAL.md).
 
 **Backwards compatibility:** Phase 5 introduces `.claude/integrator/` lazy-init schema (per DEC-INT-O08) — created on first `/integrator:add` invocation only; no impact on existing pilot projects that don't add tools yet. PMO IDs in `pmo-mapping.yaml` follow post-DEC-DEV-0040 functional decomposition (D2-T01..T08, D2-B01..B05, D3-01..07, D4-01..07) — Phase 1 read-only commands were already updated in DEC-DEV-0040.
 
@@ -350,7 +350,7 @@ Phase 5 release: **Integrator Installation + first cc-sdd reference adapter** (P
 
 ## [1.2.1] — 2026-05-14
 
-Phase 4.1 patch release: **D7 Log Conformance Auditor** — расширение прототипа `session-audit` (8a83562) к production mechanism для валидации smoke-сессий пилотных проектов против `PHASE_<N>_SMOKE_TEST_PLAN.md`. Hook-collects-state + command-consumes-batch composite pattern с журналом идемпотентности. Per [DEC-DEV-0034](DEV_JOURNAL.md).
+Phase 4.1 patch release: **D7 Log Conformance Auditor** — расширение прототипа `session-audit` (8a83562) к production mechanism для валидации smoke-сессий пилотных проектов против `PHASE_<N>_SMOKE_TEST_PLAN.md`. Hook-collects-state + command-consumes-batch composite pattern с журналом идемпотентности. Per [DEC-DEV-0034](../../../DEV_JOURNAL.md).
 
 **No backwards compatibility impact** — D7 internal infrastructure только. Existing pilot installations keep working без изменений; opt-in `/ecosystem:enable-d7-audit` нужен только если developer хочет аудитить smoke в данном пилоте.
 
@@ -384,7 +384,7 @@ Mechanism Phase 4.1 впервые прогнан на real Phase 4 transcript'�
 
 ## [1.2.0] — 2026-05-13
 
-Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline + HYP frontmatter canonical**. 6 new commands + 6 new/refactored skills + 1 new hook + 1 hook utility + 1 agent refactor + 5 skill language reminders + Language section в template. Ships through 10 sub-phase commits (A-H implementation + J static smoke + b8f16bc review fix-up + K1 closure docs). Per [DEC-DEV-0024..0032](DEV_JOURNAL.md).
+Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Language discipline + HYP frontmatter canonical**. 6 new commands + 6 new/refactored skills + 1 new hook + 1 hook utility + 1 agent refactor + 5 skill language reminders + Language section в template. Ships through 10 sub-phase commits (A-H implementation + J static smoke + b8f16bc review fix-up + K1 closure docs). Per [DEC-DEV-0024..0032](../../../DEV_JOURNAL.md).
 
 **Backwards compatibility:** Phase 4 introduces schema extensions для DA findings frontmatter (canonical fields per DEC-DEV-0030 A.1) — existing `.product/.da-findings/*.md` from Phase 3 hook-driven adaptive DA остаются valid (Shape A — cosmetic check; subset of canonical fields). Mode/scope fields добавляются inferred (legacy: `source: hook-driven`, `scope: artifact`). Никакой migration script не требуется. Phase 3 hooks (`br-change-trigger.js`, `ic-change-trigger.js`) поведенчески неизменны.
 
@@ -474,7 +474,7 @@ Phase 4 release: **Handoff + NFR + Product DA + Validation full + Cleanup + Lang
 
 ## [1.1.1] — 2026-04-29
 
-Patch release: Phase 3 smoke test executed on `my-first-test` (5.5h real run) revealed 4 critical hook bugs (silent regressions) + 1 validation lifecycle gap + 5 skill convention gaps. Comprehensive fix package + lint pipeline infrastructure to prevent recurrence. Per [DEC-DEV-0023](DEV_JOURNAL.md).
+Patch release: Phase 3 smoke test executed on `my-first-test` (5.5h real run) revealed 4 critical hook bugs (silent regressions) + 1 validation lifecycle gap + 5 skill convention gaps. Comprehensive fix package + lint pipeline infrastructure to prevent recurrence. Per [DEC-DEV-0023](../../../DEV_JOURNAL.md).
 
 **Backwards compatibility:** all hook behavior changes are **bug fixes** — no schema changes. Existing `.product/.pending/*` files с accumulated bloat: clear via new `/product:cascade --pending --reset` (DEC-DEV-0023 Q7) or `--revalidate` (re-run cascade-check fresh).
 
