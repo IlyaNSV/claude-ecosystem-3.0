@@ -107,6 +107,17 @@ staging; сценарии по MK/NM; visual-regression (снапшот-срав
 DoD-visual-gap (зелёный DoD не ловил невизуализацию has_ui-фич). Если механизм строится —
 рассмотреть visual-conformance-ногу в DoD-категории «фича реализована» для has_ui.
 
+**Конкретизация (2026-07-28, трек наблюдаемости VM — только зафиксировано в концепт, не
+построено):** кандидат-реализация Шага 3 поверх **уже существующего P8 UJA** — тумблер
+`UJA_HEADED=1` над `orchestrator/processes/user-journey-acceptance.mjs` (дефолт headless —
+канон цел, absent == старое поведение 1:1) + Playwright `video`/`trace` как
+visual-conformance evidence. Coverage-check AS IS **начат этой сессией** (recon репо: headed
+принуждается wiring-тестом `user-journey-acceptance-wiring.test.cjs:109`, video сейчас НЕ
+пишется, next-free `DEC-DEV-0227`). Человеко-визуальный канал под ручной проход (RDP/noVNC/
+ttyd + screenshot/video-кадры как «глаза» агента) — операторская механика `vm-factory-ops
+§7`; архитектурный принцип двух каналов (машинный vs человеко-визуальный) — `factory-conductor/
+CONDUCTOR.md §Наблюдаемость`. Эмпирика доступа — `ASSIST_LOG.md` OBS-2026-07-28.1.
+
 ## Зависимости и порядок
 
 ```
