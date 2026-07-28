@@ -212,29 +212,7 @@ description: <one-line, для discovery>
 
 Lazy-loaded — Product Module load'ит per задаче (~3-5 одновременно).
 
-**Convention для skills, создающих артефакты** (codified DEC-DEV-0012, 2026-04-20):
-
-Каждый skill, создающий артефакт типа из каталога `docs/pmo/artifacts/`, **обязан содержать explicit frontmatter template** в теле skill (не только reference на artifact spec). Template должен:
-
-1. **Перечислить все canonical fields** с правильными именами (per artifact spec)
-2. **Включить anti-pattern warnings** — список запрещённых рядом-стоящих field names, которые AI склонен использовать «для естественности»
-3. **Использовать ASCII slug** в naming convention для filename (per `docs/pmo/artifacts/README.md` slug rule)
-
-**Reference implementation:**
-- [`skills/product/problem-discovery.md`](skills/product/problem-discovery.md) Step 3 (после DEC-DEV-0011 fix) — explicit PS frontmatter template + anti-pattern list (`confidence_rationale`, `rationale`, `confidence_reasoning` явно запрещены)
-- [`skills/product/note-promote.md`](skills/product/note-promote.md) Step 3 — explicit templates per target type (FM, SC, BR, IC, NFR, HYP) с anti-pattern warnings
-
-**Rationale:** Phase 2 PS drift (DEC-DEV-0011) показал: skills без explicit template подвержены AI-склонности «переименовать field для естественности». Inline templates + warnings — лучшая defensive programming в skill prompts.
-
-**Чеклист — при написании или правке ЛЮБОГО skill, создающего артефакт** из каталога `docs/pmo/artifacts/`:
-
-> Scope правила прибит к **свойству скилла** («создаёт артефакт»), а НЕ к номеру фазы. Раньше здесь стояло «при написании *Phase 3* skill checklist» — фаза давно прошла, и правило вместе с ней стало мёртвым, хотя чеклист полезен для любого такого скилла (DEC-DEV-0197 / D12).
-
-- [ ] Frontmatter template присутствует
-- [ ] Все canonical fields перечислены
-- [ ] Anti-pattern warnings explicit
-- [ ] Filename slug rule referenced
-- [ ] DEV_JOURNAL entry если non-trivial design choice
+**Скилл создаёт артефакт из каталога `docs/pmo/artifacts/`?** → обязателен explicit frontmatter-шаблон в теле скилла + список запрещённых имён полей + slug-правило. Полная конвенция, чеклист и reference-реализации — [`patterns/b1-frontmatter-convention.md`](dev/meta-improvement/patterns/b1-frontmatter-convention.md) (SSOT; DEC-DEV-0012). _Здесь стояла её вторая редакция на 23 строки — свёрнута в указатель, чеклист поднят в паттерн (DEC-DEV-0227)._
 
 ## Что делать в этой сессии (Claude)
 
@@ -246,33 +224,14 @@ Lazy-loaded — Product Module load'ит per задаче (~3-5 одноврем
 3. **Проверь [ROADMAP.md](ROADMAP.md) секцию "Где мы сейчас"** — может быть устарела относительно git log
 4. **D7 ritual** (см. [`dev/meta-improvement/`](dev/meta-improvement/)):
    - **Фаза (kickoff / closure) и patch-cut здесь НЕ дублируются** — их триггеры и обязательства живут в SSOT-таблице «Process triggers» выше (строки «перед фазой / после фазы» и «собрался резать версию / доставлять в пилот»). Сами чеклисты: [`checklists/phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) (+ соответствующий readiness) · [`checklists/phase-closure.md`](dev/meta-improvement/checklists/phase-closure.md) · [`checklists/patch-cut.md`](dev/meta-improvement/checklists/patch-cut.md) (нарезка версии из CHANGELOG `[Unreleased]`; контракт накопления + cut — CONVENTIONS §11). *(Раньше эти три строки стояли и здесь, и в таблице — расходящимися формулировками; DEC-DEV-0197 / D12.)*
-   - **Паттерны — какой под какой триггер** (9 шт.; колонка «When applicable» в [`patterns/README.md`](dev/meta-improvement/patterns/README.md) — она же SSOT, если разойдётся с этим списком):
-
-     | Триггер | Паттерн |
-     |---|---|
-     | после архитектурного рефактора / перед kickoff'ом следующей единицы | `spec-drift-sweep.md` |
-     | перед содержательной реализацией фазы/единицы | `readiness-gate.md` |
-     | скилл создаёт артефакт со своей frontmatter-схемой | `b1-frontmatter-convention.md` |
-     | планирование единицы; meta-дизайн; подозрение на scope creep | `cuttable-scope-discipline.md` |
-     | после реализации, до того как поверить в интеграцию | `smoke-test-plan.md` |
-     | качественное/семантическое сравнение, где вердикт — суждение (особенно когда у судьи есть stake) | `blind-comparison-protocol.md` |
-     | пишу/аудирую путь, спавнящий DA-субагента | `da-subagent-type-contract.md` |
-     | агент/субагент/хук/процесс повёл себя не так — ДО того как винить модель | `config-failure-first-triage.md` |
-     | многосессионная единица; ~45%+ окна / симптомы потери контекста; живой `dev/<track>/SEAM.md` | `context-seam.md` (SSOT механизма — `dev/deferred/CONTEXT_SEAM_PROTOCOL.md`) |
-
-   - При memory drift: [`skills/memory-sync.md`](dev/meta-improvement/skills/memory-sync.md)
+   - **Паттерны — какой под какой триггер:** [`patterns/README.md`](dev/meta-improvement/patterns/README.md), колонка «When applicable» — **SSOT ростера**. _(Здесь стояла её копия на 13 строк; копия ростера в always-on файле обречена расходиться с диском — прецедент «8 паттернов против 9». Свёрнута DEC-DEV-0227.)_
+   - **Скиллы D7:** [`skills/`](dev/meta-improvement/skills/) — `memory-sync` (дрейф памяти) · `informed-fetch` (свежесть внешних фактов) · `repo-hygiene` (гигиена репо; измеритель — `doc-health.cjs` в цепи `verify`)
    - Verify update outcome: [`scripts/verify-update.sh`](dev/meta-improvement/scripts/verify-update.sh)
-   - Hook reminder зарегистрирован (`.claude/settings.local.json` PostToolUse Bash) — fires на phase-completion commits
 5. **DEV_JOURNAL перед коммитом — не спрашиваю, а знаю: это 🔒-обязательство, принуждаемое кодом.** `process-gate.js` блокирует коммит, если `fix:` или упоминание `DEC-DEV-N` идут без записи в `DEV_JOURNAL.md`. Триггеры — в SSOT-таблице «Process triggers». *(Прежняя формулировка «перед commit-ом значимых изменений — спроси, нужна ли запись» была прозой с неопределённым «значимых» поверх уже существующего гейта; DEC-DEV-0197 / D12.)*
 
 ## Memory
 
-У меня (Claude) есть persistent memory для этого проекта в `~/.claude/projects/C--Users-pw201-WebstormProjects-claude-ecosystem-3-0/memory/`. Содержит:
-- User profile (solo dev, methodology-conscious, RU)
-- Project status snapshot
-- Architecture summary
-- Methodology agreements (DEV journal, dogfooding, incremental pilot)
-- DEV journal reference
+Persistent memory проекта — `~/.claude/projects/C--Users-pw201-WebstormProjects-claude-ecosystem-3-0/memory/` (профиль владельца, снапшоты треков, методологические договорённости; индекс — `MEMORY.md`). _Перечень записей здесь не дублируется: он меняется чаще, чем этот файл, и копия устаревала бы молча._
 
 **Память отстаёт by design.** Но «всегда верифицируй перед любым действием» — правило без scope, неисполнимое буквально и потому не исполняемое вообще. Явный триггер и scope (DEC-DEV-0197 / D12):
 
