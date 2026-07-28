@@ -2,7 +2,7 @@
 
 status: ACTIVE
 seam_written: 2026-07-23 ~20:35 (хост-сессия кондуктора RUN-B, cond-s31..s34; шаблон v3 — CONTEXT_SEAM_PROTOCOL §4; прежний шов 2026-07-15 исполнен и перезаписан — его нетленное ядро сохранено ниже)
-track_ssot: `dev/global-loop/PLAN.md` (план) · `factory-conductor/CONDUCTOR.md` (архитектура пульта, I-1..I-8) · опыт-ledger = `dev/global-loop/ASSIST_LOG.md` В ЭТОЙ ветке (`docs/global-loop-assist-ledger`, worktree `ce3-wt-global-loop`) · при противоречии секций шва прав 🛑 СТОП-БЛОК
+track_ssot: `dev/global-loop/PLAN.md` (план) · `factory-conductor/CONDUCTOR.md` (архитектура пульта, I-1..I-8) · опыт-ledger = `dev/global-loop/ASSIST_LOG.md` В ЭТОЙ ветке (`docs/global-loop-assist-ledger`, worktree `ce3-wt-global-loop`) · план анализа эффективности = `EFFECTIVENESS_ANALYSIS_PLAN.md` (рядом; ratified владельцем 2026-07-28, чтение обязательно на старте — см. SEAM-ACK) · при противоречии секций шва прав 🛑 СТОП-БЛОК
 
 ## 🛑 СТОП-БЛОК — интенции и инварианты (ре-инжектится после компактации)
 
@@ -85,6 +85,12 @@ SUMMARY-COND-S35. Owner-находка #9 (cross-realm дыра: admin_session �
 C (кондуктор-инструментал) / D (продуктовые долги) + карта фиксации.** Это вход
 следующей единицы трека (системная волна доработок тестирования/канона) — по «го».
 
+**План анализа эффективности — `EFFECTIVENESS_ANALYSIS_PLAN.md` (рядом; ratified
+владельцем 2026-07-28):** аудит RUN-A/RUN-B собран, состав анализа утверждён целиком —
+Фазы 0/I/I-b(M1–M6 мост «интенция→код»)/II/III; центральный замер — cost per resolved
+intent + Goodhart-аудит гейтов + baseline «сырой Claude». Запуск исполнения — по
+отдельному «го»; кандидат на следующую единицу наравне с системной волной по feedback.
+
 Замороженная очередь по принятым решениям (RUN-B.57): док-синки AMBIG-01/02 (оба «A») ·
 trial-cap exempt active · CD-14/15/12 · SI-png backlog · PA-118 (owner). Остаток RL-001
 до released — owner-терминалы (Кат.1 impl-sync `[Y]` · Кат.6 ratify · Кат.5 prod-пакет).
@@ -126,7 +132,10 @@ trial-cap exempt active · CD-14/15/12 · SI-png backlog · PA-118 (owner). Ос
 
 **Обязательные чтения:** этот файл целиком · хвост `ASSIST_LOG.md` (RUN-B.42..52 —
 вся фактура сессии) · `factory-conductor/CONDUCTOR.md` (инварианты I-1..I-8) ·
-`prompt-s34.txt` (что делает живая сессия).
+`prompt-s34.txt` (что делает живая сессия) · **`EFFECTIVENESS_ANALYSIS_PLAN.md`
+целиком — ОБЯЗАТЕЛЬНО при старте ЛЮБОЙ работы над треком (требование владельца
+2026-07-28): он держит утверждённый состав анализа эффективности и сигналы,
+которые нельзя потерять**.
 
 **Контрольные вопросы:**
 1. Что такое I-8, чем срез канона отличается от транзакционной оптимизации, и что
