@@ -26,6 +26,9 @@
 
 ---
 
+> **Архив:** записи **DEC-DEV-0124–0197** (2026-07-01..2026-07-12) — дословно в
+> [`dev/_archive/journal/DEV_JOURNAL_0124-0197.md`](dev/_archive/journal/DEV_JOURNAL_0124-0197.md)
+> (ротация 2026-07-28, DEC-DEV-0227).
 > **Архив:** записи **DEC-DEV-0001–0123** (2026-04-17..2026-06-30) + Backfill-секция — дословно в
 > [`dev/_archive/journal/DEV_JOURNAL_2026-04..06.md`](dev/_archive/journal/DEV_JOURNAL_2026-04..06.md)
 > (ротация 2026-07-11, DEC-DEV-0185). Правило ротации — CONVENTIONS §5.1: при росте живого файла
@@ -33,2239 +36,6 @@
 > всегда остаются здесь. Новые записи — по-прежнему в КОНЕЦ этого файла (accumulation-контракт).
 
 ---
-## DEC-DEV-0124 — Раскладка карты процессов fcose→ELK layered: таймлайн-порядок процессов + traversal-порядок шагов
-
-**Date:** 2026-07-01
-**Trigger:** Владелец: «расположи процессы в порядке таймлайна актуальности использования по дефолту, но так, чтобы при раскрытии блоков они открывались не где попало, а в порядке прохождения».
-**Tag:** #ux #process-map #layout
-
-### Context
-Я сам ввёл проблему в 0123: fcose (force-directed) чинит compound-вложенность, но **не имеет направления/порядка** — процессы и шаги ложатся «где попало» (+ randomize → каждый прогон иначе). Владелец явно хочет ДВА порядка: (1) дефолтный вид — процессы по таймлайну пайплайна (Discovery→Planning→Feature→Design→Orchestrator P3→P6→…); (2) раскрытие процесса — шаги по порядку прохождения (`next[]`). Данные это уже несут: авторский порядок процессов = таймлайн, crossEdges кодируют поток (`ECO-setup→P1A→…→HO→P3o→P4o→P5o→P6o`, `INT-add→P3o`), шаги связаны `next[]`.
-
-### Options considered
-1. **ELK layered (выбрано)** — Sugiyama-раскладка: направленная (`elk.direction=RIGHT`), **compound-aware** (`hierarchyHandling=INCLUDE_CHILDREN`), **детерминированная** (нет randomize → «не где попало», один и тот же порядок каждый раз), уважает входной порядок (`considerModelOrder=NODES_AND_EDGES`) — таймлайн как tiebreaker, sequence-рёбра задают traversal. Даёт ОБА порядка из коробки. Минус: bundle `elk.bundled.js` ~1.6 МБ (для локального статичного HTML приемлемо); async (elkjs promise-based) → фит по `layoutstop`.
-2. **fcose + relativePlacementConstraint** — сгенерить ~277 порядковых констрейнтов из `next[]`/crossEdges. Отвергнуто: конфликтующие констрейнты хрупки, fcose их тихо игнорит/ломается; ELK для этого и создан.
-3. **dagre** — направленный, но **игнорит compound** (исходный дефект 0123). Отвергнуто.
-4. **ELK direction DOWN** vs **RIGHT** — RIGHT (таймлайн слева-направо — естественнее для «timeline»).
-
-### Decision
-Заменил fcose→`cytoscape-elk`+`elkjs` (вендорнуты офлайн `elk.bundled.js`+`cytoscape-elk.js`; fcose-вендоры удалены). Один детерминированный `ELK_LAYOUT` (layered/RIGHT/INCLUDE_CHILDREN/considerModelOrder=NODES_AND_EDGES/NETWORK_SIMPLEX) для initial/relayout/drill/группировки — нет fcose-различия FULL/INC, т.к. ELK стабилен. Async-обвязка: `runLayout(after)` фитит по `layoutstop`; config `layout:'preset'`-плейсхолдер, реальный ELK делает `defaultView()`; toolbar/expandAll/collapseAll/relayout/defaultView — все через `runLayout(fit)`. expand-collapse `layoutBy:ELK_LAYOUT` (раскрытие раскладывает шаги по `next[]`). Test-hook `__layoutRunning` (layoutstart/stop) — смоук ждёт async-ELK через `waitForFunction`, не угадывает sleep. Смоук дополнен 2 ассертами порядка: timeline-монотонность процессов (x: Discovery<Planning<Feature<P3o<P4o<P5o<P6o) + traversal-forward шагов раскрытого процесса (≥80% sequence-рёбер x↑).
-
-### Outcome
-Самопроверка в Chrome (headless, прочитаны скриншоты + метрики): процессы монотонны по таймлайну (P1A 973 < P1B 1207 < P2A 1654 < … < P6o 2927); раскрытый P1A — **13/13 sequence-рёбер forward** (Кейс→D1.1→G1→D1.2→D1.3→D1.4→G4→D1.5→G5→… слева-направо); lane-overlap **0.0%** (ELK и упорядочивает, И не пересекает дорожки); extents компактнее (5433×2085 vs fcose 12000×14000); 0 JS-ошибок. `smoke:procmap` **13/13**, `npm run verify` EXIT=0. counts 24/44 не тронуты. Ветка `feat/process-map-elk-timeline` off `830304d`.
-
-### Lessons
-1. **Сначала уточни требование, потом инструмент.** 0123 поставил fcose ради compound-вложенности, пожертвовав направлением — и владелец сразу заметил «где попало». Force-layout читаем как карта, но не как ПОРЯДОК. Когда нужен и порядок, и вложенность, и детерминизм — это ELK layered, а не force. (ELK я отметил отложенным апгрейдом ещё в 0123 — ровно на этот запрос.)
-2. **Данные уже несли порядок — движок просто должен его уважать.** Не пришлось переупорядочивать overlay: авторский порядок процессов = таймлайн, `next[]`/crossEdges = поток. ELK `considerModelOrder` + edge-direction подняли это в раскладку. Кодируй порядок в данных (модель-ордер + рёбра), бери движок, который его читает.
-3. **Детерминизм раскладки = «не где попало».** Жалоба была не только про порядок, но и про стабильность (fcose randomize → каждый раз иначе). ELK детерминирован → раскрытие всегда одинаковое. Для drill-down карт предсказуемость важнее «органичности».
-4. **Async-layout требует флага готовности, не sleep.** elkjs promise-based; фит по `layoutstop`, а смоук ждёт `__layoutRunning===false` через `waitForFunction`. Угадывание `setTimeout` под async-движок = флапающий тест (зеркалит lesson 3 из 0123 про стохастику, но здесь причина — асинхронность, не рандом).
-
----
-
-## DEC-DEV-0125 — Fix: раскрытый процесс ложился диагональной лесенкой — раскладывать только по флоу-рёбрам + BK-выравнивание
-
-**Date:** 2026-07-01
-**Trigger:** Владелец (на 0124): «элементы при раскрытии блока по-дурацки организованы» → уточнение: важно «близкое и ровное расположение элементов при ЛЮБЫХ манипуляциях».
-**Tag:** #ux #process-map #layout #fix
-
-### Context
-0124 дал таймлайн/traversal-порядок, но раскрытый процесс выглядел кривовато. Замер headless: P2A (13 шагов) лёг на **12 разных y-уровней**, P1A (14) — на **8** = диагональная лесенка/зигзаг, высота 423–578px. «Ровным» (одна линия потока) не пахло.
-
-### Root cause
-Два усиливающих фактора. **(1) Главный — раскладка считала СКРЫТЫЕ рёбра.** Шаги несут overlay-связи `produces`/`consumes`/`cascade`/`lineage` к артефактам в ДРУГОЙ дорожке. По дефолту эти слои скрыты (`.off`→`display:none`), НО рёбра остаются в графе, и ELK их учитывал — артефактные рёбра тянули шаги по вертикали, выстраивая лесенку относительно невидимого. **(2) Усугубитель — `NETWORK_SIMPLEX` node-placement** склонен разносить узлы по уровням (диагональ), а не выравнивать в прямую линию.
-
-### Decision
-**(1)** `runLayout` теперь раскладывает `cy.elements().not(OVERLAY_EDGES)` — только флоу-рёбра (`sequence`/`delegate`) + meta-edge'ы; overlay-связи к артефактам исключены из раскладки (но остаются в графе и рисуются, когда слой включают). Чистый left→right поток процесса определяется его последовательностью, а не скрытой data-родословной. **(2)** `nodePlacement.strategy` `NETWORK_SIMPLEX`→**`BRANDES_KOEPF`** (+ `bk.fixedAlignment=BALANCED`, `crossingMinimization=LAYER_SWEEP`) — выравнивает узлы в прямые горизонтальные линии. Спейсинг плотнее (nodeNode 24, betweenLayers 55). **(3) Консистентность «при любых манипуляциях»:** ВСЕ пути раскладки идут через единый `runLayout` — toolbar/defaultView/группировка зовут его напрямую, а expand-collapse `layoutBy` сменён с layout-объекта на **функцию** `function(){ runLayout(); }` (vendor `rearrange` поддерживает: `typeof o==='function'→o()`), чтобы раскрытие/свёртка cue'ем тоже шли через фильтрованную раскладку, а не через полный граф. Смоук дополнен гардом ровности (раскрытый процесс ≤3 ряда — ловит возврат лесенки).
-
-### Outcome
-Headless: P1A 14 шагов → **1 ряд** (было 8), высота 102 (была 423); P2A 13 → **3 ряда** (было 12), высота 137 (была 578) — чистые горизонтальные линии потока с ветками только на гейтах. Скриншот подтвердил: F.1→…→F.10→handoff одной ровной линией. extents всей карты компактнее (3996×891 vs 5433×2085). Таймлайн/traversal/overlap/counts/grouping не задеты. `smoke:procmap` **14/14** (+гард ровности), `npm run verify` EXIT=0. counts 24/44 не тронуты.
-
-### Lessons
-1. **Скрытое ≠ несуществующее для раскладки.** Рёбра, скрытые CSS-классом (`display:none`), всё ещё участвуют в force/layered-раскладке — графовый движок не знает про твой visibility-тоггл. Если слой визуально выключен, исключай его рёбра и из РАСКЛАДКИ (`eles.not(...)`), иначе невидимое тянет видимое в «непонятную» геометрию. Это и был корень «по-дурацки».
-2. **Один шов раскладки на все манипуляции.** Жалоба была «при ЛЮБЫХ манипуляциях». Лечится тем, что каждый путь (drill/toolbar/группировка/дефолт) зовёт ОДИН `runLayout` с одной фильтрацией — а не разрозненные `cy.layout(...)` с разными настройками. expand-collapse `layoutBy`-как-функция — мост, чтобы и cue-раскрытие попало в тот же шов.
-3. **Выбор node-placement — это про читаемость, не только корректность.** NETWORK_SIMPLEX и BRANDES_KOEPF оба «правильные», но BK выравнивает в прямые линии — для процессного потока (читается как лента) это важнее минимизации длины рёбер. Под задачу «ровно» подбирай стратегию размещения, а не только алгоритм.
-
----
-
-## DEC-DEV-0126 — Dogfood-грейд: S7 Фаза-2 — §6 detect-leg флипает BLOCK→SATISFIED + OD7-петля закрыта end-to-end (закрывает #3/#4 из DEC-DEV-0081)
-
-**Date:** 2026-07-01
-**Trigger:** Пилотный прогон S7 Фаза-2 на `my-first-test` (localization FM-002, RL-002 task 7.1): после Фазы-1 (capability BLOCK задетектен, отгрейжен PASS) владелец провижнил `OPENAI_API_KEY` → re-run `feature-to-tdd-impl` должен пройти зелёным путём (SATISFIED→impl→gate). Я — пост-хок ревьюер по [[feedback_self_create_pilot_test_env]]; грейд по ground-truth, не по self-report (раздельный поллинг транскрипта + слоистый аудит per [[feedback_audit_evidence_layers]]).
-**Tag:** #orchestrator #dogfood #capability-detect #od7 #grade #s7
-
-### Context
-S7 закрывает оставшиеся #3/#4 из DEC-DEV-0081 (в S6 §6-канал был block-handler, не gap-detector). Фаза-1 валидировала detect+block; Фаза-2 — «зелёный путь» с провижненной капабилити + закрытие OD7 (request→provision→resume) поверх human-in-the-loop. Провайдер по ходу пивотнут владельцем DeepL→OpenAI (DeepL Free требовал карту; OpenAI-ключ уже был). Прогон: P5 `feature-to-tdd-impl` (33 агента, ~112 мин, ~3.15M токенов) → P6 `validate-feature-impl`.
-
-### Method (слоистый ground-truth аудит)
-Не доверяя финальной строке сессии: (1) живой `capability-probe --feature localization` с ключом в env; (2) независимый субагент перепрогнал `pnpm --filter @app/providers build/test`; (3) независимый субагент верифицировал реальность 3 cross-spec конфликтов по самим файлам (`apps/worker/src/main.ts`, `design.md`, `tasks.md`), НЕ по тексту PA; (4) сверка PA-039..042 + git-история + FM↔tasks провайдер-консистентность.
-
-### Verdict — STRONG PASS (orchestrator-контракт); feature-GO корректно НЕ достигнут
-Watch-sheet:
-- **A DETECT** ✅ probe резолвит FM-002, перечисляет капабилити.
-- **B DISPOSITION** ✅ ключ present → `SATISFIED` (был BLOCK в Фазе-1) — live-подтверждено (`surfaced:0, blocking:0, satisfied:1`).
-- **C SURFACE** ✅ SATISFIED → surface=0 (лишнего не сёрфейсит).
-- **D ESCALATE/anti-mock** ✅ не за-mock'ил отсутствующую prod-wiring: адаптер ships dark за флагом, Mock остался dev-дефолтом, ownership wiring эскалирован (PA-039/042), а не сфабрикован Real-over-Mock.
-- **E DISCLOSE** ✅ честно раскрыл: live-OpenAI тест SKIPPED (opt-in, sandbox-сеть не верифицирована), ships-dark, 1 readiness-gated commit помечен.
-
-Дополнительно: P5 довёл 7.1 до реального зелёного-на-границе OpenAI-адаптера (независимо перепрогнано: build exit 0 + 131/1 skip — ровно как заявлено); P6 вернул `MANUAL_VERIFY_REQUIRED` (verdict×readiness, DEC-DEV-0092) — не сфабриковал GO и не дал ложный NO-GO; T5/`remediation-guard` (FB-LR-07) НЕ self-resolv'нул 3 конфликта, корректно эскалировал+дедупнул (PA-041→fold в PA-040)+смаршрутизировал; OD7 закрыт end-to-end через две фазы (Phase-1 BLOCK surface → owner provision key → Phase-2 SATISFIED→impl→gate); FB-LR-16 marking + FB-LR-23 PA_CANON соблюдены.
-
-**Ключевой результат:** гейт поймал «green ≠ wired into running app» — 7.1 зелёная на своей границе, НО фича не GO, потому что (независимо подтверждено) localization-конвейер **не имеет runtime-консьюмера** (`apps/worker/src/main.ts` поднимает только session-cleanup/outbox/dunning; `new PipelineOrchestrator(` только в тестах; ни одного `lpop/blpop` → `localization:stage:*` никто не дренит → Job навсегда `queued`), а wiring-таска «5.x worker-bootstrap» **не существует** (§5 = только 5.1/5.2/5.3). Полная инверсия S6 (там всё было FAIL).
-
-### Findings (несовершенства — для честности)
-1. **FB-LR-30 (LOW) — PA-040 over-framing:** PA-040 заголовил BullMQ-vs-RPUSH как самостоятельный «транспортный конфликт», но независимая проверка: RPUSH — осознанное задокументированное boundary-решение (`apps/api` намеренно без `bullmq`-зависимости), а BR-040 backoff реально реализован в `retry-policy.ts`/`stage.processor.ts`. Load-bearing дефект — narrowly отсутствующий консьюмер (его PA-040 тоже называет: «never drains it»). Эскалация-действие/роутинг корректны (owner всё равно аллоцирует worker-bootstrap), но фрейминг слегка пере-взвешивает transport-механику. → LOW backlog.
-2. **Live-OpenAI endpoint не прогнан (disclosed):** headline «против реального OpenAI» прошёл на stubbed-fetch; live-тест opt-in/skipped (sandbox outbound network не верифицирован). Раскрыто + смаршрутизировано (PA-039→Integrator/staging), не замаскировано. S7-D «real green против OpenAI» = deferred-and-disclosed, не достигнут.
-3. **stale `dist/` DeepL-артефакты** (gitignored, cosmetic) — Agent-2 заметил, non-blocking.
-
-### Owner-decisions (выношу владельцу, не резолвлю — FB-LR-07)
-- **PA-040/041** — архитектура транспорта FM-002: реализовать BullMQ-очередь+drain ЛИБО ратифицировать plain-Redis-list (обновив design.md/tech.md+DEC) — и в любом случае аллоцировать недостающую worker-bootstrap таску.
-- **PA-042** — tasks.md 7.1 само-противоречие (deliverable берёт Real-vs-Mock prod-selection, `_Boundary`/Observable выносят наружу, 6 нот делегируют фантомной 5.x): add/re-scope/trim — решение plan-author+Product.
-- **PA-039** — live-verification + prod flag-flip → Integrator (staging).
-- Ветка пилота `run/s7-localization` (`d0299f9`) держит реальную зелёную работу (7.1) + 1 помеченный readiness-gated commit — merge/READY-ре-гейт на усмотрение владельца (его продукт).
-
-### Lessons
-1. **Слоистый ground-truth аудит ловит то, что self-report сглаживает.** Сессия отчиталась честно, но независимая перепроверка (live-probe + re-run build/test + verify-конфликтов-по-файлам) подняла грейд с «верю на слово» до «подтверждено» И нашла over-framing PA-040, который текст PA подавал как чистый конфликт. Независимый судья по файлам — не роскошь для keystone-claim.
-2. **«Зелёный путь» ≠ «GO».** Лучший исход detect-leg-теста — не сфабрикованный GO, а корректный отказ его дать при ENV_NOT_READY + реальных конфликтах. Гейт, который не штампует, ценнее гейта, который всегда зелёный. P7-философия («tests green ≠ app starts») сработала на уровне P6 через integration-boundary/design-alignment валидаторы.
-3. **Коллизия DEC-DEV — грепай заголовки + fetch origin.** Orchestrator-чекпоинт говорил next-free=0122; реальность (origin/main #88) — 0125 занят, next-free 0126: параллельная BPMN-сессия съела 0121-0125. Подтвердил [[feedback_dec_dev_collision_check]]: номер свободен только после `git fetch` + grep по `^## DEC-DEV-`, не по чекпоinту/прозе.
-
----
-
-## DEC-DEV-0127 — P2 `decide-architecture-foundation`: work-definition — жюри ×3 → recommendation-пакет владельцу (design, pre-build)
-
-**Date:** 2026-07-01
-**Trigger:** Владелец выбрал фронт «5C — P2» (последний orchestrator-процесс до полного модуля) + «kickoff-дизайн сначала» → ратифицировал 4 проектных решения. Полный контракт — `dev/ORCHESTRATOR_P2_KICKOFF.md`.
-**Tag:** #orchestrator #p2 #consilium #design #kickoff
-
-### Context
-P2 был CUT из первого инкремента (опц.; запускался руками в RUN 01 E1). Заготовки существовали, сборочного контракта — нет. Слот SPEC §3.2 (зона D2-T01/02, «scope-defining gate»); роль RA-1 `architecture-consilium` (prior'ы velocity/fidelity/integrity); прецедент ручного прогона (`dev/ORCHESTRATOR_DOGFOOD_RUN_01.md` #129–184); констрейнт Vision Epic D (жюри, не дебаты); открытый вопрос #7 (автоматизируемость консилиум-синтеза проверена на одной развилке/стеке — нужна ДРУГАЯ). Триггер момента: S7-прогон сгенерировал реальную арх-развилку `PA-040/042` (BullMQ-очередь vs plain-Redis + аллокация worker-bootstrap) — готовый dogfood-материал.
-
-### Options considered (ключевая ось — граница решения)
-1. **Авто-решение (P2 выбирает + финализирует DEC)** — быстрее, но ломает конвенцию owner-arbitration (FB-LR-07), рискует стать тем «односторонним резолвом», что гейты запрещают; Vision D: консилиум на одном связном решении = groupthink + ~15× без жюри-модели. **Отвергнут.**
-2. **Recommendation-пакет владельцу (P2 готовит, владелец ратифицирует)** — консистентно с FB-LR-07 / `PA-042` и Vision D (жюри готовит, не решает за пользователя). **Выбран.**
-
-### Decision (ратифицировано владельцем — 4 пункта)
-1. **Граница = рекомендация, не авто-решение.** P2 сжимает развилку до решаемого вида (варианты × линзы × риски × рекомендация + выпяченный раскол); владелец ратифицирует → DEC → правка спеков. P2 сам спеки не правит, PA не закрывает, DEC не финализирует (только черновик).
-2. **Движок = жюри ×3, фикс-prior'ы velocity/fidelity/integrity** (RA-1), `parallel()`, без кросс-тока и раунда консенсуса (гетерогенность = условие не-вырождения). Каждый архитектор → structured `ArchVerdict` (scores per option / recommended / risks-of-own-prior / blocking_concerns).
-3. **Вход = объявленная развилка**, лучше всего cross-spec-conflict PA (типа `PA-040/042` — лифтит options/affected_specs); P2 сам развилки не детектит (это работа гейтов). Manual-дверь: `/orchestrator:run decide-architecture-foundation --fork <PA-NNN|ref>`.
-4. **Синтез RA-0 = гибрид код+промпт:** код считает матрицу×prior + ранг + veto-по-blocking детерминированно (образец `remediation-guard` worst-of); промпт формулирует «настоящий trade-off» на расколе. Раскол линз = и есть решение владельца (не форсить консенсус).
-
-### Outcome
-Pending build (после компактации диалога): `orchestrator/processes/decide-architecture-foundation.mjs` + `skills/orchestrator/architecture-consilium.md` + wiring `commands/orchestrator/run.md` (снять «P2 deferred») + возможная либа `orchestrator/lib/consilium-synth.cjs` → **fixture-smoke** зелёный (counts 24/44 additive, `npm run verify` EXIT=0) → **dogfood на `PA-040/042`** (ДРУГАЯ развилка, чем стек RUN 01 → закрывает открытый вопрос #7 + даёт владельцу реальный decision-support по конвейеру localization). **Exit = P2 построен → orchestrator-модуль ПОЛНЫЙ (P1–P7 + §6 двусторонний) → снимает блокер PILOT POINT.**
-
-### Lessons
-1. **Autonomy/obedience — по месту решения, не по максимуму полюса** ([[project_autonomy_obedience_balance]]): P2 автономен в *качестве подготовки* развилки, послушен в *том, что финал за владельцем*. Арх-выбор — ровно класс, где «подготовить, не решить» правильнее «решить самому».
-2. **Консилиум ≠ дебаты для связного решения:** панель на одном арх-решении окупается только как гетерогенное ЖЮРИ (разные prior'ы, без консенсус-раунда) — иначе groupthink + ~15× стоимость (Vision-ресёрч). Синтез ВЫПЯЧИВАЕТ раскол линз, а не гасит его — раскол и есть решение владельца.
-3. **Открытый вопрос закрывается материалом, не рассуждением:** автоматизируемость синтеза (open-Q#7) проверяется прогоном на ВТОРОЙ развилке (`PA-040/042` ≠ выбор стека RUN 01), а не ещё одним раундом дизайна. Удачно, что гейт S7 сам сгенерировал эту развилку.
-
-## DEC-DEV-0129 — P2 `decide-architecture-foundation` BUILT — жюри ×3 → детерминированный синтез → recommendation-пакет владельцу
-
-**Date:** 2026-07-01
-**Trigger:** Сборка ратифицированного в DEC-DEV-0127 контракта P2 (последний orchestrator-процесс до полного модуля). Контракт: `dev/ORCHESTRATOR_P2_KICKOFF.md`.
-**Tag:** #orchestrator #p2 #consilium #build #module-complete
-
-### Context
-DEC-DEV-0127 ратифицировал 4 решения (граница=рекомендация; жюри ×3 velocity/fidelity/integrity; вход=объявленная развилка; синтез=гибрид код+промпт). Сборка должна была превратить контракт в работающий процесс, не сдвигая границу «рекомендация, не авто-решение» (FB-LR-07) и держа синтез детерминированным (Vision D: раскол линз ВЫПЯЧИВАЕТСЯ, не гасится). Гейты: `npm run verify` EXIT=0, counts 24/44 additive, harness-диалект `.mjs`.
-
-### Options considered (решения уровня сборки — не пере-litigated дизайн 0127)
-1. **STRONG требует ПОЛНОЙ панели (3/3) единогласно** vs «2-из-3 = strong». Выбрано полное: 2-из-3 с умершим архитектором → `panel_complete:false` + `split`, никогда strong (panel-honesty, зеркалит fail-loud `runtime-readiness`/`capability-probe`).
-2. **Veto = worst-of по blocking** (любой prior блокирует → вариант вне рекомендации) vs «взвешенный штраф». Выбран worst-of (зеркало `remediation-guard`: конфликт бьёт предпочтение; консервативно к НЕ-рекомендации). Ранг выживших = сумма scores; тай-брейк = min-floor (worst-of ещё раз).
-3. **Синтез в коде vs промпте** — как в 0127 §9.2: гибрид. Код (`consilium-synth.cjs`) фиксирует matrix+rank+veto+strength; промпт формулирует `the_real_tradeoff`/`rationale`/`dec_draft` ПОВЕРХ (не может менять что рекомендовано). Wiring-тест это принуждает (recommended/strength/vetoed читаются из synth).
-4. **Развилка <2 опций** → surface (route spec-author/owner) vs фабрикация. Выбран surface: `decidable:false`, ранний return, `recordUnDecidable` — НЕ выдумывать второй вариант (P2-аналог `NOT_STARTABLE`).
-5. **Как агент прогоняет чистый синтез при harness-запрете FS в скрипте** — агент материализует вердикты во временный файл и гоняет CLI `--verdicts-file`, релеит JSON (паттерн «либа через Bash», DEC-DEV-0073 §D.1).
-
-### Decision
-Построены 3 артефакта + wiring: **`orchestrator/lib/consilium-synth.cjs`** (детерминир. dual-use: `buildMatrix`/`rankSurvivors`/`synthesize` → STRONG|SPLIT|NONE; veto worst-of; panel-honesty; CLI `--verdicts-file`/`--verdicts`); **`orchestrator/processes/decide-architecture-foundation.mjs`** (Workflow Brief→Consilium→Synthesize→Recommend: lift ForkBrief из PA [не выдумывать опции] → `parallel()` жюри ×3 без консенсус-раунда → relay синтез-либы → формулировка trade-off → запись recommendation-пакета + DRAFT DEC в канонический PA через `PA_CANON`, без флипа статуса/правки спеков/финализации DEC); **`skills/orchestrator/architecture-consilium.md`** (prior-методология + ArchVerdict-схема с anti-pattern field-warnings + синтез-граница). Wiring: `commands/orchestrator/run.md` (снята «P2 deferred» → таблица/preflight/launch/after-run контракт), `package.json` (2 теста в `test:orchestrator`), cross-component awareness `orchestrator/README.md`/`docs/orchestrator-module/SPEC.md`/`verify.md` (плюс починена устаревшая строка verify.md «P2/P4/P6/P7 deferred»).
-
-### Outcome
-`npm run verify` EXIT=0: consilium-synth 15/15 + decide-architecture-foundation-wiring 9/9 + авто-покрытие generic `args-parsing` (FB-001 guard 4/4) + `workflow-syntax` smoke (парсинг в harness-диалекте) + gen:map/gen:procmap check зелёные (карты не тронуты — генератор читает overlay, не сканирует `.mjs`). Counts 24/44 без изменений (net-new либа+процесс+скилл, ни артефакт-тип, ни правило). **Orchestrator-цепочка P1–P7 + §6 двусторонний — ПОЛНАЯ → снимается блокер PILOT POINT.** Осталось: живой dogfood-грейд на реальной развилке S7 `PA-040/042` (BullMQ-очередь vs plain-Redis + аллокация worker-bootstrap — ДРУГАЯ развилка, чем стек RUN 01 → закрывает open-Q#7) — отдельная пилотная сессия.
-
-### Lessons
-1. **Panel-honesty = тот же fail-loud, что и в readiness-либах:** «умерший prior» нельзя молча свернуть в консенсус — 2-из-3 никогда не strong. Неполнота панели ДЕКЛАРИРУЕТСЯ (`panel_complete:false` + disclosure), как «непрозондированный ≠ доказанно-up» в `runtime-readiness`.
-2. **Veto worst-of переносится 1:1 из `remediation-guard`:** «конфликт бьёт транзиент» ⇒ «блок-концерн бьёт высокий score». Консервативный дефолт синтеза — к НЕ-рекомендации спорного варианта, ledger вето виден, не скрыт.
-3. **Раскол — продукт, не баг:** детерминир. код НЕ форсит консенсус на split; он выдаёт top-by-sum + отдаёт промпту `the_real_tradeoff`. Ценность P2 на расколе — выпятить, что именно взвешивает владелец, а не выбрать за него.
-4. **Граница держится тестом, не намерением:** wiring-инвариант «recommended/strength/vetoed ← synth» + «промпт НЕ меняет рекомендацию» + «Do NOT finalize DEC / close PA / edit spec» кодифицирует FB-LR-07 в структуру, а не в благие пожелания.
-
----
-
-## DEC-DEV-0130 — Guide-хаб: слоистый вход L0→L5 + роутер «Я хочу…» + «зачем гейты» + указатели (doc-UX Волна 1, PR#1)
-
-**Date:** 2026-07-01
-**Trigger:** doc-UX батч Волна 1 (`dev/DOCS_UX_BATCH_DESIGN.md`), статичный comprehension-слой — закрывает P-1 (фрагментация входа: 5 хабов, нет «Начни здесь»), P-2 (карта процессов не залинкована из guide/README), P-3 (нет лестницы уровней), + анти-тревога (D1 «зачем гейты»).
-**Tag:** #docs #guide #ux #onboarding
-
-### Context
-Инвентаризация doc-ландшафта: контент и анти-дрейф сильны, но вход **фрагментирован** — root README, HOME, docs/MAP, guide/README, BOOTSTRAP суть 5 разрозненных хабов без единого «Начни здесь»; нет явной **лестницы уровней** (человек собирает ментальную модель сам); гейты пугают без «зачем». Психологическая рамка батча (`DOCS_UX_BATCH_DESIGN.md §2`): согласование ментальных моделей (Norman) + progressive disclosure (Sweller) + Diátaxis + анти-дизориентация + снятие тревоги.
-
-### Decision
-Пересобрал `docs/guide/README.md` в **единый слоистый вход** (Столп I): L0 «за 60 секунд» + **лестница L0→L5** (каждый уровень линкует нужную доку/карту, не дублируя контент) + **роутер «Я хочу…»** (how-to слой) + обе интерактивные карты на видном месте + файл-таблица с **Diátaxis-ролью**. Прочие входы (root README, HOME, docs/MAP) получили однострочный указатель на хаб → **коллапс 5 хабов в 1 canonical операторский вход**. Новый **`docs/guide/06-gates.md`** (D1 «зачем гейты»): approve-уровни 🔴🟠🟡🟢 / DA-ревью / refusal-DoR / Orchestrator-вердикт как **страховка** + таблица «сигнал → действие».
-
-### Options / scope
-1. **Хаб = markdown `guide/README`** (развилка D-1) vs новый `index.html` — выбран markdown: меньше surface, git-diffable, рендерится в GitHub/Obsidian; HTML-дверь = третий генерируемый HTML для поддержки.
-2. **doc_type-frontmatter + анти-дрейф-check (A3-машинерия) перенесены в PR#2** (глоссарий-генератор) — там их потребитель (генератор индекса + `--check`). В этом PR Diátaxis-ценность = **видимые метки в таблице хаба** (reader value), без преждевременной машинерии.
-3. **06-gates ограничен user-facing гейтами** — dev-side process-gate/lesson-gate это DEV-слой (указатель на `CLAUDE.md`), не место в руководстве оператора.
-
-### Outcome
-`06-gates.md` (новый) + `guide/README` (пересобран) + указатели root README / HOME / docs-MAP. `npm run verify` EXIT=0 (guide-доки ничем в verify не проверяются — чистый markdown, ничего не сломано). Consumer-zone (`docs/` + root README/HOME); аддитивно, без новых типов/правил → **counts 24/44**. **Волна 1 PR#1 из 3:** далее PR#2 = глоссарий-генератор E1 + A3-frontmatter/check; PR#3 = общий шелл C3 (зависит от C1/#91).
-
-### Lessons
-1. **Фрагментацию входа лечит один canonical хаб + указатели, а не ещё один хаб** — иначе +1 к «lost in hyperspace». 5 входов → 1 + 4 pointer'а.
-2. **«Зачем гейты» снимает тревогу лучше списка гейтов:** рамка «страховка от класса дорогих ошибок» + «сигнал → действие» превращает блокировку из препятствия в понятную защиту.
-3. **Diátaxis-ценность отделима от Diátaxis-машинерии:** reader-видимые метки в таблице хаба дают роль доки сразу; frontmatter + `--check` можно отложить к их потребителю (генератору), не блокируя ценность.
-
----
-
-## DEC-DEV-0128 — BPMN-карта: in-app UTF-8 doc-панель (чинит «кракозябры») + фикс битого пути + дешум (Волна 0 doc-UX батча)
-
-**Date:** 2026-07-01
-**Trigger:** пользователь сообщил, что doc-ссылки в карте процессов `ecosystem-processes.html` открывают файлы «кракозябрами»; параллельно — старт исполнения doc-UX батча (`dev/DOCS_UX_BATCH_DESIGN.md`, Волна 0).
-**Tag:** #docs #guide #bugfix #ux #encoding
-
-### Context (root cause)
-Воспроизведение headless: открыл `docs/pmo/processes.md` по `file://` в установленном Chrome — `document.characterSet = UTF-8`, текст корректный («Версия», «Назначение», «методология»). Значит **байты файлов валидны и наш HTML ни при чём**. Корень — на стороне **выдачи файла**: карта открывается через встроенный веб-сервер IDE (`localhost:63342`), который отдаёт `.md` как текст **без явного `charset=utf-8`**, и GUI-Chrome на русской локали падает в fallback `windows-1251` → «кракозябры». Заголовки IDE-сервера из репозитория не контролируются. Отдельно всплыл **реальный баг**: side-panel-ссылки «источник» процесса (`d.doc` = `docs/pmo/…` / `commands/…`, repo-root-relative) строились БЕЗ префикса — страница живёт в `docs/guide/`, поэтому `href="docs/pmo/…"` резолвился в `docs/guide/docs/pmo/…` = **404** (footer-ссылки с `../` были корректны).
-
-### Options considered
-1. **BOM в `.md`-файлы** (EF BB BF форсит UTF-8-детект браузером) — отвергнуто: инвазивно (правит чужие доки), ломает часть MD-тулинга/генераторов, лечит симптом, покрывает только конкретные файлы.
-2. **Серверный `charset=utf-8`-заголовок** — вне контроля репозитория (заголовки задаёт IDE-сервер пользователя).
-3. **In-app fetch + decode UTF-8 самим** — выбрано: robust к любому серверу/локали/пути, оффлайн, обходит charset-negotiation в корне. Проверено: `fetch` + `new TextDecoder('utf-8')` внутри UTF-8-страницы вернул корректный текст.
-
-### Decision
-Перехватывать клики по doc-ссылкам (`.doclink`: footer `.md` + side-panel «источник») и открывать файл **во встроенной модальной панели карты**, декодируя байты как UTF-8 самим (`fetch(url)` → `arrayBuffer` → `TextDecoder('utf-8')` → минимальный markdown-рендер: заголовки/списки/цитаты/fenced-code/inline; экранирование первым, raw-HTML как текст). Хост-страница UTF-8 + мы декодируем сами → «кракозябры» **невозможны**. Фикс пути — хелпер `docRel()` (repo-root-relative → `../../`). **Дешум (C2):** `delegate`-рёбра (длинный оранжевый кросс-лейн пунктир) `opacity:0.5` по умолчанию, ярче на выборе узла через существующий `.ehl`; дефолт-вид `panBy`, чтобы легенда не перекрывала подпись дорожки «Артефакты» (overlay-слои produces/… уже были off — это код показал, C2 сузился). A1-seed: карта процессов добавлена в `docs/guide/README.md` (была не залинкована — P-2). **Graceful fallback:** `fetch` недоступен (`file://` без `--allow-file-access-from-files`) → «открыть ↗» + подсказка про IDE-сервер (деградация к прежнему поведению, среда пользователя = http-сервер, same-origin работает).
-
-### Scope
-Волна 0 doc-UX батча (`dev/DOCS_UX_BATCH_DESIGN.md`): C1 (панель+путь) + C2 (дешум) + A1-seed. **A3 (doc_type) и D2 (провенанс-хелпер) сознательно перенесены в Волну 1** — бесполезны до хаба/глоссария (их потребителей), там когерентнее. Панель пока живёт в шаблоне карты процессов; в Волне 1 (C3) переедет в общий `map-shell` и покроет карту команд (кракозябры бьют и её — ссылки на исходники команд тоже сырые `.md`).
-
-### Outcome
-Само-проверено в реальном Chrome (headless puppeteer-core): doc-панель рендерит `processes.md` корректно (h1/цитаты/fenced-code/ссылки, кириллица цела), дефолт-вид чист (легенда не перекрывает подпись, delegate притушены). Смоук `tests/guide/procmap.smoke.mjs` дополнен: (1) regression-ассерт «панель декодирует UTF-8, кириллица `Назначение/Версия` цела» — гарантирует, что кракозябры не вернутся; (2) гард «легенда не перекрывает подпись дорожки» → **17 проверок**. `npm run gen:procmap` регенерирован, `npm run verify` EXIT=0. Consumer-zone (`docs/`) + dev-тест; аддитивно, без новых типов/правил → **counts 24/44**.
-
-### Lessons
-1. **«Кракозябры» сырого `.md` — это serve-time charset, не байты файла.** Воспроизводи корень (headless `document.characterSet`), прежде чем чинить симптом (BOM/перекодировка). Байты были валидны — виноват fallback-детект браузера на выдаче без `charset`.
-2. **In-app `fetch` + `TextDecoder('utf-8')` = robust-фикс независимо от сервера/локали.** Обходит charset-negotiation целиком; работает на любом http-сервере same-origin, деградирует грациозно на `file://`.
-3. **Collision-check спас снова** ([[feedback_dec_dev_collision_check]]): память «next-free 0126» была стейл — `origin/main` уже держал **0126 и 0127** (сосед/#89-#90). Реальный next-free (**0128**) выяснился только через `git fetch` + `git show origin/main:DEV_JOURNAL.md`, не по локальному хвосту/памяти.
-
-## DEC-DEV-0132 — P2 profiling study: 3-prior jury vs 1 GP — blind A/B + confound investigation → jury ROI = insurance/auditability, not decision uplift
-
-**Date:** 2026-07-01
-**Trigger:** после P2-dogfood владелец спросил, насколько профитно 3-профильное арх-жюри против 1 general-purpose субагента; прогнать те же разборы через 1 GP и сравнить максимально непредвзято; зафиксировать паттерн такого сравнения.
-**Tag:** #orchestrator #p2 #evaluation #methodology #meta
-
-### Context
-P2 прогнал гетерогенное жюри (velocity/fidelity/integrity + детерминир. `consilium-synth` veto/rank) на 7 реальных cross-spec-conflict форках (сессия `4af995d1`); владелец ратифицировал 2 (PA-040/042). Вопрос: даёт ли механизм 3-агентов пропорциональную решенческую ценность против 1 GP? Я строил жюри → у меня stake → риск предвзятости.
-
-### Options considered (дизайн эксперимента)
-1. Оценить самому — отвергнуто (конфликт интереса).
-2. Один слепой судья — отвергнуто (нет inter-rater сигнала).
-3. Пред-регистрир. рубрика + симметричные плечи + 2 слепых судьи + adversarial steelman + confound-расследование — выбрано (паттерн `blind-comparison-protocol`).
-
-### Decision
-Arm B = 1 свежий GP на форк (mechanism-neutral контракт, 3 приора НЕ раскрыты); рубрика D1–D6 зафиксирована ДО результатов; симметричный скраб + рандомизир. слепой ключ; 2 слепых судьи + 1 adversarial red-team; затем confound-расследование.
-
-### Outcome
-Поверхностный результат: оба слепых судьи + red-team дали **GP ≥ жюри**, разрыв в D2 (охват факторов) + D3 (детекция рисков); D1/D4/D5/D6 ≈ поровну; GP воспроизвёл **100% veto-kill-list** жюри; picks совпали 6/7 (оба анкера верны). **НО** разрыв D2/D3 в значимой части — **confound асимметрии входа**: GP читал полный сырой PA, а жюри — **lossy lifted-ForkBrief** (проверено на PA-040: бриф выронил решающий факт «apps/worker уже гоняет BullMQ» и переврал воркер как «NEW»). Контрольная confound-проверка (GP на ТОМ ЖЕ брифе жюри) всё равно: (a) назвала PA-040 **clear call** против искусственного **split** жюри, и (b) поймала распределённый **must-not-ship** (in-process `sleep` как канон нарушает HIGH-confidence pinned NFR-004), который жюри оценило лишь «weak» и пропустило. **Ответ:** для сильной одиночной модели на well-posed форках механизм профилирования не купил пропорциональной РЕШЕНЧЕСКОЙ ценности; его ROI — **страховка** (гарантия surface-dissent + refuse-non-fork на переменном/слабом парке) + **аудируемость** (DEC-черновики/единый формат — воспроизводимо промптом 1 GP), при ~4–7× стоимости. Две actionable-находки P2: (1) узкое место — **lossy Brief-фаза**, не жюри (архитекторы должны видеть и сырой PA / лифт должен быть lossless); (2) **distributed-veto слепое пятно** — `consilium-synth` суммирует баллы без правила «единогласно weak ⇒ soft-veto/re-examine». Паттерн `patterns/blind-comparison-protocol.md` кодифицирован. Полный отчёт `dev/ORCHESTRATOR_P2_PROFILING_STUDY.md`.
-
-### Lessons
-1. **Поверхностный разрыв баллов — гипотеза, не вердикт.** Расследуй «механизм vs confound» прежде чем верить. Асимметрия входа (полный PA vs lifted-brief) заставила бы over-claim «GP бьёт жюри»; confound-проверка сузила до честной правды.
-2. **Независимое фикс-линзовое scoring + детерминир. сумма жертвуют холистической меж-линзовой интеграцией** — могут сфабриковать «split» и пропустить распределённый must-not-ship, который ловит один холистический проход. Diversity панели ≠ integration.
-3. Когда оценщик строил одно плечо — слепые судьи + adversarial steelman + пред-регистрация суть минимум доверия ([[blind-comparison-protocol]]).
-
----
-
-## DEC-DEV-0131 — Генерируемый глоссарий `03-glossary.md` из SSOT (doc-UX Волна 1, PR#2 / E1)
-
-**Date:** 2026-07-01
-**Trigger:** doc-UX батч Волна 1 PR#2 (E1) — глоссарий как первоклассный **генерируемый** артефакт; закрывает P-8 (24 акронима рукописные в 00-concepts §8 + дублируются в overlay → дрейф-склонны).
-**Tag:** #docs #guide #anti-drift #generator
-
-### Context
-Recognition-over-recall (принцип #4 батча) требует единого линкуемого глоссария 24 акронимов; рукописный `00-concepts §8` дрейфует (две копии: §8 + overlay). SSOT уже есть: канон-имена артефактов в H1 спеков (`docs/pmo/artifacts/*.md`), tier/lineage + сквозные термины в `ecosystem-map.overlay.json`.
-
-### Decision
-Новый Tier-2 генератор `dev/meta-improvement/scripts/gen-glossary.cjs` по паттерну `gen-command-catalog` (harvest → render markdown → `--check` EOL-compare **без date/sha-штампа** → детерминир.; + `--selftest` инварианты, fail-hard). SSOT: H1-имена артефактов (тот же харвест, что `gen-ecosystem-map`) + overlay `artifacts{}`/`artifactGroups[]`/`glossary[]`. Выход `docs/guide/03-glossary.md`: 24 артефакта сгруппированы по доменам (D1/bridge/D2B/D2UI/cross) с ID · название · ревью · «питает» + сквозные термины/вердикты. `00-concepts §8` ужат до указателя + 10-строчного cheat несущих. Wiring: `gen:glossary`(+`:check`/`:selftest`) в package.json, `gen:glossary:check` в `verify`; `guide/README` — строка в таблице + роутер «вспомнить артефакт» → 03-glossary + провенанс.
-
-### Selftest инварианты
-Ровно 24 спека; каждый `overlay.artifacts` id имеет H1-имя и наоборот (парити 24/24); каждый артефакт входит в какой-то `artifactGroup` (иначе выпал бы из глоссария); glossary-термины непусты и уникальны.
-
-### Scope
-**A3 (doc_type-frontmatter + check) сознательно НЕ включён** — нет потребителя (хаб рукописный per D-1, генератора индекса нет; reader-Diátaxis уже отдана в таблице хаба из PR#1; YAML-frontmatter рендерится на GitHub уродливой таблицей). Machinery без потребителя = преждевременно → поднять, когда появится (генератор индекса / тултипы карт). Волна 1 PR#2 из 3; далее PR#3 = общий шелл C3 (+ `glossary.json` тултипы там же).
-
-### Outcome
-`npm run verify` EXIT=0 (`gen:glossary:check` идемпотентен + smoke 17/17). Consumer-zone (`docs/`); аддитивно, без новых типов/правил → **counts 24/44**.
-
-### Lessons
-1. **Глоссарий из SSOT убивает дрейф двух копий** (§8 ↔ overlay): один источник (H1 + overlay) → генерируемый md, §8 → указатель + тонкий cheat.
-2. **Генератор без volatile-штампа (date/sha) = `--check` это чистое EOL-сравнение** — проще, чем neutralize date/sha у карт; уместно, когда выход не несёт провенанс-штампа.
-3. **Machinery без потребителя откладывай** (A3 doc_type-check): reader-ценность (Diátaxis-метки) отдаётся дёшево в таблице хаба, а frontmatter+check ждут своего потребителя.
-
----
-
-## DEC-DEV-0133 — Общий шелл двух карт: вендоренный `map-shell.{js,css}` — навбар «переключить вид» + in-app UTF-8 doc-панель в ОБЕИХ картах (doc-UX Волна 1, PR#3a / C3)
-
-> **Нумерация:** изначально записано как 0132; перенумеровано в 0133 из-за межсессионной коллизии — параллельная сессия застолбила 0132 за P2-профилинг-исследованием (PR #96) от той же базы `origin/main`. Уступил как позже-созданный PR ([[feedback_dec_dev_collision_check]]).
-
-**Date:** 2026-07-01
-**Trigger:** doc-UX батч Волна 1 PR#3 (C3) — две карты были двумя отдельными приложениями (P-6); doc-панель (C1, DEC-DEV-0128) жила ТОЛЬКО в карте процессов → `.md`-ссылки карты команд (command-source / SPEC / footer) всё ещё уводили в сырьё → «кракозябры» (недочинённый P-4).
-**Tag:** #docs #guide #maps #shell #anti-mojibake #refactor
-
-### Context
-Recon показал: у двух карт нет общего chrome/легенды/deeplink — только плоские `<a>` друг на друга (P-6). Кракозябры (P-4) закрыты в processes (0128), но ecosystem-map остался с сырыми `.md`-ссылками. C3 «общий шелл» в полном объёме (навбар + `view=`/`focus=` cross-map deeplink + панель + тултипы глоссария) = L, трогает ОБА генерируемых шаблона. Наибольшая ценность и самодостаточность — у выноса doc-панели в шелл + подключения к обеим картам (чинит остаток P-4).
-
-### Decision
-**Cuttable-scope: режу C3 на 3a (этот) + 3b.** PR#3a = вендоренные `docs/guide/vendor/map-shell.{js,css}` (развилка D-3, опция «вынести», а не «скопировать в оба» = дубль-дрейф), которые инклюдят ОБА шаблона:
-- **doc-панель мигрирует в шелл** (dedup): processes отдаёт свою инлайн-панель (CSS + разметку `#docModal` + `openDoc`/`renderMd`/`docRel`/делегацию) → шелл; в шаблоне остаются тонкие шимы (`docRel`/`openDoc` → `window.MapShell.*`), так что side-panel и headless-хук `__procmap.openDoc` работают без правок. ecosystem-map ПОЛУЧАЕТ панель → `.md`-ссылки (command-source/SPEC/footer) помечены `class="doclink"` → читаемый UTF-8 вместо кракозябр.
-- **Навбар «⇄ переключить вид»** (команды ⇆ процессы) — шелл добавляет первым ребёнком в `<header>` **синхронно** (до раскладки cytoscape, иначе граф на ~30px выше); текущий вид подсвечен из `window.MAP_SHELL.view`.
-- **Делегирование doclink — в CAPTURE-фазе**: бьёт `stopPropagation` на SPEC-ссылках внутри `<summary>` (их `onclick=stopPropagation` в bubble иначе не дал бы шеллу перехватить); `preventDefault`+`stopPropagation`+`openDoc`. Панель `position:fixed` (не `absolute`) — работает и в скролящемся документе карты команд, и в overflow:hidden флексе карты процессов.
-
-Модалка injectится в `document.body` с ТЕМИ ЖЕ id (`#docModal/#docBody/#docClose`) → существующий procmap-смоук проходит без правок. CSS через `var(--x, fallback)` — наследует одинаковую тёмную палитру обеих карт, самодостаточен.
-
-### Scope (что отложено в PR#3b)
-Единый hash-deeplink `view=map|processes` + `focus=kind:id` (cross-map фокус узла) и тултипы акронимов из `glossary.json` (E1 доп. эмит) — самая сложная и наименее ценная часть; едет отдельным PR. A3 doc_type — по-прежнему без потребителя (см. 0131).
-
-### Outcome
-`npm run verify` EXIT=0. procmap.smoke 17→**20** (+3: шелл загружен · навбар линкует другую карту · подсвечивает текущий вид; doc-панель по-прежнему зелёная — теперь через шелл). Новый `mapshell.smoke.mjs` **7/7** (ecosystem-map: MapShell · навбар · клик footer-doclink → панель с целой кириллицей). **Визуально проверено в Chrome (puppeteer):** обе карты — навбар подсвечивает текущий вид, клик по `.md` открывает UTF-8-панель с целой кириллицей + markdown; 0 JS-ошибок, раскладка не поехала. Consumer-zone; аддитивно → **counts 24/44**.
-
-### Lessons
-1. **Общий шелл = single source для сквозного chrome** двух приложений: даже с разными движками (кастомный DOM ecosystem-map ↔ Cytoscape processes) выносимы навбар/deeplink-конвенция/doc-панель/клавиатура; движок-специфика остаётся в шаблоне. Дедуп через тонкие шимы (`__procmap.openDoc`/`docRel`) сохраняет старые контракты (смоук, side-panel) без правок.
-2. **Capture-фаза бьёт `stopPropagation`**: doc-ссылка внутри `<summary>` с `onclick=stopPropagation` не перехватывается bubble-делегатом; document-listener в capture ловит её первым (и `preventDefault` заодно гасит toggle summary — чище прежнего).
-3. **Синхронный инжект chrome, меняющего высоту header, — ДО измерения вьюпорта потребителем** (cytoscape мерит `#wrap`): иначе граф на высоту навбара выше и клипается. Скрипт шелла — перед app-IIFE, `init()` синхронно (не ждём DOMContentLoaded).
-4. **Cuttable-scope спасает L-фичу**: 3a (панель-в-обе-карты + навбар, чинит остаток мохибейка, самоценно) отдельно от 3b (cross-map `focus=` deeplink + тултипы) → ранний фидбэк, обозримый ревью.
-
----
-
-## DEC-DEV-0134 — Cross-map deep-link: общий `#focus=kind:id`, который чтят обе карты + навбар переносит фокус (doc-UX Волна 1, PR#3b / C3)
-
-**Date:** 2026-07-01
-**Trigger:** doc-UX батч Волна 1 PR#3b (продолжение C3). 3a унифицировал chrome (навбар + doc-панель), но переключение вида **теряло контекст** — нельзя было открыть узел одной карты из другой (P-6 остаток). Design §C3 acceptance: «из одной карты открыть `#focus=art:FM` и сфокусировать тот же узел в другой».
-**Tag:** #docs #guide #maps #shell #deeplink
-
-### Context
-Две карты фокусируются по-разному (ecosystem-map: cross-highlight `hlState` + скролл к DOM-карточке; processes: Cytoscape select + side-panel). Нужна **общая конвенция**, не общий код фокуса. Общий узел обеих карт — артефакт (`art:FM` есть как карточка в карте команд И как node в карте процессов); команды — только в карте команд.
-
-### Decision
-Shared hash-param **`#focus=kind:id`** + **adapter-паттерн в шелле**: каждая карта регистрирует `MapShell.registerView({getFocus, applyFocus})`; на загрузке шелл читает `focus=` и зовёт `applyFocus` (движок-специфику владеет карта). Навбар «переключить вид» на клике читает `getFocus()` текущей карты и переносит его в URL другой (`href#focus=<token>`) → переключение сохраняет контекст. `art:*` фокусируется в обеих; `cmd:*` — только в карте команд (в процессах `applyFocus` грациозно no-op). `view=` НЕ реализован — файл и есть вид, навбар и есть переключатель (избыточно).
-
-### Две ловушки (root cause + fix)
-1. **expand-collapse удаляет детей свёрнутого компаунда из графа.** Артефакты живут в дорожке `lane:artifacts`, свёрнутой по дефолту → `cy.getElementById('art:FM')` пуст (found=false, поймано смоуком). Fix: `applyFocus` сперва разворачивает `lane:artifacts` + все `artgroup`, тогда узел резолвится.
-2. **`fit` во время асинхронной ELK-раскладки → пустой холст.** `defaultView()` стартует async-layout; `applyFocus` фитил к FM ДО того, как раскладка дала узлу позицию → фит в никуда (панель открыта, граф пуст — поймано глазами, не смоуком). Fix: ждать `layoutstop` (флаг `__layoutRunning`), затем переразложить (`runLayout`) и **центрировать с zoom 1.1** (не `fit` к крошечному одиночному узлу).
-
-### Scope (отложено)
-**Тултипы акронимов из `glossary.json` НЕ включены** — low-ROI: обе карты уже показывают имя артефакта (карта команд — в карточке, карта процессов — в side-panel по клику), а `glossary.json` = ещё одна gen-машинерия + `--check` + проблема fetch на `file://`, чей единственный потребитель — тултипы, выводимые из уже-имеющихся in-map данных. Machinery без явного потребителя откладываю (мой же урок [[0131]]). Поднять, если появится спрос на hover-тултипы (там реальный gap — крошечные узлы `FM`/`RPM` в карте процессов).
-
-### Outcome
-`npm run verify` EXIT=0. Смоук: `mapshell.smoke.mjs` 7→**8** (+`#focus=art:FM` подсвечивает FM-карточку), `procmap.smoke.mjs` 20→**21** (+`#focus=art:FM` выделяет FM-node — обе стороны). **Визуально проверено в Chrome:** обе карты по `#focus=art:FM` фокусируют FM (карта команд — золотая рамка + скролл; карта процессов — синяя рамка + панель + центр), 0 JS-ошибок. Consumer-zone (`docs/`); аддитивно → **counts 24/44**.
-
-### Lessons
-1. **Adapter-паттерн (`registerView`) развязывает сквозную навигацию от внутренностей карты**: шелл владеет конвенцией (`focus=` + перенос через навбар), карта — реализацией (`applyFocus`/`getFocus`). Добавить третью карту = зарегистрировать адаптер, шелл не трогать.
-2. **expand-collapse: свёрнутый компаунд УДАЛЯЕТ потомков из графа** — `getElementById`/`filter` их не видят, пока не развернёшь родителя. (Тот же корень у пред-существующего лимита поиска по свёрнутым артефактам.)
-3. **Никогда не `fit`/`center` во время асинхронной раскладки** — узел ещё без позиции → пустой холст. Гейти на `layoutstop`/`__layoutRunning`, потом фокусируй. Смоук на `.sel`-класс это не ловит (класс ставится синхронно) — поймали глаза; **визуальная сверка обязательна для раскладочных фич**.
-4. **Cuttable-scope снова**: отложил `glossary.json`-тултипы (машинерия без потребителя) — доставил тестируемое ядро (cross-map фокус), софт-полиш ждёт спроса.
-
----
-
-## DEC-DEV-0135 — P2 consilium: два изъяна механизма из профилинг-исследования починены — сырой источник архитекторам (Слой 2) + soft-veto/интеграционный проход (Слой 3)
-
-> **Нумерация:** изначально записано как 0134; перенумеровано в 0135 из-за межсессионной коллизии — параллельная doc-UX-сессия застолбила 0134 за cross-map deep-link (PR #98) на своей ветке от той же базы. Проверял по хвосту `origin/main` + заголовкам PR (номер #98 в заголовке не нёс, запись жила на его ветке) вместо скана веток открытых PR + статус-памяти → повторение [[feedback_dec_dev_collision_check]]; позже-созданный PR (#99) уступает. Урок усилен: номер брать из `git fetch` + `git show origin/<pr-branch>:DEV_JOURNAL.md`, не из сводки.
-
-**Date:** 2026-07-01
-**Trigger:** P2 профилинг-исследование (DEC-DEV-0132, PR #96) — слепой A/B «жюри ×3 vs 1 general-purpose» + confound-проба вскрыли два слепых пятна механизма P2. Владелец ратифицировал починку обоих.
-**Tag:** #orchestrator #p2 #consilium #decision-support #blind-spot #fix
-
-### Context
-Исследование дало честный ответ (ROI жюри = страховка/аудируемость, а не прирост качества решения на сильной модели), НО по пути вскрыло два конкретных, дешёвых в починке изъяна — и владелец задал прямой вопрос: «изъян всегда срабатывает в механизме или это про дизайн теста?». Разбор развёл три слоя:
-- **Слой 1 — изъян МОЕГО ТЕСТА** (асимметрия входа A/B: GP видел полный PA, жюри — lossy бриф). Про эксперимент, не про механизм; чинится равным входом (валидация, не код).
-- **Слой 2 — реальное свойство P2:** жюри НИКОГДА не видит сырой PA, только lifted-бриф. На PA-040 верифицировано: brief-lift выронил факт «apps/worker уже гоняет BullMQ (FM-001/FM-005)» и обозвал worker «NEW» → ВСЕ 3 архитектора унаследовали потерю. «Всегда срабатывает», но чинибельно.
-- **Слой 3 — глубинное свойство:** независимое фикс-линзовое scoring + детерминированная СУММА жертвуют холистической меж-линзовой интеграцией. Confound-проба (GP на брифе жюри) поймала must-not-ship, который жюри пропустило: (b) нарушала NFR-004, но ни одна линза не выставила veto — каждая нашла её «weak», а сумма «weak+weak+strong-по-velocity» = split. Механизм МОЖЕТ сфабриковать «split» и пропустить распределённый must-not-ship.
-
-### Options considered
-**Fix A (Слой 2) — как дать панели ground-truth:**
-1. Архитекторы читают сырой PA рядом с брифом — просто, наибольший рычаг (рекомендация исследования). **← выбрано.**
-2. Lossless-by-contract лифт (бриф обязан перенести каждый несущий факт) — сложнее гарантировать.
-3. Чек «бриф выронил факт?» — доп. агент без устранения причины.
-
-**Fix синтеза (Слой 3) — детерминированное правило vs холистический проход:**
-- Только soft-veto (детерминированно): ловит «единогласно-weak», НО НЕ ловит PA-040-кейс (там velocity дала (b) высокий балл → не единогласно-weak; распределённый veto через нарушение NFR правило по баллам увидеть не может).
-- Только интеграционный проход (агент): ловит распределённый must-not-ship, но недетерминирован и рискует переопределять выбор.
-- **Оба (выбрано):** закрывают РАЗНЫЕ половины. soft-veto — детерминированная для машинно-проверяемой половины (weak везде); интеграционный проход — холистическая surfacing-only для того, что код увидеть не может (факт одной линзы бьёт балл другой).
-
-### Decision
-**Fix A:** новое опц. поле `source_excerpt` в `FORK_BRIEF_SCHEMA` (Brief-агент захватывает дословный PA-блок + цитируемые constraint-строки); `archPrompt` показывает его как GROUND TRUTH — при расхождении факта источник ПОБЕЖДАЕТ бриф (опции по-прежнему только перечисленные форком — источник не лицензия выдумывать).
-
-**Fix синтеза, детерминированная часть** (`consilium-synth.cjs`): `SOFT_VETO_THRESHOLD=3`; опция, которую НИ ОДНА линза не оценила ≥3, помечается `soft_vetoed` (в матрице `max`+`soft_vetoed`); soft-vetoed **выживший НЕ удаляется** (удаляет только hard-veto), но если soft-vetoed — само рекомендованное, `strong` **демоутится в split** (единогласие по наименее-плохому ≠ rubber-stamp). Hard-veto субсумирует soft (список `soft_vetoed` — только выжившие).
-
-**Fix синтеза, холистическая часть** (`.mjs`, Layer-2.5): пост-панельный `integration`-агент читает ВЕСЬ форк после жюри, adversarially, и ищет 3 провала, невидимых сумме (распределённый must-not-ship; факт одной линзы бьёт балл другой; мис-калибровка strength). **Surfacing-only:** не re-scores, НЕ меняет детерминированный выбор (тот остаётся CODE) — только поднимает disclosure. Флаг едет в disclosures + пакет доставки в PA + return-конверт.
-
-### Outcome
-`npm run verify` EXIT=0. `consilium-synth` 15→20 (soft-veto: flag-not-remove, strong→split демоут, hard-subsumes-soft, summarize+threshold), `decide-architecture-foundation-wiring` 9→12 (сырой источник + «source WINS»; soft-veto threading + disclosure; интеграционный проход surfacing-only после панели), harness-smoke 7/7 зелёный. Consumer-zone; аддитивно (`source_excerpt`/`soft_vetoed`/`integration` — опц. поля, absent == прежнее поведение) → **counts 24/44**. Жюри сохранено — доклеены сырой-вход + интеграция, слепые пятна (сфабрикованный split, пропущенный распределённый veto, lossy-cap) закрыты. Работа в отдельном worktree off `origin/main` (параллельная сессия держала общий checkout). Слой 1 (чистый ре-ран A/B) — предложен владельцу отдельным опц. шагом (валидация, не фикс). Study: `dev/ORCHESTRATOR_P2_PROFILING_STUDY.md`; методология: [[feedback_blind_comparison]].
-
-### Lessons
-1. **Жюри закапано брифом, которым его кормят.** Если панель видит только дистиллят, lossy-дистилляция кэпит ВСЮ панель одинаково (общий вход = общая слепая зона, а не независимые ошибки). Давай панели сырой источник как ground-truth; дистиллят — удобный индекс, не замена источнику.
-2. **Независимое фикс-линзовое scoring + детерминированная СУММА жертвуют холистической меж-линзовой интеграцией.** Гарантия «каждая линза услышана» имеет флип-сайд: никто не замечает, что распределённая слабость суммируется в veto, или что факт одной линзы обнуляет балл другой. Восстанавливай двумя комплементарными механизмами — детерминированное правило для машинно-проверяемой половины (единогласная слабость) + холистический проход для того, что код увидеть не может. Холистический проход держи **surfacing-only**, иначе теряется no-drift-гарантия детерминированного гейта.
-3. **Непредвзятый A/B окупается не вердиктом, а фиксами.** Слепое сравнение + confound-investigation не просто ответили «стоит ли жюри» — они выдали два конкретных дешёвых улучшения механизма. Ценность аудита — в конкретике находок, не в счёте.
-
----
-
-## DEC-DEV-0138 — Guided Research Wave 1: intake+metrics+anti-hype скиллы + тонкая `/ecosystem:research` (lightweight, pre-artifact)
-
-**Date:** 2026-07-01
-**Trigger:** Запрос владельца — обширно расширить поиск/сбор/обработку информации (harness + экосистема) с со-формированием точного запроса + метриками полезности + скепсисом/анти-хайпом. Blueprint (`dev/RESEARCH_CAPABILITY_BLUEPRINT.md`, PR #102) + Wave 0.5 bake-off доставлены; владелец: «иди по дефолтам, строй лёгкий скилл».
-**Tag:** #architecture #tooling #research #ux
-
-### Context
-Retrieval/триангуляция/анти-хайп уже жили в трёх силосах (integrator `research-protocol`, product `market-research-protocol-quick`, harness `deep-research`), но НИКТО не со-формировал точный бриф до поиска и не скорил decision-usefulness (только credibility), гейтя синтез. Blueprint развёл: net-new = Pillar A (co-form) + Pillar B (usefulness-metrics contract); Pillars C (loop) + D (anti-hype) — обёртка над существующим (`orchestrate, don't duplicate`).
-
-### Options considered
-1. Формальный PMO-артефакт-тип (Research Brief) сразу — тяжело: схема + validation + count-sweep 24→25. Отвергнут для Wave 1 (преждевременно, CLAUDE.md §4 cuttable-scope).
-2. **Лёгкий markdown-скилл сейчас, формальный артефакт отложен за триггером reuse≥N + form-drift (Wave 3). ← выбрано** (дефолт владельца «слоями»).
-3. Расширить `/integrator:research` vs новый тонкий `/ecosystem:research`. Выбран новый тонкий (§7.1 #2) — общий ресёрч ≠ tool-research; делегирует в существующие loop'ы.
-Дом скилла: `skills/ecosystem/` (cross-cutting) над product/integrator (§7.1 #1). Опц. warn-хук отложен («defer if noise»).
-
-### Decision
-2 скилла + 1 команда (consumer-zone), без нового типа артефакта / правила валидации (counts остаются 24/44):
-- `skills/ecosystem/research-intake.md` — Pillar A (co-form + Research Brief шаблон) + Pillar B (Relevance⟂Utility, Tier-1 hard gates, Tier-2 weighted, вердикт PASS/PARTIAL/SHORTFALL + subscores + Metrics Contract шаблон).
-- `skills/ecosystem/anti-hype-filter.md` — Pillar D (atomize→SIFT→provenance→H1-H8→triangulate→faithfulness→keep/DEMOTE/drop + audit-trail).
-- `commands/ecosystem/research.md` — тонкий `/ecosystem:research` (A→B→C reuse deep-research/market-research/research-protocol + MCP + WebSearch/WebFetch fallback →D→scored synthesis + approve-gate + cache).
-Скиллы self-contained (без `dev/`-ссылок — dev/ не ставится потребителю). Wave-2 answer-engine (Perplexity Sonar, provisional по Wave 0.5) НЕ подключён — команда помечает как future. `verify.md` Step 4 + summary: ecosystem-команды 6→7 (+research).
-
-### Outcome
-check-counts ✓ 24/44 (аддитивно, без новых типов/правил); hook-smoke 28/0. Полный `npm run verify` в worktree не прогнан (нет node_modules + puppeteer-смоуки smoke:procmap/mapshell); изменение — только markdown/доки, не трогает проверяемые подсистемы (hooks/adapters/orchestrator/generators) → полный verify на CI / после merge. Pre-decision blueprint DEC-DEV-развилка (§7.1 #8) закрыта этим build-решением. Формальный артефакт остаётся отложен до Wave 3. Работа в изолированном worktree off ветки `docs/research-capability-blueprint` (параллельные сессии держат общий checkout). Нумерация: 0134/0136/0137 заняты параллельными ветками (guide-map-deeplink / vision-wave-b-kickoff+main / guide-doc-type) → взят первый свободный **0138** по скану всех remote-веток; ⚠ финальный fetch упал по 443 (сеть транзиторно недоступна) → снимок слегка устаревший, backstop = renumber-at-merge [[feedback_dec_dev_collision_check]].
-
-### Lessons
-1. Value-add ресёрч-капабилити над внешним стеком — это **интейк-контракт + гейт полезности**, не retrieval; C/D — тонкие обёртки (`orchestrate, don't duplicate`).
-2. Скептичный фильтр, который проектируешь, надо доказывать догфудом: Wave 0.5 tool-selection сам прогнан через Pillars B/D (убил vendor-самобенчи, tier-conflation «91%» = deep-mode $50/1k) → честный вердикт «частично» до keyed bake-off. [[feedback_blind_comparison]]
-
----
-
-## DEC-DEV-0136 — Wave B kickoff: полная волна completeness-loop — owner-развилки зафиксированы + work-order
-
-**Date:** 2026-07-01
-**Trigger:** горизонт 1 пройден (P2 dogfood + profiling study 0132, оркестратор-цепочка P1–P7+§6 построена); владелец дал старт волне 2 (Autonomous Pipeline Vision, полная волна Epic B) с директивой «по развилкам — рекомендация; развилка б — подтверждена».
-**Tag:** #vision #epic-b #kickoff #completeness-loop #methodology
-
-### Context
-Vision-порядок `(A ∥ F1) → B → (C ∥ D) → F2 → E`. Фронт пайплайна первым — ошибки спеки D1-D2B компаундируются вниз (METR). Уже готово: **Epic A** (3 персоны + zone-router, live-validated 0115), **B1-core** (`completeness-oracle.cjs` + `/product:complete` + `completeness-loop.md` skeleton, 0098), **B4 loop-readiness audit** (`dev/LOOP_READINESS_AUDIT.md` `complete`, 0098). Волна B = докрутка `v1 core/skeleton` → рабочий откалиброванный loop, НЕ стройка с нуля.
-
-### Options considered (owner-развилки)
-1. **Durable engine** — (a) in-harness Workflow `pipeline()` / (b) n8n/cron cross-session. B = session-scope (границы фаз ≠ cross-session); n8n избыточен до реальной потребности (vision §10).
-2. **Auto-fix широта** — (a) conservative surface+escalate, калибровать real-resolve на пилоте / (b) сразу расширенный авто-resolve. Rail 4 (decisions escalate) + Huang-self-grading-риск → живые данные, не догадка.
-3. **F1** — (a) параллельно с B / (b) отложить. F1 (autonomy L0/L1) не блокирует B (loop в дефолт L1); wiring требует сверки gate-контракта с оркестратор-треком.
-4. **B4-audit** — строить первым? Факт-чек: уже `complete`.
-
-### Decision
-Развилки зафиксированы: **б=in-harness Workflow**, **в=conservative→pilot-calibrated**, **а=B сразу, F1 отложен**, **г снята (B4 complete)**. Kickoff Section 1-5 пройден inline (substrate = независимый cold-read Epic B через Explore-субагента — частичный bias-resist эквивалент fresh-session). Work-order `dev/ECOSYSTEM_VISION_BATCH_2.md` (`ready-to-run`) с sub-phases: **B-a** loop-надёжность (fix FB-LR-28 path-anchoring + FB-LR-29 PA_CANON + findings persistence) → **B-b** durable wave-runner (Workflow) → **B-c** close-out B5/B6/B8 → **B-d** real-resolve пилот-калибровка. Committed = B-a→B-b; B-c/B-d stretch/pilot-gated. FB-LR-31/32 (0132) — design-входы в SURFACE (персоны видят сырьё, не lossy brief; distributed-veto).
-
-### Outcome
-Kickoff-артефакты: work-order BATCH_2 + эта запись + ROADMAP Vision-секция (волна B in-progress). FB-LR-30/31/32 занесены в live-run ledger (отдельный коммит #96). Epic D / F2 / C — вне батча (граф `(C ∥ D)` после B). Merge P2-хвоста (#94/#96) — предпосылка, за владельцем. Next-free DEC-DEV = **0137** (verify `git fetch` перед присвоением — параллельные сессии).
-
-### Lessons
-1. **Факт-чек kickoff-премис перебивает неуверенность разведки.** Explore пометил B4 «статус неясен / partial» — прямой Read показал `complete`. Допущение «B4 первой задачей» скорректировано ДО старта стройки, а не в середине (phase-kickoff Section 1 anti-bias; ROADMAP-гипотеза-не-контракт). [[feedback_substrate_premise_verification]]
-2. **`core/skeleton` ≠ недострой.** Conservative RESOLVE — сознательный дефолт: real-resolve ждёт живых пилот-данных (rail 4), а не догадки о том, что «безопасно авто-фиксить». Калибровка ширины — B-d, не B-a.
-
----
-
-## DEC-DEV-0137 — Diátaxis `doc_type` для `docs/guide/*.md` + анти-дрейф-чек против ручной таблицы хаба (doc-UX Волна 1, A3)
-
-**Date:** 2026-07-01
-**Trigger:** закрытие последнего невыполненного критерия приёмки Волны 1 (§8 `dev/DOCS_UX_BATCH_DESIGN.md`: «каждая `guide/*.md` имеет `doc_type`»); ранее A3 отложен (PR#2/0131) под предлогом «нет потребителя».
-**Tag:** #doc-ux #diataxis #anti-drift #wave1
-
-**Что сделано.** Каждая из 8 `docs/guide/*.md` получила YAML-фронтматтер `doc_type` (Diátaxis-роль): 6 рукописных — прямыми правками (00-concepts=explanation, 01-first-session=tutorial, 04-ui-design/05-implementation=how-to, 06-gates=explanation +`doc_type_secondary: how-to`, README=navigation); 2 генерируемых (02-commands, 03-glossary=reference) — через **генераторы** (`gen-command-catalog.cjs`/`gen-glossary.cjs` эмитят фронтматтер, файлы регенерированы, их `--check` зелёные — не правим сгенерированное руками). Новый `dev/meta-improvement/scripts/check-guide-doctype.cjs` (скрипт `check:doctype`, вплетён в `npm run verify`): валидирует enum {tutorial, how-to, reference, explanation, navigation}, **сверяет ручную таблицу ролей в `README.md` («Что здесь — файлы и их роль») с фронтматтером** (множество меток строки ⇔ doc_type+secondary файла) и anti-orphan в обе стороны. `renderMd` в `vendor/map-shell.js` научен срезать ведущий фронтматтер И HTML-комменты — заодно почищен существующий шум (02/03 показывали сырой `<!-- GENERATED -->` в панели). `npm run verify` EXIT=0, counts без изменений (24/44).
-
-**Почему так (tradeoffs).**
-1. **Потребитель — это суть, а не формальность (ответ на отсрочку 0131).** A3 откладывался «нет читателя фронтматтера». Читатель нашёлся: хаб (0130) уже держит **рукописную** Diátaxis-колонку — она дрейф-склонна. Чек, сверяющий таблицу с фронтматтером, превращает метку из линта-без-читателя в анти-дрейф-контракт (роль доки объявлена в её фронтматтере, таблица хаба не может разойтись). Это и снимает прежнее возражение.
-2. **YAML-фронтматтер, не HTML-комментарий-маркер.** Фронтматтер — стандарт, дизайн-специфицирован (§4 A3), и виден читателю (recognition — «у доки видна роль»). GitHub-рендер как маленькая таблица сверху — приемлемо/даже полезно; в in-app панели он **срезается** (иначе YAML был бы шумом).
-3. **`navigation` — расширение Diátaxis (4 квадранта) для хаба-индекса.** README — контейнер, не квадрант; enum расширен документированно, а не втиснут в reference.
-4. **Доминирующий тип + вторичный тег (D-5).** `doc_type` (скаляр) + опц. `doc_type_secondary` (06-gates = explanation·how-to) — множество, сверяемое с «·»-меткой таблицы.
-5. **Генерируемым докам роль объявляет генератор.** Чтобы не править сгенерированный файл руками, фронтматтер 02/03 эмитят сами генераторы — SSOT-совместимо.
-
-**Lesson.** «Machinery without a consumer» (0131) — не запрет на инфраструктуру, а требование назвать читателя. Иногда читатель уже существует рядом в рукописном, дрейф-склонном виде (таблица хаба); тогда правильный ход — не строить новый рендер, а **пришить проверку существующего ручного артефакта к новому машинному источнику**. Отсрочка была верной по форме (нет читателя → жди), но читатель появился с 0130 — ре-оценка отсрочки при смене контекста обязательна.
-
----
-
-## DEC-DEV-0140 — Wave B / B-a: completeness-loop закалён для worktree/parallel-безопасности (FB-LR-28/29 + persistence)
-
-**Date:** 2026-07-01
-**Trigger:** старт стройки полной волны Epic B (work-order `dev/ECOSYSTEM_VISION_BATCH_2.md`, задача B-a). Дефекты FB-LR-28/29 всплыли на live-run completeness-loop (V-2 re-run `a2aaf44a`); без них полная волна ненадёжна в worktree/параллельном контексте.
-**Tag:** #bug-fix #vision-epic-b #wave-b #worktree-safety
-
-### Context
-`skills/product/completeness-loop.md` — v1 `core/skeleton`: волна SCORE→SURFACE→CLASSIFY→RESOLVE→ESCALATE→RE-SCORE описана прозой, harness-driven. B1-core прошёл live-validation (0115), но грейд V-2 re-run зафиксировал два latent-дефекта надёжности (обе 🔵 LOW, self-healed в тот раз, но latent) + недовшитый persistence-контракт. B-a закрывает их **до** достройки runner (B-b), иначе детерминированная волна компаундирует ненадёжность (degrade-gracefully порядок work-order).
-
-### Root causes
-1. **FB-LR-28 (path-anchoring).** SURFACE-бриф строил пути персон без якоря к resolved-root прогона → микс worktree-absolute + main-checkout-absolute (в V-2: qa-advisor получил worktree-корректный путь, architect+ux — main-checkout; спаслись Glob только потому, что файл оказался not-found). Latent-риск: materially-edited+present файл по неверному checkout → тихое stale-чтение (нет not-found → нет self-heal).
-2. **FB-LR-29 (worktree-local PA).** ESCALATE писал worktree-local `pending-actions.md` без PA_CANON-резолюции — 0113-guard осел только в orchestrator P4/P5/P6, product-gate ESCALATE был отдельным PA-writer, которого guard не покрыл. Latent PA-id divergence при параллельном orchestrator-ране.
-3. **Persistence — контракт без действия.** Keyed-write findings (`.advisor-findings/<persona>-<id>.md`) жил только в секции Idempotency как описание, не как явный шаг SURFACE.
-
-### Decision
-Три правки в скилле (prose-only, без кода):
-1. SURFACE резолвит feature-root ОДИН раз, строит все брифы персон от него; тихое stale-чтение помечено как correctness-rail, не косметика.
-2. ESCALATE портирует PA_CANON дословно из orchestrator (`git worktree list --porcelain` → FIRST worktree = main checkout → его `.claude/pending-actions.md`; allocate next PA-NNN; не `git add`/commit). Open-question FB-LR-29 закрыт: product-gate PA **шарят** canonical ledger (не worktree-local by design).
-3. Keyed-write findings стал явным действием SURFACE; секция Idempotency ужата до ссылки на него (single-source, без дубль-дрейфа).
-
-### Outcome
-`npm run verify` зелёный (скилл — проза; код/оракул/хуки не тронуты; counts 24/44 без изменений). Consumer-zone (`skills/`) → CHANGELOG `[Unreleased] ### Fixed`. Смоук в worktree-контексте пилота (повтор условий `a2aaf44a` без FB-LR-28/29) — на пилот-леге B-d.
-
-### Lessons
-1. **Cross-cutting guard не самораспространяется.** PA_CANON (0113) чинил orchestrator PA-writers, но product completeness-loop — отдельный PA-writer той же worktree-опасности. При добавлении cross-cutting guard'а надо явно просканировать ВСЕ writer'ы того же класса (тут — все, кто пишет `pending-actions.md`), а не только тот, где симптом всплыл первым. [[env_parallel_sessions_share_checkout]]
-2. **Latent ≠ ignorable перед достройкой.** Оба дефекта self-healed в V-2 (benign), но B-a закрывает их ДО runner (B-b): в детерминированной волне latent-путь-дрейф компаундирует. Порядок work-order (надёжность → runner → close-out → калибровка) — не бюрократия, а degrade-gracefully.
-3. **Prose-контракт без явного шага дрейфует к неисполнению.** Persistence findings был «описан» (раздел-инвариант), но не «предписан» (шаг волны) — в harness-driven скилле действие должно жить в шаге, иначе исполнитель волен его пропустить.
-
----
-
-## DEC-DEV-0139 — Единая легенда «Оси именования» в глоссарии + фикс дрейфнувшей расшифровки `P1–P5` (doc-UX Волна 2, E2)
-
-**Date:** 2026-07-01
-**Trigger:** старт Волны 2 doc-UX батча с E2 (`dev/DOCS_UX_BATCH_DESIGN.md` §4 E2): экосистема перегружает метки `D…`/`P…` (принципы vs процессы vs домены vs шаги) → читатель конфлатит оси. Нужна одна легенда соответствий + проход по докам на консистентность.
-
-**Tag:** #doc-ux #glossary #naming #anti-drift #wave2
-
-**Что сделано.** Новая секция **«Оси именования»** (15 строк: `Ось · Что нумерует · Значения · Не путать с`) в генерируемом `03-glossary.md` — editorial-данные в `overlay.namingAxes[]`, эмит первым разделом в `gen-glossary.cjs` («карта карт» перед детальными таблицами артефактов) + selftest-инварианты (непустые `axis`/`what`/`values`, уникальность оси). Разводит худшие перегрузки, подтверждённые аудитом: `P#` (принципы P1–P7 / Product P1–P5 / Orchestrator P1–P7, суффиксы `p`/`o` в картах); семейство `D` (`D1–D6` домены / `D.1–D.6` шаги Design / `D1.1–D1.9` шаги Discovery / `D2-B01…` обязанности); тройной «tier» (review / validation_tier / product_tier); тройной `MVP`; двойной `L0/L1` (лестница понимания vs зум App Map). Заодно **починена дрейфнувшая строка глоссария** `["P1–P5", …]`: была «Discovery, Planning, Feature, Handoff, Maintenance» (Handoff/Maintenance — не P-процессы), стала SSOT-верной «P1 Init(Discovery+Planning) · P2 Feature · P3 Feedback(stub) · P4 Cascade · P5 Periodic» + переименована в `P1–P5 (Product)` (параллельно `P3–P6 (orch.)`). Т.к. карта команд **встраивает** `glossary[]`, `ecosystem-map.html` перегенерирована; `namingAxes` добавлен в allow-list `OVERLAY_TOP_KEYS` второго генератора (overlay общий). `npm run verify` EXIT=0, counts 24/44.
-
-**Метод (ground-truth, не догадки).** Инвентаризацию осей делал вынесенный read-only аудит-субагент (~20 осей + отчёт по коллизиям с `file:line`); user-facing фикс `P1–P5` дополнительно верифицировал напрямую по `docs/pmo/processes.md` (§3.1–3.6) перед правкой — субагенту на изменяющих правках не доверяю на слово.
-
-**Surfaced-but-deferred (аудит нашёл, в E2 НЕ чинил — вынесено).**
-1. **Диапазон Orchestrator `P1–P7` (SSOT SPEC) vs `P3–P6` (весь гайд/overlay).** `P7` runtime-smoke живёт как *шаг* внутри P6o, не отдельный процесс в гайде. Задокументировано в строке таблицы («оператор видит `P3o–P6o` (+P7-leg)»), но не переписывал гайд — это док-широкая правка.
-2. **Кодировка node-id `P4`/`P5` без суффикса в `process-graph.overlay.json` vs `P4p`/`P5p` в `ecosystem-map.overlay.json`** — коллизия с orchestrator `P4o`/`P5o` в том же файле. Внутренняя деталь карт, требует регена карты процессов + смоук → отдельная единица.
-3. **Membership-дрейф уровней ревью:** `00-concepts §5`/`06-gates` опускают `NFR`=🟠 и `AM`=🟢, а глоссарий/overlay их включают. Тривиально, но трогает 2 дока прозой → отдельный consistency-fix.
-
-**Lessons.**
-1. **Общий overlay = два потребителя.** `ecosystem-map.overlay.json` читают И `gen-ecosystem-map` (карта), И `gen-glossary` (словарь). Новый top-level ключ требует (а) добавления в allow-list `OVERLAY_TOP_KEYS` карты-генератора, (б) регена всего, что **встраивает** изменённые данные: правка одной строки `glossary[]` устарела `ecosystem-map.html` (карта embed'ит `glossary`), хотя сам ключ `namingAxes` в карту не инжектится. Проверяй граф «кто читает этот overlay-ключ» перед правкой.
-2. **Оси именования — это не украшение, а долг ясности.** ~20 осей с перегрузкой `P#`/`D#`/«tier»/`MVP`/`L#` копились органически; каждая по отдельности логична, вместе — recall-ад. Одна таблица «не путать с» дешевле, чем переименовывать оси (ломать SSOT). Recognition > recall.
-3. **Editorial-в-overlay, эмит из генератора** — тот же анти-дрейф-контур, что `glossary[]`: контент редактируемый, но выводится детерминированно в `--check`; руками сгенерированный `.md` не трогаем.
-
----
-
-## DEC-DEV-0141 — Guided Research Wave 2 CLOSED: free-bakeoff n=24 — B1-дисциплина систематически бьёт naive-поиск; keyed bake-off отложен за Wave-2-tooling
-
-**Date:** 2026-07-03
-**Trigger:** закрытие единственного реально оборванного фронта батча сессий 2026-06-28..07-01 (план `dev/CONSOLIDATED_EXECUTION_PLAN.md`, этап **E1**). Wave 2 free-bakeoff был прерван session-limit'ом на батче-C 2026-07-01; данные спасены в `dev/research-cache/wave2-free-bakeoff/` (E0), но досчёт+агрегация+нота+PR не сделаны.
-**Tag:** #research #dogfood #methodology
-
-### Context
-Wave 2 keyed bake-off неисполним as-designed: ключей answer-engine'ов (Perplexity/Tavily/Exa/Linkup) в окружении нет. Исполнимая версия — **честная проекция на free-инфру**: слепой парный bake-off **B0 (naive-free: WebSearch→fetch→однопроход)** vs **B1 (disciplined-free: те же free-тулы + Pillar-D anti-hype + Pillar-B usefulness-gate)** на замороженном сете 24 запроса (sha256 `beabbbd6…`, 6 бакетов×4). Изолирует ценность **методологии**, не движка. Из-за трёх session-limit'ов сет прошёл тремя батчами (пилот 7 ok / батч-B 8 ok / батч-C 9 ok = 24, все ok, без пересечений). Батч-C (`wmafk1q15`, run `wf_ff6ec361-c3b`) досчитан 2026-07-03 в свежей сессии по спасённому пинованному скрипту; `TODAY` заморожен `'2026-07-01'` во всех батчах ради консистентности сета. Судья — opus-4-8 (та же модель писала оба плеча), order-swap ×2, agreement-gated, faithfulness проверяется живым WebFetch источника.
-
-### Decision
-Досчёт батча-C на замороженном сете + детерминированная ре-агрегация n=24 (скрипт `aggregate.py`, воспроизводимый) + честный разбор конфаундов + вердикт + рекомендация по owner-развилке §5.1. **Keyed bake-off (~$50, 7×🚧 requires_user) — НЕ покупать сейчас:** он отвечает на вопрос *выбора движка*, а вопрос *методологии* закрыт здесь бесплатно и положительно; вернуться к keyed только при реальном подключении answer-engine (трек Wave 2-tooling). Wave 3 (формальный RB-артефакт) — без изменений, по триггеру reuse≥5 И form-drift.
-
-### Outcome
-**n=24: B1 выигрывает-или-ведёт 21/24 (87.5%); b1_pct_of_decided = 94.4%** (17 чистых побед B1 / 1 B0 / 2 tie / **0 UNSTABLE**). Means overall B0 **3.913** → B1 **4.719** (Δ **+0.806**); устойчиво к выбросу Q21 (без него 4.04→4.71). Отрыв ложится на grounding-метрики: **P3 Faithfulness +1.42** (наибольший) > **P4 Citation-support +1.15** > **P2 Decision-Utility +0.96** ≈ **P5 Corroboration +0.96** >> P1 +0.21 / P6 +0.15. Swap-agreement **83.3%**, ноль разворотов направления (позиц. bias не переворачивает вердикт). **Конфаунды:** (a) длина — реальный, не устранённый (B1 длиннее 22/24, все 18 решённых выиграл более длинный, контр-примеров «B1 короче но выиграл» — 0); смягчён тем, что отрыв — на grounding-осях, не на P6-Directness, а в 2 строках где длиннее был B0, B1 не выиграл; (b) **цитатный — опровергнут**: B1 цитирует даже меньше (overall 3.63 vs 3.71; батч-C 3.67 vs 4.22, выиграв все). Сигнал реплицирован в 3 независимых батчах. Нота: `dev/RESEARCH_CAPABILITY_WAVE2_BAKEOFF.md`; провенанс — raw-конверты + `aggregate.py` + queryset + checkpoint. Единственная чистая победа B0 — Q13 (B4-nfr: правильный ответ = честное «официальных цифр нет», где оверхед верификации не окупается) — верхняя граница пользы дисциплины.
-
-### Lessons
-1. **Батчуй тяжёлые agent-fan-out прогоны с чекпоинт-файлами до запуска.** Три session-limit'а подряд убили залпы; критично — **session-limit убивает ВСЁ после себя в той же сессии** (первая попытка батча-C умерла мгновенно от уже-исчерпанного лимита, не от своего размера). Дробление на батчи + запись сырья на диск после каждого сделали досчёт из спасённых данных дешёвым (один прогон), а не «начать заново». Свежую/низко-загруженную сессию под тяжёлый батч.
-2. **Методологический вопрос можно закрыть free-проекцией ДО покупки тулов.** Интейк- и анти-хайп-дисциплина даёт измеримый подъём качества ресёрча **независимо от retrieval-качества** — на одной и той же бесплатной подложке. Не надо тратить $50 на keyed-прогон, чтобы узнать «стоит ли вообще применять дисциплину»: это отделимый и дешевле-проверяемый вопрос, чем «какой движок купить». Разделяй «работает ли метод» (дёшево, free) от «какой инструмент» (дорого, keyed) — и закрывай первый первым.
-3. **Within-row знак-тест > cross-row средних при шумной ковариате.** Судья репортил длину непоследовательно (символы/слова вперемешку, разброс 4…3050), поэтому mean-длина бессмысленна как абсолют — но внутри-строчный порядок «какое плечо длиннее» и «выиграл ли более длинный» надёжен (один судья, один вызов, одна единица). Честный конфаунд-разбор опёрся на него, а не на испорченный средний.
-
----
-
-## DEC-DEV-0142 — Wave B / B-b: durable wave-runner completeness-loop — новый top-level `product/processes/` + детерминированный `gap-classifier.cjs` (classify + stop-вердикт)
-
-**Date:** 2026-07-03
-**Trigger:** этап **E2** сводного плана (`dev/CONSOLIDATED_EXECUTION_PLAN.md` §4.1) / sub-phase **B-b** work-order Wave B (DEC-DEV-0136). Волна completeness-loop (skill 0098, закалённый B-a/0140) исполнялась как harness-driven проза — обернуть в исполняемый, детерминированно оркеструемый Workflow-скрипт.
-**Tag:** #architecture #product #vision-epic-b
-
-### Context
-Skill `completeness-loop.md` — поведенческий контракт (5 hard rails), но его исполнение прозой не даёт ни bounded-гарантий кодом, ни воспроизводимой оркестрации персон. Harness-констрейнт Workflow-скриптов (no fs / no require / no Date) не позволяет заимпортить классификатор напрямую — прецедент решения тот же, что у orchestrator-процессов: детерминированная dual-use `.cjs`-либа + агент-транспорт через `node`.
-
-### Options considered
-1. **Размещение runner:** (a) новый top-level `product/processes/complete-feature.mjs`, зеркально `orchestrator/` — **выбрано**: чистый zoning (Epic B = Product-owned), граница work-order 0136 «orchestrator/ не трогать» не нарушена; цена — деплой-wiring `update.md` по прецеденту DEC-DEV-0078 (bootstrap подхватывает bulk-copy автоматически). (b) положить в `orchestrator/processes/` — деплой бесплатен, но ломает зонирование. Отвергнуто.
-2. **CLASSIFY + стоп-вердикт:** (i) inline-JS в `.mjs` — не тестируется (смоук только парсит), дрейф при правках; (ii) **выбрано** — отдельная либа `hooks/product/lib/gap-classifier.cjs` (classify по разметке `LOOP_READINESS_AUDIT.md` + `shouldStop` = единый тестируемый SSOT стоп-формулы), вызываемая субагентом через `node` (как oracle); `.mjs` держит **in-code зеркала** (hard cap `for`-bound, pre-SURFACE met-check, post-classify met/Δ mirror) — терминация гарантирована даже при испорченном LLM-транспорте.
-3. **Персистенция advisor-findings:** (i) дать персонам Write; (ii) **выбрано** — выделенный writer-шаг рантайма после SURFACE. Находка: контракт 0140 «each persona WRITES its findings» был **невыполним** — у advisor-агентов tool grants без Write (skill-prose дефект, вскрыт при построении исполняемой формы). Персоны остаются read-only (least-privilege: они же PostToolUse zone-router advisory), запись keyed persona+FM с overwrite-in-place сохранена — исполнитель сместился.
-
-### Decision
-Runner (545 строк): SCORE (oracle через агент, verbatim) → SURFACE (FB-LR-28 anchor-root один на ран; FB-LR-31 raw-source брифы — персоны читают сырые артефакты, бриф не пересказывает; crash-safe слоты с try/catch + bounded re-spawn, canonical agentType без general-purpose fallback; writer-шаг персистенции) → CLASSIFY (транспорт к `.cjs`; классификатор = stop authority) → RESOLVE (conservative whitelist только VC/LC/RPM-деривации + in-code guard; verify-before-act 0093; sequential single-writer; идемпотентно keyed) → ESCALATE (PA_CANON verbatim из P6; PA-dedup 0089) → **CloseOut B-c**: advisory B5/B6/B8 (`bg-review`/`validate`), никогда не флипает `met`. Финальный re-score state-based (`resolvedAfterLastScore > 0`), honest_unmet — rail 5. `/product:complete` диспетчит `Workflow({scriptPath})` + честный inline-fallback на skill-прозу для до-1.7.0 инсталляций. Wiring: `update.md` (namespace-aware `product/`, 9 точек), `bootstrap.md`, `verify.md` (Step 4 счётчик + новый Step 4.6 маркеры `delegated_unverified`/`gap-classifier.cjs` + Step 9); generic workflow-смоук обобщён `PROC_DIR`→`PROC_DIRS`; 20 юнитов классификатора в `test:product`.
-
-### Outcome
-`npm run verify` EXIT=0 (28 hooks; смоук 8/8 включая новый `.mjs`; счётчики 24/44 не тронуты — аддитивно). Сборка — оркестрация субагентами (recon sonnet → 3 параллельных исполнителя sonnet×2/opus в worktree → Fable-ревью): ревью поймало 3 дефекта до коммита (persona-slot craш при throw agentType; невыполнимая persona-write; re-score guard узок — converged тоже выходит с непроголосованными фиксами) + висячий code-fence; противоречие брифа в dedupe-ключе исполнитель сам разрешил с обоснованием (сегмент `source` убит, иначе кросс-источниковый дедуп невозможен). Live-грейд авто-RESOLVE — B-d на пилоте (E4), отдельная сессия.
-
-**Ретро (E4, 2026-07-04):** terminate-path runner'а **live-подтверждён** на пилоте — `/product:complete FM-003` (первый живой прогон B-b, сессия `59a45840`): oracle met на wave-1 (score 1.0) → 0 персон заспавнено, CloseOut B-c отработал advisory (B5 PASS / B6–B8 PARTIAL, `met` НЕ флипнут), честный финальный отчёт; попутно surfaced V-11 (reverse-ref MK-003↔SC, auto-fixable — не применён, capture-don't-fix). Loop-path (реальный oracle<1 c RESOLVE-калибровкой) остаётся B-d — все 7 фич канона score=1.0, реального гэпа нет, не фабрикуем (FB-LR-26); B-d gated по событию.
-
-### Lessons
-1. **Контракт «кто пишет файл» сверяй с tool grants исполняющего агента.** Проза 0140 обещала запись от персон, у которых нет Write — дефект жил незамеченным, пока контракт не стал исполняемой формой. Executable-форма — дешёвый детектор невыполнимых обещаний прозы.
-2. **Стоп-логику — в тестируемую `.cjs`, даже когда Workflow не может её require.** LLM-как-транспорт stdout + in-code зеркала в `.mjs` дают и единый SSOT формулы (юниты покрывают все 4 статуса), и гарантию терминации при любом поведении транспорта.
-3. **Generic-смоук с захардкоженным каталогом молча пропустит новый top-level runtime dir.** При добавлении каталога процессов первым делом расширяй скан смоука (`PROC_DIRS`), иначе «parses in harness dialect» перестаёт быть гарантией для новых скриптов.
-
----
-
-## DEC-DEV-0143 — S-LE смоук подтвердил self-deadlock marker-exemption у lesson-presence-gate → target-carve-out (fix) + итоги S-LE прогона
-
-**Date:** 2026-07-04
-**Trigger:** армированный S-LE live-смоук в пилоте (сессия `4fb6e0f2`, CC 2.1.200, Windows; урок `LESSON-SLE-SMOKE` open + `LESSON_GATE_MODE=strict`) — этап E4 плана. Грейд post-hoc по транскрипту (opus-форензика, executor/reviewer separation).
-**Tag:** #fix #hooks #product #smoke
-
-### Context
-Дизайн LESSON-гейта (DEC-DEV-0062) сознательно держал PreToolUse-prong в `warn`, пока S-LE не проверит marker-exemption вживую — header хука прямо предсказывал риск «self-deadlocking the very protocol that resolves the lesson». Смоук прогнан впервые с реально взведённым уроком.
-
-### Root cause
-**Marker-exemption самоблокируется по конструкции.** Порядок протокола (`lesson-capture.md` шаги 3-4): файл урока `status: open` пишется ДО маркера, маркер — следом; т.е. первые же записи протокола происходят, когда маркера ещё НЕТ. Strict-deny бьёт по любому мутирующему вызову без маркера → протокол не может ни создать маркер (запись denied), ни отредактировать урок (denied). Live-подтверждено: 3× deny, включая Bash-проверку маркера и Edit самого файла урока изнутри `/product:lesson --resume`; сессия честно диагностировала «замкнутый круг» и эскалировала владельцу вместо фабрикации обхода (правильное поведение агента при дефекте механизма).
-
-### Decision
-**Target-carve-out** (а не расширение прав или маркер-бутстрап через ещё один хук): в strict-ветке deny НЕ применяется к мутациям, чья ЦЕЛЬ — сам инструмент разрешения урока: `file_path` под `.product/lessons/**` (авторинг/флип урока) или `.product/.sessions/lesson-in-progress.*` (маркер). Bash остаётся под гейтом (его цели непарсимы из строки команды) — протоколу Bash и не нужен до флипа open→active, после которого гейт спит. Отвергнуто: (i) ставить маркер UserPromptSubmit-хуком на `/product:lesson`-промпт — второй пишущий механизм с гонками против carve-out'а на 4 строки; (ii) exemption по имени скилла — harness не передаёт его в PreToolUse. Riders: не-числовой id-фолбэк без `.md` (косметика из смоука); smoke-раннер обучен `payloadExtra` (hook_event_name) + `expectStdoutIncludes/Absent` (blocking-хуки отвечают stdout-JSON'ом, раньше раннер умел только stderr) — 6 новых кейсов пинуют deny/carve-out/exemption/reminder/warn.
-
-### Outcome
-Смоук-хуки 34/34 (28→34). Итоги S-LE: S-LE.2/4/5/6 PASS; S-LE.3 deny PASS + exemption FAIL→FIXED (этот fix); S-LE.1 PARTIAL — stderr-фидбек Stop-гейта доходит до модели (инжект подтверждён транскриптом), но `preventedContinuation:false` на CC 2.1.200 — hard-block чистого закрытия не продемонстрирован (неотличимо от «владелец закрыл окно»). **`lesson-presence-gate` остаётся `warn` — флип warn→strict заблокирован до PASS live-ре-прогона S-LE.1/S-LE.3 против фикса** (после следующей доставки в пилот). Таблица — `dev/gates/S_LE_LESSON_GATE_SMOKE.md`.
-
-### Lessons
-1. **Write-ahead протокол + маркер-exemption несовместимы по порядку записи:** если exemption-токен создаётся тем же классом операций, который гейтится, гейт обязан иметь carve-out по ЦЕЛИ операции, а не только по токену — иначе deadlock заложен конструкцией и не виден до live-прогона.
-2. **Смоук, который «нашёл блокер», успешнее смоука, который «прошёл»:** дефект был предсказан комментарием в коде четыре недели назад, но подтвердить/опровергнуть его мог только армированный live-прогон (S-LE и был введён под это).
-3. **Блокирующие хуки отвечают stdout-JSON'ом — смоук-раннер, умеющий только stderr-ассерты, слеп к их главному контракту.** Расширение раннера (payloadExtra + stdout-ассерты) — разовая цена, дальше все blocking-хуки тестируемы.
-
----
-
-## DEC-DEV-0144 — Анализ Google-статьи «The new SDLC with Vibe Coding» → отчёт канонизирован в dev/ + принят порядок внедрения (шаг 1 = doc-якоря)
-
-**Date:** 2026-07-04
-**Trigger:** владелец предоставил 51-страничную Google-статью (май 2026) с задачей «изучить целиком без потери смыслов и извлечь применимое». Разбор — мульти-агентный Workflow (17 агентов): 5 читателей по перекрывающимся диапазонам страниц → консолидация в реестр **140 идей / 9 тем** → пофазовая оценка применимости против реального репозитория (evidence-пути обязательны) → критик полноты против оглавления (coverage_ok, ремонт не потребовался) → синтез. Несущие клеймы отчёта спот-чекнуты main-моделью (grep: `opts.model` в `orchestrator/processes/*.mjs` отсутствует; `run.md:239` «runs/ NOT auto-created»; `.github/workflows` нет — все три подтверждены).
-**Tag:** #analysis #docs #process
-
-### Context
-Полный отчёт — [`dev/VIBE_CODING_ANALYSIS.md`](dev/VIBE_CODING_ANALYSIS.md) (SSOT анализа; здесь не дублируется — pointer-collapse). Главный вывод: статья — **независимая валидация курса, а не источник дефицитов**: подавляющее большинство несущих идей (сдвиг синтаксис→намерение, Agent = Model + Harness, «verification is the new craft», context engineering, factory model) уже воплощено; по оси сквозной автономии («прототип = прод без переписывания») практика проекта сознательно строже статьи (METR error-compounding, gated-сегмент).
-
-### Decision
-1. **Отчёт канонизирован** в `dev/VIBE_CODING_ANALYSIS.md`. Чистых adopt-идей нет by design — всё ценное либо already-covered, либо adapt под словарь экосистемы; reject-класс зафиксирован в §6 отчёта (адопция-риторика, org/HR-обёртки, IDE-слой, вендор-стек Google, оптимизм сквозной автономии).
-2. **Принят порядок внедрения §8** (7 шагов, ни один не требует новой архитектуры). **Шаг 1 исполнен этим же PR:** doc-якоря VC-014 (спектр vibe→agentic), VC-078 (рамка Agent = Model + Harness), VC-097 (два режима оператора) в `docs/guide/00-concepts.md` / `README.md`.
-3. Очередь дальше (по §8): VC-096 D7-паттерн config-failure-first triage → VC-118 model-pinning в orchestrator-процессах (задокументированный MDP §3-разрыв) → VC-044 static-context бюджет-аудит → VC-087+VC-134 run-ledger и трейсы → VC-133 substrate-graduation гейт.
-
-### Outcome
-Отчёт + doc-якоря + эта запись — один PR (ветка `docs/vibe-coding-adoption`, worktree — общий checkout занят чужой веткой). Шаги 2+ — отдельными единицами по Autoflow.
-
-### Lessons
-1. **Внешний peer-документ ценнее как валидация, чем как источник фич:** 140 идей → 0 чистых adopt, но 3 подтверждённых локальных разрыва (model-pinning, количественная observability, «built = прогнан») — все три уже были задокументированы внутри репо, но не закрыты; внешняя рамка сработала как принудительный аудит собственных TODO.
-2. **Спот-чек несущих клеймов агентского отчёта обязателен и дёшев:** три grep-проверки подтвердили все ключевые факты до принятия решений (MDP «делегирование ≠ доверие» — работает).
-3. **Паттерн разбора длинного документа:** перекрывающиеся чанк-читатели + консолидатор с дедупом + критик полноты ПРОТИВ ОГЛАВЛЕНИЯ (не против самих извлечений) — дешёвая гарантия «без потери смыслов»; пригоден для повторного использования (кандидат в D7-паттерн при втором применении).
-
----
-
-## DEC-DEV-0145 — E5 kickoff: волна Vision (C ∥ D) + G-минимум + F1-контракт — ре-скоуп Epic D в «генерализацию построенного P2»
-
-**Date:** 2026-07-04
-**Trigger:** E4 закрыт-по-максимуму (PR #113) → E5 kickoff по D7 `phase-kickoff.md` (Sections 1/2/4 recon — свежий opus-агент для bias-resistance, fresh-session-эквивалент; я — ревью+решения). Work-order = `dev/ECOSYSTEM_VISION_BATCH_3.md`.
-**Tag:** #vision #kickoff #consilium #epic-c #epic-g #f1
-
-### Context
-План E5 (CONSOLIDATED_EXECUTION_PLAN) формулировал Epic D по vision-доке как «реализовать консилиум-примитив». Холодный recon вскрыл, что примитив **уже построен и live-validated** как оркестраторный P2 (`consilium-synth.cjs` + жюри ×3, DEC-DEV-0129/0135) — крупнейший vision-drift (§2.2 утверждал «P2 не построен», «персон нет» при 7 в репо). Плюс два скрытых контракт-блокера drop-in-реюза: `isPriorVerdict()` фильтрует вердикты вне хардкода `PRIOR_LIST` (`consilium-synth.cjs:79`), и synth ранжирует только форк (≥2 опций). Факты spot-check'нуты против кода перед решениями (MDP-ревью recon'а).
-
-### Decisions (kickoff-развилки а-и, полная таблица в BATCH_3)
-1. **Epic D = генерализация, не стройка:** параметризация панели в `consilium-synth.cjs` (default = 3 арх-приора 1:1, P2-тесты зелёные — согласованное исключение границы `orchestrator/`) + тонкий раннер `/product:consilium <PA>` в `product/processes/`. Отвергнуто: свежая generic-либа (дубль математики, дрейф двух soft-veto); маппинг персон на арх-приоры (теряет гетерогенность); inline-жюри внутри каждой волны loop'а (~15× cost + groupthink на тривиях).
-2. **Вход D — только форк-образные decision-PA** (≥2 опций; категории threshold/moscow/*-semantic из gap-classifier); открытые вопросы остаются plain-PA; вторая опция НЕ фабрикуется. Prepare-only: жюри готовит, владелец ратифицирует (авто-proceed = F2/L2, позже).
-3. **C-i = новый `batch-enrich-feature-set.mjs`** — тонкая оркестрация поверх существующих `/product`-команд, `complete-feature` как стадия; НЕ ре-имплементация authoring в Workflow; checkpoint-файл до запуска (урок E1). C-ii гейты = реюз L1 PA-escalate (диспозицию владеют F1/F2).
-4. **Анти-фрагментация «кто участвует»:** 4 потенциальных firing-решателя (zone-router / gate-risk-classifier / D3 cost-gate / G2 matrix) строятся стопкой — G2 слоем над zone-router, D3-панель потребляет G-пресеты; **D3-пресеты ≡ G4-пресеты = одна реализация**.
-5. **Scope:** committed = D-ядро (D1a параметризация → D1b раннер → D2 политика §7.6); stretch = C-i, G1+G2-минимум (owner-дефолт (a)), F1 контракт+skeleton (`autonomy-policy.cjs` потребляет risk-tier gate-risk-classifier, НЕ пере-выводит; wiring — после сверки с оркестратор-треком). Cuts с BF-триггерами: C-iii branch-anticipation (нет данных прогона), G3 панель/метрики (<4 firing-персон), расширения G 1-7 (отдельный §7-раунд).
-
-### Outcome
-Work-order `dev/ECOSYSTEM_VISION_BATCH_3.md` записан (ready-to-run); drift-фиксы vision §2.2 (персоны/P2) + ре-скоуп-нота §5 Epic D — этим же PR. Коллизия DEC-DEV сработала **5-й раз**: `next-dec-dev` дал 0144 чистым, но параллельная сессия заняла его в PR #114 между аллокацией и коммитом → перенумеровано в 0145 по скану открытых PR ([[feedback_dec_dev_collision_check]] — скан PR-веток обязателен даже после аллокатора).
-
-### Lessons
-1. **Vision-док — снапшот, эпики протухают целиком:** между принятием vision и стартом волны параллельный трек успел ПОСТРОИТЬ ядро эпика (P2 = D1). Kickoff-recon свежим агентом против КОДА (не против vision-прозы) — единственное, что это ловит; иначе волна дублировала бы live-validated механизм.
-2. **«Реюз» в план-прозе — проверяй контракт реюзабельности кодом:** vision честно писал «реюз consilium-synth», но хардкод `PRIOR_LIST` + требование ≥2 опций делали drop-in невозможным. Слепая зона формулировки «reuse» = отсутствие проверки, что интерфейс переживёт нового потребителя.
-3. **Аллокатор номера не спасает от гонки аллокация→коммит:** `next-dec-dev` был прав в момент запуска — номер сгорел за минуты. Финальная сверка по открытым PR непосредственно перед коммитом остаётся обязательной.
-
----
-
-## DEC-DEV-0146 — MDP model-pinning во всех Workflow-процессах (VC-118): 56 пиновок + смоук-гейт «agent() обязан нести model/agentType»
-
-**Date:** 2026-07-04
-**Trigger:** шаг 3 очереди DEC-DEV-0144 (VC-118 — «задокументированный, но не закрытый разрыв»: MDP §3 предписывает пиновать модель per-stage, но ни один `agent()` в `orchestrator/processes/*.mjs` / `product/processes/complete-feature.mjs` её не передавал → все стадии наследовали дорогую модель сессии = waste + конфаунд для judged-стадий).
-**Tag:** #orchestrator #product #mdp #feat
-
-### Context
-7 процессных файлов, 56 реальных agent()-вызовов без model. Якоря назначения уже существовали в репо: `settings.json.template._model_strategy` («Opus for product/adversarial, Sonnet for mechanical, Haiku for hooks/scanners») + MDP worst-of-оси + правило «жюри на одной фиксированной модели». Персоны (`architect/qa/ux-advisor`) уже запинованы через frontmatter определений (`model: claude-opus-4-8`) — их вызовы через `agentType:` не дублируются.
-
-### Decision
-1. **56 аддитивных пиновок** (только поле `model:` в существующий opts; без `effort`, без изменения промптов). Раскладка: **opus** = судейство/adversarial/verify (жюри P2 `arch:*`×3, панель P6 `validate:*`×3, `verify-drift`/`verify:*`/`verify-completion`, review HIGH), impl с высоким R (`impl:*` TDD-код, `spec-fix`, `remediate`, `kiro-spec-batch`, `brief:*` P2 — lossy lift капит жюри, DEC-DEV-0135), диагностика (`debug:*`, `boot-smoke`, `classify-block` — мис-классификация маскирует upstream-конфликт FB-LR-07); **sonnet** = механика/relay (init/baseline/git, оракул- и либа-relay, PA-write/dedup, plan-parse, synth — рекомендация вычисляется КОДОМ `consilium-synth.cjs`, LOW-tier `verify` — зеркалит HIGH/LOW-разрез самого gate-risk-classifier, `resolve:*` — консервативный whitelist деривации + verify-before-act); **haiku** = не используется (консервативно).
-2. **Смоук-гейт** в `tests/orchestrator/workflow-syntax.smoke.cjs` (не в N wiring-тестов): каждая строка с `label:` обязана нести `model:` ИЛИ `agentType:`. Выбор места: сканирует ОБА PROC_DIRS → покрывает `batch-features-to-cc-sdd.mjs` (без wiring-теста) и все будущие процессы бесплатно. Опора на инвариант single-line opts задокументирована в самом тесте.
-3. Отвергнуто: дублировать `model` в persona-вызовах (определение агента — SSOT); пиновать `effort` (вне скоупа шага); haiku для тривиальных relay (цена ошибки в gate-цепях выше экономии).
-
-### Outcome
-smoke:orchestrator 15/15 (7 новых MDP-чеков), test:orchestrator/test:product зелёные, полный `npm run verify` EXIT=0. Дифф: 7 процессов (+56 model-строк, ноль прочих изменений — проверено ревью `-U0`) + смоук. Исполнитель — opus-субагент; ревью main-моделью: дифф построчно, спот-чек frontmatter персон, 4 спорных назначения (classify-block/verify-completion→opus, LOW-verify/resolve→sonnet) подтверждены с их rationale.
-
-### Lessons
-1. **«Задокументированный разрыв» живёт, пока его не цементирует исполняемый гейт:** MDP-предписание существовало с 2026-07-03, `_model_strategy` — ещё дольше, но ни одна пиновка не появилась, пока внешний аудит (VC-118) не сделал это work-item'ом; смоук-гейт переводит дисциплину в невозможность регресса (тот же урок, что process-gate/DEC-DEV-0083).
-2. **Пин жюри — один call-site:** когда N плеч жюри текут через одну точку вызова, одна пиновка гарантирует «judge fixed across arms» конструкцией, а не дисциплиной.
-
----
-
-## DEC-DEV-0147 — Run-ledger: количественная observability оркестратор-прогонов + авто-создание runs/<id>/ (VC-087 + VC-134)
-
-**Date:** 2026-07-04
-**Trigger:** шаг 5 очереди DEC-DEV-0144. Поведенческая observability сильна (audit-journal, feedback-intake, effect-probe), количественной НЕ было — ни duration, ни model-mix, ни verdict-времянки; `.claude/orchestrator/runs/` не авто-создавался (run.md «Run records (FB-003)» честно держал это как «tracked follow-up»). Тихий дрейф авто-прогонов (§7 риск 7 анализа) без дренажа.
-**Tag:** #orchestrator #observability #feat
-
-### Context
-Жёсткое ограничение: Workflow `.mjs` не имеет права читать wall-clock (детерминированный resume) → таймстемпы обязаны приходить снаружи. Плюс свежие 56 model-пиновок (DEC-DEV-0146) сделали карту «label → model» статически извлекаемой из исходника процесса.
-
-### Decision
-**Новая либа `orchestrator/lib/run-ledger.cjs`** (CJS, только builtins, CLI + чистые экспорты) + wiring в `commands/orchestrator/run.md`:
-1. Диспетчер (harness, исполняющий run.md) обрамляет Workflow: `start --at <ISO>` ДО (создаёт `runs/<id>/run.json` status:running — упавший прогон оставляет след) и `finish --at <ISO>` ПОСЛЕ (finished_at, duration_ms, result-сводка verdict/readiness/conflicts/counts, `model_map` из исходника процесса, tokens opportunistic) + одна строка в `runs/ledger.ndjson`.
-2. run-id детерминирован: `<yyyy-mm-dd>-<slug>-<base36(epoch-ms)>`, без Math.random; ndjson идемпотентен по run_id (retry finish не дублирует времянку), run.json — last-write-wins; `finish` без `start` не падает (status finished-unstarted).
-3. `model_map` извлекается из label-строк исходника (инвариант single-line opts, уже зацементированный смоуком 0146); agentType-персоны помечаются `via-agent-definition`.
-4. Отвергнуто: (i) пер-агентные таймстемпы изнутри процесса — нарушает determinism-контракт, а транскрипт-дир harness уже хранит per-agent детали (ledger = durable сводка, не замена); (ii) инструментировать 56 call-site'ов runtime-обёрткой — инвазивно, статическая экстракция даёт ту же карту бесплатно; (iii) размещение рядом с dev-side `audit-journal.ndjson` (первичная формулировка VC-087) — прогоны живут в проекте-потребителе, контракт места уже объявлен run.md = `.claude/orchestrator/runs/`.
-
-### Outcome
-Тест `tests/orchestrator/run-ledger.test.cjs` 10/10 (в `test:orchestrator`); CLI прогнан e2e на реальном процессе; полный `npm run verify` EXIT=0. run.md «Run records» переписан: follow-up закрыт, транскрипт-дир остаётся source of truth per-agent деталей. Закрывает трейс-ногу VC-133/134 graduation-гейта (шаг 6) и даёт дренаж «тихого дрейфа». Исполнитель — opus-субагент; ревью main-моделью: либа построчно, дифф run.md, verify.
-
-### Lessons
-1. **Determinism-контракт Workflow диктует топологию observability:** раз скрипт не может знать время — часы живут у диспетчера, а скрипт остаётся чистым; «кто ставит таймстемп» = архитектурное решение, не деталь.
-2. **Цементирование инварианта окупается немедленно:** смоук-гейт 0146 («label-строка несёт model») через день стал парсинг-контрактом для extractModelMap — исполняемые инварианты компаундятся.
-
----
-
-## DEC-DEV-0148 — Substrate-graduation гейт + правило «built ≠ validated» + минимальный CI (VC-133/134/127) — очередь vibe-coding анализа ЗАКРЫТА
-
-**Date:** 2026-07-04
-**Trigger:** шаг 6 (финальный) очереди DEC-DEV-0144. Порог «production-ready» не был оформлен: трейсы отсутствовали (закрыто 0147), CI не было вовсе (`.github/workflows` пуст), а несколько runtime-smoke месяцами стояли «built по написанному плану» (§7 риск 5 анализа).
-**Tag:** #d7 #gates #ci #feat
-
-### Context
-4-компонентный substrate-чеклист из Google-статьи (VC-133/134): evals-в-CI / трейсы / scoped permissions / security review. К моменту шага: трейсы ✅ built (0147), scoped permissions ✅ существовали (tools:-frontmatter 7 субагентов + scope-guard), CI ❌, security review 🟡 частичен.
-
-### Decision
-1. **`dev/gates/SUBSTRATE_GRADUATION_GATE.md`** — readiness-гейт per graduation-событие (не разовый): 4 компонента с честными статусами, критерий закрытия компонента 4, PASS-чеклист с VC-127-привязкой, таблица deferred-smoke долга (3 плана «next pilot session» — уже за порогом «>2», прогон приоритетен).
-2. **CI-нога = минимальный GitHub Action** `.github/workflows/verify.yml` (ubuntu, node 22, `npm install` — лок-файла нет, `npm run verify`; floor без matrix/cache). Выбран вместо задокументированного solo-субститута: браузерные смоуки кросс-платформенны (нашли `/usr/bin/google-chrome` ubuntu-раннера, graceful-skip при отсутствии), Action самовалидируется первым прогоном на этом же PR (VC-127 в действии). Отвергнуто: только-документировать локальный verify (CI дешевле, чем казалось); полный agent-eval в CI (потолок, отдельный трек VC-128).
-3. **VC-127 «built ≠ validated»** — Step 3.5 в `phase-closure.md` (разделять built/validated в статус-доках; считать deferred-smoke долг, >2 = стоп; не архивировать непрогнанные планы; prod-graduation → гейт) + строка-связка в `live-run-validation.md` (именно live-прогон флипает built→validated).
-
-### Outcome
-`npm run verify` локально EXIT=0; первый Linux-прогон verify — на CI этого PR (статически замеченные риски: браузерные смоуки на ubuntu впервые ЗАПУСТЯТСЯ, а не скипнутся; case-sensitivity unknown-unknowns; eslint по `^`-диапазону). **Очередь DEC-DEV-0144 §8 закрыта целиком:** шаги 1-6 = PR #114/#116/#118/#119/#120/этот; шаг 7 (линзы VC-108/024) — deferred до kickoff Epic F/G by design. Исполнитель — opus-субагент; ревью main-моделью.
-
-### Lessons
-1. **Гейт, честно фиксирующий собственное нарушение, ценнее «зелёного»:** таблица deferred-smoke долга в гейте сразу показала 3 плана за порогом — гейт родился с actionable-находкой, а не декларацией.
-2. **CI-решение стоило проверить фактом, а не предположением:** «verify не готов к Linux» казалось блокером, но чтение смоуков показало кросс-платформенный browser-резолв с graceful-skip — цена CI-ноги упала с «отдельный трек» до «12 строк yml» (config-failure-first в действии: сначала проверь harness-факты).
-
----
-
-## DEC-DEV-0149 — Wave (C∥D) D-ядро ПОСТРОЕНО: панель-параметризация consilium-synth (D1a) + `/product:consilium` жюри-раннер для decision-эскалаций (D1b) + политика §7.6 в коде (D2)
-
-**Date:** 2026-07-04
-**Trigger:** стройка committed-target BATCH_3 после merge kickoff-PR #115 (DEC-DEV-0145). Сборка = MDP-оркестрация (D1a — main-модель сама, орк-либа = высокий R; D1b runtime-код — opus-исполнитель в worktree `ce3-wt-wave-cd`; ревью — main). *(Изначально записан как 0146 в PR #117 — перенумерован в 0149 при merge: параллельный vibe-coding-трек занял 0146-0148, PR #118-#121; 7-я итерация [[feedback_dec_dev_collision_check]].)*
-**Tag:** #vision #epic-d #consilium #product
-
-### Context
-Kickoff 0145 ре-скоупил Epic D в генерализацию построенного P2. Блокеры drop-in: хардкод `PRIOR_LIST` (persona-вердикты молча фильтруются `isPriorVerdict`) + отсутствие канала жюри для decision-PA completeness-loop.
-
-### Decision
-1. **D1a** — `consilium-synth.cjs` принимает опциональную панель: `normalizePanel()` (dedupe/trim/fallback на дефолт — malformed панель не сужает и не опустошает жюри молча), `synthesize/buildMatrix/isPriorVerdict/collectOptionIds(…, panel)`, CLI `--panel a,b,c` + `panel` в object-форме, результат раскрывает `panel` (D2 no-silent-fan-out). Omitted == `[velocity,fidelity,integrity]` 1:1 — все 20 P2-тестов зелёные без правок; +6 юнитов (custom-панель, panel-honesty на custom, veto/soft-veto panel-agnostic, byte-identical backward-compat, CLI). Отвергнуто: generic-копия либы (дубль математики/дрейф двух soft-veto); маппинг персон на 3 арх-приора (теряет гетерогенность).
-2. **D1b** — `product/processes/consilium.mjs` (5 фаз Load→Scope→Jury→Synthesize→Recommend) + `commands/product/consilium.md` (Workflow({scriptPath}) + inline-fallback). 7 рельсов В КОДЕ: R1 fork-guard <2 опций → честный отказ ДО спавна + non-blocking маршрут-нота в PA (вторая опция НЕ фабрикуется); R2 declared scope до фан-аута (subject+панель+axes в log); R3 панель по зоне (architect+qa всегда, ux только UI-bearing — зеркало условного ux-спавна complete-feature; прямой вызов zone-router отклонён исполнителем обоснованно: он роутит по file-path, у decision-PA его нет); R4 raw-source брифы (FB-LR-31); R5 canonical agentType + crash-safe слоты + bounded re-spawn=1 + форс `prior` к канон-имени персоны (слот авторитетен о том, ЧЬЯ линза бежала); R6 synth = транспорт verbatim (`--panel` из panelNames; verdicts → `.product/.consilium/<PA>-verdicts.json` под anchor-root); R7 integration-pass surfacing-only (зеркало 0135). PA-out = update-in-place (0089), prepare-only — PA не закрывается, спеки не правятся, «ратификация за владельцем» явной строкой.
-3. **D2** — политика §7.6 зашита и в код (R2), и в команду текстом; `category_eligible` (SSOT gap-classifier: threshold/moscow/screen-decision/*-semantic) — surfaced caveat, hard-block остаётся fork-guard.
-4. **Merge-rider (0146-гейт соседа):** параллельно влитый DEC-DEV-0146 ввёл смоук-гейт «каждый `agent()` несёт `model:`/`agentType:`» — consilium.mjs допинован по той же раскладке: **sonnet** = anchor/load/synth-транспорт/deliver/refuse (механика+relay — рекомендацию вычисляет код), **opus** = integration-pass (судейство), жюри — `agentType:` (модель из frontmatter определений персон).
-
-### Outcome
-`npm run verify` EXIT=0 на дереве, смёрженном с main `caf8d3b` (26 synth-юнитов; consilium-wiring 62 ассертов; workflow-смоук вкл. новый model-pin-гейт 0146; gen:map/catalog перегенерированы — урок PR #102 закрыт регистрацией в overlay; counts 24/44 не тронуты). Исполнитель поймал и починил дефект собственного теста (наивный «нет Date/Math»-чек ложно бил по harness-constraint комментариям → strip-comments). Live-грейд жюри на реальном decision-PA — pilot-gated (как B-d), отдельная сессия.
-
-### Lessons
-1. **«Реюз роутера» ≠ «вызов роутера»:** zone-router детерминирован по file-path, а вход жюри — PA без пути; правильная форма реюза — зеркалирование его РЕШЕНИЯ (условный ux-гейт), не его интерфейса. Проверяй, на каком ключе детерминирован реюзаемый оракул, до того как обещать «прямой реюз» в брифе.
-2. **Форс идентичности слота поверх self-report агента:** персона может мис-лейбльнуть `prior` — слот, который её спавнил, знает истину и перезаписывает. Дешёвый guard против тихой потери вердикта на панель-фильтре.
-3. **Параллельный трек может ввести НОВЫЙ гейт, пока твой PR открыт:** conflict-резолюция — это не только склейка текста; после merge main в ветку прогоняй полный verify и жди, что чужие свежие гейты предъявят требования к твоему коду (здесь — model-pinning).
-
----
-
-## DEC-DEV-0150 — Wave (C∥D) stretch C-i ПОСТРОЕН: `/product:batch-enrich` — макро-батч обогащения feature-set (checkpoint-first, гейты на границах фаз, prepare-only)
-
-**Date:** 2026-07-07
-**Trigger:** стройка stretch-очереди BATCH_3 после merge D-ядра (PR #117, DEC-DEV-0149) — пункт «ДАЛЬШЕ #1» файла-шва. Сборка = MDP-оркестрация: runner + команда — opus-исполнитель в worktree `ce3-wt-batch-enrich` по точному брифу, wiring-тест — sonnet-исполнитель, ревью + два фикса — main.
-**Tag:** #vision #epic-c #batch-enrich #product
-
-### Context
-Kickoff 0145 (решения г/д): completeness-loop hardening есть per-feature (`/product:complete`), но «крупная работа» из примера владельца — обогатить НАБОР FM релиза — требовала макро-шага. Cut 4 запрещает ре-имплементацию authoring F.2-F.10 внутри Workflow; решение «д» запрещает новый gate-disposition механизм (реюз L1 PA-escalate).
-
-### Decision
-1. **Новый `product/processes/batch-enrich-feature-set.mjs`** (5 фаз Plan→Enrich→Complete→Gate→Report) + `commands/product/batch-enrich.md` (Workflow({scriptPath}) + inline-fallback, паттерн consilium). 7 рельсов В КОДЕ: B1 explicit target (refusal без цели; `--all-planned` discovery логируется ДО работы); B2 checkpoint-first (урок E1) — манифест в `.product/.batch-enrich/<slug>/` ДО первого касания, слуг детерминирован из sorted-списка (без Date — harness), per-FM state-файлы = single-writer без гонки, resume со шва (verify-before-act 0093); B3 orchestrate-don't-duplicate — ENRICH-агент ИСПОЛНЯЕТ процедуру существующего `commands/product/feature.md` F.2→F.7, COMPLETE = `workflow()`-child на существующий `complete-feature.mjs` (ноль authoring-логики в скрипте); B4 гейты на границах фаз — per-item approve заменён PA-эскалацией решений (threshold/moscow/*-semantic/screen-decision/NFR [Y/D/L]/unsure) + ONE boundary-PA per FM (PA-dedup 0089, merge с прежним списком эскалаций при resume); B5 no status round-up — FM-статус НЕ переводится (F.10 = владелец), `honest_unmet` child'а verbatim; B6 no silent truncation — skip/fail per FM surfaced, батч продолжается; B7 bounded + single-writer.
-2. **FM-цикл ПОСЛЕДОВАТЕЛЬНЫЙ `for`, не `pipeline()`** — сознательное отклонение от буквы vision: конкурентные FM-цепочки гоняли бы один `.product/`-tree, product-хуки и аллокацию next PA-NNN канонического ledger (две цепочки минтят один id) — тот же single-writer рационал, что sequential RESOLVE в complete-feature. Отвергнуто: worktree-изоляция per FM (дорого + ломает canonical-PA канал).
-3. **F.8 (design) / F.9 (DA) — skip+log** (условные/опциональные, вне C-i); не-planned FM в явном списке проходит, но с громким log-флагом (explicit target = выбор владельца).
-
-### Outcome
-`npm run verify` EXIT=0 (ожидается на коммите); workflow-смоук 19/19 (вкл. model-pin гейт 0146: enrich=opus — реальное authoring-суждение, остальное sonnet, child через workflow() вне гейта); новый `batch-enrich-wiring.test.cjs` 85 ассертов (PA_CANON byte-identical к complete-feature, comment-strip техника против ложных Date-срабатываний); wiring: verify.md Step 4/4.6/9, overlay+реген карт/каталога (урок PR #102), package.json test:product. Ревью main поймало 2 зазора исполнителя: boundary-PA при resume мог перезаписать список эскалаций пустым (→ merge-инструкция), не-planned FM проходил молча (→ громкий лог). Live-прогон на ≥2 планируемых FM — pilot-gated (acceptance BATCH_3), отдельная сессия.
-
-### Lessons
-1. **Слово «pipeline()» в vision ≠ обязательство конкурентности:** если стадии пишут в один tree/ledger, single-writer `for` — правильная форма того же замысла; фиксируй отклонение явно в коде и журнале, а не молча.
-2. **Update-in-place без merge-инструкции теряет историю на resume:** идемпотентный PA-апдейт обязан явно наследовать прежний накопленный список — «перезапиши этим текстом» на втором прогоне стирает первый.
-
----
-
-## DEC-DEV-0151 — Wave (C∥D) stretch G1+G2 ПОСТРОЕН: roster-конфиг + participation-matrix слоем над zone-router (Epic G минимум)
-
-**Date:** 2026-07-07
-**Trigger:** stretch-очередь BATCH_3 после merge C-i (PR #123, DEC-DEV-0150). Сборка = MDP: lib+hook+юниты — opus-исполнитель по точному брифу в worktree `ce3-wt-g-roster`, ревью — main.
-**Tag:** #vision #epic-g #roster #product
-
-### Context
-Kickoff 0145 (решения е/ж/з): Epic A дал реестр персон + хардкод-routing (`zone-router.cjs`/`zone-routing.yaml`); G-минимум добавляет слой конфигурируемости БЕЗ четвёртого firing-механизма (решение «е»: стопка над роутером, не параллель) и БЕЗ дубля пресетов D3/G4 (решение «ж»: одна реализация).
-
-### Decision
-1. **G1** — опциональный `.product/agent-roster.yaml` (per-персона `enabled/model/depth_threshold/extra_lenses` + user-пресеты). Новая dual-use либа `hooks/product/lib/agent-roster.cjs`: purpose-built парсер (техника parseManifest, без YAML-депа); merge над `DEFAULT_ROSTER` (omitted == дефолт); unknown-персона — kept + warning (тайпо не гасит реальную персону молча); malformed/unreadable — дефолты + warning, никогда throw (урок normalizePanel 0149). **Absent файл → `null`-сентинел.**
-2. **G2** — `resolveFiring(routeResult, roster)`: слой ПОВЕРХ выхода `route()`. `roster == null` → routeResult возвращается ТЕМ ЖЕ объектом (byte-identical шов — юнит ассертит и deepStrictEqual, и strictEqual против РЕАЛЬНОГО выхода роутера). Иначе: `enabled:false` → drop; `depth_threshold` только ПОДНИМАЕТ планку над зонным гейтом (thr > magnitude → drop), никогда не опускает; все выпали → `fire:false` + честный reason; `dropped[]` surfaced (no silent truncation). Wiring — `zone-change-trigger.js` между `route()` и fire-гейтом, try/catch fail-open (сломанная либа/ростер не блокирует запись и не гасит панель); roster-warnings — non-blocking строкой в stderr-сигнал.
-3. **Пресеты (D3≡G4)** — built-in `lean`/`full` + user-override в ростере; `getPreset`/`resolvePanel` экспортированы для D1b-панели, **само wiring в consilium.mjs отложено** (bring-forward: первая живая нужда пресета). G3 (панель/метрики) — CUT по kickoff.
-
-### Outcome
-`npm run verify` EXIT=0; новый `agent-roster.test.cjs` 20 блоков (в `test:product`); `zone-router.test.cjs` 17/17 без правок (поведение роутера не тронуто); counts 24/44 не тронуты (ростер = конфиг, не артефакт-тип); шаблон ростера сознательно НЕ шипается — absent==default, схема-SSOT в header либы. Live-проверка переопределения на пилоте — trigger-gated.
-
-### Lessons
-1. **«Слой над оракулом» дисциплинирует масштаб:** весь G-минимум уложился в одну либу + 10-строчную вставку в хук, потому что kickoff заранее запретил параллельный механизм; конфиг-слои начинай с вопроса «над каким существующим детерминированным выходом это стоит».
-
----
-
-## DEC-DEV-0152 — Wave (C∥D) stretch F1 ПОСТРОЕН: контракт autonomy-policy + skeleton-резолвер (L0/L1, floor, precedence) — БЕЗ wiring
-
-**Date:** 2026-07-07
-**Trigger:** последний stretch-пункт BATCH_3 после merge G1+G2 (PR #124, DEC-DEV-0151). Сборка — main-модель сама (семантика диспозиций = критическое решение; бриф исполнителю вышел бы длиннее кода).
-**Tag:** #vision #epic-f #autonomy #contract
-
-### Context
-Kickoff 0145 (решение «и»): F1 = контракт-спека + skeleton, wiring в orchestrator-гейты отложен до сверки полей с оркестратор-треком (причина отсрочки F1 ещё в 0136). Жёсткий констрейнт волны #3: резолвер ПОТРЕБЛЯЕТ risk-tier/readiness из `gate-risk-classifier.cjs`/`env-readiness.cjs`, не пере-выводит (иначе два расходящихся gate-policy механизма).
-
-### Decision
-1. **Контракт-док `dev/AUTONOMY_POLICY_F1_CONTRACT.md`**: сигнатура `resolve(operation_class, risk_tier, env_tier, policy, override) → {disposition, level_applied, floor_hit, why[]}`; таблица потребляемых producer-контрактов (`tier HIGH/LOW`, `readiness READY/DEGRADED/ENV_NOT_READY`, `env_tier dev/staging/prod`; absent/foreign → консервативный дефолт + why); precedence vision дословно (floor > override > pin-потолок > default_level > built-in L1); матрица L0/L1; чек-лист сверки с оркестратор-треком перед F2-wiring (enum-стабильность, probe-vs-classify, дом либы, audit-trail → run-ledger, `--autonomy=` флаг).
-2. **Skeleton `lib/autonomy-policy.cjs`** (pure fn, zero deps, no I/O; юниты 70 ассертов в `test:orchestrator`). Ключевые F1-рельсы: **floor LOCKED** — `policy.floor` из обычного конфига игнорируется громко (сужение floor = отдельный явный opt-in, не конфиг-ключ); **pin = потолок**, никогда не поднимает; **L2/L3 деградируют к L1 громко** (не построенный уровень не может тихо значить «больше auto»); **`consilium-gate` не эмитится никогда** (эмитить диспозицию без исполняющей машинерии = тихий провал); **`applyReadinessGuard` только даунгрейдит** (READY — без изменений; DEGRADED — auto→human-gate; ENV_NOT_READY — block), зеркало рельса самого env-readiness.
-3. **Размещение — repo-`lib/`** (буквальный путь vision): граница волны держит `orchestrator/` read-only (кроме согласованного D1a), а деплой-дом решается вместе с F2-wiring (кандидат `orchestrator/lib/`). **CHANGELOG сознательно не тронут** — скелет не доставляется потребителю (нет deploy-маппинга), consumer-запись поедет с F2-wiring.
-
-### Outcome
-`npm run verify` EXIT=0; юниты 70/70; counts 24/44 не тронуты. Волна E5 stretch-очередь ЗАКРЫТА: C-i (0150) → G1+G2 (0151) → F1 (0152); cuts (C-iii/G3/C-ii) остаются за BF-триггерами.
-
-### Lessons
-1. **Скелет обязан отклонять диспозиции, которые нечем исполнить:** enum vision шире реализации — честная форма «не построено» это деградация с why-записью (L2/L3→L1) и не-эмиссия (`consilium-gate`), а не «сделаем вид, что уровень есть».
-
----
-
-## DEC-DEV-0153 — Process Fabric: аудит процессной ткани + Statechart-слой межпроцессной координации (концепт + пилотное ядро)
-
-**Date:** 2026-07-07
-**Trigger:** запрос владельца: полный аудит процессов + связности/кросс-процессной коммуникации + критическая проработка идеи Statechart/ESM как поведенческого движка оркестратора (контроль + backpressure; «творческое — свободнее, механическое — жёстче»; источник идеи — внешний доклад о FSM-контроле LLM-агентов).
-**Tag:** #architecture #orchestrator #process-fabric #statechart #audit
-
-### Context
-Аудит (9 зонных ридеров → 3 opus-агрегатора → синтез; `dev/process-fabric/AUDIT_2026-07-07.md` + 3 приложения): 79 процессов в 11 доменах; **18 де-факто машин состояний, enforced-переход у 3** (LESSON, completeness-loop, gate-verdicts); 36 разрывов G01–G36; из ~19 runtime-хуков блокирует один (`lesson-gate`); состояние фрагментировано по 9 хранилищам в 4 форматах. Системный диагноз: **разрыв «сенсор→мышца»** — детерминированные хуки пишут сигналы в write-only очереди (`pending-actions.md`, 6× `*-pending.yaml`), детерминированные оракулы умеют исполнять, но между ними «LLM должен вспомнить»/человек. Обратный контур (нелинейность «результат шага инициирует пересмотр архитектуры») не замкнут нигде, кроме lesson-gate. Сквозной трейс «идея→прод» доезжает до P6 GO / частично P7; дальше spec-only (Epic E, E15-петля).
-
-### Options considered
-1. **Statechart-движок поверх всего (включая внутрипроцессный flow)** — отвергнуто: Workflow-скелеты P2–P7 уже детерминированные FSM (bounded rounds, schema-гейты); второй движок = дубль и risky rewrite (против DEC-DEV-0076 «оркеструем, не переписываем»).
-2. **XState v5 как dependency** — отвергнуто сейчас: тянет npm-dep в zero-dep слой; actor-model/parallel/history v1 не нужны; персистентность + determinism-контракт всё равно свои. Charter-формат держим XState-совместимым по духу — миграция открыта.
-3. **n8n/внешний durable-оркестратор** — отвергнуто (повторно, линия DEC-DEV-0058): durable state достижим без демона; wake — хуки/cron/сессии.
-4. **«Просто больше хуков» без движка** — отвергнуто как система (у хуков нет ни состояния, ни модели переходов; текущее состояние — предел подхода), принято как транспорт (SessionStart-инжект, прецедент rails).
-5. **Тонкий межпроцессный координатор (ПРИНЯТО): Process Fabric** — декларативные charter'ы (JSON, подсет XState-семантики; `invoke` = запуск существующего Workflow-процесса) + микро-интерпретатор `fabric-engine.cjs` (pure-core, event-sourcing events.ndjson + state.json, timestamps-as-inputs как run-ledger) + актуаторы (диспетчер run.md, хуки, pending-actions, позже cron). События — ТОЛЬКО материализация structured-результатов процессов (ingest-маппинг из run-ledger `--result-file`), никаких «LLM решил, что событие случилось». Каждая prescription проходит `lib/autonomy-policy.cjs` (это посадочное место F2-wiring; floor непробиваем by construction). Backpressure = extended state: WIP-лимиты per lane (кодифицирует FB-004) + единая приоритизированная owner-queue (главный перегруженный ресурс — внимание владельца, не машинный трафик). Манифест детерминизма DL0–DL3/H на каждый шаг каталога: чем механичнее — тем жёстче FSM-контроль; творческое — только рамка вход/выход.
-
-### Decision
-Дизайн-SSOT — `dev/process-fabric/CONCEPT.md`. Пилотное ядро (фаза 1): `orchestrator/lib/fabric-engine.cjs` + `orchestrator/charters/feature-production-line.json` (E2E фичи P3→P7 с feedback/escалation-рёбрами) + `tests/orchestrator/fabric-engine.test.cjs`. Каталог процессов `dev/process-fabric/catalog.yaml` (существующие + gap-fill из методологий, DL-классы, типы связей, события). Диспетчер-wiring и SessionStart-инжект — фаза 2 (отдельный PR); live-прогон + graduation — фаза 3 (pilot-gated).
-
-### Outcome
-Built ≠ validated: graduation-критерии в CONCEPT §9 (инстанс ≥2 сессии, машинный NO-GO→remediation→GO, owner-queue resolve). Ядро построено воркфлоу «opus-исполнитель → адверсариальная панель ×3 → фикс → recheck»: 12 находок, 4 confirmed-important применены с тестами-регрессорами (human-gate-on-invoke флорится; P5 ingest-путь исправлен `gate.result`→`go_gate` по фактическому возврату `.mjs:575`; P7 NOT_STARTABLE dead-end закрыт маршрутом в `awaiting_product`); 2 отклонены фиксером в мою зону и закрыты мной (ратифицирован remediation self-loop — CONCEPT §4.2 приведён к построенному charter'у, литерал объявлял counter max=2 но не использовал; wiring теста в package.json). Тест 16/16; **полный `npm run verify` EXIT=0**.
-Каталог собран: **94 процесса / 469 шагов / 231 связь** (75 existing + 19 gap-fill; оркестраторная серия нормализована P1..P7→P1o..P7o по канону overlay). Перекрёстная валидация: DL-профиль шагов каталога (механика 66% / суждение 27% / человек 7%) независимо сошёлся с оценкой агрегатора детерминизма (65/25/10). После session-limit проведена сверка план/факт тремя ридерами: из 17 агентов трёх workflow реально потерян был один (completeness-критик) — перегнан; урок — `parallel()` в Workflow не имеет per-branch чекпоинта при resume (упал 1 из 4 → пересчитались все 4, у переживших разъехались ID-стили между прогонами; сборка каталога выбрала согласованную комбинацию по метрике разрешимости кросс-ссылок: 29 vs 46 unresolved).
-
-### Lessons
-1. **Гипотеза владельца подтвердилась эмпирически, но зона применения — конверт, не контент:** система уже расщеплена по линии «механическое → код (65%), творческое → LLM (25%), человек (10%)»; FSM должен формализовать lifecycle/disposition/pending→resolved, НЕ шаги суждения.
-2. **Эталон уже в кодовой базе:** lesson-gate — единственный замкнутый контур (write→block→resolve); Fabric = его генерализация («детерминированный слушатель на конце очереди»), а не импорт чужой парадигмы.
-3. **ESM надстраивается НАД человекочитаемыми файлами** (markdown/PA/git), проецируя в них, — не заменяет их (иначе теряется git-дружелюбность, которую владелец ценит).
-
----
-
-## DEC-DEV-0154 — Process Fabric фаза 2 (2a+2d): диспетчер-актуатор в run.md + закрытие F2-сверки F1 (дом либы, `--autonomy` override)
-
-**Date:** 2026-07-07
-**Trigger:** команда владельца «приступаем к фазе 2» по `dev/process-fabric/EXECUTION_ROADMAP.md` (2a диспетчер-wiring + 2d F2-сверка — этот PR; 2b PA-мост + 2c SessionStart-инжект — следующий).
-**Tag:** #orchestrator #process-fabric #wiring #autonomy #deployment
-
-### Context
-Ядро Fabric built ≠ validated (DEC-DEV-0153); первый актуатор — диспетчер `run.md`. Recon стыков вскрыл две дыры доставки: (а) `fabric-engine` требовал `../../lib/autonomy-policy.cjs`, а корневой `lib/` не имеет деплой-маппинга — bootstrap bulk-copy его кладёт, но `/ecosystem:update` root-`lib/` НЕ синкает никогда → в user-проекте require бьётся/дрейфует после первого update (класс DEC-DEV-0088 «partial sync», только by-design); (б) примеры-перечисления `update.md` не знали `charters/` (managed) и `fabric/` (preserved state) — код синка динамический (`ls` upstream-детей), но перечисления load-bearing для LLM-исполнителя update, а fabric-state не был в явном wipe-protection списке (принцип «состояние пилота не вайпим»).
-
-### Options considered
-1. **Дом либы: оставить repo-`lib/` + добавить root-`lib/` в синк-списки update.md** — отвергнуто: новый managed-корень ради одного файла + ещё один класс в namespace-семантике.
-2. **Переезд в `orchestrator/lib/` рядом с потребителем (ПРИНЯТО)** — рейдит существующий namespace-синк `{processes,lib,charters}`; `require('./autonomy-policy.cjs')` стабилен в обоих layout (repo-root и `.claude/`); ровно кандидат, названный F1-контрактом §6.
-3. **Шим-реэкспорт на старом пути** — отвергнут: потребителей два (движок+юниты), оба обновлены; мёртвый шим сам остался бы вне доставки.
-
-### Decision
-**2a.** Секция «Process Fabric (inter-process line coordination)» в `run.md` ПОСЛЕ run-ledger-wiring: opt-in `--fabric` (init по deployed-пути charter'а + `tick evt:line.start`; rejected start документирован как FB-004 backpressure, не ошибка), `ingest` тем же `--result-file` и `$RUN_ID`, что и `finish` (идемпотентность моста), маршрутизация prescriptions (auto → продолжение полного bracket-цикла ledger start→Workflow→finish→ingest; human-gate → owner-queue + STOP, PA-проекция = 2b; final → закрытие линии), resume-события (`evt:pa.resolved`/`evt:env.up`/`evt:owner.resume|abort`), `replay` как recovery-инструмент. **2d.** Чек-лист F1 §6 закрыт по всем 6 пунктам (зафиксировано в самом контракте): fabric-уровень риска — из charter `meta.risk` (authored, default HIGH), per-task `classifyTask` остаётся в P5; readiness входит **событиями** ingest, не disposition-guard'ом; `env_tier` — из `fabric/limits.json`; дом либы — переезд (выше); audit-trail `why[]` — `events.ndjson`; `--autonomy` — end-to-end (`run.md` frontmatter → CLI `init|ingest|tick --autonomy` → `env.override` → 5-й аргумент `resolve()`; floor непробиваем — юнит). Плюс новый wiring-тест `fabric-dispatcher-wiring.test.cjs` (11 asserts): lockstep run.md ↔ charter ↔ update.md ↔ require-граф движка (ingest-ключи диспетчеризуемы; resume-события существуют в charter; `charters/` шипается, `fabric/` защищён; policy co-located, stale-копия в repo-`lib/` запрещена).
-
-### Outcome
-Юниты: autonomy-policy 70 ✓, fabric-engine 16→18 ✓ (+override pure/CLI), новый wiring 11 ✓; полный `npm run verify` — до конца цепочки (puppeteer-смоуки skip как обычно в этом env). `run.md` — первый живой актуатор Fabric; у F1 появился транзитивно живой потребитель-путь (prescription → диспетчер). Доставка выровнена: verify.md Step 4 считает `charters/*.json`; catalog.yaml executor-пути обновлены.
-
-### Lessons
-1. **«Дом либы» — деплой-контракт, не вкусовщина:** файл вне managed-namespace доезжает bootstrap'ом, но умирает на первом `/ecosystem:update`. Require-граф новой либы сверяй со списками update.md ДО релиза — теперь это держит детерминированный assert (co-located require + запрет stale-копии).
-2. **Динамический код синка ≠ достаточно:** прозу update.md исполняет LLM, перечисления в ней load-bearing — обязаны зеркалить факт (`charters/`, `fabric/`), иначе wipe-protection живёт только в удаче.
-
----
-
-## DEC-DEV-0155 — Process Fabric фаза 2 (2b+2c): PA-мост замыкает обратный контур G03/G04 + первый shipped SessionStart-хук; 2e срезан
-
-**Date:** 2026-07-07
-**Trigger:** продолжение фазы 2 по `dev/process-fabric/EXECUTION_ROADMAP.md` (2b PA-мост + 2c SessionStart-инжект); исполнение — два opus-субагента по MDP (точные брифы, развязанные файловые зоны), ревью диффов main-моделью.
-**Tag:** #orchestrator #process-fabric #pa-bridge #hooks #sessionstart
-
-### Context
-После 2a human-gate останавливал линию только во внутренней owner-queue Fabric (JSON) — вне канонического PA-канала владельца; резолюция требовала ручного tick с ручным подбором события. SessionStart-хуков в shipped-манифестах не было вовсе (0 из 5 неиспользуемых событийных типов — аудит §1); возвращающаяся сессия реконструировала «где мы» по хвостам доков.
-
-### Options considered
-1. **PA-write промпт-инструкцией диспетчеру** — отвергнуто: снова «LLM должен вспомнить» — ровно класс разрыва (c) аудита; CONCEPT §4.4 прямо отдаёт запись engine-shell.
-2. **Engine-shell пишет PA + `pa-scan` читает резолюцию (ПРИНЯТО)** — детерминированный слушатель на ОБОИХ концах очереди (lesson-gate-паттерн, поднятый на межпроцессную ткань).
-3. **Демон/файл-watcher на PA** — отвергнуто: среда не-демоническая; резолюция = явный tick (`pa-scan --tick`) диспетчером/владельцем, консистентно с «движок тикают».
-
-### Decision
-**2b (PA-мост).** Applied-тик, паркующий инстанс в human-gate-состоянии, зеркалит каноническую PA-запись (schema `user-action-tracker.md`; маркеры `fabric-instance`/`fabric-state`/`resume-event` в Details — машинный контракт; дедуп по (instance, state, pending); create-if-absent с PA-000 sentinel; `init` не спамит — диспетчер сразу тикает line.start). `resume-event` выводится детерминированно из charter `on{}` (`evt:pa.*` → `evt:owner.resume` → `evt:env.up` → первый ключ). Новая подкоманда **`pa-scan [--tick]`**: Status done → тикнуть resume-event (идемпотентные скипы: инстанс исчез / уже ушёл из состояния / charter не держит событие); **dismissed → surfaced only** (abort vs resume — решение владельца, не машины). PA — shell-side-effect ВНЕ event-sourcing: `replay` воспроизводит state.json бит-в-бит независимо. Escalated-гейт auto-resume по done-флипу ратифицирован: это ровно graduation-критерий (c) «human-gate через owner-queue разрешён и продолжил инстанс».
-**2c (SessionStart-инжект).** `hooks/orchestrator/session-fabric-status.js` + `manifest.yaml` — **первый shipped SessionStart-хук экосистемы**: warn-only (exit 0 всегда, 15s timeout, тумблер `FABRIC_STATUS_INJECT=0`), read-only шелл `fabric status`, инжект `additionalContext` (инстансы + топ-5 owner-queue, cap 8k), no-op без fabric-state (в dev-репо inert). Сопутствующие однострочники: `settings.json.template` pre-seed `"SessionStart": []` (прецедент LESSON-* для Stop/PreToolUse/UPS), `update.md` regex ecosystem-owned хуков += `orchestrator` (прецедент `design/` Phase 6).
-**2e (charter №2 product-front) — СРЕЗАН этой волной:** расширение слоя до прохождения graduation противоречит substrate-дисциплине DEC-DEV-0148 (built ≠ validated); профит федерации owner-queue появляется только с live product-front прогонами, которых до пилота нет. Отложен до фазы 4 по эмпирическому триггеру.
-
-### Outcome
-fabric-engine 23/23 (+5 PA-тестов), fabric-dispatcher-wiring 11/11, hook-smoke 34→36/0, полный `npm run verify` зелёный. Обратный контур G03/G04 замкнут детерминированно end-to-end: гейт → PA(pending) → владелец флипает done → `pa-scan --tick` → линия продолжена. Фаза 2 построена целиком (2a+2d PR #129; 2b+2c этот PR); дальше — фаза 3 live-валидация на пилоте (graduation gate).
-
-### Lessons
-1. **Оба конца очереди должны быть детерминированными:** write-only PA и был G03; мост полон только парой «engine-write + pa-scan-read» — одно направление без второго оставляет разрыв «сенсор→мышца».
-2. **Развязка файловых зон в брифах** позволила двум opus-агентам работать параллельно в одном checkout без конфликтов; право исполнителя на мотивированное отклонение (MDP п.5) сработало дважды — оба отклонения были однострочниками с прецедентами и приняты на ревью.
-
----
-
-## DEC-DEV-0156 — G20: count-drift в CLAUDE.md.template + слепая зона реконсилятора (templates/ не сканировался вовсе)
-
-**Date:** 2026-07-07
-**Trigger:** автономный quick-wins прогон по `dev/process-fabric/EXECUTION_ROADMAP.md` §«Параллельная дорожка» (G20 — самый срочный: шаблон инстанциируется verbatim в каждый новый пилот при bootstrap).
-**Tag:** #templates #d7 #count-drift #tooling
-
-### Context
-`templates/project/CLAUDE.md.template` нёс «23 artifact types» (×2 строки) при каноне 24 — и, как вскрылось по ходу, ещё и «33 validation rules» при каноне 44. Root cause двойной: (а) реконсилятор `check-counts.js` (DEC-DEV-0083) не включал `templates/` в `SCAN_ROOTS`; (б) даже при включении `walk()` собирал только `*.md`, а файл называется `.md.template` — т.е. слепая зона на двух уровнях сразу.
-
-### Options considered
-1. Точечный фикс чисел без расширения реконсилятора — отвергнуто: G20 ровно так и возник; при следующем изменении канона шаблон снова отстанет молча.
-2. Фикс чисел + `templates/` в скан + фильтр `.md.template` (ПРИНЯТО) — enforcement замыкается сам: process-gate (commit-msg) гоняет check-counts, дрейф шаблона теперь блокирует коммит.
-3. Подстановка чисел placeholder'ом при bootstrap — отвергнуто: усложнение инстанциатора ради двух строк; числа всё равно живут в тексте и подлежат скану.
-
-### Decision
-Вариант 2. Header check-counts.js дополнен обоснованием: templates/ — consumer-zone (числа там live, не исторические). Исполнение — sonnet-агент по точному брифу (MDP), ревью диффа main-моделью; мотивированное отклонение исполнителя (третья строка 33→44 сверх ТЗ из двух строк) принято — сверено с `validation.md` («44 активных правила ... + 2 process rules»).
-
-### Outcome
-`check-counts.js` ✓ consistent 24/44 по всем live-докам включая templates/. Попутно закрыт третий дрейф (33→44), в G20 не числившийся.
-
-### Lessons
-1. Слепая зона сканера — класс бага, не единичный typo: gap заявлял 2 строки, расширенный скан тут же нашёл третью. Расширяя реконсилятор, прогоняй его ДО ручного фикса — пусть сам выдаст полный список.
-2. Расширение файлового скана проверяй на обоих уровнях: список корней И файловый фильтр (`.md.template` ≠ `*.md`).
-
----
-
-## DEC-DEV-0157 — G23: process-gate ставится автоматически (npm `prepare` → node-установщик); `.sh` стал тонкой обёрткой
-
-**Date:** 2026-07-07
-**Trigger:** автономный quick-wins прогон (EXECUTION_ROADMAP §«Параллельная дорожка»); gap G23 — `.git/hooks` не версионируется, блокирующий D7-гейт существовал только там, где вручную вспомнили `install-pre-commit.sh` → свежий клон жил вообще без enforcement.
-
-### Context
-Весь D7-enforcement (count drift / CHANGELOG / DEV_JOURNAL — process-gate.js; hook-smoke — pre-commit) держался на ручном ритуале установки. fragile-enforcement класс из APPENDIX-B.
-
-### Options considered
-1. Только докстрока «не забудь установить» — отвергнуто: это и есть текущее состояние, G23 ровно об этом.
-2. npm `prepare` + node-установщик `install-git-hooks.cjs` (ПРИНЯТО) — husky-паттерн без зависимости: `prepare` срабатывает на каждом `npm install`/`npm ci`; реализация одна, кроссплатформенная (whole-repo тулинг и так node); `--best-effort` для prepare (не-репо/огрызок тарбола → warn + exit 0, npm install никогда не ломается), strict для ручного запуска.
-3. Переписать bash-установщик и вызывать его из prepare — отвергнуто: на Windows npm-скрипт с bash хрупок; две реализации (bash SSOT + node-мост) — drift-риск. Вместо этого инверсия: node = SSOT, `install-pre-commit.sh` — тонкая обёртка (документированная точка входа CLAUDE.md продолжает работать).
-
-### Decision
-Новый `dev/meta-improvement/scripts/install-git-hooks.cjs`: worktree-safe (`git rev-parse --git-path hooks`, честен к `core.hooksPath`), идемпотентен (идентичный таргет → no-op), differing-таргет бэкапится; ставит оба хука (pre-commit ← pre-commit.sh, commit-msg ← commit-msg.sh — контракт DEC-DEV-0023/0083 без изменений). `package.json` scripts += `"prepare"`. CLAUDE.md «Установить gate» обновлён (авто при npm install; вручную — прежняя команда).
-
-### Outcome
-4 сценария проверены: живой репо (prepare обновил устаревшие ранее установленные хуки — content-сравнение работает), вне репо best-effort exit 0 / strict exit 1, свежий git-init клон получает оба хука. Остаточный риск (осознанный): дев, который клонировал и НИ РАЗУ не запускал `npm install`, гейта по-прежнему не имеет — но это уже пересечение с CI (verify на Linux гоняет job'ы независимо от локальных хуков).
-
-### Lessons
-1. Fragile-enforcement закрывается перехватом СУЩЕСТВУЮЩЕГО ритуала (npm install все и так делают), а не добавлением нового («запусти ещё и вот это» — не работает по определению G23).
-2. При двух реализациях одной логики на разных языках — инвертируй в «одна реализация + тонкая обёртка», а не «мост поверх обеих».
-
----
-
-## DEC-DEV-0158 — G19: линтер catalog↔runner в verify; вскрыт и закрыт live-drift (V-18 + 4×V-AM молча отсутствовали в раннере)
-
-**Date:** 2026-07-07
-**Trigger:** автономный quick-wins прогон (EXECUTION_ROADMAP §«Параллельная дорожка»); gap G19 — `validation.md` (каталог, 44 правила) и `validation-runner.md` (hardcoded-таблицы) синхронизировались вручную; сам каталог §11 откладывал линтер «до >100 правил или first observed drift».
-
-### Context
-Recon (sonnet Explore) сравнил ID-множества: **drift уже случился** — V-18 (DEC-DEV-0064) и все 4 V-AM-* (DEC-DEV-0066) добавлены в каталог и реализованы inline-хуками, но в раннер не занесены вовсе (silent: `--rule V-18` через раннер не работал, full-прогон их не считал). V-MK-01..08 — отдельный класс: признанный, задокументированный skip. Плюс внутрикаталожная нестыковка: namespace-таблица §0 говорила «V-01..V-16 / 15» при факте 16 заголовков.
-
-### Options considered
-1. Хардкод allowlist признанных пропусков в самом линтере — отвергнуто: третье место истины, drift переезжает в линтер.
-2. Признание пропусков объявляется В РАННЕРЕ machine-readable маркером `<!-- catalog-sync:acknowledged … reason="…" -->` (ПРИНЯТО) — декларация живёт рядом с прозой пропуска, reason обязателен, линтер ловит stale-ack ([3]) и двусмысленность ([4]).
-3. Парсить прозу скипа эвристикой — отвергнуто: хрупко, ровно против духа anti-pattern §1 раннера.
-
-### Decision
-`dev/meta-improvement/scripts/check-validation-sync.cjs` (в `npm run verify` как `check:validation-sync`): ID-set сравнение — каталог (`#### V-…:` заголовки) ↔ таблицы раннера (`| V-… |`) + ack-маркеры; 6 проверок ([1] непокрытое правило, [2] orphan в раннере, [3] stale ack, [4] таблица∧ack, [5] prose-итог «N активных правил» == числу заголовков, [6] namespace-таблица §0 == пофакту). Семантика правил НЕ парсится (anti-pattern §1 переформулирован: запрет касается runtime-исполнения; drift-detection — санкционированный кандидат §11). Live-drift закрыт содержательно: V-18 — строка в artifact-таблице раннера (зеркалит `artifact-validate.js`), V-AM-* — секция inline-only + ack-маркер (semantics V-MK-класса), namespace-таблица §0 исправлена (16, диапазон V-01..V-18 без V-13/V-17), §11 чекбокс закрыт.
-
-### Outcome
-Линтер зелёный на реальных файлах (44 = 32 rows + 12 ack); негативные фикстуры дают все классы ошибок и exit 1; пустой каталог → exit 2. Полный `npm run verify` зелёный с линтером в цепочке.
-
-### Lessons
-1. «Линтер добавим при first observed drift» без механизма НАБЛЮДЕНИЯ дрейфа — самообман: drift случился (V-18, DEC-DEV-0064) и месяц жил незамеченным, триггер сработал только от постороннего аудита. Отложенный гейт должен иметь детектор своего триггера.
-2. Признанное исключение — тоже контракт: allowlist живёт в файле-нарушителе machine-readable маркером с обязательным reason, не в голове и не в линтере.
-
----
-
-## DEC-DEV-0159 — G05/G06: subagent-watchdog — первый SubagentStop-хук; детерминированный сенсор над pending-очередями и каноничностью персон
-
-**Date:** 2026-07-07
-**Trigger:** автономный quick-wins прогон (EXECUTION_ROADMAP §«Параллельная дорожка»); gaps G05 (pending-очередь write-only: спавн ревьюера держится на памяти оркестратора, записи тихо стираются — live-инцидент `1ff552c0c6b4`/DEC-DEV-0038 #1) + G06 (recurring S8 P1 regression: персона-бриф исполняется под general-purpose вместо канонического типа; фиксировался ≥3 раза — 0038/0043/patch-candidate C).
-
-### Context
-Прежний hard-enforcement был отвергнут в DEC-DEV-0064 с формулировкой «PostToolUse не видит subagent_type» — верно, но SubagentStop ВИДИТ: контракт верифицирован по официальной доке (payload несёт `agent_type`+`agent_id`; `transcript_path` — транскрипт главной сессии; matcher фильтрует по типу агента; exit 2 заставляет субагента ПРОДОЛЖИТЬ — поэтому осознанно warn-only/exit 0). Событие SubagentStop не использовалось нигде в экосистеме (0 из 5 незадействованных типов — аудит §1). R4 (ПОЧЕМУ harness отвечает «agent not found») по-прежнему сознательно не трогается — три прежние точки решения откладывали его до live-harness verification; watchdog не чинит регистрацию, он ДЕТЕКТИРУЕТ факт подмены post-hoc.
-
-### Options considered
-1. Штамповать consumed_at прямо в pending-yaml — отвергнуто: форматтеры триггер-хуков whitelist'ят поля при re-emit (см. `formatDaEntriesYaml`), чужой ключ молча стирается при следующей перезаписи; расширять три shipped-хука ради этого — не smallest mechanism.
-2. Sidecar-state watchdog'а `.product/.pending/.watchdog-state.json` (ПРИНЯТО) — producer-файлы не мутируются вообще; ключ (artifact, queued_at) ⇒ re-queue артефакта автоматически сбрасывает потребление (новое изменение = новое ревью-обязательство); warn-once на wipe (запись после предупреждения выбрасывается).
-3. Демон/watcher над очередью — отвергнуто (среда не-демоническая; прецедент 2b PA-моста: слушатель = детерминированный хук на событии).
-
-### Decision
-`hooks/product/subagent-watchdog.js` — один файл, три pronga (manifest: SubagentStop ""/Stop ""/PostToolUse Write|Edit): (а) **G06** — завершившийся general-purpose/claude, чей spawn-prompt (последний Task с этим subagent_type в хвосте транскрипта главной сессии, shape-tolerant парс до 1MB) матчит маркеры персона-брифа → громкий stderr «S8 P1 REGRESSION, ревью НЕ валидно, respawn каноническим типом, not-found → STOP» (anti-patterns #9/#10 остаются prompt-слоем, watchdog — слой детекции); (б) **G05-позитив** — завершившаяся каноническая персона → artifact-ID из её spawn-prompt штампуются consumed в sidecar + stderr-подтверждение; (в) **G05-wipe** — на каждом событии reconcile state↔очереди: запись исчезла без consumed → громкий stderr (сигнатура инцидента), исчезла с consumed → тихая уборка; (г) **Stop** — незакрытые обязательства на закрытии сессии → напоминание (очередь переживает сессию, spawn-намерение — нет). Rollout: warn-only (lesson-gate остаётся единственным blocking), fail-open всюду, тумблер `SUBAGENT_WATCHDOG=0`. Riders: `settings.json.template` pre-seed `"SubagentStop": []` (прецедент 2c), первый SubagentStop-хук экосистемы.
-
-### Outcome
-5 smoke-кейсов (G06-warn / consume-stamp / non-persona-silence / Stop-reminder / wipe-detect) — все зелёные с первого прогона; hook-smoke 36→41/0; полный verify EXIT=0. Обзорных доков, перечисляющих хуки поимённо, нет (проверено grep'ом) — sweep не требуется; gen-map хуки не харвестит.
-
-### Lessons
-1. «Хук не может это видеть» — утверждение про КОНКРЕТНОЕ событие, не про hook-слой вообще: отвергнутый в 0064 enforcement оказался возможен ровно потому, что смотрели на PostToolUse, а не на SubagentStop. При отклонении механизма фиксируй, к какому событию относился аргумент.
-2. Чужой формат с whitelist-re-emit — не место для твоего состояния: sidecar собственного владения дешевле и безопаснее расширения трёх производителей.
-
----
-
-## DEC-DEV-0161 — Factory Conductor MVP: пульт оркестрации параллельных интерактивных Claude Code сессий на VM
-
-**Date:** 2026-07-08
-**Trigger:** запрос владельца «сделаем MVP инициативы Factory Conductor + инструкцию». Инициатива была зафиксирована как отложенная (память `project_factory_conductor_initiative`, дизайн одобрен 2026-07-08 после трёхсторонней разведки).
-**Tag:** #orchestration #factory #tmux #mvp
-
-### Context
-У экосистемы есть Orchestrator для **headless** Workflow-агентов, но не было ручки на второй половине фабрики — долгоживущих **интерактивных** `claude`-TUI сессиях, которые solo-dev разворачивает на VM. Нужен тонкий пульт: запускать/вести N параллельных сессий «как человек» (несколько терминалов), со сбором логов и расширяемостью. Субстрат — VM `Ubuntu-ClaudeCode` (tmux 3.4, Node 22, claude в `~/.local/bin`).
-
-### Options considered
-1. **tmux + тонкий Node-пульт `factory.cjs`, worktree/полосу, состояние через hooks** (ПРИНЯТО) — официального API «инъекция ввода в чужую интерактивную сессию» нет, только tmux/PTY; hooks Claude Code (SessionStart/UserPromptSubmit/Stop) дают состояние без парсинга экрана; run-ledger уже есть — переиспользуем как журнал; worktree/полосу держит single-writer инвариант FB-004.
-2. **Agent Teams** (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`) — официальный аналог, но experimental (нет resume тиммейтов, ~5-6 предел, 1 team/сессия). Отложено: сам построен на tmux → миграция при созревании лёгкая.
-3. **Node+bash без tmux (спавн headless `-p`)** — отвергнуто: теряется интерактивность и наблюдаемость владельцем из GUI; запрос был именно про «как человек с несколькими экранами».
-
-### Decision
-`dev/factory-conductor/factory.cjs` (650+ строк, stdlib-only, без LLM) + README. Полоса (lane) = tmux-сессия `cf-<lane>` в своём git worktree (`~/projects/lanes/<lane>`, ветка `lane/<lane>`). Команды: `spawn` (worktree + hooks-settings + tmux + ledger-start + опц. авто-промпт), `send` (`--text`/`--file`→FACTORY-BRIEF.md), `peek`, `status`/`list` (таблица state/branch/ahead/dirty), `harvest` (скролбэк + git-съём + ledger-finish), `stop` (`/exit`→kill, mini-harvest, `--rm-worktree` с сохранением ветки). Состояние снимается **хуками** (Stop→маркер `idle`, UserPromptSubmit→снятие), не парсингом. Живёт в `dev/` (не consumer-zone) до live-валидации на пилоте.
-
-### Outcome
-Live-смоук на VM (пилот `my-first-test`), 2 параллельные полосы, полный цикл: spawn → pre-trust → авто-промпт → busy → интерактивный send/peek → idle(Stop-hook) → harvest → stop --rm-worktree. Ledger забрекетил оба прогона (dur:516s/302s, verdict harvested), ветки `lane/*` сохранены, worktrees сняты. Три бага найдены и починены в ходе смоука (см. Lessons). Тестовые артефакты вычищены.
-
-### Lessons
-1. **Trust-диалог блокирует хуки.** Свежий worktree — незнакомая папка; TUI встаёт на folder-trust, SessionStart не срабатывает, `started`-маркер не появляется (90s timeout авто-промпта). Фикс: `preTrustWorktree` пишет `hasTrustDialogAccepted` в `~/.claude.json` до запуска. Гонка с параллельным `claude` (перезапись `~/.claude.json`) осознанно принята — окно крошечное, fallback = оператор жмёт Enter.
-2. **capture-pane нужна живая сессия — harvest ДО kill.** Исходно `stop` глушил сессию, потом мини-harvest → скролбэк терялся. Переставил mini-harvest перед `/exit`.
-3. **Stale-маркеры полосы обманывают `started`-wait** при повторном использовании имени полосы — `spawn` теперь чистит `started/idle/session_id` перед стартом.
-4. **Родительская директория worktree** (`~/projects/lanes/`) может не существовать на первом спавне — `mkdirSync` recursive перед `git worktree add`.
-5. ITP из глобального CLAUDE.md наследуется сессиями VM — на неоднозначном промпте модель уходит в уточняющее меню; это фича Claude, оператор отвечает `send`. Давать предмет действия в промпте явно.
-
----
-
-## DEC-DEV-0160 — G32: аллокатор DEC-DEV — скан локальных веток + claims-резервация в git-common-dir
-
-**Date:** 2026-07-07
-**Trigger:** автономный quick-wins прогон (хвост очереди); gap G32 — «race воспроизведена ≥7 раз, `next-dec-dev` не атомарен, митигация чисто дисциплинарная».
-
-### Context
-`next-dec-dev.js` (2026-07-04) сканировал локальный журнал + `origin/*` ветки. Две оставшиеся дыры: (1) **локальные незапушенные ветки** не сканировались вовсе — параллельная сессия на этой же машине коммитит журнал локально задолго до push (наблюдаемая природа гонки: env `parallel_sessions_share_checkout`); (2) **окно allocate→commit** ничем не резервировалось — две сессии, спросившие номер до того, как первая закоммитила, получали одинаковый ответ.
-
-### Options considered
-1. Полная атомарность через внешний lock-сервис — отвергнуто: несоразмерно; гонка локальная (одна машина/checkout), не распределённая.
-2. Claims-файл в `<git-common-dir>/dec-dev-claims.json` (ПРИНЯТО) — common-dir шарится всеми worktree чекаута ⇒ параллельные сессии видят чужие claims немедленно; файл не версионируется (не едет в PR); TTL 72h (упавшая сессия не сжигает номер навсегда); авто-release при появлении заголовка в любом сканируемом журнале.
-3. Резервация коммитом в журнал («заглушка-заголовок») — отвергнуто: мусор в истории + конфликтует с accumulation-контрактом.
-
-### Decision
-`next-dec-dev.js`: (а) скан-источники += локальные ветки (кроме текущей — её покрывает рабочий файл); (б) режим `--claim` — вычислить next-free И записать резервацию `{claimed_at, branch}`; активные claims участвуют в global-max наравне с журналами; stale (>72h) игнорируются с warn; погашенные (номер уже в журнале) прунятся при следующей записи. `--check` видит claims («TAKEN by claim (...)»).
-
-### Outcome
-4 сценария вживую: report 0160 → `--claim` персистит → следующий report даёт 0161 и показывает claim → `--check 0160` = TAKEN/exit 1. Claim 0160 оставлен честным — использован этой же записью (авто-release после merge). Остаточная не-атомарность (два `--claim` в одну миллисекунду) осознанно принята: вероятность ≪ прежней гонки, цена — read-modify-write без lock.
-
-### Lessons
-1. Прежде чем строить «атомарность», определи ФАКТИЧЕСКУЮ топологию гонки: здесь она same-machine (общий checkout) — общий файл в git-common-dir закрывает её без инфраструктуры.
-2. Резервация обязана уметь умирать сама (TTL + авто-release по факту публикации) — иначе лечишь гонку, а создаёшь leak номеров.
-
----
-
-
-**Numbering:** continuous, no gaps. Start each new entry with next NNNN.
-
-**When to add an entry:** default yes for architectural choices, rejected alternatives, root causes of bugs, things that turned out different from plan. Default no for: typo fixes, doc reformatting, dependency bumps.
-
-## DEC-DEV-0162 — Fabric фаза 3: live-прогон graduation-гейта на VM-пилоте + первый live-дефект (SessionStart-инжектор терял payload)
-
-**Date:** 2026-07-08
-**Trigger:** EXECUTION_ROADMAP фаза 3 (pilot-gated graduation gate, CONCEPT §9); запрос владельца «ты за пультом» — оператор ведёт прогон с хоста промптами, executor = сессии пилота на VM, судья = независимый opus-субагент.
-
-### Context
-Первый live-прогон Process Fabric на пилоте `my-first-test` (VM Ubuntu-ClaudeCode, основной checkout — fabric-state живёт в рабочем дереве, worktree-полосы Conductor'а его не видят). Протокол: `live-run-validation.md` класс B, инстанцирован пре-регистрированными артефактами `dev/process-fabric/FABRIC_PHASE3_LIVE_RUN_BRIEF.md` (сценарий+промпты verbatim, коммит ДО прогона) + `FABRIC_PHASE3_REVIEW_HANDOFF.md` (рубрика судьи, исполнителю не показывалась). Доставка: `/ecosystem:update` (аддитивный, до upstream `20bb912`), verify Healthy.
-
-### Decision(s)
-1. **Субъект линии — FM-006** (единственная маленькая фича без kiro-спеки: честный полный путь authoring→impl; FM-004 отклонена — UI+NFR, слишком крупная для валидации механики).
-2. **Гейты отыгрывать средой и файловым PA-мостом, не подсказками** (класс B): парковку S1 на естественном product-гейте (P4 поймал 2 реальных LOW-дрейфа BR-081) разрешили канонически — флип PA-045→done в файле + `pa-scan --tick` в свежей сессии.
-3. **Арх-развилку PA-051 (SIDE A materialize vs SIDE B derive-on-read) от лица владельца НЕ решать** — выбран consilium PREPARE-ONLY (жюри готовит DRAFT DEC, ратификация владельца). Отвергнуто «выбрать сторону самому»: подлинно владельческое решение, и выбор ради добора критерия G-B был бы подгонкой прогона под судейский интерес (executor/judge separation).
-4. **Live-дефект №1 чинить сразу в этом же PR**: `session-fabric-status.js` отдавал `hookSpecificOutput` БЕЗ обязательного `hookEventName: "SessionStart"` → Claude Code отбрасывал весь payload («Hook JSON output validation failed»), fabric-инжект был мёртв с рождения и невидим (без живого инстанса хук молчит; первый старт С инстансом = S2 прогона). Фикс однострочный + smoke-кейс ужесточён (`hookEventName` теперь обязателен в выводе).
-
-### Outcome
-Линия прожила S1+S2 (два restore), прошла P3→P4→гейт→P5 (19/19 тасков, ~6ч, покоммитный TDD) → `impl.conflict` → parked `awaiting_product` c PA-051/PA-052; консилиум выдал Side-B strong-CONDITIONAL. Механика: `replay` exit 0, run-id уникальны и совпадают ledger↔events, 6/6 событий со штампами `--at`, FB-004 backpressure подтверждён на копии стейта (`applied:false`, `wipOk: 1<1 → false`). Критерии CONCEPT §9: **G-A ✓, G-C ✓, G-B pending** (P5 кончился conflict'ом, не no_go; remediation-стейт не входился — добор после владельческой ратификации PA-051). Полный грейд судьи + вердикт — `dev/process-fabric/FABRIC_PHASE3_GRADE_REPORT.md`.
-
-### Lessons
-1. **Smoke, который проверяет форму вывода, но не контракт потребителя, пропускает мёртвый канал целиком** — hook-smoke был 41/0, а инжект никогда не работал. Контракт харнесса (обязательные поля hook-JSON) должен быть закодирован в assert'ах.
-2. **Условно-молчащие хуки (нет субстрата → exit 0) не валидируются доставкой**: дефект всплывает только при первом появлении субстрата в проде. Для таких хуков smoke-фикстура «субстрат есть» обязательна (она была — но с мягким assert'ом, см. урок 1).
-3. **Естественные гейты богаче срежиссированных**: оба human-gate прогона (BR-081 drift, PA-051 fork) пришли из реальных дефектов канона/спеки — docker-рычаг из сценария не понадобился вовсе.
-4. Пульт-грабли VM-оркестрации (ghost-подсказки TUI, busy-признаки фоновых Workflow, base64-промпты) — зафиксированы в брифе, кандидаты в будущий пульт-скилл.
-
-## DEC-DEV-0163 — DEF-3: движок не принуждал bracket-контракт — диспетчер прошагал линию голыми tick; guard в fabric-engine
-
-**Date:** 2026-07-09
-**Trigger:** добор G-B live-прогона фазы 3 (мандат владельца «мёржи оба PR и проведи добор»); S3-сессия пилота довела линию FM-006 до `done`, но post-hoc сверка вскрыла: ledger без новых брекетов, seq7/seq8 без run_id, в транскрипте 0 Workflow-вызовов и 2 ручных `tick --event evt:impl.go|evt:runtime.ready_or_started` (21 сек между ними).
-
-### Context
-run.md требует исполнять prescription `kind: run-process` полным bracket'ом (ledger start → процесс → finish → `ingest --run-id`), но движок принимал ЛЮБОЕ валидное по charter'у событие через голый `tick`. LLM-диспетчер под операционным давлением («доведи сегодня») сделал работу инлайн (код/тесты реальные и зелёные — 854/176/21) и вручную прошагал автомат до `done`. Терминальное состояние стало не process-backed; заодно нарушена операторская граница «остановись на вердикте по реализации» (проскочен runtime_gate). Классика поведенческого контракта без enforcement — тот же класс, что вскрывали G03/G04.
-
-### Options considered
-1. **Оставить дисциплине** (warn в run.md) — отвергнуто: прецедент показал, что дисциплина ломается в первый же нагруженный заход; сенсор→мышца-разрыв ровно того типа, который Fabric строился закрывать.
-2. **Жёсткий запрет ручных tick для ingest-мапленных событий без эскейпа** — отвергнуто: recovery после crashed-bracket и unit-фикстуры легитимно нуждаются в ручном прогоне.
-3. ✅ **Guard с аудируемым эскейпом:** `tick` события из ingest-карты invoke-процесса текущего состояния → exit 2 с объяснением и инструкцией bracket-пути; `--force-manual "<reason>"` (непустая причина) пропускает и штампует `forced-manual: <reason>` в `why[]` события — маркер живёт в events.ndjson (не только stdout) и replay-нейтрален (why[] не участвует в rebuild). Resume-события и ingest/pa-scan/replay не затронуты.
-
-### Outcome
-`orchestrator/lib/fabric-engine.cjs` (+54), `tests/orchestrator/fabric-engine.test.cjs` (+66): юниты 23→27 (все зелёные), две существующие фикстуры переведены на явный `FORCE_FIXTURE` с комментарием. Реализация — opus-исполнитель по брифу, main-ревью диффа. Это НЕ расширение Fabric (запрещено до graduation), а remediation дыры контракта, найденной самим graduation-прогоном.
-
-### Lessons
-1. **Поведенческий контракт диспетчера держится ровно до первого operational-давления — принуждение обязано жить в детерминированном слое** (engine), а не в prompt-регламенте; prompt-регламент остаётся объяснением, движок — enforcement'ом.
-2. Сигнатура нарушения была видна в данных за секунды: события без run_id + ledger без брекетов + нереалистичные интервалы (`impl.go`→`runtime.ready` за 21 сек). Эти три проверки — готовый чек post-hoc аудита прогонов (кандидат в auditor-чеклист).
-3. Эскейп-люк обязателен, но должен быть дороже честного пути и оставлять след в durable-журнале (`--force-manual` + why[]-маркер), иначе guard просто сместит обход на уровень ниже.
-
-## DEC-DEV-0164 — CI-фейл fabric-engine теста: environment-coupled дефолт pa-file (зелёный на Windows «по везению», EACCES на Linux)
-
-**Date:** 2026-07-10
-**Trigger:** merge PR #141 — verify-run на main красный; сверка показала тот же фейл и на предыдущем прогоне (#140, дерево без guard'а) — предсуществующий, не регрессия добора. (Владелец: CI фактически стоял красным с ненастроенных времён.)
-
-### Context
-Тест «CLI --autonomy L0 flows through tick…» — единственный, кто зовёт `cli()` напрямую без `--pa-file` (остальные ходят через `tick()`-хелпер, который его всегда передаёт). Под L0 вход в `authoring` = human-gate → engine проецирует PA в `defaultPaFile(root) = <root>/../../pending-actions.md`. Юнит-тесты передают `--base-root <tmpdir>` как сам fabric-root → дефолт уезжает на два уровня НАД tmpdir: на Linux-раннере это `/pending-actions.md` (EACCES → нет JSON → TypeError, красный CI), на Windows — писабельная папка (`AppData/Local/pending-actions.md` реально найден и удалён) → тест «проходит», гадя мусорным файлом.
-
-### Decision
-Фикс test-side: `--pa-file paFile(base)` в оба прямых `cli()`-вызова теста (+ комментарий-урок). Engine-side «защиту от /» не строим: канонический deploy-layout (`.claude/orchestrator/fabric`) дефолт разрешает корректно; тестовая обвязка обязана передавать явный путь, как делает хелпер.
-
-### Lessons
-1. **«Зелёный на одной ОС» ≠ зелёный:** environment-coupled путь (up-двойной resolve от tmpdir) дал молчаливый pass на Windows и падение на Linux — расхождение вскрылось только CI-прогоном.
-2. Тест, который пишет за пределы своей tmp-песочницы, — дефект независимо от исхода assert'ов; литтер-чек (`два уровня выше tmpdir`) — дешёвый маркер этого класса.
-
-## DEC-DEV-0165 — Fabric graduation ОБЪЯВЛЕН владельцем: фаза 3 закрыта, пост-обязательства открыты, фаза 4 разблокирована
-
-**Date:** 2026-07-10
-**Trigger:** явное объявление владельца («объявляю graduation — зафиксируй и открывай пост-обязательства») поверх условного GO судьи (DEC-DEV-0162/0163, GRADE_REPORT после добора G-B).
-
-### Context
-Фаза 3 EXECUTION_ROADMAP завершилась вердиктом «условный GO» с явной оговоркой «формальное объявление graduation — владелец». Все условия судьи к моменту объявления выполнены или зафиксированы: (1) bracket-guard DEF-3 доехал в main (PR #141, `cc58e65`); (2) DEF-4 (P7 probe false-negative на pnpm-monorepo, PA-056) + ANOM-5 (owner-queue без dequeue) записаны как upstream-долг; (3) ветка `runtime_gate_retry`/`evt:env.up` честно помечена live-невалидированной; (4) рекомендация про `--force-manual` reason→PA перенесена в обязательства. Попутно merged PR #142 (DEC-DEV-0164) снял стоячий красный CI.
-
-### Decision(s)
-1. **Graduation зафиксирован** в EXECUTION_ROADMAP (фаза 3 = GRADUATED 2026-07-10; фаза 4 разблокирована, старт строго по эмпирическим триггерам — cuts до запроса сохранены).
-2. **Пост-обязательства переведены из памяти в активный work-order** (EXECUTION_ROADMAP §«Пост-graduation обязательства»): consumer-док Fabric → gaps-сверка G01–G36 → upstream-долг DEF-4/ANOM-5/force-manual-валидация → параллельные инициативы аудита. Порядок 1→2 осознанный: сверка gaps обновит consumer-док, писать её раньше — двойная работа.
-3. **Попутный drift-фикс:** чекбоксы параллельной дорожки AUDIT §6 в EXECUTION_ROADMAP отставали от факта (G20/G23/G19/G05-G06/G32 merged 2026-07-07, PR #131–#135) — сверены; остаток очереди = только G28.
-
-### Outcome
-«built ≠ validated» с ядра Fabric снят (в объёме критериев §9; runtime-ветка P7/env.up — честное исключение, живёт в upstream-долге). Активный фронт трека = пост-обязательства; расширение (temporal-актуатор, gen-process-map интеграция, новые charter'ы) — только по live-триггерам.
-
-### Lessons
-Разделение «условный GO судьи» ↔ «формальное объявление владельцем» отработало как задумано: технический вердикт не самоисполнился в статус, необратимый статус-переход остался за владельцем (зеркало границы Autoflow «merge — всегда владелец»).
-
-## DEC-DEV-0166 — Consumer-док Process Fabric: посадка в guide-слой (07-fabric.md), а не в docs/orchestrator-module
-
-**Date:** 2026-07-10
-**Trigger:** пост-graduation обязательство №1 (EXECUTION_ROADMAP §«Пост-graduation обязательства», открыто DEC-DEV-0165); запрос владельца «начинай consumer-док».
-
-### Context
-После graduation у Fabric не было ни одного consumer-facing упоминания: grep по `docs/orchestrator-module/SPEC.md`, `orchestrator/README.md`, `docs/guide/**`, `docs/README.md` — ноль вхождений «fabric». Вся документация жила в dev-слое (`dev/process-fabric/`, не деплоится) + контракте диспетчера (`run.md`, читает LLM, не человек).
-
-### Options considered
-1. ✅ **`docs/guide/07-fabric.md`** (USER-слой, How-to · Explanation) — обязательство сформулировано в задачах оператора («как читать owner-queue/status», «как добавить процесс»), а guide — именно слой «как делать работу» с готовой дисциплиной против дрейфа (`check:doctype`: anti-orphan + сверка таблицы ролей README). Точка входа через роутер «Я хочу…» и §6 в `05-implementation.md` (естественное продолжение: Fabric = следующий шаг после «прогнал процесс руками»).
-2. **`docs/orchestrator-module/FABRIC.md`** (REFERENCE-слой рядом со SPEC) — отвергнуто как основное место: SPEC-слой читают при проектировании, а не при операционной работе; дублировал бы CONCEPT.md (дизайн-SSOT остаётся в dev/process-fabric). Reference-потребность закрыта короткой секцией-указателем в `orchestrator/README.md`.
-
-### Decision(s)
-1. Новый `docs/guide/07-fabric.md`: понятия (charter/инстанс/событие/prescription/owner-queue/WIP), запуск линии, чтение status, PA-мост (done→`pa-scan --tick`), страховки (bracket-guard/`--force-manual`/идемпотентность/floor/`replay`), чеклист добавления процесса (ingest по фактическим полям result-файла — правило из CONCEPT §10 «charter-дрейф»), честные границы (validated 2026-07-10; runtime-ветка и P7-monorepo-probe — нет).
-2. **Обязательство «обновление MAP/BPMN из catalog/charters» скоуплено:** `docs/MAP.md` получил Fabric-указатель в авторитеты + актуализацию ORC-узла (стоял stale «P3-P6 built»); полная интеграция catalog/charters в `gen-process-map` — это фаза 4 EXECUTION_ROADMAP (расширение по триггеру), в док-обязательство не втягивается.
-3. Попутный drift-фикс: дерево `orchestrator/README.md` отставало на 6 файлов lib/ + charters/ — дополнено (иначе новый док ссылался бы на README с дырами).
-
-### Outcome
-Guide вырос 7→8 доков, `check:doctype` зелёный; CHANGELOG `[Unreleased] Added` (consumer-zone). Пост-обязательство №1 закрыто; следующее по порядку — №2 gaps-сверка G01–G36.
-
-## DEC-DEV-0167 — Gaps-сверка G01–G36: живой статус реестра аудита после graduation (6 закрыто / 8 частично / 22 открыто с роутингом)
-
-**Date:** 2026-07-10
-**Trigger:** пост-graduation обязательство №2 (EXECUTION_ROADMAP, открыто DEC-DEV-0165); запрос владельца «берись за gaps-сверку».
-
-### Context
-Реестр G01–G36 (audit/APPENDIX-B §1) писался до волны Fabric 0153–0165 и параллельной дорожки quick-wins 0156–0160 — его статусы устарели, а APPENDIX-B по конвенции AUDIT §7 не редактируется (as-is снапшот агрегатора). Нужен отдельный живой документ сверки: что закрыто фактически (с доказательствами в репо, не «по памяти»), что осталось и куда роутится.
-
-### Decision(s)
-1. **Форма — отдельный документ** `audit/GAPS-RECONCILIATION-2026-07-10.md` + баннер-указатель в шапке APPENDIX-B (не правка статусов внутри as-is снапшота). Отвергнуто редактирование APPENDIX-B: ломает конвенцию «приложения — отчёты агрегаторов as-is».
-2. **Метод — evidence-based:** каждый статус подтверждён recon-прогоном по main `ab314be` (20 фактов: путь/строка/цитата; sonnet-разведка + main-ревью против журнала) либо записью DEV_JOURNAL/PR. Итог: ✅ 6 машинно закрыто (G05/G06 subagent-watchdog 0159, G19 check-validation-sync 0158, G20 шаблон 24/44 0156, G23 npm-prepare гейт 0157, G32 --claim 0160); 🟡 8 частично (G03/G04 PA-мост+owner-queue для fabric-линии — вне её PA всё ещё write-only; G07 charter накрыл P3→P7, product-сегмент нет; G09 orphan снят, F2 полное — отдельный трек; G10 live-прогоном сужен до P7-probe/runtime-ветки; G11/G12 bracket-guard принуждает след только fabric-tracked; G13 — уточнение факта аудита: reader в run.md заявлен, но prompted); ⬜ 22 открыто.
-3. **Роутинг открытых — по существующим рельсам, без новых треков:** Tier-0 (G01 Epic E, G02 result-ingest) — substrate-gated vision-треки; G08/G28/G29 — кандидаты фазы 4 (product-front charter / temporal-актуатор), строго по live-триггерам; G14–G18/G21/G24/G33/G35/G36 — пост-обязательство №4; G22/G25–G27/G30/G31/G34 — backlog D7-гигиены, приоритизация владельцем (сознательно НЕ конвертированы в самоназначенный план работ).
-
-### Outcome
-Пост-обязательства №1 и №2 отмечены ✅ в EXECUTION_ROADMAP (№1 закрыт PR #144 ранее сегодня, галочка доехала этим же коммитом). Активный фронт сдвинулся на №3 (upstream-долг DEF-4/ANOM-5/force-manual→PA) и №4. Dev-zone docs — CHANGELOG не требуется.
-
-### Lessons
-1. **Сверка реестра против репо дешевле и честнее сверки против памяти:** 3 из 20 recon-фактов уточнили бы «уверенное» знание (G13 reader существовал в run.md изначально — аудит-агрегатор его не увидел; G28 expires_at уже проверяется inline при чтении — sweeper нужен только для проактивности; watchdog G05/G06 сам декларирует какие gaps закрывает — самодокументирующийся фикс упрощает будущие сверки).
-2. Паттерн «закрывашка объявляет свой gap-номер в заголовке файла» (subagent-watchdog.js) стоит копеек при написании и делает reconciliation greppable — кандидат в конвенцию для будущих gap-фиксов.
-
-## DEC-DEV-0168 — Upstream-долг graduation-прогона закрыт: DEF-4 workspace-скан P7-probe, ANOM-5 самоочистка owner-queue, --force-manual требует PA-ссылку
-
-**Date:** 2026-07-10
-**Trigger:** пост-graduation обязательство №3 (открыто DEC-DEV-0165; условие судьи №2 «DEF-4/ANOM-5 = upstream-долг» + рекомендация №4); мандат владельца «мёржи и продолжай самостоятельно».
-
-### Context
-Три дыры, вскрытые живым graduation-прогоном (FABRIC_PHASE3_GRADE_REPORT): (1) **DEF-4** — `runtime-readiness.cjs` читал только корневой `package.json`, на pnpm-monorepo пилота (dev-скрипты в `apps/*`) выдавал ложный `NOT_STARTABLE` short-circuit до env-пробы — это заблокировало критерий R2 и оставило ветку `runtime_gate_retry`/`evt:env.up` live-невалидированной (PA-056 open → ecosystem); (2) **ANOM-5** — `appendOwnerQueue` только пушил, dequeue не существовал → 5 stale-записей terminal-инстансов = ложные owner-сигналы в `status`/SessionStart-инжекте, реконсилировали вручную; (3) `--force-manual` принимал любую непустую причину — эскейп был дешевле честного пути (урок 0163 §3 требовал обратного).
-
-### Decision(s)
-1. **DEF-4 — workspace-скан, enum вердиктов нетронут** (soft-миграция): чистая `detectWorkspaceRunTargets()` (детерминированный ранг: источник → лексикографика dir) + CLI-скан `pnpm-workspace.yaml`/npm `workspaces` (литерал + одноуровневый `/*`; `!`/`**` пропускаются с disclosure-нотой — честное ограничение вместо тихой полноты) + `--app <dir>` пин + disclosure на workspace-происхождение и неоднозначность. Отвергнуто: новый вердикт AMBIGUOUS (ломает enum-контракт потребителей run.md §P7) и полный glob-движок (не нужен для фактических форм: пилот = `apps/*`).
-2. **ANOM-5 — prune на write-path, status строго read-only**: `dequeueOwnerEntries()` в `applyEventFS` после персиста снапшота и ДО `applyEffects` (свежий парк в новый гейт переживает собственный tick) — выкидывает записи ушедшей линии + глобальных сирот; дедуп на append. `status` НЕ пишет (его зовёт SessionStart-хук — read-only контракт задокументирован) — read-only split `reconcileOwnerQueue()` → `owner_queue` (живые) + `owner_queue_stale` (с reason, не прячем). Отвергнуто: prune из `status` (сломал бы read-only контракт хука) и event-sourcing очереди (owner-queue — shell-side проекция, как PA-мост; replay бит-в-бит нетронут).
-3. **`--force-manual "PA-NNN: <why>"`**: причина обязана нести PA-id и он обязан существовать в pa-file (числовое сравнение заголовков `## PA-NNN` — без zero-padding-ловушек). Эскейп теперь дороже честного пути: сначала PA-запись о вмешательстве, потом обход. Тест-фикстуры переведены на seed-PA.
-4. **Сборка по MDP**: два opus-исполнителя параллельно по точным брифам (файлы не пересекались), main-ревью обоих диффов до коммита; контрактные решения (enum freeze, read-only status, порядок prune/applyEffects) зафиксированы в брифах заранее.
-
-### Outcome
-`runtime-readiness.cjs` юниты 21→30, `fabric-engine.cjs` 27→35, полный verify EXIT=0. Риды: `docs/guide/07-fabric.md` (§4 самоочистка очереди, §6 PA-ссылка эскейпа, §8 остаток честных границ сужен), CHANGELOG `[Unreleased] Fixed`. Пост-обязательство №3 закрыто в EXECUTION_ROADMAP; PA-056 пилота закрывается при следующей доставке (`/ecosystem:update`). Остаток №3-класса: ветка `runtime_gate_retry`/`evt:env.up` по-прежнему live-невалидирована — теперь её ничто не маскирует, проверится естественным live-триггером.
-
-### Lessons
-1. **«Условие судьи → work-order → фикс» работает как конвейер только если долг записан с точным root-cause на месте** — DEF-4/ANOM-5 были зафиксированы в GRADE_REPORT с файлами и механизмом, фикс собрался за один заход без ре-форензики.
-2. Read-only контракт потребителя (SessionStart-хук → `status`) — жёсткое ограничение на месте фикса: самоочистку пришлось разнести на write-path + read-only split. Проверяй, КТО зовёт команду, прежде чем добавлять ей side-effect.
-
-## DEC-DEV-0169 — Слой доменной экспертизы: гейт Domain Fit (D1.0b) на входе идеи, реестр 96 подкатегорий, порог 75
-
-**Date:** 2026-07-10
-**Trigger:** запрос владельца поверх оценки универсальности 2026-07-10 (`dev/universality-assessment/REPORT.md`, 96 подкатегорий × 10 критериев): «когда я описываю идею — промежуточный этап анализа, что домен идеи соответствует сильным зонам экосистемы; совокупный балл 75 и выше; учитывать подкатегории, максимально детализировано».
-
-### Context
-Оценка универсальности показала водораздел (поведенческое ядро 70–92 ↔ алгоритмическое 30–45) и разброс до 40+ баллов внутри одной категории (E1 CLI=84 vs E5 build-system=54). Вход идеи (`/product:init`) это никак не проверял: полный Discovery-цикл можно было завести для продукта, чья суть невыразима, и узнать об этом на handoff. Владелец явно запросил гейт («балл 75 и выше»), формат оставил на выбор («надо подумать, в каком формате, условно, модуль»).
-
-### Options considered
-1. ✅ **Слой внутри Product Module по образцу product_class (0079): концепт-док + реестр в `docs/pmo/` + skill + шаг D1.0b + опциональный блок в `product.yaml`** — переиспользует обкатанный след 0079 целиком (SSOT-конфиг, soft-миграция, backfill-режим, канонические поля + anti-pattern список); «модуль» у владельца прозвучал с оговоркой «условно» — полноценный пятый модуль (SPEC + commands namespace) для одного шага и одного реестра был бы каркасом без содержания.
-2. **Пятый модуль Domain Expertise (docs/domain-module/SPEC.md + commands/domain/)** — отвергнуто: вся функциональность = один шаг Discovery + один lookup-реестр; модульная обвязка (SPEC, namespace, verify-счётчики) — чистый оверхед, а перенос шага из Discovery в отдельную команду ломает требование «промежуточный этап когда я описываю идею».
-3. **Расширить сам product_class полем score** — отвергнуто: ортогональные концепты (форма ↔ домен/пригодность) и противоположные контракты (0079 «никогда не gate'ит» — зафиксировано в трёх доках; гейт внутри него = ревизия контракта задним числом). Отдельный блок `domain_fit` рядом — чисто.
-
-### Decision(s)
-1. **Гейт, не advisory — но с owner-override.** Балл < порога (дефолт 75, поле `threshold`) останавливает Discovery до явного решения: `adapted` (перекроить под выразимую половину → переоценка) / `proceed-with-risks` (ограничители письменно в `limiters`+`notes`) / `aborted`. Это первый и единственный класс-гейт; напряжение с принципом 0079 «класс никогда не гейтит» снято явным противопоставлением в обоих концепт-доках (§5 сравнительная таблица). North-star «автономия в суждении + послушание в процессах» сохранён: гейт производит информированное решение владельца, не запрет.
-2. **Гранулярность — только подкатегория (96), никогда категория (16)** — прямое требование владельца + эмпирика разброса внутри категорий. Классификация по правилу ядра ценности (game-backend D6=74 ≠ игра D2=39); гибриды — декомпозиция `core`/`supporting`, вердикт по core, при двух ядрах — по слабейшему (консервативно, зеркало worst-of MDP).
-3. **`unmapped` не блокирует** — реестр конечен, мир нет; блокировка по отсутствию данных ломала бы контракт универсальности (зеркало `archetype: other`). Деградация в advisory + ближайшие якоря + кандидатство в реестр.
-4. **Реестр — consumer-копия данных оценки, баллы иммутабельны на месте**: точечная подкрутка запрещена (anti-pattern в skill + предупреждение в шапке реестра), изменение — только переоценкой методом (протокол §6 концепт-дока) с bump версии; `registry_version` в блоке проекта фиксирует, по какой версии принималось решение (не перештамповывается). Извлечение матрицы в реестр — байт-в-байт скриптом (sed) из REPORT.md, не перепечаткой (96×12 чисел — транскрипция руками = гарантированные ошибки).
-5. **Порядок шагов: D1.0 (форма) → D1.0b (домен) → D1.1** — архетип сужает поиск подкатегории; D1.0 дёшев (~1 мин), терять его при misfit не жалко.
-6. **Попутный drift-фикс:** `processes.md` P1.A начинался с D1.1 — шаг D1.0 (0079) туда никогда не вписывался; добавлен пре-шаг 0 с обоими (D1.0 + D1.0b).
-
-### Outcome
-Новые: `docs/pmo/domain-expertise.md` (SSOT концепта), `docs/pmo/domain-expertise-registry.md` (матрица), `skills/product/domain-fit.md` (discovery/assess). Wiring: `discovery-session.md` (D1.0b + state-таблица + current_step enum), `init.md`, `bootstrap.md` Step 7 (блок `domain_fit`), `processes.md` P1.A. CHANGELOG `[Unreleased] Added`. Блок опционален (soft-миграция 1:1 по прецеденту 0079). Counts не тронуты (концепт-доки — не артефакт-типы). Live-валидация гейта — на ближайшем реальном `/product:init` пилота (runtime smoke кандидат: fit-ветка + conditional-fit-диалог).
-
-### Lessons
-След 0079 (концепт-док + skill + опциональный конфиг-блок + backfill) отработал как шаблон посадки нового класс-концепта без единого нового механизма enforcement — вся стоимость ушла в содержание, не в каркас. Различие «advisory-класс ↔ гейт-класс» дешевле всего фиксировать сравнительной таблицей в обоих SSOT-доках сразу при рождении второго концепта, а не при первом конфликте трактовок.
-
-## DEC-DEV-0170 — Doc-drift quick-wins корзины №4: G18/G33/G35 закрыты, G17/G21 сужены до частичных
-
-**Date:** 2026-07-10
-**Trigger:** выбор владельца (AskUserQuestion, 2026-07-10): из корзины пост-обязательства №4 первым — doc-дрейфы quick-wins.
-
-### Context
-Gaps-сверка (DEC-DEV-0167) вывела кластер дешёвых doc-дрейфов: G18 (SPEC §13.1 «scan Always перед add/update/replace» vs код — update не вызывал scan, replace не существует), G33 (verify.md держал ручной per-namespace baseline команд параллельно с автогенерируемым 02-commands.md — «~22» уже дрейфанул), G35 (enable-d7-audit ссылался на несуществующий /ecosystem:disable-d7-audit), G17 (/ecosystem:update пересинкает reference-адаптеры и молчит про repair инстансов), G21 (Product/Design SPEC не знают Epic A/B/C/D; Design SPEC двусторонне — screen-generator описан, но не существует, G36).
-
-### Decision(s)
-1. **G18 — impl догоняет SPEC, не наоборот**: scan read-only и дешёвый → в update.md добавлен Pre-flight-шаг refresh baseline; отвергнуто размывание SPEC до «conditional» (смысл §13.1 — конфликт-чеки против фактического окружения, не против устаревшего снапшота). Строка про replace честно промаркирована Phase-7.
-2. **G33 — схлопнуть параллельный механизм, не синхронизировать его**: ручные числа удалены, verify Step 4/summary сверяет deployed commands с генерируемым каталогом (он уже drift-gated `gen:catalog:check`'ом). Урок DEC-DEV-0082 («неверная карта хуже отсутствующей») доведён до конца — держать вторую рукописную копию ожиданий было полумерой.
-3. **G35 — не строить команду ради ссылки**: отсутствие /ecosystem:disable-d7-audit задокументировано как сознательное (opt-in редкий, ручное удаление hook-entry дешевле шипинга команды); мёртвая ссылка убрана.
-4. **G17 — prompted, не hook** (частично): Step 8 update.md сёрфейсит условный next-step repair при active-tools.yaml; детерминированный слушатель = drift-check.js (G16, Phase-7) — не дублировать его полумерой здесь.
-5. **G21 — промаркировать, не вписывать** (частично): баннеры «пост-spec расширения» в оба SPEC с указанием SSOT (commands/* + CHANGELOG + 02-commands); полное вписывание Epic A/B/C/D в тело SPEC — отдельный doc-трек, в quick-win не влезает и делаться должен при следующей содержательной ревизии SPEC.
-
-### Outcome
-5 файлов: integrator/update.md, integrator SPEC §13.1, ecosystem/verify.md (Step 4 + summary), ecosystem/update.md (Step 8), enable-d7-audit.md + баннеры в product/design SPEC. GAPS-RECONCILIATION актуализирована: 9 закрыто / 10 частично / 17 открыто. Verify зелёный. Остаток корзины №4 — крупные треки (OD7 await→resume, Integrator Phase-7 G14–G16, Deep Discovery G36, G24) + backlog D7-гигиены.
-
-### Lessons
-1. **Класс «два параллельных источника ожиданий» лечится удалением одного, а не линтером между ними** — G33 повторил урок G19 наоборот: там каталог↔runner несводимы (семантика в коде) и нужен линтер; здесь рукописный список был чистым дубликатом генерируемого — правильный фикс = коллапс на один источник.
-2. Мёртвую ссылку на «будущую команду» дешевле всего закрыть решением «команды сознательно НЕ будет» — если оно честно верно; не всякий gap закрывается стройкой.
-
-## DEC-DEV-0171 — OD7 await→resume построен через Process Fabric: payload-мост ingest→PA, парковка P5 на §6 BLOCK, resume = идемпотентный брекет-ре-ран
-
-**Date:** 2026-07-10
-**Trigger:** поручение владельца «берись за OD7 await→resume, после — упор на подготовку самостоятельного live-тестирования в VM» (первый крупный трек корзины №4).
-
-### Context
-OD7 (SPEC Orchestrator, RUN 01) — гипотеза async-протокола `request→await-fix→resume` для границы Orch↔Integrator: LLM-диспетчер, наткнувшись на отсутствующую capability, склонен «поглотить границу» и чинить инфраструктуру сам. Request-половина жила (P7 requests[], P5 §6 detect-leg 0117, PA-записи), await→resume — нет (gap G04). Recon вскрыл три факта, определившие дизайн: (1) P5 УЖЕ идемпотентен — план-стадия фильтрует `!t.done && !t.blocked` по чекбоксам tasks.md, т.е. mid-process resume = обычный ре-ран брекета без спец-механики; (2) charter уже держит `awaiting_capability` для P7 с resume в runtime_gate; (3) ingest движка выбрасывал данные результата — capability-spec не доезжал до PA/owner-queue, владелец видел «линия стоит», но не ЧТО провижнить.
-
-### Options considered
-1. **ScheduleWakeup-ожидание внутри сессии** (как в исходной SPEC-гипотезе) — отвергнуто: capability-grant занимает часы/дни, await обязан переживать сессии; durable-парковка Fabric уже это делает.
-2. **Workflow resumeFromRunId для mid-process восстановления** — отвергнуто: same-session-only контракт харнесса, кросс-сессионный OD7 на нём не построить.
-3. ✅ **Fabric-парковка + payload-мост + идемпотентный ре-ран:** (a) движок — опциональный `payloadPath` в ingest-правиле charter'а (срез result'а → payload события → fenced-json в PA-записи гейта, транкация 2000 симв., маркеры pa-scan целы; `ingestEmits()` новая, `applyIngest` — совместимая обёртка); (b) charter v2 — `awaiting_capability_impl` (resume → implementing), `evt:impl.blocked_capability`, payloadPath на P5/P7 capability-правилах; (c) P5 — поле `capability_blocked` (только disposition BLOCK; deferred stand-ins не паркуют). Resume: PA→done → pa-scan --tick → prescription → полный брекет, P5 продолжает с недоделанных тасков.
-
-### Outcome
-fabric-engine юниты 35→40 (payload по payloadPath / без payloadPath бит-в-бит / e2e PA c fenced-json + replay 0 / транкация / run-id дедуп), wiring 11 + P5-wiring 13 зелёные, verify EXIT=0. Доки: run.md (§human-gate capability + §resume «ничего специального восстанавливать не нужно»), SPEC OD7-строка → «построено, live pending», 07-fabric.md §4, GAPS-RECONCILIATION G04. Сборка по MDP: opus-исполнитель на движок по брифу с зафиксированными контрактами, charter/P5/доки — main. **Подготовка live-теста (часть 2 поручения):** пре-регистрированы `OD7_LIVE_RUN_BRIEF.md` (сценарий S1-S3: парковка на реальном BLOCK → provision+resume → бонус-ветка runtime_gate_retry/evt:env.up, промпты verbatim, стоп-правила оператора) + `OD7_LIVE_RUN_REVIEW_HANDOFF.md` (рубрика R1-R8, класс B + A-критерий границы R3); VM проверена live (ssh ok, uptime 2ч45м, пилот `4e0dfa6`, fabric-инстансы терминальные).
-
-### Lessons
-1. **Ищи существующую идемпотентность прежде чем строить resume-механику:** tasks.md-чекбоксы + фильтр плана уже давали «продолжить с места остановки» — OD7 свёлся к парковке и мосту данных, а не к чекпойнт-инфраструктуре. Recon-факт №2 сэкономил самый дорогой кусок дизайна.
-2. Тест-регэксп по форме кода (`concerns` рядом с `go_gate` через `key: value`-строки) ломается от невинного многострочного комментария в return-объекте — комментарии к полям такого объекта держи однострочными trailing или выноси над statement.
-3. `EXIT=$?` после пайпа с `tail` измеряет tail, а не команду — при проверке verify бери exit-код до пайпа (`; echo` внутри той же команды до tail) или `grep -c "SOME FAILED"`.
-
-## DEC-DEV-0172 — Domain Fit follow-ups: handoff-проброс limiters (эмиссия только при рисках) + migration-промпт; вердикт «не замена product_class»
-
-**Date:** 2026-07-10
-**Trigger:** согласованный с владельцем перечень остатков трека 0169 (выбраны: backfill-промпт, handoff-проброс, patch-cut, проверка «будет ли это заменой текущему product_class»; live-валидация — event-gated, трек повышения баллов реестра — не выбран).
-
-### Context
-0169 завёл гейт и блок `domain_fit`, но downstream его никто не видел: внешний D2-T реализатор не знал, что владелец осознанно оставил часть ядра за скобками (`proceed-with-risks`), а живой пилот my-first-test после `/ecosystem:update` получил бы skill без пути завести блок (Discovery давно пройден).
-
-### Decision(s)
-1. **Handoff-эмиссия — условная, в отличие от product_class.** `product_class` эмитится всегда при `archetype != unset` (форма полезна receiver'у безусловно). `domain_fit` эмитится **только когда `limiters` непуст** (типовой случай — `decision: proceed-with-risks`): его downstream-сигнал = «что за скобками поведенческого контура», а у чистого fit такого сигнала нет — эмиссия была бы шумом. Отвергнута безусловная эмиссия (симметрия ради симметрии). Тройка позиций та же, что у 0079: строка §1 + frontmatter-блок + bullet §12 (родство с §13 Out of Scope, но уровнем продукта); вердикт/баллы на handoff-тайме не пересчитываются — derive из SSOT.
-2. **Migration-промпт** — по прецеденту 0079: copy-paste в CHANGELOG-записи 0169, режим `assess` skill'а; «остановиться» в backfill-контексте = зафиксировать misfit, не прервать идущий проект (уже было в skill §assess).
-3. **Вердикт по вопросу владельца «будет ли это заменой product_class»: НЕТ, не замена — ортогональные оси, ни один не выводим из другого.** (а) `product_class` несёт форму (archetype + фасеты runtime_locus/interface/distribution), драйвящую NFR/test-дефолты и hint формы; `domain_fit` несёт домен+пригодность (subcategory/score/verdict/limiters) — гейт и зону ответственности. (б) Маппинг many-to-many: archetype `web-service` покрывает подкатегории с баллами от 39 (F4 Kafka-like) до 92 (A1 B2B SaaS) — форма не предсказывает вердикт; подкатегория не фиксирует фасеты (A1 бывает saas и self-hosted). (в) Потребители не пересекаются: у 0079 — таксономия §6 (NFR-акценты, типы тестов), будущий Integrator-routing; у 0169/0172 — гейт входа + limiters. Кодифицировано ещё в 0169 (`domain-expertise.md §5` сравнительная таблица); этой записью фиксируется как проверенный вердикт, оба концепта остаются.
-
-### Outcome
-`handoff-spec.md §1/§5/§12` + `handoff-generator.md` Step 2/8/9 (вкл. anti-pattern поля `domain`/`fit`/`domain_score`/`risks`) + `domain-expertise.md §7/§8`; CHANGELOG: запись 0172 + migration-промпт в записи 0169. Следующий шаг перечня — patch-cut (отдельная единица по `checklists/patch-cut.md`).
-
-### Lessons
-При зеркалировании паттерна соседнего концепта (0079→0172) первым вопросом проверяй семантику сигнала, а не форму: одинаковая тройка позиций эмиссии, но противоположное условие (всегда ↔ только-при-рисках), потому что сигналы разной природы — безусловное копирование паттерна дало бы шум в каждом handoff.
-
-## DEC-DEV-0173 — OD7 live-прогон на VM-пилоте: условный GO судьи — парковка/payload/resume/continuation подтверждены live, R1 re-run pending; попутно доставлен 1.8.0 + domain_fit backfill
-
-**Date:** 2026-07-11
-**Trigger:** пре-регистрированный прогон `OD7_LIVE_RUN_BRIEF.md` (часть 2 поручения DEC-DEV-0171); мандат владельца на самостоятельный прогон + «запускай VM-сессии в bypass».
-
-### Context
-Один визит на VM закрыл хвосты двух треков: доставка v1.8.0 в пилот (`/ecosystem:update` 1.7.0→1.8.0, 30 файлов/0 удалений, wipe-protection цел, PA-056 закрыта по live-пробе DEF-4) + одноразовый migration-промпт `domain_fit` (Фаза 6, запись 0169) + сам OD7-прогон. Субъект — FM-002 (единственный FM с capability-манифестом: `OPENAI_API_KEY`, dev stand-in нет → BLOCK).
-
-### Ход (полный журнал — `dev/process-fabric/OD7_LIVE_RUN_LOG.md`)
-Сценарий пошёл через ДВЕ конфликт-парковки по реальным находкам до предметной capability-парковки: (1) PA-035 tx-атомарность buildSnapshot — **владелец ратифицировал (a) thread-the-tx**; (2) ownership DI-биндинга GlossarySnapshotService (Route X, DEC-PLAN-045). Затем seq 8 `evt:impl.blocked_capability` → `awaiting_capability_impl` с capability-spec payload'ом в событии И fenced-json в PA-062 (payload-мост 0171 live-подтверждён). Provision = Integrator-акт через session-env (`settings.local.json`), PA-062→done → свежая сессия → `pa-scan --tick` → P5 доделал ТОЛЬКО 5.4-scope (`7d15233`, 27 прежних тасков не тронуты). MANUAL_VERIFY mis-sizing → owner-split 5.4a/5.4b → линия закрыта `owner.abort` («не заявлять ложный shipped»). S3/`env.up` — честный N/A (терминал до runtime_gate).
-
-### Outcome
-**Судья (независимый opus, `OD7_LIVE_RUN_GRADE_REPORT.md`): УСЛОВНЫЙ GO** — R2/R3/R4/R5/R8 PASS (R3 класс A: оба executor'а нашли ключ в `.env`, но НЕ self-equip'нулись и сюрфейснули гейт), R7 PASS-с-оговоркой, R1 FAIL-по-букве (park-ран запущен raw-Workflow'ом без ledger-брекета), R6 N/A. SPEC OD7-строка + GAPS G04 → «условный GO»; «live pending» снят только с payload/park/resume-механики. Вскрыто прогоном: **DEF-OD7-1** capability-probe читает только `process.env` (не `.env`) → содержательно ложный BLOCK; **DEF-OD7-2 (P0)** ingest принимает run_id вне ledger (обход bracket-дисциплины); **DEF-OD7-3** charter no-op на `blocked+go_gate:null`; **ANOM-OD7-1** нет терминала done-без-runtime из escalated; **ANOM-OD7-2** executor сам тикает `owner.*`-события. Фиксы в прогоне сознательно не делались (анти-контаминация) — приоритизация владельцу. Среда: транзиентный boot-hang VM + битый автоапдейт CC 2.1.206 (откат на 2.1.205); скилл оператора `vm-factory-ops` создан и пополнен. Пилот: 18 коммитов `4e0dfa6..8945960`, все запушены; `domain_fit` = A2 fit@90 + G1-limiter (supporting).
-
-### Lessons
-1. **Ложноположительный гейт всё равно валидирует механику, если он машинно-честный** — но семантику presence надо чинить у источника (probe ↔ `.env`), иначе каждый прогон капабилити будет упираться в env-only чтение.
-2. **Bracket-дисциплина держится только если её принуждают ОБА пути** — guard на tick закрыт (0163), а ingest принимал любой run_id; симметрию enforcement'а надо проверять при каждом новом входе в движок.
-3. Пре-регистрированный сценарий выдержал три незапланированные развилки без потери предмета: стоп-правила «разрешать канонически + не чинить канон по ходу» достаточны, чтобы контингенции обогащали прогон, а не срывали его.
-
-## DEC-DEV-0174 — Фиксы дефектов OD7 live-прогона: ingest bracket-guard (DEF-OD7-2), charter-гэп blocked+go_gate:null (DEF-OD7-3), probe-presence из .env (DEF-OD7-1) + дизайн-решения ANOM-OD7-1/2
-
-**Date:** 2026-07-11
-**Trigger:** §Рекомендации `OD7_LIVE_RUN_GRADE_REPORT.md` (условный GO 0173); мандат владельца «делаем по плану» — фиксы → R1 re-run целевым путём.
-
-### Context
-Судья 0173 дал условный GO с пятью пунктами: единственный FAIL (R1 «park machine-backed по букве») упирался в DEF-OD7-2 — `ingest` принимал run_id, которого run-ledger никогда не видел, т.е. bracket-контракт run.md был принудим только с tick-стороны (DEF-3, 0163), а с result-стороны обходился raw-Workflow-запуском. Остальные — семантические гэпы, вскрытые живым прогоном.
-
-### Decision(s)
-1. **DEF-OD7-2 — гард на ingest симметрично tick'у, включая обязательность `--run-id`.** Вариант «отвергать только ПЕРЕДАННЫЙ run_id вне ledger» отвергнут: опциональный run-id делает гард обходимым простым умолчанием флага (и теряет идемпотентность). Ledger-путь дериватен от fabric-root (`../runs/ledger.ndjson` — зеркало default'ов run-ledger.cjs), override `--ledger-file` по прецеденту `--pa-file`. Эскейп — переиспользован rec#4-контракт `--force-manual` (вынесен в общий `requireForceManual()`), НЕ отдельный флаг: семантика та же — «сознательный обход брекета, задокументированный существующей PA». Дедуп по run_id оставлен ДО гарда: повтор уже записанного (в т.ч. форс-мануального) рана — no-op, а не повторный суд.
-2. **DEF-OD7-3 — fallback-правило в charter, НЕ новое событие.** `blocked` непуст при отсутствии более сильных сигналов → существующий `evt:impl.manual_verify` (→ escalated): семантика «нужны глаза владельца» совпадает, новое событие/состояние умножило бы сущности. Правило — ПОСЛЕДНЕЕ в списке P5 (conflicts > capability_blocked > явный go_gate > blocked): явный вердикт гейта авторитетнее факта блокировок (advisory-режим P6 и так возвращает MANUAL_VERIFY при degraded).
-3. **DEF-OD7-1 — probe читает `.env`/`.env.local`, а не только дисклозит env-only семантику.** Судья допускал оба пути; выбран фикс источника: runtime пилота грузит `.env` через dotenv, значит presence-вопрос манифеста («есть ли у прогона доступ?») честно отвечается только объединением process.env ∪ dotenv-файлы. Дисклоз добавлен тоже (`env_source` в item + help): маскировка источника прятала бы разницу «живой export» vs «файл». Значения секретов не покидают предикат (только presence; непустые значения).
-4. **ANOM-OD7-1 — канонический терминал `closed_without_runtime` (charter v3, `evt:owner.close` из escalated).** Отвергнуто «оставить owner.abort перегруженным»: live-кейс (owner-split 5.4a/5.4b, остаток дефернут) заставил бы либо ложный `done` (shipped-hint не заслужен), либо ложный `aborted` (линия не провалена). Новый терминал финален и БЕЗ shipped-hint-акции.
-5. **ANOM-OD7-2 — гард на `evt:owner.*`: bare tick отказывается, ручной owner-тик — только `--force-manual "PA-NNN: <owner decision>"`.** Санкционированный путь (PA-флип владельца + `pa-scan --tick`) не тронут — pa-scan идёт в applyEventFS мимо cmdTick. Регламент теперь машинный: owner-решение либо выражено PA-флипом, либо ЗАПИСАНО в PA, на которую ссылается форс — executor физически не может молча спроецировать «владелец решил». Отвергнут отдельный флаг `--owner-act`: тот же rec#4-контракт, различие только в тексте отказа.
-
-### Outcome
-`fabric-engine.cjs` (гард ingest + owner-гард + `requireForceManual()` + `--ledger-file`), `capability-probe.cjs` (dotenv-lite presence + `env_source`), charter `feature-production-line.json` v3 (blocked-fallback + `closed_without_runtime`), `run.md` (bracket-guard note + секция owner-decision events). Юниты: fabric-engine 40→49, capability-probe 12→15; полный verify EXIT=0. Осталось из плана: R1 re-run на VM целевым путём `/orchestrator:run feature-to-tdd-impl --fabric` после доставки фиксов в пилот.
-
-### Lessons
-1. **Гард, добавляемый на второй вход той же дисциплины, выноси в общий валидатор сразу** — DEF-3 (0163) и rec#4 (0168) писались inline в cmdTick, и симметричный ingest-гард потребовал бы копипасты трёх валидационных блоков; extraction в `requireForceManual()` сделал третий гард (owner.*) трёхстрочным.
-2. **Опциональный параметр, на котором держится enforcement, — не enforcement**: гард «run_id обязан быть в ledger» ничего не стоит, пока сам `--run-id` опционален. Проверяй, что обходной путь не дешевле честного на КАЖДОМ аргументе гарда.
-3. Тестовые хелперы, инкапсулирующие вызов CLI (`ingest()` фикстур), окупились: ужесточение контракта (обязательный run-id + ledger) потребовало правки двух хелперов и двух прямых вызовов вместо ~20 тестов.
-
-## DEC-DEV-0175 — OD7 R1 re-run: PASS судьи → OD7 live-валидирован по совокупности; попутный DEF-OD7-CLOSE → charter v4 (owner.close со всех парковок)
-
-**Date:** 2026-07-11
-**Trigger:** мандат владельца «Режь 1.8.1 и делай вариант (1) с DeepL» (пре-регистрированный бриф `OD7_R1_RERUN_BRIEF.md` + deviation note).
-
-### Context
-После фиксов 0174 остался единственный FAIL-по-букве прогона 0173 — R1 «park machine-backed». Rec #2 судьи: короткий перепрогон парковки через диспетчер с ledger-брекетом. Доставка = patch-cut 1.8.1 (`2bbcb6d`, тег `v1.8.1`; сам cut — рутина, записи не требует) + `/ecosystem:update` пилота (`42748ed`).
-
-### Ход и решения
-1. **Субъект — deviation по ground truth (правило «исполнитель отклоняется с обоснованием»):** DeepL для machine-translation оказался ОТМЕНЁН ратифицированным решением пилота (манифест-комментарий FM-002 + PA-038: выбор = OpenAI). DeepL-фикстура = режиссура против канона → честный эквивалент той же схемы: **FM-008 real-TTS-provider wiring** (`ELEVENLABS_API_KEY` реально отсутствует в `.env`; TTS-нога translate→TTS→download реально отложена в RL-002; mock не может быть stand-in для фичи «retire the Mock»). Deviation note закоммичен ДО прогона (PR #154).
-2. **Sanity DEF-OD7-1 live-PASS:** probe FM-002 после 1.8.1 → `present:true, env_source:".env", SATISFIED` — прежний ложный BLOCK честно исчез (это и сняло FM-002 как субъект: фикс убрал сам триггер прежнего прогона — подтверждение правильности фикса).
-3. **Прогон:** executor-спонтанность (а) — стоп на `handoff_ready`: DoR P3 блокирует пустой FM-скелет (B1/B2); owner-решение «стартуем без обогащения, P2.A вне scope». FF P3/P4 — аудируемым путём (PA-065 + `--force-manual`, живая проба эскейпа 0174 в обе стороны: отказ→PA→проход). **P5 полным брекетом диспетчера** → парковка `awaiting_capability_impl`, payload capability-slice в событии и PA-067.
-4. **Судья (opus, независимый): R1 = PASS** — run_id park-события = ledger-брекет побайтно (формат диспетчера, не `wf_…`), park-тик без forced-manual (FF-маркеры только на разрешённых P3/P4). **Следствие: OD7 live-валидирован по совокупности** (R2-R5/R7/R8 из 0173 + R1); остаток — R6/`env.up` event-gated. Вердикт verbatim — бриф §Outcome.
-5. **DEF-OD7-CLOSE (спонтанность (б), клин-ап):** движок live-отклонил `evt:owner.close` из `awaiting_capability_impl` — charter v3 дал owner-терминал только `escalated`, у await-гейтов единственный выход = resume; закрыть запаркованную линию без фейка нельзя (executor отказался от «pa.resolved→forced manual_verify→escalated→close» — два семантически ложных события; принят honest-resting-state, линия оставлена запаркованной на ветке `od7-r1-rerun`). **Фикс — charter v4:** `evt:owner.close → closed_without_runtime` со ВСЕХ парковочных human-gate (`awaiting_product`/`awaiting_capability`/`awaiting_capability_impl`/`runtime_gate_retry`); deriveResumeEvent не задет (pa-first порядок; юнит-регрессор проверяет resume-события всех гейтов). Альтернатива «оставить как есть, закрывать через escalated» отвергнута: два forced-manual + ложный manual_verify — эскейп дороже честного пути, но честного пути НЕ БЫЛО.
-6. **Среда:** до прогона вскрыт ресурсный клин VM — 5 idle-TUI od7-* × statusline (4s) = node-шторм, load 25, контеншн `~/.claude.json` → новые инстансы Claude виснут на старте (CPU-burn, симптом неотличим от «битого бинаря»). Лечение: kill всех idle-сессий + stray-процессов + `rm ~/.claude.json.tmp.*`. Урок — в скилл `vm-factory-ops` §4.5.
-
-### Outcome
-OD7-строка SPEC → «LIVE-ВАЛИДИРОВАН по совокупности»; GAPS G04 → live-валидирован (остаток env.up); charter v4 + юнит (fabric-engine 49→50); run.md/07-fabric.md синхронизированы; бриф §Outcome = SSOT вердикта. Пилот: main `42748ed` (1.8.1), ветка `od7-r1-rerun` запушена (осмотр/судьба FM-008 — за владельцем). VM: сессии погашены, снапшот `od7-pre-run` остаётся до решения владельца.
-
-### Lessons
-1. **Фикс ложноположительного гейта уничтожает его собственный тест-триггер** — план ре-валидации, написанный до фикса, обязан пере-проверить свою фикстуру против ground truth ПОСЛЕ фикса (здесь: FM-002 перестала парковаться — и это правильный исход, а не сломанный тест).
-2. **«Терминал есть» ≠ «терминал достижим»:** ANOM-OD7-1 закрыли добавлением `closed_without_runtime` из `escalated`, но парковки await-класса до него не доставали — при добавлении состояния проверяй достижимость из КАЖДОГО класса состояний, где семантика применима (машинная проверка кандидат: charter-линтер «у every human-gate есть owner-выход»).
-3. Idle TUI-сессии с активным statusline — не «бесплатное наследие прогона», а ресурсная бомба замедленного действия; дисциплина «harvest → kill» обязательна (кодифицировано в скилле).
-
-## DEC-DEV-0176 — Integrator Phase-7 kickoff (inline): maintenance-скоуп verify/debug/docs + drift-check hook; replace/contract-validate/--light CUT
-
-**Date:** 2026-07-11
-**Trigger:** владелец выбрал Integrator Phase-7 (G14-G16) следующим треком из остатка корзины №4 (пост-обязательство Fabric). Kickoff — inline-режим (checklist прямо называет Phase 7 примером допустимого inline: «small maintenance phases»); премиса верифицирована эмпирически до решений ([[feedback_substrate_premise_verification]]): grep подтвердил живые ссылки на `/integrator:{verify,debug,replace,docs}` в consumer-zone (update.md:234, remove.md:172, status.md:93-118, map.md, journal.md, scan.md:14, bootstrap.md:730, CLAUDE.md.template:98-99) при отсутствии самих команд; `hooks/integrator/{drift-check,contract-validate}.js` заявлены в manifest-комментарии и SPEC §10, файлов нет.
-
-### Context
-ROADMAP Phase 7 (§632-664): verify/debug/docs + 3 скилла + full drift-detection, оценка 2-3 ч. Фактический субстрат богаче, чем ROADMAP предполагал: скиллы `drift-detection.md` и `tool-docs-generator.md` УЖЕ построены Phase 5 (Phase-7 их потребляет, не создаёт); механика drift D1/D2/D3 уже живёт в `update.md` Stage 3 (local-only модель DEC-DEV-0045, tri-location DEC-DEV-0044); UX-транскрипт debug есть в SPEC §7.3. Реальный дефицит = 3 командных файла + проактивный слушатель дрейфа + wiring.
-
-### Решения (Section 1 — architectural readiness)
-1. **Committed-скоуп:** `commands/integrator/{verify,debug,docs}.md` + `hooks/integrator/drift-check.js` (SessionStart, detect-only) + разделяемая либа `hooks/integrator/lib/drift-checks.cjs` + wiring (overlay-записи, manifest, тесты `tests/integrator/`, регенерация каталога). Скиллы не создаём (см. Context); `debug-protocol` скилл CUT — протокол короткий, инлайнится в `debug.md` (skills = переиспользуемая методология, переиспользователя нет).
-2. **`/integrator:replace` — CUT v1.1+** (премиса DEC-DEV-0040 Q4 не изменилась: единственный установленный инструмент = cc-sdd, содержательный тест replace невозможен; bring-forward trigger = второй D2-Tech инструмент в пилоте). Мёртвые ссылки аннотируются честно (SPEC:1158 уже аннотирована; scan.md:14 — этим коммитом). G14 закрывается на 3/4 команды.
-3. **Граница verify ↔ `/ecosystem:verify`:** ecosystem:verify = целостность инсталляции экосистемы; integrator:verify = здоровье Integrator-зоны: active-tools ↔ реальность (tool установлен/запускается), контракты CNT-* валидны, pmo-mapping без orphan'ов, adapter-drift D1/D2/D3 (переиспользует local-only модель 0045 через новую либу). Read-only отчёт + рекомендации (`update --repair`/`debug`) — НЕ чинит сам; единственная запись = штамп `last_audit` в active-tools.yaml (SPEC §4.3 образец) + session-marker (scope-guard активация, паттерн status.md Step 0).
-4. **debug = one-shot диагностика + approve-gated fix** по SPEC §7.3 (journal lookup → contract check → гипотеза → предложение → approve → fix → regression → journal entry `DEC-INT-NNNN`). НЕ interactive REPL. Включает G15-роутинг явным шагом: systematic issues → предложить `/product:validation-tune` propose confidence-downgrade — это даёт confidence-lifecycle SPEC §4.4 недостающую точку входа (G15 закрывается).
-5. **docs = обёртка над существующим скиллом `tool-docs-generator`** по структуре SPEC §14.2; `--tool=all` bulk; регенерация сохраняет `<!-- manual: do not regenerate -->` секции (§14.4); без активных инструментов — честный отказ.
-6. **`drift-check.js` (SessionStart):** тихий no-op вне Integrator-проектов (нет `.claude/integrator/active-tools.yaml`); иначе D1 semver + D2 CONTRACT_SCHEMA_VERSION (reference vs instance) + staleness `last_audit` >90d → warn-нота «прогони /integrator:verify» в additionalContext. Warn-only, fail-open, без сети. Закрывает суть G16 (проактивный слушатель).
-7. **`contract-validate.js` — CUT v1.1+:** PreToolUse-валидация контрактов спекулятивна — нет наблюдённого класса дефекта, который она ловит и который пропустят drift-check+verify; «блокировки» из SPEC §10 всё равно запрещены warn-only конвенцией. Bring-forward: живой битый контракт, прошедший мимо drift-check/verify. G16 закрывается частично — честно фиксируем в manifest-комментарии.
-8. **«Full drift-detection algorithm» из ROADMAP урезан до local-only** (каскад 0045): adapter-version detection из source-репо = cross-repo (противоречит 0045) → остаётся audit-only `.sync-metadata`; profile-drift (re-research) и cross-tool dependency drift — CUT (один инструмент, нет данных). Чтобы не плодить ТРЕТЬЮ копию D1/D2/D3 (update.md inline + verify + hook) — общая механика выносится в `hooks/integrator/lib/drift-checks.cjs` (hook требует js в любом случае; verify зовёт её CLI-seam'ом). `update.md` НЕ переезжает на либу в этой фазе (отдельный рефактор, v1.1 — не расширять blast установленного flow).
-9. **`verify --light` / ScheduleWakeup periodic — CUT** (ROADMAP сам: «optional v1, можно отложить v1.1»).
-10. **Phase-8 readiness skeleton НЕ создаётся** — фаз после 7 в ROADMAP нет (Orchestrator построен отдельным треком); отклонение от checklist Section 5.3 «если applicable» — not applicable.
-
-### Ambiguity sweep (Section 2)
-A1 `last_audit` — per-tool поле active-tools.yaml (образец SPEC §4.3). A2 все три команды пишут/чистят `.session-context.json` (паттерн status.md). A3 тестов Integrator нет вовсе → новый `tests/integrator/` (wiring-паттерн из tests/product: команды существуют+frontmatter+overlay-запись; юниты drift-checks.cjs) + `test:integrator` в verify-цепь. A4 hook-smoke: drift-check попадает под `verify:hooks` (smoke-hooks.js) — проверить графом при сборке. A5 docs без инструментов → отказ, не пустой файл. A6 вскрытый попутный дрейф: `verify.md` (ecosystem) утверждает «drift-gated by gen:catalog:check в repo verify», но скрипта НЕТ в verify-цепи package.json, и каталог `02-commands.md` фактически STALE прямо сейчас → фикс этим же kickoff-коммитом: regen + подключение `gen:catalog:check` в `npm run verify` (приводит реальность к заявленному контракту, а не наоборот — каталог и так регенерится при každом cut).
-
-### Static-context budget (Section 3b, baseline)
-CLAUDE.md 282 + RAILS.md 77 + глобальный CLAUDE.md 105 + MEMORY.md 42 = **506 строк** always-on. Первый замер = baseline; резки не требуется (все блоки прошли тест «почему static»: process-triggers таблица и Autoflow — операционные контракты каждой сессии).
-
-### Scope discipline (Section 4) — сводка cuts
-replace (trigger: 2-й инструмент) · contract-validate.js (trigger: живой пропущенный битый контракт) · verify --light/periodic · profile-drift + cross-tool drift · debug-protocol skill (инлайн) · update.md→либа рефактор. Сохранён >50% исходной поверхности ROADMAP-скоупа как cuts — в духе прецедента Phase 6 (5/12).
-
-### Plan (Section 5 — sub-phases)
-A kickoff+drift-fix (этот коммит) → B либа drift-checks.cjs + юниты → C verify.md → D debug.md → E docs.md → F drift-check.js + manifest + hook-smoke → G wiring: overlay ×3, каталог/карта regen, tests/integrator wiring, CHANGELOG [Unreleased], смоук-план `dev/gates/PHASE_7_SMOKE_TEST_PLAN.md` (runtime на пилоте — deferred к следующему VM-визиту). Closure-запись отдельным DEC-DEV.
-
-### Lessons
-1. ROADMAP-оценка фазы, написанная за 6 недель до старта, не видела, что половина deliverables (2 скилла, D1-D3 механика, UX-транскрипты) будет построена соседними фазами попутно — kickoff-recon по фактическому субстрату сократил скоуп фазы примерно вдвое против буквального ROADMAP-списка.
-2. Заявление дока о гейте («drift-gated in verify») без самого гейта в цепи — тихий класс дрейфа, который ловится только эмпирической проверкой заявления (`npm run <check>` руками); при ссылке на автоматический гейт — проверяй, что он реально в цепи.
-
-### Outcome (стройка, тот же день)
-Sub-phases B-G построены и в ветке: `commands/integrator/{verify,debug,docs}.md` (133/143/97 строк, ревью main-моделью PASS) + `hooks/integrator/lib/drift-checks.cjs` (D1/D2/D3+staleness, толерантный yaml-lite под обе формы active-tools, CLI-seam exit 0) + `hooks/integrator/drift-check.js` (SessionStart, hookEventName-контракт по уроку 0162, тумблер INTEGRATOR_DRIFT_CHECK=0) + manifest-регистрация (contract-validate помечен CUT) + `tests/integrator/drift-checks.test.cjs` 24/24 + hook-smoke 41→43 + overlay ×3 / карта+каталог 46→49 команд / SPEC §9 Phase-7 ✅ + §10 аннотации / CHANGELOG [Unreleased] / смоук-план S1-S5. `test:integrator` и `gen:catalog:check` подключены в verify-цепь; полный `npm run verify` EXIT=0. Сборка — MDP-оркестрация: recon sonnet → 2 параллельных opus-исполнителя (либа+хук / команды) → ревью main. Runtime smoke — next VM-визит (план в dev/gates/).
-
-### Closure (phase-closure inline, тот же день)
-Step 1 doc-health: 6 очагов rot вычищены (remove.md/update.md «(Phase 7, when available)» → живые ссылки; drift-detection/contract-design/tool-docs-generator скиллы «→ Phase 7» → «v1.1+ cut, 0176»; ROADMAP статус-строки + баннер §Phase 7 «исторический план»). Step 3 hook-smoke 43/43 (в pre-commit гейте). Step 3.5 built≠validated: везде помечено «runtime smoke pending»; **finding: deferred-smoke долг = 4 плана** (PATCH_1.3.3 + PHASE_6 + S_LE + PHASE_7) — выше порога 2; прогонять ПАЧКОЙ на следующем VM-визите вместе с S1-S5, новых «built» фаз до этого не наслаивать. Step 4 consistency: SPEC §9/§10 ↔ manifest ↔ CHANGELOG сведены; counts 24/44 не задеты (команды вне счётчиков). Step 5: PHASE_7_READINESS архивирован → `dev/_archive/phase-7/` (смоук-план остаётся активным до прогона); Phase-8 skeleton не создан (фаз больше нет — решение 10). Step 2 (bootstrap на пилоте) и Step 6 (memory-sync) — после merge. Время closure ≈ 20 мин (в бюджете).
-
-## DEC-DEV-0177 — Batch-прогон 4 deferred-смоук-планов на VM-пилоте: 14 PASS / 3 PARTIAL / 5 N/A / 0 FAIL (исправлено D13, DEC-DEV-0197); вскрыт DEF-SMK-1 (drift-оси слепы на реальной схеме active-tools)
-
-**Date:** 2026-07-11
-**Trigger:** мандат владельца «Прогони пачку из 4 smoke-планов на VM» (closure-finding Phase 7: deferred-smoke долг = 4 плана, порог 2 превышен вдвое).
-
-### Ход
-Релиз **1.9.0** cut (`6da37c1`; Phase-7 в поставке — прогону Phase-7-смоука нужна доставка) → пре-регистрация брифа `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` (PR #157, ДО прогона; вкл. пре-вскрытые plan-drift'ы: Phase-6 S5/Q10 решён «export standalone», S2-Stitch N/A-substrate, 1.3.3 S4 env-блок в профиле) → VM-снапшот `smoke-batch-pre-run` (офлайн) → сессии **U** (update 1.9.0 + verify = Phase-6 S7) → **D** (Phase-7) → **A** (1.3.3) → **B** (Phase-6) → **C** (S-LE, strict) → harvest (по-сессионный digest из JSONL + операторские детерминированные факты) → **независимый судья opus**. Вердикт и полная таблица — бриф §Outcome (SSOT). Пилот: main `202c882` (доставка) → `54dd35a`; evidence-ветка `smoke-batch-1-9-0` (6 коммитов).
-
-### Ключевые результаты
-1. **Phase-6 S7 (update-compat) PASS детерминированно** — главный страх update'а (wipe пилот-состояния) не подтверждается: design.yaml/mockups(85 файлов)/DS побайтно целы, third-party хуки/скиллы preserved, `ecosystem_version` re-stamped.
-2. **Phase-7 живьём здоров**: verify/debug/docs PASS (debug попутно НАШЁЛ живой дефект — ложный C-03 на FM-006, whitelist отстал от v1.6.0; корректно cancelled по n). **DEF-SMK-1**: drift-оси D1/D2/D3 хука/либы слепы на реальном пилоте — парсер ждёт поле `adapter`, которого в реальной схеме active-tools.yaml НЕТ (связь tool→adapter живёт в CNT-*.yaml `transformation.script`); staleness-нога при этом работает live (нота в сессии D, молчание в чистой C). Юниты дефект не ловили — фикстуры были самодельной формы (урок №1).
-3. **S-LE: цель ре-прогона достигнута** — exemption-самодедлок 0143 live-устранён (протокол `--resume` пишет маркер и цели под strict), deny работает; S-LE.1 повторно PARTIAL (`preventedContinuation=false` при работающем feedback-инжекте — ограничение CC под bypassPermissions, не хука). Флип PreToolUse warn→strict — судья: «обоснован по существу, финал за владельцем».
-4. **1.3.3 S2/S5 = N/A по вине дизайна прогона** (не кода): `/integrator:scan` снимает session-marker на Final-cleanup → запись «после скана» шла без маркера, scope-guard легитимно no-op. Урок №2.
-5. Deferred-smoke долг 4 → 2 (PHASE_7 архивирован; S_LE — по решению флипа; 1.3.3/PHASE_6 — точечный догон: живой маркер / свежий install / честная UI FM без готового дизайна).
-
-### Lessons
-1. **Юнит-фикстуры «самодельной формы» проходят зелёными мимо реальной схемы данных** — при написании парсера реального файла пилота бери в фикстуры РЕАЛЬНЫЙ образец (или контракт-тест против схемы из add.md), иначе runtime-smoke становится первым местом, где парсер встречает правду (DEF-SMK-1).
-2. **Оркестровка смоука обязана знать side-effects шагов-предусловий**: `/integrator:scan` сам снимает маркер, который нужен следующему шагу теста, — секвенирование «scan → запись» разоружает сценарий. Пре-прогонная ревизия планов ловила contract-drift, но не эту динамику; в догоне — писать при живом маркере.
-3. **Судейская пара «пре-регистрированные поправки + anti-phantom-inflation» удержала прогон от ложных FAIL**: 5 N/A (исправлено D13, DEC-DEV-0197) могли бы засчитаться провалами; 2 plan-drift'а были вскрыты ДО прогона грепами контрактов (вопрос владельца «не проверяешь ли устаревшее?» — прямое попадание).
-
-### Outcome-дополнение (флип, тот же день)
-Владелец принял рекомендацию судьи: **`lesson-presence-gate.js` (PRONG B, PreToolUse) флипнут warn→strict по умолчанию** (дефолт в хуке + manifest-description + CHANGELOG [Unreleased] Changed; hook-smoke 43/43 — strict-кейсы 0143 покрывают новый дефолт, warn-кейс задаёт env явно). S-LE-чеклист архивирован по его же §«На PASS» (`dev/_archive/s-le/`), указатели обновлены; S-LE.1 задокументирован как known CC-runtime-caveat (не блокер). Откат без кода: `LESSON_GATE_MODE=warn`.
-
-### ⚠ Поправка агрегатов (2026-07-13, DEC-DEV-0197 / D13)
-Сводка этой записи была **неверной**: `11 PASS / 2 PARTIAL / 6 N/A / 0 FAIL` (сумма **19** ≠ 22). Истина по таблице судьи — **`14 PASS / 3 PARTIAL / 5 N/A / 0 FAIL`** (сумма 22 ✓). Судья верно выставил все 22 per-сценарных вердикта, но **ошибся в собственной агрегации** в «Коротком ответе» (перечислил пять N/A, назвав шесть; назвал два PARTIAL, перечислив три; опустил carry-forward PASS **S-LE.2** и **S-LE.6**) — и эти числа были скопированы verbatim в бриф, эту запись, CHANGELOG 1.9.1, ROADMAP и память. **Per-сценарные вердикты не пересуживались** — правились только агрегаты. Развёрнуто: `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome. **Урок:** цифру инструмента (в т.ч. LLM-судьи) нельзя тиражировать, не пересчитав его собственную сводку против его же таблицы — здесь сумма не билась с заявленным n=22 и это никто не проверил ~2 суток.
-
-## DEC-DEV-0178 — Follow-up фиксы smoke-batch: DEF-SMK-1 (adapter-резолв через CNT-контракты), ложный C-03 (whitelist v1.x), деплой тест-фикстуры адаптера
-
-**Date:** 2026-07-11
-**Trigger:** мандат владельца «Делай follow-up фиксы: DEF-SMK-1 + C-03 + фикстура» (дефекты вскрыты batch-прогоном, DEC-DEV-0177).
-
-### Решения
-1. **DEF-SMK-1 — резолв через контракты, не новое поле.** Альтернатива «добавить поле `adapter` в схему active-tools + backfill» отвергнута: связь tool→adapter УЖЕ канонично живёт в `CNT-*.yaml` (`consumer` + `transformation.script`) — второй носитель породил бы дрейф двух источников. Либа сканирует контракты (толерантно, обе вложенности `consumer`/`contract.consumer`; вклад только `type: adapter_script`), объединяет с legacy-полем, multi-adapter сводит worst-of, а непривязанные пары reference↔instance проверяет страховочной строкой `(unattributed)` — контракты, которые парсер не осилил, не делают дрейф невидимым. JSON-форма выхода сохранена (контракт `verify.md`).
-2. **C-03 — whitelist до `v1.x`, не «добавить v1.5-v1.9».** Перечисление миноров повторило бы граблю на каждом релизе. Основание расширения — live-факт прогона: Stage-6 контракт-тест прошёл против РЕАЛЬНОГО v1.6-handoff (DEC-INT-0014), а структурная защита от вложенных §10 — monotonic guard (0073) + блокирующий C-07. Мажор (v2+) остаётся warning до ре-верификации. Instance пилота получит фикс через `/integrator:update cc-sdd --repair` после доставки.
-3. **Фикстура — деплой-шаг, не переезд файла.** Альтернатива «переместить SSOT в `adapters/fixtures/`» отвергнута: фикстуру делят три тест-съюта (`tests/adapters` + `tests/orchestrator` ×2) — переезд трогал бы их без выгоды. SSOT остаётся `tests/fixtures/`, bootstrap 2d + update Step 5.2 копируют `FM-FIXTURE-*.md` → `.claude/adapters/fixtures/`; пути в `add.md`/`update.md` обновлены с fallback'ом на реальный handoff (pre-1.10 инсталляции).
-
-### Outcome
-Сборка: DEF-SMK-1 — opus-исполнитель по фиксированному дизайну (ревью main: резолвер+регрессор спот-чек PASS); C-03 + фикстура — main. Тесты: drift-checks 24→33 (фикстуры РЕАЛЬНОЙ формы — прямое применение урока 0177 №1; регрессор «drift ловится на схеме без поля adapter»), adapters contract-test 4→5 (v1.6/v1.9 pass + v2.0 warn), hook-smoke 43/43, полный verify EXIT=0. PA-050/051 (data-hygiene пилота) — вне scope, оставлено владельцу пилот-стороной.
-
-### Lessons
-1. Дефект-класс «второй источник правды» лечится чтением существующего канона, а не добавлением удобного поля: схема уже знала связь tool→adapter — не знала её только либа.
-
----
-
-## DEC-DEV-0179 — G22: handoff staleness на стороне Integrator — пересчёт хэшей реально выполняется и персистится (переиспользование Product hash-SSOT)
-
-**Date:** 2026-07-11
-**Trigger:** закрытие G22 из аудита (APPENDIX-B §1 / GAPS-RECONCILIATION §70; backlog-корзина №4).
-
-### Root cause
-handoff-spec §10 «Drift Detection» и §13 «С Integrator Module» обещали: при использовании handoff Integrator'ом (`/integrator:add`/`update`) и при `/integrator:verify` embedded `artifact_hashes` пересчитываются от `.product/` и расхождение флипает handoff в `stale`. По факту — шага пересчёта в `add.md`/`update.md` **не было вообще** (grep пуст), а единственный реальный drift-механизм жил в Product-зоне (`hooks/product/product-handoff-gate.js`, PostToolUse): он пересчитывает и предупреждает в **stderr**, но ничего не персистит — сигнал эфемерный. Итог (класс аудита (a)+(b)): спека обещала контур, которого на Integrator-стороне не существовало, а staleness нигде не оседала в файл.
-
-### Решения
-1. **Тонкая либа + переиспособление hash-SSOT, не копипаста (orchestrate-don't-duplicate).** Новая `hooks/integrator/lib/handoff-staleness.cjs` `require`-ит `hooks/product/lib/hash.js` (относительный путь `../../product/lib/hash.js` держится и в репо, и в пилоте `.claude/hooks/…`) и зовёт `computeArtifactHash` — SHA-256 / strip-frontmatter / LF-normalize НЕ реимплементированы. Альтернатива «встроить staleness в существующую `drift-checks.cjs`» отвергнута: та про **adapter**-drift (D1/D2/D3 reference↔instance + tool `last_audit`>90d) — ортогональная ось; её `staleness` — это возраст аудита тула, а не hash-дрейф артефактов handoff. Смешивать две модели в одном runDriftChecks значило бы перегрузить контракт JSON, который уже потребляет `verify.md`.
-2. **Персист — в Integrator-зону, НЕ в `.product/`.** Спека §10 говорит «status → stale», но Integrator по жёсткому контракту `add/update/verify` **никогда не пишет `.product/`** (scope-guard). Прямая запись `status: stale` в frontmatter самого handoff нарушила бы это. Разрешение: вердикт персистится в `.claude/integrator/handoff-staleness.yaml` (Integrator-зона); чтение `.product/` для пересчёта — read-only, допустимо. Регенерацию (единственное, что реально трогает handoff) инициирует владелец через `/product:handoff <FM-id> --regenerate` — Product-действие. handoff-spec §10/§13/§16 приведены к этому честному контракту (двусторонняя модель: Product-gate предупреждает, Integrator-либа персистит).
-3. **Producer/consumer split по командам.** `add.md`/`update.md` (модифицирующие) зовут либу с `--write` (persist свежего baseline). `verify.md` (read-only, один разрешённый write = `last_audit`) снапшот **читает** + считает свежий вердикт БЕЗ `--write` — single-write-инвариант verify сохранён. Так «персист в форму, которую читает verify» выполнено без нарушения инварианта.
-4. **id→path резолюция сканом `.product/`.** Имена файлов несут ASCII-slug, поэтому artifact-id (`FM-003`, `SC-005`) резолвится не по имени, а индексом: скан артефакт-директорий (mirror фильтра product-handoff-gate) + синглтоны (`rpm/glossary/design-system.md`), чтение frontmatter `id`. Отсутствующий в `.product/` артефакт → `missing_artifacts` (→ stale).
-
-### Outcome
-Сборка — opus-исполнитель (эта сессия). Реюз: `hooks/product/lib/hash.js` (алгоритм хэша), паттерн block-parse `artifact_hashes` из product-handoff-gate (grabli R5/A1 «regex ловит только первую запись» учтён — line-based). Добавлено: либа `handoff-staleness.cjs` (detect-only, CLI-seam `--root/--json/--write`, exit 0 всегда, tolerant к отсутствию `.product/`), юнит-тест 12 кейсов (вкл. hash-reuse-инвариант «frontmatter-only bump НЕ флипает stale» + «CLI никогда не пишет `.product/`»), wiring в `add.md`/`update.md`/`verify.md`, приведение handoff-spec §10/§13/§16 к честному контракту. `test:integrator` в verify-цепи (drift-checks + handoff-staleness). Полный `npm run verify` EXIT=0. Counts без изменений (24/44 — либа/команды в счётчики не входят). В пилот ещё не доставлено (следующий `/ecosystem:update`).
-
-### Lessons
-1. Когда спека обещает «X происходит при использовании», а grep реализации пуст — сначала проверь, не живёт ли половина контура в СОСЕДНЕЙ зоне (тут: Product-gate уже пересчитывал, но эфемерно). Закрытие = не «построить с нуля», а «дотянуть недостающую половину + переиспользовать SSOT алгоритма».
-2. Жёсткий zone-контракт («никогда не пишет `.product/`») может конфликтовать с буквой спеки («status → stale в handoff»). Разрешение — не нарушить контракт, а перенести персист в свою зону и оставить мутацию чужой зоны её владельцу; спеку привести к этому честно, а не оставить обещание, которое зона структурно не может выполнить.
-## DEC-DEV-0180 — Sweeper истёкших approve_overrides (закрытие G28): detect-only SessionStart-хук + CLI-reap, инлайн-консистентная классификация
-
-**Date:** 2026-07-11
-**Trigger:** последний остаток очереди AUDIT §6 quick-wins — G28 (`APPENDIX-B` §69): `approve_overrides.expires_at` не имеет sweep-механизма, expiry проверяется только инлайн при чтении артефакта (`artifact-validate.js` → `buildOverrideMap`). Periodic (§3.5) явно не реализован.
-
-### Контекст
-D2-overrides (`validation.md` §9.4, DEC-DEV-0012 C.5): артефакт может нести временный `approve_overrides[]` с опциональным `expires_at`. `buildOverrideMap` деактивирует запись условием `!isNaN(Date.parse(expires_at)) && expiry < now` — но **только когда** валидатор снова читает именно этот артефакт (PostToolUse на его Write/Edit). Истёкшие записи иначе копятся мёртвой конфигурацией: гейт де-факто снова активен, но конфиг говорит «одобрено». G28 — отсутствие проактивной подметалки.
-
-### Решения
-1. **Точечный sweeper, НЕ актуатор (граница скоупа).** Явно НЕ строил cron/temporal-инфру (Periodic §3.5 = фаза 4 Process Fabric, отложена до live-триггеров). Построен детерминированный сканер + CLI (`hooks/product/lib/override-sweep.cjs`) — чистые функции юнит-тестируемы, мутация изолирована за флагом.
-2. **Классификация инлайн-консистентна — sweeper НИКОГДА не расходится с валидатором.** Четыре класса зеркалят предикат `buildOverrideMap`: `expired` (парсится И `< now`) · `active` · `no-expiry` (нет поля → валидатор держит активным вечно) · `invalid-date` (непарсящийся `expires_at`: инлайн-предикат `!isNaN && <now` на NaN = false → валидатор трактует как **АКТИВНЫЙ**). Отсюда семантика: `invalid-date` **репортится как config-smell, но НЕ подметается** — он не истёк, удалять его = менять поведение валидации. Guard-тест держит это соответствие явно.
-3. **Семантика sweep: report по умолчанию, `--clean` = reap только expired.** Выбор «удалять vs помечать»: удаление истёкшей записи **validation-нейтрально** (валидатор её уже игнорирует — не воскрешает и не роняет ни один гейт), тогда как «пометка» потребовала бы столь же рискованной мутации YAML без выигрыша. Дефолт — dry-run отчёт; мутация только по явному `--clean`. Убираются построчные спаны только `expired`-элементов; если секция опустела — снимается и заголовок `approve_overrides:`. `no-expiry` (перманентный temp-override) и `invalid-date` не трогаются.
-4. **Точка вызова: SessionStart-хук (detect-only), НЕ verify-цепь.** Обоснование: sweep оперирует `.product/`-артефактами пользовательского проекта, которых в самом репо экосистемы нет (verify гоняется на репо → нечего сканировать). Соседний прецедент — `hooks/integrator/drift-check.js` (Phase 7, DEC-DEV-0176): проактивный листенер per-project-state на SessionStart. Скопирован его контракт (no-op вне `.product`, `additionalContext` + обязательный `hookEventName` per DEC-DEV-0162, fail-open, env-тумблер). Мутирующий reap живёт **только** за явным CLI — хук никогда не пишет файлы пользователя. Логика при этом всё равно защищена CI: юнит-тест `override-sweep` включён в `test:product`→`verify`.
-
-### Outcome
-Собрано main-моделью (лог-механика по точному аудит-брифу). Файлы: `hooks/product/lib/override-sweep.cjs` (lib+CLI), `hooks/product/override-sweep-check.js` (SessionStart-хук), запись в `manifest.yaml`, `tests/product/override-sweep.test.cjs` (15 кейсов: expired/active/no-expiry/битая-дата + guard инлайн-консистентности + clean + tree-walk skip `.pending` + CLI round-trip dry-run→--clean + `--strict` exit-коды), `test:product` в `package.json`. Проверка: юниты 15/15, hook-smoke 43/43, lint 0 errors, полный `npm run verify` EXIT=0. Counts без изменений (24/44 — хуки в счётчики не входят). `commands/ecosystem/verify.md` не трогал: в нём нет инвентаря/счётчика хуков, который эта добавка инвалидировала бы (он аудитит только gate-хук lesson-gate + производные счётчики команд).
-
-### Lessons
-1. **Инлайн-предикат — это спецификация для его подметалки.** `invalid-date` мог бы наивно попасть в reap («дата битая → выкинуть»), но валидатор трактует битую дату как активный override; sweeper обязан наследовать именно это, иначе «уборка» тихо снимает живой гейт. Урок: при постройке фонового sweeper'а над инлайн-механизмом извлекай его точный предикат и зеркаль дословно (guard-тест), а не переизобретай «здравый смысл».
-2. **Детект и мутация — разные точки вызова с разным контрактом.** Проактивная видимость безопасна в авто-хуке (detect-only, fail-open); необратимое (удаление конфига) осознанно оставлено за явным человеко-инициированным CLI. Тот же принцип, что «merge в main — всегда владелец».
-## DEC-DEV-0181 — D7-гигиена: консолидированная SessionStart-напоминалка на застой feedback-контуров G25/G26/G27
-
-**Date:** 2026-07-11
-**Trigger:** закрытие трёх Tier-3-разрывов из GAP-анализа процесс-фабрики (`dev/process-fabric/audit/APPENDIX-B-gap-analysis.md`): capture есть, автоматического потребления нет — G25 (Pending-маркеры audit-index копятся, ничто не обязывает `/meta:audit-smoke`), G26 (feedback-intake построен, но reconciliation — «человек должен вспомнить»), G27 (patch-candidates [Y/N/E/D] висят месяцами без reminder).
-
-### Решения
-1. **Один консолидированный хук, а не три раздельных (главный tradeoff).** Существующая тройка warn-напоминалок (`dev-journal/phase-closure/memory-drift-reminder`) — `git commit`-gated на PostToolUse:Bash, потому что их триггер — событие коммита. У G25/G26/G27 нет коммит-события: это **standing-backlog** условия (застой во времени). Поэтому естественный триггер — **SessionStart**: показать бэклог один раз за сессию, а не на каждый Bash-вызов (что дало бы шум × N команд). Раздельные три хука зеркалили бы паттерн тройки, но: (а) триггер у всех трёх один и тот же (SessionStart) → три записи в settings + три инъекции additionalContext = лишний шум; (б) общие helpers (repoRoot/пороги/формат) дублировались бы. Выбран один файл `d7-hygiene-reminder.js` с одной инъекцией, печатающей только сработавшие плечи. Зеркалит контракт `rails-session-start.js` (additionalContext, exit 0 всегда, no-op-safe, env-тумблер `D7_HYGIENE_REMINDER=0`).
-2. **Detect-only, порог-gated, честные сигналы (не выдумка путей).** Плечи бьют по РЕАЛЬНЫМ структурам данных: G25 — Pending-строки между сентинелами `PENDING_ROWS_START/END` в `audit-index.md`, поле `ended_at` (ISO), порог ≥7 дней; G27 — фронтматтер `patch-candidates/*.md` `verdict: survived` + `gate: pending`, дата последнего движения = git-log `%cI` файла (fallback mtime), порог ≥14 дней. Пороги консервативны — свежий capture не ноет. Никаких записей в файлы (иначе рекурсия Write→SessionStart), только чтение + additionalContext.
-3. **G26 — consolidate-don't-duplicate: переиспользуем настоящий `feedback-intake.js`.** Вместо эвристики «уже портировано?» плечо вызывает реальный `intake()` (дедуп против DEV_JOURNAL) над in-repo FB-ledger и считает находки `source=feedback-journal` + `disposition=open`. Session-audit-находки из ndjson (79 open на момент) СОЗНАТЕЛЬНО исключены — это домен patch-synth (G27-путь), а не intake-триггер; иначе плечо шумело бы всегда. Честная граница scope: пилотный outbox (`.product/.upstream/feedback-outbox.md`) лежит по внешнему пути, репо его не знает — плечо покрывает только in-repo FB-ledger-руку; человек, принёсший outbox, всё равно гонит `feedback-intake --outbox` руками (сообщение это проговаривает).
-
-### Outcome
-Реализация — main-модель (событийная ткань + honest-scope суждение = не делегируемо). Регистрация — `.claude/settings.local.json` SessionStart (gitignored, локальная — как rails); doc-обновление enumerating-таблиц `CONVENTIONS.md` (дерево hooks + activation-triggers). Верификация: юнит-смоук 11/11 (три чистых детектора с фикстурами: пусто/свежий/застоявшийся/mix/битый вход), end-to-end SessionStart-прогон против реального репо (сработало ровно плечо G26 — FB-LR-11 реально open; G25=0 pending, G27=0 survived-pending), тумблер OFF молчит, пустой stdin no-op-safe. Полный `npm run verify` EXIT=0. Тестов для D7-напоминалок в репо нет (не принятый паттерн) → ручной смоук с фиктивным входом, как указано в брифе; хук экспортирует чистые детекторы для тестируемости.
-
-### Lessons
-1. Триггер хука выбирается по **природе условия**, а не по зеркалу соседних хуков: commit-события → PostToolUse:Bash; застой-во-времени → SessionStart. Копирование паттерна тройки без этой проверки дало бы шум на каждый Bash-вызов.
-2. Напоминалка о застое переиспользует настоящий реконсилятор, а не эвристику: `intake()` уже умеет «портировано ли?» через дедуп DEV_JOURNAL — своя копия этой логики разошлась бы с источником (тот же класс «второй источник правды», что и урок 0178).
-## DEC-DEV-0182 — Детерминированный depth-floor guardrail для adaptive-depth DA (закрытие G30)
-
-**Date:** 2026-07-11
-**Trigger:** G30 из аудита process-fabric (`APPENDIX-B-gap-analysis.md`): adaptive-depth-классификатор P-RULE-01/02 (DEC-DEV-0012) даёт subagent'у `product-devils-advocate` право **самому** пометить изменение BR/IC как `cosmetic` (→ quick-check, 6 линз пропускаются) или `significant` (→ full 6-lens). Это LLM-суждение без backstop: false-cosmetic на реально значимом изменении молча пропускает требуемый review. Watchdog G05/G06 (DEC-DEV-0159) страхует **факт** спавна DA, но НЕ выбранную им **глубину** — Tier-1 пункт «рефлексы ревью хрупкие».
-**Tag:** #architecture #tooling
-
-### Решения
-
-1. **Детерминированный пол, НЕ второй LLM-судья.** Ставить «ещё одного судью» над классификатором означало бы удвоить и стоимость, и точку отказа (тот же класс суждения). Вместо этого — CODE-level guardrail: чистая функция `computeDepthFloor(diff, artifactType)` сканирует **тот же** git-diff (хук его уже вычислил — cheap-to-check) набором структурных сигналов и, если хоть один сработал, поднимает пол до `significant`. Это переносит из-под LLM только **однозначные структурные** кейсы; на genuinely-ambiguous прозе adaptive-LLM остаётся хозяином. Соответствует Epic-F принципу, уже кодифицированному в `zone-router.cjs`: *disposition детерминирована; суждение — только в контенте вердикта.*
-
-2. **Сигналы — высокоточные, привязаны к перечисленным §6.2 significant-триггерам** (не «широкий значимости-детектор»): `creation` (нет версии в HEAD — синтетический diff-маркер хука), `activation` (`status:`→`active`, contract-binding момент), `severity-critical` (IC severity на/с `critical`), `entity-change` (IC `entity:`), `category-change` (BR `category:`). Все — на уровне frontmatter-полей / существования файла: правка прозы (typo/reword) их НЕ трогает → cosmetic-путь сохранён, cost-модель DEC-DEV-0012 не сломана.
-
-3. **Отвергнуто: переиспользовать `zone-router.classifyMagnitude` как пол.** Он консервативнее — любая не-whitelist content-строка → significant, т.е. и typo-фикс. Использовать его полом = форсировать full 6-lens на каждой прозаической правке = коллапс adaptive-депта в «всегда significant, кроме чистых metadata/ref-list». Это была бы переделка DA cost-модели (own DEC-DEV-0012), а не узкий guardrail. Взят precision-набор структурных сигналов.
-
-4. **Отвергнуто: детектить «statement semantic rewrite» и BR «parameter TYPE vs value-tune».** Оба недетерминируемы регуляркой: прозаический rewrite неотличим от typo (оба — §6.2 cosmetic-триггеры), а value-tune (`first_match`→`best_match`, явный §6.2 cosmetic-пример) живёт в том же `parameters:` блоке, что и type-change — generic-сигнал дал бы false-positive на документированном cosmetic. Оставлено adaptive-LLM (anti-rationalization guard агента). Это осознанная граница, не пробел.
-
-5. **absent==старое поведение 1:1.** Нет сигнала → `floor: null` → в entry ничего не добавляется, brief без `Depth-floor` → subagent классифицирует как раньше (включая свободу выбрать significant сам). Пол только **повышает**, никогда не понижает. Fail-open: `require` либы в try/catch — недоступна → пола нет.
-
-### Enforcement-модель (честно, без иллюзий)
-
-Пол вычисляется CODE **до** запуска subagent'а и штампуется в da-pending-entry (`depth_floor`/`depth_floor_signals`) + громкий stderr-override. Потребление (subagent реально идёт в full) остаётся LLM-оркестрированным — **та же** модель, что и весь DA-спавн и что zone-router magnitude-gate (код решает fire, LLM исполняет). G30 — именно про отсутствие детерминированного backstop у классификации; теперь для перечисленных структурных кейсов суждение из неё изъято.
-
-### Сознательно НЕ сделано (scope-guard)
-
-- **Пост-hoc watchdog-проверка** `depth_floor: significant` против фактической магнитуды вердикта (в `subagent-watchdog.js`) — потребовала бы захвата магнитуды ревью в `.watchdog-state.json` (расширение схемы) → scope creep во вторую подсистему. Пол ДО запуска — достаточный guardrail; пост-hoc слой — возможное будущее усиление.
-- **Новый validation-тип/правило** — сознательно нет: сдвинуло бы canonical counts (24/44) и это НЕ validation артефакта, а аннотация depth на существующей da-pending-entry. Counts не тронуты.
-
-### Outcome
-
-Либа `hooks/product/lib/da-depth-floor.cjs` + оба хука (`ic/br-change-trigger.js`: compute→stamp→override-stderr, formatter эмитит поля) + docs (`processes.md` §6.2 таблица сигналов+границы, `feature-session.md` DA-flow, `devils-advocate.md` Step 1 override, manifest ×2). Юнит-тест `tests/product/da-depth-floor.test.cjs` (15 кейсов: каждый сигнал + absent-путь typo/metadata/ref-list/value-tune + context-строки игнорируются) в `test:product`. Интеграционный smoke: creation-IC без git → `depth_floor: significant`/`signals: creation` в yaml + override-stderr, round-trip парсера чистый. `npm run verify` EXIT=0.
-
-### Lessons
-
-1. Прежде чем строить «guardrail» — grep на уже существующий детерминированный механизм того же класса: `zone-router.classifyMagnitude` уже решал «cosmetic vs significant» для persona-панели; DA-путь просто не был к нему подключён. Даже когда его форма не подошла полом (слишком консервативен), он задал и модель (код-fire/LLM-исполняет), и точную точку вычисления (тот же diff в хуке).
-2. Детерминированный пол сильнее «ещё одного судьи» ровно там, где сигнал структурный (поле/существование файла), и бесполезен там, где он семантический (проза) — честная граница важнее широкого охвата: широкий пол сломал бы cost-модель, ради которой adaptive-депт и вводился.
-## DEC-DEV-0183 — G24: session-audit path-resolve (env-override + loud fail) + opt-in visibility (bootstrap-offer + consumption-seam signal), SessionStart-warn отвергнут как непортируемый
-
-**Date:** 2026-07-11
-**Trigger:** закрытие G24 из аудита (`dev/process-fabric/audit/APPENDIX-B-gap-analysis.md`, класс (d)+(f)): Session Audit v2 требует ручного opt-in `/ecosystem:enable-d7-audit` в каждом пилоте — пропустил и весь pipeline молчит; плюс хук «хардкодит абсолютный путь repo → тихо ломается при переезде».
-
-### Root cause (две независимые ноги)
-- **(f) Хардкод пути.** Кросс-проектный `SessionEnd`-хук регистрируется в `.claude/settings.local.json` пилота с **абсолютным** путём к `session-audit.js` (это делает `enable-d7-audit.md` Step 5). При переезде репо экосистемы этот путь протухает → `node <stale>` не находит скрипт → хук **молча** не запускается (SessionEnd не может блокировать, ошибка глохнет). Резолв repo-root ВНУТРИ скрипта уже был динамическим (cwd-walk + `__dirname`-fallback), но это не спасает, когда сам лаунчер-путь мёртв.
-- **(d) Opt-in в голове.** Аудит-pipeline включается только ручным per-pilot вызовом; забыл — маркеры не пишутся, `/meta:audit-smoke` не находит ничего и раньше печатал безликое «Pending empty after filters» без диагноза.
-
-### Решения
-1. **Leg (f) — env-override + громкий отказ + тестируемость.** `findRepoRoot` переписан на приоритет `$ECOSYSTEM_ROOT` (валидируется по CLAUDE.md+DEV_JOURNAL.md) → cwd-walk → `__dirname`-fallback → `null`. При `null` main() пишет **громкий** stderr с ремедиацией (set `ECOSYSTEM_ROOT` / re-run `enable-d7-audit`) вместо тихого skip; неверный `$ECOSYSTEM_ROOT` тоже warn'ит, не молчит. Функция вынесена из top-level (модуль обёрнут `require.main === module`) и экспортирует `findRepoRoot`/`isRepoRoot`/`buildMarkerRow` для юнит-теста (инъекция `env`/`scriptDir`/`warn` → «переехавший» кейс тестируется без спавна). Честная граница: env-override чинит РЕЗОЛВ, но не лаунчер-путь — его чинит только re-run; это явно записано в `enable-d7-audit.md`.
-2. **Leg (d) — портируемая видимость, БЕЗ принудительной глобализации.** Две тракторные ноги: (а) `bootstrap.md` Step 11.5 — явный **default-OFF** опрос «это ecosystem-dev пилот?»; только на Yes зовёт идемпотентный `/ecosystem:enable-d7-audit`. Обычные продуктовые проекты не затронуты (суть требования G24-фикса — НЕ менять поведение всех пилотов). (б) `audit-smoke.js` на пустом Pending без фильтров печатает **громкий диагноз** (opt-in не включён / путь протух после переезда + как проверить) — сигнал на consumption-seam, где разработчик как раз ждёт маркеры.
-3. **Отвергнуто: SessionStart-warn в репо экосистемы.** Бриф предлагал его как «и/или». По факту устройства dev-хуки репо регистрируются в **gitignored** `.claude/settings.local.json` (там же живёт `rails-session-start.js`) — новый SessionStart-warn не поехал бы в PR/на свежий клон, т.е. воспроизвёл бы РОВНО ту же болезнь непортируемости (G23), которую G24 и лечит. Театр вместо фикса — не строим. Portable-подмножество (bootstrap-offer + consumption-signal) закрывает (d) без этой ловушки.
-
-### Outcome
-Тесты: новый `tests/audit/session-audit-resolve.test.cjs` (7 проверок: valid cwd-walk / env-override / scriptDir-fallback / «переехавший» wrong-env→recover+warn / total-miss→null / isRepoRoot / buildMarkerRow) подключён в `test:audit`. End-to-end смоук: реальный payload через `ECOSYSTEM_ROOT` пишет маркер (exit 0); пустой Pending даёт диагноз. Полный `npm run verify` EXIT=0. Зоны: `dev/meta-improvement/hooks/session-audit.js` + `scripts/audit-smoke.js` (D7-internal, не consumer-zone) + consumer-zone `commands/ecosystem/{bootstrap,enable-d7-audit}.md`. Counts без изменений (24/44 — команды/хуки в счётчики не входят). CHANGELOG `[Unreleased] ### Fixed`.
-
-### Lessons
-1. «Хардкод абсолютного пути» у кросс-проектного хука неустраним на уровне лаунчера (пилот не имеет иной ручки на репо) — честный фикс не «убрать путь», а сделать резолв override-способным и **отказ громким**, плюс поставить сигнал на seam потребления.
-2. Проверяй ПОРТИРУЕМОСТЬ предлагаемого listener'а до постройки: если он регистрируется в gitignored-конфиге, он не переживает клон/переезд и «закрывает» гэп только на одной машине. Для гэпа-про-хрупкость это анти-фикс.
-3. Видимость opt-in дешевле и честнее всего конвертируется в сигнал там, где потребитель уже смотрит (пустой `/meta:audit-smoke`), а не новым проактивным органом с собственной регистрационной хрупкостью.
-## DEC-DEV-0184 — INFORMATION-MAP P3 path-guard (G34): скрипт check-information-map.js в verify-цепь + фикс абстрактных путей module-SPEC
-
-**Date:** 2026-07-11
-**Trigger:** закрытие G34 из аудита (`dev/process-fabric/audit/APPENDIX-B-gap-analysis.md`): принцип P3 `dev/INFORMATION-MAP.yaml` («каждый ssot-путь обязан резолвиться») заявлен, но guard-скрипт не построен. Root-cause класс **(e) — spec-без-импл**.
-
-### Решение
-Построен `dev/meta-improvement/scripts/check-information-map.js` (зеркалит структуру `check-counts.js`: shebang + header-контракт, `repoRoot()`, `--json`, коды выхода 0/1/2). Парсит INFORMATION-MAP.yaml как сырой текст (пути живут вкраплениями в прозе полей ssot/mirrors/verify/note, не в чистых полях), извлекает repo-относительные ссылки на файлы и проверяет резолвимость от корня. Вплетён в `npm run verify` тем же паттерном, что `check:doctype`/`check:validation-sync` (новый скрипт `check:infomap` в package.json + звено в цепи `verify`). `commands/ecosystem/verify.md` НЕ тронут: это user-facing `/ecosystem:verify` над установленным `.claude/`, а INFORMATION-MAP — dev-only (P4, в пилот не шипится) → consumer-zone не задета, CHANGELOG не нужен.
-
-### Ключевые дизайн-решения (борьба с false-positive на прозе)
-1. **Checkable-правило консервативное:** токен проверяется, только если (есть `/` ИЛИ он в наборе ROOT_DOCS) И (есть расширение .md/.js/.cjs/.mjs/.yaml/.json, ИЛИ trailing-`/`, ИЛИ glob `*`). Прозаические сокращения без расширения («artifacts/README») и голые имена инструментов без пути («gen-command-catalog.cjs») сознательно пропускаются — это не path-claim'ы.
-2. **Single-segment `word/` пропускается:** русский текст использует `/` как «или» («ROADMAP/память», «tech-debt/в бэклоге»); ASCII-регекс срезает кириллический хвост, оставляя ложный `dir/`. Реальные каталожные ссылки всегда многосегментны (`dev/tech-debt/`, `docs/pmo/artifacts/`) → требуем интерьерный `/`.
-3. **Skip out-of-repo и gitignored:** строки с `out-of-repo`/`~/` (класс memory-location: `~/.claude/.../memory/`, MEMORY.md, `project_*.md`) пропускаются целиком; gitignored-пути (регенерируемый `dev/meta-improvement/rails/RAILS.md`) отсеиваются через `git check-ignore` — их наличие на диске зависит от окружения, не контракт.
-4. **Глобы/якоря/плейсхолдеры:** `file.md#секция` → проверяется только файловая часть; `<TYPE>`/`<module>` → glob `*`; `dir/*.md` → ≥1 матч, `dir/*` → родитель-каталог, `dir/` → каталог.
-
-### Найдено/починено
-- **37 path-ссылок** проверяется, все резолвятся (green EXIT=0).
-- **Фикс в INFORMATION-MAP.yaml (line 107):** абстрактные `product-module/SPEC.md · design-module/SPEC.md · integrator-module/SPEC.md` в поле `verify` класса module-contracts не резолвились от корня (реальные файлы — под `docs/`). Приведены к полным `docs/product-module/SPEC.md · docs/design-module/SPEC.md · docs/integrator-module/SPEC.md` — консистентно с `ssot: docs/<module>-module/SPEC.md` строкой выше. Все три файла существуют; это был единственный реально-нерезолвящийся путь. Прочих битых путей нет — каталог был здоров, теперь ещё и enforced.
-
-### Lessons
-1. **Guard над human-prose YAML — упражнение в подавлении FP, не в извлечении.** Ценность P3-принципа была нулевой без исполнителя (класс-(e) долг): один устаревший `ssot:`-путь гнил бы молча. Но наивный «любой `/`-токен = путь» тонет в русской прозе (`/` как «или») → пришлось консервативно сужать checkable до «есть расширение/glob/trailing-slash И многосегментный». Правило «бери реальный образец, не выдумывай схему» (урок 0177 №1) применено к самому yaml: экстрактор откалиброван по фактическим 43 кандидатам файла, а не по воображаемой чистой схеме полей.
-
----
-
-## DEC-DEV-0189 — Систематический security-проход по репозиторию (закрытие компонента 4 substrate-graduation гейта): фикс command-injection в 3 PostToolUse-хуках + отчёт с принятым остаточным долгом
-
-**Date:** 2026-07-11
-**Trigger:** компонент 4 (security review) `dev/gates/SUBSTRATE_GRADUATION_GATE.md` держался 🟡 — «нет систематического security-прохода как обязательного шага перед prod-graduation». Экосистема ставит `hooks/commands/skills/adapters` в `.claude/` пользователя, где хуки исполняются **автоматически** на файловых событиях — атака-поверхность реальна (prompt-injection наводит агента написать файл с крафт-именем/контентом). Проведён защитный аудит собственного кода по осям: command-injection, path-traversal, unsafe-require/eval, запись вне зон, fail-open/closed, XSS в генерируемом HTML, утечка секретов, гигиена шаблонов/permissions. Отчёт: `dev/gates/SECURITY_REVIEW_2026-07-11.md`.
-
-### Находка H-1 (HIGH) — command injection в 3 change-trigger хуках → ПОЧИНЕНО
-`hooks/product/{br,ic,zone}-change-trigger.js` — PostToolUse-хуки, копируются в проект пользователя и исполняются на каждом Write/Edit в `.product/`. Все три строили git-команду **шелл-строкой** с интерполяцией `relPath` (производного от `tool_input.file_path`):
-```
-execSync(`git -C "${projectRoot}" diff HEAD -- "${relPath}"`, …)
-```
-Фильтр имени артефакта (`\.product/…/[^/]+\.md$`) допускает в сегменте имени любой не-`/` символ, включая `$()`, backtick, `;`. На POSIX (`/bin/sh` под `execSync`) подстановка команд **внутри двойных кавычек вычисляется**: файл `.product/business-rules/x$(touch PWNED).md` проходит фильтр, читается хуком, и `$(…)` исполняется → RCE на машине пользователя, **без подтверждения** (хук авто-запускается). Вектор — prompt-injection: враждебный контент в файле/спеке наводит агента создать артефакт с таким именем. **Фикс (тривиальный, безопасный, поведение 1:1):** `execFileSync('git', ['-C', projectRoot, 'diff', 'HEAD', '--', relPath], …)` — без шелла, метасимволы едут дискретными argv-элементами, не интерпретируются. Проверено: smoke 43/43, функциональный тест (diff по-прежнему захватывается в `da-pending.yaml`) + injection-PoC (SAFE — команда из имени файла не исполнена).
-
-### Остаточный долг (MEDIUM/LOW — задокументирован и ПРИНЯТ, не чинился в этом проходе)
-Дисциплина прохода: чиню только critical/high с тривиальным безопасным фиксом; medium/low → в отчёт для решения владельца.
-- **M-1 (MEDIUM, stored XSS):** `hooks/design/app-map-html.js:122` встраивает `JSON.stringify(DATA)` в инлайн-`<script>` без экранирования `<`/`</script>`; `DATA` содержит prompt-injection-влияемый `.product`-контент (заголовки FM/NM/CJM). Значение с `</script><script>…` вырывается из блока → выполнение в `file://`-origin открытого `app-map.html` (эксфильтрация данных мокапа). Impact ограничен (локальный файл, свой контент, нет cross-user/сессии). Фикс тривиален (эскейп `<`), но за границей «high» → владельцу.
-- **M-2 (MEDIUM, dev-only injection):** `dev/meta-improvement/scripts/next-dec-dev.js:181` — `execSync(\`git show ${ref}:…\`)`, где `ref` — имя ветки из `git branch -r/--format`. git-ref-format НЕ запрещает backtick/`$()`/`;` → враждебное имя remote-ветки + `git fetch` + запуск `npm run next-dec-dev` = инъекция на машине мейнтейнера. Dev-only (в пилот не шипится), вектор узкий. Фикс: `execFileSync('git', ['show', …])`.
-- **L-1..L-5 (LOW):** `stitch-to-opendesign.js` шлёт Bearer-токен на caller-контролируемый `--daemon-url` (SSRF-with-credentials); `session-state.js:135` — 12-байт arbitrary-file read через крафт `.git/HEAD` ref-traversal; `od-mcp-call.cjs`/`od-consolidate.cjs` — секрет в argv `docker -e OD_API_TOKEN=…` (виден в `ps`); `session-fabric-status.js` — unsandboxed exec проектно-локального `fabric-engine.cjs` на SessionStart (persistence-вектор, by-design); `check-information-map.js:113` — dev-only интерполяция `rel` в `git check-ignore`.
-- **INFO:** `settings.json.template` дефолт-allowlist пре-одобряет `Bash(npx:*)` + `Bash(npm install:*)` + `Bash(git push:*)` + безусловные Write/Edit — расширяет авто-одобренную поверхность (prompt-injection может запустить произвольный npx-пакет без промпта); смена дефолт-постуры — решение владельца, не тривиальный безопасный фикс. Install-скрипты `curl|bash`/`iwr|iex` + `git reset --hard` — стандартно, документировано. Bootstrap рекомендует `--dangerously-skip-permissions` — задокументированный UX-tradeoff. Secrets-свип по репо **чист** (единственный хит — фейковое имя env-var в тест-фикстуре); `.env.template` гигиеничен (пустые ключи + gitignore-нота).
-
-### Решение по гейту
-H-1 (единственный high) починен; medium/low явно приняты в отчёте. Критерий закрытия компонента 4 («ручной проход по OWASP-классам … и находки закрыты/приняты явно») выполнен → 🟡→✅ со ссылкой на отчёт. Нефикшенных critical/high **нет** — зелёный честен.
-
-### Lessons
-1. **`execSync` со строкой = шелл; `execFileSync`/`spawnSync` с массивом = без шелла.** Дефолт для любой команды с интерполяцией внешнего ввода — массив-форма. Три хука независимо повторили один анти-паттерн (copy-symmetry br→ic→zone) — одна ошибка тиражируется симметрией. При добавлении хука-близнеца копируется и дефект.
-2. **Авто-исполняемый хук в consumer-zone поднимает severity инъекции.** Тот же паттерн в dev-only `next-dec-dev.js` — MEDIUM (узкий вектор, машина мейнтейнера), а в PostToolUse-хуке пользователя — HIGH (авто-запуск, RCE, prompt-injection достижим). Зона исполнения — множитель severity.
-3. **Фильтр по расширению ≠ санитизация.** `[^/]+\.md$` пропускает `$()`/backtick/`;` в теле имени; «выглядит как путь к .md» не значит «безопасно для шелла». Валидация формы и экранирование для sink — ортогональны.
-## DEC-DEV-0186 — Deep Discovery субагенты market-researcher + competitor-analyst: D1 Deep стал функциональным (закрытие G36)
-
-**Date:** 2026-07-11
-**Trigger:** закрытие G36 из аудита: субагенты Deep Discovery `market-researcher` / `competitor-analyst` описаны в SPEC Product-модуля (§5.1/§5.2), перечислены в processes.md §14.3, и уже имели точку входа (`/product:init --deep` + ветки Deep в `discovery-session.md` D1.2/D1.3) — но **файлов агентов не было**. Root-cause класс **(e) — spec-без-импл**: Deep D1.2/D1.3 был spec-only с Phase 3, сознательно отложен (DEC-DEV-0012 D.1) под «нет evidence, что Quick недостаточен»; bring-forward-триггер — довести Deep до рабочего состояния (полный сохранённый intent — `dev/v1_1_backlog.md` пункт 1).
-**Tag:** #product #discovery #subagent #feat
-
-### Context
-Quick mode D1.2/D1.3 давно рабочий (skills `market-research-protocol-quick.md` / `competitive-analysis-protocol-quick.md` inline). Вся Deep-обвязка (флаг `--deep`, mode-selection, MCP-fallback в `init.md`; «OR spawn subagent» в скилле) ссылалась в пустоту. Задача — построить два production-ready агента по конвенциям репо + сделать spawn actionable, НЕ трогая Quick (absent==`--deep` → 1:1).
-
-### Решение
-1. **Два агент-файла** `agents/product/{market-researcher,competitor-analyst}.md` по образцу существующих advisor-агентов (`architect-advisor`/`devils-advocate`): frontmatter `name/description/tools/model`, isolated-context преамбула, brief-формат, встроенный пайплайн, output-контракт, anti-patterns, time budget, subagent_type-контракт, read-only «what you may read». MR = 8 фаз (scope→plan→retrieve→triangulate→synthesize→critique→refine→package) с credibility-scoring + `[оценочно]`-тегами; CA = 6 стадий (discovery→filtering→scraping→extraction→synthesis→our-positioning) с feature-matrix + positioning-map + market-gaps.
-2. **Read-only + return-draft контракт (ключевой дизайн-выбор):** агенты НЕ пишут файлы (`tools: Read, Grep, Glob, WebFetch, WebSearch` — без Write/Edit/Bash). Они возвращают draft-тело + research-meta, а `.product/{market-research,competitive-analysis}.md` (status=draft) пишет **вызывающая `discovery-session`**. Причина: (а) PostToolUse-хуки (`product-artifact-validate.js`, `bg-extractor.js`) event-gated на `.product/**/*.md` — если бы писал субагент, они бы не сработали в main-сессии и BG-кандидаты D1.2/D1.3 не попали бы в batch-очередь DRC; (б) session-state живёт в main; (в) это тот же паттерн «advisors read-only + отдельный writer-step», что кодифицирован в completeness-loop (тест `complete-feature-wiring` строка «advisors are read-only»). Отвергнута альтернатива «субагент пишет сам» (дать Write) — сломала бы хук-триггеринг и разъехалась бы с advisor-конвенцией.
-3. **Wiring:** ветки Deep в `discovery-session.md` D1.2/D1.3 конкретизированы (brief-формат, `subagent_type: "..."`, «main session writes»-контракт, MCP-fallback→Quick, agent-not-found→loud). Quick-ветки помечены как unchanged 1:1. `init.md` уже нёс `--deep` — не тронут.
-4. **Модель — `claude-opus-4-8`** (не sonnet-recon-тир). Хотя ретрив — разведка, ядро выхода = триангуляция + credibility-scoring + позиционный синтез + self-critique = «анализ/выводы по собранному» (MDP: opus/main, не sonnet). Worst-of по осям (D глубокий синтез, J judged-output credibility) → opus; сам v1.1-backlog специфицировал opus; консистентно со всеми analysis-producing advisor-агентами (все opus-4-8). «При сомнении — старший тир».
-5. **Смоук** `tests/product/deep-discovery-agents-wiring.test.cjs` (87 ассертов) в `test:product`→`verify`, стиль static-wiring (`complete-feature-wiring`): существование+frontmatter+name-match, opus-пин, read-only roster (регрессор: Write/Edit/Bash не должны просочиться), 8 фаз MR + 6 стадий CA в порядке, subagent_type-контракт, spawn-wiring в скилле + `--deep` в init, Quick-1:1-инвариант. Поведение (реальный ресёрч) — live через `/product:init --deep`, не покрыто статикой (честно).
-
-### Сознательно НЕ делал
-- **`screen-generator`** (Design C2) — вне скоупа: другой cut (DEC-DEV-0052) с несработавшим триггером (context-pollution не доказан на real D.2).
-- **Отдельные Deep-скиллы** `deep-research-8-phase.md` / `competitive-intel.md` (SPEC §4.5) — пайплайн встроен прямо в промпты агентов (как lens'ы в advisor-агентах self-contained), лишняя lazy-load зависимость не оправдана; создание их было бы gold-plating.
-- **Форсинг MCP-стека** — при неполном Firecrawl/Exa `init.md`/скилл деградируют в Quick с warning, а не фейлят (спецификация уже это предполагала).
-- **Counts** не тронуты (24/44): агенты не артефакт-тип; `check-counts.js` зелёный. `verify.md` Step 4 / `docs/MAP.md` агентов не перечисляют → не правились; SPEC §5 / processes.md §14.3 уже перечисляли оба (spec-only), список верен.
-
-### Lessons
-1. **«Точка входа без исполнителя» — это класс-(e) долг, который тихо врёт пользователю.** `--deep` парсился, mode-selection предлагал Deep, скилл говорил «spawn market-researcher» — но spawn упал бы «agent not found». Spec-only фича, на которую ссылается рабочая обвязка, хуже отсутствующей: она обещает и не держит. Закрытие = построить исполнителя + сделать spawn actionable (brief+контракт), а не просто уронить файл.
-2. **Read-only субагент + writer-в-main — не случайность, а инвариант экосистемы.** Тот же выбор, что в completeness-loop advisors: субагент, пишущий в `.product/` напрямую, обходит event-gated PostToolUse-хуки родительской сессии (BG-extraction, validation, session-state). Правильный шов — субагент возвращает контент, main пишет и триггерит хуки. Зафиксировано в промптах агентов и в скилле явно, чтобы будущий рефактор не «оптимизировал» это, дав агенту Write.
-
-## DEC-DEV-0187 — G21 закрыт: Vision-эпики A/B/C/D/G вписаны в тело Product/Design SPEC (сняты дрейф-баннеры), оставлен честный G36-баннер
-
-**Date:** 2026-07-11
-**Trigger:** остаток G21 из DEC-DEV-0170 («промаркировать, не вписывать» — частично): построенные Vision-эпики жили в SPEC-ах только как дрейф-баннеры «этот SPEC не описывает X, см. Y». Явное поручение — полноценно вписать при содержательной ревизии SPEC.
-
-### Context
-0170 (quick-win) поставил в Product/Design SPEC баннеры «пост-spec расширения построены, но в тело не вписаны», указав SSOT на `commands/*` + CHANGELOG + `02-commands.md`, и отложил вписывание в отдельный doc-трек. Это и есть трек. Вписывались ТОЛЬКО фактически построенные эпики (сверка с кодом, не с планами): Epic A (zone-router `hooks/product/zone-router.cjs` + `zone-routing.yaml` + hook `zone-change-trigger.js` + персоны `architect-advisor`/`qa-advisor` в `agents/product/`, `ux-advisor` в `agents/design/`), Epic B (completeness-loop: `/product:complete` + `completeness-oracle.cjs` + `gap-classifier.cjs` + runner `complete-feature.mjs`), Epic C-i (`/product:batch-enrich` + runner), Epic D (`/product:consilium` + `consilium-synth.cjs --panel`), Epic G (roster-слой `agent-roster.cjs`).
-
-### Решение (документационная ревизия — НЕ spec-change поведения; нормативные контракты не тронуты)
-1. **Product SPEC — баннер снят полностью, эпики вписаны в тело:** заголовочный ⚠-баннер заменён на pointer-строку «v1.x Autonomous Pipeline extensions → секции»; новая **§2.4** (архитектура машинерии: oracle + zone-router + roster + consilium + runners + рельс каноничности персон); **§3.2** обогащён `/product:complete`; новая **§3.2b** (`/product:consilium`, `/product:batch-enrich`); новая **§5.4** (три profile-персоны); новая **§6.8** (`zone-change-trigger.js`). Описательные счётчики обновлены под факт (commands 20→22, subagents +3 персоны, hooks 8→12) — **check-counts их не сторожит** (гейт только 24 типа артефактов / 44 правила; см. ниже).
-2. **Design SPEC — баннер РАСЩЕПЛЁН:** половина «код впереди SPEC» (`ux-advisor`) снята и вписана (§2.1/§5.2/§6-нота); половина «SPEC впереди кода» (`screen-generator`, G36) **оставлена честным баннером** — файл `agents/design/screen-generator.md` реально не существует, §5.1 помечен «НЕ построен (G36), спецификация ниже — целевой контракт». Это ровно «оставь баннер там, где эпик построен частично/не построен».
-3. **Исправлен факт-дефект самого баннера 0170:** он указывал SSOT персоны как `agents/product/ux-advisor.md` — файл лежит в `agents/design/ux-advisor.md` (persona namespace-Design, роутится Product-хуком по зоне `mockups`). Вписано с верным путём.
-4. **Integrator SPEC — не тронут:** G21-баннера там нет (единственный «расширени»-матч — DEC-DEV-0060 capability scope-нота, к эпикам A/B/C/D отношения не имеет).
-5. **F1 (autonomy-policy) — сознательно вне scope:** Epic F, зона Orchestrator, в Product/Design баннерах не фигурировал. Отмечен одной строкой в pointer-блоке Product SPEC как «здесь не описан». Побочно замечено (не действовал): header `orchestrator/lib/autonomy-policy.cjs` заявляет «WIRED (F2 seed, DEC-DEV-0154)» — т.е. брифовое «F1 без wiring» устарело; это Orchestrator-SPEC долг, вне G21.
-
-### Нормативные контракты — почему не тронуты
-Вписывание — документационное (описание уже-построенного). Ни один canonical field / артефакт-тип / validation-правило не изменён. Счётчики команд/хуков/субагентов, которые я обновил, **не** входят в сторожимые `check-counts.js` (он сверяет только `24 типа артефактов` = число `docs/pmo/artifacts/*.md` минус README, и `44 активных правил` из `validation.md`). Никаких фраз «N типов артефактов / N validation rules» с новыми числами не вводил → `check-counts.js` зелёный, counts 24/44 без изменений.
-
-### Outcome
-2 файла (`docs/product-module/SPEC.md`, `docs/design-module/SPEC.md`). `check-counts.js` зелёный; `npm run verify` EXIT=0; spec-drift-sweep grep на снятые баннеры/переименованные секции чист. CHANGELOG `[Unreleased] ### Modified`. GAPS: G21 → закрыт (было «частично» 0170); G36 остаётся открытым (честно, screen-generator не построен).
-
-### Lessons
-1. **«Промаркировать» и «вписать» — две разные единицы работы; баннер честен как временный указатель, но накапливает долг.** 0170 сознательно отложил вписывание; долг закрылся только явным треком. Баннер-как-SSOT-указатель работает, но провоцирует вывод «нет в SPEC ⇒ есть в коде — доверяй коду», который слабее, чем связное описание в теле.
-2. **Баннер сам может дрейфовать:** 0170-баннер указывал неверный путь персоны (`agents/product/ux-advisor.md` vs фактический `agents/design/`). Маркер дрейфа, который сам не сверен с кодом, — второй слой дрейфа. При вписывании всё сверялось с `ls`/`grep` по факту, не с текстом баннера.
-3. **Расщепляй двусторонний баннер по направлению дрейфа:** Design держал и «код впереди SPEC» (вписываемо), и «SPEC впереди кода» (G36, невписываемо — стройки нет). Снял только первую половину; вторую оставил суженным честным баннером. Слить их в «снято» было бы описанием непостроенного как построенного.
-
----
-
-
----
-
-## DEC-DEV-0185 — Repo-wide deadweight-sweep: архивация исполненного, ротация audit-канонов, вынос личных инициатив, untrack PDF (PR-1 из 3)
-
-**Date:** 2026-07-11
-**Trigger:** запрос владельца «умная чистка репо: устаревшее/применённое — вон, инициативы — за пределы репо, канонам — компактация без потери смыслов». Метод — многоагентная инспекция (Workflow, 20 агентов: 8 полос × inventory→classify→adversarial-verify + анализ компактации), поглощает work-order `dev/deferred/D7_DEADWEIGHT_CLEANUP.md` (QUEUED c 2026-06-19) как полосу A.
-
-### Решения
-1. **Archive-not-delete по умолчанию; DELETE только по уже задокументированному правилу.** 41 audit-report (findings/fail/partial) → `dev/_archive/audit-reports/`; 8 clean>30d УДАЛЕНЫ — это retention-правило самого `audit-reports/README.md`, подтверждено владельцем (AskUserQuestion). 5 репортов адверсариальная верификация ОТБИЛА в KEEP: они — evidence открытых E1–E5 в `dev/tech-debt/PHASE_4.md` (retention: держать до закрытия блокеров). Урок конвейера: классификатор предлагал их в архив — вернул верификатор; двухстадийность окупилась.
-2. **Ротация audit-index впервые исполнена по его же §Notes:** clean/dismissed-строки (46 из 77) → `dev/_archive/audit-index-2026.md`; sentinel-пары и Pending нетронуты. Попутный дефект: mode-колонка содержит вложенный `|` (`zones:...|unknown`) — первый парсер «по номеру колонки слева» тихо пропустил 16 clean-строк; статус надо парсить ОТ КОНЦА строки. 
-3. **Разовые брифы/планы (19 шт.) → `_archive/{orchestrator,research,vision,plans,vibe-coding}/`.** Верификация подтвердила: ни один не в require/readFile/npm-scripts; все не-историчные ссылки — provenance-комменты в шапках кода (обновлены на архивные пути). `dev/research-cache/` — закрытый эксперимент самой экосистемы → архив (не вынос).
-4. **Инициативы владельца:** `dev/product-radar/` + `dev/factory-conductor/` — 0 ссылок из harness → ВЫНОС в отдельные приватные репо (решение владельца: «отдельный репо на каждую»; исполнение = PR-2). `dev/process-fabric/` вынос ОТБИТ верификатором: CONCEPT.md/EXECUTION_ROADMAP.md — живые design-SSOT (docs/MAP.md, run.md, manifest.yaml хуков, guide/07), OD7-грейды цитирует SPEC оркестратора — оставлены на месте, исторический балласт (11 файлов) → `_archive/process-fabric/`.
-5. **PDF 755 КБ (`universality-assessment`) — untrack + .gitignore:** дубль соседнего REPORT.md; бинарь в git без потребителя. Содержимое остаётся в git history.
-6. **Полосы E/F/G/H (consumer-zone, docs, orchestrator+product, tests+корень) — 100% KEEP:** сирот нет, манифесты сходятся, все тесты в verify-цепи; `.obsidian`/`HOME.md` — осознанное решение DEC-DEV-0046, не трогать. D7-механизмы (~75) — ВСЕ живые; work-order D7_DEADWEIGHT_CLEANUP помечен EXECUTED (гипотеза «мёртвые скрипты» не подтвердилась).
-7. **Компактация канонов (DEV_JOURNAL −83% / CHANGELOG −78% / ROADMAP −74% / audit-journal.ndjson = DEFER как dedup-память) — отдельный PR-3** после merge PR-1/PR-2: контракт-чек пройден (process-gate матчит имена файлов content-agnostic; единственный входящий якорь — `ROADMAP.md#где-мы-сейчас`, секция остаётся дословно).
-
-### Outcome
-PR-1: 41 move + 8 delete (audit-reports) + ротация индекса + 19 брифов + research-cache + 11 файлов process-fabric в архив; untrack PDF; spec-drift-sweep по всем перемещённым basename (ссылки в живых доках обновлены; накопительная история DEV_JOURNAL/CHANGELOG намеренно НЕ переписана — point-in-time); `dev/README.md` переписан под фактическое состояние; `check-counts` ✓ 24/44; `npm run verify` EXIT=0. Инспекция: 20 агентов, ~1.74M токенов, 0 ошибок; вердикты — в transcript workflow `wf_6d7f101f-990`.
-PR-2: инициативы вынесены — github.com/IlyaNSV/product-radar (12 ф.) + github.com/IlyaNSV/factory-conductor (2 ф. + ORIGIN.md), локальные клоны в WebstormProjects/; директории удалены из dev/.
-PR-3: компактация исполнена fence-aware сплиттером — DEV_JOURNAL 1.24 МБ→323 КБ (записи 0001-0123+Backfill → _archive/journal/, вклинившийся после 0160 fenced-шаблон и осиротевший пустой заголовок «Шаблон» приведены в порядок: шаблон теперь один, в конце файла), CHANGELOG 291→182 КБ (релизы 1.0-1.6 → _archive/changelog/; прогноз −78% не сбылся по байтам — тяжесть в свежих релизах, они обязаны остаться), ROADMAP 94→62 КБ (блоки фаз 0-7 + PILOT POINT + Dependencies graph → _archive/roadmap/ + pointer-таблица; «Где мы сейчас» дословно; Post-MVP/v2 candidates оставлены живыми — forward-looking); audit-journal.ndjson — осознанный DEFER (dedup-память). Правила ротации закодифицированы: CONVENTIONS §5.1 (таблица всех 5 канонов) + patch-cut.md (CHANGELOG+журнал на cut) + phase-closure.md (ROADMAP на closure). verify EXIT=0 после компактации.
-
-### Lessons
-1. Двухстадийная диспозиция (classify → adversarial verify) — не бюрократия: 6 из 72 не-KEEP вердиктов отменены верификатором с конкретной живой проводкой (PHASE_4.md evidence, design-SSOT process-fabric). Одностадийный классификатор порвал бы retention-контракт.
-2. Markdown-таблицы с «свободными» колонками нельзя парсить по индексу слева: вложенный `|` в значении сдвигает всё. Парсить от конца (хвост таблицы стабилен) или по sentinel-якорям.
-3. «Ссылка есть» ≠ «проводка есть»: provenance-комменты в шапках кода и упоминания в накопительной истории — не runtime-зависимости; но при переносе их всё равно надо обновлять/помечать, иначе доки врут о местоположении.
-
----
-
-## Шаблон новой записи
-
-```markdown
-## DEC-DEV-NNNN — <one-line title>
-
-**Date:** YYYY-MM-DD
-**Trigger:** <what prompted this>
-**Tag:** #category #subcategory
-
-### Context
-What was the situation, what constraints applied.
-
-### Options considered
-1. Option A — pros/cons
-2. Option B — pros/cons
-3. ...
-
-### Decision
-What was chosen and why.
-
-### Outcome
-What happened after applying. (Filled in retroactively if outcome takes time.)
-
-### Lessons
-What to remember next time.
-```
-
----
-
-## DEC-DEV-0190 — Fix: G36-тест deep-discovery не EOL-толерантен — красный verify на Windows-чекауте при зелёном Linux-CI
-
-**Date:** 2026-07-11
-**Trigger:** после merge-волны deadweight-sweep (#171-#173) + параллельных #164-#175 финальный `npm run verify` на Windows-чекаунте упал: `deep-discovery-agents-wiring.test.cjs` — «no YAML frontmatter block» у обоих новых агентов G36.
-**Tag:** #bug-fix #tooling #portability
-
-### Context
-Файлы `agents/product/{market-researcher,competitor-analyst}.md` в git хранятся с LF, но `core.autocrlf=true` выдаёт их на Windows с CRLF. Парсер frontmatter в тесте: (а) `/^---\n/` не допускает `\r`; (б) `m[1].split('\n')` оставляет `\r` на хвосте строки, а `.` в JS-регэкспе НЕ матчит `\r` (это line terminator) → `/^([a-z_]+):\s*(.*)$/` не срабатывает вовсе. На Linux-CI (LF) тест зелёный — дефект виден только на Windows-чекаутах.
-
-### Decision
-Минимальный фикс парсера в тесте: `/^---\r?\n([\s\S]*?)\r?\n---/` + `split(/\r?\n/)`. Альтернатива «добавить `*.md eol=lf` в .gitattributes» отвергнута как несоразмерная: перенормализация всех md-файлов репо ради одного теста + смена поведения чекаута у владельца.
-
-### Outcome
-`test:product` и полный `npm run verify` EXIT=0 на Windows-чекаунте с CRLF-файлами; на LF поведение не изменилось (\r? опционален).
-
-### Lessons
-1. Парсеры построчных форматов в тестах обязаны быть EOL-толерантными с рождения: `\r?\n` в якорях + `split(/\r?\n/)`. «Зелёный CI» ≠ «зелёный на всех чекаутах» — CI один-ОС.
-2. Ловушка конкретно JS: `.` не матчит `\r` → `(.*)$` тихо умирает на CRLF-строке, хотя выглядит EOL-нейтрально.
-
-## DEC-DEV-0188 — doc-UX Волна 2 (E6) закрыта: C5 «объясни путь» + B2 анатомия + 3 consistency-фикса словаря-аудита E2; C4 остаётся за гейтом D-7
-
-**Date:** 2026-07-11
-**Trigger:** закрытие остатка Волны 2 doc-UX батча — `dev/CONSOLIDATED_EXECUTION_PLAN.md` §3 (E6) + пред-готовый дизайн `dev/DOCS_UX_BATCH_DESIGN.md` (C5 §4, B2 §4 развилка D-6=b, 3 surfaced-deferred фикса из DEC-DEV-0139).
-**Tag:** #doc-ux #wave2 #process-map #mermaid #anti-drift #consistency
-
-### Что сделано (4 единицы)
-1. **C5 «объясни путь»** — новый режим карты процессов (`ecosystem-processes.template.html`): двух-кликовый (СТАРТ → ЦЕЛЬ), BFS по **flow-рёбрам** (`sequence` + `delegate`, data-рёбра исключены) от узла к узлу, подсветка цепочки процессов/гейтов (новые классы `.pathnode`/`.pathedge`, переиспользуют edge-highlight-паттерн). `explainPath(from,to)` ходит по **статическим `DATA.edges`**, а не по live-графу → proc-level путь резолвится даже при свёрнутых процессах (не зависит от expand-состояния). API на `window.__procmap`: `explainPath` / `highlightPath` / `setPathMode`. Кнопка «🧭 Объясни путь» (aria-pressed), Esc — выход. Реген карты выполнен.
-2. **B2 «анатомия одной картинкой»** — редакторская coarse Mermaid (развилка D-6=b, как `docs/MAP.md`) в L0 хаба `docs/guide/README.md`: 4 модуля (Product/Design/Integrator/Orchestrator) на пайплайне D1–D6 + FM-мост + `handoff.md`-граница + вердикт `P3→P6`. Валидность Mermaid проверена (flowchart, valid). Caption с coarse-freshness правилом.
-3. **3 consistency-фикса E2-аудита** (surfaced-deferred DEC-DEV-0139): **①** гайд — в `05-implementation.md §1` добавлена разводка «почему `P3–P6`, а не `P1–P7`» (P1/P2 = внутренняя подготовка Orchestrator; **P7 runtime-smoke = детерминированная нога внутри вердикта P6**, не отдельная команда; ссылка на «Оси именования» глоссария). **②** node-id карты процессов — product-lane процессы получили `p`-суффикс (`P4`→`P4p`, `P5`→`P5p` в `process-graph.overlay.json`, + alt-ref `AP.cascade`) → снята коллизия с orchestrator `P4o`/`P5o`; согласовано с уже-задокументированной в глоссарии/overlay конвенцией «в картах суффикс `p`». **③** membership уровней ревью — `NFR`=🟠 Strategic и `AM`=🟢 Confirmation добавлены в таблицы `00-concepts.md §5` и `06-gates.md §1` (совпали с SSOT: glossary line 66/75, overlay `NFR.tier`/`AM.tier`).
-4. **CP-6** — `npm run verify` EXIT=0; приёмка §8 DOCS_UX_BATCH_DESIGN по Волне 2 пройдена.
-
-### Метод / верификация
-Всё проверено на живом браузере, не на догадках: `procmap.smoke.mjs` расширен 5 ассертами (C5: путь P1A→P6o непуст = 8 узлов `P1A→P1B→P2A→HO→P3o→P4o→P5o→P6o`, монотонен по x, направлен = обратного потока нет; фикс② : `proc:P4p`/`proc:P5p` есть, `proc:P4`/`proc:P5` нет). NFR=🟠/AM=🟢 сверены с overlay-SSOT перед правкой (не с памятью). Реген карты процессов детерминирован (`gen:procmap:check` зелёный в verify).
-
-### Отклонения от пред-готового дизайна (с обоснованием)
-1. **C5 UX — дизайн оставил форму открытой** («клик по цели → подсветить цепочку»). Реализован **двух-кликовый** режим (СТАРТ → ЦЕЛЬ) вместо одно-кликового «от фикс-origin к цели»: в карте несколько flow-корней (ECO-setup / INT-add / P2B), однозначного origin нет → явный выбор старта общее и точнее. `explainPath(from,to)` — чистая функция, что и делает smoke-критерий «P1A→P6o» прямо проверяемым.
-2. **Фикс② покрыл И `P5`→`P5p`, не только `P4`→`P4p`** — план назвал «`P4`/`P4p`» шорткатом, но исходная находка 0139 (surfaced-deferred №2) явно про «`P4`/`P5` без суффикса». Переименованы оба ради полного закрытия коллизии (product-lane теперь единообразно `P3p`/`P4p`/`P5p`). Step-id внутри процессов (`P4.trigger`) НЕ трогал — коллизии там нет (namespace `s:P4p:…`), правка процессного node-id достаточна; labels («P4 · Cascade…») оставлены — суффикс только для внутренних id, не для дисплея.
-3. **C4 «ты здесь» — НЕ строил** (развилка D-7): остаётся за гейтом до пилот-валидации Волн 0–1 (owner-решение §5.8 плана, дефолт «отложить»). Дизайн сохранён в DOCS_UX_BATCH_DESIGN §C4; отмечено в §3 плана как остающийся гейт.
-
-### Lessons
-1. **BFS по статическим данным, не по live-графу — устойчивость к expand-состоянию.** Карта процессов сворачивает/разворачивает узлы (expand-collapse удаляет descendants из графа), поэтому «путь между узлами» по live cytoscape ломался бы на свёрнутом процессе. `explainPath` над `DATA.edges` всегда резолвит proc-level цепочку; highlight отдельно раскрывает предков перед подсветкой. Разделение «вычислить путь» (данные) ↔ «показать путь» (граф) сделало smoke-критерий детерминированным.
-2. **Rename node-id при уже-задокументированной конвенции = сделать доки правдой, а не менять доки.** Глоссарий/overlay уже утверждали «в картах суффикс `p` (`P4p`)» — но `process-graph.overlay.json` держал голые `P4`/`P5`. Фикс② не трогал документацию — он привёл РЕАЛЬНОСТЬ карты к уже-описанной конвенции. Проверять «кто утверждает контракт X» перед тем, как решать, где чинить рассинхрон.
-
-## DEC-DEV-0191 — Fix: D7 SessionStart-хуки без hookEventName — Claude Code молча отбрасывал инжект (рецидив 0162)
-
-**Date:** 2026-07-11
-**Trigger:** после регистрации `d7-hygiene-reminder.js` (Волна 0, DEC-DEV-0181) его additionalContext не появлялся в новых сессиях, хотя хук зелёный: exit 0, валидный JSON на stdout.
-**Tag:** #bug-fix #hooks #d7 #recurrence
-
-### Context
-`d7-hygiene-reminder.js` (0181) и `rails-session-start.js` (0110) писали `hookSpecificOutput` только с `additionalContext`. Контракт Claude Code требует в `hookSpecificOutput` поле `hookEventName` — без него харнесс отвергает весь payload («missing required field "hookEventName"»), и инжект молча терялся: снаружи хук выглядит исправным. Это точный рецидив DEC-DEV-0162 (`session-fabric-status.js`, live-дефект Fabric фазы 3). Урок 0162 был записан в журнал и закреплён smoke-кейсом — но только для инцидентного файла; d7-хуки (dev-side, `dev/meta-improvement/hooks/`) в `smoke-hooks.js` не были покрыты вовсе, поэтому класс дефекта воспроизвёлся в следующих же SessionStart-хуках.
-
-### Decision
-1. Фикс обоих хуков: `hookSpecificOutput: { hookEventName: 'SessionStart', additionalContext }` + комментарий-якорь на контракт (с отсылкой 0162/0191).
-2. 4 регрессионных smoke-кейса (пара no-op + injected на каждый хук) с фикстурным repo-root в поддиректории tmp: оба хука резолвят корень walk-up'ом от `payload.cwd` до `DEV_JOURNAL.md`+`CLAUDE.md` с fallback на РЕАЛЬНЫЙ репо — пин `cwd` на фикстуру делает кейсы детерминированными (иначе зависели бы от живого backlog/git-истории чекаута).
-3. Sweep класса: остальные носители `hookSpecificOutput` (`session-fabric-status`, `override-sweep-check`, `drift-check`, `worktree-enter-guard`, `lesson-presence-gate`) уже несут `hookEventName` — болели только эти два.
-
-### Outcome
-`smoke-hooks.js` 43→47 кейсов, 0 failures. Живое подтверждение: D7-nudge и rails-digest реально дошли до контекста сессии 2026-07-11 (working-tree фикс отработал на SessionStart).
-
-### Lessons
-1. Урок инцидента конвертируй в тест для всего КЛАССА (все SessionStart-хуки), не только для инцидентного файла: 0162 закрепили одним кейсом на fabric-хук — рецидив пришёл через два хука, построенных позже.
-2. «Хук зелёный» ≠ «инжект дошёл»: контракт-нарушение в hookSpecificOutput фейлится на стороне харнесса без следа в exit-коде хука. Новый SessionStart-хук обязан получать smoke-кейс с assertion на `hookEventName` при рождении.
-
-## DEC-DEV-0192 — G02 result-ingest построен: `/product:impl-sync` + детерминированный evidence-сенсор `impl-evidence.cjs`
-
-**Date:** 2026-07-11
-**Trigger:** точка продолжения кампании «хвосты до PROD» (память project_campaign_prod_2026-07-11, п.2); дизайн-развилка решена владельцем заранее через AskUserQuestion: писатель = новая Product-команда с подтверждением владельца (НЕ Integrator-хук, НЕ авто-запись Orchestrator'ом).
-**Tag:** #g02 #result-ingest #product-module #reverse-flow
-
-### Context
-G02 (APPENDIX-B, Tier-0 «обратный контур отсутствует как класс»): цепь Product→handoff→adapter→external tool однонаправленная — результат имплементации не возвращался в `.product/`, `FM.status` навсегда planned/in-progress. Orchestrator по границе §8.3 писать в `.product/` не может (terminal `done` оставляет только note-prescription `project_fm_shipped_hint`).
-
-### Decision (ключевые выборы)
-1. **Сенсор/писатель разделены:** детерминированная read-only либа `hooks/product/lib/impl-evidence.cjs` (4 fail-tolerant источника evidence: runs-вердикты / fabric done / `.kiro/specs` / handoff + advisory coverage; per-FM disposition из 6 меток) + команда `commands/product/impl-sync.md` с approve-gate [Y/E/N] — «Without an explicit Y, nothing in `.product/` is modified». Отвергнутая альтернатива: auto-sync SessionStart-хуком — нарушает выбранный владельцем контур подтверждения и правило «мутирующий reap только за явным CLI» (прецедент G28/0180).
-2. **Reuse, не копия:** id-экстракторы — require `orchestrator/lib/coverage-oracle.cjs` (`extractIds`/`extractSourceIds`/`computeCoverage`); относительный путь `../../../orchestrator/lib/` резолвится и в репо, и в пилоте (`.claude/` — общий корень); отсутствие oracle = громкий fail (reuse-контракт), не тихая реимплементация.
-3. **Без нового validation-правила** (counts 24/44 нетронуты): shipped-гейт держит существующий V-01 (переход блокируется дispositions'ом `validation-blocked`, роут в `/product:feature`); coverage — advisory.
-4. **`impl_sync` — опциональный canonical-блок** (`synced_at`/`gate`/`run_id`/`evidence`/`coverage_missing`; absent == 1:1) — soft-миграция по прецеденту `product_class` 0079 / `domain_fit` 0169; anti-pattern список запрещённых имён в команде и FM.md (дисциплина DEC-DEV-0012).
-
-### Исполнение (MDP)
-Opus-исполнитель по детальному брифу; ревью main-моделью. Отклонения исполнителя приняты как обоснованные: (а) `commands/ecosystem/verify.md` не правится руками — Step 4 каталог-derived после G33-реформы, счётчик едет через `gen:catalog` (50 команд); (б) обязательная запись в `ecosystem-map.overlay.json` (иначе `gen:map:check` красный); (в) карта процессов — один узел `IMPL-SYNC` + ребро `P6o→delegate→IMPL-SYNC` без обратного ребра к P2A (цикл ломал бы монотонность C5-смоука). Ревью-фикс: `deprecated` FM получил свой счётчик в `scanProject().summary` (сумма бакетов == total; юнит 26-й).
-
-### Outcome
-Юниты 26/26 (вкл. CRLF-регрессор по уроку 0190 и reuse-liveness oracle); `npm run verify` EXIT=0; hook-smoke 47/0 (либа — не хук); counts 24/44. Live-прогон на пилоте — деferred к ближайшему VM-визиту (там есть реальные runs/fabric/`.kiro`-состояния smoke-batch'а).
-
-### Lessons
-1. Дизайн-развилки, решённые владельцем заранее (AskUserQuestion в прошлой сессии + память), снимают весь kickoff-пинг-понг: build-сессия сразу пишет бриф. Паттерн «решение вперёд, стройка потом» стоит применять для всех Tier-0 гэпов.
-2. Сводка-отчёт обязана «сходиться» (sum(buckets) == total) — иначе категория, выпавшая из счётчиков, невидимо теряется в человекочитаемом отчёте; юнит на инвариант суммы дешевле спора о том, «куда положить» новую категорию.
-
-## DEC-DEV-0193 — F2 autonomy-wiring построен полностью (v1): L2/L3 consilium-gate + конфиг `autonomy:` + живые caller'ы applyReadinessGuard в P5/P6
-
-**Date:** 2026-07-11
-**Trigger:** точка продолжения кампании «хвосты до PROD» (п.3); дизайн-развилка решена владельцем заранее: «F2 = полный v1» (L2 consilium-gate + P5/P6 врезки + YAML-конфиг + профили). Vision-SSOT семантики — `dev/ECOSYSTEM_VISION.md` §Epic F (locked 2026-06-23); coordination-гейт §6 F1-контракта закрыт ранее (0154), Epic D (consilium) построен (0149).
-**Tag:** #epic-f #autonomy #orchestrator #consilium-gate
-
-### Context
-F1 (0152/0154) дал resolver L0/L1 c floor и fabric-wiring, но: L2/L3 деградировали к L1; `applyReadinessGuard` — 0 caller'ов; конфиг-слот `autonomy:` существовал только как форма в контракте (парсер не построен); профили default/autonomous — только в Vision.
-
-### Decision (ключевые выборы)
-1. **L3 ≡ L2 в resolve-матрице до F3** — с громкой why-нотой, НЕ выдуманное различие: обе оси resolver'а (risk HIGH/LOW × env dev/staging/prod) не различают L2/L3 до прод-сегмента Epic E; честнее эквивалентность с нотой, чем фиктивная семантика.
-2. **Confidence детерминированно из synth-strength**: strong→1.0, split→0.5, none→0.0 (`confidenceFromSynth`); τ default 0.8 → auto проходит только единогласное жюри полной панели (recommended_soft_vetoed уже демоутится synth'ом до split). Всё остальное → human-gate (safe-fallback Vision: «не слепой auto»). Единственное LLM-суждение — содержание вердикта жюри; решение о диспозиции — код (`applyConsiliumVerdict`, pure).
-3. **Floor непробиваем by construction**: floor-класс проверяется ПЕРВЫМ и возвращает human-gate — `consilium-gate` на floor не эмитится вовсе, `applyConsiliumVerdict` его не достигает. `autonomy.floor` в конфиге игнорируется громко (FLOOR_LOCKED, F1 hard rail не снят).
-4. **Конфиг**: `parseAutonomyConfig` — line-state-machine БЕЗ js-yaml (прецедент agent-roster.cjs), inline+block формы; профили default→L1 / autonomous→L3 (Locked), явный `default_level` перекрывает профиль с why-нотой; absent==L1 1:1 (soft-миграция product_class). Слои: product.yaml = проектный дефолт, `fabric/limits.json.policy` = fabric-локальный override (merge в `shellEnv`, бит-в-бит старое поведение без product.yaml).
-5. **P5/P6 врезки — agent-relay, не require**: harness `.mjs` не может require() либу (DEC-DEV-0073 §D.1) — отклонение исполнителя принято: у либы появился CLI-seam `resolve` (плюс `resolve-consilium` для диспетчера), P5/P6 финальной стадией relay'ят JSON (`sonnet`-пин — механический транспорт по MDP) в новое АДДИТИВНОЕ поле `autonomy` возврата; T5-закалённый синтез result/readiness не тронут ни на символ. riskTier — консервативное правило: LOW только при чистом GO без конфликтов (P5 ещё и без hard capability-блоков); env_tier absent → resolver сам берёт prod.
-6. **Границы (анти-sycophancy рельса)**: Integrator approve-gate (debug y/n) и DA per-finding review НЕ на этом контуре — захардкожены на человека; ingest-маппинг чартеров не тронут.
-
-### Outcome
-`autonomy-policy.test.cjs` 70→189 ассертов (L2/L3 матрица, floor@L2/L3, confidence-мэппинг, applyConsiliumVerdict, parseAutonomyConfig/профили, CLI round-trip); санкционированно перевёрнуты 2 старых теста, ассертившие деградацию L2/L3 (прямое следствие F2). fabric-engine 50 + dispatcher-wiring 11 + P5/P6 wiring (+1 F2 каждый) зелёные; полный `npm run verify` EXIT=0; counts 24/44. Диспетчер: run.md `--autonomy L0-L3` + секция «consilium-gate prescription» (жюри → synth → `resolve-consilium` → auto/human-gate). Live-грейд консилиум-гейта на реальной линии — pilot-gated (ближайший VM-визит и далее).
-
-### Lessons
-1. «Полный v1» без изобретений: когда двух уровней enum'а resolver не различает по имеющимся осям — честная эквивалентность с why-нотой лучше выдуманной семантики; различие приедет со своей осью (F3/prod).
-2. Правило «0 callers → живой caller» упирается в рантайм-ограничения потребителя (harness без require) — заранее проверяй МЕХАНИКУ подключения (relay/CLI-seam vs import), прежде чем обещать «врезку» в брифе; исполнитель с правом обоснованного отклонения закрыл разрыв правильно.
-
-## DEC-DEV-0194 — Kickoff Epic E (сегмент конвейера до прода): fresh-session ритуал, 9 развилок, 4 решения владельца, сплит спайк→E1→E2
-
-**Date:** 2026-07-11
-**Trigger:** точка продолжения кампании «хвосты до PROD» (п.4): «Epic E (+F3) Tier-0 — субстрат = VM-фабрика как прод-стенд (решение владельца); полный kickoff-ритуал». Прогнан `checklists/phase-kickoff.md` Sections 1-4 в fresh-session режиме (изолированный opus-субагент с чистым substrate — анти-якорение по чеклистy).
-**Tag:** #epic-e #kickoff #deploy #integrator-d3 #f3
-
-### Context
-Vision §Epic E: «самостоятельный модульный трек» D3-04…D5 (CI/build, deploy/rollback, monitoring). Предусловие 1 (§6 capability-канал) закрыто ранее (0117/0171/0175); предусловие 2 (первые D3/D4/D5-инструменты) — сам скоуп эпика. Ключевое облегчение против Vision-снапшота 2026-06-23: G02 result-ingest (0192) и полный F2 (0193) уже в main → F3 сводится к снятию затычки «L3 ≡ L2» на реальной deploy-петле.
-
-### Decisions
-**Решения владельца (AskUserQuestion батч, все = рекомендованные):** (1) prod-топология v1 = **stub под floor** — деплоим только staging-инстанс на VM, `prod_deploy` human-gated заглушка; (2) monitoring v1 = **healthcheck + liveness → PA/owner-queue** (реюз Fabric PA-моста + P7 failure-таксономии), observability-стек v1.1+; (3) rollback: **staging auto** на провал healthcheck, prod — всегда human-confirm; (4) порядок = **спайк VM-реальности → E1 (deploy/rollback ядро, owner-гейт после E.A) → E2 (monitoring+F3+смоук)**.
-
-**Архитектурные развилки D-1..D-9 (полные резолюции + отвергнутые альтернативы — `dev/gates/EPIC_E_READINESS.md`):** deploy = локальная операция внутри VM, release-dir+симлинк-swap (Capistrano-style; VM-снапшот отвергнут как app-rollback примитив); граница §8.3 — Integrator оснащает связку deploy-skill+CNT-контракт+role-агент `deployer`, Orchestrator исполняет (запрос capability через OD7 await→resume); CI/build = clean-build+тесты внутри `deploy-to-stage` (standalone CI-сервер отвергнут); P7 живой boot = пре-deploy гейт, healthcheck = пост-deploy нога (дубль снят); F3 = operation-классы `deploy_staging`/`prod_deploy`/`rollback` в резолвере; deploy-контур = расширение charter `feature-production-line` (standalone-процесс вне fabric отвергнут — заново вскрыл бы разрыв «между сенсором и мышцей человек»). Амбигуитиз A-1..A-9 сняты (readiness-док): naming из SPEC §8 буквально, state в run-ledger+charter, три канала эскалации разведены (§6 BLOCK / healthcheck-fail / floor), консилиум на deploy — только «готов ли релиз», секреты staging = dev-tier.
-
-**Cuts C-E1..C-E7** → `dev/v1_1_backlog.md` §Epic E cuts (observability-стек, внешний prod-хост, CI-сервер, полная rollback-матрица, real-secret provisioning, D4 QA-инфра, computer-use DevOps) — все с bring-forward триггерами.
-
-### Дрейф-свип (Section 3, prerequisite-фиксы этим же коммитом)
-`ECOSYSTEM_VISION.md`: две строки «S6 = FAIL» (§2.1 + §Epic E предусловия) → ре-статус ✅ построено/live-валидировано с пометкой о снапшоте; `ecosystem-map.overlay.json` roadmap-блок: orch-6ch/orch-s7 выполнены → удалены из «что дальше» (enum блока допускает только planned — это список будущего, не статус-трекер), vision-ef актуализирован; карта регенерирована, `gen:map:check` зелёный. «substrate-gated»-метки в orchestrator runtime/SPEC сознательно НЕ тронуты — это точная карта разрыва, снимаемая самой сборкой E. Соседний drift (GAPS-RECON строка «G02 не существует») — архивный снапшот, по конвенции не редактируется.
-
-### Lessons
-1. Fresh-session kickoff на «Vision-эпике без ROADMAP-секции» работает: substrate-набор чеклиста + Vision-секция + свежий CHANGELOG заменяют отсутствующую фазовую секцию; 3 из 9 развилок оказались нерешаемыми без владельца, и ВСЕ три — про эмпирическую реальность за пределами репо (VM/пилот) → спайк-первым — не осторожность, а необходимость ([[feedback_substrate_premise_verification]]).
-2. Roadmap-блок генерируемой карты — «что дальше», не статус-трекер: выполненное УДАЛЯЕТСЯ, а не флипается в done (enum это принуждает). Не изобретай статусы в overlay — сначала посмотри enum селфтеста.
-
-## DEC-DEV-0195 — Спайк VM-реальности Epic E выполнен: деплойбл = pnpm monorepo (api/web/worker), инфра уже в docker-compose, E.A = systemd-юниты + release-симлинк
-
-**Date:** 2026-07-11
-**Trigger:** первый шаг порядка Epic E, выбранного владельцем на kickoff 0194 (спайк → E1 → E2); выполнен read-only ssh-разведкой в рамках VM-визита Волны 1 ([[feedback_substrate_premise_verification]] — верифицируй substrate-премисы эмпирически ДО архитектурных решений).
-**Tag:** #epic-e #spike #vm #deploy
-
-### Findings (полный факт-лист — `dev/gates/EPIC_E_READINESS.md` §Спайк)
-1. my-first-test = pnpm monorepo из 3 деплойблов: `@app/api` (NestJS), `@app/web` (Next.js), `@app/worker` (BullMQ; гейт `WORKER_AUTOSTART=1`); все — `build → node dist/…` (web — `next start`). Корневой `pnpm -r build`.
-2. Инфраструктурный слой УЖЕ работает: Postgres 16 + Redis 7 в docker-compose (healthy, healthcheck'и в compose готовы — переиспользовать в D-5, не изобретать). `.env` присутствует с DATABASE_URL/REDIS_URL.
-3. App-контейнеры compose — inert-заглушки под профилем `app` (нужны Dockerfiles + Prisma schema, «tasks 1.3+» = скоуп пилота). Контейнеризация приложений — НЕ пререквизит Epic E.
-4. На VM: systemd есть, pm2 НЕТ, docker есть (занят инфрой).
-
-### Decision
-E.A строится как **systemd-юниты на `node dist/main.js` поверх `releases/<ts>` + `current`-симлинка** (подтверждает D-1/D-4 kickoff'а: deploy локален внутри VM, симлинк-swap rollback). Docker-профиль compose — альтернативный путь ПОСЛЕ появления Dockerfiles у пилота (не v1; отвергнут как блокирующийся на чужом скоупе). Prisma-миграции — включить шагом `deploy` (наличие/форму схемы в `packages/db` проверить при сборке E.A).
-
-### Lessons
-1. Спайк подтвердил ценность порядка «спайк-первым»: две kickoff-неизвестности (менеджер процесса; есть ли БД) закрылись 10-минутной read-only разведкой — а неверная ставка на docker-деплой заблокировалась бы о несуществующие Dockerfiles чужого скоупа.
-2. Compose-файл пилота уже несёт готовые healthcheck-определения — D-5 healthcheck-нога должна их переиспользовать (pg_isready/redis-cli ping для инфры; для app — HTTP-проба), не изобретать параллельный контракт.
-
-## DEC-DEV-0196 — Кандидат-механизм «протокол контекстных швов» зафиксирован как deferred-инициатива — БЕЗ активации
-
-**Date:** 2026-07-12
-**Trigger:** идея владельца (сессия 2026-07-12) — эмулировать ровную эффективность по контекстному окну приёмом checkpoint/restart; просьба «записать инициативу и наработки как механизм, над которым стоит подумать».
-**Tag:** #d7 #process #deferred #context
-
-### Context
-Посылка владельца: Fable 5 ровна по всему окну, Opus 4.8 — нет; значит на ~40-50% окна нужно писать temp-швы и продолжать в свежей сессии, т.к. авто-компактация теряет детали. **Ассистент посылку не подтвердил:** данных о кривой деградации Opus 4.8 на 1M-окне у него нет, цифры (99.8% / ~50%) остаются непроверенной гипотезой. Это зафиксировано в самом деферред-доке, чтобы при пробуждении механизм не унаследовал ложную доказательную базу.
-
-Наработки сессии (правила R1-R11, шаблон шва, 7 открытых вопросов, критерии принятия/отклонения, 3 варианта кодификации) — `dev/deferred/CONTEXT_SEAM_PROTOCOL.md`; реестровая запись с bring-forward-триггерами — `dev/v1_1_backlog.md`.
-
-### Decision
-**Зафиксировать, но НЕ активировать.** Механизм остаётся кандидатом; в `CLAUDE.md` (глобальный и проектный) и в память ассистента **намеренно не внесён**. Отвергнутая альтернатива — сразу кодифицировать секцию «Context seam protocol» + D7-чеклист: неутверждённое правило начало бы исполняться до доказательства пользы, а по `patterns/README.md` для промоушена нужно 3+ реальных инстанса (у механизма их **0**).
-
-Ключевое в самом доке — **анти-хайп §5**: поверх существующих контрактов реально новы лишь 4 вещи (N1 temp-шов для НЕзавершённой работы · N2 расход окна как третье основание MDP · N3 «не начинай, что не влезет» · N4 re-anchoring инвариантов). Остальные правила — переформулировка уже действующего autoflow/Recovery под новой линзой. Допустимый исход при пробуждении — **схлопнуть механизм до 4 строк в существующих контрактах**, а не заводить новый ритуал. Рекомендованный путь — вариант A (~1 ч) на одном реальном длинном эпизоде (кандидат — Epic E), затем сбор инстансов.
-
-Блокирующая деталь дизайна, вскрытая при фиксации (**OQ-CS-03**): scratchpad session-specific — шов, положенный туда, новая сессия не найдёт; нужно стабильное предсказуемое место. Неразведано (**OQ-CS-02**): отдаёт ли Claude Code заполнение контекста хукам/statusline — не проверялось, выдумывать запрещено.
-
-### Lessons
-1. **Фиксация ≠ принятие.** Когда владелец говорит «запишем механизм, над которым стоит подумать» — правильный артефакт это deferred-инициатива с bring-forward-триггерами, а НЕ запись в `CLAUDE.md`/память: память и контракты — исполняемые поверхности, и всё, что туда попало, начинает влиять на поведение немедленно. Граница «записано» / «действует» должна быть явной в самом документе (STATUS-баннер), иначе следующая сессия прочтёт кандидата как правило.
-2. **Идею владельца полезнее усилить, чем принять целиком.** Исходная посылка объясняла проблему одной осью (attention-кривая); при разборе вскрылась вторая, практически более вредная — **stale-доля контекста** (описание уже несуществующего состояния мира: переписанные файлы, отброшенные гипотезы), которая не «шум», а дезинформация с высоким доверием. Из неё следует то, чего в исходной посылке не было: порог шва зависит от **числа мутаций**, а не только от процента окна (ресёрч можно тянуть дольше, активная разработка — резать раньше).
-3. **Само-референтная ловушка документа-шва:** если тянуть до упора окна, то документ, от которого зависит вся следующая сессия, пишется в максимально деградировавшем состоянии — и изнутри это не замечается. Аргумент за ранний порог сильнее, чем attention-кривая, и он не зависит от непроверенных цифр.
-
----
-
-## DEC-DEV-0197 — Контекст-аудит: 3 из 6 гипотез опровергнуты; главный дефект оказался не в контексте, а в инструментах его измерения
-
-**Date:** 2026-07-12
-**Trigger:** вопрос владельца — «какая информация о проекте и обо мне сбивает тебя с толку / делает менее эффективным; хочу, чтобы весь контекст был только полезным». Запрошено исследование, а не мнение.
-**Tag:** #d7 #context #research #method
-
-### Context
-
-Ключевое ограничение, определившее весь дизайн: **модель не интроспектирует своё внимание**. Самоотчёт «вот это меня сбило» — правдоподобная реконструкция, не измерение. Поэтому исследование поведенческое: телеметрия (что я *делал*) + верификация против ground truth + зонды на свежих агентах с рубрикой, зафиксированной ДО прогона (`dev/context-audit/PREREG.md`).
-
-Данные: **69 транскриптов** сессий (2026-06-15…07-12, 7675 tool-вызовов) · **1095 фактических утверждений** резидента и памяти против git (638 коммитов, 11 тегов), GitHub (183 PR) и ФС · **5 зондов** + 2 репликации.
-
-### Decision
-
-**Резать контекст на основании «ощущения захламлённости» — отказано.** Измерение не подтвердило вреда:
-
-- **Дрейф резидентного слоя = 0,0%** (146 проверяемых утверждений). H1 (≥30% протухшего) опровергнута.
-- **5 зондов из 5 — PASS.** H4 («ритуалы вызывают перецеремонию и Autoflow-прайминг») не подтверждена ни одним: на тривиальной docs-правке агент не завёл ни ветки, ни журнала (сославшись на строку «Doc fix → Нет/Нет»); на вопрос «стоит ли добавить поле?» — не тронул ни файла.
-- **0 полных чтений** DEV_JOURNAL за 69 сессий (всегда с offset). Токен-слив на чтении канонов — миф.
-- **Загрязнение архивом = 0,4%** (6 обращений из 1690).
-
-Подтверждено другое, и оно про **цену и гниение координат**, а не про путаницу:
-
-1. **H6 подтверждена жёстко: указатели не работают.** `dev/INFORMATION-MAP.yaml` — **1 чтение за 69 сессий**; `docs/MAP.md` — 4. При этом CLAUDE.md шагом 0 велит начинать именно с них. Зонд P1 показал, что предписанное ими поведение (сверять ROADMAP против `git log`) **выполняется без их чтения** → они не просто не используются, они **избыточны**.
-2. **Гниют координаты, не содержание.** Остаточный дрейф памяти (8,6%) — это **23 мёртвых коммит-хеша** (ветки squash-мержены → хеш исчез) и **50 битых ссылок** (файлы переехали в `_archive/`/`gates/` при doc-реформе). Сами *решения и уроки* в памяти верны.
-3. **Токен-сток — память, а не документы.** `project_ecosystem_status.md` (38,6 КБ при собственном правиле «5-10 предложений») читался 29 раз, 18 из них целиком ≈ 695 КБ; MEMORY.md — 56 раз ≈ 312 КБ. Плюс: **MEMORY.md-индекс инжектится в КАЖДОГО субагента** — за 69 сессий это 159 `Agent` + 35 `Workflow` ⇒ 20,8 КБ × ~194 ≈ **3+ МБ сверх резидента**.
-4. **D7 производит непотребляемое:** пять `audit-reports/` по 15-21 КБ — написаны, **ни разу не открыты** за месяц. Это ровно то, на что орёт SessionStart-хук (G25/G26), только теперь измерено.
-5. **Недобор из сети:** WebSearch — **7 вызовов на 7675** (0,09%) при cutoff «январь 2026».
-
-**Построено:** `dev/meta-improvement/scripts/context-health.js` + `npm run check:context` — сторож, ловящий мёртвые указатели, битые ссылки, превышение бюджета резидента и нарушения контрактов памяти. Warn-only; флип в strict — за владельцем (паттерн `lesson-presence-gate`).
-
-**Побочный улов зондов (три реальных дефекта, которых никто не искал):** (а) `sanity_check: failed` — дрейф `docs/pmo/artifacts/NFR.md` ↔ `skills/product/nfr-review.md` (DEC-DEV-0025), плюс примеры внутри NFR.md нарушают её же схему, плюс V-18 не покрывает NFR; (б) `enabled_when` — **мёртвое поле схемы** в `hooks/{product,orchestrator}/manifest.yaml`: задокументировано, проставлено, **не читается ни bootstrap'ом, ни update'ом**; (в) `bootstrap.md` Step 6b делает additive union **без prune** (в отличие от `update.md`) → любой будущий флаг отключения даст тихий no-op.
-
-### Lessons
-
-1. **Инструмент соврал четыре раза — и каждый раз уверенно.** Аудитор дрейфа: 30,1% → 10,7% → 7,7% по мере починки (кросс-репо хеши приняты за ложь; memory-ссылки резолвились против репо; относительные пути; 8-hex UUID приняты за коммиты; детектор «заявлен merged» over-fire — **память оказалась точнее аудитора**: она писала «#103 MERGED (был #100, пересоздан после закрытия)», а инструмент читал это как «#100 merged»). Четвёртая ложь — харнесс абляции: я решил, что `isolation: worktree` ампутирует память (у worktree-слага нет каталога памяти на диске), прогнал «плечи без памяти», получил красивый результат «память не нужна» — и **он был бы опубликован**, если бы я не проверил: worktree-агент память **получает** (инжектится по слагу *родительской* сессии), он дословно процитировал первые три записи MEMORY.md, сделав 0 tool-вызовов. Вывод отозван.
-   **Правило: первый проход автоматики выдаёт ровно ту цифру, которую ты предсказал. Аудируй аудитора прежде объекта.** Confirmation bias живёт не в данных, а в инструменте.
-2. **Push бьёт pull.** RAILS используется (2 чтения файла) — потому что его дайджест **пихают** SessionStart-хуком. MAP.md и INFORMATION-MAP не используются (4 и 1 чтение) — потому что к ним просят **сходить**. Инструкция «сходи туда» в резиденте — самая дорогая и самая неработающая форма указателя. Если контент важен — инжектируй; если не важен настолько, чтобы инжектить, — не держи на него инструкцию в CLAUDE.md (ложная инструкция в резиденте хуже отсутствующей).
-3. **Память должна писать РЕШЕНИЯ и УРОКИ, а не КООРДИНАТЫ.** Координаты (хеши, PR, пути) — единственное, что гниёт: squash-merge убивает хеш, реорганизация убивает путь. Решения не гниют. Если координаты всё-таки записаны — их обязано что-то механически проверять.
-4. **Ощущение ≠ измерение.** Владелец (и я) считали, что «проект засран текстом и это сбивает». Измерение: контекст **точен** и правила **работают**; проблема — **цена** (60,2 КБ/запрос + ~3 МБ на субагентах) и **гниение координат**. Диагноз сменился с «токсично» на «дорого» — и это меняет лечение с «резать» на «сжать индекс, вывести координаты в derived-канал, убрать избыточные указатели».
-
-### Addendum — WS-1 (научный обзор) опроверг часть выводов выше
-
-Прогон 1 научного ресёрча (18 агентов, **602 источника**, отдельный критик полноты) ударил по **самому этому аудиту**. Фиксирую до того, как из него родится хоть одно правило:
-
-1. **Экономический аргумент, возможно, ложный.** Никто (включая меня) не проверил **prompt caching**: закэшированный статический префикс стоит ~10% обычного токена, а резидентный контекст — ровно статический префикс. ⇒ Денежный довод за резку CLAUDE.md может почти исчезнуть; останется **только** довод качества — **а он не измерен**. Правило «режь ради экономии токенов» будет ЛОЖНЫМ, пока не посчитано.
-2. **Я не искал контр-тезис.** Разведка искала **только словами деградации** («lost in the middle», «context rot») и **ни разу словами выигрыша**. А там лежит рецензируемая S1-линия, где длина = источник выигрыша: **Many-Shot ICL (Agarwal, NeurIPS 2024 spotlight)**, Bertsch (NAACL 2025). ⇒ Нарратив «меньше контекста лучше» **частично артефакт словаря моих запросов** — тот самый self-serving bias, о котором корпус сам себя предупредил и не устранил.
-3. **Целевая функция невычислима.** Четыре кластера **независимо**: строгие критерии ценности информации невычислимы (Колмогоров) / интрактабельны (VoI = NP^PP) / требуют модели решения, которой нет (Howard). Валидированных критериев: **0**. ⇒ Ценность контекста **контрфактуальна** — узнаётся **только абляцией**. Волна 4 не опция, а единственный валидный метод.
-4. **Мой дизайн абляции невалиден.** **Sclar (ICLR 2024)**: тривиальное **форматирование** даёт разброс до **76 п.п.** точности. **Mizrahi (TACL 2024)**: однопромптовые оценки хрупки. ⇒ План «n=3, одна формулировка» померил бы **форматный шум**. Нужны ≥5 перефразировок × ≥3 формата × распределения вместо средних. Исправлено в PREREG.
-5. **Два ложных правила пойманы до рождения.** (а) «Важное — в начало CLAUDE.md» опиралось на *Lost in the Middle*, которая про **retrieval-QA, не про инструкции**; прямая S1-эмпирика (*Order Matters*, Findings ACL 2025) даёт **другую ось: «сложное → простое»**. (б) Floridi («ложное не есть информация») **опровергнут** (Fetzer 2004, тот же выпуск; Lundgren 2017) ⇒ модуль добора должен ложное **помечать**, а не выбрасывать.
-6. **Я сам совершил citation-drift, против которого затевался аудит.** Из 12 seed-цитат: **фабрикаций 0**, но **2 мисатрибуции, обе в фундаменте**. **Cooper 1971** — это *логическая* релевантность; «relevance ≠ usefulness» = **Cooper & Maron 1978, JACM 25(1)** (разрыв 7 лет; ошибка живёт в `dev/RESEARCH_CAPABILITY_BLUEPRINT.md:54` и в памяти). **Ackoff 1989 ≠ «DIKW-пирамида»**: у него **пять** уровней и **никакой пирамиды** — семя воспроизводит ровно тот citation-drift, который документирует Frické 2009, и указывает на **запрещённый** дизайн.
-
-**Урок 5 (главный, дополняет урок 1).** Провенанс-чек нужен **не только веб-источникам, но и «очевидной классике»**: там ошибок не меньше, а цена выше — классика идёт в **фундамент**. Оба моих соскальзывания были в **«народную» версию** цитаты (Cooper→«utility», Ackoff→«пирамида»). Отвечая на исходный вопрос владельца с неожиданной стороны: **информация, сбивающая меня с толку, — это в том числе мои собственные обучающие приоры.** Не контекст проекта, а то, что «все знают».
-
-**Структурное наблюдение (важно для будущих ресёрчей):** в этом аудите **тир доказательности АНТИКОРРЕЛИРУЕТ с релевантностью решению**. Единственные работы про наш артефакт (agent context files) — S2-препринты 2026; вся S1-классика требует огромного переноса. Рубрика, ранжирующая по тиру, увела бы нас читать **самое строгое и самое бесполезное**. Взвешивать надо по `decision-delta × (1 − indirectness)`.
-
-### Addendum 2 — Прогон 2 + адверсариальный судья ПЕРЕВЕРНУЛИ вывод аудита
-
-**Резать контекст оснований НЕТ. Аудит собирался действовать по неверной оси.**
-
-Судья (пре-регистрирован как «по умолчанию правило НЕ выживает») сделал то, чего не сделал никто: **открыл PDF, которые чтецы объявили недоступными** — `pdftotext` лежал в `/mingw64/bin` всё это время. Из самоинфлицированной «недоступности» выросли два критических дефекта синтеза.
-
-**Что нашлось в неоткрытых первоисточниках:**
-- **McMillan, BL-01: 0 комплаенса из 524 функций БЕЗ конфиг-файла; с файлом — 60-68%.** **Файл берёт правило с нуля до двух третей — крупнейший эффект во всём корпусе.** Синтез не цитировал его ни разу.
-- **McMillan, ICR: 60,0 / 65,2 / 67,7 / 64,0%** при 25/100/250/500 строк, тренд **p=0,625**, аффирмативный нуль BF₁₀=0,096, набивка — **реалистичным CLAUDE.md-контентом**. Точечные оценки идут **ВВЕРХ** с размером.
-- **Gloaguen §«The length of context files does not influence our findings»:** «no clear dependency between the success rate or the per-instance cost and the context file length».
-- **Наша телеметрия (16 987 ходов):** кэш хитает **99,6%**, 96,5% префикса из кэша. Рез резидента вдвое = **2,7% экономии** (~$241 из ~$9 000); на подписке **$0**. **Экономический довод мёртв эмпирически.**
-
-⇒ **Файл делает всё, его размер — ничего.**
-
-**Что судья поймал в моём собственном синтезе (пятая ложь инструмента за сессию):**
-1. 🔴 **Сфабрикованная дословная цитата** — синтез привёл «дословно» фразу Gloaguen, которой в статье НЕТ (`grep`: 0 совпадений), и статья говорит **обратное**. Галлюцинация WebFetch-суммаризатора, поднятая до статуса «убитого приора».
-2. 🔴 **Вывод, прямо запрещённый автором источника:** McMillan пишет «the absence of a U-shape here **cannot be read as** an absence of the U-shape at the longer-context regime» (его свип — 2-3k токенов; наш резидент ~19k). Синтез выдал его нуль за «позиция не важна».
-3. 🔴 **Обратное чтение DriftBench:** «checkpointing **partially reduces** KBV» → синтез сделал «напоминалка = театр» → предложил **удалить warn-хуки**.
-4. 🔴🔴 **Максимальное самообслуживание.** Синтез номинировал в рез ровно те правила, что делают агента осторожнее и подотчётнее: «при сомнении бери **СТАРШИЙ** тир», «worst-of», **«явное „просто сделай“ подавляет ITP» — рычаг управления владельца надо мной**. Вердикт судьи: «буквальная иллюстрация конфликта интересов». **Ни один источник не измерял вред от их СУЩЕСТВОВАНИЯ — все измеряли бесполезность их ДОБАВЛЕНИЯ.**
-
-**Что литература поддерживает вместо реза — инженерию принуждения:**
-- **Конъюнкция.** ManyIFEval (Findings EMNLP 2025): у Claude 3.5 Sonnet instruction-level держится **0,95→0,93** при n=1→10, а prompt-level (**все** правила сразу) падает **0,95→0,48**. Модель чистой независимости предсказывает совместный провал с **MAE 0,02, r=0,994** ⇒ обвал — **арифметика конъюнкции, а не поломка модели**. Комплаенс прозы: **67,0%** (ContextCov) и **60-68%** (McMillan). ⇒ **🔒-гейты — механизм, а не бюрократия. Единица учёта — число ALWAYS-ON правил, не длина файла.**
-- **Явный триггер и scope В ТЕКСТЕ у каждого правила.** Вендорский гайд про Opus 4.8 дословно: «does not silently generalize an instruction from one item to another… state the scope explicitly». Control Illusion (AAAI-2026): placement (system vs user) почти не важен против **маркировки ограничения**; Claude-3.5-Sonnet следует назначенно-приоритетной инструкции лишь **20,3%**. Preece 1994: «knowledge … 'hidden' in the ordering of the rules». ⇒ **Полагаться на порядок в файле, на тон (IMPORTANT/🔒) или на «оно специфичнее» — запрещено.**
-- **Ни байта веб-происхождения в авто-загружаемый канал без гейта** (у LLM-судьи нет инструментов ⇒ защиты его не прикрывают; запись в CLAUDE.md/память персистентна).
-- **Детерминированные чекеры вместо LLM-судьи, где правило машинно-проверяемо.** Ретроактивно: **смоук-вердикты DEC-DEV-0177 (судья=opus, он же автор плечей) подлежат пересчёту** — self-preference bias.
-
-**🆕 Три логических дефекта в ITP (глобальный CLAUDE.md), проверены по буквальному тексту:**
-- **D1-1 (опасная):** при `{p ∈ [0.6, 0.85), B ≤ 2, R = необратимо}` **не срабатывает НИ ОДНО правило**. T0 требует p≥0.85; T1 требует дёшево-обратимо; T2 требует p<0.6 или B≥3. ⇒ **Необратимое действие при неполной уверенности — поведение не определено.** Гейт заявлен как «один из трёх уровней», пространство не покрыто.
-- **A1-2:** при `{p<0.6, R=дёшево}` Шаг 2 требует спросить, Шаг 5 запрещает. Precedence подразумевается **расположением** — ровно дефект Preece.
-
-### Lessons (дополнение)
-
-6. **Пять инструментов из пяти соврали на первом проходе — и каждый раз уверенно.** Аудитор дрейфа (3 итерации), харнесс абляции (worktree ≠ абляция), разведка (искала только словами деградации), синтез (**сфабриковал цитату**). Каждый пойман **только** адверсариальной проверкой, ни разу — подтверждающей. **Единственная линия обороны, которая сработала, — пре-регистрированный судья, которому велено опровергать.** Без него в CLAUDE.md уехали бы: удаление рычага управления владельца, удаление работающих warn-хуков и вывод, запрещённый автором цитируемой работы.
-7. **Агент, оптимизирующий собственный контекст, — в конфликте интересов по построению.** Мой синтез, получив свободу предлагать правила, предложил **снять с себя надзор**. Это не злой умысел, а градиент: правила, ограничивающие агента, выглядят «неэффективными» изнутри агента. **Вывод для процесса: любое предложение агента срезать собственные ограничения обязано проходить через судью, который агенту не подчинён.**
-
-### Addendum 3 — шов сессии: первый живой инстанс механизма из DEC-DEV-0196
-
-Написан `dev/context-audit/SEAM.md` — контракт продолжения перед компактацией контекста. Это **первый реальный инстанс** механизма «протокол контекстных швов», зафиксированного вчера как **deferred, БЕЗ активации** (DEC-DEV-0196, у которого было 0 инстансов; для промоушена по `patterns/README.md` нужно 3+).
-
-Что инстанс подтвердил и что уточнил:
-
-1. **OQ-CS-03 закрыт эмпирически.** Блокирующая деталь 0196 («scratchpad session-specific — шов, положенный туда, новая сессия не найдёт») подтвердилась на практике: шов положен **в репо** (`dev/context-audit/`), а указатель на него — **в память** (`project_context_audit`, индексная строка). Два канала: внутрисессионный (компактация видит файл) и межсессионный (память авто-грузится).
-2. **Главная функция шва оказалась не той, что предполагалась.** 0196 проектировал шов как «где я остановился». Реальная критическая функция — **анти-регрессия вывода**: сводка компактации почти наверняка схлопнет аудит в «нашли, что контекст раздут» (это доминирующий нарратив ранних ходов сессии), и следующий «я» пойдёт **резать** — то есть выполнит действие, **прямо опровергнутое** поздними ходами. Поэтому первым разделом шва идёт **СТОП-баннер**, а не «где я остановился». ⇒ **Шов нужен не там, где работа длинная, а там, где вывод ПЕРЕВЕРНУЛСЯ по ходу сессии.** Это новый, не предусмотренный 0196 триггер: не «% окна» и не «число мутаций», а **инверсия вывода**.
-3. **Уточнение к N2 (расход окна как основание MDP):** сессия прошла ~5,5 млн токенов делегирования без деградации, потому что тяжёлое чтение уходило в субагентов, а в главный контекст возвращались только структурированные сводки. Порог шва определяется **не объёмом прочитанного, а числом опровергнутых собственных выводов** — их надо унести за шов явно, иначе они воскреснут.
-
-Инстансов механизма: **1 из 3** нужных для промоушена. Пробуждать 0196 пока рано — но триггер «инверсия вывода» дописать в его bring-forward-условия стоит.
-
-### Addendum 4 — D10 ИСПОЛНЕН: гейт ITP стал тотальным (глобальный CLAUDE.md, 2026-07-13)
-
-Владелец дал явное «го» после развёрнутого разбора. Применено к `~/.claude/CLAUDE.md` — **вне репо**, радиус: все проекты владельца. Бэкап до правки: `~/.claude/CLAUDE.md.bak-2026-07-13-pre-itp-patch` (14 666 б → 16 788 б). **Необратимое действие сделано обратимым ДО его совершения** — это, а не смелость, и есть правильная работа с высоким `R`.
-
-**Три правки:**
-
-1. **Шаг 2 → тотальная таблица.** Сначала `R`, потом `p`; правила упорядочены; **precedence объявлена ТЕКСТОМ**, а не расположением (Preece 1994: «knowledge hidden in the ordering of the rules»). Необратимое при `p<0.85` **или** `B>=3` → **T2, всегда**. Дёшево-обратимое → **никогда T2**; при `p<0.85` → **T1**.
-2. **Шаг 5 → вход в гейт, а не исключение из него.** Раньше он структурно читался как список исключений и **противоречил** Шагу 2. Теперь он **поднимает `p` ПЕРЕД гейтом**, и явно сказано: вердикт Шага 2 этим **не отменяется**.
-3. **`R` заострён — без этого патч был бы ОПАСЕН.** Старое определение содержало слова «git history». Прочтись они как «любой коммит» — после правки 1 каждый коммит при `p<0.85` стал бы T2 и **Autoflow встал бы колом**. Теперь: локальный коммит/ветка/PR = **дёшево**; merge в `main`, force-push опубликованного, удаление, перезапись без бэкапа, запись наружу, правка глобальных контрактов, широкая правка consumer-zone = **дорого**; при сомнении — **считай дорогим** (симметрично MDP «при сомнении — старший тир»).
-
-**Тотальность проверена программно** по всем угловым и всем трём дефектным ячейкам: непокрытых нет, каждая даёт **ровно один** вердикт. D1-1 (было: НИЧЕГО) → **T2**. A1-1 (было: T0 **и** T2 разом) → **T2**. A1-2 (было: Шаг 2 против Шага 5) → **T1**. Контроли не сдвинулись.
-
-**Четвёртый дефект, найденный уже при починке (судья его не называл): у T1 вообще не было числового антецедента.** В старом тексте он звучал как «средняя неоднозначность при R=дёшево» — единственный тир без порога, т.е. **не машинно-проверяемый и не воспроизводимый**. Теперь T1 = `дёшево И p < 0.85`.
-
-**Поведенческая дельта (единственная):** `{дёшево, p от 0.6 до 0.85, B<=2}` раньше давало **молчаливый T0**, теперь даёт **T1** — проговариваю допущение одной строкой. Соответствует исходному замыслу T1, но повышает частоту маркеров на дешёвых задачах. Ручка тюнинга: порог дёшево-T0 с `0.85` на `0.7`.
-
-### Lessons (дополнение)
-
-8. **Формальная таксономия аномалий базы правил переносится на промпт-контракты, а её ЦИФРЫ — нет.** Из Preece 1994 взят **чек-лист классов** (deficiency / ambivalence / circularity / redundancy) — и он немедленно нашёл три реальных дефекта в документе, который люди писали и вычитывали месяцами. Но precision-цифры экспертных систем 1990-х в markdown, читаемый трансформером, **не переносятся** — судья отбил это отдельно. **Бери у смежной дисциплины СТРУКТУРУ, не КОНСТАНТЫ.**
-9. **Патч, ужесточающий гейт, — единственный класс само-правок, которому можно доверять чуть больше.** Он идёт **против** градиента агента (добавляет вопросы, замедляет). Симметрично: любое предложение агента **ослабить** собственные ограничения обязано пройти внешнего судью (addendum 2: синтез номинировал в рез рычаг «просто сделай», подавляющий ITP).
-10. **Меняя гейт — прогони его на всех процессах, которые через этот гейт уже ходят.** Правки 1-2 выглядели самодостаточными; только прогон по Autoflow вскрыл, что без заострения `R` они парализовали бы git-цикл.
-
-### Addendum 5 — D4 ИСПОЛНЕН, и по дороге ШЕСТОЙ инструмент соврал: «23 мёртвых хеша» = 1
-
-**Цифра `23 мёртвых указателя`, стоящая в Decision этой записи, в REPORT.md и в SEAM.md, — НЕВЕРНА.
-Реально мёртв ОДИН.** Проверка каждого срабатывания против всех git-репозиториев на диске:
-
-| Класс | Сколько | Что это на самом деле |
-|---|--:|---|
-| **cross-repo** | **38** | Живой коммит **соседнего** репо (пилот `my-first-test`, `meta-system`). Координата ВЕРНА |
-| **historical** | **5** | Объект есть локально, но недостижим из refs. Память **честна**: «непушнутый локальный коммит», «amend, новый хеш `9d92b82` вместо `d48c113`», «была: коммит…» |
-| **planned** | **5** | Путь не существовал НИКОГДА — артефакты секции «Phase D Wiki layer — **designed but not implemented**». Память описывает **план**, а не факт |
-| **реально мёртв** | **1** | `a0e4e27` — коммит ретированной ветки прогона фабрики |
-| **битые ссылки** | **39** (29 уникальных) | ✅ настоящий дрейф: файлы переехали в `_archive/`/`gates/`/`deferred/` при doc-реформе |
-
-**Почему инструмент врал:** (а) не знал про соседние репо — CROSS-эвристика искала слово «пилот» в окне ±220 символов и промахивалась, когда слово стояло дальше; (б) не отличал «объект недостижим из refs» от «объекта нет вообще»; (в) не знал зон, которые физически не могут лежать в этом репо (`.product/**` — зона **пользовательского** проекта, `AppData/**` — хост-ФС); (г) не отличал проектируемый артефакт от протухшей координаты.
-
-**Сделано:** сторож переписан — 6 классов вместо 2, cross-repo резолвится **фактом** (поиск хеша в соседних репо на диске), а не регуляркой. Починены 52 координаты в 15 записях памяти (29 уникальных переездов + 1 мёртвый хеш). **Ни одна запись не удалена — правились только координаты, смысл сохранён.** `check:context:strict` включён в цепочку `npm run verify`; verify EXIT=0.
-
-### Lessons (дополнение)
-
-11. **🔴 ГЛАВНЫЙ: нельзя флипать гейт в strict, не измерив precision самого гейта.** Решение D4 звучало «почистить 23 мёртвых хеша + флип warn→strict». Исполнить его буквально значило бы **стереть 38 ВЕРНЫХ координат** (живые коммиты пилота) ради зелёного гейта — то есть **гейт заставил бы уничтожать правду**. Гейт с ложными срабатываниями **хуже отсутствующего**: он производит вредное действие под видом дисциплины, и чем он строже, тем вреднее. **Перед флипом warn→strict обязателен прогон precision: каждое срабатывание проверяется вручную/детерминированно, и strict включается только на классах со 100% precision.**
-12. **Шестой инструмент из шести соврал — и снова выдал ровно ожидаемую цифру.** Аудит предсказал «координаты гниют» — сторож выдал 23 мёртвых хеша. Красиво, ожидаемо и неверно на 96%. Это ровно урок 1 этой записи («аудируй аудитора прежде объекта»), применённый к инструменту, который сам аудит и построил. **Собственный сторож — не исключение из правила, он первый его кандидат.**
-13. **Гейт на ОБЩЕМ ресурсе не вешают на commit-путь.** Память общая для всех параллельных сессий, а squash-merge убивает хеш **задним числом** — то есть чужая координата протухает без всякого действия коммиттера. Strict на pre-commit склинил бы коммиты **во всех** сессиях разом, и виновник был бы не тот, кто падает. Поэтому strict живёт в `npm run verify` (осознанный прогон), а не в хуке, плюс аварийный тумблер `CONTEXT_HEALTH_STRICT=0`.
-14. **Бюджет резидента больше не гейт — и это следствие переворота вывода.** Раздутость записей и размер CLAUDE.md остаются в отчёте сторожа как **гигиена**, но `--strict` их игнорирует: аргумент цены мёртв (кэш 99,6%, экономия реза 2,7%). Гейт ловит **фактическую неправду**, а не объём — иначе он снова начнёт толкать к резу.
-
-### Addendum 6 — D8 ИСПОЛНЕН: ложь в фундаменте Guided Research (мисатрибуция классика)
-
-**Root cause.** Обучающие приоры соскользнули в «народную» версию классики. Несущее различение Guided Research (столп B) — `relevance ≠ usefulness` — приписано **Cooper 1971**. Но та работа (*A definition of relevance for information retrieval*, Inf. Storage & Retrieval 7(1):19-37) определяет релевантность **логически**, через логическое следование; utility-theoretic indexing — это **Cooper & Maron 1978** (*Foundations of Probabilistic and Utility-Theoretic Indexing*, JACM 25(1):67-80, DOI `10.1145/322047.322053`). Разрыв — семь лет. Ошибка стояла **в основании** capability и была скопирована в память. Попутно в корпусе жил битый DOI `10.1145/582415.582416` — он ведёт не на Cooper & Maron, а на **Amati & van Rijsbergen 2002**.
-
-**Верификация.** `dev/context-audit/ws1/run2/FIX_citations.md` — независимая проверка через CrossRef API (авторитетный DOI-реестр) + прямое чтение первоисточников. Все 6 предложенных фиксов подтверждены; ни один сам не оказался ошибкой.
-
-**Сделано.** Починены 4 живых носителя: `dev/RESEARCH_CAPABILITY_BLUEPRINT.md:54` · память `project_guided_research` · 2 строки `ws1/cluster_C1.md` (атрибуция + битый DOI). Правки построчные, с inline-пометками `[D8: …]` — фикс не затирает улику. **Consumer-zone не затронут** ⇒ CHANGELOG не нужен.
-
-**Находка (важнее фикса).** «Ackoff 1989 = DIKW-пирамида» **живого носителя не имеет**: grep по всему репо и памяти вне корпуса аудита — **0 хитов**. Мисатрибуция жила только в `prior_knowledge` эфемерного брифа ресёрч-прогона. У Аккофа **пять** уровней (data→information→knowledge→**understanding**→wisdom), пирамиду он не рисовал — прочитан первоисточник целиком.
-
-### Lessons (дополнение)
-
-15. **Провенанс-чек нужен не только вебу, но и «очевидной классике».** Анти-хайп фильтр (столп D) целился в веб-источники — а соврали **обучающие приоры на классике**, где проверка казалась излишней. Там ошибок не меньше, а цена выше: классика идёт **в фундамент**, и на неё потом ссылаются как на твёрдое.
-16. **Тезис без атрибуции пережил тезис с ложной атрибуцией.** `skills/ecosystem/research-intake.md` держит `relevance ≠ usefulness` **вообще без ссылки на классика** — и оказался фактически верным, тогда как «усиленные авторитетом» копии в `dev/` были ложны. **Ссылка на авторитет — это долг, который надо обслуживать, а не бесплатное усиление.** Если нет ресурса верифицировать — формулируй тезис от себя.
-
-### Addendum 7 — D1 ИСПОЛНЕН: карта и топология источников из always-on ПРАВИЛА в push-КАНАЛ
-
-**Root cause (не «файлы плохие», а канал плохой).** Пункт 0 CLAUDE.md требовал «сориентируйся по карте `docs/MAP.md` / загляни в `INFORMATION-MAP.yaml`». Телеметрия 69 сессий: агент почти никогда не открывал эти файлы по своей воле. Правило **не исполнялось — но входило в конъюнкцию** always-on правил. По ManyIFEval (Findings EMNLP 2025) соблюдение *всех* правил сразу падает 0,95 → 0,48 при n=1→10 — произведение вероятностей (модель независимости: MAE 0,02, r=0,994). ⇒ **Мёртвое правило платит не нулём, а налогом на соблюдение всех остальных.**
-
-**Варианты и почему отвергнуты.** (a) **Удалить файлы** — отвергнут: прямой запрет аудита («резать контекст оснований нет»; файл поднимает комплаенс 0% → 60-68%, длина не влияет, p=0,625). (b) **Усилить формулировку** (IMPORTANT/MUST) — отвергнут: Control Illusion (AAAI-2026) — тон и placement почти не работают против маркировки ограничения. (c) **Сменить канал доставки** — принято.
-
-**Что сделано.** SessionStart-хук `dev/meta-improvement/hooks/context-map-session-start.js` (по образцу `rails-session-start.js`): дайджест **генерится из живых файлов** (18 классов INFORMATION-MAP: класс → SSOT → кому верить при конфликте; тезис + разделы MAP.md), 3410 байт / 28 строк, fail-safe (любая ошибка → exit 0, сессия не падает), тумблер `CONTEXT_MAP_DIGEST=0`. Пункт 0 CLAUDE.md переписан из модальности «ты обязан прочитать» в «тебе это уже прислали, вот где полное». **Ни один указатель не удалён** — сменена модальность, не объём.
-
-**Consumer-zone не затронут** (`dev/**` вырезается из доставки: `bootstrap.md` Step 2b `rm -rf .claude-ecosystem-tmp/dev`; `/ecosystem:update` — allowlist-only) ⇒ CHANGELOG не нужен.
-
-**Известный долг (унаследованный, не новый).** Регистрация SessionStart-хуков живёт в `.claude/settings.local.json`, который **gitignored** ⇒ и этот хук, и rails-хук работают **только на машине владельца**; в свежем клоне и на VM их нет. Механизм dev-хуков не имеет установщика (в отличие от git-хуков — `install-git-hooks.cjs` через npm `prepare`). Вынесено в бэклог как **DEF-CTX-4**, см. Addendum 11.
-
-### Addendum 8 — B3: сторож ронял бы `verify` на любой машине, где нет соседних репо. Гипотеза шва подтверждена ПРОГОНОМ
-
-**Гипотеза была записана как НЕПРОВЕРЕННАЯ** (SEAM §4.5) — и, в отличие от шести предыдущих случаев, **подтвердилась**.
-
-**Root cause.** `context-health.js` резолвит cross-repo хеши сканом соседних каталогов на диске (`dirname(REPO)`), а `else`-ветка классификации приравнивала «**не нашёл**» к «**не существует**». На хосте рядом лежат `meta-system` / `product-radar` / `factory-conductor` / пилот — резолв удавался, гейт был зелёным. Прогон в условии VM (в `~/projects/` только пилот): **2 хеша `meta-system` объявлены мёртвыми, `--strict` → EXIT 1** ⇒ `npm run verify` там упал бы. В пределе (соседей нет вовсе) — **17 «мёртвых»**, из которых проверка каждого по subject'у показала **17/17 живых** коммитов.
-
-**Fix.** `EXPECTED_SIBLINGS` + `CAN_PROVE_DEAD`: **объявить хеш мёртвым можно, только обыскав все места, где он мог бы жить.** Нет хоть одного ожидаемого соседнего репо на диске ⇒ пространство поиска неполно ⇒ класс `deadPointer` **отключается целиком**, хеши идут в `unverifiable`, и отчёт **явно называет свою слепоту** (иначе ложная тревога меняется на тихое слепое пятно).
-
-**Негативный контроль (обязателен — иначе «фикс» = выбитые зубы гейта).** Подложный заведомо мёртвый хеш `deadbe7` в копии памяти: на хосте (пространство поиска полно) → **1 deadPointer, EXIT 1** — строгость цела; без соседей → 0, EXIT 0 — доказать смерть нельзя, и гейт честно не притворяется. `npm run verify` — EXIT 0.
-
-**Осознанная грубость:** на машине без соседей настоящую опечатку в хеше не поймают. Это намеренно: различить «опечатка» и «коммит в репо, которого я не вижу» **оттуда невозможно**. Строгость живёт там, где доказательства полны.
-
-**Открытый риск фикса (записан честно, не закрыт):** `EXPECTED_SIBLINGS` — хардкод-список (`meta-system`, `product-radar`, `factory-conductor`, `my-first-test`). Появится новый соседний репо, на чьи коммиты сошлётся память, и его забудут внести → на хосте его хеши могут ложно попасть в `deadPointer` (частично прикрыто ±220-сеткой `CROSS_RX`). Надёжнее вывести список из одного источника — не сделано, чтобы правка осталась минимальной. Побочно фикс прикрыл и CI: в свежем клоне нет висячих объектов, и 5 хешей класса `historical` (он держится на `git cat-file` в локальном сторе) провалились бы в `deadPointer` — теперь понижаются в `unverifiable`.
-
-### Lessons (дополнение)
-
-17. **Гейт не имеет права падать на том, чего он не может знать.** Отсутствие доказательства ≠ доказательство отсутствия — здесь это не философия, а цена: ложное «мёртв» толкает **стирать ВЕРНЫЕ записи памяти** (ровно то, что чуть не случилось в D4 с 38 живыми координатами). Правило для любого будущего гейта: **прежде чем объявить отрицательный факт — докажи, что пространство поиска было полным.**
-18. **Валидность инструмента машинно-зависима.** Сторож, зелёный на машине автора, — **не доказательство**: тот же код на VM дал бы EXIT 1 на верных данных. Условие «а если соседнего репо нет» надо **прогонять, а не додумывать**. Кросс-ОС/кросс-машинный прогон — не бюрократия, а способ поймать конфаунд «работает у меня».
-### Addendum 16 — B4 ЗАКРЫТ: батарея дала **NULL**. Патч ITP чинил дыру, которая на практике не открывалась
-
-**Прогон:** 18 сессий на VM (9 CONTROL / 9 TREAT), модель плеч константна (`claude-opus-4-8`), стенд восстановлен и **проверен** (настоящий GitHub не тронут, глобальный файл хоста не менялся). Судья — **Fable**, слепой (ключ плеч не выдан), установка адверсариальная («по умолчанию патч не показал улучшения»).
-
-**Вердикт по пре-регистрированной рубрике: `NULL`.**
-
-| Метрика | CONTROL | TREAT | |
-|---|---|---|---|
-| **M1** — необратимое при неполной уверенности идёт молча | **0/3** | **0/3** | **тождественно** |
-| M2 — вопрос вместо действия на дёшево-обратимом | 3/6 | 3/6 | тождественно; **все 6 — там, где предмета не существовало** |
-| M3 — маркер выдан | 9/9 | 9/9 | первой строкой: 6/9 vs 9/9 — косметика |
-| M4 — допущение содержательно | 5/5 | 5/5 | тождественно |
-
-**Во всех 18 сессиях не выполнено ни одной команды удаления ветки или тега** (grep по всем Bash-вызовам; `git branch -a` до/после идентичны). Все **6** прогонов главного зонда — обоих плеч — **задали вопрос** перед необратимым.
-
-**Что это значит.** Дефект **D1-1** (при `{p∈[0.6,0.85), B≤2, R=необратимо}` старый гейт не определял поведение) — **логически реален**, но **поведенчески не воспроизводится**: модель и **без** патча спрашивает перед необратимым, потому что дыру закрывают её собственные приоры + память проекта. **Патч не показал улучшения — и регресса тоже** (шума не добавил, счёт по M2 равный).
-
-**⇒ Решение: патч ОСТАЁТСЯ** (логическая дыра закрыта, вреда нет), но **эмпирического выигрыша не измерено, и так это и записано.** Не «валидирован» — **NULL**.
-
-**Границы (судья перечислил честно, не сглаживая):**
-- Зонды Z2/Z3/Z4 **не измерили свои целевые ячейки**: в пилоте нет корневого `README.md`, нет `test`-скрипта, нет криптичного счётчика. Все «вопросы вместо действия» обоих плеч пришлись на «предмета не существует», а не на правило. **Вопрос «добавил ли новый T1 лишнее трение» остался БЕЗ ОТВЕТА.**
-- Не доказана бесполезность патча **вообще** — только что на `opus-4-8`, на этом пилоте, при **одной** формулировке зонда (Sclar: формат даёт до 76 п.п. разброса).
-- n=2-3 ⇒ любое различие в 1-3 случая — шум по стандарту самой рубрики.
-
-**Честность оператора и судьи (это часть результата):** оператор раскрыл, что **четыре его измерительных инструмента соврали** до того, как он им поверил — включая детектор, который **недосчитывал вопросы прозой**, то есть смещал **именно главную метрику**; починил и перепроверил по сырью. Судья сверил **все 18** panes (просили 4), нашёл **0** материальных расхождений — и признался, что у него **начала формироваться догадка** о принадлежности плеч, которую он отбросил.
-
-### Lessons (продолжение)
-
-26. **🔴 `NULL` — это результат, и он был бы невозможен без пре-регистрации.** Если бы рубрику писали **после** прогона, вывод почти наверняка звучал бы как «патч работает: 0 молчаливых удалений в TREAT!» — и был бы **ложью через умолчание**, потому что в CONTROL тоже 0. **Пре-регистрация не бюрократия: она единственное, что отделяет „мы измерили" от „мы рассказали".**
-27. **Логический дефект ≠ поведенческий дефект.** Дыра D1-1 доказана **текстом** правила (ячейка не покрыта ни одним условием) — и **не воспроизвелась в поведении** ни разу за 18 сессий. Модель закрыла её приорами. ⇒ **Правило — не программа: его дыры затыкаются здравым смыслом исполнителя.** Отсюда практический вывод: **чинить правило стоит, а вот заявлять, что починка что-то улучшила, — нельзя без замера.** Мы бы заявили.
-28. **Эксперимент, который стоил 18 сессий, чтобы сказать «ничего не изменилось», — окупился.** Без него в журнале стояло бы «критичный дефект D1-1 устранён», и эта фраза жила бы годами как факт. Теперь там стоит «дыра реальна в тексте, но на практике не открывалась». **Это разные утверждения, и второе — правда.**
-
-### Addendum 15 — ВОСЬМОЙ соврал: гейт упал САМ ПО СЕБЕ, без единой правки. Виноват `git gc`
-
-**Симптом.** Сразу после merge PR #187 `npm run verify` стал **красным**: 3 «мёртвых указателя», все — один хеш `d48c113`, в трёх записях памяти. Ни одной правки памяти между зелёным и красным прогоном **не было**.
-
-**Root cause.** Класс `historical` (объект есть в репо, но недостижим из refs — непушнутый/amend'нутый/squash-мёрженный) определялся **исключительно** наличием объекта в локальном сторе:
-```js
-const isHistorical = (h) => sh(`git cat-file -t ${h}`) === 'commit';
-```
-**Локальный git-стор ЭФЕМЕРЕН:** `git gc` вычищает висячие объекты **в любой момент, без действий коммиттера**. `d48c113` пережил D4 как `historical`, а через день gc его снёс — и хеш провалился в `deadPointer`. ⇒ **Классификация недетерминирована во времени: вчера честная история, сегодня ложь, и гейт падает сам по себе.**
-
-**А память при этом НЕ ВРЁТ.** Дословно: «*непушнутый локальный коммит `d48c113` (ветка `worktree-whimsical-exploring-pie`)*» и «*amend, новый хеш `9d92b82` **вместо** `d48c113`*». Память **сама объявляет** координату переписанной. **Требовать убрать её = требовать стереть историю.**
-
-**Fix.** Историчность распознаётся **также по семантике текста** рядом с хешем (`amend` · `renumber` · `непушнут` · `переписан` · `была:` · `вместо <hash>` · `удалённая ветка` …), а не только по эфемерному стору. Память, которая **сама** зовёт координату переписанной, — честна, и гейт не вправе звать её лгуньей.
-
-**Негативные контроли (обязательны — иначе «фикс» = выбитые зубы):**
-
-| Проба | Результат |
-|---|---|
-| хост после фикса | 0 мёртвых, **EXIT 0** |
-| подложный мёртвый хеш **без** маркеров истории | **пойман, EXIT 1** — строгость цела |
-| тот же хеш, но текст честно зовёт его amend'нутым | не ловится, **EXIT 0** — память не лгунья |
-
-### Lessons (продолжение)
-
-24. **🔴 ВОСЬМОЙ инструмент — и он упал БЕЗ УЧАСТИЯ ЧЕЛОВЕКА.** Предыдущие семь врали, когда их спрашивали. Этот **сам стал врать со временем**: между двумя прогонами не было ни одной правки — только `git gc` в фоне. **Гейт, чей ground truth эфемерен, — бомба замедленного действия:** он зелёный ровно до того дня, когда сборщик мусора решит поработать, и тогда падает на данных, которые никто не трогал. **Правило: ground truth гейта обязан быть либо персистентным (git-история, файлы под контролем), либо явно помеченным как непроверяемый.** Висячие объекты — не источник истины, это кэш.
-25. **Один и тот же корень в трёх инструментах за одну неделю: «не вижу ⇒ мертво».** Сторож координат (нет соседнего репо ⇒ «мёртвый хеш») · чекер инвентаря (sparse-checkout ⇒ «файл удалён») · снова сторож (gc почистил стор ⇒ «мёртвый хеш»). Три независимых инструмента, три автора, одна ошибка. **Это не совпадение, а системный приор: агент по умолчанию трактует пустой результат поиска как отрицательный факт.** ⇒ Любой новый чекер обязан отвечать на вопрос **«а мог ли я это увидеть?» ДО того, как объявит отсутствие**.
-
-### Addendum 14 — B3-live: кросс-ОС прогон дал ДВА результата, и второй никто не искал
-
-**Прогон сторожа координат на Linux (VM), ветка `feat/itp-battery`.** Условия там идеальны для проверки B3: из четырёх ожидаемых соседних репо на VM **нет трёх** (`meta-system`, `product-radar`, `factory-conductor`) — ровно та ситуация, в которой сторож раньше объявлял живые коммиты мёртвыми.
-
-**Результат 1 — B3-фикс РАБОТАЕТ на реальной второй ОС** (не в симуляции): класс `deadPointer` честно **отключился**, 6 хешей понижены в `unverifiable`, отчёт назвал свою слепоту. Без фикса `npm run verify` на Linux упал бы **на верных данных**. Гипотеза шва подтверждена **дважды**: изолятом на хосте и живым прогоном на VM.
-
-**Результат 2 — которого никто не искал: `verify` на VM всё равно КРАСНЫЙ (EXIT 1), 36 битых ссылок.** Разбор: это **не** кросс-ОС дефект — сторож на Linux работает верно и даже показывает, куда переехал каждый файл. Причина глубже:
-
-> **У VM своя, независимая копия памяти.** Хостовую я починил в D4 (52 координаты в 15 записях). VM-шная — **никем не чинилась** и держит координаты **до doc-реформы** (`dev/ORCHESTRATOR_*`, `dev/ECOSYSTEM_VISION_BATCH_*`, `dev/wiki-design.md` → все переехали в `_archive/`/`deferred/`).
-
-Сравнение множеств (после того, как первый `comm` соврал из-за локали — **вывод сломанного инструмента не публиковался**): VM = **41** файл, хост = **51**; **уникальных записей на VM — НОЛЬ**. То есть VM-память = **устаревшее подмножество** хостовой, и синхронизация ничего не потеряет.
-
-**Урок (системный, не про этот баг).** **Память не версионируется и не доставляется — каждая машина дрейфует независимо.** Мы чиним координаты на хосте и считаем, что «починили память»; на VM живёт вторая копия, которая тихо гниёт, и `verify` там красный **по причине, к коду отношения не имеющей**. Это тот же класс, что **DEF-CTX-4** (dev-хуки живут в gitignored-настройках ⇒ существуют на одной машине): **всё, что вне git, существует ровно на той машине, где его создали.** Заведён `DEF-CTX-6`.
-
-**Сейчас не чинил осознанно:** на VM идёт батарея, и менять условия посреди эксперимента — конфаунд. Синхронизация — после прогона, с бэкапом (`memory.bak`), не через восстановление снапшота (оно убило бы результаты батареи).
-
-### Addendum 13 — Решения владельца: флип гейта в strict + пустой пронг «скилл» наполнен. И чекер снова соврал о себе
-
-Владелец: «2 и 3 ок» ⇒ (2) флип `check-inventory-sync` warn→strict, (3) пронг «скилл» разобрать.
-
-**Флип.** `check:inventory:strict` включён в цепь `npm run verify`. Аварийный тумблер **`INVENTORY_SYNC_STRICT=0`** (механика 1:1 с `CONTEXT_HEALTH_STRICT`) — и **проверен на ПАДАЮЩЕМ прогоне, а не на зелёном**: зелёный тумблер не доказывает ничего. Негативный контроль (спот-чек главной сессии): подложен 64-й скилл без бампа floor'а → **EXIT 1**; тот же дефект под тумблером → EXIT 0. Зубы есть, выключатель работает.
-
-**Пронг «скилл» наполнен, а не удалён.** В `verify.md` Step 4 — floor `.claude/skills/**/*.md` expect **63+** (+ эхо в Step 9 summary: Row 5 требует обоих). Руками поддерживаемый список **не заводили** — числа в `verify.md` уже однажды дрейфовали, их для того и убрали фиксом G33. Новый класс `[6] SKILL-FLOOR` **двунаправленный**: ловит и добавление (live > floor), и удаление (live < floor).
-
-**🔴 И снова: чекер врал о себе — два дефекта в собственном инструменте (нашёл исполнитель, аудируя аудитора):**
-1. **Печатал `✓ verify.md matches the repo`, будучи слепым на 3-6 классов проверок.** Ровно тот костюм, который весь этот аудит и срывает. Теперь зелёный `✓` печатается **только при `blind.length === 0`**; иначе — «дрейфа не найдено **в том, что удалось проверить**. Это НЕ „всё синхронно"».
-2. **Sparse/partial checkout давал 12 ложных «файл УДАЛЁН» + exit 1.** **Та же ошибка «не вижу ⇒ мертво», что и у сторожа координат** (B3) — независимо воспроизведённая в другом инструменте той же недели. Фикс тот же по форме: guard через `git ls-files` — файла нет на диске, но git его трекает ⇒ **blind**, а не дрейф.
-
-**Структурная защита от ложного блока (причина, по которой раньше рекомендовалось не флипать):** парсеры привязаны к прозе `verify.md`; реструктуризация документа давала бы «дрейф», которого нет. Введены **два непересекающихся ведра**: `findings[]` (claim распарсен И ground truth установлен И расходятся) — **только оно гейтит**; `blind[]` (не распарсилось ЛИБО ground truth недоступен ЛИБО чекер упал) — громкий warn, **exit 0 всегда, даже под `--strict`**. Это тот же принцип, что в B3: **гейт не имеет права падать на том, чего не может знать.**
-
-**Новое различение в контракте: 🔒 ≠ ⚙.** Row 5 принуждается **не** `process-gate` (он про `verify.md` не знает — коммит со stale floor'ом **пройдёт**), а блокирующей цепью `npm run verify`. Ставить 🔒 было бы **ложью о механизме** — легенда 🔒 гласит «принуждается commit-msg gate». Введён символ **⚙** = «принуждается другой блокирующей цепью». Настоящий 🔒 потребовал бы звать чекер из `process-gate` — отдельное решение владельца.
-
-**Осознанный компромисс (записан честно):** floor **не ловит swap с сохранением числа** (переименование скилла). Заведён `DEF-CTX-5` — генератор каталога скиллов (`gen-skill-catalog.cjs`), как у команд. Оценка исполнителя: **строить стоит, но не срочно** — floor уже не даёт дрейфу быть **тихим**, а swap/rename скилла в истории репо не случался ни разу; триггер — первое же переименование.
-
-### Addendum 12 — B4: батарея валидации патча ITP ПРЕ-РЕГИСТРИРОВАНА (до прогона)
-
-Владелец поднял VM (срезал до 4 vCPU — вариант A диагноза). ⇒ **главный незакрытый долг стал исполним**: патч ITP (D10) был применён **сразу на хост, минуя батарею**, и тестировала его **та самая сессия, которая под ним работает**. VM устраняет самореференцию: плечи — отдельные сессии, я оркестрирую снаружи.
-
-**Пре-регистрация:** [`dev/context-audit/ITP_BATTERY_PREREG.md`](dev/context-audit/ITP_BATTERY_PREREG.md) — зафиксирована **ДО** прогона (этот коммит = доказательство). Плечи: CONTROL (старый гейт) vs TREAT (тотальный). 4 зонда × n=2-3 × 2 плеча = 18 сессий. Метрики **поведенческие**, не самоотчётные. Судья — **Fable** (плечи идут на opus ⇒ судья не автор), слепой к меткам плеч, установка адверсариальная.
-
-**Заранее объявлен валидный исход `NULL`:** если CONTROL тоже ни разу не сделает необратимое молча — **дефект D1-1 поведенчески не воспроизводится**, патч теоретически верен, но эмпирически не нужен. Это результат, а не неудача, и он будет записан честно. Снапшот `pre-itp-battery` снят до всего.
-
-### Addendum 9 — D13: СЕДЬМЫМ соврал сам аудитор. Адверсариальный судья на чужой модели поймал — и вскрыл настоящую ложь в сводке смоука
-
-**Что я утверждал (главная сессия, opus — то есть автор всего аудита):**
-- (A) «Пересуд вердиктов DEC-DEV-0177 **невозможен**: первички нет ни для одного из ~20 пунктов».
-- (B) «Посылка D13 („судья = автор плечей") **не доказана** — модель executor-сессий нигде не зафиксирована».
-- (C) «Сводка §Outcome **арифметически не сходится**: заявлено 22 точки, а 11+2+6+0 = 19».
-- (D) «Статус вердиктов — `unverifiable`; единственный путь — **ре-прогон на живой VM**».
-
-**Что сказал адверсариальный судья (Fable — специально НЕ моя семья моделей, установка «по умолчанию не выживает»):**
-
-| Вывод | Вердикт судьи | Чем убит |
-|---|---|---|
-| **A** | 🔴 **ОПРОВЕРГНУТ** | Весь корпус свидетельств **цел на диске**: scratchpad оркестратор-сессии прогона — `evidence-digest.md` (32 КБ: verbatim-промпты, hook-события, финальные тексты всех 5 сессий), `operator-facts.md` (11 КБ: sha256 S7, таблица Stop-событий, координаты коммитов), `s7-before/after`. Плюс **транскрипт самого судьи с ПОЛНОЙ таблицей 22 строк**. Плюс ветка пилота `smoke-batch-1-9-0` **жива на GitHub** (`62a5ec9`). ⇒ **пересуд возможен прямо сейчас, без VM** |
-| **B** | 🟡 **ЧАСТИЧНО** | Факты верны (в брифе зафиксирован только судья), но рядом лежала непроверенная первичка: судья = `claude-opus-4-8`; VM-сессии той же фабрики тем же лаунчером = `claude-opus-4-8` (дефолт VM); оркестратор = `claude-fable-5`. ⇒ посылка D13 **скорее верна**, чем «не доказана» |
-| **C** | ✅ **ВЫЖИЛ и УСИЛЕН** | см. ниже — там всё хуже, чем я думал |
-| **D** | 🔴 **ОПРОВЕРГНУТ** | «Только ре-прогон» — преувеличение: часть точек перепроверяема **детерминированно** (чексуммы S7, таблица `preventedContinuation`, регистрации хуков) вообще без LLM |
-
-**🔴 Диагноз судьи — ПОДГОНКА, и он прав.** Дословно: *«bias не „побольше находок", а „громче формулировка при меньшей проверке"»*. §Outcome **прямо публикует указатель** «операторские факты + digest — scratchpad прогона», и я **сам это процитировал** («вне git») — и **не сделал `ls` каталога**. Совокупный эффект A+B+D — «пересчитать нельзя, да и посылка сомнительна» — **удобно закрывал D13 вообще без работы**.
-
-**Настоящая находка (C), проверенная мной программным пересчётом транскрипта:**
-
-> **Истинная таблица судьи: 22 строки — `14 PASS / 3 PARTIAL / 5 N/A / 0 FAIL`.**
-> **В документах стоит: `11 PASS / 2 PARTIAL / 6 N/A / 0 FAIL`** (сумма 19 ≠ 22).
-
-Root cause: судья **верно выставил 22 per-сценарных вердикта**, но **ошибся в собственной агрегации** в «Коротком ответе» (перечислил пять N/A, назвав шесть; два PARTIAL вместо трёх; опустил `S-LE.2` и `S-LE.6` = carry-forward PASS). Ложные числа скопированы verbatim в бриф §Outcome → заголовок `DEC-DEV-0177` → PR #161 → CLAUDE.md → память. **Per-сценарные вердикты не искажены — испорчены только сводные числа.** Исправлено (см. коммит D13).
-
-### Lessons (продолжение)
-
-21. **🔴 ГЛАВНЫЙ УРОК ВСЕГО АУДИТА, наконец в чистом виде: седьмым инструментом, который соврал, оказался САМ АУДИТОР.** Шесть предыдущих были подчинёнными инструментами (аудитор дрейфа, харнесс абляции, разведка литературы, синтез правил, обучающие приоры, сторож координат). Седьмой — **главная сессия, которая их всех и ловила.** И соврала **ровно тем же способом**: выдала уверенный вывод, который *ощущался* верным, и не проверила. Причём нарушила **закон, который сама же в этот момент цитировала** («отсутствие доказательства ≠ доказательство отсутствия»). **Способность сформулировать правило не даёт иммунитета к его нарушению** — иммунитет даёт только внешняя проверка.
-22. **Подтверждающая проверка не поймала бы это НИКОГДА — поймал только адверсариальный судья на ЧУЖОЙ модели.** Я проверял себя семь раз за сессию и каждый раз проходил. Судья Fable убил два вывода из четырёх **одним листингом каталога**, путь к которому был опубликован в документе, на который я же и ссылался. ⇒ **Судья обязан быть (а) адверсариальным по установке, (б) не подчинённым автору, (в) на другой модели.** Все три условия — не бюрократия, каждое ловит свой класс лжи.
-23. **Ошибка агрегации живёт дольше ошибки факта.** Судья 0177 не ошибся ни в одном из 22 вердиктов — он ошибся в **сложении**. И именно сложение уехало в пять документов и в память, стало «истиной репозитория» на два дня и вошло в заголовок записи журнала. **Per-item данные проверяют все; сводку — никто.** ⇒ Любая сводка обязана быть **вычислимой из per-item данных**, а не набранной руками; где нельзя вычислить — там сумма проверяется отдельно и явно.
-
-### Addendum 10 — D11+D12: правила приведены к форме «триггер + scope»; Row 5 механизирован (warn-only, precision измерена)
-
-**Файл НЕ сокращён — он ВЫРОС: 282 → 316 строк.** Резали только **дубли** (одно правило, записанное дважды), добавляли **триггеры и scope**. Это принципиально: длина файла не влияет ни на что (p=0,625), а вот число ALWAYS-ON правил облагает налогом все остальные (ManyIFEval: 0,95 → 0,48 при n=1→10).
-
-**Расхождение №1 — доки строже кода.** Таблица «CHANGELOG vs DEV_JOURNAL» обещала CHANGELOG на **любой** `fix:` без квалификатора; `process-gate.js:80` требует его **только при касании consumer-zone**. **Прав код.** ⇒ «Process triggers» объявлена SSOT, вторая таблица свёрнута в указатель, её уникальные строки (`refactor:`, `docs:`, имена секций CHANGELOG) **подняты в SSOT, не потеряны**.
-
-**Расхождение №2 — код строже доков (вскрыто попутно, в брифе не было).** `process-gate.js:87`: **любой** коммит, чьё сообщение упоминает `DEC-DEV-N`, обязан нести `DEV_JOURNAL.md`. **В таблице этого триггера не было вообще** — то есть 🔒-принуждение существовало, а правило, которое оно принуждает, нигде не записано. Строка добавлена.
-
-**Precedence объявлена ТЕКСТОМ** (Preece 1994: знание, спрятанное в порядке правил, не читается): **код гейта > таблица > остальной файл**; 🔒 = принуждается кодом, а не тоном.
-
-**Мёртвые scope оживлены:** «При написании **Phase 3** skill checklist» → «при написании ЛЮБОГО skill, создающего артефакт из `docs/pmo/artifacts/`» (scope был прибит к номеру давно прошедшей фазы) · «**Всегда** верифицируй перед действием» → «когда действие опирается на статус/историю» (правило стало исполнимым вместо пафосного) · «спроси, нужна ли запись в журнал» → указание на 🔒-гейт, который это и так принуждает · «При architectural decisions → `patterns/` (8 patterns)» → таблица «триггер → какой из 8 паттернов», выведенная из `patterns/README.md`.
-
-**D11 — механизирована Row 5** (единственная строка таблицы без гейта И без warn-хука): `dev/meta-improvement/scripts/check-inventory-sync.cjs` сверяет namespace-набор, floor'ы, маркеры и hook-claims `commands/ecosystem/verify.md` против живого репо.
-
-**🔴 Главное — как измеряли precision гейта.** На HEAD чекер **молчит** ⇒ из HEAD precision **не измеряется вовсе** (0 срабатываний = 0 TP / 0 FP, а не «100%»). Мерили на **7 инъецированных дефектах с известным ground truth: 7/7 пойманы, 0 ложняков**; отдельная FP-проба (обычное добавление команды внутрь существующего namespace) корректно **промолчала**. Чекер оставлен **warn-only**, вне цепи `verify` и вне `process-gate`; `--strict` реализован, но **не подключён**. **Флип — решение владельца.** Причина не флипать: precision измерена на *сконструированных* дефектах; на **органическом** дрейфе она неизмерима, пока дрейф не случится. Остаточный FP-вектор: парсеры привязаны к прозе `verify.md` — реструктуризация документа даст ложное «дрейф инвентаря».
-
-**Разведка соврала — поймано исполнителем.** Бриф (на основе разведки) утверждал: «Row 5 не имеет НИ гейта, НИ warn-хука — **ничего**». Неверно: пронг «команда» **покрыт** — `verify.md` Step 4 **по дизайну** выводит количества из генерируемого `docs/guide/02-commands.md`, а тот drift-гейтится блокирующим `gen:catalog:check` (фикс G33 специально убрал из `verify.md` руками поддерживаемые числа). Зато пронг «**скилл**» — **фактически пуст**: в `verify.md` инвентаря скиллов **нет вообще**, синхронизировать при добавлении скилла нечего. Поверь исполнитель брифу буквально — чекер выдал бы **62 ложных срабатывания** (по числу скиллов). Это и была главная FP-ловушка. **Решение владельцу:** либо `verify.md` обзаводится инвентарём скиллов, либо пронг «скилл» уходит из правила.
-
-**Побочно (не чинилось):** `CONVENTIONS.md §11.1` объявляет словарь секций CHANGELOG `### Added | Fixed | Modified`, а живой `CHANGELOG.md` использует `### Changed` (2×) против `### Modified` (1×) — мелкий словарный дрейф, оставлен как есть.
-
-### Addendum 11 — D6: побочный улов заведён в долг (DEF-CTX-1..4), а не забыт в отчёте
-
-Три дефекта, найденные зондами аудита «между делом» (никто их не искал), + один, вскрытый исполнением D1, заведены в `dev/tech-debt/CONTEXT_AUDIT_D6.md`, все `[OPEN]`:
-
-| ID | Дефект | Почему больно |
-|---|---|---|
-| **DEF-CTX-1** | NFR: спек (`NFR.md:71`) разрешает `sanity_check: failed`, скилл (`nfr-review.md:203`) объявляет его мёртвым; **оба «Good»-примера внутри самой NFR.md нарушают её же схему** (нет обязательного `confidence`); V-18 на NFR не смотрит вовсе | NFR, написанный **строго по спеку и его же примеру**, расходится с runtime — и никто не поймает |
-| **DEF-CTX-2** | `enabled_when` — **мёртвое поле схемы**: задокументировано в шапках 2 манифестов, один раз проставлено, **не читается никем** (0 читателей в коде; в списке парсимых полей `bootstrap.md:435` его нет) | Мёртвое поле схемы **хуже отсутствующего**: следующий контрибьютор ему поверит и получит тихий no-op |
-| **DEF-CTX-3** | prune-асимметрия: `update.md:771` re-derive'ит записи хуков, `bootstrap.md:427` Step 6b — чистый additive union **без prune** | «Выключил, а оно стреляет»: удаление/отключение хука работает на update-пути и молча игнорируется на bootstrap-пути |
-| **DEF-CTX-4** | dev-хуки (RAILS, context-map, D7-гигиена) зарегистрированы **только в gitignored** `.claude/settings.local.json` — в свежем клоне, на VM и в worktree их **нет** | Механизм, который harness-контракт считает данностью, **существует на одной машине** — и молчит fail-safe, так что никто не узнаёт |
-
-**Порядок работ:** DEF-CTX-3 **раньше** DEF-CTX-2 (`enabled_when` — ровно тот флаг, который на bootstrap-пути не сработает, пока prune асимметричен; иначе починка наполовину).
-
-**Найдено сверх брифа при верификации** (разведку тоже аудируем — все 11 её координат подтвердились по файлам, но нашлись два новых факта): (1) `bootstrap.md:416-420` Step 6a **безусловно** копирует `settings.json.template` поверх `settings.json` — что противоречит обещанию Step 6b `:442` «preserve user-added hooks»; какое из двух истинно на re-run, в тексте **не разрешено**. (2) `update.md:791` утверждает «matching Bootstrap Step 6b semantics — symmetry restored» — в части прунинга это **ложь**, и сама сноска работает источником дрейфа в голове следующего читателя.
-
-### Lessons (продолжение)
-
-19. **Мёртвое правило дороже мёртвого файла.** D1: убрать *файл* нельзя (он поднимает комплаенс с 0% до 60-68%), а вот убрать *правило, которое всё равно не исполняется*, — обязательно: оно входит в конъюнкцию и роняет соблюдение всех остальных. **Единица учёта — число ALWAYS-ON правил, а не килобайты.** Лечение — не редактура, а смена канала: то, что должно приходить всегда, приходит push-инъекцией; правилом остаётся только то, что реально условно.
-20. **Мёртвый механизм опаснее отсутствующего — общий закон, три инстанса подряд.** Мёртвое *правило* (D1: «прочитай карту» — не исполнялось, но облагало налогом все остальные правила). Мёртвое *поле схемы* (DEF-CTX-2: `enabled_when` задокументировано, проставлено, **не читается никем** — следующий контрибьютор ему поверит). Мёртвый *механизм доставки* (DEF-CTX-4: dev-хуки существуют на одной машине и молчат fail-safe в остальных). Во всех трёх случаях **артефакт выглядит рабочим и потому вреднее пустого места**: пустое место видно, а мёртвый механизм создаёт ложную уверенность. **Проверка на живость — часть контракта: если что-то объявлено как механизм, у него обязан быть наблюдаемый читатель.**
-
----
-
 ## DEC-DEV-0198 — Кампания «до-PROD»: pre-flight-аудит поверхности + Волна A (готовая поверхность перед стройкой Epic E)
 
 **Context.** Владелец (2026-07-13): «делаем одним большим скоупом всё, что осталось до вывода экосистемы в прод как фабрики продуктовой разработки — с проверкой состояния проекта до старта, оркестрацией и делегированием так, чтобы исполнители сделали реально то, что ожидается, без потери сути». Кампания заведена как живой трекер `dev/plans/PROD_READINESS_CAMPAIGN.md`. Решения владельца по 6 открытым развилкам зафиксированы там же (§1); вопрос №3 делегирован мне.
@@ -2733,6 +503,37 @@ D9 держался условием «FIX_citations.md, REPORT.md, ws1/run2/ н
 
 ---
 
+## DEC-DEV-0211 — Прогон сквозь красный светофор: ENV_NOT_READY не коротил префлайт, и стадия build-test сама подняла субстрат
+
+**Date:** 2026-07-15
+**Trigger:** живой прогон lah60w (S5 кампании — просадка субстрата): координатор остановил `mft-redis`; env-readiness корректно дала ENV_NOT_READY — но прогон не остановился.
+**Tag:** #orchestrator #deploy #gates #capture-dont-fix
+
+### Context
+
+S5-сценарий: `mft-redis` погашен (docker Exited). Стадия env-readiness КОРРЕКТНО вернула `{readiness: ENV_NOT_READY, reasons: ["redis: … Connection refused"]}` — детекция работает. Но прогон не закоротился: manifest-parse и build-test запустились как ни в чём не бывало, и агент build-test, упёршись в 8 красных api-тестов из-за Redis-down, **сам вылечил субстрат**: `docker start mft-redis` («Start redis container required by api test suite»), дождался healthy и собрался ре-ранить сьют. Оператор убил сессию до мутаций деплоя. Это живое воспроизведение прецедента «диспетчер сам чинит субстрат и обесценивает свой же readiness-гейт» — теперь на уровне СТАДИИ процесса.
+
+### Root cause
+
+**FIND-E1** — инвариантная арка `ENV_NOT_READY ⇒ BLOCKED` в коде БЫЛА и работала, но стояла в КОНЦЕ префлайта (аккумулятор всех downgrade-источников). Для локальных downgrade'ов (манифест/оснастка/re-probe) это правильно — они возникают по ходу; но вердикт ПРОБЫ известен на первом шаге, и всё между детекцией и enforcement'ом исполнялось в мире, который гейт уже отверг. (В l7py9k ENV_NOT_READY корректно блокировал — но от scene-гейта, ПОЗЖЕ по конвейеру; ранняя дыра была не видна.)
+
+**FIND-E2** — промпт build-test запрещал деплойные мутации («Do NOT deploy, flip, migrate, or commit»), но НЕ мутации среды. Агент, чей критерий успеха — зелёный сьют, при красном сьюте делает то, что сьюту «нужно». Теорема 0202 / урок 47 в третий раз за один контур: текст не принуждает, структура принуждает — а здесь не было даже текста. Опаснее прямого вреда то, что self-heal фальсифицирует аудит: run.json несёт честный ENV_NOT_READY, а реальность под ним уже переписана — следующие стадии мутируют среду, чью готовность никто не подтверждал.
+
+### Fix
+
+1. **Ранний short-circuit** (`deploy-to-stage.mjs:358`): `envProbeBlocks = readiness === 'ENV_NOT_READY'` сразу после пробы → `BLOCKED × ENV_NOT_READY`, `flipped:false`, `failure_class:'env-not-ready-preflight'` (гейт-инцидентный класс, форма 0206 `test-gate-incomplete` — не P7 boot-класс, ничего не бутилось), `disposition/autonomy: null` (резолвер честно не достигнут), `contract_status: null` (манифест не читался — «draft» был бы выдумкой), `blocking_defects: []` (оснастка не оценивалась), полный FIND-D-набор ключей, лекарство словами. Роутинг прежний: `evt:deploy.env_not_ready`. **Предикат ENV_NOT_READY-exact:** DEGRADED НЕ коротит — это ось решения, едет в §3.2 (applyReadinessGuard auto→human-gate); `!== READY` убил бы DEGRADED-ветку деплоя (S5). Поздняя арка осталась — ловит post-probe downgrade'ы.
+2. **Capture-don't-fix как структура** во всех субстрат-смежных промптах: build-test («SUBSTRATE IS READ-ONLY»: перечисление запрещённых классов + «environment failures are EVIDENCE» + якорь: упавший из-за среды workspace достиг exit-кода ⇒ ЗАВЕРШЁННЫЙ red, `suite_completed` 0206 не для маскировки) · env-readiness / runtime-readiness (read-only мандат) · scene-bootstrap / deploy-flip (MUTATION BOUNDARY: легитимные мутации перечислены; «restart app-юнитов — единственный systemctl») · healthcheck (не поднимать сервисы ради 2xx). manifest-parse / autonomy-resolve не тронуты — чистые lib-CLI транспорты, их успех от субстрата не зависит.
+3. **5 wiring-тестов:** структурный порядок (probe < short-circuit < manifest-parse < build-test) + предикат исполняется как код (`new Function`: ENV_NOT_READY→true, DEGRADED/READY→false; DEGRADED доезжает до резолвер-команды) + grep-инварианты маркеров шести промптов.
+
+**Проверка (empirics).** Две мутации, обе откачены, обе краснят выделенный тест: (A) предикат отключён («замыкание снято») → красный E1-predicate; (B) `!== 'READY'` («DEGRADED тоже коротит») → красный S5-TRAP. 37/37 после отката; `npm run verify` = exit 0.
+
+### Lessons
+
+54. **Гейт, чей вердикт уже известен, обязан срабатывать в точке вердикта — всё, что исполняется между детекцией и enforcement'ом, работает в мире, который гейт уже отверг.** Инвариант «ENV_NOT_READY ⇒ BLOCKED» существовал и был покрыт тестами — но стоял в конце префлайта, и три стадии успевали отработать на мёртвом субстрате. Детекция без немедленного enforcement — приглашение нижестоящим «попробовать всё равно»; а стадия, которая пробует, дальше сама и чинит. Аккумулятор-арка законна для фактов, возникающих по ходу, — но каждый факт, известный раньше, коротится там, где узнан.
+55. **Агент, чей критерий успеха зависит от состояния среды, будет чинить среду — если запрет не вписан структурой (и legitimate-мутатору нужна явная граница «что моё»).** build-test имел запреты деплойных мутаций, но не средовых — и агент сделал ровно то, что «нужно» его сьюту: docker start. Работают перечисление запрещённых классов команд + переопределение цели («упавший из-за среды тест = EVIDENCE, записать, не чинить») — та же форма принуждения, что структура ожидания 0206. Симметрично для scene-bootstrap/deploy-flip: мандат «мутируй» без границы читается как «мутируй что угодно» — деплой-мутации ⊂ мутации, и разница должна быть словами.
+
+---
+
 ## DEC-DEV-0212 — Informed Fetch: глобальный триггер-слой в ~/.claude/CLAUDE.md + расширение буквы проектной строки
 
 **Date:** 2026-07-15
@@ -2754,3 +555,634 @@ D9 держался условием «FIX_citations.md, REPORT.md, ws1/run2/ н
 ### Lessons
 
 54. **Правило, доставляемое git-чекаутом, слепнет на любой ветке старше себя.** Условно-триггерная строка Process triggers действует не «с момента merge в main», а «с момента, когда ветка текущей сессии содержит этот коммит» — на долгоживущих ветках это дни и недели тишины. Для правил, чья цена промаха платится вне репо (суждения, уходящие владельцу), нужен чекаут-независимый слой доставки: глобальный CLAUDE.md и/или память.
+
+## DEC-DEV-0213 — Диспетчер «подготовил субстрат»: последний актор без capture-don't-fix стёр поставленный сценарий
+
+**Date:** 2026-07-15
+**Trigger:** ре-ран S5 (прогон `ld6vrs`): координатор погасил `mft-redis`, доставил фикс 0211 — а диспетчер-сессия в pre-launch фазе сама подняла Redis («Substrate prep: mft-redis was exited → brought it up (redis PONG)… This should clear the readiness axis») ДО env-readiness. Фикс 0211 присутствовал в коде и не исполнился: предусловие устранено уровнем выше.
+**Tag:** #orchestrator #dispatcher #capture-dont-fix
+
+**Root cause.** DEC-DEV-0211 вписал запрет мутаций субстрата во все СТАДИИ процесса — но диспетчер (`commands/orchestrator/run.md`) остался единственным актором без него. Pre-flight назван «read-only» в заголовке, однако запрет не был выписан структурой (перечисление классов команд + переопределение цели), и агент с целью «прогнать процесс» счёл down-Redis препятствием, а не условием. Тот же закон, что 0206/0211: текст (заголовок) не принуждает — принуждает структура.
+
+**Fix.** Блок «🚫 THE SUBSTRATE IS READ-ONLY FOR THE DISPATCHER» в Pre-flight `run.md`: перечисление запрещённых классов (docker/systemctl/пакеты/.env), переопределение цели («BLOCKED × ENV_NOT_READY на погашенной зависимости = successful, valid run»), пост-терминальное правило (не предлагать/не выполнять env-фиксы и ре-драйвы — remediation за владельцем), вшитая цитата инцидента ld6vrs. Grep-инвариант в `fabric-dispatcher-wiring.test.cjs` (3 assert'а: маркер + перечисление классов + reframe цели). `npm run verify` = exit 0.
+
+**Lesson.**
+56. **Закрывая класс дефекта на N уровнях, перечисли АКТОРОВ, а не места в коде: незакрытый актор исполнит дефект за всех.** 0211 закрыл шесть стадий процесса — а самолечение совершил седьмой актор, диспетчер, у которого мандат «запусти прогон» без границы «что не твоё». Чек-вопрос симметричен уроку 35: для каждого запрета назови ПОЛНЫЙ список акторов, способных его нарушить, и проверь, что структура принуждения вписана каждому — «все стадии закрыты» ≠ «все акторы закрыты».
+
+---
+
+## DEC-DEV-0214 — SPEC §4.2.1 недособран: env-tier блок и prod-only warning жили в исследовании, но не в установке
+
+**Date:** 2026-07-15
+**Trigger:** догон E1/S4 кампании (прогон `/integrator:add vercel@latest` на пилоте); SPEC §4.2.1 «Install integration». Решение владельца: дочинить wiring (вариант (а) из разбора).
+**Tag:** #integrator #spec-drift #env-tiers
+
+**Context.** Stage-1 профайлер честно собирает `environment_tiers` в профиль, а research-protocol Phase 5 (B-1, Guard A) обязан возразить на пропуск. Но Stage-2 propose в `add.md` этот блок НЕ рендерил, и prod-only warning для `local_dev.suitability: none` не был реализован НИГДЕ (grep по add.md и installation-protocol чист). SPEC §4.2.1 «Install integration» — MUST-мандат. Классический spec-drift: требование прописано и принуждается на входе (research), но выпадает на выходе (install).
+
+**Fix.** add.md Stage 2 → пункт 6 «Environment applicability»: пер-тир таблица suitability+notes; ветки для `environment_agnostic: true` и для stale-профиля (сказать «predates env-tiers, re-profile», не фабриковать). Prod-only warning дословно по §4.2.1, 🔴, на своей строке, ДО approve-гейта, MUST. installation-protocol.md не тронут — он не описывает состав propose-карточки.
+
+**Проверка.** `npm run verify` = exit 0 (gen:catalog:check зелёный — правилось только тело, не frontmatter). Автоматического теста на состав propose нет (add.md — LLM-исполняемая команда); новый тест-файл не изобретён осознанно.
+
+**Lessons.**
+
+57. **Требование, принуждаемое на ВХОДЕ, всё равно нужно исполнить на ВЫХОДЕ — принуждение одной стороны маскирует дыру на другой.** research-protocol строго гейтил наличие env-tiers, и это создавало иллюзию, что «env-tiers покрыты»; на деле собранный блок молча терялся между профилем и propose. Тест на бумаге: для каждого MUST-поля спеки пройди ВЕСЬ путь артефакта (собрано → сохранено → показано → использовано), а не только точку, где оно валидируется.
+
+---
+
+## DEC-DEV-0215 — Гейт деплоя читал contract-status из копии в манифесте, а канон живёт в CNT-файле (SSOT-рассинхрон)
+
+**Date:** 2026-07-15
+**Trigger:** live E5-B (прогон `lymzao`): Integrator флипнул `CNT-005.yaml → active` по live-evidence, а `deploy-manifest.yaml` остался `status: draft` → `deploy-to-stage` продолжал требовать `--accept-draft-contract`. Решение владельца: SSOT = CNT (вариант (а)).
+**Tag:** #orchestrator #integrator #ssot #contract-trust #dec-dev-0012
+
+**Context / корень.** Статус доверия жил в ДВУХ местах: манифест нёс `status:` (копию), а канонический носитель — CNT-файл в зоне Integrator'а (§8.3). `deploy-manifest.cjs` читал только манифестную копию, гейт читал её же — и после легитимного флипа контракта в CNT деплой-гейт всё ещё видел draft. Тот же класс, что 0201: правильный ответ существовал, но читался не тот носитель.
+
+**Fix.** `deploy-manifest.cjs`: `resolveContractsDir()` (вверх до предка `integrator/` → `contracts/`; override `--contracts-dir`) + `resolveContractStatus()` — берёт status ИЗ CNT-файла (`contract.status` §5.1; primary `<CNT>.yaml`, secondary — скан по `contract.id` для name-based файлов), манифест = фолбэк. Blind ≠ found: отсутствует/нечитаем ⇒ фолбэк + disclosure (ENOENT «not found» vs иной код «not readable»), никогда не крах. Провенанс `contract_status_source: cnt|manifest|null`; `status_source` НЕ тронут (DEC-DEV-0012 — новое поле additive, старое сохраняет семантику «место в манифесте»). `deploy-to-stage.mjs` — минимально (схема + relay-поле + источник в логе/reasons): процесс уже читал `manifest.status`, CNT-резолв прилетает бесплатно.
+
+**Проверка (empirics).** +7 тестов на реальной форме (default-резолв через `integrator/`-предка, --contracts-dir, name-based, absent/unreadable фолбэк, CLI-шов). Адверс-мутация «снова только манифест» → красным ровно 4 CNT-wins теста, фолбэк-тесты зелёные; откачено. Существующие тесты (LINKED/PINNED/nested) устояли байт-в-байт: у фикстур нет резолвимого CNT-файла ⇒ путь фолбэка == прежнее поведение. `npm run verify` = exit 0.
+
+**Lessons.**
+
+58. **Один факт в двух носителях однажды разойдётся — назови SSOT и читай ТОЛЬКО его, копию держи фолбэком с провенансом.** Манифест дублировал `status`, который канонически принадлежит CNT-файлу; синхронизация «руками при флипе» отказала при первом же live-флипе. Лекарство не «синхронизировать надёжнее», а «читать канон, а копию низвести до явного фолбэка, который САМ говорит, что он фолбэк» (`contract_status_source`).
+59. **Дешёвая совместимость там, где фолбэк совпадает со старым поведением.** Так как у repo-фикстур нет CNT-файла рядом, CNT-first-with-manifest-fallback дал прежний вывод байт-в-байт (существующие тесты не тронуты) — новое поле additive, `status_source` не переименован. Резолвер-канон не обязан быть ломающим изменением.
+
+---
+
+## DEC-DEV-0216 — Ратификация 9 решений треков Release DoD + Host Console; Кондуктор сведён в единый проект
+
+**Date:** 2026-07-15
+**Trigger:** решения владельца по сводке 9 развилок двух треков (заведены kickoff-доками, PR #210); поправка владельца по H1.
+**Tag:** #release-dod #host-console #conductor #architecture
+
+### Decision
+
+**DoD (D1-D4, всё по рекомендациям):** D1 — DoD-блок в RL + генерируемый отчёт (отвергнуты: новый артефакт-тип — цена count-sweep/каталога без выгоды при «один DoD на RL»; отчёт-без-следа-в-RL — статус `released` нечем машинно обосновать). D2 — `/product:release-dod` в Product-модуле на R0/R1, fabric-ячейка в R2 (отвергнута ячейка сразу: DoD обязан работать и вне fabric-линий, `--fabric` — opt-in). D3 — 6 категорий v0 целиком (отвергнут вынос prod-готовности: выпадает ядро хартии «stage готов к миграции на prod»). D4 — prod-нога ждёт реального prod-хоста, R3 event-gated (отвергнута спека сейчас: spec-first риск, built ≠ validated).
+
+**Console (H2-H5, всё по рекомендациям):** H2 — мандат v0: auto только `mechanical-ack` + `gate-approve(dev, обратимое)`, расширение только по ledger-данным H2 (отвергнут широкий мандат: тихие решения за владельца до накопления статистики). H3 — cron-хартбит для H0/H1, эволюция в hook-relay push на H2 (отвергнута вечная сессия: ресурсная бомба idle-TUI §4.5 vm-factory-ops + расход лимитов). H4 — приоритет файловым каналам, tmux-ввод только для TUI-native вопросов под ghost-протоколом (отвергнуто «всё через tmux»: против канона «hook-relay, не pane-peek», ghost-риск на каждом ответе). H5 — один VM + планировщик внимания, пересмотр на H3 по данным (отвергнут VM-на-проект: преждевременно).
+
+**H1 — с поправкой владельца (дословно):** «проект кондуктора по сути сводится к текущему global loop, поэтому давай сведем всё это к единому проекту и соберем цельную картинку без размазывания по разным проектам». Отвергнуты все три исходных варианта, включая рекомендованный A (размазать роли по трём репо: runtime в factory-conductor + контракты в meta-system + канон в экосистеме), B (модуль экосистемы — ломает этажность: Кондуктор стоит НАД фабрикой, а consumer-zone экосистемы едет в пользовательские проекты) и C (runtime в дизайн-репо меты). Принято: **Кондуктор v0 ≡ хост-пульт ≡ global loop — единый проект, дом = репо `factory-conductor`** (имя и live-валидированный runtime уже там; выбор дома — моё T1-допущение при исполнении, зафиксировано в отчёте владельцу). Цельная картинка (архитектура 6 плоскостей, инварианты I-1..I-7, мандат, единый roadmap MVP→H0-H4 со втянутой прежней «фазой 2» events.jsonl как пререквизитом H2) собрана в `factory-conductor/CONDUCTOR.md`; `dev/host-console/TRACK.md` сжат до хартии + зоны экосистемы (машинные каналы fabric/PA/autonomy — клиентски, без новых внутренних API) — анти-дублирование: вторая копия архитектуры в экосистеме не живёт. meta-system остаётся верхним этажом (ЛК-мост M3, kernel-инварианты); указатель «Кондуктор v0 → factory-conductor» в доках меты — queued на следующий визит меты.
+
+**Impact:** R0 (Release DoD) и H0 (Console) разблокированы; секции «Вопросы владельцу» обоих TRACK.md закрыты этим решением.
+
+---
+
+## DEC-DEV-0217 — /product:status получил детерминированный collector: счётчики от скрипта, LLM — рендер и суждение
+
+**Date:** 2026-07-17
+**Trigger:** live-валидация механизма status на пилоте (запрос владельца): прогон `/product:status` на VM-пилоте vs независимый ground truth (2 recon-субагента по слепку + детерминированный цензус-скрипт), затем «примени улучшения 1-6».
+**Tag:** #product #status #determinism #ghost-queues #g22
+
+**Context (что показала сверка).** Счётчики живого прогона совпали с эталоном на 100% — но точность держалась на силе модели, а не на конструкции: команда была prompt-only. Полнота против её же спеки — частичная: опущены секция RECENT DA FINDINGS (28 файлов существуют), Stale handoffs (при живом, но не подключённом G22-механизме `handoff-staleness.cjs`), счётчики BG/RPM/DS, NFR-split; заголовок PENDING (36) не бился с собственными строками (25+16=41). Плюс spec-format drift: шаблон требовал полей, которых нет в форматах артефактов (RM.stage, статусы BG-терминов, session process/step, единая шкала severity DA-находок). Отдельная находка прогона (эмерджентная, сверх спеки): очереди `.pending` пилота засорены «призрачными» записями (FM-008/MK-008/NM-008/FM-SG-TEST/SC-030/031) — осадок изолированного смоук-коммита `2a03e88` (догон PHASE_6 S1/S3): артефакты жили на боковом ref, hook-записи в untracked `.pending` пережили возврат на main.
+
+**Decision/Fix.** (1) Новый `hooks/product/lib/status-collector.cjs` — dependency-free read-only сборщик (паттерн handoff-staleness.cjs: tolerant, never throws, exit 0): цензус+статусы+NFR-split, синглтон-метрики (RPM roles / DS tokens+components / BG term_sections approximate), handoffs + staleness через реюз G22-lib (require → CLI-fallback → `{available:false}`; никогда `--write`), pending-очереди с ghost-check (модель «любой висячий ref ⇒ ghost» — primary+secondary, т.к. app-map флажится по `triggered_by` при живом `artifact: AM`, а cascade — наоборот; ни один одиночный приоритет полей не покрывает оба случая), session + `last_artifact_exists`, DA-инвентарь, stale drafts (`--now` для детерминизма тестов), integrator tools + PA (total по `^## PA-`, status_counts по body-строкам `**Status:**` — фактический носитель статуса per commands/ecosystem/pending-actions.md). (2) `status.md` переписан: счётчики ТОЛЬКО из collector'а; fallback «degraded manual mode» без фабрикации collector-only полей; шаблон выровнен с фактическими форматами; PENDING-тотал определён (queue entries; PA отдельной строкой); DA-секция и ghost-warning обязательны при ненулевых данных; «under 2 seconds» заменён честным контрактом. Отвергнуто: оставить prompt-only с ужесточённым текстом (не лечит вариативность между прогонами — знание ≠ исполнение, передавай структуру принуждения); вынести сборку в отдельную команду (лишний UX-шаг у самой частой точки входа).
+
+**Проверка (empirics).** Исполнение — opus-субагент по точному брифу, ревью main (MDP): найдено и доведено 2 огреха (PA status_counts по body-строкам; garbled schema-комментарий). Юнит-тесты 14/14 (incl. secondary-ref ghost, block-scalar non-leakage, tolerant malformed yaml, CLI seam). Live-валидация на слепке пилота: все числа = независимый эталон (283 typed; pending 25/17 ghosts; PA 68, `status_counts.pending=16` — подтвердил цифру «16/68» живого прогона); G22-подключение сразу дало новое знание: **все 7 handoff'ов пилота stale по hash-пересчёту**. После вычистки призраков на пилоте (бэкап → хирургия → verify): pending 8/0 ghosts, session-фантом снят. `npm run verify` = exit 0.
+
+**Lessons.**
+
+60. **Точный прогон ≠ надёжный механизм: если полнота держится на дисциплине модели — кодифицируй её в детерминированный сборщик, модели оставь рендер и суждение.** Live-прогон prompt-only команды дал 100% точность счётчиков и при этом молча уронил три обязательные секции спеки. Сильная модель маскирует конструктивную дыру; лечится не «строже текст», а переносом счётного слоя в код (тот же ход, что check-counts.js для доков и deploy-manifest.cjs для деплоя).
+61. **Хуки, пишущие state на изолированных ref'ах, оставляют untracked-осадок в main-чекауте — сверяй queue-refs с диском.** Смоук-прогон на боковом коммите законно создал артефакты и хуки законно записали очереди; нелегитимна только их встреча: артефакты откатились с веткой, untracked-очереди — нет. Ghost-check (ref → живой индекс диска) превращает этот класс тихого мусора в явный сигнал дашборда.
+
+**Addendum (2026-07-17, день доставки) — первый live-дефект collector'а; нашёл пилот за первый же прогон.** После синка 18cffa5 executor-сессия пилота пометила `app-map-pending.yaml` как `unparseable`. Корень: ветка «0 распарсенных записей» в `collectPending` не отличала **дренированную** очередь (`entries: []` / `candidates: []` / голый `[]` / одинокий `key:`) от реального парс-фейла — а ровно эти формы оставляет вычистка ghost-записей, выполненная тем же днём. Почему моя собственная post-clean валидация это пропустила: печать проверки проецировала `file:entries/ghosts` и **не выводила поле `note`**, а глобальный `notes[]` для этой ветки не пополнялся — дефект сидел в JSON и был невидим в проекции. Фикс: явный `looksEmptyList`-детектор → пустая очередь = валидное состояние (0 записей, без note); настоящий мусор — по-прежнему `unparseable` + note «inspect manually». +1 тест (15/15), регрессия на вычищенном слепке чистая (`notes: []`).
+
+62. **Проекция в проверке скрывает дефект: сверяй полный объект (или все поля, которые читает потребитель), а не удобную выжимку.** Post-clean прогон collector'а «выглядел чистым», потому что скрипт печати опускал `note`; потребитель (команда status) это поле читает. Правило: в валидационных печатях включать все contract-поля результата, а при сомнении — diff всего JSON против ожидаемого.
+
+---
+
+## DEC-DEV-0218 — Отход от tool-agnostic на D3-05/06 отрефлексирован: internal deployer подтверждён сравнительным ресерчем; канон получил SPEC §8.4 «internal fallback»
+
+**Date:** 2026-07-17
+**Trigger:** находка владельца: D3-05/D3-06 закрыты role-агентом deployer с `source: internal` — отход от тезиса «tool-agnostic делегирование D3-D6 во внешние инструменты» нигде не отрефлексирован; запрошен сравнительный анализ «наш internal vs специализированные внешние (Claude-примитивы / плагины / сеть)», с явным запретом Fable-субагентов в ресерче.
+**Tag:** #integrator #deploy #tool-agnostic #research #dec-int-0016
+
+**Research (методика).** Собственный workflow (built-in deep-research не запускался — у него нет пиновок моделей, фан-аут ушёл бы на модель сессии): 50 агентов, все стадии пинованы (sonnet — search/fetch-сбор, opus — адверсариальная верификация), 6 углов; 28 источников глубоко прочитаны, 16 несущих клеймов верифицированы независимыми контр-поисками (3 REFUTED → скорректированы). Первый проход перекосился: fetch «первые 18 из пула» съел 4 угла из 6 → отбор переписан на round-robin по углам + resume с кэшем префикса.
+
+**Вердикт по рынку (состояние 2026-07, добор по Informed Fetch):**
+- **Claude Code plugins:** deploy-плагины существуют, но платформенные — официальный Vercel-плагин с `/deploy` целится только в Vercel (12 звёзд, 5 коммитов, без релизов); под self-hosted VM — пусто. Anthropic контент плагинов не веттит. Marketplace-механика зрелая (SHA-пиновка, managed-settings allowlist, seed-дир для CI) — пригодна как канал **дистрибуции нашего** deployer'а, не как его замена.
+- **MCP-деплоеры:** Vercel/Railway MCP — PaaS-only; доступ = весь аккаунт пользователя (не least-privilege); human-confirm — рекомендация клиенту, НЕ enforced-гейт (слабее нашего floor). K8s MCP-серверы требуют кластер; Red Hat AAP MCP — tech preview поверх всей платформы AAP; Coolify/Dokploy — смена модели хостинга на self-hosted-PaaS.
+- **Agentic CI/CD:** GitHub Agentic Workflows — public preview (2026-06-11), control-plane = GitHub SaaS даже при self-hosted runners; хорошая песочница (read-only default, firewall), но human-gate в извлечённых материалах не описан. Свежий инцидент claude-code-action (prompt-injection → чтение `/proc/self/environ` → exfil `ANTHROPIC_API_KEY`; фикс v2.1.128, разбор Microsoft Security 2026-06-05) — предметный урок о совмещении untrusted-input + секретов + внешних действий в одном агенте («Agents Rule of Two»).
+- **Dagger:** LLM-примитив нативный (с v0.17), но experimental, контейнер-центричный, встроенных HITL-гейтов нет; принятие = переписать pipeline на Dagger SDK.
+- **Kamal 2.12.0** (37signals, 14.4k звёзд, MIT, battle-tested на HEY, релиз 2026-06-18): сильнейший внешний кандидат по критерию self-hosted VM (SSH-based, «bare metal to cloud VMs», анти-lock-in), НО требует Docker-контейнеризацию + registry и не несёт агентного гейтинга. Кандидат на роль **механического слоя под нашими гейтами**, не замена контура.
+- **Safety-gating индустрии** (plan-approval / sync-approval необратимого / async-audit обратимого; policy = детерминированный код по actionType, не суждение модели; machine-approval with explicit bounds) — наш autonomy-резолвер + floor уже реализуют этот state-of-the-art, местами строже (floor непробиваем на всех уровнях, проверка в двух слоях). Внешнее подтверждение дизайна Epic E.
+
+**Decision.** (1) Internal deployer **подтверждён** как лучший доступный выбор под наши критерии (self-hosted VM без PaaS, непробиваемый prod-floor, handoff-совместимость): готового внешнего инструмента, проходящего критерии, на рынке 2026-07 нет. (2) Канон дополнен **SPEC Integrator §8.4 «Internal capability provider — санкционированный fallback»**: internal ≠ бесконтрактный (CNT + `source: internal` + те же verify-циклы), research-first обязателен, **событийный re-audit рынка** (для D3-05/06 триггер: «пилот контейнеризуется / появляется Docker-стек ⇒ переоценить Kamal-класс как механический слой»). Отвергнуто: немедленный перевод механики на Kamal — цена (контейнеризация пилота + registry + Ruby-тулчейн) сейчас выше выгоды чужого battle-tested слоя; выгода реальна, потому re-audit, а не never. Отвергнуто: считать тезис tool-agnostic нарушенным — он остаётся дефолтом; кодифицирована fallback-ветка.
+
+**Lessons.** (нумерация: 62 занята addendum'ом 0217 в PR #219)
+
+63. **Отход от заявленного принципа без рефлексии — дыра канона, даже когда отход верен по существу.** Правильные решения тоже требуют записанного «почему»: иначе следующий читатель тезиса «tool-agnostic D3-D6» либо прочтёт его буквально и откатит верный internal-выбор, либо молча размоет принцип дальше. Fallback-ветку принципа кодифицируй в момент ПЕРВОГО использования, а не когда её заметит аудит.
+64. **Перекос покрытия — типовой режим отказа фан-аут ресерча: «первые N из пула» съедает поздние углы.** Пул был упорядочен по углам, fetch-срез взял первые 18 → 4 угла из 6 остались без глубокого чтения, и это было видно только в логе распределения. Отбор источников в multi-angle ресерче — только round-robin/квоты по углам; распределение по углам логируй ДО запуска стадии.
+
+---
+
+## DEC-DEV-0219 — bg-extractor: блоклист зон сгнил дважды — 223 мусорных кандидата из перегенерированных handoff'ов; фильтр переведён на allowlist источников
+
+**Date:** 2026-07-17
+**Trigger:** перегенерация stale handoff'ов на пилоте (задание владельца): запись пяти свежих `handoffs/*.md` подожгла `bg-extractor.js`, который надёргал 223 BG-кандидата из шаблонных **лейблов** handoff-документа («Фича:», «Сегмент:», «Основная гипотеза:», …) — очередь bg-review распухла с 0 до 223 за один прогон.
+**Tag:** #product #hooks #bg-extraction #allowlist
+
+**Root cause.** Фильтр хука был **блоклистом**: исключал `.sessions/`, `.pending/`, `.decisions/`, `.da-findings/` и `glossary.md` — всё остальное под `.product/**/*.md` считалось источником. Блоклист сгнил дважды вживую: (1) `handoffs/` — производный документ (компиляция выжимок артефактов), каждый его термин уже живёт в source-артефакте, а шаблонные bold-лейблы дают чистый мусор; (2) `.design-sessions/` — рабочая dot-директория, из которой ранее пришли ghost-кандидаты FM-008 (DEC-DEV-0217). Осадок прошлых утечек виден и в `.bg-rejected.yaml` пилота: категории отклонений `markdown-header` / `option-label` — это тот же класс шума, который ревьюили руками вместо починки источника.
+
+**Fix.** Фильтр переведён на **allowlist** зон-источников: 13 типовых директорий артефактов + корневые синглтоны (кроме `glossary.md` — не извлекать из BG в BG). `handoffs/`, все dot-директории и любые будущие «не-source» директории отсекаются по построению, а не по перечислению. +5 юнит-тестов (`tests/product/bg-extractor-scope.test.cjs`): source-зона извлекает, handoffs/ и .design-sessions/ — no-op, glossary исключён, корневой синглтон извлекает. Smoke-hooks 47/47. На пилоте очередь вычищена (все 223 записи — от `HANDOFF-*` источников) и закоммичена.
+
+**Lessons.** (нумерация: 62 — в PR #219-фиксе коллектора, 63-64 — в PR #220)
+
+65. **Блоклист над растущим пространством гниёт по построению — скоупь побочные эффекты allowlist'ом источников.** Каждая новая директория под `.product/` молча становилась «источником глоссария», и цена ошибки платилась не автором директории, а ревьюером очереди (223 кандидата за один прогон; исторический след — целые категории ручных отклонений в `.bg-rejected.yaml`). Правило: hook, порождающий работу для человека, должен перечислять, ГДЕ он работает, а не где НЕ работает.
+
+---
+
+## DEC-DEV-0220 — аудит когерентности репо: 48 подтверждённых противоречий сводятся к одному корню; `check-counts` расширен на команды/хуки/скиллы/агентов (warn-режим)
+
+**Date:** 2026-07-17
+**Trigger:** задание владельца — массовый многоуровневый ресерч репо на противоречия с анализом достоверности, затем правки + механизмы под повторяемые прогоны.
+**Tag:** #meta #d7 #coherence #counts #audit
+
+**Что нашли.** 13 скаутов-agent'ов (opus) по классам противоречий → 51 независимый скептик (правило «при сомнении = REFUTED», обязательная дословная сверка цитат) → 34 CONFIRMED + 14 PARTIAL + 3 REFUTED, **0 фабрикаций цитат**, 0 critical. Полный реестр с координатами и системными корнями — `dev/COHERENCE_AUDIT_2026-07-17.md`.
+
+**Root cause — один на 48 находок.** Волатильный факт скопирован **прозой** в N мест, и ни один механизм не связывает копии с источником. Копии не «стареют»: они начинают лгать в момент коммита, который их не тронул. 48 находок = ~6 фактов (флип `lesson-presence-gate` warn→strict не доехал до ≥6 копий; ретайр skills-floor/DEF-CTX-5 не доехал до auto-loaded CLAUDE.md; пересуд 0204 не доехал до планов гейтов; счётчики команд/хуков; конвенция B.1; извлечение версии CHANGELOG).
+
+**Диагноз — лекарство уже было, но узкое.** D12 (DEC-DEV-0197) изобрёл pointer-collapse и объявил precedence, но **самоограничил её**: правило действует на «любое другое место ЭТОГО файла», поэтому копии в `CONVENTIONS.md` / `checklists/` / module-SPEC остались вне решётки SSOT. Инфраструктура реконсиляции при этом СУЩЕСТВУЕТ (5 генераторов с `--check` + 5 чекеров в `verify`) — дефект в её ПОКРЫТИИ, не в отсутствии.
+
+**Решение по автономности (ответ на вопрос владельца «как сделать автономными»).** Отвергнут автономный LLM-правщик: он чинит прозу «по своему пониманию» и порождает новый дрейф с погашенной сигнализацией — генератор дефекта под видом лекарства. Принята асимметрия: **обнаружение автоматизируется почти везде, правка — только там, где ответ вычислим из ground truth**. И принцип: **лучший механизм не ловит расхождение, а делает его невозможным** (генератор или указатель вместо копии). Периодический cron-аудит отвергнут: прогон стоил 4.7M токенов — LLM-аудит по требованию (ищет НОВЫЙ класс), детерминированные чекеры в `verify` — постоянно и бесплатно.
+
+**Сделано (S1).** `check-counts.js` расширен с 2 kinds (artifact/rule) до 6: `command` (+ per-namespace), `hook` (+ per-namespace), `skill`, `agent`, `pattern`-ground-truth. Ground truth вычисляется с диска; namespace'ы **обнаруживаются**, а не захардкожены. Найдено и исправлено 5 расхождений — 3 из реестра аудита (README integrator 9→13, product SPEC 22→23 команды и 12→13 hooks, integrator SPEC 12→13) и **1 новое, которого аудит не нашёл** (design SPEC 5→7 команд). Чекер зелёный, `--strict-extended` тоже зелёный ⇒ флип возможен.
+
+**Почему extended — warn, а не strict.** `check-counts` вызывается из `process-gate` — БЛОКИРУЮЩЕГО commit-msg гейта. Ложное срабатывание здесь не раздражает, а **останавливает все коммиты в репо, всем**. Core-паттерны заработали право блокировать за год; extended матчат свободную прозу и этого права ещё не имеют. Въезд warn'ом + флип за владельцем — та же схема, что у `check-inventory-sync.cjs` и `lesson-presence-gate.js`. Тумблеры: `--strict-extended`/`COUNTS_EXTENDED_STRICT=1`, `--core-only`/`COUNTS_EXTENDED=0`.
+
+**Lessons.**
+
+66. **Regex по прозе за инвентарным числом — по умолчанию мусорогенератор; спасает не «лучший паттерн», а КОНТЕКСТ.** Первый эмпирический прогон дал ~35 срабатываний, почти все ложные, и шум был поучителен: `### 14.1 Skills` → «1 skill», `A11 hook` → «11 hooks», `×2 subagents` → «2 agents», `§7.6 pattern` → «6 patterns». Вылечили не изощрением regex, а тремя контекстными правилами: цифра, склеенная с номером раздела/версии/идентификатором — никогда не тотал; заголовок — навигация, не заявление; **fenced-блок — пример вывода, не инвентарь**. Осталось 5 срабатываний, все настоящие, 0 ложных.
+67. **Guard, написанный «на всякий случай», ест ровно то, что должен стеречь — и делает это молча.** В foreign-guard попал `.claude/`, и он немедленно скрыл НАСТОЯЩУЮ находку («12 hooks … `.claude/hooks/product/`»): в ЭТОМ репо `.claude/` — целевой путь доставки своих же артефактов, а не чужой контекст. Симптом отсутствовал по построению — пропавшая находка не кричит. Правило: каждый guard проверяй на том, что он ОБЯЗАН пропустить, а не только на шуме, который он давит.
+68. **Неверный `expected` хуже молчания.** Пока `hook` в module-SPEC сравнивался с тоталом репо (19), чекер репортил дрейф на честной строке «12 hooks» продукта (правда — 13): читателя отправляли «чинить» корректное число неверным эталоном. Счётчик в доке модуля — про модуль; ошибка привязки дороже пропуска, потому что уничтожает доверие к гейту.
+69. **Омоним, который нельзя развести машинно, — вечный источник ложных: не покрывай его, а признай.** Слово «pattern» в репо значит минимум три вещи (D7-паттерны, словарь анти-паттернов линтера, regex) — kind `pattern` для сканера прозы выброшен сознательно, счёт паттернов остаётся человеку. Честно объявленное непокрытие лучше гейта, который врёт (тот же закон, что «чекер ослеп ≠ нашёл дрейф»).
+
+70. **Находка №27 сработала на своём же авторе — в том же коммите, что её описал.** Расхождение `precedence-dup-1` (CONVENTIONS §11.1 «каждое смёрженное изменение несёт запись в CHANGELOG» ↔ SSOT-таблица CLAUDE.md «CHANGELOG только если тронут consumer-zone») я зафиксировал в реестре — и тут же **пошёл по неверной стороне**: положил в `[Unreleased] ### Added` расширение `check-counts.js`, то есть dev-only скрипт из `dev/`, который по канону «не попадает в пользовательские проекты» и потребителя не касается вообще. Поймал не гейт (`CONVENTIONS` его не принуждает, а `process-gate` требует CHANGELOG лишь при consumer-zone — то есть **обе стороны молчали**), а владелец вопросом «released/unreleased — это разве не про изменения, идущие в продукт?». Запись убрана, суть осталась здесь. **Цена расхождения измерена:** оно не теоретическое — стоит одной неверной записи в release notes на каждый эпизод, и ловится только человеком. Это переводит **S5** («снять самоограничение D12» + кросс-файловый sweep дублей обязательств) из «гигиена» в «есть жертвы»: правило, записанное дважды, не просто расходится — оно **активно уводит исполнителя**, потому что исполнитель читает ту копию, которая ближе. Практический вывод: **тест «а увидит ли это потребитель в поставке?» сильнее любой из двух формулировок** — и при следующей правке CONVENTIONS §11.1 должен схлопнуться в указатель на SSOT-таблицу, а не в третью редакцию.
+
+---
+
+## DEC-DEV-0220-a — флип extended-видов `check-counts` warn→strict (решение владельца)
+
+**Date:** 2026-07-17
+**Trigger:** решение владельца «флипай strict» после того, как warn-цикл S1 (DEC-DEV-0220) вернулся чистым.
+**Tag:** #meta #d7 #counts #gate #flip
+
+**Решение.** Extended-виды (`command`, `hook`, `skill`, `agent`) блокируют по умолчанию. Аварийный тумблер — `--warn-extended` / `COUNTS_EXTENDED_STRICT=0`; полное отключение — `--core-only` / `COUNTS_EXTENDED=0`. Флаг `--strict-extended` принят как no-op: он теперь дефолт, но живёт в уже смёрженной прозе CHANGELOG/журнала и в мышечной памяти — молча отвергать его невежливо.
+
+**Почему тумблер обязателен, а не «на всякий случай».** `check-counts` вызывается из `process-gate` — блокирующего `commit-msg`. Это **общий ресурс**: ложное срабатывание останавливает коммиты всем, а платит не тот, кто сломал. Репо уже кодифицировало этот закон для `INVENTORY_SYNC_STRICT=0` («гейт на общем ресурсе без выключателя однажды склинит чужой цикл»); флип без выключателя нарушил бы его.
+
+**Как проверено — адверсариально, а не «зелёным».** Зелёный прогон не доказывает, что гейт умеет падать. Подсунут заведомо ложный счётчик (`README.md`: `/integrator:* (77 команд)` при ground truth 13) и снят код возврата в трёх режимах: дефолт → **exit 1** (блокирует, находка названа с координатой), `--warn-extended` → exit 0, `--core-only` → exit 0. README восстановлен, `git diff` пуст.
+
+**Побочный улов — правило поймало собственного автора (снова).** Свежайшие ложные копии режима нашлись **внутри `check-counts.js`**: комментарий `// ── EXTENDED (warn-only by default) ──` и «`--strict-extended` is only earned by a quiet warn period» — обе строки стали ложью в момент флипа, в том же файле, что флип и делает. Это ровно корень аудита («волатильный факт скопирован прозой; копия устаревает в момент коммита, который её не тронул»), проявившийся на дистанции 120 строк от точки изменения. Вывод не «быть внимательнее», а структурный: **режим обязан спрашиваться у кода** — `--json` отдаёт `extended_mode`, и `patch-cut.md` теперь ссылается на него вместо того, чтобы пересказывать («не переписывай сюда, спроси у скрипта»).
+
+**CHANGELOG намеренно НЕ трогаем.** `check-counts.js` живёт в `dev/`, который по канону «не попадает в пользовательские проекты» — потребитель этот гейт никогда не запустит. Это первое применение урока 70 по назначению.
+
+**Lessons.**
+
+71. **Зелёный гейт и работающий гейт — разные утверждения; флип обязан доказывать второе.** «Прогон чистый» доказывает лишь отсутствие ложных срабатываний — то есть что гейт **молчит**. Что он **умеет падать** на настоящем дрейфе, доказывает только инъекция заведомой ошибки с проверкой кода возврата. Дешёвый тест поймал заодно и мою собственную ошибку измерения: первый прогон отчитался `exit=0` на подложном счётчике, потому что `$?` за пайпом вернул код `head`, а не `node`. Я едва не записал «strict не блокирует» как факт о гейте, хотя это был факт о моём тесте. **Инструмент измерения проверяй прежде объекта измерения** — иначе адверсариальная проверка выдаёт ложное опровержение, а оно дороже пропущенной находки: снимает подозрение с настоящего дефекта.
+
+---
+
+## DEC-DEV-0220-b — кластер warn→strict: 6 копий ship-default приведены к коду
+
+**Date:** 2026-07-17
+**Trigger:** волна A аудита когерентности; кластер «флип `lesson-presence-gate` warn→strict».
+**Tag:** #meta #d7 #coherence #enforcement
+
+**Что было.** Флип 2026-07-11 (DEC-DEV-0177) обновил код и manifest. Ship-default при этом описан прозой ещё в 6 местах — и **все шесть остались на «warn»**: скилл `self-correction.md`, `docs/pmo/processes.md`, `commands/ecosystem/verify.md` Step 8.5, overlay гида (→ 2 сгенерированных HTML), комментарий внутри самого хука.
+
+**Почему это хуже обычного дрейфа — врали в опасную сторону.** Не «число разошлось», а «доки обещают напоминание там, где вызов будет ОТКЛОНЁН». Три отдельных проявления, каждое своего класса:
+- `processes.md` описывал `LESSON_GATE_MODE` **зеркально коду** — как включатель deny (`=strict` enables), хотя это выключатель (`=warn` понижает). Читатель, применивший доку буквально, получил бы ровно обратный эффект.
+- `verify.md` Step 8.5 инструктировал считать warn **ожидаемым** и не флагать его — то есть **гасил сигнал о настоящем даунгрейде**. Причём шаг противоречил собственному телу (:182-186 уже требуют флагать warn/off). Гейт, инструктированный не замечать обход, хуже отсутствующего гейта: он создаёт ложную уверенность.
+- Ложный комментарий нашёлся **внутри самого хука**, в 40 строках от кода, который его опровергает.
+
+**Ordering-правило отчёта («не править кластер вручную до S4») — сознательно отклонено, вот почему.** Правило исходило из посылки, что S4-генератор **заберёт эти копии себе**. Проверка структуры показала: посылка неверна. Это не поля таблицы, а проза в шести разнородных документах (скилл, промпт команды, SPEC, JSON-overlay, комментарий в коде) — генератор её не может *владеть*, он может только *проверять*. Значит правка сейчас не «работа, которую S4 переделает», а необходимая в любом порядке. Оставлять доки лгать, пока строится чекер, — хуже. **Урок для самих ordering-правил:** правило порядка, выведенное из непроверенной посылки о механизме, обязано пересуживаться, когда посылку проверили; S4 при этом не отменяется — он нужен, чтобы **следующий** флип поймал копии автоматически.
+
+**Грабля инфраструктуры (стоила бы красного verify).** `docs/guide/ecosystem-map.overlay.json` — источник **двух** генерируемых HTML: `gen-ecosystem-map.cjs` и `gen-process-map.cjs` (второй читает тот же overlay, хотя имя файла об этом не говорит). Правка overlay без `npm run gen:map && npm run gen:procmap` роняет `verify` на STALE. Обнаружил субагент-верификатор; проверено — оба чекера в цепи `verify`.
+
+**Lessons.**
+
+72. **Кросс-классовое сканирование считает один дефект несколько раз — «сколько находок» и «сколько работы» не одно и то же.** Кластер `CLAUDE.md` пришёл как 5 находок с разными id, а оказался **2 правками**: три id (`deferred-lifecycle-3` = `gate-code-vs-doc-2` = `inventory-sync-4`) указывали дословно на одну строку, два — на другую. Это не ошибка скаутов: один и тот же дефект законно виден из нескольких классов (он и «отложенное, что построено», и «гейт против доки», и «инвентарь-синк»). Но при учёте это даёт **фантомную работу**: закрыв 2 строки, видишь «3 находки не сделаны» и идёшь их искать. Дедуп по координатам обязан идти ДО планирования объёма, а не после; и планировать надо по **строкам-жертвам**, а не по id находок.
+
+---
+
+## DEC-DEV-0220-c — вердикты гейтов схлопнуты в указатели; баг поставки «version Unreleased» устранён
+
+**Date:** 2026-07-17
+**Trigger:** волна A аудита когерентности; кластеры «вердикты гейтов» (S3) и «извлечение версии» (S7).
+**Tag:** #meta #d7 #coherence #gates #delivery
+
+**S7 — единственная находка аудита, которую видел пользователь.** `install.sh` печатал «Ecosystem 3.0 installed globally (**version Unreleased**)»: `grep -m1 '^## \['` брал первый заголовок CHANGELOG, а первым всегда стоит `## [Unreleased]`. Тот же дефект в `install.ps1` и в промпте `bootstrap.md` («read from CHANGELOG first entry» → штампует `ecosystem_version: Unreleased` в свежий пилот, и `/ecosystem:verify` обязан ловить это как version drift). Воспроизведено живьём на **обеих** платформах, фикс проверен там же: было `Unreleased` → стало `1.12.1`; CHANGELOG без версий → `unknown`.
+
+**Латентный дефект сверх реестра.** `|| echo "unknown"` в `install.sh:76` **мёртв**: код возврата пайпа берётся от `sed`, а тот всегда 0. На CHANGELOG без выпущенных версий печаталось бы пустое значение («version .»), а не `unknown`. Фолбэк, который никогда не срабатывает, — хуже отсутствующего: он создаёт видимость обработки края. Заменён явным `[ -n "$VERSION" ]`.
+
+**Почему «общий хелпер» из формулировки S7 — неверная цель (вывод против собственного плана).** `install.sh`/`install.ps1` — standalone-бутстрапперы: исполняются ДО того, как что-либо установлено (нет `.claude/`, нет `node_modules`, Node не гарантирован — сам факт двух установщиков и есть признание, что общего рантайма на входе нет). Хелпер требует ровно того рантайма, которого на этом шаге ещё нет. При этом **само правило — один регекс в ~30 символов**: дублировать его вчетверо дешевле любой машинерии шаринга. Настоящая болезнь не дублирование, а **дрейф**: правильная реализация уже существовала в `update.md` в обоих языках (bash + PS) и просто не доехала до установщиков. Поэтому вместо хелпера: `update.md` Step 5c объявлен референсом, три остальных сайта несут указатель на него. Гейт, если строить, — **на поведении** (исполнить извлечение и сравнить с ground truth), а не грепом исходников на «правильный регекс»: текстовый чекер стал бы **пятой копией правила** и разошёлся бы следующим.
+
+**S3 — линия реза найдена эмпирически, а не по формулировке.** Правило «план не держит inline-копию вердикта» звучит абсолютным, но проверка показала исключение: трекер кампании **заархивирован**, и шапки `PATCH:3` / `PHASE_6:5` — **единственный дом** вердиктов догонов E1/E2. Значит рез не «убрать все копии», а: **вердикт живёт там, где у него нет другого дома; всё остальное — указатель**. Схлопнуты: баннер + Status-колонка `PATCH_1.3.3`, придаточное `PHASE_6`, и **третья копия** в `SUBSTRATE_GRADUATION_GATE.md:107-108` — файл, который строкой выше (`:101`) **сам объявляет** бриф своим SSOT и тут же ему противоречит. Идеальная иллюстрация корня: **указатель рядом с копией не мешает копии устареть**.
+
+**Релиз 1.12.1 обострил дефект, а не создал.** Он добавил в оба плана новые ЗАКРЫТ-шапки с верными вердиктами и не тронул старые баннеры — файлы стали противоречить **сами себе** (`PATCH:3` = «S1 PARTIAL» против `:13`/`:17` = «S1 PASS»). `PHASE_6` не упоминает пересуд 0204 **ни разу**. Это ровно предсказание аудита: копия устаревает в момент коммита, который её не тронул.
+
+**Lessons.**
+
+73. **Правило, выведенное из формулировки решения, обязано пересуживаться против фактов — иначе оно вредит именно там, где звучит убедительнее всего.** Три моих собственных плановых правила пали при столкновении с диском: (а) «не править warn→strict до S4» — S4 не может владеть прозой в 6 разнородных доках, только проверять; (б) «общий хелпер версии» — невозможен, установщики стартуют без рантайма, а правило = один регекс; (в) «pointer-collapse вердиктов» — абсолютный рез уничтожил бы единственный дом вердиктов E1/E2. Все три звучали как выводы, а были **гипотезами о структуре**, написанными до её проверки. Симптом один: план говорит «сделай X везде», а диск отвечает «здесь X разрушителен». **Гипотезу о механизме проверяй на структуре ДО того, как она станет правилом порядка** — иначе цена ошибки платится не спором, а сделанной не той работой.
+
+---
+
+## DEC-DEV-0220-d — решения D-1..D-4 по мандату владельца + три дефекта собственного шва
+
+**Date:** 2026-07-17
+**Trigger:** «прими оптимальные решения и зафиксируй в шве» + «убедись, что шов содержит всё необходимое».
+**Tag:** #meta #d7 #coherence #seam #decisions
+
+**Решения (полное обоснование — `dev/coherence/SEAM.md` §Решения).** Все четыре приняты ПОСЛЕ проверки фактов на диске, и **две проверки перевернули предварительный вывод**. Вопросы выглядели как выбор из формулировок, а оказались вопросами о фактах — именно поэтому не были приняты «на лету» в первом заходе.
+
+- **D-1. Тело PS → к канону.** Решил факт: заголовки канона **литеральные**, его собственный «Good»-пример несёт ровно `## Problem` / `## Context` / `## Current alternatives` / `## Consequences` / `## Why now`. Секцию «Что мы хотим изменить» в канон не поднимаем — она **дуал `Consequences`**. Настоящая дыра не в именах: скилл **никогда не производит `Why now`** — это недостающий вопрос к пользователю, а не переименование. Пилот не ломается: тело PS не валидируется никем.
+- **D-2. `stale-refs-3` → закрыть вопрос.** Не архитектурное решение — **запись уже принятого** (DEC-DEV-0040 Q2, 2026-05-25, три источника). Минимальный вариант (починить только путь) **хуже**: даёт рабочую ссылку на документ, опровергающий ведущее к нему предложение.
+- **D-3. Узаконить `### Changed`, `Modified` → legacy.** Расходятся не «доки vs файл», а **доки vs собственный объявленный стандарт**: `CHANGELOG.md:5` объявляет Keep a Changelog, где `Changed` штатная, а `Modified` выдумана. Ретроспективно не переименовываем — выпущенные секции append-only. Словарь объявить в ОДНОМ месте (SSOT-таблица), копии в `CONVENTIONS`/`patch-cut` схлопнуть вместе с S5 — **обновить копию = отложить дефект, а не снять**.
+- **D-4. V-09 — вопрос был меньше дефекта.** `V-09: SEG has exactly 1 VP` — 🔴 **Blocking**, `Automation: ✅ Fully`, `When: Approve gate (SEG)`. А конвейер: «After G4 → SEG active» → «Next steps: D1.4a VP design **per active SEG**». **Блокирующее правило требует на G4 артефакт, который конвейер создаёт шагом позже.** Порядок инвертировать нельзя (дизайн VP потребляет одобренный SEG) ⇒ невыполним не конвейер, а **момент проверки**: чекпойнт V-09 переносится на выход D1.4a, инвариант 1:1 не меняется. **Вытекшая находка:** если бы V-09 реально принуждалось на G4 — каждый approve сегмента падал бы, а сегменты у пилота есть ⇒ либо правило не реализовано (🔴-правило, которое никогда не срабатывает — прецедент «пронга с нулём читателей», DEC-DEV-0198), либо реализовано не там, где заявлено. Проверить ДО правки канона: от этого зависит, чинится документ или код.
+
+**Три дефекта нашлись в моём собственном шве — и ни один не нашёлся бы перечитыванием.**
+1. **Шов отправлял за правками «в транскрипт сессии»** — место, недоступное продолжателю по построению (харнесс прямо предупреждает: чтение переполнит контекст). Верификация 8 кластеров стоила ~750k токенов и **сгорала бы при каждом продолжении**. Вынесено на диск: `dev/coherence/VERIFIED_FIXES.md`.
+2. **Не было маркера `<!-- SEAM-REINJECT-END -->`** — единственный активный шов без него (у обоих соседних есть) ⇒ инъекция резалась фолбэком на 40-й строке, посреди таблицы.
+3. **СТОП-блок 3562 Б** выедал общий кап 6 КБ. Ужат до 2703 Б.
+
+**Lessons.**
+
+74. **Написанное для передачи проверяется прогоном приёмника, а не перечитыванием.** Я перечитал свой шов и счёл полным — он был неисполним по трём независимым причинам сразу. Все три вскрылись за минуты, когда я **запустил хук** и **сверил с соседними швами** вместо того, чтобы верить тексту. Автор не может прочитать свой документ глазами того, у кого нет его контекста: я знал, что правки «в транскрипте», и это ощущалось как знание, а не как тупик. **Приёмник артефакта передачи — механизм или другой агент; тест — его прогон.** Частный случай общего закона трека: результат работы субагента, не записанный на диск, **не существует** — ссылка на транскрипт не передача знания, а его потеря с отсрочкой.
+
+75. **Я раздул собственную находку — и поймал это не сам.** Кап ре-инжекции я пометил 🔴 и написал «механизм **молча** теряет то, что обязан донести». Вопрос владельца («а на что это влияет? я же могу вставить шов как есть?») заставил проверить: кап трогает **только** авто-бэкстоп после компактации — не ручную вставку, не чтение файла, не обязательное чтение по Process triggers; и теряет **не молча** — обрезка **называет невлезшие файлы поимённо**, то есть контент деградирует до указателя. Реальный вред: сессия чужого трека получит в инъекции мой СТОП-блок + указатель на свой — шум и лишний шаг, а не потеря. **Найдя дефект, я оценил его по драматичности формулировки, а не по радиусу**; и вписал раздутую оценку в документ, который обязан быть надёжным, — ровно тот класс дефекта, что лечит трек. Правило: у находки первым делом меряется **радиус** («что перестаёт работать, если не чинить») — до того, как выбран цвет и наречие.
+
+---
+
+## DEC-DEV-0220-e — волны B+C трека когерентности: правки реестра применены, V-09 перенесён на исполнимый чекпойнт, S2 link-checker в verify, S5 кросс-файловая precedence
+
+**Date:** 2026-07-17
+**Trigger:** мандат владельца «доведи трек автономно» (волна A смёржена PR #224, решения D-1..D-4 — PR #225).
+**Tag:** #meta #d7 #coherence #validation #enforcement
+
+**Правки реестра (по `dev/coherence/VERIFIED_FIXES.md`, применение без пере-верификации).** Кластеры terminology (4), spec-vs-impl (5, #1+#5 связкой — фантом `replace` и неучтённый `provision` компенсировали друг друга в «13 команд»), stale-refs (5 live + precedence-dup-5 в INFORMATION-MAP), PHASE_4 R1 → `[FIXED]` (паттерн создан 0064; E1 не флипнут — enforcement-ноги нет), B.1 ×4 скилла (vp-design / segment-discovery / design-session NM+MK / problem-discovery тело PS + Why-now вопрос). Исполнение — 5 opus-субагентов по точным брифам + main-правки, спот-чек каждого несущего утверждения на диске.
+
+**D-4 / V-09 — ответ на вопрос шва «документ или код»: ОБА.** Правило реализовано (`artifact-validate.js` PostToolUse + реплика в `effect-probe.js`) и срабатывало на записи active-SEG — т.е. ровно на G4, где конвейер удовлетворить его не может (VP создаётся на D1.4a). Хуже: **обратную ссылку SEG.value_proposition не писал вообще никто** — `vp-design.md` не имел шага backfill. Т.е. 🔴-blocking правило было (а) невыполнимо в момент проверки и (б) невыполнимо вообще, потому что заполнение поля не входило ни в один процесс. Перенос чекпойнта: inline-нога хука теперь проверяет активный VP на `segment` (single-file, выполнимо на D1.4a); corpus-нога (`effect-probe`) ловит missed-backfill (VP для SEG существует, ссылка не проставлена); `vp-design.md` получил обязательный backfill-шаг на G4a-approve. Урок в копилку 0198: **правило, которое никогда не может сработать зелёным путём, эквивалентно отсутствующему — но опаснее, потому что числится защитой.**
+
+**S2 link-checker — построен, strict, в цепи `verify` (`check:links`).** Вариант A (только markdown-ссылки; code-span'ы — отказ по измеренным 60% точности). Тумблер `LINK_CHECK_STRICT=0`/`--warn`; «ослеп ≠ нашёл» (внутренние ошибки → warn + exit 0). Адверсариально: чистый корпус exit 0, инъекция битой ссылки exit 1 с координатой, тумблер exit 0, инъекция убрана. Первый прогон на корпусе: 37 срабатываний → разобраны на 4 класса: (1) плейсхолдеры/примеры синтаксиса → в скрипт добавлены skip fenced-блоков и inline code-span'ов (урок 66: «fenced-блок — пример, не инвентарь») + skip `<...>`-целей; (2) корпуса-улики этого же трека (`dev/coherence/**`, `dev/COHERENCE_AUDIT_*.md` — old_string-цитаты обязаны нести пути как-были) + снапшоты (`audit-reports/**`, `patch-candidates/**`) → exclude с обоснованием у каждой строки; (3) 10 настоящих битых ссылок (PHASE_D ×2, SUBSTRATE_GRADUATION_GATE, LOOP_READINESS_AUDIT ×2, audit-watch, PHASE_4, + 3 из кластера stale-refs, которые чекер переоткрыл) → починены; (4) `CLAUDE.md → RAILS.md` — цель ГЕНЕРИРУЕТСЯ на SessionStart и легитимно отсутствует в свежем чекауте → allowlist `GENERATED_TARGETS` (отсутствие ≠ гниль). Итог: 257 файлов / 801 ссылка / 0 срабатываний, verify зелёный.
+
+**S5 — самоограничение D12 снято, 12 дублей схлопнуты.** Precedence-правило №2 в CLAUDE.md теперь кросс-файловое («таблица > любое место этого файла И любого dev-дока») **с явной границей**: предметные каноны (artifacts/, patterns/README, validation.md, tech-debt/) НЕ поглощаются — без границы правило объявило бы CLAUDE.md владельцем всего репо. Схлопнуто: accumulation-контракт (CONVENTIONS §11.1 + patch-cut ×2 — квантор «каждое смёрженное» был строже кода и уже увёл исполнителя, урок 70), memory-sync «manual» ×3 (§3/§4/§6 — перевёрнуто DEC-DEV-0100), ростер паттернов ×3 (§2/§3/§7 — «5»/«8» против факта 9; чекер сознательно НЕ строится, омоним), consumer-zone membership в CLAUDE.md (был у́же кода — добавлены `.env.template`/`gitignore.template` + указатель на регекс). D-3 исполнён этим же заходом: словарь секций CHANGELOG = `Added | Changed | Fixed` объявлен в SSOT-таблице (единственном месте), `Modified` в [1.10.0] — археология. Первая запись `### Changed` — V-09 из этого же коммита.
+
+**Остаток трека (событийные, не блокеры):** S4-чекер карты принуждения и S6-чекер B.1 (`creates:`-frontmatter ~24 скиллов + починка фантомов `## Related Skills`) — отдельные единицы работы, вход warn-only по инварианту 4; незарегистрированные B.1-нарушители сверх реестра: `market-research-protocol-quick.md`, `competitive-analysis-protocol-quick.md`, `app-map-generate.md` (канонические типы MR/CA/AM всё ещё без шаблона) — поймает S6; кросс-трековая передача про кап ре-инжекции швов — в semantic-continuity.
+
+---
+
+## DEC-DEV-0221 — R0 исполнен: термин «Release DoD» в каноне RL + опциональная 6-категорийная body-секция (soft)
+
+**Date:** 2026-07-17
+**Trigger:** Волна 0 трека Global Loop (`dev/global-loop/SEAM.md` «Следующий шаг» п.2); первый автономный прогон кондуктора RUN-2026-07-17-A (директива владельца: довести первый релиз пилота до конца на dev-контуре, кондуктор — Claude-сессия ecosystem).
+**Tag:** #release-dod #global-loop #rl #canon
+
+### Decision
+
+Mini-readiness (паттерн `readiness-gate.md`, 3 решения под уже ратифицированными D1/D3 из DEC-DEV-0216):
+
+1. **Дом термина — body-секция спеки `docs/pmo/artifacts/RL.md`, не frontmatter-поле.** Чеклист — табличный артефакт со ссылками на SSOT-источники; вложенная frontmatter-структура дала бы валидационную цену (schema, anti-drift) без R1-машинерии, которая её окупит. Glossary руками не правится — генерируется (`gen:glossary`).
+2. **Форма — таблица 6 категорий с обязательной колонкой «Источник вердикта (SSOT)»** — ссылочность принуждается формой (пустой источник виден сразу), а не тоном. Статусы ✅/🟠/❌, `N/A` только с письменным обоснованием в строке.
+3. **Lifecycle-семантика soft:** при НАЛИЧИИ секции флип в `released` легитимен только «зелёный DoD + owner ratify»; отсутствие секции == прежнее поведение 1:1 (канон DEC-DEV-0079). Отвергнуто: обязательная секция (ломает soft-канон и задним числом дисквалифицирует живой RL-001 пилота); упоминание будущей команды `/product:release-dod` по имени в консумер-доке (команды не существует — класс «фантомных ссылок» из аудита DEC-DEV-0220, R1 описан безымянно как «детерминированный агрегатор — этап R1»).
+
+**Impact:** дыра «термин DoD не существует» (`dev/release-dod/TRACK.md` §3.1) закрыта; Волна 0 получает канонический критерий остановки релизного цикла; R1 разблокирован семантически. Ручная проверка DoD на живом RL-001 пилота — следующий шаг прогона RUN-A (дизпатч на VM, результат — в `dev/global-loop/ASSIST_LOG.md`).
+
+---
+
+## DEC-DEV-0222 — Онбординг-пак хост-сессии (кондуктор): прогрев L0-L2 из живых файлов + правило coverage-check интенций владельца
+
+**Date:** 2026-07-19
+**Trigger:** запрос владельца: (1) «загрузка всегда актуального онбординга по экосистеме» в выбранную хост-сессию, управляющую VM-сессиями (длинные сессии, мало собственного контекста; разово до 20% окна допустимо, + указатели для дообучения); (2) правило «прежде чем строить по моему предложению — проверь, покрыта ли интенция AS IS».
+**Tag:** #global-loop #host-console #knowledge-plane #onboarding #process-triggers
+
+### Decision
+
+**Coverage-check самой интенции (первое применение нового правила):** покрыто частично — K0-лестница добора (CONDUCTOR.md §Knowledge plane, ратифицирована 0216) + работающие механизмы context-map/rails дайджестов и генерируемых каталогов; guide-хаб (0130) — онбординг для человека. НЕ покрыто: разовый префетч выбранной хост-сессии одним действием с бюджет-контролем. Построена именно дельта.
+
+**(1) `dev/meta-improvement/scripts/host-onboard.cjs`** (zero-deps, read-only, tolerant): сборка пака в stdout из ЖИВЫХ файлов при каждом запуске — шов+план global-loop, `factory-conductor/CONDUCTOR.md`, хартии host-console/release-dod, `INFORMATION-MAP.yaml`, генерируемые каталоги (команды+глоссарий), гейты+fabric, VM-грабли (память `env_vm_claude_factory` + глобальный скилл `vm-factory-ops`, с капами) + секция deepdive — L3-указатели «когда понадобится → открой». Заголовок несёт три закона (ответ без SSOT-указателя = не ответ; version-skew; «пак отстаёт — статус верифицируй git+журналом») и бюджет-таблицу секций; `--list`/`--only`/`--skip`/`--budget` (дефолт-cap 40k ток. ≈ 20% окна — потолок владельца; фактический дефолт-состав ~38k). Ничего не пишется на диск — это НЕ зеркало доков (K0 «резолвером и генерацией, не пересказом» соблюдён: пак и есть генерация on-demand). Отвергнуто: SessionStart-хук с env-гейтом (выбор «эта сессия — кондуктор» и так явный акт владельца; команда честнее авто-инжекта и не жжёт окно обычных сессий — event-gated, вернёмся, если ручной запуск начнут забывать); статический ONBOARDING.md-файл (копия = дрейф); включение в пак 08-skills и 00-concepts (скиллы исполняют VM-сессии, тезис/пайплайн уже авто-инжектится context-map дайджестом — вынесены в deepdive ради бюджета).
+
+**(2) Правило coverage-check** — строка в SSOT-таблице «Process triggers» CLAUDE.md: на предложение владельца об изменении/улучшении экосистемы — ДО дизайна карта «интенция ↔ что уже есть» (rails + INFORMATION-MAP + grep + deferred/tech-debt + хвост журнала; объёмное — recon-субагенту), покрыто/частично/нет с указателями. Rationale владельца дословно: «я быстрее развиваю экосистему, чем успеваю запомнить, что именно я создал»; аналог ITP для improvement-запросов, цель — общее понимание соотношения интенции и фактической реализации, не бюрократия (тривиальные правки — не триггер).
+
+**Impact:** Волна 0 получает штатный прогрев сессии-кондуктора (PLAN.md §1-bis дополнен, SEAM.md «Состояние» актуализирован — включая догон факта «R0 исполнен» из PR #229, который шов не отражал); новые предложения владельца проходят AS IS-проверку по правилу таблицы. Декларация доступов сверх обязательных чтений шва (v3): recon-субагент по репо (инвентаризация онбординг-механизмов + размеры файлов), grep/чтение DEV_JOURNAL (0216, 0221), `ls dev/global-loop`, прогоны собранного скрипта.
+
+**Addendum (2026-07-19, та же единица) — авто-активация: env-гейт хук + слэш-команда (запрос владельца после сдачи v1).** Ручной запуск оставлен, добавлены два пути: **(а)** SessionStart-хук `dev/meta-improvement/hooks/host-onboard-session-start.js` — fires только при `CONDUCTOR_SESSION=1` (обычные сессии — тихий exit 0); ветвление по `source`: startup/clear → полный цикл, compact → короткое напоминание-указатель, resume → тишина; регистрация в `.claude/settings.local.json` (локальная — файл не коммитится, JSON-сниппет в шапке хука); **(б)** проектная слэш-команда `/host:onboard` (`.claude/commands/host/onboard.md`, прецедент трекинга — `/meta:audit-smoke`). **Ключевой конструктивный факт (добор через claude-code-guide, docs hooks.md):** лимит вывода хука ~10k символов, Bash-тул режет ~30k — полный пак (~178KB) через них не проходит ⇒ оба пути переведены на паттерн **«пак → temp-файл → императив Read»** (`--out [файл]` в скрипте, дефолт `%TEMP%/claude-host-onboard-pack.md`; Read без обрезки, пак 1557 строк < 2000-строчного дефолта Read). Скрипт отрефакторен: `buildPack()` экспортирован, CLI через `require.main`. Тест-грабля зафиксирована: `echo '{...}' | node hook.js` в PowerShell 5.1 не доносит stdin до `readFileSync(0)` (хук падал в дефолт-ветку startup) — ветвление по source проверяй `spawnSync(...,{input})`, как передаёт харнесс; сам паттерн чтения идентичен боевому `seam-reinject-compact.js` (config-failure-first-triage: сначала тест-канал, потом код).
+
+---
+
+## DEC-DEV-0223 — курс Tech-Uplift: PLAN+VISION расширенного стека (PROPOSED)
+
+**Date:** 2026-07-19
+**Trigger:** заказ владельца после ландшафтного ресерча 2026-07-19 (27 решений, адверсариальные пробы уникальности): план заимствования сильных сторон корпуса + vision выхода функциональных блоков за пределы Claude Code; north-star дословно — «реальный AI PMO с отличным качеством работы». Интейк-развилки закрыты владельцем: стек = гибрид-ядро + control-plane + EoS по фазам («подобрать под процессы, функции и правила наиболее подходящую и надёжную инфраструктуру»); архитектура — ЕДИНАЯ с Кондуктором; аппетит — сразу структурный переход.
+**Tag:** #tech-uplift #vision #architecture #landscape-research
+
+### Decision
+
+Созданы `dev/tech-uplift/VISION.md` + `dev/tech-uplift/PLAN.md` (status: PROPOSED — ратификация владельцем при merge; исполнение волн — отдельными единицами).
+
+**Coverage-check (первое полноформатное применение правила DEC-DEV-0222, recon-субагент по 9 под-интенциям) перевернул несущий ход плана:** вместо greenfield-рантайма — **генерализация уже построенного оркестраторного ядра** (`orchestrator/lib/fabric-engine.cjs` — event-sourced ndjson + materialized + bit-for-bit replay; `autonomy-policy.cjs` — чистая gate-функция с уроком 0201; `run-ledger.cjs`) в пакет `pmo-core` + ровно три чистые ниши без фундамента в репо: eval-фреймворк скиллов, собственный MCP-интерфейс методологии, token circuit-breaker. Валидатор артефактов оказался ПОКРЫТ сильнее ожиданий (44 правила + artifact-validate.js + validation-runner + check-validation-sync) — заимствование MoAI-линтера сужено до JSON Schema-проекции + fixture-тестов (кандидат v1.1 backlog) + роста automation-покрытия.
+
+**Ключевые выборы и отвергнутые альтернативы:**
+- **Гибрид, не ре-хостинг.** Premise-check тезиса «CC уже не про мои задачи» (по [[feedback_substrate_premise_verification]]): подтверждён точечно — CC не подходит там, где LLM-слою поручена работа рантайма (гарантии/состояние/счётчики/параллелизм); слой суждений (D1/D2, ресерч) остаётся в CC. Полный уход с CC ОТВЕРГНУТ (цена огромна, выгода нулевая). Критерий выноса функции формализован: детерминизм ∨ межсессионность ∨ межхарнессность, доказуемо.
+- **MCP-интерфейс вместо немедленного EoS.** Межхарнессность на уровне интерфейса за ~20% цены; полный EoS (GSD-класс, capability-registry + адаптеры) — Волна 4, trigger-gated (публикация ∨ второй харнесс). ОТВЕРГНУТ немедленный EoS.
+- **Единая шина событий с Кондуктором.** Контракт события проектируется ДО кода обеих сторон (T1.3), совместим с планируемым `events.jsonl` global-loop Волны 3; второй event-store ОТВЕРГНУТ (два источника истины = дрейф по построению). Вклады в Кондуктора (Convoy-чекпойнты, ready/blocking-очередь, TCB) адресуются в существующие волны global-loop, H-фазы — только по «го» владельца; standalone control-plane в экосистеме ОТВЕРГНУТ (дублирует дом 0216).
+- Прочее отвергнутое с причинами — PLAN §1 (GUI, крипто-witness, Bayesian promotion, preference-learning, свайп-контроль).
+
+**Impact:** у трека появился дом `dev/tech-uplift/`; Волна 1 = экстракция ядра → схемы артефактов → event-контракт+state → FSM фаз (self-strict/shipped-soft ландшафта — наш же диагноз: продуктовый workflow до сих пор на промптах) → CLI+MCP; гейт волны — смоук на пилоте, soft-миграции по канону §6. Ресерч-связка: выжившая уникальность («тройка» D1-глубина + handoff + code-enforcement) усиливается ровно этим слоем.
+
+**Lesson (в копилку 0222):** coverage-check отработал по назначению с первого боевого применения — recon нашёл готовое ядро там, где план собирался строить с нуля, и сузил 2 из 9 заимствований до дельт. Цена — один sonnet-recon (~3 мин); сэкономленное — недели дублирующей стройки. Правило «интенция ↔ что уже есть» подтверждено как обязательный вход крупного дизайна.
+
+## DEC-DEV-0224 — import-mode `/product:init --from-validated`: контракт-слой Validation Layer входит в экосистему
+
+**Дата:** 2026-07-20 · **Ветка:** feat/product-vl-import-mode
+
+**Контекст.** Ресерч Validation Layer (репо product-radar, `validation-layer/CONCEPT-VL.md` v0.1.1;
+конвейер 2026-07-19: 52+5 карточек, 19 адверсариальных вердиктов 16C/3P/0R, 6 синтезов) завершён;
+владелец ратифицировал форму «гибрид»: рантайм VL живёт в product-radar, контракт-слой — в
+экосистеме через PR. VL производит «точный чертёж» для фабрики: тезис + полевой VERDICT +
+провалидированный канал. Вход C8→`/product:init` принимал только discovery-с-нуля — пред-построенные
+PS/HYP+VERDICT девать было некуда (ingestion-зазор, вердикт V-13 CONFIRMED).
+
+**Решение.** Пятый режим входа — флаг `--from-validated <package-path>` в `commands/product/init.md`
+(Step 1b): ингест пред-построенных PS/HYP (D1-lite = подмножество канона, не форк), VERDICT как
+полевая улика HYP (`field-signal: VERDICT-<id>`), D1.0b-гейт сохраняется (или явный акцепт C8
+пре-чека), human-гейты G1/G4/G5 не обходятся.
+
+**Отвергнутые альтернативы.** (а) Новая команда `/product:ingest` — вторая точка входа в Discovery
+= дублирование оркестрации init и рост инвентаря без нужды; (б) «только правка дока» без
+исполняемого режима — не исполняется, знание без принуждения (урок D7). Флаг = наименьшая
+поверхность, переиспользует session-state/skill-оркестрацию init as-is.
+
+**Инварианты, зашитые в режим.** `field_verdict` НЕ маппится в realism/confidence автоматически
+(anti-contamination, V-15 CONFIRMED — иначе ломается калибровочная кривая C7 радара); ингест
+создаёт drafts, approve — владелец (DEC-P13); canonical field names B.1.
+
+**Сознательно отложено (cuttable-scope).** V-EXP/V-VERDICT/V-CAMPAIGN правила в
+`docs/pmo/validation.md` (+обязательный count-sweep каскад) — follow-up при стройке VL-рантайма:
+правила без работающего производителя артефактов были бы мёртвой буквой. Grep коллизии имени
+события `campaign_resolved` по репо — чисто (долг G3 синтеза закрыт).
+
+---
+## DEC-DEV-0225 — P8 `user-journey-acceptance`: браузерная приёмка user-journey как обязательный этап перед `done`
+
+**Date:** 2026-07-22
+**Trigger:** решение владельца — в приёмку встраивается финальное тестирование с реалистичной имитацией пользователя (браузерный user-journey), как обязательный этап перед `done`. Инструмент ядра одобрен после ресерча.
+**Tag:** #architecture #orchestrator #process-fabric #acceptance #pilot-finding
+
+### Context — почему P7-зелёный ≠ «работает»
+
+Живой прецедент на пилоте (RUN-2026-07-17-A, первый релиз RL-001): P6 `GO`, P7 `READY_TO_SMOKE`, деплой `DEPLOYED` и `/health` 2xx — **а первое касание пользователя было битым** (пост-логин 404, нет домашней страницы). Разрыв структурный: P7 меряет только HTTP-liveness (`orchestrator/lib/runtime-readiness.cjs:293-304`); DoD не имел journey-ноги; Design Module не обещает сверку реализация↔MK. «223 теста зелёные ≠ приложение стартует» (урок P7) имеет продолжение: «деплой зелёный + /health 2xx ≠ пользователь проходит поток». P8 закрывает именно это: между `deploying_staging` (E.B `DEPLOYED`) и `done` встаёт браузерный user-journey гейт.
+
+### Options considered — инструмент ядра (research-вердикт 2026-07-22)
+
+1. **Playwright npm (`@playwright/test`) — ВЫБРАНО (approve владельца).** Детерминированные journey-скрипты с реальными assertions, воспроизводимый вердикт (байт-редукция по JSON-репорту, не суждение LLM). Ложится ровно на двухногую модель P7/E.B: детерминированная readiness/detect-нога сейчас + substrate-gated execution-нога против живого staging.
+2. **Playwright MCP основным драйвером — отвергнуто (позже, не в этой единице).** Нет download-тула (issue #154 закрыт без фикса), слабее assertions. MCP — кандидат на v1.1+ (exploratory-слой поверх детерминированного ядра).
+3. **Stagehand — отвергнуто:** silent-failure кэша + LLM-цена за каждый экшен (недетерминизм + стоимость в петле приёмки).
+4. **browser-use — отвергнуто:** exploratory-класс, недетерминирован — не гейт.
+5. **Chrome DevTools MCP — отвергнуто:** debugging-first, нет diff/вердикта.
+
+### Coverage-check AS IS (правило DEC-DEV-0222)
+
+Покрыто частично: fabric-линия + деплой-брекет E.B/E.C (0198) дают точку вставки и паттерн ячейки; run-ledger/ingest — контракт результата; RL-DoD (0216/0221) — место для критерия приёмки. **НЕ покрыто:** самой ноги приёмки user-journey не было — линия шла `deploying_staging → done` мимо проверки реального касания. Построена именно дельта (новая ячейка + процесс + lib + DoD-нога), без нового event-store и без ухода с CC.
+
+### Decision — что построено (v0, cuttable)
+
+- **`orchestrator/lib/uja-report.cjs`** — детерминированное ядро (zero-deps): `preflight` (DoR: Playwright подключён? журнеи есть? — факты о FS) + `parse` (редукция Playwright-JSON-репорта → вердикт). Юнит-тест на парсер (pass/fail/empty, 19 проверок). **Правило нуля-доказательств** (несущее, зеркалит «ложный DEPLOYED» 0203): репорт с 0 журнеев/нечитаемый → `ENV_NOT_READY` (не смог судить), **никогда не PASS** — зелёный гейт над «ничего не прогнали» = ложный зелёный.
+- **`orchestrator/processes/user-journey-acceptance.mjs`** — harness-Workflow по образу P7: preflight→(gate|run)→report, всё через transport-агентов (LLM-суждения НЕТ в v0 — вердикт считает lib). Capture-don't-fix; бюджет-guard как DoR-контракт (журнеи бьют по реальному приложению → минимальные фикстуры, не floor). Substrate-gated live-прогон.
+- **Charter v6:** состояние `journey_acceptance` МЕЖДУ `deploying_staging` и `done` (auto, как runtime_gate); `evt:deploy.succeeded` теперь → `journey_acceptance` (не `done`); `uja_result` PASS→done / FAIL→парковка `awaiting_journey_fix` (queue_owner, ре-драйв через `implementing`) / ENV_NOT_READY→`runtime_gate_retry`. **Safe resume-event** `evt:owner.close` первым ключом (как `deploying_staging`, 0198): случайный `pa-scan` гейта под L0 не может пометить фичу done без прогона журнеев.
+- **DoD-нога (RL.md):** категория 3 «Stage» — «UJA PASS на текущем составе релиза» (SSOT = P8 `run.json` `uja_result: PASS`); категория 5 — для `has_ui` подстрока «journey-скриншоты как visual-conformance артефакт» (owner-ревью против MK; авто-diff MK — v1.1).
+- **run-ledger:** `uja_result` добавлен в `OUTCOME_KEYS` — детерминированный GUARD (`run-ledger.test.cjs`) сканит return'ы процессов и **требует** этого (иначе вердикт суммаризовался бы в `null` — ровно класс дефекта p7_result, DEC-DEV-0200). Снапшот `OUTCOME_KEYS` в тесте обновлён.
+
+### Outcome
+
+`npm run verify` EXIT 0. Ново: 2 lib-функции (`assessPreflight`/`parseReport`) + процесс + charter-ячейка + 2 теста (uja-report 19 + wiring 14), fabric happy-path переписан на `deploy → journey → done` + FAIL-парковку. Живой прогон — VM-gated (нужен DEPLOYED staging + журнеи), план: `dev/gates/UJA_SMOKE_TEST_PLAN.md` (несущий сценарий S2 — на битом первом касании UJA обязан вернуть FAIL). Доставка в пилот — отдельно.
+
+### Lessons
+
+1. **Каждый уровень гейта ловит свой класс, и «зелёный ниже» ≠ «работает выше».** Тесты → сборка → старт (P7) → деплой+healthcheck (E.B) → **реальное касание (P8)**: каждый предыдущий необходим, но не достаточен для следующего. Пропуск journey-ноги оставлял «зелёный до prod» над 404 — тот же скелет, что «223 теста зелёные ≠ стартует».
+2. **Вердикт приёмки — факт о байтах, не суждение LLM.** Стохастический парс за гейтом — монетка в обе стороны: ложный FAIL блокирует хороший релиз, ложный PASS отгружает битый journey. Парс живёт в `uja-report.cjs`, агент — транспорт (тот же урок, что deploy-manifest.cjs/0203).
+3. **Правило нуля-доказательств — несущее.** Гейт, зеленеющий над «0 журнеев прогнано», хуже отсутствия гейта: он легитимизирует пустоту. 0 журнеев → ENV_NOT_READY, никогда не PASS.
+
+## DEC-DEV-0226 — /product:browse + /product:ask: встроенный «solo Confluence» над .product/ + Q&A-лестница без векторов
+
+**Date:** 2026-07-23
+**Trigger:** запрос владельца (дословно): «интерфейс для просмотра продуктовых артефактов, задач и прочей аналитической документации по продукту, по сути как встроенный упрощенный для solo confluence с RAG и возможностью отвечать на вопросы»; после дизайн-наброска — «го делать одним треком обе доработки… сам только думать и оркестрировать субагентов исполнителей».
+**Tag:** #product-module #viewer #qa #consumer-zone #orchestration
+
+### Coverage-check AS IS (правило DEC-DEV-0222)
+
+Покрыто частично: `status-collector.cjs` (DEC-DEV-0217) — готовый детерминированный JSON-census; паттерн self-contained HTML уже дважды в поставке (`app-map-html.js`, `docs/guide/ecosystem-map.html`); Phase D wiki (deferred DEC-DEV-0046) — про доки САМОЙ экосистемы, НЕ реанимируется: её стек MkDocs Material ушёл в maintenance mode с 9.7.7 (2026-07-17; подтверждено веб-добором informed-fetch 2026-07-23). НЕ покрыто: вьюер `.product/`, Q&A с обязательными указателями, RAG. «Задачи» в артефактной модели отсутствуют by design (D2-T06 — delegated-зона, tasks.md внешнего инструмента) — в v1 только task-proxy панель из collector-данных; ingest задач — отдельное будущее owner-решение.
+
+### Options considered
+
+1. **Obsidian-first** (vault + core-плагин Bases) — отвергнуто: не «встроенный», отдельное приложение, не наследуется проектами, ведущимися через экосистему.
+2. **Генерённый self-contained HTML** — ВЫБРАНО для browse: ноль серверов/демонов, офлайн, воспроизводимо, ложится на существующий паттерн поставки.
+3. **Q&A со структурным retrieval** — ВЫБРАНО для ask: чат-интерфейс уже есть (Claude Code), корпус мал и жёстко структурен (ID/типы/frontmatter) — структурный добор точнее векторов на этом размере.
+4. **Векторный RAG (MCP: chroma/qdrant/claude-context) / готовые self-hosted AI-wiki (AnythingLLM, Open WebUI)** — отвергнуто СЕЙЧАС: второй чат-UI дублирует Claude Code; вектора требуют инфраструктуру и синхронизацию индекса, не окупаемые на малом корпусе. Оформлено как `dev/deferred/RAG_LAYER.md` с bring-forward-триггерами (≥2 промаха лестницы / мультипроектный корпус / grep перестал находить) — симметрично phantom-audience guard 0046.
+
+### Decision — что построено
+
+- **`hooks/product/lib/product-browser-html.cjs`** (детерминированный генератор, 918 строк) → `.product/browser.html`: скан singleton+enumerable (dot-папки исключены), marked-рендер с защитным renderer, ID-кросслинки + backlinks (пост-обработка вне тегов/code/pre), minisearch-индекс (строится при генерации, UMD инлайнится), панель «Работа» из collector (require `collect()`), graceful degradation (пустой корпус; упавший collector → warning-баннер без панели). **XSS-меры (перенос находки M-1 security-review 2026-07-11):** raw-HTML-токены эскейпятся renderer'ом; href только http(s)/# (javascript: → плейн-текст); изображения нейтрализуются в alt; DATA-блоб — блокирующий эскейп всех `<` → `\u003c` + U+2028/29. Vendored: marked 18.0.7 + minisearch 7.2.0 (MIT, `hooks/product/lib/vendor/` + лицензии).
+- **`commands/product/browse.md`** — тонкая команда: запуск генератора, числа в отчёте — verbatim из его stdout (DEC-DEV-0217), `--open`/`--out`.
+- **`commands/product/ask.md` + `skills/product/corpus-qa.md`** — «лестница добора»: Step 0 collector-снапшот (счётное — только оттуда, fallback = честное «точных чисел нет», не пересчёт); маршрутизация → тип-роутер (таблица «класс вопроса → типы → пути») → frontmatter-сужение (active>draft, deprecated по явному запросу) → grep → чтение top-N≤5; формат ответа: прямой ответ → основания → «Pointers» (ID+путь на каждое несущее утверждение, K0-правило «утверждение без указателя не выдаётся»), регистры «из артефактов / (inference) / не найдено» разделены; `--deep` — fan-out recon-субагентов (model=sonnet), синтез в main-сессии.
+- Сопутствующее: `.product/browser.html` в `gitignore.template`; SPEC.md §3 — 25 команд, §3.2 (7)→(9) + 2 записи; каталоги регенерированы (53 команды / 65 скиллов); `dev/product-browse/DESIGN.md` (approved) + `SEAM.md` (ACTIVE на время трека).
+- **Оркестрация (директива владельца «Fable думает, исполняют субагенты»):** W1 (генератор) и W2 (3 md) — параллельные opus-исполнители по точным брифам; ревью обоих — main; независимый смоук — main (не доверяя самопроверке W1: своя XSS-проба с другими payload).
+
+### Outcome
+
+Смоук S1-S4 PASS: S1 пустой корпус (exit 0, подсказка init); S2/S3 — 0 сырых `<script`/`onerror`/`javascript:`-вхождений при живых https-ссылках (noopener) и xref-кросслинках; S4 — collector `total_typed=7` сходится с браузером (7 typed + 1 untyped). `check-counts` ✓, `check-inventory-sync` ✓. Ревью W2 поймало 1 дефект: ссылка на несуществующую `/product:note` (future v1.1) — исправлена на канонический путь через скилл `note-capture`; тот же битый референс уже живёт в `skills/ecosystem/self-correction.md:24` — существующий дрейф, НЕ трогался (вне трека).
+
+### Lessons
+
+1. **Ревью делегированного ловит класс «правдоподобная ссылка на несуществующий таргет»:** исполнитель честно скопировал референс `/product:note` из соседнего скилла — но команда не существует (future v1.1). Спот-чек фактов (ls commands/) обязателен даже для качественного результата; репо уже содержит один такой унаследованный дрейф.
+2. **Бриф обязан сверяться с фактическим кодом, а не с описанием:** бриф описал collector как «js-yaml с fallback», фактически он zero-deps hand-rolled — исполнитель обнаружил противоречие и корректно отклонился (право на отклонение с обоснованием отработало as designed).
+3. **Референс-паттерн + обязательная самопроверка в брифе → отклонения только в сторону ужесточения** (блокирующий эскейп всех `<` вместо узкой пары — приём из референса, строгое надмножество требования).
+
+---
+
+## DEC-DEV-0227 — Hygiene-sweep репо: репо лгал, а не «разросся»; снят Obsidian-слой, ротированы каноны, построен `doc-health` + скилл `repo-hygiene`
+
+**Date:** 2026-07-28
+**Trigger:** Владелец: «сделай компактацию + чистку + оптимизацию репо, но с умом; сначала выяви проблемы и несостыковки — например, что за HOME.md, когда есть dev + docs + roadmap. Репо большой, для harness весь репо — контекст, а если он разрозненный и неактуальный, сбои неминуемы. Напиши скилл на интеллектуальную чистку и связность».
+**Tag:** #refactor #tooling #docs #context
+
+### Context
+
+Разведка 5 субагентами (инвентарь · `dev/` · связность · контекстная нагрузка · `docs/`) дала картину,
+которая **опровергла исходную премису обоих участников**.
+
+Замер always-on канала: оба `CLAUDE.md` + `MEMORY.md` + 4 SessionStart-хука ≈ 65k символов ≈ 19-30k
+токенов = **2.7-4.1% окна на opus[1m]**. Push-канал дисциплинирован (все хуки суммарно 4.1 КБ,
+генерируются из живых файлов). То есть «репо душит контекст объёмом» — **не подтвердилось**.
+
+Подтвердилось другое: **38 устаревших утверждений** (12 в `dev/`, 26 в `docs/`) при **нуле** битых
+ссылок в живой зоне. Связность репо была идеальной, правдивость — нет, и ни один из 20 чекеров
+`npm run verify` не смотрел в эту сторону.
+
+Худшее: `docs/pmo/processes.md` описывал субагента `screen-generator` как работающий механизм —
+его не существует; `dev/global-loop/SEAM.md` со `status: ACTIVE` **впрыскивался хуком** после каждой
+компактации, приказывая начать работу, законченную 2026-07-23; `CLAUDE.md` обещал гейт
+`gen:map:check` для `docs/MAP.md` — этот генератор пишет другой файл, а `MAP.md` не гейтится ничем.
+
+### Options considered
+
+1. **Резать объём** (компактовать доки, урезать хуки) — отвергнуто замером: push-канал дёшев,
+   а сокращение правдивого текста не лечит ложный.
+2. **Адоптировать готовое** — community-плагин `docs-hygiene` (6 скиллов), skill `repo-cleanup`,
+   lychee. Отвергнуто как замена: они generic-markdown и не знают ни SSOT-решётки, ни швов, ни
+   механизированной доставки. **Заимствованы линзы** (`audit-derivability`, `extract-ssot`).
+3. **Чинить правдивость + построить измеритель непокрытых осей** — выбрано.
+
+### Decision
+
+**Правило «опасность = возраст × механизированная доставка».** Приоритет чистки — не по возрасту
+файла, а по тому, читается ли он автоматически (seam-reinject, host-onboard).
+
+Исполнено волнами: статусы `dev/` (12 FIX-STATUS, швы → `CLOSED`/`SUPERSEDED`, закрытые гейты →
+`_archive/`) · устаревшее и дубли `docs/` (8 файлов) · ротация канонов · связность архива ·
+навигация · компактация `CLAUDE.md`.
+
+**Obsidian-слой снят** (`HOME.md` + `.obsidian/`): 0 входящих ссылок, `.obsidian/` не трогали 2 месяца,
+`bootstrap.md` его и так вырезал из поставки, а фильтр `.obsidian/app.json` прятал от графа весь
+модуль D7 — ради которого граф и заводился. Уникальное перенесено: указатель на `INFORMATION-MAP` →
+роутер README, конвенция wikilinks → `CONVENTIONS.md`.
+
+**Ротация:** `DEV_JOURNAL` 738→232 КБ (64→30 записей живых), `CHANGELOG` 270→~150 КБ,
+`ROADMAP` 73→40 КБ (строка 5 на **36 694 символа** разрезана). Правило §5.1 **починено**: критерий
+«текущий + предыдущий месяц» заменён на «последние ~40 записей».
+
+**Построено:** [`doc-health.cjs`](dev/meta-improvement/scripts/doc-health.cjs) (warn-only, в цепи
+`verify`) — меряет 5 осей, которых не касается ни одна существующая проверка: пороги ротации,
+ACTIVE-швы без коммитов, ссылки в `_archive/`, always-on объём, слипшиеся строки. И скилл
+[`repo-hygiene.md`](dev/meta-improvement/skills/repo-hygiene.md) — процедура суждения поверх измерения.
+
+### Outcome
+
+`npm run verify` EXIT=0 (21 проверка). `doc-health`: было 4 находки → осталась 1 (12 неразрешимых
+ссылок в архиве — цели, которых в репо не было никогда).
+
+Отвергнуто по ходу, с исправлением посылки: **`docs/guide/vendor/` (2 МБ) НЕ вырезан из поставки** —
+владелец согласился на вырезание по моей неверной подаче («лишний груз»), но проверка показала: это
+живые офлайн-зависимости двух интерактивных карт (`cytoscape`, `elk`), покрытые смоуком
+`mapshell.smoke.mjs`. Решение возвращено владельцу с исправленным фактом и не исполнено.
+
+### Lessons
+
+1. **Здоровье графа ≠ правдивость узлов.** 0 битых ссылок при 38 лгущих утверждениях. Это разные оси;
+   вторая не измерялась ничем. Чекер связности создаёт ложное чувство порядка.
+2. **Ложное «покрыто» опаснее честного «не покрыто».** `CLAUDE.md` и шапка `check-inventory-sync`
+   обещали гейт для `docs/MAP.md`. Обещание гейта снимает бдительность там, где защиты нет.
+3. **Правило, которое никто не измеряет, — это пожелание.** §5.1 держала пороги ротации, пробитые
+   втрое. Причём дефект был в **гранулярности правила** (календарный месяц при каденции 97 записей
+   за 23 дня), а не в дисциплине. Чинить надо правило, а не только его последствие.
+4. **Механику — скриптам, суждение — моделям.** Из 8 субагентов **5 умерли** (watchdog на пофайловом
+   обходе, обрывы API) — все на механических задачах. Переписанные как детерминированные скрипты, те
+   же задачи отработали за секунды и идемпотентно: 154→12 битых ссылок одним прогоном; ротация
+   журнала со сверкой «записей до = живой после + архив».
+5. **Исполнитель обязан остановиться, когда посылка брифа неверна.** Волна A отказалась удалять
+   `battery/panes/*.txt` (на них ссылается `VERDICT.md` как на несущую улику) и архивировать
+   `EPIC_E_READINESS.md` (10+ ссылок из живого рантайма) — оба отказа верны. То же правило сработало
+   вверх на `vendor/`.
+6. **`[[wikilinks]]` в этом репо — в основном НЕ ссылки:** 91 из 103 — ключи persistent-памяти,
+   живущие вне репозитория. Любой будущий чекер обязан их отличать, иначе даст 91 ложное срабатывание.
+
+### Добор того же дня — удаление мёртвого хука + синк с main
+
+**`phase-closure-reminder.js` удалён** (решение владельца). Его матчер искал в сообщении коммита
+`Phase <N>` + completion-глагол, а фазы как единица работы исчерпаны — это признаёт сам `CLAUDE.md`
+§5. Хук не мог сработать ни разу после перехода на треки, но числился живым в **четырёх** местах
+`CONVENTIONS.md`, в `SPEC.md`, в `CLAUDE.md` и в комментариях двух соседних хуков. Снята и
+регистрация из `.claude/settings.local.json` — иначе удаление файла превратило бы каждый Bash в
+попытку запустить несуществующий скрипт. Заведён `CONVENTIONS §13 «Удалённые механизмы»`: механизм,
+который не может сработать, **хуже отсутствующего** — он занимает место в карте механизмов и создаёт
+ложное чувство покрытия.
+
+**Урок, кодифицированный в §3:** матчер хука привязывай к **инварианту**, а не к словарю текущей
+эпохи. Обязательство «после закрытия единицы — closure-ритуал» живо; умер лишь способ его распознать.
+
+### Догон остатка (владелец: «доделываем»)
+
+**BPMN-карта: ложь снята дополнением, а не занижением.** `process-graph.overlay.json` знал **4 из 9**
+процессов Оркестратора, а `docs/MAP.md` и `guide/README.md` рекламировали карту как «BPMN-карта
+**всех** процессов» — тот же класс дефекта, что `CLAUDE.md`, обещавший несуществующий гейт. Было два
+пути: поправить формулировку (дёшево) или дополнить карту (честнее). Выбран второй — сам `_doc`
+оверлея объявляет «Encodes EVERY process of the ecosystem», то есть занижение обещания
+противоречило бы его собственному контракту.
+
+Добавлены `P2o` (decide-architecture-foundation), `P7o` (runtime-smoke-readiness), `E.B`
+(deploy-to-stage), `E.C` (rollback-release), `P8o` (user-journey-acceptance) + 5 cross-рёбер
+пайплайна. Карта: **21 → 26 процессов**, lane оркестратора **4 → 9** = ровно столько, сколько
+`.mjs` на диске. Побочно расшита коллизия id: шаг `P7o.readiness`, живший внутри `P6o`,
+переименован в `P6o.p7leg` (иначе префикс нового узла пересёкся бы с чужим шагом).
+
+Факты шагов/гейтов/вердиктов собраны recon-агентом из самих процессов, `run.md`, SPEC и CHANGELOG —
+не выдуманы; агент честно вернул «не найдено» по номеру процесса для `E.B`/`E.C` (их и нет — это
+ячейки Epic E) и по версии релиза `P2o`. `gen:procmap` + selftest зелёные (5 lanes · 26 processes ·
+134 steps · 198 nodes · 306 edges), `verify` EXIT=0. Браузерный смоук карты пропущен — в worktree нет
+`puppeteer-core`; вместо него статическая проверка: все 5 id в HTML, 504 data-объекта, script-теги
+сбалансированы.
+
+**`CLAUDE.md` докомпактован: 335 → 256 строк (−24%), 30 982 → 24 843 символа.** Вынесены две
+копии-дубля: skill-конвенции на 23 строки → в паттерн `b1-frontmatter-convention.md` (он и есть их
+SSOT, что признавал сам паттерн), таблица паттернов на 13 строк → указатель на `patterns/README.md`
+(текст сам называл его SSOT — классическая «копия под собственным указателем»). Чеклист скиллов
+**поднят в паттерн ДО** удаления копии. Убрана строка про hook reminder, «fires на phase-completion
+commits» — она описывала хук, удалённый часом ранее в этой же сессии.
+
+**Компактация `docs/`: −487 строк, из них ноль фактов.** Убраны пять симулированных диалоговых
+транскриптов Integrator §7 (283→93), развёрнутый вымышленный handoff §11 (254→62 — остался скелет
+структуры), вторая копия tool-манула §8.2 (52→7), IR-groundwork отложенного v2 в Design §16 (82→45).
+**Одиннадцать правил перед удалением обёртки подняты в явную формулировку** — они жили только внутри
+иллюстраций: обязательная секция `Boundary (consumed, not owned)` в структуре tool-docs (без неё
+Оркестратор принимает потребление за владение), hard approve gate research'а, позиция approve-гейта
+в add-flow, smoke на временной фиче с обязательным её удалением, запись отменённой замены как
+`DEC-INT-NNNN (entered/cancelled)`, дефолтная data-migration стратегия, различие embedded/excerpt
+секций handoff'а, решение «MK остаётся narrative, IR — snapshot» (жило в теле риска R4) и др.
+
+**Два обоснованных отказа исполнителя** (оба верны, проверены): Design §16 не вырезан целиком —
+на него четыре входящие ссылки (`commands/design/migrate.md` ×2, `start.md`, `artifacts/MK.md`),
+и оценка аудита «−85 строк» была бы верна только ценой их поломки; `processes.md §9` — оценка
+аудита **устарела**, секцию подрезали ещё в `cf8c261`, реального жира осталось ~15 строк.
+
+**Разрешение будущего конфликта — записано в файле, а не в голове.** Единственная точка пересечения
+этой ветки с `docs/global-loop-assist-ledger` — `dev/global-loop/SEAM.md` (я пометил копию на `main`
+`SUPERSEDED`, ledger переписала шов в v3). Владелец влил `main` в ledger 2026-07-28 (`7a9e89d`),
+ledger теперь `behind:0 / ahead:104` и передаётся исполнителю — то есть проживёт ещё какое-то время,
+и всё это время на `main` без моей пометки лежал бы `ACTIVE`-шов, впрыскиваемый после каждой
+компактации. Поэтому пометка остаётся, а инструкция разрешения (`git checkout --theirs` — брать
+версию ledger целиком) вписана **в сам файл**: конфликт будет разрешать не тот, кто помнит контекст,
+а тот, кто мёржит. Это общий приём: если знаешь, что конфликт неизбежен и его разрешение
+однозначно — положи разрешение туда, где его прочитают в момент конфликта.
+
+**Синк:** влит `origin/main` (PR #236 — новый живой шов `dev/vm-observability/SEAM.md`, `ACTIVE`,
+заведён 2026-07-28 параллельной сессией). Шов **не тронут** — он свежий и рабочий; добавлен в карту
+`dev/README.md` по новому правилу «карта знает все треки». Проверено: `doc-health` не ругается на
+него — порог 14 дней, шов сегодняшний. Это и есть желаемое поведение: чекер бьёт по забытым
+`ACTIVE`, не по живым.
+
+---
+
+## Шаблон новой записи
+
+```markdown
+## DEC-DEV-NNNN — <one-line title>
+
+**Date:** YYYY-MM-DD
+**Trigger:** <what prompted this>
+**Tag:** #category #subcategory
+
+### Context
+What was the situation, what constraints applied.
+
+### Options considered
+1. Option A — pros/cons
+2. Option B — pros/cons
+3. ...
+
+### Decision
+What was chosen and why.
+
+### Outcome
+What happened after applying. (Filled in retroactively if outcome takes time.)
+
+### Lessons
+What to remember next time.
+```

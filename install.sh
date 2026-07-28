@@ -73,7 +73,12 @@ fi
 # ============================================================
 VERSION="unknown"
 if [ -f "$ECOSYSTEM_DIR/CHANGELOG.md" ]; then
-  VERSION=$(grep -m1 '^## \[' "$ECOSYSTEM_DIR/CHANGELOG.md" 2>/dev/null | sed -E 's/^## \[([^]]+)\].*/\1/' || echo "unknown")
+  # Первая ВЫПУЩЕННАЯ версия — `## [X.Y.Z]`, пропуская `## [Unreleased]` (он всегда первый).
+  # Референс-реализация правила: commands/ecosystem/update.md Step 5c.
+  VERSION=$(grep -m1 -E '^##[[:space:]]+\[[0-9]+\.[0-9]+\.[0-9]+\]' "$ECOSYSTEM_DIR/CHANGELOG.md" 2>/dev/null \
+            | sed -E 's/^##[[:space:]]+\[([^]]+)\].*/\1/')
+  # Явный guard: `|| echo "unknown"` здесь не работает — код возврата пайпа берётся от sed (всегда 0).
+  [ -n "$VERSION" ] || VERSION="unknown"
 fi
 
 echo ""

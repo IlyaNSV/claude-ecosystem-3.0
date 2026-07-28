@@ -186,7 +186,7 @@ Report:
 - 🟡 if registered but `LESSON_GATE_MODE=warn|off` — note "LESSON gate is advisory only; open lessons will NOT block session close."
 - ❌ if `lesson-gate.js` is missing from `Stop` while the file exists — note "**existing installs are UNPROTECTED until `/ecosystem:update` re-registers hooks.**" Suggest `/ecosystem:update`.
 
-(Per "Strict Stop, warn PreToolUse" ship default: PreToolUse in warn mode is **expected**, not a defect — it nags rather than denies until the S-LE live smoke confirms the deny contract. Flag only the Stop prong being non-strict, or hooks missing entirely.)
+(Ship default since 2026-07-11 is **strict on BOTH prongs** — the S-LE re-run PASSed and the warn→strict flip was executed, DEC-DEV-0177. With `LESSON_GATE_MODE` unset the PreToolUse prong **denies** mutating calls; it does not merely nag. So warn/off on **either** prong is a downgrade to surface per the 🟡 rule above — not an expected default.)
 
 ### Step 9: Summary report
 

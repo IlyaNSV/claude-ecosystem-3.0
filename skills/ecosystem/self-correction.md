@@ -33,7 +33,7 @@ This skill is the **synced** home of the self-correction mandate. The same rule 
 ## Enforcement (что произойдёт, если оставить open)
 
 - `lesson-gate.js` (Stop, **strict** по умолчанию) не даст чисто закрыть сессию, пока есть `status: open` урок.
-- `lesson-presence-gate.js` (PreToolUse + UserPromptSubmit, **warn** по умолчанию) напоминает каждый ход.
+- `lesson-presence-gate.js` (PreToolUse + UserPromptSubmit, **strict** по умолчанию с 2026-07-11) напоминает каждый ход (UserPromptSubmit) и **отказывает** мутирующим вызовам (Write/Edit/Bash/NotebookEdit), пока урок открыт. Не блокируются: правки самих `.product/lessons/**` и активный протокол `/product:lesson` (свежий маркер `lesson-in-progress`).
 - Опт-аут: env `LESSON_GATE_MODE` = `warn` | `off` (см. DEC-DEV-0062). `/ecosystem:verify` предупреждает, если gate тихо отключён.
 
 ## Related

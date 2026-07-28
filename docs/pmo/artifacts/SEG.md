@@ -19,7 +19,7 @@ type: segment
 title: "Короткое имя сегмента"      # Например: "Freelance translators"
 status: draft | active | deprecated
 priority: primary | secondary | exploratory
-value_proposition: VP-<NNN>         # Обязательная ссылка на связанный VP
+value_proposition: VP-<NNN>         # Ссылка на связанный VP (1:1, DEC-ART03). null допустим до D1.4a — VP создаётся ПОСЛЕ approve сегмента и backfill-ится на D1.4a (V-09, DEC-DEV-0220-e)
 jtbd_count: N                       # количество JTBD в сегменте
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high

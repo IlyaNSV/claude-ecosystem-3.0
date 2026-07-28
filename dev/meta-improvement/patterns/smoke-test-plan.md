@@ -151,6 +151,6 @@ Per scenario: setup, expected flow с step-by-step, acceptance criteria, possibl
 ## Related
 
 - [Cuttable Scope Discipline](cuttable-scope-discipline.md) — sometimes smoke test scope cuttable (e.g., 5 → 3 scenarios)
-- [`dev/PHASE_3_SMOKE_TEST_PLAN.md`](../../PHASE_3_SMOKE_TEST_PLAN.md) — instance 1 reference document
+- [`dev/_archive/phase-3/PHASE_3_SMOKE_TEST_PLAN.md`](../../_archive/phase-3/PHASE_3_SMOKE_TEST_PLAN.md) — instance 1 reference document
 - [`dev/meta-improvement/checklists/phase-kickoff.md`](../checklists/phase-kickoff.md) Section 5 — Plan refinement step (creates smoke test placeholder)
 - [`dev/meta-improvement/checklists/phase-closure.md`](../checklists/phase-closure.md) Step 2 — Bootstrap regression test (similar pattern для bootstrap-specific scenarios)

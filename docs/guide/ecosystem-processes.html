@@ -171,11 +171,11 @@
 <!-- Data island: generator replaces the single token below with JSON.stringify(DATA). -->
 <script id="proc-data" type="application/json">{
   "_build": {
-    "date": "2026-07-11",
-    "sha": "339a7ac",
+    "date": "2026-07-28",
+    "sha": "74f9e7d",
     "lanes": 5,
-    "processes": 21,
-    "steps": 112,
+    "processes": 26,
+    "steps": 134,
     "artifacts": 24,
     "hooks": 13,
     "rules": 28
@@ -2607,13 +2607,430 @@
     },
     {
       "data": {
-        "id": "s:P6o:P7o.readiness",
+        "id": "s:P6o:P6o.p7leg",
         "parent": "proc:P6o",
-        "label": "P7 runtime-smoke-readiness (deterministic leg)",
+        "label": "P7 readiness (детерминированная нога)",
         "kind": "task",
         "status": "shipped",
         "process": "P6o",
         "what": "Детерминированная нога готовности (DEC-DEV-0120) перед вердиктом.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2o",
+        "parent": "lane:orchestrator",
+        "label": "P2 · decide-architecture-foundation",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D2T",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Decision-SUPPORT на нерешённой архитектурной развилке: жюри из 3 архитекторов (priors velocity/fidelity/integrity) независимо скорит опции, детерминированный синтез даёт рекомендацию + DRAFT DEC владельцу. Сам НЕ решает и не правит спеки (DEC-DEV-0129)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.brief",
+        "parent": "proc:P2o",
+        "label": "Lift ForkBrief из pending-action",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2o",
+        "what": "Поднимает развилку из объявленной PA вместе с сырым source_excerpt — жюри читает источник, не только лоссовый бриф.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.consilium",
+        "parent": "proc:P2o",
+        "label": "3 архитектора — жюри, параллельно",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2o",
+        "what": "Три приора скорят опции независимо, без cross-talk: это жюри, а не дебаты — дебаты дают groupthink.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.synth",
+        "parent": "proc:P2o",
+        "label": "Матрица + ранг + вето (детерминированно)",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P2o",
+        "what": "consilium-synth.cjs: blocking-veto, сумма скоров, soft-veto → сила вердикта strong | split | none.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.integrate",
+        "parent": "proc:P2o",
+        "label": "Post-panel integration pass",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P2o",
+        "what": "Холистический проход ловит распределённый blind spot; детерминированный выбор не меняет — только раскрывает.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.recommend",
+        "parent": "proc:P2o",
+        "label": "Рекомендация + DRAFT DEC → владельцу",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P2o",
+        "what": "Пишет scored-рекомендацию и DRAFT DEC в ту же pending-action. Финальный выбор — владельца (FB-LR-07).",
+        "review": "strategic",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P7o",
+        "parent": "lane:orchestrator",
+        "label": "P7 · runtime-smoke-readiness",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D3",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Гейт после P6 GO: «тесты зелёные — а приложение вообще стартует?» Детерминированно оценивает возможность boot и при возможности грузит dev-сервер, диагностируя падение старта (capture-don't-fix, DEC-DEV-0120). Живой boot — substrate-gated."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.assess",
+        "parent": "proc:P7o",
+        "label": "Assess: run-target + §6 caps + env",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P7o",
+        "what": "runtime-readiness.cjs сводит три сигнала: объявлен ли run-target (scripts.dev|start), удовлетворены ли boot-capabilities §6 фичи, поднят ли env.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.verdict",
+        "parent": "proc:P7o",
+        "label": "READY_TO_SMOKE / BLOCKED / NOT_STARTABLE",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P7o",
+        "what": "Четыре исхода (+ENV_NOT_READY). BLOCK по boot-capability уходит в §6 capability-request (маршрут Integrator/Product), а НЕ в мок.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.boot",
+        "parent": "proc:P7o",
+        "label": "Boot dev-сервера (substrate-gated)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P7o",
+        "what": "Живой запуск приложения; при bootSmoke:false отрабатывает только readiness-нога, без boot.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.diagnose",
+        "parent": "proc:P7o",
+        "label": "Диагноз падения старта (5 классов)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P7o",
+        "what": "Таксономия RUN 01: env-not-loaded 500 · missing migration · port-in-use · missing runtime secret · dependency-down. Не чинит — починка в P5/P6 на ре-ране.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.report",
+        "parent": "proc:P7o",
+        "label": "Вердикт + disclosures",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P7o",
+        "what": "READY_TO_SMOKE маршрутизирует линию фичи в deploy-to-stage (E.B), а не в done.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:EB",
+        "parent": "lane:orchestrator",
+        "label": "E.B · deploy-to-stage",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D3",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Ячейка выкатки на staging после PASS P7: префлайт → §3.2 autonomy-гейт → сборка releases/\u003cts> + атомарный флип current + рестарт → healthcheck. Закрывает разрыв «P7 PASS = done» → «P7 PASS → выкачено» (DEC-DEV-0198). Живой деплой VM-gated."
+      }
+    },
+    {
+      "data": {
+        "id": "s:EB:EB.preflight",
+        "parent": "proc:EB",
+        "label": "Префлайт: env + манифест + build",
+        "kind": "task",
+        "status": "shipped",
+        "process": "EB",
+        "what": "env-readiness + детерминированное чтение deploy-manifest.yaml + equipment-fitness + чистый build/test + дешёвая пред-флип ре-проба runtime-readiness.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:EB:EB.gate",
+        "parent": "proc:EB",
+        "label": "§3.2 autonomy-гейт (до мутации)",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "EB",
+        "what": "autonomy-policy.cjs resolve с ЖИВОЙ readiness и contract-status. Дальше идёт только auto; human-gate/consilium-gate/block → BLOCKED, flipped=false. Последняя линия перед любой мутацией.",
+        "review": "critical",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:EB:EB.deploy",
+        "parent": "proc:EB",
+        "label": "Сборка releases/\u003cts> + флип current",
+        "kind": "task",
+        "status": "shipped",
+        "process": "EB",
+        "what": "Разворачивает сцену (deploy_root, releases/, shared/) и гонит step-list манифеста: codegen → build → migrate → атомарный флип symlink current → restart.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:EB:EB.health",
+        "parent": "proc:EB",
+        "label": "Healthcheck GET /health",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "EB",
+        "what": "Диагноз по 5-классовой таксономии P7. DEPLOYED только при flipped ∧ healthy; flipped+unhealthy → авто-откат E.C.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:EC",
+        "parent": "lane:orchestrator",
+        "label": "E.C · rollback-release",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D3",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Ячейка авто-отката staging: срабатывает, когда релиз уже флипнут, а healthcheck упал — возвращает current на предыдущий известный-хороший релиз и проверяет его (DEC-DEV-0198)."
+      }
+    },
+    {
+      "data": {
+        "id": "s:EC:EC.gate",
+        "parent": "proc:EC",
+        "label": "§3.2 гейт (класс rollback)",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "EC",
+        "what": "operation_class = rollback, НЕ destructive: на staging → auto на любом уровне (сеть авто-отката срабатывает без человека), на prod → human-gate; DEGRADED понижает до human-gate → BLOCKED.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:EC:EC.swap",
+        "parent": "proc:EC",
+        "label": "Вернуть current на прошлый релиз",
+        "kind": "task",
+        "status": "shipped",
+        "process": "EC",
+        "what": "Symlink-swap на предыдущий releases/\u003cts> + рестарт. Нет предыдущего → NO_PRIOR_RELEASE: отдельный исход с эскалацией, а не «откат упал».",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:EC:EC.verify",
+        "parent": "proc:EC",
+        "label": "Проверить восстановленный релиз",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "EC",
+        "what": "Healthcheck по таксономии P7, capture-don't-fix. Исходы ROLLED_BACK | ROLLBACK_FAILED | NO_PRIOR_RELEASE | BLOCKED × readiness; всё кроме первых двух → эскалация.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P8o",
+        "parent": "lane:orchestrator",
+        "label": "P8 · user-journey-acceptance",
+        "kind": "process",
+        "status": "shipped",
+        "domain": "D3",
+        "command": "orchestrator:run",
+        "doc": "commands/orchestrator/run.md",
+        "what": "Приёмочный гейт между staging-DEPLOYED и done: гонит детерминированные Playwright-журнеи против живого staging-URL и отвечает на вопрос, который P7 не задаёт — «проходит ли пользователь первый поток?» (живой прецедент: P6/P7/деплой зелёные, а пост-логин отдавал 404). DEC-DEV-0225; живой прогон VM-gated."
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.preflight",
+        "parent": "proc:P8o",
+        "label": "DoR-префлайт: PW + журнеи + 2xx",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P8o",
+        "what": "uja-report.cjs assessPreflight: установлен ли @playwright/test, написаны ли журнеи по конвенции tests/uja/*.spec.ts, отвечает ли staging 2xx.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.dor",
+        "parent": "proc:P8o",
+        "label": "Пробел DoR → ENV_NOT_READY + подсказка",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P8o",
+        "what": "Любой пробел даёт честный ENV_NOT_READY с подсказкой (/integrator:add playwright, «напиши журнеи из NM»). PASS не фабрикуется — ветка коротит сразу в отчёт.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.run",
+        "parent": "proc:P8o",
+        "label": "Прогон журнеев headless против staging",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P8o",
+        "what": "npx playwright test tests/uja --reporter=json; отчёт сохраняется даже при ненулевом exit. Агент здесь — ТРАНСПОРТ, вердикта не выносит.",
+        "review": "",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.verdict",
+        "parent": "proc:P8o",
+        "label": "PASS / FAIL / ENV_NOT_READY",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P8o",
+        "what": "uja-report.cjs parse — детерминированная свёртка JSON-отчёта, БЕЗ суждения LLM. Правило нуля-доказательств: 0 журнеев ≠ PASS → ENV_NOT_READY.",
+        "review": "critical",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.report",
+        "parent": "proc:P8o",
+        "label": "Отчёт + маршрут (done / journey fix)",
+        "kind": "task",
+        "status": "shipped",
+        "process": "P8o",
+        "what": "Charter v6: PASS → done, FAIL → парковка awaiting_journey_fix с ре-драйвом через P5/P6. Capture-don't-fix — ничего не чинит.",
         "review": "",
         "hooks": [],
         "rules": [],
@@ -4653,9 +5070,162 @@
     },
     {
       "data": {
-        "id": "s:P6o:P6o.verdict__s:P6o:P7o.readiness__sequence",
+        "id": "s:P6o:P6o.verdict__s:P6o:P6o.p7leg__sequence",
         "source": "s:P6o:P6o.verdict",
-        "target": "s:P6o:P7o.readiness",
+        "target": "s:P6o:P6o.p7leg",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.brief__s:P2o:P2o.consilium__sequence",
+        "source": "s:P2o:P2o.brief",
+        "target": "s:P2o:P2o.consilium",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.consilium__s:P2o:P2o.synth__sequence",
+        "source": "s:P2o:P2o.consilium",
+        "target": "s:P2o:P2o.synth",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.synth__s:P2o:P2o.integrate__sequence",
+        "source": "s:P2o:P2o.synth",
+        "target": "s:P2o:P2o.integrate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P2o:P2o.integrate__s:P2o:P2o.recommend__sequence",
+        "source": "s:P2o:P2o.integrate",
+        "target": "s:P2o:P2o.recommend",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.assess__s:P7o:P7o.verdict__sequence",
+        "source": "s:P7o:P7o.assess",
+        "target": "s:P7o:P7o.verdict",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.verdict__s:P7o:P7o.boot__sequence",
+        "source": "s:P7o:P7o.verdict",
+        "target": "s:P7o:P7o.boot",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.boot__s:P7o:P7o.diagnose__sequence",
+        "source": "s:P7o:P7o.boot",
+        "target": "s:P7o:P7o.diagnose",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P7o:P7o.diagnose__s:P7o:P7o.report__sequence",
+        "source": "s:P7o:P7o.diagnose",
+        "target": "s:P7o:P7o.report",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:EB:EB.preflight__s:EB:EB.gate__sequence",
+        "source": "s:EB:EB.preflight",
+        "target": "s:EB:EB.gate",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:EB:EB.gate__s:EB:EB.deploy__sequence",
+        "source": "s:EB:EB.gate",
+        "target": "s:EB:EB.deploy",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:EB:EB.deploy__s:EB:EB.health__sequence",
+        "source": "s:EB:EB.deploy",
+        "target": "s:EB:EB.health",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:EC:EC.gate__s:EC:EC.swap__sequence",
+        "source": "s:EC:EC.gate",
+        "target": "s:EC:EC.swap",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:EC:EC.swap__s:EC:EC.verify__sequence",
+        "source": "s:EC:EC.swap",
+        "target": "s:EC:EC.verify",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.preflight__s:P8o:P8o.dor__sequence",
+        "source": "s:P8o:P8o.preflight",
+        "target": "s:P8o:P8o.dor",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.dor__s:P8o:P8o.run__sequence",
+        "source": "s:P8o:P8o.dor",
+        "target": "s:P8o:P8o.run",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.run__s:P8o:P8o.verdict__sequence",
+        "source": "s:P8o:P8o.run",
+        "target": "s:P8o:P8o.verdict",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.verdict__s:P8o:P8o.report__sequence",
+        "source": "s:P8o:P8o.verdict",
+        "target": "s:P8o:P8o.report",
         "type": "sequence",
         "label": ""
       }
@@ -4901,6 +5471,51 @@
         "target": "proc:P1A",
         "type": "delegate",
         "label": "bootstrap enables Product"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P2o__proc:P3o__sequence",
+        "source": "proc:P2o",
+        "target": "proc:P3o",
+        "type": "sequence",
+        "label": "стек решён → спеки"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P6o__proc:P7o__sequence",
+        "source": "proc:P6o",
+        "target": "proc:P7o",
+        "type": "sequence",
+        "label": "GO → runtime-гейт"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:P7o__proc:EB__sequence",
+        "source": "proc:P7o",
+        "target": "proc:EB",
+        "type": "sequence",
+        "label": "READY_TO_SMOKE → выкатка"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:EB__proc:EC__sequence",
+        "source": "proc:EB",
+        "target": "proc:EC",
+        "type": "sequence",
+        "label": "flipped + unhealthy → авто-откат"
+      }
+    },
+    {
+      "data": {
+        "id": "proc:EB__proc:P8o__sequence",
+        "source": "proc:EB",
+        "target": "proc:P8o",
+        "type": "sequence",
+        "label": "evt:deploy.succeeded → приёмка"
       }
     },
     {
@@ -5502,8 +6117,8 @@
         "event": "PreToolUse",
         "blocking": true,
         "module": "product",
-        "what": "В strict-режиме отказывает мутирующим инструментам (Write|Edit|Bash|NotebookEdit) при открытых LESSON-*.md; в warn (дефолт) — только предупреждает.",
-        "bypass": "env LESSON_GATE_MODE=warn (дефолт) | off; маркер lesson-in-progress пропускает /product:lesson.",
+        "what": "В strict-режиме (дефолт с 2026-07-11) отказывает мутирующим инструментам (Write|Edit|Bash|NotebookEdit) при открытых LESSON-*.md; в warn — только предупреждает.",
+        "bypass": "env LESSON_GATE_MODE=warn | off; маркер lesson-in-progress и правки самих LESSON-* пропускают /product:lesson.",
         "source": "hooks/product/lesson-presence-gate.js"
       },
       "artifact-validate": {

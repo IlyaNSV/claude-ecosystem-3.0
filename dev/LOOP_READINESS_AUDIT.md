@@ -2,7 +2,7 @@
 
 > **Что это:** аудит каждого шага продуктовых процессов (P1 Discovery+Planning, P2 Feature Definition, P2.5 Design) на пригодность к **bounded completeness-loop** (Epic B концепта [ECOSYSTEM_VISION.md](ECOSYSTEM_VISION.md)). Для каждого шага: **loop-safe?** (можно ли безопасно перезапускать в волне) · **идемпотентность** (что обязано быть update-in-place, а не append/create-new) · **гейт** (точка человеческого решения, которую loop НЕ исполняет, а эскалирует). Выход информирует стоп-условия и идемпотентный дизайн **B1** (`completeness-oracle` + bounded-loop).
 >
-> **Источники-факты:** [docs/pmo/processes.md](docs/pmo/processes.md) (§3.1–§3.3, §2 gates, §4 cascade, §5 BG), [docs/pmo/validation.md](docs/pmo/validation.md), DEC-DEV-0089 (PA-dedup idempotency lesson), DEC-DEV-0098 (Increment 1 kickoff).
+> **Источники-факты:** [docs/pmo/processes.md](../docs/pmo/processes.md) (§3.1–§3.3, §2 gates, §4 cascade, §5 BG), [docs/pmo/validation.md](../docs/pmo/validation.md), DEC-DEV-0089 (PA-dedup idempotency lesson), DEC-DEV-0098 (Increment 1 kickoff).
 > **Статус:** `complete` (Increment 1, B4). Дата: 2026-06-24. Не Phase-N — cross-module vision-трек.
 
 ---

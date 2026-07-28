@@ -133,6 +133,33 @@ At approve:
 - Frontmatter populated
 - confidence stated
 - BG extraction (new terms)
+- **Backfill SEG:** в frontmatter родительского SEG заполнить `value_proposition: VP-<NNN>` (+ обновить `updated:`). SEG создаётся на G4 с `value_proposition: null` — здесь, на выходе D1.4a, пара SEG↔VP впервые полна, и V-09 проверяется именно в этот момент (DEC-DEV-0220-e)
+
+**Explicit frontmatter template** (canonical field names по канону [`docs/pmo/artifacts/VP.md`](../../docs/pmo/artifacts/VP.md) § Frontmatter Schema — НЕ переименовывать «для естественности»; урок DEC-DEV-0011: AI склонен renam'ить поля, что вызывает schema drift). Пишется в `.product/value-propositions/VP-<NNN>-<slug>.md`:
+
+```yaml
+---
+id: VP-<NNN>                        # VP-001, VP-002, ... (три знака, ведущие нули)
+type: value-proposition
+title: "Короткая формулировка VP"
+segment: SEG-<NNN>                   # обязательная 1:1 связь (DEC-ART03)
+status: draft | active | deprecated  # draft при первом создании; active после G4a approve
+confidence: high | medium | low      # C2 modification — обязательно
+confidence_notes: "string"           # required если confidence != high; рекомендован всегда
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+version: 1                           # инкремент при каждом draft→active переходе
+---
+```
+
+**Anti-pattern warnings (НЕ использовать эти соседние имена полей — AI подставляет их «для естественности»):**
+- ❌ `confidence_rationale`, `confidence_reasoning`, `rationale`, `reasoning`, `notes` — caused PS drift (DEC-DEV-0011); canonical = `confidence_notes`
+- ❌ `seg`, `segment_id`, `related_segment`, `for_segment` — canonical = `segment`
+- ❌ `type: vp` / `type: value-prop` — canonical = `type: value-proposition`
+- ❌ `id: VP-1` (без ведущих нулей) — canonical = трёхзначный `VP-001`
+- ❌ skip frontmatter, полагаясь что VP.md spec покрывает — explicit inline template обязателен (convention B.1, DEC-DEV-0012)
+
+**Filename slug rule:** ASCII-only, первые 3-5 значимых слов title, lowercased + hyphenated, max 50 chars; кириллица транслитерируется per ГОСТ 7.79-2000 System B. Полное правило — [`docs/pmo/artifacts/README.md`](../../docs/pmo/artifacts/README.md) § «Naming conventions» → «Slug derivation rule».
 
 ## Content rules per VP artifact
 

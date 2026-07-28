@@ -1,6 +1,6 @@
 # Ecosystem Vision — Wave (C ∥ D) + G-ревью + F1-координация · Execution Batch (work-order)
 
-> **Назначение:** самодостаточный execution-brief волны E5 принятого [ECOSYSTEM_VISION.md](ECOSYSTEM_VISION.md): генерализация консилиум-примитива (Epic D) на completeness-эскалации + крупные автономные шаги (Epic C) + минимальный Epic G + контракт-координация F1.
+> **Назначение:** самодостаточный execution-brief волны E5 принятого [ECOSYSTEM_VISION.md](../../ECOSYSTEM_VISION.md): генерализация консилиум-примитива (Epic D) на completeness-эскалации + крупные автономные шаги (Epic C) + минимальный Epic G + контракт-координация F1.
 > **Статус:** `ready-to-run` (2026-07-04). Kickoff = **DEC-DEV-0145** (recon свежим opus-агентом по D7 `phase-kickoff.md` Sections 1/2/4 + drift-фиксы vision §2.2/§5).
 > **Ключевой ре-скоуп kickoff'а:** консилиум-примитив D1 **уже построен** как оркестраторный P2 (`orchestrator/lib/consilium-synth.cjs` + жюри ×3, DEC-DEV-0129/0135, live-validated) → волна НЕ строит примитив с нуля, а **генерализует** его.
 > **Граница:** `orchestrator/` не редактировать, КРОМЕ согласованной one-line параметризации `consilium-synth.cjs` (см. D1a; backward-compat обязателен, P2-тесты зелёные). Epic E/F2/F3 — не здесь.

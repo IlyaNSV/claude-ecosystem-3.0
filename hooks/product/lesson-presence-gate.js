@@ -237,7 +237,7 @@ function main() {
       return;
     }
 
-    // warn (default): non-blocking stderr nag.
+    // warn (opt-in downgrade; strict is the default since 2026-07-11): non-blocking stderr nag.
     process.stderr.write(
       '\n⚠️ LESSON GATE (reminder): open ' + ids.join(', ') +
       ' — resolve via /product:lesson --resume <id> before other work.\n\n'

@@ -26,8 +26,8 @@
  *     a harness-specific slug path) — so stale-file detection stays in the
  *     protocol, not here. This hook reasons only over in-repo SSOT docs.
  *
- * Sibling to dev-journal-reminder.js / phase-closure-reminder.js — all three are
- * PostToolUse:Bash warn-only reminders; none block.
+ * Sibling to dev-journal-reminder.js — both are PostToolUse:Bash warn-only reminders; neither
+ * blocks. (phase-closure-reminder.js was the third sibling until 2026-07-28 — CONVENTIONS §13.)
  *
  * Output: stderr (visible to user). Never blocks. Fail-silent on any error.
  */

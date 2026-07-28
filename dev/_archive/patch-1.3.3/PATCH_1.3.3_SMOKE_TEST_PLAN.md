@@ -1,5 +1,7 @@
-# Patch 1.3.3 Smoke Test Plan
+﻿# Patch 1.3.3 Smoke Test Plan
 
+> **Статус: ✅ ЗАКРЫТ 2026-07-15 (догон E1 кампании до-PROD).** Итог по всем сценариям: **S1 PARTIAL** (пересуд DEC-DEV-0204) · **S2 PASS** (4/4 критерия: no-op без маркера / warn+PA-065 с маркером / cleanup / warn-only) · **S3 PASS** (0177) · **S4 PARTIAL** — N/A снят (полный поток add: profiler → propose → жёсткий approve-гейт → отмена → cleanup работают на greenfield `vercel@latest`), но §4.2.1-deliverable (пер-тир env-блок в Stage-2 propose + prod-only warning) **структурно не подключён в `add.md`/`installation-protocol`** — совпадает с задокументированным fail-pattern, решение за владельцем · **S5 PASS** (dedup-окно 1 мин доказано конклюзивно: 4 ключа ↔ 4 PA, rollover и same-minute collapse). Попутная находка: research-флоу чистит session-маркер у ПРЕЗЕНТАЦИИ гейта, а не после резолюции (класс исходного N/A). Evidence — отчёт оператора E1, транскрипты пилота 2026-07-15.
+>
 > **Goal:** validate end-to-end that patch 1.3.3 deliverables (B-1..B-4) work in a pilot project. Static smoke (Sub-phase D — `node dev/meta-improvement/scripts/smoke-hooks.js`) already green; this plan covers runtime scenarios that static smoke can't catch.
 >
 > **Context:** patch 1.3.3 was driven by pilot session `636f2cd3-80e7-4c3c-8626-8a2f1e02d11a` (2026-05-27 on `my-first-test/`). Re-running the same pilot context after `/ecosystem:update` should now show all 4 fixes active.
@@ -8,11 +10,11 @@
 
 ## Status banner
 
-🟠 **Прогнан частично 2026-07-11 (smoke-batch, DEC-DEV-0177; вердикты судьи — `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome).** S1/S3 PASS; S2/S4/S5 = N/A (не упражнены по вине оркестровки прогона, НЕ FAIL кода). Догон-требования — в Run notes.
+🟠 **Прогнан частично 2026-07-11 (smoke-batch, DEC-DEV-0177; вердикты судьи — `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome).** Вердикты этого прогона — **только** в `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome (учитывает пересуд DEC-DEV-0204); инлайн-копия здесь намеренно не держится. Итоговое состояние гейта после догона E1 — в шапке файла. Догон-требования — в Run notes.
 
 | Scenario | Status | Run notes |
 |---|---|---|
-| S1 — research per-tier + approve gate | ✅ PASS 2026-07-11 | silent-ignore 3.5 мин — ждала; defer — кэш DEFERRED, без chain; «1» — decision без авто-add |
+| S1 — research per-tier + approve gate | ⚠ PARTIAL 2026-07-11 (понижен пересудом DEC-DEV-0204; было PASS) | silent-ignore 3.5 мин — ждала; defer — кэш DEFERRED, без chain; «1» — decision без авто-add. Не подтверждён evidence: per-tier-таблица research |
 | S2 — forbidden-path write → hook warn + PA append | ⚠ N/A — догон | ядро не упражнено: `/integrator:scan` снял marker на Final-cleanup ДО записи → no-op легитимен. Догон: запись при ЖИВОМ маркере (не после scan) |
 | S3 — `/ecosystem:pending-actions` default filter | ✅ PASS 2026-07-11 | 12 pending / 63 all / 0 --source integrator / help; sentinel скрыт. Находка: PA-050/051 без `Status` (data-hygiene) |
 | S4 — `/integrator:add` env_tier preview + prod-only warning | ⚠ N/A — догон | idempotent re-verify path не рендерит Stage-2 propose. Догон: свежий install инструмента с профилем (идеально `local_dev: none`) |
@@ -231,6 +233,6 @@
 
 ## After closure
 
-- Archive plan: `mv dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md dev/_archive/patch-1.3.3/`.
-- Archive readiness: `mv dev/PATCH_1.3.3_READINESS.md dev/_archive/patch-1.3.3/`.
+- ✅ Archive plan: `mv dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md dev/_archive/patch-1.3.3/` — **исполнено 2026-07-28** (гигиена репо; догон CONVENTIONS §5.1 — план отстал от своего readiness на 13 дней после закрытия гейта 2026-07-15).
+- ✅ Archive readiness: `mv dev/PATCH_1.3.3_READINESS.md dev/_archive/patch-1.3.3/` — исполнено ранее.
 - Consider phase-closure ritual per `dev/meta-improvement/checklists/phase-closure.md` for cross-cutting lessons.

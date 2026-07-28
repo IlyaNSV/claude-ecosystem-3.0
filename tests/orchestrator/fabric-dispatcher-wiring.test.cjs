@@ -131,5 +131,14 @@ test('engine + policy are co-located in orchestrator/lib (deployment home, no st
     'the engine must require the CO-LOCATED policy (a ../../lib path breaks in deployed projects)');
 });
 
+test('dispatcher carries the substrate READ-ONLY prohibition (DEC-DEV-0213 / FIND-F — run ld6vrs: dispatcher "prepped" the substrate and erased the staged scenario)', () => {
+  assert(RUN_MD.includes('THE SUBSTRATE IS READ-ONLY FOR THE DISPATCHER'),
+    'run.md Pre-flight must carry the dispatcher-level capture-don\'t-fix block (the in-process stages have theirs via DEC-DEV-0211; the dispatcher is the remaining actor)');
+  assert(/docker start\|stop\|restart\|run\|compose/.test(RUN_MD),
+    'the prohibition must ENUMERATE the forbidden command classes (text without structure does not bind — DEC-DEV-0202 theorem)');
+  assert(RUN_MD.includes('BLOCKED × ENV_NOT_READY') && /successful, valid run/.test(RUN_MD),
+    'the block must reframe the goal: a BLOCKED verdict on a down substrate is a VALID outcome, not a failure to remedy');
+});
+
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);

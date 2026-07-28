@@ -17,7 +17,7 @@
 
 ## Status banner
 
-🟡 **3 из 4 компонентов зелёные; компонент 4 закрыт, компонент 2 — live pending.**
+🟢 **4 из 4 компонентов зелёные — ПОРОГ ПРОЙДЕН (2026-07-15, кампания до-PROD).** Компонент 2 live-валидирован: run-ledger писал полные исходы ВСЕХ живых прогонов раунда 3 (deploy/rollback: l62yt4 DEPLOYED · l8m24o DEPLOY_FAILED · l9zt0w ROLLED_BACK · le56c8 BLOCKED · lymzao consilium-BLOCKED · lzg7rk DEPLOYED — verdict/readiness/decision_trail заполнены, 0 null-исходов после фикса DEC-DEV-0200).
 Гейт как артефакт создан ранее; CI-нога (компонент 1) закрыта минимальным GitHub Action.
 **Компонент 4 (security review) переведён 🟡→✅ 2026-07-11** систематическим проходом
 [`SECURITY_REVIEW_2026-07-11.md`](SECURITY_REVIEW_2026-07-11.md) (DEC-DEV-0189): найден
@@ -33,7 +33,7 @@
 | # | Компонент | Статус | Чем закрыт / что осталось |
 |---|---|---|---|
 | 1 | **Evals в CI** | ✅ floor (этот PR) | Минимальный GitHub Action [`.github/workflows/verify.yml`](../../.github/workflows/verify.yml) гонит `npm run verify` на push в `main` + каждый PR. Это **пол, не потолок**. |
-| 2 | **Трейсы каждого прогона** | ✅ built · 🟡 live pending | Run-ledger (DEC-DEV-0147, PR #120): [`orchestrator/lib/run-ledger.cjs`](../../orchestrator/lib/run-ledger.cjs) + dispatcher-wiring `start`/`finish` в [`commands/orchestrator/run.md`](../../commands/orchestrator/run.md) §«Run ledger». Каждый прогон авто-создаёт `runs/<RUN_ID>/run.json` + строку в `runs/ledger.ndjson`. **Остаток:** live-прогон в пилоте после `/ecosystem:update` (built ≠ validated — см. VC-127 ниже). |
+| 2 | **Трейсы каждого прогона** | ✅ **live-валидирован 2026-07-15** (6 прогонов раунда 3, 0 null-исходов) | Run-ledger (DEC-DEV-0147, PR #120): [`orchestrator/lib/run-ledger.cjs`](../../orchestrator/lib/run-ledger.cjs) + dispatcher-wiring `start`/`finish` в [`commands/orchestrator/run.md`](../../commands/orchestrator/run.md) §«Run ledger». Каждый прогон авто-создаёт `runs/<RUN_ID>/run.json` + строку в `runs/ledger.ndjson`. **Остаток:** live-прогон в пилоте после `/ecosystem:update` (built ≠ validated — см. VC-127 ниже). |
 | 3 | **Scoped permissions per agent** | ✅ | Два независимых слоя: (a) `tools:`-frontmatter у всех 7 субагентов ([`agents/**/*.md`](../../agents) — `qa-advisor`/`devils-advocate`/`architect-advisor`/`ux-advisor`/`tool-researcher`/`tool-profiler`/`contract-designer`), сужающий инструментарий персоны до минимума; (b) PreToolUse-guard [`hooks/integrator/scope-guard.js`](../../hooks/integrator/scope-guard.js) — маркер-gated boundary на запись вне зоны Integrator (warn + PA-journal). |
 | 4 | **Security review** | ✅ (2026-07-11) | Систематический защитный проход по репозиторию — [`SECURITY_REVIEW_2026-07-11.md`](SECURITY_REVIEW_2026-07-11.md) (DEC-DEV-0189): OWASP-классы (injection / secret-leak / authz / path-traversal) + XSS + supply-chain + permissions-постура по авто-исполняемому consumer-периметру (`hooks/`), dev-tooling, `adapters/`, install/bootstrap/update, шаблонам. **Найдено:** 0 critical, 1 **high починен** (command-injection в `br`/`ic`/`zone-change-trigger.js` → `execFileSync`), 2 medium + 5 low **приняты явно** (владельцу). Secrets-свип чист. Нефикшенных critical/high нет. Дополняет прежний слой: `verify-finding-before-act` (P4/P6) + `/security-review`-класс на diff. |
 
@@ -104,14 +104,17 @@
 
 | План | Прогон 2026-07-11 | Статус |
 |---|---|---|
-| [`PATCH_1.3.3_SMOKE_TEST_PLAN.md`](PATCH_1.3.3_SMOKE_TEST_PLAN.md) | S1/S3 PASS; S2/S4/S5 не дошли (тест-дизайн-гэп: `/integrator:scan` снял session-marker перед записью) | 🟠 частично прогнан; точечный догон S2/S4/S5 (запись при живом маркере + свежий install с профилем) |
-| [`PHASE_6_SMOKE_TEST_PLAN.md`](PHASE_6_SMOKE_TEST_PLAN.md) | S4/S5/S7 PASS, S2 PARTIAL; S1/S3 N/A-substrate | 🟠 частично прогнан; точечный догон S1/S3 (честная UI FM без готового дизайна) |
-| ~~[`S_LE_LESSON_GATE_SMOKE.md`](S_LE_LESSON_GATE_SMOKE.md)~~ | S-LE.3 полный PASS (самодедлок 0143 live-устранён), S-LE.1 = known CC-caveat | ✅ **закрыт**; чеклист архивирован → `dev/_archive/s-le/`; флип `lesson-presence-gate.js` warn→strict выполнен (PR #162) |
+| ~~[`PATCH_1.3.3_SMOKE_TEST_PLAN.md`](../_archive/patch-1.3.3/PATCH_1.3.3_SMOKE_TEST_PLAN.md)~~ | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E1; план архивирован 2026-07-28 → `dev/_archive/patch-1.3.3/` (к своему readiness, CONVENTIONS §5.1) |
+| ~~[`PHASE_6_SMOKE_TEST_PLAN.md`](../_archive/phase-6/PHASE_6_SMOKE_TEST_PLAN.md)~~ | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E2; план архивирован 2026-07-28 → `dev/_archive/phase-6/` (к своему readiness, CONVENTIONS §5.1) |
+| ~~[`S_LE_LESSON_GATE_SMOKE.md`](../_archive/s-le/S_LE_LESSON_GATE_SMOKE.md)~~ | S-LE.3 полный PASS (самодедлок 0143 live-устранён), S-LE.1 = known CC-caveat | ✅ **закрыт**; чеклист архивирован → `dev/_archive/s-le/`; флип `lesson-presence-gate.js` warn→strict выполнен (PR #162) |
 | ~~`PHASE_7_SMOKE_TEST_PLAN.md`~~ | S1/S2/S3/S5 PASS, S4 PARTIAL (DEF-SMK-1, пофикшен DEC-DEV-0178/PR #163) | ✅ **validated**; план архивирован → `dev/_archive/phase-7/` |
 
-Долг снижен с 4 до **2** (PHASE_7 validated+архивирован; S_LE закрыт с флипом
-warn→strict). Оставшиеся два (PATCH_1.3.3, PHASE_6) — не превышают порог «>2», но при
-следующей пилот-сессии их точечный догон приоритетен над новыми prod-graduation-заявками.
+**Долг = 0 (на 2026-07-28).** Все четыре плана отработаны: PHASE_7 validated+архивирован ·
+S_LE закрыт с флипом warn→strict · PATCH_1.3.3 и PHASE_6 закрыты догонами E1/E2 кампании
+до-PROD 2026-07-15 и архивированы 2026-07-28 к своим readiness. Порог «≥2 планов в статусе
+next pilot session» не превышен. Единственный **активный** smoke-план репо —
+[`UJA_SMOKE_TEST_PLAN.md`](UJA_SMOKE_TEST_PLAN.md) (static verification DONE, real run
+PENDING на VM-пилоте); он и есть текущий deferred-smoke долг.
 
 ---
 

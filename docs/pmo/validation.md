@@ -33,8 +33,7 @@
 **Добавлено:**
 - **V-15** (orphan artifacts detection) — полезный cleanup-check
 
-**Отложено:**
-- **V-16** (NFR coverage) — ждёт закрытия OQ-03 (NFR артефакт)
+**Отложено:** нет. *(V-16 NFR coverage был отложен до закрытия OQ-03 и восстановлен в итерации 8 — см. §8.1.)*
 
 **Перемещено в Integrator namespace (V-I-*):**
 - V-17/V-20 (FM shipped → .kiro/ existence) → это cross-boundary с внешним инструментом
@@ -138,7 +137,7 @@ Validation — это **safety net**, а не bureaucracy. Каждое прав
 
 ### 3.1 Inline (при каждом сохранении артефакта)
 
-- Hook `product-artifact-validate.js` на PostToolUse при Write/Edit в `.product/`
+- Hook `hooks/product/artifact-validate.js` на PostToolUse при Write/Edit в `.product/`
 - Проверяет только правила, применимые к сохраняемому артефакту И активные per `validation_tier` (см. §2.3)
 - Быстрые checks (ms)
 - Результат: immediate feedback в stderr/output
@@ -219,7 +218,7 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 
 ## 5. Full Catalog
 
-### 5.1 Artifact Validation (V-01..V-15)
+### 5.1 Artifact Validation (V-01..V-18)
 
 #### V-01: FM has ≥1 active SC
 - **Tier:** 🔴 Blocking
@@ -294,12 +293,12 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 
 #### V-09: SEG has exactly 1 VP
 - **Tier:** 🔴 Blocking
-- **Statement:** Каждый SEG-* в status=active должен иметь exactly one VP-* referenced в frontmatter.value_proposition.
+- **Statement:** Каждый SEG-* в status=active должен иметь exactly one VP-* referenced в frontmatter.value_proposition — **начиная с выхода D1.4a**. До D1.4a `value_proposition: null` — легитимное переходное состояние: SEG становится active на G4, а его VP создаётся только на следующем шаге конвейера (D1.4a, «VP design per active SEG»).
 - **Artifacts affected:** SEG-*, VP-*
 - **Automation:** ✅ Fully
-- **When:** Approve gate (SEG), On-demand
-- **On failure:** SEG cannot be active без VP.
-- **Rationale:** DEC-ART03 установил 1:1 отношение SEG↔VP. Без VP сегмент без ценностного предложения.
+- **When:** Approve gate (VP) / выход D1.4a, On-demand. *(Чекпойнт перенесён с Approve gate (SEG): на G4 правило невыполнимо по построению — конвейер не может сослаться на VP, которого ещё нет. Инвариант 1:1 не менялся; DEC-DEV-0220-e.)*
+- **On failure:** VP cannot be active без обратной ссылки из его SEG; активный SEG после D1.4a без VP — blocking finding.
+- **Rationale:** DEC-ART03 установил 1:1 отношение SEG↔VP. Без VP сегмент без ценностного предложения. Проверка ставится там, где пара впервые полна и правило впервые выполнимо.
 
 #### V-10: FM has SEG and JTBD
 - **Tier:** 🔴 Blocking
@@ -777,7 +776,7 @@ Approve bundle? (y/n/per-item)
 
 ```yaml
 version: 1
-project: translateit
+project: my-product
 global_overrides:
   # Severity overrides per rule
   rules:
@@ -885,9 +884,9 @@ approve_overrides:
 
 ### 10.1 Инструменты реализации
 
-- **Inline validation** — hook `product-artifact-validate.js` (JS, PostToolUse)
+- **Inline validation** — hook `hooks/product/artifact-validate.js` (JS, PostToolUse)
 - **On-demand validation** — slash-command `/product:validate` с опциями `--rule V-07`, `--tier blocking`, `--scope SC-*`
-- **Cascade validation** — skill `cascade-validator.md` + sub-component для обхода графа
+- **Cascade validation** — skill [`skills/product/cascade-protocol.md`](../../skills/product/cascade-protocol.md) (BFS-обход графа) + hook `hooks/product/cascade-check.js`
 - **Orphan detection (V-15)** — standalone команда `/product:cleanup` (default: V-15 orphan-only; `--dry-run` для preview без apply). Расширенный режим `--pending-hygiene` (alias `--full`) дополнительно sweep'ает 3 pending файла (cascade revalidate + validation-pending purge + da-pending stale flag) per Phase 4.G / DEC-DEV-0027.
 
 ### 10.2 Severity определение runtime
@@ -903,38 +902,14 @@ function getRuleSeverity(ruleId, projectConfig) {
 
 ### 10.3 Reporting формат
 
-`/product:validate` output:
+**SSOT формата отчёта — исполнитель, не каталог:** [`skills/product/validation-runner.md`](../../skills/product/validation-runner.md)
+§Output format (JSON в `.product/.reports/validate-<YYYYMMDD-HHMM>.json` + markdown inline).
+Каталог здесь копию шаблона **не держит** — прежняя копия отстала от раннера (не знала `Tier:`,
+`→ Fix:`, `Auto-fixed:`, `Stale pending purged:`, блока `Actionable next:`) и показывала
+несуществующий флаг `--fix`. Флаги команды — [`commands/product/validate.md`](../../commands/product/validate.md).
 
-```
-=== VALIDATION REPORT ===
-Project: translateit
-Scope: .product/** 
-Time: 2026-06-15 14:30
-
-🔴 BLOCKING (3):
-  V-01 : FM-007 has no active SC
-  V-05 : LC-003 state "abandoned" unreachable from initial
-  V-H-02: HANDOFF-FM-009 missing hash for SC-012
-
-🟡 WARNING (12):
-  V-02 : SC-015 has no BR references (pure navigation? confirm)
-  V-07 : VC coverage missing alt-flow for SC-005a
-  V-12 : 3 stale drafts (>14 days):
-           - MR (updated 2026-05-20)
-           - CA (updated 2026-05-22)
-           - HYP-004 (updated 2026-05-10)
-  V-H-07: HANDOFF-FM-003 BG excerpt missing term "Revision batch"
-  V-MK-02: MK-005 Component State Matrix missing error state for BR-015
-  ... (7 more)
-
-🔵 INFO (5):
-  V-MK-04 : MK-003 — review tab order для новых пользователей
-  V-MK-06 : MK-003 — verify touch targets на mobile
-  ... (3 more)
-
-SUMMARY: 3 blocking, 12 warnings, 5 info
-Actionable: /product:validate --fix (auto-fixes where possible: V-11 bi-dir refs)
-```
+Инвариант, которым владеет каталог (а не раннер): отчёт группируется по трём tier'ам
+🔴 Blocking / 🟡 Warning / 🔵 Info, каждая находка несёт ID правила и адрес артефакта.
 
 ### 10.4 Performance targets
 
@@ -947,7 +922,7 @@ Actionable: /product:validate --fix (auto-fixes where possible: V-11 bi-dir refs
 
 Собственные тесты валидаторов:
 - Fixture-based: заданные `.product/` состояния → ожидаемые validation results
-- Regression: на реальных проектах (TranslateIT) — сохранённые snapshots результатов
+- Regression: на реальных проектах — сохранённые snapshots результатов *(**не построено**: fixture-тесты на real `.product/` snapshots — v1.1+ candidate, см. §11)*
 - Mutation testing: случайные изменения в fixtures → должны ловиться правильными rules
 
 ---
@@ -960,8 +935,8 @@ Actionable: /product:validate --fix (auto-fixes where possible: V-11 bi-dir refs
 - [x] **Command `/product:cleanup`** для V-15 (orphan detection, default) + `--pending-hygiene` flag (cascade revalidate + validation-pending purge + da-pending stale flag) — Phase 4.G shipped per DEC-DEV-0027 (skill `cleanup-detector.md` + command `cleanup.md`)
 - [ ] **Fixture tests** на real `.product/` snapshots (regression coverage) — v1.1+ candidate
 - [x] **Catalog↔runner sync linter** (drift detection между этим документом и `validation-runner.md` hardcoded tables) — shipped per DEC-DEV-0158 (G19): `dev/meta-improvement/scripts/check-validation-sync.cjs` в `npm run verify`; trigger «first observed drift» сработал (V-18 + V-AM-* отсутствовали в раннере молча). ID-множества: каталог (`#### V-…` заголовки) ↔ таблицы раннера + `catalog-sync:acknowledged`-маркеры; плюс внутрикаталожные инварианты (prose-итог, namespace-таблица §0)
-- [ ] **V-MK-01..V-MK-08** реализация — Phase 6 conditional (Design Module)
-- [ ] **V-I-*** правила через Integrator при `/integrator:add <tool>` — Phase 5+
+- [x] **V-MK-01..V-MK-08** реализация — Phase 6 shipped (релиз 1.4.0): skill [`skills/design/design-validation.md`](../../skills/design/design-validation.md) (V-MK-01..08, часть — partial/manual per Q3/C5) + hook `hooks/design/design-artifact-validate.js` (V-MK-08 + frontmatter/ref-проверки). **Известный gap:** хук эмитит ID `V-MK-frontmatter` / `V-MK-feature-ref` / `V-MK-sc-ref`, которых в этом каталоге нет — они не покрыты `check-validation-sync.cjs` (он сверяет каталог с раннером, не с хуками)
+- [ ] **V-I-*** правила через Integrator при `/integrator:add <tool>` — не построены (Installation-фаза Integrator закрыта, `validation-rules.yaml` per-tool — открытый пункт)
 
 ---
 

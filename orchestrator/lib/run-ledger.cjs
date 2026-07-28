@@ -159,7 +159,7 @@ function extractModelMap(source) {
  * P2 / P3 / P4 return no scalar outcome at all — for those `result: null` is CORRECT
  * (nothing was lost), and `outcome_key: null` says so explicitly.
  */
-const OUTCOME_KEYS = ['result', 'p7_result', 'go_gate'];
+const OUTCOME_KEYS = ['result', 'p7_result', 'go_gate', 'uja_result'];
 
 /** Keys summarizeResult knowingly reads off a process return (`verdict` has its own column). */
 const READ_OUTCOME_KEYS = new Set(OUTCOME_KEYS.concat(['verdict']));

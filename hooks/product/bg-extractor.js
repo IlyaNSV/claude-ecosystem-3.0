@@ -73,20 +73,32 @@ try {
 const filePath = hookInput?.tool_input?.file_path;
 if (!filePath) process.exit(0);
 
-// ---------- Filter: .product/**/*.md, exclude meta + glossary itself ----------
+// ---------- Filter: ONLY source artifact zones of .product (allowlist) ----------
+//
+// Allowlist, not blocklist (DEC-DEV-0219). Derived/compiled docs (handoffs/ —
+// выжимки артефактов с шаблонными **лейблами**) и рабочие dot-директории
+// (.design-sessions/, .reports/, .consilium/, .fixtures/, .sessions/, .pending/,
+// .decisions/, .da-findings/, ...) — НЕ источники глоссария: всякий извлекаемый
+// термин уже живёт в source-артефакте. Прежний блоклист гнил дважды вживую:
+// 223 мусорных кандидата из перегенерированных handoff'ов («Фича:», «Сегмент:»)
+// и ghost-кандидаты из .design-sessions/FM-008-* (изолированный смоук).
+const SOURCE_DIRS = new Set([
+  'features', 'scenarios', 'business-rules', 'lifecycles', 'verification',
+  'invariants', 'segments', 'value-propositions', 'hypotheses', 'nfr', 'notes',
+  'releases', 'mockups',
+]);
 
 const normalized = filePath.replace(/\\/g, '/');
-if (!/\.product\/.*\.md$/.test(normalized)) process.exit(0);
-
-// Exclude meta directories and glossary itself (don't extract from BG into BG)
-if (
-  normalized.includes('/.sessions/') ||
-  normalized.includes('/.pending/') ||
-  normalized.includes('/.decisions/') ||
-  normalized.includes('/.da-findings/') ||
-  normalized.endsWith('/glossary.md')
-) {
-  process.exit(0);
+const inProduct = normalized.match(/\.product\/(.+\.md)$/);
+if (!inProduct) process.exit(0);
+const relInProduct = inProduct[1];
+const topSeg = relInProduct.includes('/') ? relInProduct.split('/')[0] : null;
+if (topSeg === null) {
+  // Root singletons (PS/MR/CA/RPM/DS/RM/AM/...) are sources — except the
+  // glossary itself (don't extract from BG into BG).
+  if (relInProduct === 'glossary.md') process.exit(0);
+} else if (!SOURCE_DIRS.has(topSeg)) {
+  process.exit(0); // handoffs/, any dot-dir, unknown dirs — not extraction sources
 }
 
 // ---------- Find project root ----------

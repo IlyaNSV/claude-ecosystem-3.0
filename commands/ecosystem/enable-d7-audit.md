@@ -142,6 +142,6 @@ Remove the hook entry manually from `.claude/settings.local.json` — that is th
 
 ## See also
 
-- [`commands/meta/audit-smoke.md`](../../dev/meta-improvement/audit-reports/README.md) (in ecosystem repo `.claude/commands/meta/audit-smoke.md`) — consumer side
+- `.claude/commands/meta/audit-smoke.md` (ecosystem repo) — the audit command itself
 - `dev/meta-improvement/checklists/audit-smoke-workflow.md` (ecosystem repo) — workflow ritual
 - DEC-DEV-0034 in `DEV_JOURNAL.md` — design rationale

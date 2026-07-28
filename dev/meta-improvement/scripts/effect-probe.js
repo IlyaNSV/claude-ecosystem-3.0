@@ -296,9 +296,23 @@ function validatePostState(productDir) {
         }
       }
     } else if (t === 'segment') {
-      // V-09: active SEG must have exactly one VP.
+      // V-09 (checkpoint at D1.4a exit, DEC-DEV-0220-e): SEG goes active at G4 BEFORE its VP
+      // exists, so a null value_proposition alone is a legitimate transient, not a violation.
+      // Corpus-level we CAN see the pair: flag only a missed backfill — the SEG's VP already
+      // exists in the corpus but the back-reference was never written.
       if (st === 'active' && !e.fm.value_proposition) {
-        push('V-09', 'blocking', e, 'active SEG missing value_proposition');
+        const vpForSeg = entries.find(
+          (x) => String(x.fm.type) === 'value-proposition'
+            && String(x.fm.segment || '').trim() === String(e.fm.id).trim(),
+        );
+        if (vpForSeg) {
+          push('V-09', 'blocking', e, `active SEG has VP ${vpForSeg.fm.id} but value_proposition not backfilled (D1.4a)`);
+        }
+      }
+    } else if (t === 'value-proposition') {
+      // V-09 VP side: at D1.4a exit the pair must be complete — an active VP must name its SEG.
+      if (st === 'active' && !e.fm.segment) {
+        push('V-09', 'blocking', e, 'active VP missing segment reference (1:1 SEG↔VP)');
       }
     }
   }
