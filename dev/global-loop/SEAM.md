@@ -53,6 +53,11 @@ CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false, промпт через файл+cap
 harvest (SUMMARY + транскрипт scp на хост, сверка байт) → гашение сессии поимённо →
 ledger-запись RUN-B.NN (в этой ветке) → push (сеть: dangerouslyDisableSandbox=true).
 
+Старт КАЖДОЙ хост-сессии кондуктора — онбординг-пак (DEC-DEV-0222, влито из main
+merge'ем 2026-07-28): `CONDUCTOR_SESSION=1 claude` (авто-хук) · `/host:onboard` ·
+вручную `node dev/meta-improvement/scripts/host-onboard.cjs` (~38k ток., детали —
+PLAN §1-bis); + правило coverage-check интенций владельца в CLAUDE.md.
+
 <!-- SEAM-REINJECT-END -->
 
 ## Состояние (верифицируемо, не по памяти)
@@ -102,6 +107,9 @@ trial-cap exempt active · CD-14/15/12 · SI-png backlog · PA-118 (owner). Ос
 
 ## Отброшено / решено (не переоткрывать)
 
+- **R0 исполнен** 2026-07-17 (DEC-DEV-0221, PR #229): термин «Release DoD» + soft
+  body-секция в каноне RL; ручная проверка DoD на живом RL-001 прошла хвостом RUN-A
+  (см. ASSIST_LOG), спеку не переделывать. (Из main-версии шва, merge 2026-07-28.)
 - Коллизия хост-сессий разрешена владельцем: кондуктор — ОДНА сессия (RUN-B.45).
 - Outbox: B применён, A = RL-002 (DEC-PLAN-047 ↔ NOTE-031, перелинкованы — не дубль).
 - Выключение drain строго `=false` (unset/`0` force-enable'ится кодом) — подтверждено s32.
