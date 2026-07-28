@@ -12,13 +12,13 @@
 
 ## 🟢 Status banner (2026-04-20 — final readiness)
 
-**Pilot complete on `my-first-test/`** — Phase 2 Discovery валидирована end-to-end. См. [DEC-DEV-0008](../DEV_JOURNAL.md) с деталями output.
+**Pilot complete on `my-first-test/`** — Phase 2 Discovery валидирована end-to-end. См. [DEC-DEV-0008](../../../DEV_JOURNAL.md) с деталями output.
 
 **Применены 3 pre-Phase-3 fixes (DEC-DEV-0009..0011)** + **architectural consolidation (DEC-DEV-0012)** — все 12 архитектурных decisions для Phase 3 закрыты:
-- [DEC-DEV-0009](../DEV_JOURNAL.md) — session-state orchestrator integration
-- [DEC-DEV-0010](../DEV_JOURNAL.md) — atomicity in session-state.js
-- [DEC-DEV-0011](../DEV_JOURNAL.md) — `confidence_notes` canonicalization (PS skill)
-- [DEC-DEV-0012](../DEV_JOURNAL.md) — Phase 3 architectural decisions consolidation (C.1-C.5, B.1-B.5, D.1-D.5)
+- [DEC-DEV-0009](../../../DEV_JOURNAL.md) — session-state orchestrator integration
+- [DEC-DEV-0010](../../../DEV_JOURNAL.md) — atomicity in session-state.js
+- [DEC-DEV-0011](../../../DEV_JOURNAL.md) — `confidence_notes` canonicalization (PS skill)
+- [DEC-DEV-0012](../../../DEV_JOURNAL.md) — Phase 3 architectural decisions consolidation (C.1-C.5, B.1-B.5, D.1-D.5)
 
 **Status:**
 - Раздел A (Smoke tests) — **✓ mostly done via pilot**; A.7 (`/product:init --continue` re-test) deferred (low priority, не blocking)
@@ -37,7 +37,7 @@
   - D.1: Deep mode subagents → v1.1 (full context preserved в `dev/v1_1_backlog.md`)
   - D.2: Atomic mass-rename → v1.1; v1 ships manual preview workflow
   - D.3: NFR Review F.5a confirmed Phase 4
-  - D.4+D.5: Final must-have / deferred lists in [ROADMAP.md Phase 3 section](../ROADMAP.md)
+  - D.4+D.5: Final must-have / deferred lists in [ROADMAP.md Phase 3 section](../../../ROADMAP.md)
 - Раздел E (Pilot validation gate) — **✓ done** (E.1, E.2 resolved per DEC-DEV-0008)
 - Раздел F (Meta) — **✓ done** (DEV_JOURNAL + memory + CLAUDE.md активны)
 
@@ -47,13 +47,13 @@
 - `docs/pmo/artifacts/README.md` — ASCII slug rule codified
 - `ROADMAP.md` — Phase 3 deliverables refined; Post-MVP v1.1 section expanded
 
-**🟢 READY for Phase 3 kick-off.** Все blocking items resolved. См. [ROADMAP.md Phase 3 section](../ROADMAP.md#phase-3) для finalized deliverables list.
+**🟢 READY for Phase 3 kick-off.** Все blocking items resolved. См. [ROADMAP.md Phase 3 section](../../../ROADMAP.md#phase-3) для finalized deliverables list.
 
 ---
 
 ## A. Smoke tests Phase 2 (🔴 Blockers — без них Phase 3 — слепой полёт)
 
-**Updated 2026-04-20** — большинство items validated на pilot `my-first-test/` (см. [DEC-DEV-0008](../DEV_JOURNAL.md)).
+**Updated 2026-04-20** — большинство items validated на pilot `my-first-test/` (см. [DEC-DEV-0008](../../../DEV_JOURNAL.md)).
 
 ### A.1 Bootstrap end-to-end на чистой папке ✓
 - [x] bootstrap прошёл до конца в `my-first-test/`

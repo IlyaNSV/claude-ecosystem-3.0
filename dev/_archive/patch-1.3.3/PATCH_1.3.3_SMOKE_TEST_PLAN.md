@@ -1,4 +1,4 @@
-# Patch 1.3.3 Smoke Test Plan
+﻿# Patch 1.3.3 Smoke Test Plan
 
 > **Статус: ✅ ЗАКРЫТ 2026-07-15 (догон E1 кампании до-PROD).** Итог по всем сценариям: **S1 PARTIAL** (пересуд DEC-DEV-0204) · **S2 PASS** (4/4 критерия: no-op без маркера / warn+PA-065 с маркером / cleanup / warn-only) · **S3 PASS** (0177) · **S4 PARTIAL** — N/A снят (полный поток add: profiler → propose → жёсткий approve-гейт → отмена → cleanup работают на greenfield `vercel@latest`), но §4.2.1-deliverable (пер-тир env-блок в Stage-2 propose + prod-only warning) **структурно не подключён в `add.md`/`installation-protocol`** — совпадает с задокументированным fail-pattern, решение за владельцем · **S5 PASS** (dedup-окно 1 мин доказано конклюзивно: 4 ключа ↔ 4 PA, rollover и same-minute collapse). Попутная находка: research-флоу чистит session-маркер у ПРЕЗЕНТАЦИИ гейта, а не после резолюции (класс исходного N/A). Evidence — отчёт оператора E1, транскрипты пилота 2026-07-15.
 >
@@ -10,7 +10,7 @@
 
 ## Status banner
 
-🟠 **Прогнан частично 2026-07-11 (smoke-batch, DEC-DEV-0177; вердикты судьи — `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome).** Вердикты этого прогона — **только** в `SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome (учитывает пересуд DEC-DEV-0204); инлайн-копия здесь намеренно не держится. Итоговое состояние гейта после догона E1 — в шапке файла. Догон-требования — в Run notes.
+🟠 **Прогнан частично 2026-07-11 (smoke-batch, DEC-DEV-0177; вердикты судьи — `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome).** Вердикты этого прогона — **только** в `dev/gates/SMOKE_BATCH_2026-07-11_BRIEF.md` §Outcome (учитывает пересуд DEC-DEV-0204); инлайн-копия здесь намеренно не держится. Итоговое состояние гейта после догона E1 — в шапке файла. Догон-требования — в Run notes.
 
 | Scenario | Status | Run notes |
 |---|---|---|
@@ -233,6 +233,6 @@
 
 ## After closure
 
-- Archive plan: `mv dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md dev/_archive/patch-1.3.3/`.
-- Archive readiness: `mv dev/PATCH_1.3.3_READINESS.md dev/_archive/patch-1.3.3/`.
+- ✅ Archive plan: `mv dev/gates/PATCH_1.3.3_SMOKE_TEST_PLAN.md dev/_archive/patch-1.3.3/` — **исполнено 2026-07-28** (гигиена репо; догон CONVENTIONS §5.1 — план отстал от своего readiness на 13 дней после закрытия гейта 2026-07-15).
+- ✅ Archive readiness: `mv dev/PATCH_1.3.3_READINESS.md dev/_archive/patch-1.3.3/` — исполнено ранее.
 - Consider phase-closure ritual per `dev/meta-improvement/checklists/phase-closure.md` for cross-cutting lessons.

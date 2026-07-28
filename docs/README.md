@@ -1,71 +1,56 @@
-# docs/ — Source of truth for Ecosystem 3.0 architecture
+# docs/ — что есть Ecosystem 3.0
 
-> **Назначение:** декларативные SPEC-документы и PMO-каталоги. Source of truth для «что есть Ecosystem 3.0».
+> **Роль:** индекс зоны `docs/`. Декларативная база — SPEC модулей и PMO-каталоги.
 >
-> **Принцип разделения:** `docs/` = **ЧТО** (артефакты, правила, контракты). `skills/`, `commands/`, `agents/` = **КАК** (методология, conversation flow). При расхождении — `docs/` побеждает.
+> **Принцип разделения:** `docs/` = **ЧТО** (артефакты, правила, контракты).
+> `skills/`, `commands/`, `agents/` = **КАК** (методология, ход диалога).
+> При расхождении — **`docs/` побеждает**.
 >
-> **НЕ путать с:** `dev/` (внутренние документы про разработку *самой* экосистемы — phase readiness, design docs, meta-improvement); `templates/` (шаблоны для end-user проектов).
+> **НЕ путать с:** `dev/` (разработка *самой* экосистемы) · `templates/` (шаблоны end-user проектов).
 
----
+_Этот файл — тонкий индекс, а не второй роутер. Полный роутер «зачем пришёл → куда смотреть» —_
+_[корневой README §«Где начать»](../README.md#где-начать); визуальная карта — [docs/MAP.md](MAP.md)._
+_(До 2026-07-28 здесь стояла копия того же роутера с 82% пересечением, и она разошлась — в ней_
+_Orchestrator числился как «P3–P6, P2/P7 отложены» через месяц после постройки P1–P8; DEC-DEV-0227.)_
 
-## Модули (SPEC documents)
+## Module SPEC — по одному на зону ответственности
 
-Каждый module SPEC — single source of truth для своей зоны. Версионируются independently.
+Каждый SPEC — single source of truth для своей зоны, версионируется независимо.
+**Статус модулей здесь не дублируется** — он в [ROADMAP «Где мы сейчас»](../ROADMAP.md#где-мы-сейчас).
 
-| Модуль | SPEC | Зона ответственности |
-|---|---|---|
-| **Product Module** | [product-module/SPEC.md](product-module/SPEC.md) | D1 (Discovery + Planning) + D2-Behavioral; 24 артефакта; handoff generation |
-| **Integrator Module** | [integrator-module/SPEC.md](integrator-module/SPEC.md) | «Сисадмин» экосистемы — install/configure/connect внешние инструменты под PMO-карту |
-| **Design Module** | [design-module/SPEC.md](design-module/SPEC.md) | Условный sub-module: D2-B04 UI Design когда `FM.has_ui=true` |
-| **Orchestrator Module** | [orchestrator-module/SPEC.md](orchestrator-module/SPEC.md) _(P3–P6 построены + live-validated; P2/P7 отложены)_ | Запуск инструментов и оркестрация сценариев D3-D6 |
+- [product-module/SPEC.md](product-module/SPEC.md) — D1 + D2-Behavioral; артефакты; генерация handoff
+- [design-module/SPEC.md](design-module/SPEC.md) — условный sub-module D2-B04 UI Design (`FM.has_ui=true`)
+- [integrator-module/SPEC.md](integrator-module/SPEC.md) — «сисадмин»: install/configure/connect внешних инструментов
+- [orchestrator-module/SPEC.md](orchestrator-module/SPEC.md) — runtime-владелец D2-Tech и D3+; процессы P*
+- [product-module/handoff-spec.md](product-module/handoff-spec.md) — формат universal markdown snapshot
 
----
+## PMO — общая база всех модулей
 
-## PMO (cross-cutting catalogs)
+Изменения здесь каскадятся в SPEC и skills.
 
-Эти файлы — общая база для всех модулей. Изменения здесь каскадятся в SPEC-документы и skills.
+- [pmo/pmo-map.md](pmo/pmo-map.md) — карта доменов: кто owns, что delegated
+- [pmo/processes.md](pmo/processes.md) — процессы: методология, approve-гейты, BG extraction, cascade, DA review
+- [pmo/validation.md](pmo/validation.md) — правила валидации (V-*, V-H-*, V-MK-*, V-LE-*, V-AM-*) + adaptive-depth
+- [pmo/artifacts/README.md](pmo/artifacts/README.md) — каталог типов артефактов
 
-| Что | Файл | Описание |
-|---|---|---|
-| 🗺️ **Карта 6 доменов** | [pmo/pmo-map.md](pmo/pmo-map.md) | D1-D6 функциональные обязанности; кто owns, что delegated |
-| ⚙️ **Процессы P1-P5** | [pmo/processes.md](pmo/processes.md) | Методология создания/обновления артефактов; approve gates; BG extraction; cascade; DA review |
-| ✅ **Validation rules** | [pmo/validation.md](pmo/validation.md) | 44 активных правила (V-*, V-H-*, V-MK-*, V-LE-*, V-AM-*) + adaptive-depth + tier activation |
-| 📚 **24 типа артефактов** | [pmo/artifacts/README.md](pmo/artifacts/README.md) | Каталог: PS, MR, CA, SEG, VP, HYP, MVP, RM, RL, FM, SC, BR, LC, VC, IC, RPM, NFR, BG, MK, DS, NM, AM, NOTE, LESSON |
-| 📦 **Handoff формат** | [product-module/handoff-spec.md](product-module/handoff-spec.md) | Universal markdown snapshot для D2-Tech delegation |
+> Числа (сколько артефактов / правил / команд) намеренно не пишутся прозой ни здесь, ни в SPEC:
+> ground truth вычисляется — `node dev/meta-improvement/scripts/check-counts.js`, и он блокирующий.
 
----
+## Руководство оператора и карты
 
-## Куда смотреть для типичных задач
-
-| Хочу узнать... | Смотри |
-|---|---|
-| Что такое конкретный артефакт (PS, FM, BR, ...) | [pmo/artifacts/](pmo/artifacts/) → `<TYPE>.md` |
-| Какой процесс создаёт артефакт X | [pmo/processes.md](pmo/processes.md) → P1-P5 sections |
-| Какие validation rules применяются | [pmo/validation.md](pmo/validation.md) |
-| Какие модули trigger'ятся для UI-фичи | [design-module/SPEC.md](design-module/SPEC.md) § «Условная активация» |
-| Что попадает в handoff к external tool | [product-module/handoff-spec.md](product-module/handoff-spec.md) |
-| Как Integrator подключает новый инструмент | [integrator-module/SPEC.md](integrator-module/SPEC.md) § installation flow |
-
----
+- [guide/README.md](guide/README.md) — вход «Начни здесь»: лестница L0→L5, роутер «Я хочу…»
+- [MAP.md](MAP.md) — визуальный entry-point: pipeline + C4 container
+- `guide/02-commands.md`, `guide/03-glossary.md`, `guide/08-skills.md`, `guide/ecosystem-*.html` —
+  **генерируются** (`gen:*:check` в `npm run verify`). Правь источники — frontmatter, `*.template.html`, `*.overlay.json`.
 
 ## Что в `docs/` НЕ живёт
 
-- **Skills (методология AI-диалога)** — в `skills/<module>/<name>.md` (репо root)
-- **Slash commands** — в `commands/<module>/<name>.md`
-- **Hook implementations** — в `hooks/<module>/*.js` + `manifest.yaml`
-- **Subagent prompts** — в `agents/<module>/<name>.md`
-- **Внутренние phase docs** — в `dev/` (readiness gates, design docs для самой экосистемы)
-- **End-user templates** — в `templates/project/`
-- **Conventions для разработчиков ecosystem** — в [`CLAUDE.md`](../CLAUDE.md) (repo root)
-
----
-
-## Связанные документы вне `docs/`
-
-- [`../README.md`](../README.md) — entry point репо; quick start + four-modules overview
-- [`../CLAUDE.md`](../CLAUDE.md) — conventions для разработчиков экосистемы (hooks/skills/commits/DEV_JOURNAL)
-- [`../ROADMAP.md`](../ROADMAP.md) — план фаз + «Где мы сейчас» (single source of truth)
-- [`../DEV_JOURNAL.md`](../DEV_JOURNAL.md) — журнал архитектурных решений (DEC-DEV-XXXX entries)
-- [`../CHANGELOG.md`](../CHANGELOG.md) — release notes
-- [`../BOOTSTRAP.md`](../BOOTSTRAP.md) — installation overview
-- [`../INSTALL-HUMAN.md`](../INSTALL-HUMAN.md) — human-side pre-install checklist
+| Что | Где |
+|---|---|
+| Методология AI-диалога (skills) | `skills/<module>/<name>.md` |
+| Slash-команды | `commands/<module>/<name>.md` |
+| Реализации хуков | `hooks/<module>/*.js` + `manifest.yaml` |
+| Промпты субагентов | `agents/<module>/<name>.md` |
+| Внутренние документы разработки экосистемы | `dev/` |
+| Шаблоны end-user проектов | `templates/project/` |
+| Конвенции разработчиков экосистемы | [`../CLAUDE.md`](../CLAUDE.md) |

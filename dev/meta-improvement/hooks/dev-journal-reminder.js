@@ -16,8 +16,10 @@
  *   5. Check if HEAD commit touched DEV_JOURNAL.md (git show --name-only)
  *   6. If non-trivial AND no DEV_JOURNAL touch → stderr reminder
  *
- * Sibling to phase-closure-reminder.js — both can fire on same commit.
- * dev-journal-reminder catches broader pattern; phase-closure catches end-of-phase specifically.
+ * Sibling to memory-drift-reminder.js — both are PostToolUse:Bash warn-only, both can fire on
+ * the same commit. (A third sibling, phase-closure-reminder.js, was removed 2026-07-28: its
+ * matcher looked for "Phase <N>", and phases stopped being this repo's unit of work — see
+ * CONVENTIONS §13.)
  *
  * Output:
  *   - stderr (visible to user): reminder if applicable

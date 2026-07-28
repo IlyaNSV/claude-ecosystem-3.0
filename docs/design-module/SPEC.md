@@ -254,7 +254,8 @@ Product Module P2 F.8 triggers
 
 ## 4. Skills Library
 
-6 skills, lazy-loaded per задаче:
+10 skills, lazy-loaded per задаче (поштучный SSOT — `skills/design/*.md` + генерируемый каталог
+[docs/guide/08-skills.md](../guide/08-skills.md), гейт `gen:skills:check`):
 
 ### 4.1 `design-session.md` (core)
 
@@ -333,6 +334,16 @@ Product Module P2 F.8 triggers
 - Runs при D.5 finalization + `/design:export`
 - Integrates с design-artifact-validate hook
 - Reporting формат
+
+### 4.5a `html-fallback.md`
+
+- HTML emergency fallback за D.2/D.3 generation, когда Stitch недоступен И подписки Claude Design нет
+- v1.0 minimal: single HTML page, DS-токены через CSS-переменные
+
+### 4.5b `app-map-generate.md` (DEC-DEV-0066)
+
+- D2-B04 — сборка/обновление App Map (AM) L0-вида; загружается `/design:map`
+- Механический слой — `app-map-scan.js` (glob FM/NM); редакторский (`cross_module_edges`, `primary_journeys`, `cjm_stages`) — из frontmatter `app-map.md`
 
 ### 4.6 Future skills (если нужно)
 
@@ -700,9 +711,11 @@ Fallback chain — из `design.yaml` `mcp_preferences.fallback_chain`. Default:
 
 **Генерируется автоматически** в `/product:handoff` если FM.has_ui=true.
 
-### 10.3 Sync Protocols (via /eco:sync pairs)
+### 10.3 Sync Protocols
 
-Новые sync-пары (от Integrator при MK/DS/NM изменениях):
+Пары «источник ↔ целевое», проверяемые при изменениях MK/DS/NM. Отдельной команды синка
+(namespace `/eco:*`) **не существует**: проверки исполняются через V-MK-* (D.5 / `/design:export`)
+и через adapter при `/product:handoff`.
 
 | Пара | Источник | Целевое | Проверка |
 |---|---|---|---|
@@ -736,13 +749,15 @@ external_mcp_required:
 
 Integrator при add — настраивает Stitch MCP config, генерирует adapter если target implementation tool (cc-sdd) ожидает design.md в специфическом формате.
 
-### 10.5 С будущим Orchestrator
+### 10.5 С Orchestrator
 
 Orchestrator читает MK/DS/NM при маршрутизации:
 - «Эта фича has_ui=true → routing включает шаг design verification»
 - «Change в MK → trigger sync с cc-sdd design.md»
 
-Не в v1 scope.
+**Статус связки:** Orchestrator построен (P1–P8), но маршрутизация по `has_ui` и sync-триггер на MK
+**не реализованы**. Единственная фактическая точка контакта — P8 `user-journey-acceptance`: скриншоты
+шагов служат владельцу evidence для сверки «реальность ↔ MK»; автоматический MK-diff — v1.1.
 
 ---
 
@@ -878,10 +893,10 @@ stitch_usage:
 
 ### 14.2 First UI feature end-to-end
 
-- [ ] `.claude/commands/design/start.md`, `iterate.md`, `system.md`, `export.md`, `status.md`
-- [ ] Skills: design-session, component-states, design-system-rules, stitch-workflow, design-validation
-- [ ] Subagent: `screen-generator.md`
-- [ ] Hook: `design-artifact-validate.js`
+- [x] `.claude/commands/design/` — 7 команд: `start`, `iterate`, `system`, `export`, `status`, `map`, `migrate`
+- [x] Skills: 10 файлов `skills/design/` (design-session, component-states, design-system-rules, stitch-workflow, claude-design-workflow, open-design-viewer, open-design-workflow, html-fallback, app-map-generate, design-validation)
+- [ ] Subagent: `screen-generator.md` — **НЕ построен** (G36, §5.1); v1.0 D.2 работает inline
+- [x] Hook: `design-artifact-validate.js`
 - [ ] Stitch MCP работает (smoke test: generation одного экрана)
 - [ ] Artifacts MK, DS, NM — создаются end-to-end
 - [ ] Handoff §10 UI Specification заполняется корректно
@@ -914,85 +929,46 @@ stitch_usage:
 ## 16. Migration-readiness & Intermediate Representation (IR) — v2 groundwork
 
 > **Добавлено v1.1** (DEC-DEV-0048, 2026-05-27) — закладывает hooks для v2 IR-слоя без overhead в v1.
+> ⚠️ **Сам IR-слой ОТЛОЖЕН к v2 и не строится.** Ниже зафиксировано решение: что именно
+> предполагалось, почему и по каким триггерам к нему возвращаться (§16.5). Активны сегодня только
+> §16.2 (lossy migration) и §16.4 (hooks).
 
 ### 16.1 Принцип
 
-Дизайн-инструменты эволюционируют быстро (Stitch, Claude Design — оба research-preview-уровня в 2026; Figma меняет API; новые AI-design tools появляются). **Project lifetime > tool lifetime** в этой зоне. Design Module должен пережить переход между tools без потери всей design work.
+Дизайн-инструменты эволюционируют быстро (Stitch, Claude Design — оба research-preview-уровня в 2026;
+Figma меняет API; появляются новые AI-design tools). **Project lifetime > tool lifetime** в этой зоне:
+Design Module обязан пережить переход между инструментами без потери всей design work.
 
 ### 16.2 v1.1 — lossy migration (текущий уровень)
 
-**Что есть:**
-- `/design:migrate <MK-id> --to <target-tool>` (§3.6) — regeneration в target tool по сохранённому MK metadata + brief
-- MK frontmatter migration trail — `previous_tools[]`, `tool_switched_at` (см. `docs/pmo/artifacts/MK.md`)
-- Per-tool workflow skills (`stitch-workflow.md`, `claude-design-workflow.md`, ...) — каждый знает как regenerate из MK metadata
+**Механика:** `/design:migrate <MK-id> --to <target-tool>` (§3.6) — regeneration в target tool по
+сохранённым MK metadata + brief; migration trail в MK frontmatter (`previous_tools[]`,
+`tool_switched_at` — см. `docs/pmo/artifacts/MK.md`); per-tool workflow skills
+(`stitch-workflow.md`, `claude-design-workflow.md`, ...) — каждый умеет regenerate из MK metadata.
 
-**Что теряется:**
-- Точные визуальные tweaks (нelement-level adjustments — color shift, spacing fine-tune)
-- Tool-specific features (Stitch animations, Claude Design interactive flows)
-- Iteration history в source tool (только Design Decisions Log в MK сохраняется)
+**Теряется при миграции:** точные визуальные tweaks (element-level: color shift, spacing fine-tune) ·
+tool-specific фичи (Stitch animations, Claude Design interactive flows) · iteration history в исходном
+инструменте (в MK сохраняется только Design Decisions Log).
 
-**Что сохраняется:**
-- Screen Inventory (структура)
-- Component State Matrix (поведение)
-- Interaction Spec (взаимодействия — текстовое описание)
-- DS tokens references
-- Accessibility Notes
-- Design Decisions Log (история решений — критично для re-generation)
+**Сохраняется:** Screen Inventory (структура) · Component State Matrix (поведение) · Interaction Spec
+(текстовое описание взаимодействий) · DS tokens references · Accessibility Notes · Design Decisions Log
+(история решений — критично для re-generation).
 
-### 16.3 v2 — lossless migration через IR
+### 16.3 v2 — lossless migration через IR (отложено, не строится)
 
-**Концепция:** neutral declarative представление экрана, которое читают/пишут все tool adapters.
+**Концепция:** neutral declarative представление экрана, которое читают и пишут все tool adapters.
 
-**Кандидатная структура IR snapshot** (YAML, per MK или per screen):
+**Предполагавшаяся форма снапшота** — YAML per MK по пути
+`.product/.design-sessions/ir/<MK-id>-<timestamp>.yaml` (этот путь — значение `ir_snapshot_path` в MK,
+см. §16.4), с полями верхнего уровня: `ir_schema_version` · `mk_id` · `captured_at` ·
+`captured_from_tool` · `screens[]` (на экран: `layout` kind+breakpoints, `components[]` в универсальном
+словаре — kind / instance_id / states / tokens / text_slots / interactions, `accessibility` с tab_order
+и contrast_min) · `tokens_snapshot[]` (name+value) · `tool_specific` — escape hatch для того, что в
+общий словарь не ложится (raw prompt history, animations, chat thread id).
 
-```yaml
-# .product/.design-sessions/ir/<MK-id>-<timestamp>.yaml
-ir_schema_version: 1
-mk_id: MK-003
-captured_at: 2026-XX-XX
-captured_from_tool: stitch  # OR claude-design / figma / ...
-screens:
-  - id: SI-1
-    title: "Inbox (list)"
-    type: screen
-    layout:
-      kind: grid | flex | absolute
-      breakpoints: [...]
-    components:
-      - kind: card                          # universal vocabulary
-        instance_id: RevisionCard
-        states: [default, hover, focus, selected, read, archived]
-        tokens: [card-bg, card-border-primary]
-        text_slots: [sender, body, timestamp]
-        interactions: [...]
-      - kind: button
-        instance_id: ApplyButton
-        ...
-    accessibility:
-      tab_order: [...]
-      contrast_min: 4.5
-tokens_snapshot:
-  - name: primary
-    value: "#0066FF"
-  ...
-tool_specific:                              # lossy fields per source tool
-  stitch:
-    raw_prompt_history: [...]
-    animations: [...]
-  claude-design:
-    chat_thread_id: "..."
-    inline_comments: [...]
-```
-
-**Adapter contract (v2):**
-
-| Tool | Export (tool → IR) | Import (IR → tool) | Status |
-|---|---|---|---|
-| Stitch | via MCP DOM read | prompt template | v2 design |
-| Claude Design | via MCP / API (TBD) | chat prompt sequence | v2 design (blocked on Anthropic API) |
-| HTML | direct parse | direct emit | v2 design |
-| Figma | via Figma API | via Figma API | v2 design |
-| Penpot | via Penpot API | via Penpot API | v2 design |
+**Adapter contract (v2, ни один не построен):** Stitch — export через MCP DOM read, import через prompt
+template · Claude Design — blocked on Anthropic API · HTML — direct parse / direct emit · Figma и Penpot —
+через их API.
 
 ### 16.4 v1.1 hooks (active now, noop в behavior)
 
@@ -1023,10 +999,16 @@ IR-слой имеет нетривиальные costs (8-15ч design + 4-8ч p
 
 ### 16.6 Risk register для v2 (preliminary)
 
-- **R1 — schema lock-in:** ранний IR schema может не cover'ить будущие tool primitives → versioning strategy + `tool_specific` escape hatch
-- **R2 — adapter maintenance burden:** каждый tool adapter — отдельный maintenance commitment; not all tools — равные priorities. Mitigation: формализовать «tier 1 / tier 2 / community» adapter levels
-- **R3 — universal component vocabulary impossible:** Stitch button ≠ Claude Design button ≠ Figma button по семантике. Mitigation: minimal common set (button / input / card / list / modal / nav) + `tool_specific` для остального
-- **R4 — IR diverges from MK Body:** MK секции Component State Matrix частично дублируют IR structured form → consolidation question (один из двух — source of truth?). Decision: MK остаётся human-readable narrative, IR — machine-readable structured snapshot. Both kept; sync — на адаптерах.
+Риски, которые придётся решать при bring-forward: **schema lock-in** — ранний IR-схеме может не хватить
+будущих tool primitives (mitigation: versioning + `tool_specific` escape hatch) · **adapter maintenance
+burden** — каждый адаптер отдельное обязательство (mitigation: уровни «tier 1 / tier 2 / community») ·
+**универсальный component vocabulary невозможен** — button у Stitch ≠ у Claude Design ≠ у Figma по
+семантике (mitigation: minimal common set `button / input / card / list / modal / nav`, остальное — в
+`tool_specific`).
+
+**Решение по границе MK ↔ IR (принято, не отложено):** MK остаётся human-readable narrative, IR —
+machine-readable structured snapshot. Оба хранятся; синхронизацию держат адаптеры. Вариант
+«consolidation: один из двух — единственный source of truth» отвергнут.
 
 ---
 
@@ -1041,6 +1023,9 @@ IR-слой имеет нетривиальные costs (8-15ч design + 4-8ч p
 - ✅ Integrator Module SPEC
 - ✅ Product Module SPEC
 - ✅ **Design Module SPEC v1.1 (этот документ; addendum 2026-05-27 — Claude Design + IR groundwork)**
-- 🔜 Orchestrator Module концепт (после MVP Integrator)
+- ✅ Orchestrator Module (P1–P8 + Epic E deploy/rollback)
 
-**Ядро Ecosystem 3.0 полностью задокументировано.** Готово к имплементации (Phase 6 — conditional, активируется на первой FM с has_ui=true).
+**Ядро Ecosystem 3.0 полностью задокументировано и отгружено.** Design Module (Phase 6) построен
+2026-05-28 (DEC-DEV-0053, релиз 1.4.0), смоук-план закрыт 2026-07-15: на диске 7 команд
+`commands/design/`, 10 файлов в `skills/design/`, агент `agents/design/ux-advisor.md`, хук
+`hooks/design/design-artifact-validate.js`. Живой статус — [ROADMAP «Где мы сейчас»](../../ROADMAP.md#где-мы-сейчас).

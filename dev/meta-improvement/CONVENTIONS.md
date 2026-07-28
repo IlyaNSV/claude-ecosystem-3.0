@@ -76,16 +76,18 @@ dev/meta-improvement/
 │   ├── da-subagent-type-contract.md    # DEC-DEV-0064
 │   └── config-failure-first-triage.md  # DEC-DEV-0144 / VC-096
 ├── skills/
-│   └── memory-sync.md
-├── scripts/
+│   ├── memory-sync.md                  # дрейф persistent-памяти
+│   ├── informed-fetch.md               # свежесть внешних фактов (Informed Fetch)
+│   └── repo-hygiene.md                 # гигиена репо как контекста; измеритель — scripts/doc-health.cjs
+├── scripts/                     # полный список — `ls`; ниже только несущие
 │   ├── verify-update.sh / .ps1         # post-/ecosystem:update verification
 │   ├── verify-hooks.js / smoke-hooks.js   # hook syntax + runtime smoke
 │   ├── pre-commit.sh / commit-msg.sh / install-pre-commit.sh   # git-hook gates
 │   ├── check-counts.js                 # canonical-count reconciler (DEC-DEV-0083)
 │   ├── process-gate.js                 # blocking commit-msg gate (DEC-DEV-0083)
+│   ├── doc-health.cjs                  # warn: пороги ротации · ACTIVE-швы без коммитов · ссылки в _archive · always-on объём · слипшиеся строки (DEC-DEV-0227)
 │   └── audit-smoke.js · audit-watch.js · audit-index.js · audit-journal.js · classify.js · effect-probe.js · patch-synth.js   # Session Audit v2
 ├── hooks/                       # registered in .claude/settings.local.json
-│   ├── phase-closure-reminder.js       # PostToolUse Bash — warn: phase-completion commit без closure
 │   ├── dev-journal-reminder.js         # PostToolUse Bash — warn: feat/fix commit без DEV_JOURNAL
 │   ├── memory-drift-reminder.js        # PostToolUse Bash — warn: status-file commit → memory-sync due
 │   ├── rails-session-start.js          # SessionStart — inject work-rails digest (DEC-DEV-0110)
@@ -118,7 +120,7 @@ dev/meta-improvement/
 - **Patterns** (Stage 3): состав и статусы — SSOT [`patterns/README.md`](patterns/README.md) (счёт здесь не дублируется — копия числа разошлась дважды, DEC-DEV-0220-e)
 - **Skills** (Stage 4): memory-sync.md (formalizes phase-closure Step 5; **авто-триггер** в конце сессии при сдвиге статус-файлов — DEC-DEV-0100, SSOT `CLAUDE.md` §«Auto memory-sync»; ручной запуск — fallback)
 - **Scripts** (Stage 4 + Phase 4.1 + Audit v2): verify-update.sh / .ps1 (post-/ecosystem:update verification); audit-smoke.js + audit-index.js (Phase 4.1 D7 conformance auditor CLI); classify.js + effect-probe.js + audit-watch.js (Session Audit v2 Incr.1-2 — universal session auditor: deterministic classifier, effect-on-product probe, semi-auto watcher; DEC-DEV-0056/0057)
-- **Hooks** (Stage 4 + Phase 4.1): phase-closure-reminder.js (PostToolUse on Bash; surfaces stderr reminder when phase-completion commit detected без closure entry); session-audit.js (SessionEnd marker writer for pilot projects, Phase 4.1)
+- **Hooks** (Stage 4 + Phase 4.1): dev-journal-reminder.js + memory-drift-reminder.js + d7-hygiene-reminder.js (warn-only напоминалки); session-audit.js (SessionEnd marker writer for pilot projects, Phase 4.1). _(`phase-closure-reminder.js` удалён 2026-07-28, DEC-DEV-0227 — его матчер искал «Phase N», а фазы как единица работы исчерпаны; см. §«Удалённые механизмы».)_
 - **Slash commands** (Phase 4.1): `/meta:audit-smoke` (.claude/commands/meta/, ecosystem-repo-local), `/ecosystem:enable-d7-audit` (deployable but D7-internal — opt-in setup для pilot)
 - **Composite mechanism** (Phase 4.1): hook-collects-state + command-consumes-batch pattern — `session-audit.js` пишет markers в `audit-index.md`, `/meta:audit-smoke` обрабатывает batch'ем
 
@@ -127,7 +129,7 @@ dev/meta-improvement/
 **Promotion criteria (validated through Stages 3-4):**
 - Checklist → Skill: when 3+ instances + manual procedure stable enough к codify (memory-sync trigger)
 - Skill → Command: when needs argument support (deferred — no current trigger)
-- Command → Hook: когда auto-fire required (phase-closure-reminder trigger: «forget to invoke closure» class issue)
+- Command → Hook: когда auto-fire required («forget to invoke X» class issue). ⚠️ Урок DEC-DEV-0227: хук, чей матчер завязан на **словарь эпохи** (`Phase N`), умирает вместе с этой эпохой и молча перестаёт срабатывать. Матчер привязывай к инварианту, а не к текущему названию единицы работы.
 
 ---
 
@@ -143,7 +145,7 @@ dev/meta-improvement/
 | `live-run-validation.md` | After a non-trivial change is built + static smoke green, before declaring it validated / dropping «pending runtime smoke» | Per non-trivial change (skip tiny edits) | Manual (operator runs; reviewer grades post-hoc — executor/reviewer separation) |
 | `skills/memory-sync.md` | Phase closure Step 5 OR standalone (long break, AI cites stale) | Per phase + ad-hoc | **Auto** (DEC-DEV-0100: сам в конце сессии при сдвиге статус-файлов; SSOT — `CLAUDE.md` §«Auto memory-sync»); ручной запуск — fallback |
 | `scripts/verify-update.sh` | Post-/ecosystem:update | Per update | Manual (user runs externally) |
-| `hooks/phase-closure-reminder.js` | PostToolUse on Bash matching `git commit` с phase-completion pattern | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
+| `hooks/dev-journal-reminder.js` | PostToolUse on Bash matching `git commit` — `feat:`/`fix:` без записи в DEV_JOURNAL | Auto on commit | **Auto** (registered в .claude/settings.local.json) |
 | `hooks/d7-hygiene-reminder.js` | SessionStart — stale G25 audit-Pending (≥7d) / G26 open FB-ledger intake / G27 survived patch-candidate idle at `gate: pending` (≥14d) | Once per session (if any arm stale) | **Auto** (registered в .claude/settings.local.json; detect-only warn, toggle env `D7_HYGIENE_REMINDER=0`; DEC-DEV-0181) |
 | `hooks/session-audit.js` | SessionEnd in pilot project | Per session | **Auto** (registered в pilot's `.claude/settings.local.json` via `/ecosystem:enable-d7-audit`) — writes marker only, no spawn |
 | `/meta:audit-smoke` (+ `scripts/audit-smoke.js`) | Post-smoke, after N sessions in pilot accumulated markers | Once per phase smoke | Manual (developer types invocation from ecosystem repo cwd) |
@@ -177,7 +179,7 @@ dev/meta-improvement/
 
 | Канон | Порог ротации | Что уезжает | Куда | Ритуал-носитель |
 |---|---|---|---|---|
-| `DEV_JOURNAL.md` | живой файл >~250 КБ или >~50 записей | самый старый полный месяц записей; текущий + предыдущий месяц всегда остаются | `dev/_archive/journal/DEV_JOURNAL_<период>.md` | этот § (проверять на patch-cut) |
+| `DEV_JOURNAL.md` | живой файл >~250 КБ или >~50 записей | самые старые записи — столько, чтобы в живом файле осталось **~40 последних**; резать ТОЛЬКО по границе записи | `dev/_archive/journal/DEV_JOURNAL_<первыйID>-<последнийID>.md` | этот § (проверять на patch-cut) |
 | `CHANGELOG.md` | >~150 КБ на cut версии | релизы старше текущего квартала; `[Unreleased]` + текущие релизы + footer остаются | `dev/_archive/changelog/CHANGELOG_<диапазон>.md` | `checklists/patch-cut.md` |
 | `ROADMAP.md` | closure фазы | развёрнутый блок закрытой фазы → строка pointer-таблицы; «Где мы сейчас» — НИКОГДА (SSOT + входящие якоря) | `dev/_archive/roadmap/` | `checklists/phase-closure.md` |
 | `audit-index.md` | rows clean/dismissed или >1 мес | Processed-строки; sentinel-пары и Pending — НИКОГДА | `dev/_archive/audit-index-<YYYY>.md` | audit-index §Notes |
@@ -328,6 +330,67 @@ Bump patch vs minor — semver-ish (patch = багфиксы + аддитивн�
 
 ---
 
+## 12. Inventory-sync checker (D11)
+
+> Перенесено из `CLAUDE.md` (DEC-DEV-0227): деталь механизма не обязана жить в always-on
+> канале. В `CLAUDE.md` осталась строка обязательства + указатель сюда. **Само обязательство
+> «обновил команду/namespace/скилл/хук → обнови `verify.md`» живёт в SSOT-таблице
+> «Process triggers» в `CLAUDE.md`** — здесь только устройство чекера, не вторая редакция правила.
+
+Контекст: строка «добавил/убрал команду / namespace / скилл / хук» была единственным правилом
+таблицы, у которого не было НИ гейта, НИ warn-хука (DEC-DEV-0197 / D11).
+
+- `node dev/meta-improvement/scripts/check-inventory-sync.cjs` — детерминированно сверяет
+  `commands/ecosystem/verify.md` с репо: набор namespace'ов (Step 4 **и** Step 9 summary),
+  floor'ы runtime-дир, маркеры Step 4.5/4.6 (реально ли строка есть в `.mjs`), хуки Step 8.5
+  (есть ли в `hooks/*/manifest.yaml` с заявленным событием).
+- **⚙ STRICT** (флип владельца 2026-07-13): в цепи `npm run verify` как `check:inventory:strict`.
+  **НЕ** в `process-gate` — коммит пройдёт, упадёт `verify`. Аварийный тумблер:
+  `INVENTORY_SYNC_STRICT=0 npm run verify` (гейт на общем ресурсе без выключателя однажды
+  склинит чужой цикл — и виноват будет не тот, кто падает).
+- **«Чекер ослеп» ≠ «нашёл дрейф».** Непарсящийся якорь (`verify.md` реструктурировали) или
+  недоступный ground truth (частичный / sparse checkout — файл в индексе git, но не на диске) →
+  громкий warn «обнови парсер», **exit 0, никогда не гейтит**. Тот же закон, что у сторожа
+  координат: *отсутствие доказательства ≠ доказательство отсутствия*; гейт не имеет права
+  падать на том, чего не может знать.
+- **Скиллы — гейтятся по ИМЕНАМ; пронг закрыт** (`DEF-CTX-5` **[FIXED]** 2026-07-13,
+  DEC-DEV-0198). Floor'а скиллов `verify.md` Step 4 больше НЕ держит: каталог
+  `docs/guide/08-skills.md` генерируется из frontmatter `skills/**/*.md`
+  (`gen-skill-catalog.cjs`) и принуждается `gen:skills:check` — на **поштучной** гранулярности.
+  Каталог несёт *имена*, поэтому swap/переименование скилла с сохранением числа **ловится**
+  (прежняя floor-затычка его пропускала). Класс `[6] SKILL-FLOOR` снят: два механизма на одно
+  обязательство — сами по себе источник дрейфа, слабый ушёл.
+- **Чего чекер НЕ покрывает (честно):** хуки помимо пары LESSON-*; `status.md`-шаблоны (нужно
+  суждение); **`docs/MAP.md`**. Поштучно команды гейтит `gen:catalog:check`, скиллы —
+  `gen:skills:check`, интерактивные карты `docs/guide/*.html` — `gen:map:check` / `gen:procmap:check`.
+  Счётчики команд/хуков/скиллов/агентов в живых доках — блокирующий `check-counts`
+  (6 видов; режим — у скрипта, `--json` → `extended_mode`, DEC-DEV-0220).
+
+  🛑 **Исправление ложного покрытия (DEC-DEV-0227):** и `CLAUDE.md`, и шапка самого чекера
+  утверждали, что `docs/MAP.md` гейтится `gen:map:check`. Это неверно — `gen-ecosystem-map.cjs`
+  производит `docs/guide/ecosystem-map.html`, а `docs/MAP.md` **пишется руками и не гейтится
+  ничем**. Ложное «покрыто» опаснее честного «не покрыто»: оно снимает бдительность там, где
+  защиты нет.
+
+---
+
+## 13. Удалённые механизмы
+
+> Механизм, который **не может сработать**, хуже отсутствующего: он занимает место в карте
+> механизмов и создаёт ложное чувство покрытия. Здесь — что снято и почему, чтобы не воскресить
+> по ошибке и не искать «куда делось».
+
+| Механизм | Снят | Почему |
+|---|---|---|
+| `hooks/phase-closure-reminder.js` | 2026-07-28, DEC-DEV-0227 (решение владельца) | Матчер искал в сообщении коммита `Phase <N>` + completion-глагол. Фазы как единица работы **исчерпаны** — это признаёт сам `CLAUDE.md` §5 («единица теперь любая: волна / трек / эпик»). Хук физически не мог сработать ни разу после перехода на треки, но числился живым в четырёх местах этого файла и в `SPEC.md`. Регистрация снята и из `.claude/settings.local.json`. |
+
+**Урок (кодифицирован в §3 «Command → Hook»):** матчер хука привязывай к **инварианту**, а не к
+словарю текущей эпохи. Обязательство «после закрытия единицы — closure-ритуал» живо; умер способ
+его распознать. Если понадобится воскресить — писать матчер на инвариант (например, «коммит
+закрывает единицу работы» через явный маркер в сообщении), а не на слово «Phase».
+
+---
+
 ## Open questions — resolutions (Stage 3-6)
 
 5 originally open questions resolved through Stage 3-6 work:
@@ -335,7 +398,7 @@ Bump patch vs minor — semver-ish (patch = багфиксы + аддитивн�
 - ✅ **Memory sync automation timing** → Stage 4 (skill formalized; promotion к hook deferred unless 3+ closures show drift class)
 - ✅ **Pattern library structure** → Stage 3 (`patterns/<name>.md` с consistent format: name/when applicable/steps/outputs/examples/anti-patterns/refinement triggers)
 - ✅ **Bootstrap regression scripting** → Stage 4 (`scripts/verify-update.sh` + `.ps1` для post-/ecosystem:update validation; complements phase-closure Step 2)
-- ✅ **Hook integration** → Stage 4 (`hooks/phase-closure-reminder.js` PostToolUse on Bash; registered в `.claude/settings.local.json`; tested manually с 4 simulated inputs)
+- ✅ **Hook integration** → Stage 4 (`hooks/phase-closure-reminder.js` PostToolUse on Bash; registered в `.claude/settings.local.json`; tested manually с 4 simulated inputs) — _хук удалён 2026-07-28, см. §13; сам вывод «интеграция хуков работает» остаётся в силе, его несут три живые напоминалки_
 - ✅ **CLAUDE.md update strategy** → Stage 5 (D7 ritual collapsed в single section с sub-bullets per mechanism; replaces 2-line item-by-item growth)
 
 **Still open (refine through usage):**
