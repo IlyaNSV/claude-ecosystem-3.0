@@ -1,6 +1,6 @@
 ---
 description: Start P1.A Discovery Session for a new product. Creates PS, MR, CA, SEG, VP, HYP artifacts.
-argument-hint: "<idea description> OR --continue OR --deep OR --pivot"
+argument-hint: "<idea description> OR --continue OR --deep OR --pivot OR --from-validated <package-path>"
 ---
 
 # /product:init
@@ -16,7 +16,31 @@ This command orchestrates **P1.A Discovery Session** per `.claude/docs/pmo/proce
 - `--continue` — resume from `.product/.sessions/current.yaml` (Session Recovery per SPEC §11)
 - `--deep` — activate Deep mode: spawn `market-researcher` and `competitor-analyst` subagents for D1.2 / D1.3 (8-phase pipeline)
 - `--pivot` — out-of-scope in v1 (per DEC-P08 / Q-11); respond with "Pivot cascade is v2 feature. Use manual /product:init to restart" and stop
+- `--from-validated <package-path>` — **import-mode** (DEC-DEV-0224): вход с пред-валидированным пакетом от Validation Layer (Product Radar) — см. Step 1b
 - `"<idea description>"` — raw text describing the product idea; entry into Quick mode by default
+
+### Step 1b: Import-mode (`--from-validated`) — DEC-DEV-0224
+
+Пакет = директория/архив с: тезис-артефакт радара (§5.4 CONCEPT product-radar) + `VERDICT-*`
+(полевой вердикт Validation Layer: `field_verdict`, `evidence_strength`, `validated_channel`) +
+`EXP-*` снапшот плана + опционально PS/HYP-скелеты от D1-lite.
+
+Поведение (ингест, НЕ discovery с нуля):
+1. **НЕ запускать D1.1 problem-discovery заново** — ингестить пред-построенные PS/HYP из пакета
+   (D1-lite = тонкий перевод тезиса → {PS + HYP-скелет}; ПОДмножество канона `docs/pmo/artifacts/`,
+   не форк — canonical field names обязательны, B.1).
+2. **VERDICT + validated_channel ингестятся как полевая улика в HYP**: HYP рождается в
+   `status=testing`, но несёт провенанс `field-signal: VERDICT-<id>` (полевой сигнал уже есть —
+   в отличие от дефолтного testing-без-улик). `field_verdict` НЕ маппится в confidence/realism
+   автоматически — оси раздельны (anti-contamination).
+3. **Гейт D1.0b domain_fit прогоняется по-прежнему** (порог 75) ЛИБО, если пакет несёт
+   `domain_fit` из C8 пре-чека радара, — принять его с явной записью «C8 pre-check accepted» в
+   session state.
+4. **Human-гейты сохраняются** (DEC-P13): ингест создаёт drafts; G1/G4/G5 approve — за владельцем.
+5. Completion-репорт помечает HYP-строки признаком `(field-signal: VERDICT-<id>)`.
+
+Если пакет неполный (нет тезиса или VERDICT) — перечислить недостающее и предложить обычный
+Quick mode; не гадать.
 
 ### Step 2: Mode selection
 
@@ -133,6 +157,7 @@ When all gates passed + BG extraction done:
 | Error | Action |
 |---|---|
 | `.product/` не существует | Suggest `/ecosystem:bootstrap` first |
+| `--from-validated`: путь не существует / пакет неполный | List missing pieces (тезис? VERDICT?); offer plain Quick mode |
 | MCP Firecrawl/Exa missing in Deep mode | Offer Quick fallback with warning |
 | Session corrupted на `--continue` | Show recovery options: start fresh / recover from last approved / manual edit session file |
 | User interrupts mid-gate | Save partial progress; `--continue` resumes from last approved artifact |
@@ -142,3 +167,6 @@ When all gates passed + BG extraction done:
 - Process: `.claude/docs/pmo/processes.md §3.1` (P1.A Discovery)
 - Skill: `.claude/skills/product/discovery-session.md`
 - Next command: `/product:plan` (P1.B Planning, after Discovery complete)
+- Import-mode источник: Validation Layer (репо product-radar, `validation-layer/CONCEPT-VL.md`
+  §6 — контракты EXP/VERDICT; DEC-DEV-0224). Не путать с `validation-runner`
+  (schema-валидация артефактов) — VL = demand-validation.
