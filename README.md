@@ -13,12 +13,16 @@
 |---|---|
 | 🗺️ **Карта системы одним взглядом** | **[docs/MAP.md](docs/MAP.md)** — pipeline D1-D6 + C4 container (визуальный entry-point) |
 | 🚀 **Научиться вести продукт** (руководство оператора) | **[docs/guide/README.md](docs/guide/README.md)** — единый вход «Начни здесь»: лестница L0→L5, роутер «Я хочу…», две интерактивные карты |
-| 🤔 **Первый раз — что это и зачем** | [Концепция в одной строке](#концепция-в-одной-строке) + [Четыре модуля](#четыре-модуля) ниже → потом [ROADMAP.md «Где мы сейчас»](ROADMAP.md) |
+| 🤔 **Первый раз — что это и зачем** | [Концепция в одной строке](#концепция-в-одной-строке) + [Четыре модуля](#четыре-модуля) ниже → потом [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) |
 | 🔧 **Установить и запустить** | [BOOTSTRAP.md](BOOTSTRAP.md) → [INSTALL-HUMAN.md](INSTALL-HUMAN.md) → [Quick Start](#quick-start--двухфазная-установка) ниже |
+| 📍 **План и где мы сейчас** | [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) — единственный источник статуса |
 | 📖 **Развиваю саму экосистему** | [CLAUDE.md](CLAUDE.md) (repo conventions) → [DEV_JOURNAL.md](DEV_JOURNAL.md) последние 5 entries → [ROADMAP.md](ROADMAP.md) |
+| 🧭 **Где ПРАВДА про класс X / кто authoritative при конфликте** | [dev/INFORMATION-MAP.yaml](dev/INFORMATION-MAP.yaml) — information-topology resolver |
 | 🧠 **Понять прошлые decisions** | [DEV_JOURNAL.md](DEV_JOURNAL.md) (DEC-DEV-* entries — rationale за каждым решением; счётчик не дублируем, бери из хвоста журнала) |
-| 📚 **API / module reference** | [docs/README.md](docs/README.md) → конкретный module SPEC |
-| 🗺️ **PMO карта (D1-D6)** | [docs/pmo/pmo-map.md](docs/pmo/pmo-map.md) |
+| 📚 **Module SPEC / API reference** | [docs/README.md](docs/README.md) → [product](docs/product-module/SPEC.md) · [design](docs/design-module/SPEC.md) · [integrator](docs/integrator-module/SPEC.md) · [orchestrator](docs/orchestrator-module/SPEC.md) |
+| 🧩 **PMO: карта D1-D6, процессы, правила, артефакты** | [pmo-map.md](docs/pmo/pmo-map.md) · [processes.md](docs/pmo/processes.md) · [validation.md](docs/pmo/validation.md) · [артефакты](docs/pmo/artifacts/README.md) |
+| 📦 **Как передать фичу во внешний tool** | [handoff-spec.md](docs/product-module/handoff-spec.md) |
+| 📜 **История изменений** | [CHANGELOG.md](CHANGELOG.md) |
 
 ---
 
@@ -37,30 +41,22 @@
 | **Product Module** | D1 + D2-Behavioral: 24 типа артефактов, процессы P1-P5, handoff-генерация | ✅ SPEC v1.0 |
 | **Design Module** | D2-B04 UI Design: итеративная генерация через Stitch/HTML, conditional на `has_ui=true` | ✅ SPEC v1.0 |
 | **Integrator Module** | Подключение/замена внешних инструментов под PMO-карту («сисадмин») | ✅ SPEC v1.0 |
-| **Orchestrator Module** | Runtime-владелец D2-Technical + D3+: проводит PMO-процессы end-to-end силами role-агентов по регламентам | ✅ полное семейство процессов P1–P7 + §6-канал построены и live-validated — живой статус в [ROADMAP](ROADMAP.md#где-мы-сейчас) |
+| **Orchestrator Module** | Runtime-владелец D2-Technical + D3+: проводит PMO-процессы end-to-end силами role-агентов по регламентам | ✅ семейство процессов P1–P8 + §6-канал построено и live-validated (P8 — браузерная приёмка, DEC-DEV-0225) — живой статус в [ROADMAP](ROADMAP.md#где-мы-сейчас) |
 
 ## Что входит в репозиторий
 
-```
-claude-ecosystem-3.0/
-├── README.md, BOOTSTRAP.md, INSTALL-HUMAN.md, CHANGELOG.md, ROADMAP.md
-├── install.sh, install.ps1                # global installers
-├── .env.template, settings.json.template, gitignore.template
-├── docs/                                   # SPECs (декларативная база)
-│   ├── product-module/
-│   ├── design-module/
-│   ├── integrator-module/
-│   └── pmo/
-│       ├── pmo-map.md, processes.md, validation.md
-│       └── artifacts/                      # 24 типа артефактов
-├── commands/                               # slash-команды → .claude/commands/
-│   ├── ecosystem/                          # /ecosystem:bootstrap, /ecosystem:verify
-│   └── integrator/                         # /integrator:* (13 команд)
-├── skills/                                 # methodology → .claude/skills/
-├── agents/                                 # subagents → .claude/agents/
-├── hooks/                                  # automation → .claude/hooks/
-└── templates/                              # шаблоны (в т.ч. CLAUDE.md.template)
-```
+| Зона | Что внутри | Едет ли в проект |
+|---|---|---|
+| `docs/` | SPEC модулей + PMO-каталоги (артефакты, процессы, правила валидации) — декларативная база | да |
+| `commands/` `skills/` `agents/` `hooks/` | slash-команды, методология, субагенты, автоматизация | да → `.claude/` |
+| `orchestrator/` `product/` | детерминированные runtime-хелперы и Workflow-скрипты | да |
+| `adapters/` | reference-адаптеры `handoff.md` → внешний инструмент | да |
+| `templates/` | шаблоны для end-user проектов (в т.ч. `CLAUDE.md.template`) | да |
+| `dev/` `tests/` | разработка **самой** экосистемы: планы, гейты, D7-модуль, тесты | **нет** — фильтруются при bootstrap |
+
+Корень: `README` · `BOOTSTRAP` · `INSTALL-HUMAN` · `CHANGELOG` · `ROADMAP` · `CLAUDE` · `DEV_JOURNAL`, инсталляторы `install.sh`/`install.ps1` и `*.template`-конфиги.
+
+_Фактическое дерево — `ls`; топология зон визуально — [docs/MAP.md](docs/MAP.md) §2 (C4 container). Здесь дерево намеренно не разворачивается: развёрнутая копия дважды за историю репо расходилась с диском._
 
 ## Quick Start — двухфазная установка
 
@@ -130,18 +126,9 @@ Sync ecosystem zone (commands, skills, agents, hooks, docs, templates) к latest
 
 ## Документация
 
-| Хочу узнать... | Смотри |
-|---|---|
-| **План имплементации и где мы сейчас** | **[ROADMAP.md](ROADMAP.md)** |
-| Как установить и запустить | [BOOTSTRAP.md](BOOTSTRAP.md) + [INSTALL-HUMAN.md](INSTALL-HUMAN.md) |
-| Что такое каждый модуль и как они взаимодействуют | [docs/product-module/SPEC.md](docs/product-module/SPEC.md), [docs/design-module/SPEC.md](docs/design-module/SPEC.md), [docs/integrator-module/SPEC.md](docs/integrator-module/SPEC.md) |
-| Как передать фичу во внешний tool | [docs/product-module/handoff-spec.md](docs/product-module/handoff-spec.md) |
-| Какие есть типы артефактов | [docs/pmo/artifacts/README.md](docs/pmo/artifacts/README.md) |
-| PMO-карта (D1-D6) | [docs/pmo/pmo-map.md](docs/pmo/pmo-map.md) |
-| Процессы P1-P5 | [docs/pmo/processes.md](docs/pmo/processes.md) |
-| Валидационные правила | [docs/pmo/validation.md](docs/pmo/validation.md) |
-| Команды `/ecosystem:*` | [commands/ecosystem/bootstrap.md](commands/ecosystem/bootstrap.md), [commands/ecosystem/verify.md](commands/ecosystem/verify.md) |
-| История изменений и v1 модификации | [CHANGELOG.md](CHANGELOG.md) |
+Роутер — единственная таблица [«Где начать»](#где-начать) выше. _(Раньше здесь стояла вторая копия того же роутера; копии разошлись — свёрнуто в один вход, DEC-DEV-0227.)_
+
+Команды: [`/ecosystem:bootstrap`](commands/ecosystem/bootstrap.md) · [`/ecosystem:verify`](commands/ecosystem/verify.md) · полный каталог всех команд — [docs/guide/02-commands.md](docs/guide/02-commands.md) (генерируется из frontmatter, не правится руками).
 
 ## Поддержка
 

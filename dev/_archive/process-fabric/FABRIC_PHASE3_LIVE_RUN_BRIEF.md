@@ -1,8 +1,8 @@
 # Fabric Phase 3 — Live-Run Brief (operator)
 
-> **Что это:** инстанс протокола [`dev/meta-improvement/checklists/live-run-validation.md`](../meta-improvement/checklists/live-run-validation.md)
+> **Что это:** инстанс протокола [`dev/meta-improvement/checklists/live-run-validation.md`](../../meta-improvement/checklists/live-run-validation.md)
 > (**класс B** — функциональная механика) для **graduation-гейта Process Fabric**
-> ([EXECUTION_ROADMAP](EXECUTION_ROADMAP.md) фаза 3; критерии [CONCEPT](CONCEPT.md) §9).
+> ([EXECUTION_ROADMAP](../../process-fabric/EXECUTION_ROADMAP.md) фаза 3; критерии [CONCEPT](../../process-fabric/CONCEPT.md) §9).
 > Заодно гасится долг run-ledger live-прогона.
 >
 > **Пре-регистрация:** сценарий и промпты зафиксированы ДО прогона (этот файл — коммит до старта S1).

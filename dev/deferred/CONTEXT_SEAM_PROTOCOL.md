@@ -1,5 +1,10 @@
 # Протокол контекстных швов (Context Seam Protocol) — AWAKENED
 
+> ⚠️ **Файл лежит в `dev/deferred/`, но НЕ отложен: это живой SSOT действующего механизма**
+> (шаблон шва v3, правила R1-R11), на который ссылаются `CLAUDE.md`, паттерн
+> `dev/meta-improvement/patterns/context-seam.md` и оба seam-хука. Каталог противоречит роли —
+> кандидат на переезд из `deferred/`, отложен до правки входящих ссылок (в т.ч. в `CLAUDE.md`).
+
 > ▶ **STATUS: VALIDATED & PROMOTED (2026-07-15, DEC-DEV-0208).** Инстансы 3/3; R10-валидация прогнана на инстансе #3 (свежая сессия только со шва → ACK → единица Informed Fetch без вопросов к владельцу; судья-не-автор sonnet: **PARTIAL** — содержательная передача чистая: ACK 5/5, дизайн-якоря 5/5, инварианты 7/7; понижение за мета-уровень самоотчёта → поправки v3 ниже; SSOT прогона — `dev/semantic-continuity/R10_VALIDATION.md`). Владелец принял PARTIAL и дал «го» на N2 + промоушен 2026-07-15. История: PROPOSED (DEC-DEV-0196) → AWAKENED (DEC-DEV-0202, bring-forward-триггер №1 — сбой S2 `c4525579` при живом шве).
 >
 > **Что действует:** паттерн-карточка **`dev/meta-improvement/patterns/context-seam.md`** (вход в D7-библиотеку; SSOT механизма — этот файл) · шаблон шва **v3** (§4) · SEAM-ACK и safepoint-правила — 2 условно-триггерные строки в таблице «Process triggers» проектного `CLAUDE.md` + абзац в §Autoflow · warn-хуки `seam-reinject-compact` (SessionStart, matcher `compact`) и `seam-freshness-warn` (Stop) в `dev/meta-improvement/hooks/` · **глобальный уровень: N2 вплетён в MDP §Шаг 3 (`~/.claude/CLAUDE.md`, «го» владельца 2026-07-15; бэкап `~/.claude/CLAUDE.md.bak-2026-07-15-pre-n2`)**.

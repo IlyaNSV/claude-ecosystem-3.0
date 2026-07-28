@@ -1,6 +1,6 @@
 # OD7 await→resume — live-run brief (пре-регистрация, VM-пилот)
 
-> **Инстанс протокола** [`dev/meta-improvement/checklists/live-run-validation.md`](../meta-improvement/checklists/live-run-validation.md).
+> **Инстанс протокола** [`dev/meta-improvement/checklists/live-run-validation.md`](../../meta-improvement/checklists/live-run-validation.md).
 > **Предмет:** OD7 `request → await-fix → resume` (DEC-DEV-0171) + две последние
 > live-невалидированные ветки charter'а: `awaiting_capability*` и `runtime_gate_retry`/`evt:env.up`
 > (ранее маскировалась DEF-4; probe починен DEC-DEV-0168).

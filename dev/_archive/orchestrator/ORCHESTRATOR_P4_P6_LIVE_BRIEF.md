@@ -2,7 +2,7 @@
 
 > **Что это:** operator-бриф для первого live-прогона инкремента N+1 (P4 `audit-spec-fidelity` +
 > P6 `validate-feature-impl`). Инстанцирован из шаблона
-> [`dev/meta-improvement/checklists/live-run-validation.md`](meta-improvement/checklists/live-run-validation.md)
+> [`dev/meta-improvement/checklists/live-run-validation.md`](../../meta-improvement/checklists/live-run-validation.md)
 > (DEC-DEV-0086). Парный reviewer-док — [`ORCHESTRATOR_P4_P6_REVIEW_HANDOFF.md`](ORCHESTRATOR_P4_P6_REVIEW_HANDOFF.md).
 >
 > **Класс валидации: B (функциональная механика).** Валидируем не спонтанность, а РАБОТАЕТ ли

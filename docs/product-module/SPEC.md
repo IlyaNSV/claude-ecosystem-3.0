@@ -29,7 +29,7 @@
 
 - Не редактирует production-код (это внешние инструменты через handoff)
 - Не занимается инфраструктурой (это Integrator Module)
-- Не запускает внешние инструменты (будущий Orchestrator)
+- Не запускает внешние инструменты (это Orchestrator Module)
 - Не проектирует UI визуально сам (это Design Module D2-B04, условный подмодуль)
 - Не принимает бизнес-решения (все approve — за человеком)
 - Не управляет D3-D6 (tool-agnostic зона)
@@ -73,7 +73,7 @@
             Внешний реализатор (cc-sdd / Kiro / custom)
                            │
                            ▼
-               (будущий Orchestrator Module оркестрирует)
+                  (Orchestrator Module оркестрирует)
 ```
 
 ### 1.4 Персона «Продуктовый ассистент»
@@ -106,8 +106,8 @@
 
 | Примитив | Роль | Локация |
 |---|---|---|
-| **Slash-commands** | 23 команды UX для пользователя (вкл. Epic B/C-i/D + impl-sync reverse-flow — §3.2/§3.2b) | `.claude/commands/product/` |
-| **Skills** | ~20 methodology files, lazy-loaded per процесс (вкл. `completeness-loop.md` — Epic B wave-контракт) | `.claude/skills/product/` |
+| **Slash-commands** | 25 команд UX для пользователя (вкл. Epic B/C-i/D + impl-sync reverse-flow — §3.2/§3.2b) | `.claude/commands/product/` |
+| **Skills** | 35 methodology files, lazy-loaded per процесс (вкл. `completeness-loop.md` — Epic B wave-контракт) | `.claude/skills/product/` |
 | **Subagents** | 3 research/isolated агента + 3 profile-persona reviewers (Epic A — §5.4; `ux-advisor` живёт в `agents/design/`) | `.claude/agents/product/` |
 | **Hooks** | 13 hooks automation / enforcement / completeness-loop-routing (ключевые — §6; router — §6.8) | `.claude/hooks/product/` |
 | **Memory directory** | Долгоживущие уроки, shared между сессиями | `~/.claude/memory/product/` |
@@ -204,17 +204,21 @@
 
 25 команд, сгруппированных по функциональным блокам.
 
+> **Сигнатуры и флаги — не здесь.** Поведенческий SSOT команды — `commands/product/<name>.md`
+> (frontmatter `argument-hint` = аргументы); генерируемый и **код-гейченный** каталог сигнатур —
+> [docs/guide/02-commands.md](../guide/02-commands.md) (`gen:catalog:check` в `npm run verify`).
+> Ниже — привязка команд к процессам и архитектурные контракты, которых генерируемый каталог не несёт.
+> Копия списка флагов здесь **не держится**: прежняя разошлась с гейченным каталогом в обе стороны
+> (описывала несуществующие `--fix` / `--target <tool>`, не знала `--with-da-review`).
+
 ### 3.1 Главные процессы (5)
 
-**`/product:init [--deep] [--continue] [--pivot]`**
+**`/product:init`**
 - **Процесс:** P1.A Discovery Session (pmo/processes.md §3.1)
-- **Входы:** текстовое описание идеи продукта (опционально — через continue)
+- **Входы:** текстовое описание идеи продукта (опционально — resume через session state)
 - **Выходы:** `.product/problem.md`, market-research.md, competitive-analysis.md, segments/, value-propositions/, hypotheses/, glossary.md
 - **Длительность:** 3-5 часов (Deep), 1-1.5 часа (Quick)
-- **Опции:**
-  - `--deep` — Deep Mode с spawn-subagents для MR/CA
-  - `--continue` — resume из session state
-  - `--pivot` — запустить P6 Pivot Cascade (future, пока out-of-scope per Q-11)
+- **Режимы:** Quick (inline) / Deep (spawn-субагенты MR/CA, §5.1-5.2). `--pivot` — вход в P6 Pivot Cascade (future, out-of-scope per Q-11)
 
 **`/product:plan`**
 - **Процесс:** P1.B Planning Session
@@ -231,26 +235,20 @@
   - `--continue` — resume из session state
   - `--skip-design` — для has_ui фичи пропустить P2.5 (not recommended)
 
-**`/product:handoff <FM-id> [--mode draft|production] [--regenerate]`** (D1 modification)
+**`/product:handoff`** (D1 modification)
 - **Процесс:** Handoff generation (handoff-spec.md)
 - **Входы:** FM в in-progress, embedded артефакты per mode requirements
 - **Выходы:** `.product/handoffs/FM-NNN-handoff.md` (universal self-contained)
-- **Modes (D1):**
-  - `--mode production` (default) — full DoR (8 blockers per handoff-spec §7); генерирует `status: ready`
-  - `--mode draft` — relaxed DoR (3 blockers: FM in-progress, ≥1 SC active, BG covers terms); генерирует `status: partial` с warnings; для PoC / early experiments
-- **Опции:**
-  - `--regenerate` — force regenerate даже если no drift detected
-  - `--target <tool>` — скрыть за adapter через Integrator (обычно — implicit)
+- **Modes (D1) — контракт, а не флаг:**
+  - `production` (default) — full DoR (8 blockers per handoff-spec §7); генерирует `status: ready`
+  - `draft` — relaxed DoR (3 blockers: FM in-progress, ≥1 SC active, BG covers terms); генерирует `status: partial` с warnings; для PoC / early experiments
+- **Адресация внешнего инструмента** — implicit через Integrator-адаптер; Product Module про конкретный tool не знает (§10.2)
 
-**`/product:validate [--deep] [--rule X] [--scope S]`**
+**`/product:validate`**
 - **Процесс:** On-demand validation (validation.md §3.4)
 - **Входы:** `.product/` состояние
-- **Выходы:** validation report
-- **Опции:**
-  - `--deep` — включает V-12 stale check, refresh_by, все V-MK-*
-  - `--rule V-07` — проверить только одно правило
-  - `--scope FM-003` — проверить только один артефакт и его dependencies
-  - `--fix` — auto-fix где возможно (V-11 bi-dir)
+- **Выходы:** validation report (формат — `skills/product/validation-runner.md` §Output format)
+- **Deep-режим** дополнительно включает V-12 stale check, `refresh_by` и все V-MK-*
 
 ### 3.2 Поддерживающие операции (9)
 
@@ -382,10 +380,10 @@
 - Accept / edit / reject per term
 - Также показывает synonym warnings
 
-**`/product:bg-rename <old> <new>`**
+**`/product:bg-rename`**
 - Mass-rename workflow (processes.md §5.3)
-- Bundle approve across all affected artifacts
-- Single git commit
+- **v1 — manual preview:** команда даёт preview + sed/IDE-подсказку, применяет человек; `--commit` финализирует BG entry + cascade
+- Атомарный apply (single commit + rollback) — **deferred к v1.1**
 
 **`/product:nfr-review <FM-id>`**
 - F.5a NFR Review запуск (если pending) или re-review (если active)
@@ -412,7 +410,8 @@
 
 ## 4. Skills Library
 
-~20 skills, организованных по процессам. Lazy-loaded per задаче.
+35 skills, организованных по процессам. Lazy-loaded per задаче.
+*(Поштучный SSOT — `skills/product/*.md` + генерируемый каталог [docs/guide/08-skills.md](../guide/08-skills.md), гейт `gen:skills:check`.)*
 
 ### 4.1 Core session skills (3)
 
@@ -425,8 +424,8 @@
 Для каждого артефакта, где требуется диалог с человеком при создании:
 
 - **`problem-discovery.md`** (PS) — 5-8 уточняющих вопросов, структурирование
-- **`market-research-protocol.md`** (MR) — Quick/Deep pipeline, triangulation rules
-- **`competitive-analysis-protocol.md`** (CA) — discovery конкурентов, feature matrix, positioning
+- **`market-research-protocol-quick.md`** (MR) — Quick pipeline, triangulation rules (Deep-пайплайн живёт внутри субагента `market-researcher`, §4.5)
+- **`competitive-analysis-protocol-quick.md`** (CA) — discovery конкурентов, feature matrix, positioning (Deep — внутри `competitor-analyst`, §4.5)
 - **`segment-discovery.md`** (SEG) — функциональная сегментация, JTBD extraction
 - **`vp-design.md`** (VP) — Strategyzer-style VP Canvas (simplified)
 - **`hypothesis-formulation.md`** (HYP) — H.A.R.M.E.D. framework, thresholds
@@ -437,14 +436,15 @@
 - **`business-rule-extraction.md`** (BR) — categorization, parameterization, Critical review
 - **`invariant-discovery.md`** (IC) — formalism, severity, recovery strategy
 
-### 4.3 Derivation skills (4)
+### 4.3 Derivation skills (3)
 
 Для 🟢 Confirmation артефактов, которые выводятся автоматически:
 
 - **`lifecycle-derivation.md`** (LC) — из SC steps + BR guards, state machine
 - **`vc-derivation.md`** (VC) — из SC+BR+LC, Gherkin-подобный формат
 - **`rpm-derivation.md`** (RPM) — роли из SC.actors, permissions из SC steps + authorization BR
-- **`nm-derivation.md`** (NM) — из MK screens + LC guards
+
+*(NM-* деривация — **не** Product-скилл: NM генерируется Design-модулем на шаге D.5, см. [design-module/SPEC.md §7](../design-module/SPEC.md).)*
 
 ### 4.4 Cross-cutting skills (6)
 
@@ -462,6 +462,15 @@
 - **`pattern-linter.md`** (C4) — analyzes `.product/` for anti-patterns; pattern dictionary expandable
 - **`note-capture.md`** (D3) — quick capture flow для NOTE-* (≤30 sec from idea to saved file)
 - **`note-promote.md`** (D3) — converts NOTE-* to structured artifact, copies content, updates references
+
+### 4.4b Autonomy / classification / hygiene skills (6)
+
+- **`completeness-loop.md`** (Epic B / B1) — bounded волновой цикл до handoff-DoR-достаточности: детерминированный completeness-oracle как stop-сигнал + гетерогенные profile-персоны (§5.4) на пробелы зон. Вызывается `/product:complete <FM-id>`
+- **`corpus-qa.md`** (D-0226) — retrieval-лестница Q&A по корпусу `.product/` без векторов; обязательный указатель (ID + путь) за каждым несущим утверждением. Read-only, артефактов не создаёт. Вызывается `/product:ask`
+- **`lesson-capture.md`** (DEC-DEV-0062) — атомарный find→fix→record corrective LESSON-* (фикс применён и проверен **до** коммита). Вызывается `/product:lesson`
+- **`cleanup-detector.md`** — V-15 orphan detection + опциональный pending-hygiene sweep (`--pending-hygiene`). Вызывается `/product:cleanup`
+- **`domain-fit.md`** (D1.0b) — классификация идеи в одну из 96 подкатегорий реестра + gate по ecosystem-fit (default 75). Единственный class-based гейт экосистемы; override владельца всегда легален и записывается
+- **`product-class.md`** (D1.0, DEC-DEV-0079) — capture/backfill блока `product_class` в `product.yaml` (архетип + производные фасеты). Открытый словарь, advisory-only, никогда не гейтит
 
 ### 4.5 Deep Research skills — CUT (DEC-DEV-0186)
 
@@ -509,7 +518,7 @@ lazy-load skill-слой не нужен. См. `dev/v1_1_backlog.md` и DEV_JOU
 - **Выход:** Findings file в 3 tier (🔴/🟡/🔵)
 - **Почему isolated:** Builder/Critic separation — DA не должен видеть contextный энтузиазм от создания артефактов; fresh critical lens
 
-**Примечание:** использует existing `.claude/agents/devils-advocate.md` с business prompts (DEC-I05).
+**Примечание:** использует existing `agents/product/devils-advocate.md` с business prompts (DEC-I05).
 
 ### 5.4 Profile-persona reviewers (Epic A — completeness-loop)
 
@@ -545,9 +554,9 @@ setup-ошибка (STOP), никогда не тихий откат на `gener
 
 ## 6. Hooks
 
-12 hooks автоматизации, enforcement и completeness-loop-роутинга (ниже детализированы ключевые; LESSON-* gate добавил первые **Stop / PreToolUse / UserPromptSubmit** хуки модуля — DEC-DEV-0062, первый блокирующий хук в экосистеме, scoped к corrective lessons; watchdog- и worktree-guard-хуки — warn-only, SSOT их регистрации — `hooks/product/manifest.yaml`; router — §6.8):
+13 hooks автоматизации, enforcement и completeness-loop-роутинга (ниже детализированы ключевые; LESSON-* gate добавил первые **Stop / PreToolUse / UserPromptSubmit** хуки модуля — DEC-DEV-0062, первый блокирующий хук в экосистеме, scoped к corrective lessons; watchdog- и worktree-guard-хуки — warn-only, SSOT их регистрации — `hooks/product/manifest.yaml`; router — §6.8):
 
-### 6.1 `product-artifact-validate.js` (PostToolUse) — tier-aware + quiet-mode
+### 6.1 `artifact-validate.js` (PostToolUse) — tier-aware + quiet-mode
 
 - **Триггер:** Write/Edit на `.product/**/*.md`
 - **Auto-purge (DEC-DEV-0023):** на каждом save сначала clears all prior `validation-pending.yaml` entries для `fm.id`. Current pass = authoritative state; rules that previously failed но now pass — entry cleared automatically. Without this, fixed issues remain pending forever.
@@ -565,7 +574,7 @@ setup-ошибка (STOP), никогда не тихий откат на `gener
 - **Действия:** Phase 1 Candidate Extraction (processes.md §5.1)
 - **Выход:** Обновляет `.product/.pending/bg-candidates.yaml`; уведомление в следующем interaction
 
-### 6.3 `product-session-state.js` (PostToolUse, Stop)
+### 6.3 `session-state.js` (PostToolUse, Stop)
 
 - **Триггер:** любые изменения в `.product/` + session end
 - **Действия:** snapshot progress в `.product/.sessions/<timestamp>.yaml`
@@ -797,15 +806,16 @@ Product Module **никогда не падает** из-за missing MCP.
 
 Обновляется через statusline hook при `.product/.pending/` изменениях.
 
-### 9.3 Output styles
+### 9.3 Output styles — **запланировано, НЕ построено**
 
-Единый формат presenting для:
-- `/product:status` — dashboard-style output (colored tables)
-- `/product:validate` — grouped by tier (🔴/🟡/🔵)
-- `/product:da-review` — findings with lens tags
-- `/product:cascade` — tree view dependents
+Целевой единый формат presenting: `/product:status` — dashboard-style (colored tables);
+`/product:validate` — grouped by tier (🔴/🟡/🔵); `/product:da-review` — findings with lens tags;
+`/product:cascade` — tree view dependents.
 
-Файл: `.claude/output-styles/product-report.md`
+> **Статус:** файла `.claude/output-styles/product-report.md` не существует, каталога `output-styles/`
+> в поставке нет — пустая директория убрана из sync по DEC-DEV-0055 (forward-reference сохранён
+> намеренно: вернуть в allowlist, когда стиль реально отгрузят). Сейчас формат вывода несут сами
+> команды и скиллы.
 
 ### 9.4 ScheduleWakeup
 
@@ -861,9 +871,9 @@ outputs:
 - `.product/design-system.md` — writes Design Module
 - FM.frontmatter.has_ui, mockups[] — writes Product Module
 
-### 10.3 С future Orchestrator Module
+### 10.3 С Orchestrator Module
 
-**Когда Orchestrator реализуется:**
+**Модуль построен** (P1–P8 + Epic E deploy/rollback; см. [orchestrator-module/SPEC.md](../orchestrator-module/SPEC.md)):
 
 - Orchestrator читает `.product/` state и tool-docs (от Integrator)
 - При задаче «поставить фичу FM-003 на prod» — Orchestrator маршрутизирует:
@@ -872,7 +882,7 @@ outputs:
   - tests → QA tool
   - deploy → deployment tool
 - Product Module в этот момент — источник `.product/` (read-only для Orchestrator)
-- Обратный поток feedback (P3) через Orchestrator → Product Module: `/product:clarify`, `/product:feedback-intake` (future)
+- **Обратный поток результата** реализован как `/product:impl-sync` (E15, DEC-DEV-0192): evidence прогонов Orchestrator → `FM.status → shipped` по approve владельца. Обратный поток **пользовательского feedback** (P3) — всё ещё отложен (processes.md §3.4); команд `/product:clarify` / `/product:feedback-intake` не существует
 
 ---
 

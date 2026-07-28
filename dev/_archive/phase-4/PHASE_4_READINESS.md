@@ -86,7 +86,7 @@
 2. Если установлен pre-commit (`bash dev/meta-improvement/scripts/install-pre-commit.sh`) — он автоматически блокирует коммит, если verify-hooks падает.
 3. Шаг 3 «Hook runtime smoke (≤5 мин)» в phase-closure ритуале запускает тот же verify после завершения реализации Phase 4.
 
-Чтобы добавить новый хук в массив TEST_CASES в `smoke-hooks.js` — см. [smoke-hooks.js TEST_CASES](meta-improvement/scripts/smoke-hooks.js).
+Чтобы добавить новый хук в массив TEST_CASES в `smoke-hooks.js` — см. [smoke-hooks.js TEST_CASES](../../meta-improvement/scripts/smoke-hooks.js).
 
 ---
 
@@ -324,6 +324,6 @@ Phase 4 считается «done», когда:
 5. Application of DEC-DEV-0027 (cleanup + pending) — maintenance command.
 6. Application of DEC-DEV-0026 (DA expansion C.3+D.3+D.7) — самая большая часть, ~30-40% Phase 4 effort.
 7. Phase 4 smoke test — обязателен.
-8. Phase 4 closure ритуал per D7 [`dev/meta-improvement/checklists/phase-closure.md`](meta-improvement/checklists/phase-closure.md).
+8. Phase 4 closure ритуал per D7 [`dev/meta-improvement/checklists/phase-closure.md`](../../meta-improvement/checklists/phase-closure.md).
 
 **Если в процессе Phase 4 вскроется что-то, что должно было быть здесь** — добавь сюда новой секцией (для готовности Phase 5) + запиши в DEV_JOURNAL.

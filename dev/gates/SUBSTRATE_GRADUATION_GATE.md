@@ -104,14 +104,17 @@
 
 | План | Прогон 2026-07-11 | Статус |
 |---|---|---|
-| [`PATCH_1.3.3_SMOKE_TEST_PLAN.md`](PATCH_1.3.3_SMOKE_TEST_PLAN.md) | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E1 — состояние в шапке плана |
-| [`PHASE_6_SMOKE_TEST_PLAN.md`](PHASE_6_SMOKE_TEST_PLAN.md) | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E2 — состояние в шапке плана |
+| ~~[`PATCH_1.3.3_SMOKE_TEST_PLAN.md`](../_archive/patch-1.3.3/PATCH_1.3.3_SMOKE_TEST_PLAN.md)~~ | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E1; план архивирован 2026-07-28 → `dev/_archive/patch-1.3.3/` (к своему readiness, CONVENTIONS §5.1) |
+| ~~[`PHASE_6_SMOKE_TEST_PLAN.md`](../_archive/phase-6/PHASE_6_SMOKE_TEST_PLAN.md)~~ | вердикты — в §Outcome брифа (SSOT выше); инлайн-копия намеренно не держится | ✅ **ЗАКРЫТ 2026-07-15** догоном E2; план архивирован 2026-07-28 → `dev/_archive/phase-6/` (к своему readiness, CONVENTIONS §5.1) |
 | ~~[`S_LE_LESSON_GATE_SMOKE.md`](../_archive/s-le/S_LE_LESSON_GATE_SMOKE.md)~~ | S-LE.3 полный PASS (самодедлок 0143 live-устранён), S-LE.1 = known CC-caveat | ✅ **закрыт**; чеклист архивирован → `dev/_archive/s-le/`; флип `lesson-presence-gate.js` warn→strict выполнен (PR #162) |
 | ~~`PHASE_7_SMOKE_TEST_PLAN.md`~~ | S1/S2/S3/S5 PASS, S4 PARTIAL (DEF-SMK-1, пофикшен DEC-DEV-0178/PR #163) | ✅ **validated**; план архивирован → `dev/_archive/phase-7/` |
 
-Долг снижен с 4 до **2** (PHASE_7 validated+архивирован; S_LE закрыт с флипом
-warn→strict). Оставшиеся два (PATCH_1.3.3, PHASE_6) — не превышают порог «>2», но при
-следующей пилот-сессии их точечный догон приоритетен над новыми prod-graduation-заявками.
+**Долг = 0 (на 2026-07-28).** Все четыре плана отработаны: PHASE_7 validated+архивирован ·
+S_LE закрыт с флипом warn→strict · PATCH_1.3.3 и PHASE_6 закрыты догонами E1/E2 кампании
+до-PROD 2026-07-15 и архивированы 2026-07-28 к своим readiness. Порог «≥2 планов в статусе
+next pilot session» не превышен. Единственный **активный** smoke-план репо —
+[`UJA_SMOKE_TEST_PLAN.md`](UJA_SMOKE_TEST_PLAN.md) (static verification DONE, real run
+PENDING на VM-пилоте); он и есть текущий deferred-smoke долг.
 
 ---
 
