@@ -24,6 +24,7 @@ DEC-DEV-0076).
 | `runtime-smoke-readiness` | Runtime-smoke gate after P6 GO: is a boot ATTEMPTABLE (run-target + §6 boot-caps + env)? boot the dev server + diagnose a failed start (P7) | D3+ runtime |
 | `deploy-to-stage` | Staging deploy cell AFTER a P7 PASS: env+manifest preflight → clean build/test → **§3.2 autonomy-policy GATE** → build `releases/<ts>` + flip `current` + restart → healthcheck (E.B) | D3-05/06 |
 | `rollback-release` | Auto-rollback cell (staging): **§3.2 GATE** (`rollback`→staging auto, level-independent) → revert `current` to the prior release + restart → verify (E.C) | D3-05/06 |
+| `user-journey-acceptance` | User-journey acceptance gate AFTER a staging `DEPLOYED` — the last check before `done`: preflight (Playwright equipped? journeys authored at `tests/uja/*.spec.ts`? staging 2xx?) → run the journeys headless vs the staging URL → **deterministic** PASS/FAIL/ENV_NOT_READY verdict (P8) | D3+ acceptance |
 
 P5 delegates its feature-level gate to P6 (`validate-feature-impl`) via `workflow()`; you can
 also run P6 standalone to re-gate an already-implemented feature. P7 (`runtime-smoke-readiness`)
@@ -32,7 +33,12 @@ is substrate-gated (needs a pilot dev env). **The Epic E deploy chain is now bui
 the deploy-capability (Integrator `deployment-provisioning.md` + CNT + `deployer`); E.B/E.C built
 `deploy-to-stage` / `rollback-release` as the fabric deploy bracket (P7 PASS → deploy → healthcheck →
 auto-rollback on failure). The **live** deploy/rollback (the real build/migrate/flip/`systemctl`/`/health`)
-is VM-gated (E.D/E.G — needs the VM staging target restored). **P2 (`decide-architecture-foundation`) is built** — it runs an undecided
+is VM-gated (E.D/E.G — needs the VM staging target restored). **P8 (`user-journey-acceptance`, DEC-DEV-0225)
+is now built** — the last gate before `done`: after a staging `DEPLOYED`, it drives deterministic
+Playwright browser journeys against the live staging URL, so "shipped" means "a real user can walk the
+first flow", not "a `/health` ping answered 2xx" (the live precedent: P6/P7/deploy all green, yet the
+pilot's post-login hit a 404). Its **live** run is VM-gated (needs a DEPLOYED staging target + authored
+journeys); repo-side ships the deterministic verdict core + wiring. **P2 (`decide-architecture-foundation`) is built** — it runs an undecided
 architecture fork through a heterogeneous 3-prior consilium (velocity/fidelity/integrity) and
 hands the owner a scored recommendation + a DRAFT DEC; it never auto-decides (FB-LR-07). Its
 live grade is a dogfood on the S7 fork `PA-040/042`.
@@ -139,6 +145,21 @@ flipped a release that then failed its healthcheck):
 1. `autonomy-policy` present — the **§3.2** resolver (operation_class `rollback`, NOT `destructive`:
    staging → auto so the auto-rollback net fires at the default level; prod → human-gate).
 2. The same equipped deploy-capability (E.A) — the release layout + healthcheck spec come from its manifest.
+
+**For `user-journey-acceptance` (P8)** — the user-journey acceptance gate AFTER a staging `DEPLOYED`
+(the fabric prescribes it on `evt:deploy.succeeded`; the last leg before `done`):
+1. `uja-report.cjs` present (`.claude/orchestrator/lib/`) — the **deterministic** preflight + verdict
+   core (the PASS/FAIL is a byte-reduction over the Playwright report, NOT an LLM judgment).
+2. **Playwright equipped** in the target project (`@playwright/test` dep or a `playwright.config.*`) and
+   **journeys authored** at the convention path `tests/uja/*.spec.ts`. Missing either → the process
+   reports `uja_result=ENV_NOT_READY` with a DoR hint (`/integrator:add playwright`, "author journeys
+   from the feature's NM") — it does NOT fabricate a pass.
+3. **A live staging target** — pass the `DEPLOYED` staging URL (`stagingUrl`, from the deploy result or
+   env). No 2xx / no URL → `ENV_NOT_READY` (bring staging up and re-run — the deploy cell owns provisioning).
+4. **Budget guard:** journeys can create REAL jobs on the deployed app (real-vendor spend) — journeys
+   MUST use minimal fixtures (a throwaway/seed account, smallest input). **Substrate-gated:** the live
+   `npx playwright test` runs only against a real staging deploy; `env_tier` is `staging`, **prod is out
+   of scope for v0**.
 
 ## Launch
 
@@ -324,6 +345,33 @@ Workflow({
 })
 ```
 
+**P8 — `user-journey-acceptance`** (skills: `orchestrator-init`) — the user-journey acceptance gate
+AFTER a staging `DEPLOYED`; the last leg before `done`. It runs deterministic Playwright browser
+journeys against the live staging URL and reduces the report to a verdict through `uja-report.cjs` (no
+LLM judgment):
+
+```
+Workflow({
+  scriptPath: '.claude/orchestrator/processes/user-journey-acceptance.mjs',
+  args: {
+    feature: "<.product/features key, e.g. FM-006>",   // optional lens: which feature this acceptance covers
+    stagingUrl: "<the DEPLOYED staging URL>",   // from the deploy result (or env) — the live target journeys run against
+    root: '.',                                  // the target project checkout (package.json + tests/uja live here)
+    journeysDir: 'tests/uja',                   // convention: tests/uja/*.spec.ts — one spec file == one journey
+    ujaLib: '.claude/orchestrator/lib/uja-report.cjs',   // DEC-DEV-0225: deterministic preflight + verdict core
+    artifactsDir: 'test-results',               // where Playwright writes step screenshots / trace (visual-conformance evidence)
+    runId: "$RUN_ID"                            // the ledger run-id (evidence handle)
+  }
+})
+```
+
+> ⚠ **Deterministic by construction (DEC-DEV-0225).** The verdict is a byte-reduction over the Playwright
+> JSON report done by `uja-report.cjs`, not an LLM reading — a green gate on a broken first-user-touch is
+> the "false DEPLOYED" class one layer up. **The zero-evidence rule:** a report with 0 journeys is
+> `ENV_NOT_READY` (could-not-judge), NEVER a PASS. `PASS` → `done`; `FAIL` → `awaiting_journey_fix`
+> (owner re-drives the fix through `implementing`); `ENV_NOT_READY` → `runtime_gate_retry`. **Budget:**
+> journeys hit the real deployed app — keep them on minimal fixtures.
+
 ### Run ledger (dispatcher wiring — VC-087 / VC-134)
 
 You (the dispatcher) bracket the Workflow with the run-ledger so every run leaves a
@@ -394,7 +442,8 @@ DEGRADED | ENV_NOT_READY) / validators / confirmed_findings / **`already_resolve
 
 The fabric (`.claude/orchestrator/lib/fabric-engine.cjs`; design SSOT `dev/process-fabric/CONCEPT.md`)
 is the durable INTER-process statechart: it tracks a feature's whole production line
-(P3 → P4 → P5/P6 → P7) across sessions and prescribes the next step. The engine never calls
+(P3 → P4 → P5/P6 → P7 → deploy → user-journey acceptance) across sessions and prescribes the next
+step. The engine never calls
 an LLM and never launches anything itself — YOU (the dispatcher) are its actuator. Same
 clock discipline as the ledger: every fabric call takes a dispatcher-stamped `--at "<ISO-now>"`.
 Every prescription's disposition has been resolved through the autonomy-policy (F1+F2, DEC-DEV-0193)
@@ -510,9 +559,10 @@ PA flip cannot express (`evt:owner.abort` after a dismissal, `evt:owner.close` w
 split/deferred the remaining work and closes the line without runtime — terminal
 `closed_without_runtime`), make sure the owner's decision is recorded in a PA entry, then tick with
 `--force-manual "PA-NNN: <owner decision>"` (audit-stamped into the event). `evt:owner.close` is
-handled from EVERY parked human gate (`awaiting_*`, `runtime_gate_retry`, `escalated`, and the
-Epic E deploy cells `deploying_staging` / `rolled_back` — charter v5, DEC-DEV-0175/0198): a parked
-line always has an owner exit that neither fakes a resolution nor overloads `owner.abort`.
+handled from EVERY parked human gate (`awaiting_*` — incl. `awaiting_journey_fix`, `runtime_gate_retry`,
+`escalated`, and the Epic E / P8 cells `deploying_staging` / `journey_acceptance` / `rolled_back` —
+charter v6, DEC-DEV-0175/0198/0225): a parked line always has an owner exit that neither fakes a
+resolution nor overloads `owner.abort`.
 
 **The staging deploy is an owner decision at the default level, not a PA-flip resume.** At L0/L1 the
 `deploying_staging` cell prescribes `run-process` + `human-gate` — the owner APPROVES the deploy by
@@ -671,3 +721,17 @@ P7's readiness probe is cheap and re-assesses from zero. This closes the OD7
   ⇒ `current` reverted to the prior release AND it healthchecks clean; an unhealthy restored release
   is `ROLLBACK_FAILED` (owner intervention). Both non-clean outcomes escalate; the post-rollback
   `rolled_back` owner gate lets the owner re-drive (`implementing`) or close. VM-gated for the live swap.
+- **P8 (`user-journey-acceptance`, DEC-DEV-0225):** `uja_result` is the acceptance verdict —
+  `PASS` (every authored journey green → the line ships to `done`), `FAIL` (a journey broke → the
+  first-user-touch is broken, the line parks at `awaiting_journey_fix` and the owner re-drives the fix
+  through `implementing` — the gate is **capture-don't-fix**, it never patches the app), or
+  `ENV_NOT_READY` (a DoR gap — Playwright not equipped / no journeys authored / staging not 2xx / a
+  0-journey report — routes to `runtime_gate_retry`, bring the piece up and re-run). The verdict is a
+  **deterministic** byte-reduction over the Playwright JSON report (`uja-report.cjs`), never an LLM
+  reading — and **the zero-evidence rule** makes a 0-journey report `ENV_NOT_READY`, never a PASS (a
+  green gate over nothing exercised is the "false DEPLOYED" class). `journeys_failed[]` names the broken
+  journeys; `artifacts_dir` holds the step screenshots / trace (the visual-conformance evidence the
+  owner reviews against the design MK — an automatic MK-diff is v1.1). The staging cell is **auto** at
+  the default level (read-mostly, reversible), but journeys hit the **real** deployed app, so the
+  budget guard is a DoR contract: **minimal fixtures only** (real jobs = real-vendor spend). Live run
+  is VM-gated (needs a DEPLOYED staging target + authored journeys); prod journeys are out of scope for v0.

@@ -60,7 +60,7 @@ const MAP_REL = 'dev/INFORMATION-MAP.yaml';
 // (e.g. the out-of-repo memory index MEMORY.md, or memory mirrors project_*.md) is NOT checked.
 const ROOT_DOCS = new Set([
   'README.md', 'ROADMAP.md', 'CHANGELOG.md', 'CLAUDE.md', 'DEV_JOURNAL.md',
-  'HOME.md', 'BOOTSTRAP.md', 'INSTALL-HUMAN.md',
+  'BOOTSTRAP.md', 'INSTALL-HUMAN.md',
 ]);
 
 const EXT_RE = /\.(md|js|cjs|mjs|ya?ml|json)$/i;

@@ -1,6 +1,6 @@
 # D7 Meta-Improvement Module — Design Session Kickoff Prompt
 
-> **Назначение:** self-contained brief для **новой Claude Code session**, которая продолжит проектирование D7 Meta-Improvement Module после preliminary specification (см. [SPEC.md](SPEC.md)).
+> **Назначение:** self-contained brief для **новой Claude Code session**, которая продолжит проектирование D7 Meta-Improvement Module после preliminary specification (см. [SPEC.md](../../../docs/design-module/SPEC.md)).
 > **Использование:** скопировать содержимое этого файла как первое сообщение в новый чат с Claude Code.
 > **Формат:** mirror of «Phase 3 implementation kickoff» prompt (2026-04-27) — multi-stage с context loading + validation gates + concrete deliverables.
 
@@ -10,7 +10,7 @@
 
 ## Кто ты и что делаешь
 
-Ты — AI-ассистент, работающий над репозиторием **Ecosystem 3.0** (`C:\Users\pw201\WebstormProjects\claude-ecosystem-3.0`). Это meta-проект — PMO-слой над Claude Code для управления продуктовыми проектами. Подробнее: [`CLAUDE.md`](../../CLAUDE.md) (auto-loaded), [`README.md`](../../README.md), [`ROADMAP.md`](../../ROADMAP.md).
+Ты — AI-ассистент, работающий над репозиторием **Ecosystem 3.0** (`C:\Users\pw201\WebstormProjects\claude-ecosystem-3.0`). Это meta-проект — PMO-слой над Claude Code для управления продуктовыми проектами. Подробнее: [`CLAUDE.md`](../../../CLAUDE.md) (auto-loaded), [`README.md`](../../README.md), [`ROADMAP.md`](../../../ROADMAP.md).
 
 **Текущая задача:** спроектировать **D7 — Meta-Improvement Module** — новый модуль для governance over Ecosystem 3.0 development itself (Level B per terminology в SPEC). Это НЕ модуль для управления user'овскими продуктовыми проектами (Level A — это Product/Design/Integrator/Orchestrator); это модуль для **нашей собственной разработческой дисциплины** при building Ecosystem 3.0.
 
@@ -26,7 +26,7 @@
 
 ### Уровень 1: Orientation (5 мин)
 
-- [`CLAUDE.md`](../../CLAUDE.md) — auto-loaded; перечитать особенно §3 «Meta-проект — высокий risk самореферентного коллапса» + «Принципы работы над экосистемой»
+- [`CLAUDE.md`](../../../CLAUDE.md) — auto-loaded; перечитать особенно §3 «Meta-проект — высокий risk самореферентного коллапса» + «Принципы работы над экосистемой»
 - Memory: verify `project_ecosystem_status.md`, `project_ecosystem_architecture.md`, `feedback_methodology.md`, `reference_dev_journal.md` — auto-loaded; check для Phase 3 completeness
 - `git log --oneline -15` — фактическое состояние repo (Phase 3 should be complete)
 - `git status` — clean tree expected; uncommitted работы быть не должно
@@ -35,38 +35,38 @@
 
 - **`dev/meta-improvement/SPEC.md`** — preliminary spec (CRITICAL — это твой substrate)
 - **`dev/meta-improvement/DESIGN_KICKOFF.md`** — этот документ
-- [`DEV_JOURNAL.md`](../../DEV_JOURNAL.md) — особенно entries:
+- [`DEV_JOURNAL.md`](../../../DEV_JOURNAL.md) — особенно entries:
   - DEC-DEV-0007 (DEV_JOURNAL framework, methodology agreements)
   - DEC-DEV-0008 (incremental pilot, dogfooding direction)
   - DEC-DEV-0012 (Phase 3 architectural readiness consolidation)
   - DEC-DEV-0013 (ambiguity resolution + spec drift sweep)
   - DEC-DEV-0014 (Phase 3 closure lessons — 12 lessons)
   - DEC-DEV-0015 (D7 module preliminary spec creation — записан в Stage 1)
-- [`ROADMAP.md`](../../ROADMAP.md) — full Phase progression context
+- [`ROADMAP.md`](../../../ROADMAP.md) — full Phase progression context
 
 ### Уровень 3: Existing development conventions (15 мин)
 
 D7 borrows patterns из existing capabilities. Чтобы не reinvent — fully understand:
 
-- [`CLAUDE.md`](../../CLAUDE.md) sections «Принципы работы», «Skill конвенции», «Hook конвенции»
-- [`hooks/product/manifest.yaml`](../../hooks/product/manifest.yaml) — hook registration pattern
-- [`commands/ecosystem/bootstrap.md`](../../commands/ecosystem/bootstrap.md) — bootstrap mechanism (relevant для Bootstrap Regression Test design)
-- [`commands/ecosystem/verify.md`](../../commands/ecosystem/verify.md) — existing health check command
+- [`CLAUDE.md`](../../../CLAUDE.md) sections «Принципы работы», «Skill конвенции», «Hook конвенции»
+- [`hooks/product/manifest.yaml`](../../../hooks/product/manifest.yaml) — hook registration pattern
+- [`commands/ecosystem/bootstrap.md`](../../../commands/ecosystem/bootstrap.md) — bootstrap mechanism (relevant для Bootstrap Regression Test design)
+- [`commands/ecosystem/verify.md`](../../../commands/ecosystem/verify.md) — existing health check command
 - `.claude/product.yaml.template` или `.env.template` — config patterns
 
 ### Уровень 4: Phase pattern instances (20 мин)
 
 D7 derives from observed phase patterns. Read для extracting commonalities:
 
-- [`dev/PHASE_3_READINESS.md`](../PHASE_3_READINESS.md) — kickoff readiness pattern instance
-- [`dev/PHASE_3_SMOKE_TEST_PLAN.md`](../PHASE_3_SMOKE_TEST_PLAN.md) — validation gate pattern instance
-- [`dev/PHASE_4_READINESS.md`](../PHASE_4_READINESS.md) — placeholder pattern (and open questions для Phase 4)
-- [`dev/v1_1_backlog.md`](../v1_1_backlog.md) — preserved deferred context pattern (cuttable scope discipline)
+- [`dev/PHASE_3_READINESS.md`](../phase-3/PHASE_3_READINESS.md) — kickoff readiness pattern instance
+- [`dev/PHASE_3_SMOKE_TEST_PLAN.md`](../phase-3/PHASE_3_SMOKE_TEST_PLAN.md) — validation gate pattern instance
+- [`dev/PHASE_4_READINESS.md`](../phase-4/PHASE_4_READINESS.md) — placeholder pattern (and open questions для Phase 4)
+- [`dev/v1_1_backlog.md`](../../v1_1_backlog.md) — preserved deferred context pattern (cuttable scope discipline)
 
 ### Уровень 5: Methodology references (15 мин)
 
-- [`docs/pmo/pmo-map.md`](../../docs/pmo/pmo-map.md) — D6 (integrator-module) definition; understand distinction D6 vs D7
-- [`docs/pmo/processes.md`](../../docs/pmo/processes.md) §1 Philosophy & Principles — methodology foundations (some may apply к D7)
+- [`docs/pmo/pmo-map.md`](../../../docs/pmo/pmo-map.md) — D6 (integrator-module) definition; understand distinction D6 vs D7
+- [`docs/pmo/processes.md`](../../../docs/pmo/processes.md) §1 Philosophy & Principles — methodology foundations (some may apply к D7)
 - (Optional) `C:\Users\pw201\Claude Desktop projects\PMO Ecosystem\Ecosystem 3.0\` source — original D1-D6 design rationale если нужен
 
 ---

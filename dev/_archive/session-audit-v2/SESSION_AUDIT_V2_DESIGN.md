@@ -1,7 +1,7 @@
 # Session Audit v2 — Design Doc
 
 > **Status:** **SHIPPED Инкр.1+2+3** — Инкр.1 (DEC-DEV-0056) · Инкр.2 (DEC-DEV-0057) · Инкр.3 (DEC-DEV-0059, merge PR #21) · **Created:** 2026-05-31 · документ сохраняется как as-built инженерная справка
-> **Decision refs:** [DEC-DEV-0056](../DEV_JOURNAL.md) (Инкр.1) · [DEC-DEV-0057](../DEV_JOURNAL.md) (Инкр.2) · [DEC-DEV-0059](../DEV_JOURNAL.md) (Инкр.3 kickoff — re-anchor оракула; 0058 занят параллельной Orchestrator-сессией)
+> **Decision refs:** [DEC-DEV-0056](../../../DEV_JOURNAL.md) (Инкр.1) · [DEC-DEV-0057](../../../DEV_JOURNAL.md) (Инкр.2) · [DEC-DEV-0059](../../../DEV_JOURNAL.md) (Инкр.3 kickoff — re-anchor оракула; 0058 занят параллельной Orchestrator-сессией)
 > **Scope Инкр.3 (поставлен):** re-anchor оракула на **PMO-зоны (two-axis multi-label)** + накопительный findings-журнал + синтезатор патчей.
 > **Важно (DEC-DEV-0059):** механизм аудитит **только продуктовые сессии**. `ecosystem-dev`/self-dev аудит выкинут. Зоны — **owned-only** (D1, D2-B вкл. design, integrator-handoff); делегированные D2-T/D3/D4 невидимы в Claude-сессии.
 > **Принадлежность:** D7 meta-improvement. Артефакт dev-only, НЕ деплоится в пользовательские проекты (CONVENTIONS §2/§9).
@@ -26,8 +26,8 @@
 
 Движок **не монолит под фазу**, в нём уже есть зачатки универсальности:
 
-- **Capture/audit развязаны** (DEC-DEV-0034). SessionEnd-хук [`hooks/session-audit.js`](meta-improvement/hooks/session-audit.js) пишет дешёвый идемпотентный маркер в [`audit-index.md`](meta-improvement/audit-index.md) Pending; тяжёлый `claude -p`-аудит — отдельно. Прототип со spawn `claude -p` прямо из хука **осознанно отвергнут**. → фундамент сохраняем.
-- **Универсальный режим уже есть.** Флаг `--no-plan` ([`scripts/audit-smoke.js`](meta-improvement/scripts/audit-smoke.js):69,539) запускает аудитора без фазы в режиме `catalog-only`. Промпт [`prompts/session-audit.md`](meta-improvement/prompts/session-audit.md) Step 0 уже выбирает режим Full/Catalog-only.
+- **Capture/audit развязаны** (DEC-DEV-0034). SessionEnd-хук [`hooks/session-audit.js`](../../meta-improvement/hooks/session-audit.js) пишет дешёвый идемпотентный маркер в [`audit-index.md`](../../meta-improvement/audit-index.md) Pending; тяжёлый `claude -p`-аудит — отдельно. Прототип со spawn `claude -p` прямо из хука **осознанно отвергнут**. → фундамент сохраняем.
+- **Универсальный режим уже есть.** Флаг `--no-plan` ([`scripts/audit-smoke.js`](../../meta-improvement/scripts/audit-smoke.js):69,539) запускает аудитора без фазы в режиме `catalog-only`. Промпт [`prompts/session-audit.md`](../../meta-improvement/prompts/session-audit.md) Step 0 уже выбирает режим Full/Catalog-only.
 - **Универсальная база сравнения подключена.** Аудитор (Step 3, `check_id` A–G) проверяет процесс-каталог независимо от фазы: A=frontmatter B.1, B=P-RULE-01 (IC→DA), C=P-RULE-02 (BR→DA), D=V-11 bi-dir, E=Discovery sequence, F=skill discipline, G=phase-boundary hygiene. Читает `docs/pmo/processes.md`, `validation.md`, `artifacts/<TYPE>.md`, `CLAUDE.md` — то есть **полный каталог корректности**, не привязанный к фазе.
 - **Детерминированное ядро + LLM-нарратив.** `computeAggregate()` (строки 413–499) считает покрытие/находки кодом; LLM пишет только прозу. Образец для классификатора.
 - **Salvage-устойчивость** (707–739): отчёт — источник истины, таймаут `claude -p` не роняет результат.
@@ -150,7 +150,7 @@
 
 `effect-probe.json` подаётся аудитору как вход; LLM интерпретирует «корректно/некорректно/можно лучше» в терминах рубрики.
 
-> **✅ Реализовано (Инкр.2, DEC-DEV-0057):** [`scripts/effect-probe.js`](meta-improvement/scripts/effect-probe.js).
+> **✅ Реализовано (Инкр.2, DEC-DEV-0057):** [`scripts/effect-probe.js`](../../meta-improvement/scripts/effect-probe.js).
 > Окно сессии деривируется из транскрипта (`timestamp`/`cwd`/`gitBranch`) — хук не тронут, работает
 > ретроактивно на captured-маркерах. `before`/`after` — `git rev-list --before=<ts>` на ветке пилота
 > (graceful: `committed:false` когда коммитов в окне нет). Валидатор — **standalone** (не реюз
@@ -272,10 +272,10 @@ findings-журнал → кластеризация по (zone, check_id, signa
 
 ## 10. Ссылки
 
-- Движок: [`scripts/audit-smoke.js`](meta-improvement/scripts/audit-smoke.js) · парсер: [`scripts/audit-index.js`](meta-improvement/scripts/audit-index.js)
-- Промпты: [`prompts/session-audit.md`](meta-improvement/prompts/session-audit.md) · [`prompts/phase-audit-summary.md`](meta-improvement/prompts/phase-audit-summary.md)
-- Хук: [`hooks/session-audit.js`](meta-improvement/hooks/session-audit.js) · индекс: [`audit-index.md`](meta-improvement/audit-index.md)
-- Конвенции: [`CONVENTIONS.md`](meta-improvement/CONVENTIONS.md) (§2 location, §3 ratio, §8 no-auto-fix, §9 self-application)
-- Паттерны: [`patterns/`](meta-improvement/patterns/) (provisional→validated) · backlog: [`v1_1_backlog.md`](v1_1_backlog.md)
+- Движок: [`scripts/audit-smoke.js`](../../meta-improvement/scripts/audit-smoke.js) · парсер: [`scripts/audit-index.js`](../../meta-improvement/scripts/audit-index.js)
+- Промпты: [`prompts/session-audit.md`](../../meta-improvement/prompts/session-audit.md) · [`prompts/phase-audit-summary.md`](../../meta-improvement/prompts/phase-audit-summary.md)
+- Хук: [`hooks/session-audit.js`](../../meta-improvement/hooks/session-audit.js) · индекс: [`audit-index.md`](../../meta-improvement/audit-index.md)
+- Конвенции: [`CONVENTIONS.md`](../../meta-improvement/CONVENTIONS.md) (§2 location, §3 ratio, §8 no-auto-fix, §9 self-application)
+- Паттерны: [`patterns/`](meta-improvement/patterns/) (provisional→validated) · backlog: [`v1_1_backlog.md`](../../v1_1_backlog.md)
 - Референс-паттерн: `skills/product/meta-feedback.md` (trust-asymmetry, Level A — не реюзать код)
-- Решение: [DEC-DEV-0056](../DEV_JOURNAL.md)
+- Решение: [DEC-DEV-0056](../../../DEV_JOURNAL.md)

@@ -2,7 +2,7 @@
 
 > **Snapshot date:** 2026-06-23. **Purpose:** durable handoff so the next session finishes the
 > N+2 queue without re-deriving context. SSOT for the plan = [ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md](ORCHESTRATOR_N2_GATE_CONTRACT_WORKORDER.md);
-> discrete findings = [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md);
+> discrete findings = [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md);
 > rationale per increment = `DEV_JOURNAL.md` (DEC-DEV-0091…0095). Verify against `git log` — this
 > snapshot can go stale.
 

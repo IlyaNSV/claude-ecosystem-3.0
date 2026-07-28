@@ -1,9 +1,19 @@
 # Research-Capability Blueprint — «Guided Research» (v2, evidence-hardened)
 
-> **Статус:** proposal / pre-decision (2026-07-01). Стиль — как `dev/ECOSYSTEM_VISION.md`:
-> вектор + архитектура + волновой roadmap, **без кода**. Ни один рабочий артефакт
-> (`skills/`, `agents/`, `hooks/`, `docs/pmo/`) этим документом **не тронут** — решения
-> владельца в §7 гейтят переход к Wave 1 и назначение DEC-DEV.
+> **Статус (актуализирован 2026-07-28):** **Wave 1 ПОСТРОЕНА и в `main`** — DEC-DEV-0138
+> (PR #102, 2026-07-01). В поставке живут: скиллы `skills/ecosystem/research-intake.md` +
+> `skills/ecosystem/anti-hype-filter.md` и тонкая команда `commands/ecosystem/research.md`
+> (Pillars A+B+D; counts остались 24/44 — нового типа артефакта Wave 1 не вводила).
+> Побочно на глобальный уровень вынесен триггер свежести **Informed Fetch**
+> (`dev/meta-improvement/skills/informed-fetch.md`, DEC-DEV-0207).
+> **Waves 2/3/4 — по-прежнему pre-decision**, гейтятся решениями владельца §7.
+>
+> *(До 2026-07-28 шапка утверждала «ни один рабочий артефакт не тронут» — верно только до
+> Wave 1. Читатель делал вывод, что research-возможности нет, и мог построить её заново.)*
+>
+> **Роль документа:** blueprint / вектор + архитектура + волновой roadmap, **без кода** —
+> стиль как `dev/ECOSYSTEM_VISION.md`. Для Wave 1 он уже исполнен; для Waves 2-4 остаётся
+> действующим предложением.
 >
 > **v2** = поверх skeleton-v1 вплетены **6 adversarially-verified углов ресёрча**
 > (ext-tools · academic-gap · query-methodology · usefulness-metrics · anti-hype ·

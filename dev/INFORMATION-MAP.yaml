@@ -4,8 +4,8 @@
 # информации — где её SSOT, кто authoritative при конфликте источников, как
 # верифицировать. Отвечает на вопрос «где ПРАВДА про X и кому верить, если копии
 # разошлись», которого нет ни в docs/MAP.md (визуальный pipeline + C4), ни в
-# HOME.md (vault-навигация «куда пойти»), ни в CLAUDE.md §«Repository structure»
-# (физическое дерево папок). Это — логическое дерево + иерархия приоритета.
+# CLAUDE.md §«Repository structure» (физическое дерево папок). Это — логическое
+# дерево + иерархия приоритета.
 #
 # ЗАЧЕМ. Карта полок была размазана по всем потребителям (CLAUDE.md, 7 субагентов,
 # 172 cross-ref пути) и держалась «в голове» (правило «бери из хвоста журнала,
@@ -164,12 +164,19 @@ classes:
     verify: "`ls dev/deferred/ dev/tech-debt/`"
 
   - id: active-tracks
-    asks: "Что в активной разработке прямо сейчас (Orchestrator, Vision, Feedback)?"
-    ssot: "dev/ORCHESTRATOR_*.md, dev/ECOSYSTEM_VISION.md (планы) + хвост DEV_JOURNAL"
+    asks: "Что в активной разработке прямо сейчас?"
+    ssot: "папка трека `dev/<track>/` — её `TRACK.md` (хартия) и/или `SEAM.md` (шов), поле `status:` внутри + хвост DEV_JOURNAL"
     mirrors:
-      - "memory: project_orchestrator_*, project_ecosystem_vision_* — навигационные эхо, ОТСТАЮТ"
-    authority_on_conflict: "dev/ планы + журнал > memory"
-    verify: "`ls dev/*.md`; свежесть — git log по dev/"
+      - "dev/README.md — карта директорий: НАЗНАЧЕНИЕ треков, сознательно БЕЗ их статусов"
+      - "memory: project_*_track — навигационные эхо, ОТСТАЮТ"
+    authority_on_conflict: "status: в самом файле трека + git log > dev/README > memory"
+    verify: "`ls -d dev/*/` + `grep -m1 '^status:' dev/*/SEAM.md dev/*/TRACK.md`; свежесть — git log по папке трека"
+    note: >-
+      Прежняя редакция указывала на `dev/ORCHESTRATOR_*.md` и `dev/ECOSYSTEM_VISION.md` —
+      исторические файлы времён, когда единицей работы была фаза (DEC-DEV-0227). Треки давно живут
+      папками. Важно: шов со `status: ACTIVE` читается МАШИНОЙ (`seam-reinject-compact.js`
+      впрыскивает его СТОП-блок после каждой компактации), поэтому неверный статус здесь — не
+      неопрятность, а ложный приказ агенту.
 
   - id: work-history
     asks: "Сколько раз / с каким намерением / каким исходом трогали область X? Где паттерны — кандидаты в скилл, «делали-не-помогло»? Какие коммиты откатить?"
@@ -203,6 +210,12 @@ classes:
     asks: "С чего начать сессию? Куда пойти за обзором?"
     ssot: "docs/MAP.md (визуальный entry-point) + CLAUDE.md §«Что делать в этой сессии» (ритуал)"
     mirrors:
-      - "HOME.md — Obsidian-vault точка входа («куда пойти читать»)"
+      - "docs/guide/README.md — вход оператора: «как ДЕЛАТЬ работу» (лестница L0→L5, роутер «Я хочу…»)"
+      - "README.md §«Где начать» — роутер для человека, пришедшего с GitHub"
     verify: "docs/MAP.md; этот каталог (INFORMATION-MAP) — спутник MAP для вопроса «где правда/кто прав»"
-    note: "Разделение: MAP.md = ЧТО где (визуал/архитектура); HOME.md = КУДА пойти; INFORMATION-MAP = ГДЕ ПРАВДА + кто authoritative при конфликте."
+    note: >-
+      Четыре входа, у каждого свой вопрос: README = что это и как поставить ·
+      docs/guide/README.md = как делать работу · docs/MAP.md = как устроено (визуал/архитектура) ·
+      INFORMATION-MAP = где правда и кто authoritative при конфликте. Пятый вход (Obsidian-vault
+      HOME.md + .obsidian/) снят 2026-07-28, DEC-DEV-0227: сирота с нулём входящих ссылок, а
+      bootstrap его и так вырезал из поставки.

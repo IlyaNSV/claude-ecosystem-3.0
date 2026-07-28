@@ -288,12 +288,12 @@ rm -rf .claude-ecosystem-tmp/node_modules
 # DEC-DEV-0198 / A8-b + adjacent leaks: these are ecosystem-DEV artifacts too. A naive
 # `cp -rn temp/. .claude/` (denylist copy) would otherwise leak them into the pilot as
 # permanent garbage — they sit OUTSIDE /ecosystem:update's allowlist, so once in they are
-# never updated and never removed. (.github/ = CI workflow; .obsidian/ = vault UI config;
-# HOME.md = vault entry note.) `tests/` is filtered too, but only AFTER the fixture deploy
+# never updated and never removed. (.github/ = CI workflow; .obsidian/ = vault UI config, kept
+# in the denylist as a guard: the dir is gitignored now but reappears if anyone opens the repo
+# in Obsidian.) `tests/` is filtered too, but only AFTER the fixture deploy
 # below — the adapter contract-test fixtures live in tests/fixtures/ and must be extracted first.
 rm -rf .claude-ecosystem-tmp/.github
 rm -rf .claude-ecosystem-tmp/.obsidian
-rm -f  .claude-ecosystem-tmp/HOME.md
 # The repo's ROOT .gitattributes is for the ecosystem repo itself. The pilot's own
 # .claude/.gitattributes is delivered deliberately from gitattributes.template in Step 2f
 # (create-if-absent), so drop this accidental leak to keep that delivery authoritative
@@ -316,7 +316,7 @@ rm -rf .claude-ecosystem-tmp/tests
 mkdir -p .claude
 
 # Merge temp → .claude/ with no-clobber (preserves existing files like settings.local.json).
-# Leak-free now: dev/, tests/, .github/, .obsidian/, HOME.md, npm infra all filtered from temp.
+# Leak-free now: dev/, tests/, .github/, .obsidian/, npm infra all filtered from temp.
 cp -rn .claude-ecosystem-tmp/. .claude/
 
 # Cleanup temp. Safe to remove here: $ECOSYSTEM_HEAD is already captured (above) and fixtures
@@ -348,7 +348,6 @@ rm -rf .claude-ecosystem-tmp/node_modules
 # A8-b parity with 2b: dev-only artifacts a denylist copy would leak into the pilot
 rm -rf .claude-ecosystem-tmp/.github
 rm -rf .claude-ecosystem-tmp/.obsidian
-rm -f  .claude-ecosystem-tmp/HOME.md
 # Root .gitattributes leak — pilot's own is delivered from the template in Step 2f (A9)
 rm -f  .claude-ecosystem-tmp/.gitattributes
 
@@ -422,7 +421,7 @@ After Step 2, the `.claude/` directory contains:
   - `INSTALL-HUMAN.md` — ecosystem dev guide
   - `package.json`, `package-lock.json`, `eslint.config.js`, `node_modules/` — hook lint pipeline artifacts (ecosystem-dev only — user projects не нуждаются в npm)
   - `tests/` — ecosystem test suite (DEC-DEV-0198 / A8-b). The adapter fixtures under `tests/fixtures/` ARE needed, so 2b/2c extracts them to `.claude/adapters/fixtures/` **first**, then filters the rest of `tests/` from the temp source.
-  - `.github/` (CI workflow), `.obsidian/` (Obsidian vault UI config), `HOME.md` (vault entry note) — ecosystem-dev-only; leaked before DEC-DEV-0198 because the denylist copy did not name them.
+  - `.github/` (CI workflow), `.obsidian/` (Obsidian vault UI config) — ecosystem-dev-only; leaked before DEC-DEV-0198 because the denylist copy did not name them. _(`HOME.md` was in this list until DEC-DEV-0227, when the Obsidian layer was removed from the repo entirely; `.obsidian/` stays as a guard — the dir is gitignored but reappears the moment anyone opens the repo in Obsidian.)_
 
 **Why this filter exists:** without it, naive `cp -rn` would copy ALL files from upstream repo, contaminating user's `.claude/` с ecosystem-dev artifacts. Phase 3 closure (DEC-DEV-0019 Finding A) caught this с pilot Claude observation that `.claude/CLAUDE.md` would be auto-loaded by future sessions. `/ecosystem:update` solves equivalent problem via allowlist (DEC-DEV-0020); bootstrap closes greenfield install path here (DEC-DEV-0022).
 

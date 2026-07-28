@@ -1,6 +1,6 @@
 {
   "id": "feature-production-line",
-  "version": 5,
+  "version": 6,
   "context": { "feature": null, "fm": null },
   "initial": "handoff_ready",
   "limits": { "lane": "orchestrator", "wip": 1 },
@@ -70,11 +70,21 @@
       "meta": { "determinism": "DL0", "operation_class": "deploy_staging", "env_tier": "staging", "risk": "HIGH" },
       "on": {
         "evt:owner.close": { "target": "closed_without_runtime" },
-        "evt:deploy.succeeded": { "target": "done" },
+        "evt:deploy.succeeded": { "target": "journey_acceptance" },
         "evt:deploy.failed": { "target": "rolling_back" },
         "evt:deploy.preflight_failed": { "target": "escalated", "actions": ["queue_owner"] },
         "evt:deploy.env_not_ready": { "target": "runtime_gate_retry" },
         "evt:deploy.gated": { "target": "runtime_gate_retry" }
+      }
+    },
+    "journey_acceptance": {
+      "invoke": { "process": "user-journey-acceptance" },
+      "meta": { "determinism": "DL0", "autonomy": "auto" },
+      "on": {
+        "evt:owner.close": { "target": "closed_without_runtime" },
+        "evt:journey.passed": { "target": "done" },
+        "evt:journey.failed": { "target": "awaiting_journey_fix", "actions": ["queue_owner"] },
+        "evt:journey.env_not_ready": { "target": "runtime_gate_retry" }
       }
     },
     "rolling_back": {
@@ -97,6 +107,13 @@
       "meta": { "determinism": "H", "autonomy": "human-gate", "queue_kind": "gate" },
       "on": {
         "evt:env.up": { "target": "runtime_gate" },
+        "evt:owner.close": { "target": "closed_without_runtime" }
+      }
+    },
+    "awaiting_journey_fix": {
+      "meta": { "autonomy": "human-gate", "queue_kind": "gate" },
+      "on": {
+        "evt:owner.resume": { "target": "implementing" },
         "evt:owner.close": { "target": "closed_without_runtime" }
       }
     },
@@ -173,6 +190,11 @@
       { "when": { "path": "result", "eq": "DEPLOYED" }, "emit": "evt:deploy.succeeded" },
       { "when": { "path": "flipped", "eq": true }, "emit": "evt:deploy.failed" },
       { "default": true, "emit": "evt:deploy.preflight_failed" }
+    ],
+    "user-journey-acceptance": [
+      { "when": { "path": "uja_result", "eq": "ENV_NOT_READY" }, "emit": "evt:journey.env_not_ready" },
+      { "when": { "path": "uja_result", "eq": "PASS" }, "emit": "evt:journey.passed" },
+      { "when": { "path": "uja_result", "eq": "FAIL" }, "emit": "evt:journey.failed" }
     ],
     "rollback-release": [
       { "when": { "path": "result", "eq": "ROLLED_BACK" }, "emit": "evt:rollback.done" },
