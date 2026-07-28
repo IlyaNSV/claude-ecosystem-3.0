@@ -164,12 +164,19 @@ classes:
     verify: "`ls dev/deferred/ dev/tech-debt/`"
 
   - id: active-tracks
-    asks: "Что в активной разработке прямо сейчас (Orchestrator, Vision, Feedback)?"
-    ssot: "dev/ORCHESTRATOR_*.md, dev/ECOSYSTEM_VISION.md (планы) + хвост DEV_JOURNAL"
+    asks: "Что в активной разработке прямо сейчас?"
+    ssot: "папка трека `dev/<track>/` — её `TRACK.md` (хартия) и/или `SEAM.md` (шов), поле `status:` внутри + хвост DEV_JOURNAL"
     mirrors:
-      - "memory: project_orchestrator_*, project_ecosystem_vision_* — навигационные эхо, ОТСТАЮТ"
-    authority_on_conflict: "dev/ планы + журнал > memory"
-    verify: "`ls dev/*.md`; свежесть — git log по dev/"
+      - "dev/README.md — карта директорий: НАЗНАЧЕНИЕ треков, сознательно БЕЗ их статусов"
+      - "memory: project_*_track — навигационные эхо, ОТСТАЮТ"
+    authority_on_conflict: "status: в самом файле трека + git log > dev/README > memory"
+    verify: "`ls -d dev/*/` + `grep -m1 '^status:' dev/*/SEAM.md dev/*/TRACK.md`; свежесть — git log по папке трека"
+    note: >-
+      Прежняя редакция указывала на `dev/ORCHESTRATOR_*.md` и `dev/ECOSYSTEM_VISION.md` —
+      исторические файлы времён, когда единицей работы была фаза (DEC-DEV-0227). Треки давно живут
+      папками. Важно: шов со `status: ACTIVE` читается МАШИНОЙ (`seam-reinject-compact.js`
+      впрыскивает его СТОП-блок после каждой компактации), поэтому неверный статус здесь — не
+      неопрятность, а ложный приказ агенту.
 
   - id: work-history
     asks: "Сколько раз / с каким намерением / каким исходом трогали область X? Где паттерны — кандидаты в скилл, «делали-не-помогло»? Какие коммиты откатить?"

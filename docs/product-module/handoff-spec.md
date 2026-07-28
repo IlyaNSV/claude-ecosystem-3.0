@@ -665,16 +665,15 @@ Integrator при `/integrator:verify`:
 
 ## 11. Complete Example
 
-Приведён пример для FM-003 (Revisions inbox) — фичи из examples каталога.
-
-**Сокращённо** (полный handoff был бы ~800 строк; тут выжимка структуры):
+Полный handoff средней фичи — ~800 строк. Ниже — **скелет**: что стоит в каждой позиции.
+Содержательные требования к секциям — §6, схема frontmatter — §5, правила валидации — §8.
 
 ```markdown
 ---
 id: HANDOFF-FM-003
 type: feature-handoff
 feature: FM-003
-title: "Revisions inbox — handoff"
+title: "<feature title> — handoff"
 status: ready
 version: 1
 generated_at: 2026-06-15T14:30:00Z
@@ -683,240 +682,48 @@ generator: product-module-v1.0
 dor_validation_passed: true
 blocking_issues: []
 warnings: []
-validation_rules_passed: [V-H-01, V-H-02, V-H-03, V-H-05, V-H-06, V-H-08, V-H-10]
+validation_rules_passed: [V-H-01, V-H-02, ...]
 
-embedded_artifacts:
+embedded_artifacts:              # что реально встроено в тело (полная схема — §5)
   feature: FM-003
-  scenarios: [SC-005, SC-005a, SC-005e1, SC-006, SC-007, SC-008]
-  business_rules: [BR-010, BR-011, BR-012, BR-013]
+  scenarios: [SC-005, SC-005a, SC-005e1, ...]
+  business_rules: [BR-010, ...]
   lifecycles: [LC-002]
-  verifications: [VC-005, VC-005a, VC-006, VC-007, VC-008]
+  verifications: [VC-005, ...]
   invariants: [IC-003]
   rpm_roles_excerpted: [R-freelancer, R-client, R-system-scheduler]
-  bg_terms_excerpted: [Project, Revision, Revision batch, Client, Freelancer, Revision status]
+  bg_terms_excerpted: [Project, Revision, ...]
   mockup_packages: [MK-003]
   navigation_maps: [NM-003]
   design_system_tokens_snapshot: DS@v2
 
-artifact_hashes:
+artifact_hashes:                 # SHA-256 на каждый embedded артефакт → drift detection (§10)
   FM-003: "sha256:a1b2c3..."
-  SC-005: "sha256:d4e5f6..."
-  # ...
 
 target_adapter: "universal"
 previous_version: null
-
-created: 2026-06-15
-updated: 2026-06-15
 ---
 
-# Feature Handoff: Revisions inbox (FM-003)
+# Feature Handoff: <title> (FM-003)
 
-## 1. Executive Summary
-
-**Feature:** Revisions inbox — unified collection of edits from clients 
-across multiple projects.
-
-**Delivers value to:** Freelance translators (SEG-001) solving JTBD-1 
-(collecting revisions from multiple clients without context loss).
-
-**Validates hypothesis:** HYP-001 (freelancers willing to pay for 
-revision centralization; success threshold: ≥10% conversion freelance → paid).
-
-**Release:** RL-001 (MVP v1), target 2026-07-15.
-
-**Has UI:** yes.
-
-**Critical dependencies:** FM-001 (Dashboard), FM-005 (Authentication).
-
-Brief description: Multi-channel inbox (email, manual, web widget) that 
-automatically groups incoming revisions by project and batch, notifies 
-the freelancer in-app, and provides workflow to apply or dismiss each.
-
-## 2. Business Context
-
-### Feature Map Entry (FM-003)
-[full FM-003 content embedded: Why, What brief, Priority rationale, 
-Success metric, Scenarios overview, BR overview, LC touched, VC overview,
-Invariants touched, UI overview, Dependencies, Rollout notes]
-
-### Segment excerpt (SEG-001)
-[only relevant JTBD + profile summary; not full SEG content]
-- **JTBD-1:** Сбор правок от нескольких клиентов (ситуация, желание, результат)
-- **Profile:** Freelance translators working 3-8 clients parallel, 3-5 years experience
-
-### Value Proposition (VP-001)
-[statement only]
-"Для **фрилансеров-переводчиков (SEG-001)**, которые **теряют время на сбор 
-и согласование правок от 3+ клиентов параллельно**, наш продукт — 
-**workflow-инструмент, встроенный в процесс перевода**, который **централизует
-правки с сохранением контекста документа**..."
-
-### Hypothesis (HYP-001)
-[statement + thresholds]
-- Statement: "Freelancers willing to pay for revision centralization"
-- Success threshold: ≥10% conversion freelance → paid
-- Invalidation threshold: <3%
-- Testing period: 3 months from release
-
-## 3. Terminology (BG excerpt)
-
-Only terms used in this feature. Use these exact names in code/UI/API.
-
-| Term              | Definition                                                 | Alt. terms to AVOID          |
-|-------------------|------------------------------------------------------------|------------------------------|
-| Project           | Translation project from one client with source, ...       | job, task, order             |
-| Revision          | Edit from client on part of translated document with pos.  | edit, comment, feedback      |
-| Revision batch    | Group of revisions in same 2h window from same client      | —                            |
-| Revision status   | State of revision in LC-002 (incoming/reviewed/...)        | —                            |
-| Client            | Translation customer, NOT a user of our product            | customer                     |
-| Freelancer        | Self-employed translator, user of our product              | translator                   |
-
-## 4. Role & Permission Model (RPM excerpt)
-
-Only roles involved in this feature.
-
-### R-freelancer
-Freelance translator, owner of active projects. User of the product.
-
-### R-client  
-Translation customer. NOT a user, interacts via email or web widget.
-
-### R-system-scheduler
-Automatic actor for scheduled operations (auto-reject, auto-archive).
-
-### Permissions matrix (filtered to FM-003 actions)
-
-| Action            | R-freelancer      | R-client            | R-system  |
-|-------------------|-------------------|---------------------|-----------|
-| submit_revision   | ✗                 | ✓ (linked project)  | ✗         |
-| view_revisions    | ✓ (own projects)  | ✓ (own)             | ✓         |
-| apply_revision    | conditional BR-013| ✗                   | ✗         |
-| dismiss_revision  | ✓ (own)           | ✗                   | ✗         |
-| reopen_revision   | ✗                 | ✓ (own, <30 days)   | ✗         |
-
-## 5. Scenarios
-
-### SC-005: Получение revision через email (main flow)
-[Full SC-005 content embedded: Actors, Preconditions, Trigger, Steps 1-6 
-with BR references inline, Postconditions, Business rules applied, 
-Related scenarios, Example data]
-
-### SC-005a: Multiple project match — manual linking (alternative)
-[Full content]
-
-### SC-005e1: No project match — review pool (error)
-[Full content]
-
-### SC-006: Manual ввод revision
-[Full content]
-
-### SC-007: Batch обработка revisions
-[Full content]
-
-### SC-008: Dismiss revision
-[Full content]
-
-## 6. Business Rules
-
-### BR-010: Привязка revision к проекту по email sender
-[Full BR-010 content: Statement, Context, Parameters, Rationale, 
-Applied in scenarios, Edge cases, Examples]
-
-### BR-011: Fallback на review-pool при no match
-[Full content]
-
-### BR-012: Batch grouping by 2h window
-[Full content]
-
-### BR-013: Apply только с valid state check
-[Full content]
-
-## 7. Entity Lifecycles
-
-### LC-002: Revision lifecycle
-[Full LC-002 content: Entity definition, States list, State diagram (mermaid), 
-Transitions table, Guards, Initial & final states, Derivation trace, 
-Example trace]
-
-## 8. Verification Criteria
-
-### VC-005: Revision из email корректно linked
-[Full VC-005 Given/When/Then + Expected outcomes + Rules verified + 
-Lifecycle transitions verified + Negative assertions + Edge cases + 
-Test data]
-
-### VC-005a, VC-006, VC-007, VC-008
-[Full content for each]
-
-## 9. Invariants
-
-### IC-003: Revision не может быть потеряна от incoming до final
-[Full IC-003: Statement, Severity rationale, Supporting rules, Related 
-lifecycles, Detection method, Recovery strategy]
-
-## 10. UI Specification
-
-### MK-003: Revisions inbox & processing (Design Package)
-[Full MK-003 content: 7 sections — Screen Inventory, Component State Matrix, 
-Interaction Spec, Responsive Notes, Accessibility Notes, Edge Cases, 
-Design Decisions Log]
-
-### DS tokens snapshot (relevant subset)
-[Only tokens used in MK-003: DS.color.primary, DS.color.gray-*, 
-DS.typography.body, DS.spacing.md/lg, DS.radius.md, DS.shadow.md — 
-with values for receiver to replicate]
-
-### NM-003: Revisions workflow navigation
-[Full NM-003: Flow Diagram, Entry Points, Screen Transitions, 
-Dead Ends & Error Flows]
-
-## 11. Non-Functional Requirements
-
-(Этот пример — из раннего черновика. В v1 NFR **введён**: реальные NFR встраиваются в handoff §11 автоматически per `handoff-generator.md` — три кейса (active / declined / pending). Пример ниже оставлен как иллюстрация implicit-NFR.)
-
-Known implicit NFR for this feature:
-- **Performance:** Inbox list load <500ms for up to 100 revisions
-- **Security:** Email ingestion: sender verification, no executable 
-  attachments, XSS-safe rendering of revision body
-- **A11y:** Covered in MK-003 § Accessibility Notes
-- **Data retention:** Rejected revisions archived after 30 days (BR-020)
-
-## 12. Dependencies & Context
-
-### Feature dependencies
-- **FM-001 (Dashboard)** — required, must be shipped; inbox integrated 
-  into dashboard view
-- **FM-005 (Authentication)** — required, user_id needed for attribution
-
-### External integrations
-- **Email ingestion:** IMAP or forwarding-based (implementation choice, 
-  not specified here). Incoming email to `project@inbox.product`.
-- **In-app notifications:** whatever notification system the product uses
-  (not yet specified — another FM)
-
-### Data assumptions
-- Project table exists with client_emails field
-- User table exists with freelancer record
-- Notification table or real-time push mechanism available
-
-### Environment prerequisites
-- Inbound email service (SMTP receiver, MX DNS)
-- Database supports JSON/jsonb for revision.metadata
-- File storage for email attachments
-
-## 13. Out of Scope
-
-Explicitly NOT part of this feature:
-- **AI-assisted revision summarization** — future (MMP phase)
-- **Automatic apply of revisions** — never (decision in IC-003 § Known 
-  violations; always freelancer-in-loop)
-- **Team features** — not in MVP (team is SEG-002, different feature)
-- **Mobile native app** — web-first sufficient for MVP
-- **Integration with Trados/Smartcat** — future consideration, not MVP
-- **Multi-language revision translation** — out of feature scope; 
-  revisions are just edit requests, not translated content
+## 1. Executive Summary          # 3-5 предложений: value / HYP / RL / has_ui / critical deps
+## 2. Business Context           # FM full + SEG/VP/HYP excerpts (без MR, CA, PS)
+## 3. Terminology                # выжимка BG: Term | Definition | Alt. terms to AVOID
+## 4. Role & Permission Model    # роли фичи + permissions matrix, отфильтрованная до её actions
+## 5. Scenarios                  # full content каждого SC (main + alternative + error flows)
+## 6. Business Rules             # full content каждого BR (statement, parameters, edge cases)
+## 7. Entity Lifecycles          # full LC: states, mermaid-диаграмма, transitions, guards
+## 8. Verification Criteria      # full VC: Given/When/Then + negative assertions
+## 9. Invariants                 # full IC: severity, detection method, recovery strategy
+## 10. UI Specification          # conditional has_ui: MK Design Package + DS tokens subset + NM
+## 11. Non-Functional Reqs       # один из трёх кейсов по FM.nfr_status (§6 Раздел 11)
+## 12. Dependencies & Context    # FM-зависимости, интеграции, data assumptions, env prerequisites
+## 13. Out of Scope              # что НЕ входит, с причиной у каждого пункта
 ```
+
+**Чем секции отличаются друг от друга по глубине:** embedded-секции (5-9, 10-MK/NM) несут *полный*
+контент артефакта, а не ссылку — handoff self-contained (§2). Excerpt-секции (2, 3, 4, DS-токены
+в 10) несут только релевантную фиче часть источника: чужие роли, термины и токены в handoff не едут.
 
 ## 12. Anti-patterns (Common Mistakes)
 

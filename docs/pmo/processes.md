@@ -991,36 +991,22 @@ Mapping команды → процессы → артефакты:
 ```
 > /product:feature FM-003
 
-[Assistant]
-Loading FM-003 Revisions inbox context...
-- SEG-001 (freelancers), JTBD-1; HYP-001, Priority MUST
-- has_ui=true → P2.5 Design Module in parallel
+[Assistant] контекст фичи: SEG-001 / JTBD-1 / HYP-001, priority MUST;
+            has_ui=true → P2.5 Design Module параллельно
 
-F.2.1: Main flow — receiving revision via email?
-[proposes draft SC-005 with 6 steps]
+F.2.1 → черновик SC-005 → правки человека (шаг 4 + alt flow SC-005a) → «Approve SC-005 (main)?» → Y
+  ✓ SC-005 → active
+  ✓ BG extraction: новые термины («Revision», «Client email», «Project») добавлены как pending
+  ✓ Cascade: FM-003.scenarios[] обновлён (bi-dir)
 
-> [human edits step 4, adds alt flow]
+... F.2-F.10 тем же циклом draft → iterate → approve ...
 
-[Assistant]
-Updated. Adding alt flow SC-005a (multiple project match). Approve SC-005 (main)?
-> Y
-
-[Assistant]
-✓ SC-005 → active.
-✓ BG extraction: terms "Revision", "Client email", "Project" added pending.
-✓ Cascade: FM-003 scenarios[] updated (bi-dir).
-
-... (continues through F.2-F.10)
-
-[Later, after BR-010 approved]
-BR-010 active. Running cascade check:
+[после approve BR-010] cascade check:
   - SC-005: bi-dir updated ✓
   - LC-002: guards reference OK ✓
-  - IC-003: P-RULE-01 DA review required before IC active
+  - IC-003: P-RULE-01 — DA review требуется до перевода IC в active
   - FM-003: scenarios[] & rules[] updated ✓
-
-Pending: IC-003 DA review (triggered by BR-010 change).
-Continue to F.5 IC identification? [Y/N]
+Pending: IC-003 DA review (triggered by BR-010 change). Continue to F.5 IC identification? [Y/N]
 ```
 
 ---

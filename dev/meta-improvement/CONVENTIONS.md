@@ -76,13 +76,16 @@ dev/meta-improvement/
 │   ├── da-subagent-type-contract.md    # DEC-DEV-0064
 │   └── config-failure-first-triage.md  # DEC-DEV-0144 / VC-096
 ├── skills/
-│   └── memory-sync.md
-├── scripts/
+│   ├── memory-sync.md                  # дрейф persistent-памяти
+│   ├── informed-fetch.md               # свежесть внешних фактов (Informed Fetch)
+│   └── repo-hygiene.md                 # гигиена репо как контекста; измеритель — scripts/doc-health.cjs
+├── scripts/                     # полный список — `ls`; ниже только несущие
 │   ├── verify-update.sh / .ps1         # post-/ecosystem:update verification
 │   ├── verify-hooks.js / smoke-hooks.js   # hook syntax + runtime smoke
 │   ├── pre-commit.sh / commit-msg.sh / install-pre-commit.sh   # git-hook gates
 │   ├── check-counts.js                 # canonical-count reconciler (DEC-DEV-0083)
 │   ├── process-gate.js                 # blocking commit-msg gate (DEC-DEV-0083)
+│   ├── doc-health.cjs                  # warn: пороги ротации · ACTIVE-швы без коммитов · ссылки в _archive · always-on объём · слипшиеся строки (DEC-DEV-0227)
 │   └── audit-smoke.js · audit-watch.js · audit-index.js · audit-journal.js · classify.js · effect-probe.js · patch-synth.js   # Session Audit v2
 ├── hooks/                       # registered in .claude/settings.local.json
 │   ├── dev-journal-reminder.js         # PostToolUse Bash — warn: feat/fix commit без DEV_JOURNAL

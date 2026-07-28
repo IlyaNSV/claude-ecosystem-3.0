@@ -600,289 +600,97 @@ Beads v1.2.0 приносит свои git-hooks для atomic commits, checkpoi
 
 ## 7. Детальные UX-сценарии
 
-### 7.1. Research flow (NEW — по запросу пользователя)
+> Ниже — контракт каждого потока: последовательность шагов, где стоит approve-gate и что попадает
+> в журнал. Дословный вывод не нормируется; реализация — `commands/integrator/*.md`.
+
+### 7.1. Research flow
+
+`/integrator:research "<потребность>"` — **read-only: ничего не устанавливает.**
+
+1. Определить PMO-зону(ы) потребности (напр. D3 Development + D5 Operations) — от зоны зависит критерий отбора.
+2. Сканировать рынок; отфильтровать кандидатов по совместимости с текущим стеком проекта и по активности инструмента.
+3. Показать сравнение шорт-листа: инструмент × PMO-зона × плюсы × минусы.
+4. Дать рекомендацию **и явно назвать сомнения** — что не проверено, где кандидаты эквивалентны, что предлагается отложить.
+5. **Hard approve gate** — закончить нумерованным списком опций, обязательно включающим «ничего не делать»
+   и «углубиться в конкретный инструмент». Без выраженного выбора пользователя — никаких follow-up действий
+   (кэш в `~/.claude/integrator/research-cache/` follow-up'ом не считается и пишется всегда).
+
+Формат гейта (единственный обязательный элемент вывода):
 
 ```
-> /integrator:research "нужны инструменты для работы с PostgreSQL"
-
-[Integrator]
-Определяю PMO-зону твоей потребности...
-  → Похоже, речь о D3 (Development) + D5 (Operations):
-    D3-06 Database Migrations (часть Deployment & Release Execution)
-    D3 — прямой доступ к БД из кода
-    D5 — monitoring БД в production (опционально)
-
-Исследую рынок (~3 мин)...
-
-Найдено 12 инструментов. Отфильтровал по совместимости с твоим стеком 
-(Node.js, cc-sdd, git workflow) и популярности. Топ-5:
-
-┌────────────────────────────────────────────────────────────────────┐
-│ ИНСТРУМЕНТ      │ PMO ЗОНА        │ ПЛЮСЫ              │ МИНУСЫ    │
-├────────────────────────────────────────────────────────────────────┤
-│ Postgres MCP    │ D3 (query),     │ MCP-нативен,       │ Только    │
-│                 │ D5 (inspect)    │ low overhead       │ read      │
-├────────────────────────────────────────────────────────────────────┤
-│ Prisma          │ D3-06           │ TypeScript-native, │ Требует   │
-│                 │ (migrations)    │ type-safe queries  │ schema    │
-│                 │                 │                    │ файла     │
-├────────────────────────────────────────────────────────────────────┤
-│ Drizzle         │ D3-06           │ Легковесный,       │ Меньше    │
-│                 │                 │ schema-first       │ community │
-├────────────────────────────────────────────────────────────────────┤
-│ Knex            │ D3-06           │ Query-builder      │ Устарев.  │
-│                 │                 │ универсал          │ паттерны  │
-├────────────────────────────────────────────────────────────────────┤
-│ pg-prom (prod)  │ D5              │ Metrics exporter,  │ Требует   │
-│                 │                 │ Prometheus-compat  │ infra     │
-└────────────────────────────────────────────────────────────────────┘
-
-Мои рекомендации:
-  1. **Для разработки:** Postgres MCP + Prisma (или Drizzle)
-     - Postgres MCP для интерактивных query
-     - Prisma для type-safe migrations и queries в коде
-     - Совместимы: MCP работает на чтение, Prisma — основной ORM
-  
-  2. **Для prod мониторинга:** отложи до MVP — рано.
-  
-Мои сомнения:
-  - Prisma vs Drizzle — оба хороши. Prisma mature, Drizzle быстрее.
-    Хочешь сравнение подробнее? /integrator:research "Prisma vs Drizzle"
-  - Postgres MCP ещё в раннем состоянии, API может меняться.
-
 Что делаем?
-  [1] Установить Postgres MCP + Prisma       (рекомендация)
-  [2] Установить Postgres MCP + Drizzle
-  [3] Установить только Postgres MCP
-  [4] Ничего, я подумаю
-  [5] Углубиться в конкретный инструмент: /integrator:research <tool>
-
-Твой выбор?
+  [1] Установить <tool-A> + <tool-B>          (рекомендация)
+  [2] Установить только <tool-A>
+  [3] Ничего, я подумаю
+  [4] Углубиться: /integrator:research <tool>
 ```
 
-Research не устанавливает ничего. Пользователь может принять решение, запустить `/integrator:add`, или ещё обсудить.
+Дальше пользователь либо запускает `/integrator:add`, либо продолжает обсуждение.
 
 ### 7.2. Add flow (подробный)
 
-```
-> /integrator:add cc-sdd@latest
+`/integrator:add <tool>@<version>` — 6 этапов. Approve-gate стоит **после этапа 2 и до установки**:
+одним решением подтверждаются и подключение, и создание контрактов.
 
-[Integrator]
-Этап 1/6: Профилирование
-─────────────────────────────
-Читаю документацию cc-sdd...
-  → npm-пакет, версия 2.1.0
-  → Категория: spec-gen (D2-Technical)
-  → Commands: /kiro:steering, /kiro:spec-init, /kiro:spec-requirements, 
-    /kiro:spec-design, /kiro:spec-tasks, /kiro:validate-*
-  → Agents: kiro-spec-*, kiro-validate-*, kiro-steering
-  → Coverage: D2-T01 Architecture Design, D2-T04 API Contract Design (embedded), D2-T06 Task Decomposition
-  → Boundary (consumed via handoff, not owned): D2-B02 Feature Specification (Product Module владеет)
-  → Doesn't cover: D2-B04 UI Design (наш Design Module делает), 
-                   D3 Implementation (нужен отдельный tool)
+1. **Профилирование** — прочитать документацию инструмента → категория, команды/агенты, покрываемые
+   PMO-зоны, **boundary** (зоны, которые инструмент потребляет, но не владеет — напр. D2-B02 остаётся
+   за Product Module) и чего он НЕ покрывает. Результат — профиль
+   `~/.claude/integrator/tool-catalog/<tool>.yaml` (§4.1). Сверить с текущим стеком: занято ли место
+   в зоне, какие gap'ы остаются.
+2. **Анализ контрактов** — какие CNT-* нужно создать (и какие отложены). → **approve (y/n)**.
+3. **Установка** — команда установки + verify, что заявленные команды реально зарегистрированы.
+4. **Конфигурация** — запись в `.claude/integrator/active-tools.yaml`, entry в `pmo-mapping.yaml`,
+   наследование глобальных настроек модели.
+5. **Контракты** — создать CNT-* с адаптером в `.claude/integrator/adapters/` + сгенерировать
+   `.claude/integrator/tool-docs/<tool>.md` (§14).
+6. **Smoke test** — прогнать сквозной путь (handoff → первая команда инструмента) на временной тестовой
+   фиче и **удалить её после прогона**.
 
-Проверяю текущий стек... 
-  → Product Module установлен (.product/)
-  → Integrator пока не подключал D2-Tech инструмент — место свободно.
-  → Gap в D3 Implementation остаётся — нужен отдельный инструмент потом.
-
-✓ Профиль готов. См. ~/.claude/integrator/tool-catalog/cc-sdd.yaml
-
-Этап 2/6: Анализ контрактов (нужно создать)
-─────────────────────────────
-Будут созданы 2 контракта:
-  1. Product Module handoff.md → cc-sdd spec-init
-     (критично: cc-sdd будет читать .product/handoffs/*)
-  2. cc-sdd spec-tasks.md → task tracker (пока не подключён, отложено)
-
-Approve подключение и создание контрактов? (y/n)
-> y
-
-Этап 3/6: Установка
-─────────────────────────────
-  - npx cc-sdd@latest --claude-agent --lang ru ✓
-  - Verify: /kiro:steering доступна ✓
-  - Verify: все 12 команд зарегистрированы ✓
-
-Этап 4/6: Конфигурация
-─────────────────────────────
-  - Добавил cc-sdd в .claude/integrator/active-tools.yaml
-  - Создал pmo-mapping.yaml entry: cc-sdd → D2-Technical
-  - Наследовал глобальные настройки модели (Haiku 4.5)
-
-Этап 5/6: Контракты
-─────────────────────────────
-  - Создан контракт CNT-001: product-handoff → cc-sdd spec-init
-    (адаптер: .claude/integrator/adapters/handoff-to-ccsdd.js — basic)
-  - Документация для Orchestrator: .claude/integrator/tool-docs/cc-sdd.md
-
-Этап 6/6: Smoke test
-─────────────────────────────
-  - Создал тестовую фичу FM-TEST
-  - Запустил handoff → cc-sdd spec-init
-  - cc-sdd принял ✓
-  - .kiro/specs/test-feature/spec.json создан ✓
-
-Итог
-─────────────────────────────
-✅ cc-sdd@2.1.0 успешно подключён к D2-Technical.
-📝 Решение записано в журнал: DEC-INT-0055
-📄 Документация для Orchestrator: .claude/integrator/tool-docs/cc-sdd.md
-⏳ Gaps остались: D3 (Implementation) — запусти /integrator:research "implementation tool"
-
-Test-фича удалена. Готово!
-```
+Итог: запись `DEC-INT-NNNN` в журнал + явный список оставшихся gap'ов с подсказкой `/integrator:research`.
 
 ### 7.3. Debug flow (OQ-I4)
 
-```
-> /integrator:debug "cc-sdd spec-design крашится на фиче FM-007" --tool cc-sdd
+`/integrator:debug "<симптом>" [--tool <name>]` — one-shot диагностика, не interactive REPL:
 
-[Integrator]
-Изучаю ошибку...
-
-Читаю журнал по cc-sdd (5 записей)...
-  - DEC-INT-0055: первая установка, без проблем
-  - DEC-INT-0061: обновление до 2.2.0 — с тех пор жалоб нет
-
-Читаю контракты cc-sdd...
-  - CNT-001 (handoff → spec-init): active
-  - CNT-003 (spec-tasks → beads): active
-  - CNT-004 (handoff → spec-design): active ← сюда смотрим
-
-Проверяю FM-007 handoff...
-  → handoff.md status=ready ✓
-  → Но: handoff содержит MK-002 references
-  → MK-002 использует новый формат (Design Package) — Чат 5 изменения
-  → CNT-004 создан до Чата 5, не знает про MK Design Package
-
-Гипотеза:
-  Адаптер в CNT-004 передаёт MK-* как тонкий reference (figma_url),
-  но FM-007 MK-002 — это полноценный Design Package без figma_url.
-  cc-sdd получает пустую ссылку и крашится.
-
-Предлагаемое решение:
-  - Обновить CNT-004 адаптер (handoff-to-ccsdd-design.js)
-  - Научить его парсить Design Package
-  - Fallback: если figma_url отсутствует — передавать Screen Inventory как markdown
-
-Risks:
-  - Изменение адаптера может сломать старые фичи (FM-001..006). 
-    Проверю совместимость.
-
-Approve исправление? (y/n)
-> y
-
-Применяю...
-  - Обновил адаптер ✓
-  - Запустил regression test на FM-001..006 ✓
-  - Запустил FM-007 заново ✓ — прошло
-
-Записано в журнал: DEC-INT-0073
-Уроки:
-  - При обновлении артефактной модели (MK redefinition) проверять ВСЕ 
-    существующие контракты, а не только те, что явно затронуты
-  - Добавить в /integrator:verify проверку на schema drift артефактов
-
-Готово!
-```
+1. Прочитать журнал по инструменту (история установок/обновлений) и его активные контракты — сузить
+   до подозреваемого CNT-*.
+2. Проверить фактический вход (напр. handoff проблемной фичи) на несоответствие формату, который
+   контракт умеет парсить; типовой класс — артефакт сменил форму после создания контракта.
+3. Сформулировать **гипотезу** отдельно от предлагаемого решения.
+4. Предложить фикс + назвать риски (что из уже работающего может сломаться). → **approve (y/n)**.
+5. Применить → regression на ранее работавших фичах → перепроверить исходный кейс.
+6. Записать `DEC-INT-NNNN` с **уроками**. Ключевой урок класса: изменение артефактной модели требует
+   проверки ВСЕХ существующих контрактов, а не только явно затронутых.
 
 ### 7.4. Update flow (OQ-I6)
 
-```
-> /integrator:update cc-sdd
+`/integrator:update <tool> [<target-version>]`. Пред-анализ: текущая версия → доступная, changelog
+(особенно BREAKING), impact-анализ по каждому активному контракту (не затронут / возможно затронут).
+→ **approve обновления вместе с возможной переделкой контрактов (y/n)**. Далее 5 этапов:
 
-[Integrator]
-Текущая версия cc-sdd: 2.1.0
-Проверяю доступные обновления...
-  → Последняя: 2.3.0
-  → Changelog: 
-    - 2.2.0: BREAKING: spec-requirements format изменён (2-column → 3-column)
-    - 2.3.0: Добавлен /kiro:spec-review
+1. **Backup** — затронутые хуки/команды в `_backup/`, snapshot `active-tools.yaml`.
+2. **Установка** целевой версии.
+3. **Drift detection** — по каждому контракту вердикт valid / BROKEN.
+4. **Contract repair** — обновить сломанные адаптеры, **сохраняя обратную совместимость** со старыми файлами.
+5. **Verify** — regression на существующих фичах + проверка, что новые команды инструмента зарегистрированы.
 
-Анализ влияния на контракты:
-  - CNT-001 (handoff → spec-init): НЕ затронут ✓
-  - CNT-003 (spec-tasks → beads): возможно затронут (schema может измениться)
-  - CNT-004 (handoff → spec-design): возможно затронут
-
-Approve обновление до 2.3.0 с возможной переделкой контрактов? (y/n)
-> y
-
-Этап 1/5: Backup
-  - .claude/hooks/cc-sdd-* → _backup/
-  - .claude/commands/kiro/ → _backup/
-  - active-tools.yaml — snapshot сохранён
-
-Этап 2/5: Установка
-  - npx cc-sdd@2.3.0 --claude-agent --lang ru ✓
-
-Этап 3/5: Drift detection
-  - CNT-001: valid ✓
-  - CNT-003: BROKEN ✗ (spec-requirements 3-column не парсится)
-  - CNT-004: valid ✓
-
-Этап 4/5: Contract repair
-  Обновляю CNT-003:
-  - Адаптер: spec-requirements-to-beads.js
-  - Добавлена поддержка 3-column формата
-  - Сохранена обратная совместимость для старых файлов
-
-Этап 5/5: Verify
-  - Regression test на FM-001..010 ✓
-  - /kiro:spec-review доступна (новая команда) ✓
-
-Итог
-─────────────────────────────
-✅ cc-sdd обновлён 2.1.0 → 2.3.0
-✅ CNT-003 обновлён
-✅ Новая команда /kiro:spec-review зарегистрирована
-📝 DEC-INT-0089
-
-Документация для Orchestrator обновлена.
-```
+Итог: журнал `DEC-INT-NNNN` + обновлённые tool-docs.
 
 ### 7.5. Replace flow
 
-```
-> /integrator:replace cc-sdd kiro
+`/integrator:replace <old> <new>`:
 
-[Integrator]
-Планирую замену cc-sdd → kiro.
+1. **Coverage diff** — что новый инструмент покрывает из зон старого, что добавляет и что **теряется**;
+   потерянная зона — явный риск с планом ручного fallback, а не сноска.
+2. **Контракты** — список CNT-*, которые придётся переделать под формат нового инструмента.
+3. **Data migration** — судьба артефактов старого инструмента. Дефолтная стратегия: существующие фичи
+   остаются в старой директории до release, новые пишутся в новую; конверсионный скрипт — отдельная
+   большая работа, не часть replace.
+4. **Risks** → **approve (y/n/details)**; `details` разворачивает пофичный список: состояние каждой
+   активной фичи и что с ней станет после миграции.
 
-Текущее покрытие cc-sdd: D2-T01, D2-T04, D2-T06
-Предварительный профиль kiro...
-  → Покрытие: D2-T01, D2-T04, D2-T06 ✓ (всё, что cc-sdd покрывал)
-  → Дополнительно: D2-T03 Data Model Design ✓ (cc-sdd не делал)
-  → НО: не покрывает D2-B05 Adversarial Review
-        (это зона Product Module, не tool-side; cc-sdd её тоже не покрывал)
-
-Контракты после замены:
-  - CNT-001 (handoff → spec-init) → нужно переделать под kiro формат
-  - CNT-003 (spec-tasks → beads) → нужно переделать
-  - CNT-004 (handoff → spec-design) → нужно переделать
-
-Data migration:
-  - .kiro/ папка (продукты cc-sdd) не читаема для kiro-tool
-  - Kiro использует .product-design/ (своё)
-  - Стратегия: существующие фичи оставить в .kiro/ до release,
-    новые фичи писать в .product-design/
-  (alternatively: конверсионный скрипт, но это большая работа)
-
-Risks:
-  - Adversarial Review потеряется — нужен ручной fallback или отдельный инструмент
-  - Миграция данных не автоматическая
-
-Approve замену? (y/n/details)
-> details
-
-[Integrator показывает подробности: список всех активных fich, 
-их текущее состояние, как будут обрабатываться после миграции...]
-
-> n, давай пока оставим cc-sdd, но посмотрим D2-B05 покрытие отдельно
-
-Отмена replace. Но предложение записано в журнал как DEC-INT-0094 (entered/cancelled)
-для будущей памяти. Хочешь /integrator:research "adversarial review tool"? (y/n)
-```
+**Отказ тоже фиксируется:** отменённая замена пишется в журнал как `DEC-INT-NNNN (entered/cancelled)` —
+чтобы будущая сессия знала, что вариант рассматривали и почему отложили.
 
 ### 7.6. Consilium-pattern research (DEC-DEV-0047 / patch 1.3.3)
 
@@ -946,56 +754,12 @@ Consilium разрешён **только** при scope, явно объявл�
 - `active-tools.yaml` + `pmo-mapping.yaml` — состояние инфраструктуры
 - `contracts/*` — как инструменты общаются
 
-**Формат tool-docs.md (для Orchestrator):**
-```markdown
-# cc-sdd — Operating Manual
-
-## Identity
-- Version: 2.3.0
-- Category: spec-gen (D2-Technical)
-- Installed: 2026-05-01, last updated 2026-05-20
-
-## Capabilities (PMO zones covered)
-- D2-T01: Architecture Design via /kiro:spec-design
-- D2-T04: API / Interface Contract Design (embedded in spec-design)
-- D2-T06: Task Decomposition via /kiro:spec-tasks
-
-## Boundary (consumed, not owned)
-- D2-B01: Project Context — `/kiro:steering` consumes; behavioral context owned by Product Module
-- D2-B02: Feature Specification — consumed via handoff.md → /kiro:spec-init; owned by Product Module
-
-## Commands API
-### /kiro:steering [--scope <product|tech|structure>]
-- Input: currently empty or existing steering files
-- Output: .kiro/steering/*.md
-- Exit codes: 0 success, 1 config error, 2 disk error
-- Runtime: 30-60s typical
-
-... (таблица для всех команд)
-
-## Integration Points
-### Input: Product Handoff
-- Expected at: (invoked via CNT-001 adapter)
-- Schema: see contracts/product-handoff-universal.yaml
-- Adapter: .claude/integrator/adapters/handoff-to-ccsdd.js
-
-### Output: Spec files
-- Location: .kiro/specs/{feature}/
-- Consumers: (see CNT-003, CNT-004)
-
-## Known Issues
-- Windows: требует WSL для корректной работы bash-scripts
-- Performance: spec-design может занимать >3 мин на больших фичах
-
-## Operating Protocols (for Orchestrator)
-- Always call /kiro:steering before any spec-* on fresh project
-- spec-requirements должна предшествовать spec-design
-- Parallel spec-tasks не рекомендуется (race condition в spec.json)
-
-## Troubleshooting
-- Если /kiro:spec-init не создаёт spec.json — проверить права на .kiro/
-- Если timeout — увеличить CLAUDE_CODE_TIMEOUT в config
-```
+**Формат tool-docs.md — единственный источник структуры: §14.2** (принципы — §14.1, генерация
+и сохранение ручных блоков — §14.4). Секции: `Identity` (версия/источник/дата проверки) ·
+`Capabilities` (PMO-зона × команда × confidence) · `Boundary` (зоны, которые инструмент
+потребляет, но не владеет ими) · `Commands` (сигнатура / входы / выходы / exit codes / runtime /
+идемпотентность / parallel-safety) · `Data Flow` + `Integration Points` (через какие CNT-*) ·
+`Operating Protocols` (порядок вызовов) · `Known Issues` · `Error Catalog` · `Telemetry`.
 
 Orchestrator читает этот файл и понимает, как ТОЧНО запустить инструмент в нужной последовательности.
 
@@ -1317,6 +1081,11 @@ Integrator не знает точно, зачем пользователь до�
 ## Capabilities
 Table: PMO zone × command × confidence × evidence.
 
+## Boundary (consumed, not owned)
+Zones the tool reads/consumes but does NOT own — e.g. `D2-B02 Feature Specification`:
+consumed via handoff.md → /kiro:spec-init, owned by Product Module. Mandatory whenever
+the tool touches a zone owned elsewhere; without it Orchestrator mistakes reach for ownership.
+
 ## Commands
 For each command:
 - **Signature:** `/kiro:spec-design [options]`
@@ -1374,35 +1143,17 @@ For each command:
 - При `/integrator:update` — diff changelog → обновление соответствующих секций
 - Ручное редактирование разрешено; Integrator при регенерации сохраняет секции с маркером `<!-- manual: do not regenerate -->`
 
-### 14.5. Пример: минимальный tool-docs для cc-sdd
+### 14.5. Пример: минимальный tool-docs
 
-(готовится при первом `/integrator:add cc-sdd`, здесь сокращённо)
+Заполненный фрагмент (остальные секции — по структуре §14.2; полный файл готовится при первом `/integrator:add`):
 
 ```markdown
-# cc-sdd — Operating Manual
-
-## Identity
-- Tool: cc-sdd
-- Version: 2.3.0
-- Source: npm
-- Installed: 2026-05-01
-- Category: spec-generation (D2-Technical)
-
-## Commands
-
 ### /kiro:spec-init <feature-name>
 - Input: feature name (slug); optional product-handoff.md path
 - Output: .kiro/specs/<feature>/spec.json (phase=init)
 - Exit: 0 ok | 1 config | 2 filesystem
 - Runtime: 5-15s
 - Idempotent: no (overwrites existing spec.json)
-
-### /kiro:spec-requirements
-- Input: .kiro/specs/<feature>/spec.json (phase=init)
-- Output: requirements.md (EARS format), spec.json (phase=requirements)
-- Exit: 0 | 1 | 2
-- Runtime: 30-90s
-- Idempotent: yes (re-runnable, replaces output)
 
 ## Operating Protocols
 - ALWAYS /kiro:steering before first spec-* in fresh project

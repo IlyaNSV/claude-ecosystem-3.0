@@ -929,85 +929,46 @@ stitch_usage:
 ## 16. Migration-readiness & Intermediate Representation (IR) — v2 groundwork
 
 > **Добавлено v1.1** (DEC-DEV-0048, 2026-05-27) — закладывает hooks для v2 IR-слоя без overhead в v1.
+> ⚠️ **Сам IR-слой ОТЛОЖЕН к v2 и не строится.** Ниже зафиксировано решение: что именно
+> предполагалось, почему и по каким триггерам к нему возвращаться (§16.5). Активны сегодня только
+> §16.2 (lossy migration) и §16.4 (hooks).
 
 ### 16.1 Принцип
 
-Дизайн-инструменты эволюционируют быстро (Stitch, Claude Design — оба research-preview-уровня в 2026; Figma меняет API; новые AI-design tools появляются). **Project lifetime > tool lifetime** в этой зоне. Design Module должен пережить переход между tools без потери всей design work.
+Дизайн-инструменты эволюционируют быстро (Stitch, Claude Design — оба research-preview-уровня в 2026;
+Figma меняет API; появляются новые AI-design tools). **Project lifetime > tool lifetime** в этой зоне:
+Design Module обязан пережить переход между инструментами без потери всей design work.
 
 ### 16.2 v1.1 — lossy migration (текущий уровень)
 
-**Что есть:**
-- `/design:migrate <MK-id> --to <target-tool>` (§3.6) — regeneration в target tool по сохранённому MK metadata + brief
-- MK frontmatter migration trail — `previous_tools[]`, `tool_switched_at` (см. `docs/pmo/artifacts/MK.md`)
-- Per-tool workflow skills (`stitch-workflow.md`, `claude-design-workflow.md`, ...) — каждый знает как regenerate из MK metadata
+**Механика:** `/design:migrate <MK-id> --to <target-tool>` (§3.6) — regeneration в target tool по
+сохранённым MK metadata + brief; migration trail в MK frontmatter (`previous_tools[]`,
+`tool_switched_at` — см. `docs/pmo/artifacts/MK.md`); per-tool workflow skills
+(`stitch-workflow.md`, `claude-design-workflow.md`, ...) — каждый умеет regenerate из MK metadata.
 
-**Что теряется:**
-- Точные визуальные tweaks (нelement-level adjustments — color shift, spacing fine-tune)
-- Tool-specific features (Stitch animations, Claude Design interactive flows)
-- Iteration history в source tool (только Design Decisions Log в MK сохраняется)
+**Теряется при миграции:** точные визуальные tweaks (element-level: color shift, spacing fine-tune) ·
+tool-specific фичи (Stitch animations, Claude Design interactive flows) · iteration history в исходном
+инструменте (в MK сохраняется только Design Decisions Log).
 
-**Что сохраняется:**
-- Screen Inventory (структура)
-- Component State Matrix (поведение)
-- Interaction Spec (взаимодействия — текстовое описание)
-- DS tokens references
-- Accessibility Notes
-- Design Decisions Log (история решений — критично для re-generation)
+**Сохраняется:** Screen Inventory (структура) · Component State Matrix (поведение) · Interaction Spec
+(текстовое описание взаимодействий) · DS tokens references · Accessibility Notes · Design Decisions Log
+(история решений — критично для re-generation).
 
-### 16.3 v2 — lossless migration через IR
+### 16.3 v2 — lossless migration через IR (отложено, не строится)
 
-**Концепция:** neutral declarative представление экрана, которое читают/пишут все tool adapters.
+**Концепция:** neutral declarative представление экрана, которое читают и пишут все tool adapters.
 
-**Кандидатная структура IR snapshot** (YAML, per MK или per screen):
+**Предполагавшаяся форма снапшота** — YAML per MK по пути
+`.product/.design-sessions/ir/<MK-id>-<timestamp>.yaml` (этот путь — значение `ir_snapshot_path` в MK,
+см. §16.4), с полями верхнего уровня: `ir_schema_version` · `mk_id` · `captured_at` ·
+`captured_from_tool` · `screens[]` (на экран: `layout` kind+breakpoints, `components[]` в универсальном
+словаре — kind / instance_id / states / tokens / text_slots / interactions, `accessibility` с tab_order
+и contrast_min) · `tokens_snapshot[]` (name+value) · `tool_specific` — escape hatch для того, что в
+общий словарь не ложится (raw prompt history, animations, chat thread id).
 
-```yaml
-# .product/.design-sessions/ir/<MK-id>-<timestamp>.yaml
-ir_schema_version: 1
-mk_id: MK-003
-captured_at: 2026-XX-XX
-captured_from_tool: stitch  # OR claude-design / figma / ...
-screens:
-  - id: SI-1
-    title: "Inbox (list)"
-    type: screen
-    layout:
-      kind: grid | flex | absolute
-      breakpoints: [...]
-    components:
-      - kind: card                          # universal vocabulary
-        instance_id: RevisionCard
-        states: [default, hover, focus, selected, read, archived]
-        tokens: [card-bg, card-border-primary]
-        text_slots: [sender, body, timestamp]
-        interactions: [...]
-      - kind: button
-        instance_id: ApplyButton
-        ...
-    accessibility:
-      tab_order: [...]
-      contrast_min: 4.5
-tokens_snapshot:
-  - name: primary
-    value: "#0066FF"
-  ...
-tool_specific:                              # lossy fields per source tool
-  stitch:
-    raw_prompt_history: [...]
-    animations: [...]
-  claude-design:
-    chat_thread_id: "..."
-    inline_comments: [...]
-```
-
-**Adapter contract (v2):**
-
-| Tool | Export (tool → IR) | Import (IR → tool) | Status |
-|---|---|---|---|
-| Stitch | via MCP DOM read | prompt template | v2 design |
-| Claude Design | via MCP / API (TBD) | chat prompt sequence | v2 design (blocked on Anthropic API) |
-| HTML | direct parse | direct emit | v2 design |
-| Figma | via Figma API | via Figma API | v2 design |
-| Penpot | via Penpot API | via Penpot API | v2 design |
+**Adapter contract (v2, ни один не построен):** Stitch — export через MCP DOM read, import через prompt
+template · Claude Design — blocked on Anthropic API · HTML — direct parse / direct emit · Figma и Penpot —
+через их API.
 
 ### 16.4 v1.1 hooks (active now, noop в behavior)
 
@@ -1038,10 +999,16 @@ IR-слой имеет нетривиальные costs (8-15ч design + 4-8ч p
 
 ### 16.6 Risk register для v2 (preliminary)
 
-- **R1 — schema lock-in:** ранний IR schema может не cover'ить будущие tool primitives → versioning strategy + `tool_specific` escape hatch
-- **R2 — adapter maintenance burden:** каждый tool adapter — отдельный maintenance commitment; not all tools — равные priorities. Mitigation: формализовать «tier 1 / tier 2 / community» adapter levels
-- **R3 — universal component vocabulary impossible:** Stitch button ≠ Claude Design button ≠ Figma button по семантике. Mitigation: minimal common set (button / input / card / list / modal / nav) + `tool_specific` для остального
-- **R4 — IR diverges from MK Body:** MK секции Component State Matrix частично дублируют IR structured form → consolidation question (один из двух — source of truth?). Decision: MK остаётся human-readable narrative, IR — machine-readable structured snapshot. Both kept; sync — на адаптерах.
+Риски, которые придётся решать при bring-forward: **schema lock-in** — ранний IR-схеме может не хватить
+будущих tool primitives (mitigation: versioning + `tool_specific` escape hatch) · **adapter maintenance
+burden** — каждый адаптер отдельное обязательство (mitigation: уровни «tier 1 / tier 2 / community») ·
+**универсальный component vocabulary невозможен** — button у Stitch ≠ у Claude Design ≠ у Figma по
+семантике (mitigation: minimal common set `button / input / card / list / modal / nav`, остальное — в
+`tool_specific`).
+
+**Решение по границе MK ↔ IR (принято, не отложено):** MK остаётся human-readable narrative, IR —
+machine-readable structured snapshot. Оба хранятся; синхронизацию держат адаптеры. Вариант
+«consolidation: один из двух — единственный source of truth» отвергнут.
 
 ---
 
