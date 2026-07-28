@@ -72,6 +72,24 @@ ASCII slug rule per `docs/pmo/artifacts/README.md`:
 - Skill body references slug rule
 - AI invoking skill produces canonical field names → no drift downstream
 
+## Чеклист — при написании или правке ЛЮБОГО скилла, создающего артефакт
+
+> Поднят сюда из `CLAUDE.md` (DEC-DEV-0227): операционный чеклист паттерна — часть паттерна, а не
+> always-on файла. Scope прибит к **свойству скилла** («создаёт артефакт типа из
+> `docs/pmo/artifacts/`»), а НЕ к номеру фазы: раньше правило звучало «при написании *Phase 3*
+> skill checklist», фаза прошла — и правило умерло вместе с ней, хотя полезно для любого такого
+> скилла (DEC-DEV-0197 / D12).
+
+- [ ] Frontmatter template присутствует
+- [ ] Все canonical fields перечислены
+- [ ] Anti-pattern warnings explicit
+- [ ] Filename slug rule referenced
+- [ ] DEV_JOURNAL entry если non-trivial design choice
+
+**Rationale:** Phase 2 PS drift (DEC-DEV-0011) показал — скиллы без explicit template подвержены
+AI-склонности «переименовать поле для естественности». Inline-шаблон + предупреждения оказались
+лучшей defensive programming в промптах скиллов.
+
 ## Examples (DEC-DEV instances + ongoing)
 
 ### Origin: DEC-DEV-0011 (PS skill drift fix, 2026-04-20)

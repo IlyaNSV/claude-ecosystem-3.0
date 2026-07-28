@@ -9,7 +9,7 @@ doc_type: reference
 
 > **Сгенерирован** из frontmatter `commands/**/*.md` — не править руками, перегенерировать: `node dev/meta-improvement/scripts/gen-command-catalog.cjs`. Интерактивная версия — [ecosystem-map.html](ecosystem-map.html). Канонический статус — [ROADMAP](../../ROADMAP.md#где-мы-сейчас).
 
-**Всего: 51 команд** в 5 модулях.
+**Всего: 53 команд** в 5 модулях.
 
 ## /ecosystem:* (7)
 
@@ -25,15 +25,17 @@ doc_type: reference
 | `/ecosystem:update` | Sync Ecosystem 3.0 to latest upstream version в existing project. Overwrites ecosystem zone (commands/skills/agents/hooks/orchestrator/product/docs/templates), preserves user zone (settings.local.json, product.yaml, .env, .product/, Orchestrator project-state). Two-level wipe protection — filesystem backup (level-1) + git safety commit of the integrator-managed tool footprint (level-2). For greenfield install — use /ecosystem:bootstrap instead. | `[--offline] [--dry-run] [--force] [--no-backup] [--no-safety-commit]` |
 | `/ecosystem:verify` | Verify Ecosystem 3.0 installation in current project. Non-destructive health check. | — |
 
-## /product:* (23)
+## /product:* (25)
 
 Ядро ежедневной работы — D1 Discovery + D2-Behavioral
 
 | Команда | Что делает | Аргументы |
 |---|---|---|
+| `/product:ask` | Ask a question about the product corpus (.product/) — answered by the corpus-qa "retrieval ladder" skill, with a pointer (ID + file path) behind every load-bearing claim. Read-only; no hallucination — if it's not in the corpus, it says so. | `"<question>" [--scope <TYPE\|ID>] [--deep]` |
 | `/product:batch-enrich` | Batch-enrich a SET of FMs (a release's worth) — drive each through enrichment (F.2→F.7 of P2.A) + the bounded completeness-loop, with the human approve-gate moved from per-item to PHASE BOUNDARIES realized as L1 PA-escalations (the owner ratifies from the ledger). THIN ORCHESTRATION over the existing /product:feature + /product:complete machinery — no F.2-F.10 authoring is re-implemented. CHECKPOINT-FIRST + resume (a mid-run session limit resumes cleanly). PREPARE-ONLY — the runner never transitions FM status; F.10/handoff stays the owner's. Epic C-i macro step (DEC-DEV-0145 decisions г/д). | `<FM-NNN> [<FM-NNN> ...] \| --all-planned` |
 | `/product:bg-rename` | Mass-rename BG term across all artifacts. v1 manual preview workflow (sed-suggest + IDE find-replace). Atomic apply deferred к v1.1 per DEC-DEV-0012 D.2. | `<old> <new> \| --commit <old> <new>` |
 | `/product:bg-review` | Batch review of pending BG candidates from .pending/bg-candidates.yaml. Phases 2-4 of BG extraction algorithm — classification, presentation, approval. Orchestrated by bg-extraction skill. | `[--all \| --new-terms-only \| --synonyms-only]` |
+| `/product:browse` | Generate a self-contained visual browser (.product/browser.html) over all product artifacts — a solo-Confluence view with search, cross-links and a work panel. Read-only over artifacts; writes only the generated HTML. | `[--open] [--out <path>]` |
 | `/product:cascade` | Manual cascade navigation. Show pending cascade entries from .pending/cascade-pending.yaml and resolve per-entry. Detection-only (V-11 auto-fix happens automatically via cascade-check.js hook). | `<artifact-id> \| --pending \| --pending --triggered-by <id> \| --pending --revalidate \| --pending --reset` |
 | `/product:cleanup` | V-15 orphan detection (default) с opt-in pending hygiene sweep (--pending-hygiene). Default = fast graph analysis listing orphan artifacts. Hygiene mode = cascade revalidate + validation-pending purge + da-pending stale flag. Use --dry-run для preview без apply. | `[--dry-run] [--pending-hygiene \| --full]` |
 | `/product:complete` | Run the bounded completeness-loop on a feature's D1-D2B spec (Autonomous Pipeline Vision, Epic B). Drives FM + SC/BR/LC/VC/IC/NFR (and MK/NM if has_ui) to handoff-DoR-sufficient completeness in bounded waves — deterministic completeness-oracle for the stop-signal, heterogeneous profile personas (architect/qa/ux-advisor) on each zone's gaps, auto-resolve the resolvable + escalate real decisions. Stop is external + bounded (cap ∧ (score≥τ ∨ Δ<ε ∨ info-gain→0)). v1 core/skeleton (DEC-DEV-0098). | `<FM-NNN> [--max-waves N] [--dry-run]` |

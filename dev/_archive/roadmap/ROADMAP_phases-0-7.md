@@ -65,7 +65,7 @@ claude
 > /ecosystem:bootstrap     # ← автокомплит работает
 ```
 
-Детали: [BOOTSTRAP.md](BOOTSTRAP.md), [commands/ecosystem/bootstrap.md](commands/ecosystem/bootstrap.md), [INSTALL-HUMAN.md](INSTALL-HUMAN.md).
+Детали: [BOOTSTRAP.md](../../../BOOTSTRAP.md), [commands/ecosystem/bootstrap.md](../../../commands/ecosystem/bootstrap.md), [INSTALL-HUMAN.md](../../../INSTALL-HUMAN.md).
 
 ---
 
@@ -136,9 +136,9 @@ claude
 
 **Цель:** `/product:plan` + `/product:feature` создают MVP scope, roadmap, releases, FM skeletons, обогащают FM до handoff-ready behavioral spec (SC/BR/LC/VC/IC).
 
-> **Scope refined 2026-04-20** per DEC-DEV-0012. Deep mode subagents и atomic mass-rename перенесены в v1.1 (см. [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md)). DA debt mechanism dropped — заменён adaptive-depth DA на каждое изменение (см. [`docs/pmo/processes.md §6.2`](docs/pmo/processes.md)). NFR Review F.5a deferred Phase 4.
+> **Scope refined 2026-04-20** per DEC-DEV-0012. Deep mode subagents и atomic mass-rename перенесены в v1.1 (см. [`dev/v1_1_backlog.md`](../../v1_1_backlog.md)). DA debt mechanism dropped — заменён adaptive-depth DA на каждое изменение (см. [`docs/pmo/processes.md §6.2`](../../../docs/pmo/processes.md)). NFR Review F.5a deferred Phase 4.
 >
-> **Implementation completed 2026-04-27** — 23 files (originally estimated 21, +2 for: devils-advocate.md adaptive-depth refactor per A.1 spec drift fix, dev/PHASE_3_SMOKE_TEST_PLAN.md). 9 commits across 10 sub-phases (A→J + prerequisite). Final lessons: DEC-DEV-0014 в DEV_JOURNAL.md. Real run smoke test executed 2026-04-29 (DEC-DEV-0023) → 1.1.1 patch; plan archived to [dev/_archive/phase-3/PHASE_3_SMOKE_TEST_PLAN.md](dev/_archive/phase-3/PHASE_3_SMOKE_TEST_PLAN.md).
+> **Implementation completed 2026-04-27** — 23 files (originally estimated 21, +2 for: devils-advocate.md adaptive-depth refactor per A.1 spec drift fix, dev/PHASE_3_SMOKE_TEST_PLAN.md). 9 commits across 10 sub-phases (A→J + prerequisite). Final lessons: DEC-DEV-0014 в DEV_JOURNAL.md. Real run smoke test executed 2026-04-29 (DEC-DEV-0023) → 1.1.1 patch; plan archived to [dev/_archive/phase-3/PHASE_3_SMOKE_TEST_PLAN.md](../phase-3/PHASE_3_SMOKE_TEST_PLAN.md).
 
 ### Deliverables (~21 файл)
 
@@ -177,7 +177,7 @@ Cross-cutting:
 - `ic-change-trigger.js` — PostToolUse `.product/invariants/*.md`, invokes DA-with-adaptive-depth subagent (P-RULE-01 refactored)
 - **Extension to `artifact-validate.js`** (Phase 2): parse `validation_overrides[]` + `approve_overrides[]` + inline `expires_at` check; log skipped rules в `validation-pending.yaml` со статусом `overridden` (per C.5)
 
-**Deferred to v1.1+:** Deep mode subagents (`market-researcher.md`, `competitor-analyst.md`), atomic mass-rename, full BFS cascade auto-fix beyond V-11, bundle approve UX. Full context preserved в [`dev/v1_1_backlog.md`](dev/v1_1_backlog.md).
+**Deferred to v1.1+:** Deep mode subagents (`market-researcher.md`, `competitor-analyst.md`), atomic mass-rename, full BFS cascade auto-fix beyond V-11, bundle approve UX. Full context preserved в [`dev/v1_1_backlog.md`](../../v1_1_backlog.md).
 
 **Deferred to Phase 4:** F.5a NFR Review, F.9 Product DA Review (formal step), full V-* validation runner, `/product:handoff`.
 

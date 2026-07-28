@@ -46,7 +46,7 @@
    claude
    > /ecosystem:bootstrap
    ```
-   Per [DEC-DEV-0002](../DEV_JOURNAL.md), bootstrap is idempotent — re-run merges new hooks (4 Phase 3 + extension к artifact-validate) into existing settings.json без data loss.
+   Per [DEC-DEV-0002](../../../DEV_JOURNAL.md), bootstrap is idempotent — re-run merges new hooks (4 Phase 3 + extension к artifact-validate) into existing settings.json без data loss.
 
 2. **Verify hooks registered:**
    ```bash

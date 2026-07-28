@@ -3,8 +3,8 @@
 > **Назначение:** P4+P6 live-прогон (класс B) запускается в пилоте `my-first-test`. Этот файл —
 > якорь, чтобы следующая сессия разобрала его **пост-фактум**. Читай вместе с
 > [`ORCHESTRATOR_P4_P6_LIVE_BRIEF.md`](ORCHESTRATOR_P4_P6_LIVE_BRIEF.md) (Часть 2 = рубрика) +
-> шаблоном [`meta-improvement/checklists/live-run-validation.md`](meta-improvement/checklists/live-run-validation.md) +
-> трекером [`ORCHESTRATOR_DOGFOOD_RUN_01.md §9`](ORCHESTRATOR_DOGFOOD_RUN_01.md).
+> шаблоном [`meta-improvement/checklists/live-run-validation.md`](../../meta-improvement/checklists/live-run-validation.md) +
+> трекером [`ORCHESTRATOR_DOGFOOD_RUN_01.md §9`](../../ORCHESTRATOR_DOGFOOD_RUN_01.md).
 >
 > ⚠ **Метод — MANUAL deep-dive, не routine zone-audit.** RUN 01 (`c4546225`) zone-аудит mis-bucket'нул
 > сессию и спрятал критический FB-001. Когда watcher дозальёт прогоны в `audit-index.md` pending →

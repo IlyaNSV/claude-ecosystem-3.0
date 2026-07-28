@@ -1,8 +1,8 @@
 # Orchestrator N+2 — "Trustworthy gate outcomes" (work-order)
 
-> **Status:** ✅ INCREMENT BODY (T1) BUILT — **[DEC-DEV-0092](../DEV_JOURNAL.md)**; queue items P2–P6 below
-> remain. Decision + rationale: **[DEC-DEV-0091](../DEV_JOURNAL.md)**.
-> Findings: **[ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md)**. Validated by the
+> **Status:** ✅ INCREMENT BODY (T1) BUILT — **[DEC-DEV-0092](../../../DEV_JOURNAL.md)**; queue items P2–P6 below
+> remain. Decision + rationale: **[DEC-DEV-0091](../../../DEV_JOURNAL.md)**.
+> Findings: **[ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md)**. Validated by the
 > A+B+C live-run audit + a 4-lens council (architect / pragmatist / risk / maintainer → synthesis).
 >
 > **Done (DEC-DEV-0091):** T3 — P5→P6 delegation by `{scriptPath}` (the spine the whole contract rides on),
@@ -92,7 +92,7 @@ decision lands; verify the escalation fires on the pilot re-run.
 ## N+2 re-validation follow-ups (FB-LR-15/16/20/21/22 — DEC-DEV-0101/0102/0106)
 
 > From the owner-driven N+2 re-validation (Run B re-val + Run C glossary). Ledger:
-> [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md) §"N+2 re-validation findings"
+> [ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md](../../ORCHESTRATOR_LIVE_RUN_FB_LEDGER.md) §"N+2 re-validation findings"
 > + §"Run C glossary". All are **observability / robustness edges — NOT incorrect verdicts** (the gate's
 > decisions were sound). Closed in ONE gate-contract increment (branch `feat/orchestrator-n2-gate-followups`).
 > Both axes touched are **additive** (a new return field / a prompt clause) → counts unchanged (24/44).

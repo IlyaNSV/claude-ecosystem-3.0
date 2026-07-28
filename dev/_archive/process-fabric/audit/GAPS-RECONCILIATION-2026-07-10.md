@@ -1,6 +1,6 @@
 # Сверка реестра разрывов G01–G36 — что закрыто фактически (2026-07-10)
 
-> **Что это:** пост-graduation обязательство №2 ([EXECUTION_ROADMAP](../EXECUTION_ROADMAP.md)
+> **Что это:** пост-graduation обязательство №2 ([EXECUTION_ROADMAP](../../../process-fabric/EXECUTION_ROADMAP.md)
 > §«Пост-graduation обязательства», DEC-DEV-0167). Сверка реестра
 > [APPENDIX-B](APPENDIX-B-gap-analysis.md) §1 против фактического состояния main
 > (`ab314be`, после merge PR #144): что закрыли Fabric (0153–0155, 0162–0165) и
