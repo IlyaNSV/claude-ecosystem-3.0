@@ -37,7 +37,27 @@ const esc = (v) => { const s = String(v ?? ''); return /[",\n\r]/.test(s) ? '"' 
 const writeCsv = (file, hdr, rows) => fs.writeFileSync(file, [hdr.join(','), ...rows.map((r) => hdr.map((h) => esc(r[h])).join(','))].join('\n') + '\n');
 const num = (r, k) => Number(r[k]) || 0;
 
+const { execFileSync } = require('child_process');
 const utter = readCsv(path.join(OUT, 'owner_utterances.csv'));
+
+/**
+ * [ДОГОН 2026-07-29] Три независимых судьи первого прохода указали на одно и то же слепое пятно:
+ * пакет видел ТОЛЬКО коммиты пилота, а часть работы владельца шла в репо экосистемы
+ * (ledger-ветка, PR #230, канон) и в factory-conductor (I-8, PR #4). Добавляем эти истории.
+ */
+function repoLog(repo) {
+  try {
+    return execFileSync('git', ['-C', repo, 'log', '--all', '--no-merges', '--since=2026-07-15', '--date=iso-strict', '--format=%H|%ad|%s'],
+      { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024, stdio: ['ignore', 'pipe', 'ignore'] })
+      .split('\n').filter(Boolean).map((l) => {
+        const [sha, ad, ...rest] = l.split('|');
+        return { sha: sha.slice(0, 7), t: Date.parse(ad), subject: rest.join('|').slice(0, 160) };
+      });
+  } catch { return []; }
+}
+const ecoCommits = repoLog(path.resolve(ROOT, '..', '..', '..'));
+const fcCommits = repoLog(path.join(HOME, 'WebstormProjects', 'factory-conductor'));
+console.log(`история вне пилота: экосистема ${ecoCommits.length} коммитов, factory-conductor ${fcCommits.length}`);
 const sessions = readCsv(path.join(OUT, 'sessions.csv'));
 const commits = readCsv(path.join(OUT, 'commits.csv'));
 const entries = readCsv(path.join(OUT, 'ledger_entries.csv'));
@@ -93,6 +113,9 @@ intents.forEach((u, i) => {
     wall_active_min: +wall.toFixed(1),
     ledger_entries: wLed.map((e) => e.id).join(' '),
     ledger_titles: wLed.map((e) => e.title).join(' | ').slice(0, 500),
+    eco_commits: ecoCommits.filter((c) => c.t >= t0 && c.t <= t1 + 30 * 60 * 1000).map((c) => c.sha).slice(0, 10).join(' '),
+    eco_subjects: ecoCommits.filter((c) => c.t >= t0 && c.t <= t1 + 30 * 60 * 1000).map((c) => c.subject).slice(0, 6).join(' | ').slice(0, 700),
+    fc_commits: fcCommits.filter((c) => c.t >= t0 && c.t <= t1 + 30 * 60 * 1000).map((c) => `${c.sha} ${c.subject.slice(0, 60)}`).join(' | ').slice(0, 300),
   });
 });
 writeCsv(path.join(OUT, 'intents.csv'), Object.keys(rows[0]), rows);
