@@ -1,0 +1,572 @@
+sha,ts,epoch,subject,added,deleted,alive_in_head,survival,churn,added_runtime,added_test,added_product,added_spec,added_install,alive_runtime,alive_test,alive_product,alive_spec
+61c21f8,2026-07-23T22:52:26+03:00,RUN-B,docs(release/COND-S35): RL-001 DoD Кат.3 reconcile — release 20260723T193232Z DEPLOYED×READY + UJA PASS 7/7 (updated j1),1,0,1,1,0,0,0,1,0,0,0,0,1,0
+2ec0596,2026-07-23T21:52:31+03:00,RUN-B,test(uja/COND-S35): j1 empty-state now conditional (list XOR empty); j2/j2-real assert created job appears in /dashboard library,70,23,70,1,0,0,70,0,0,0,0,70,0,0
+5c1055d,2026-07-23T21:49:12+03:00,RUN-B,docs(notes/COND-S35): NOTE-033 — demo-user trial-quota reset (staging data-fix) + paid-cap-exemption ESCALATE,59,0,59,1,0,0,0,59,0,0,0,0,59,0
+5d25bf7,2026-07-23T21:47:01+03:00,RUN-B,feat(db/COND-S35): idempotent admin seed — packages/db/prisma/seed.ts + db:seed (operator /admin login),92,0,92,1,0,86,0,0,0,0,86,0,0,0
+6560e72,2026-07-23T21:40:58+03:00,RUN-B,fix(localization/COND-S35): source-language change auto-drops matched target chip (req 1.9 / RUN-B.50),67,1,67,1,0,12,54,0,1,0,12,54,0,1
+3841b8d,2026-07-23T21:38:59+03:00,RUN-B,"feat(localization/COND-S35): owner-scoped job library — GET /api/localizations + SI-1 dashboard list (req 13, closes COND-S29 residual)",854,40,854,1,0,486,299,11,58,0,486,299,11,58
+0af151d,2026-07-23T20:44:44+03:00,RUN-B,docs(notes/COND-S34): NOTE-032 — 4-layer UI audit-sync registry (16 C-DRIFT + 2 AMBIG + SI-png backlog),112,0,112,1,0,0,0,112,0,0,0,0,112,0
+4f667c7,2026-07-23T20:42:36+03:00,RUN-B,docs(mockups/fm007/COND-S34): D-STALE build-sync — admin login copy + AdminShell logout cut,4,1,4,1,0,0,0,4,0,0,0,0,4,0
+7be0491,2026-07-23T20:42:22+03:00,RUN-B,docs(mockups/fm004/COND-S34): D-STALE build-sync — shell descriptor + nav label to unified top app-nav,11,4,11,1,0,0,0,11,0,0,0,0,11,0
+b089c08,2026-07-23T20:42:09+03:00,RUN-B,docs(mockups/fm003/COND-S34): D-STALE build-sync — glossary nav rename + RU copy + label sync,3,2,3,1,0,0,0,3,0,0,0,0,3,0
+eaab27f,2026-07-23T20:41:57+03:00,RUN-B,docs(mockups/fm002/COND-S34): D-STALE build-sync — «Выйти» logout shell control into app-nav,14,2,14,1,0,0,0,14,0,0,0,0,14,0
+e689479,2026-07-23T20:40:36+03:00,RUN-B,docs(mockups/fm001/COND-S34): D-STALE build-sync — auth CTA labels + screen microcopy → shipped build,4,1,4,1,0,0,0,4,0,0,0,0,4,0
+5343c94,2026-07-23T18:16:46+03:00,RUN-B,chore(orchestrator/COND-S33): record HEAD full-rebuild deploy run — DEPLOYED×READY rel 20260723T150800Z,61,0,61,1,0,0,0,0,0,61,0,0,0,0
+a07ca3d,2026-07-23T17:13:08+03:00,RUN-B,docs(RL-001/COND-S32): DoD Stage hygiene — record HEAD redeploy + UJA PASS 7/7,3,2,3,1,0,0,0,3,0,0,0,0,3,0
+2c99b69,2026-07-23T17:11:23+03:00,RUN-B,docs(RL-002/COND-S32): cross-reference NOTE-031 to DEC-PLAN-047 (SSOT decision),3,2,3,1,0,0,0,3,0,0,0,0,3,0
+9710fcc,2026-07-23T17:10:04+03:00,RUN-B,docs(RL-002/COND-S32): register FM-006 event-consumer leg (option A) as NOTE-031,54,3,52,0.963,0.037,0,0,54,0,0,0,0,52,0
+2571d5c,2026-07-23T16:37:02+03:00,RUN-B,docs(product/COND-HOST): DEC-PLAN-047 — outbox drain dark until FM-006 consumer leg; leg allocated to RL-002,15,0,15,1,0,0,0,15,0,0,0,0,15,0
+4d87c82,2026-07-23T16:20:43+03:00,RUN-B,docs(RL-001/COND-S31): DoD hygiene — reconcile Stage + auth verdict lines to actual COND-S31 verdicts,3,2,2,0.667,0.333,0,0,3,0,0,0,0,2,0
+445ce9c,2026-07-23T16:18:48+03:00,RUN-B,chore(RL-001/COND-S31): P4 audit-spec-fidelity auth — logout canonized; 2 NFR drifts escalated,89,0,89,1,0,0,0,0,0,89,0,0,0,0
+1e947c4,2026-07-23T16:12:27+03:00,RUN-B,fix(specs): auth fidelity — bring SC-004 logout into requirements + tasks,26,3,26,1,0,0,0,0,26,0,0,0,0,26
+054f868,2026-07-23T15:55:54+03:00,RUN-B,docs(handoffs/COND-S31): regenerate all 7 stale handoffs — spec-snapshots catch up to s30 code,175,51,175,1,0,0,0,169,0,6,0,0,169,0
+57252ba,2026-07-23T15:00:15+03:00,RUN-B,chore(RL-001/COND-S31): P7 runtime-smoke auth FM-001 — READY_TO_SMOKE × STARTS record,78,0,78,1,0,0,0,0,0,78,0,0,0,0
+22f08ab,2026-07-23T14:55:05+03:00,RUN-B,chore(RL-001/COND-S31): P6 validate-feature-impl auth — GO × READY run-ledger record,124,0,124,1,0,0,0,0,0,124,0,0,0,0
+d744367,2026-07-23T14:50:58+03:00,RUN-B,fix(auth): dead-seam apps/web/middleware.ts ADMIN_HOME redirect (producer) ↔ apps/web/app/(admin)/admin/ route tree (consumer),25,8,25,1,0,15,10,0,0,0,15,10,0,0
+6cb3ae1,2026-07-23T14:47:33+03:00,RUN-B,"fix(auth): design-divergence design.md §Non-Goals line 19 / §API Contract lines 392-402 (logout deferred to RL-002+, absent from route table)",3,1,3,1,0,0,0,0,3,0,0,0,0,3
+0e84140,2026-07-23T14:25:07+03:00,RUN-B,fix(integrator/COND-S31): web healthcheck /→/health — kill false DEPLOY_FAILED (DEC-INT-0021),311,4,311,1,0,0,0,0,0,311,0,0,0,0
+616d9e9,2026-07-23T13:51:05+03:00,RUN-B,"chore(RL-001/COND-S30): UJA v2 GREEN — run-ledger records (2 deploy, 2 UJA)",311,0,311,1,0,0,0,0,0,311,0,0,0,0
+90a4561,2026-07-23T13:14:35+03:00,RUN-B,fix(web/COND-S30): auth proxy 204 → 500 (logout); J-neg-3 fix,50,2,50,1,0,6,44,0,0,0,6,44,0,0
+e583a0d,2026-07-23T12:28:15+03:00,RUN-B,test(uja/COND-S30): UJA v2 journeys — J-neg-1/2/3 access matrix + J2-real realistic cycle,311,0,311,1,0,0,311,0,0,0,0,311,0,0
+a0dc6be,2026-07-23T12:28:03+03:00,RUN-B,fix(worker/COND-S30): P2028 — move Whisper call OUT of the transcribe DB transaction,183,22,176,0.962,0.038,45,138,0,0,0,38,138,0,0
+e0dfbdf,2026-07-23T12:27:52+03:00,RUN-B,feat(auth/COND-S30): user logout (SC-004) — POST /api/auth/logout + app-nav «Выйти»,232,1,232,1,0,110,122,0,0,0,110,122,0,0
+99fdc9d,2026-07-23T12:27:33+03:00,RUN-B,feat(web/COND-S30): auth-state × route middleware guard (both sides) + zone tests,260,0,252,0.969,0.031,155,105,0,0,0,152,100,0,0
+e1363e8,2026-07-23T12:07:25+03:00,RUN-B,spec(FM-001/COND-S30): auth-state × route access matrix (RPM) + user logout (SC-004),189,16,189,1,0,0,0,189,0,0,0,0,189,0
+b40f413,2026-07-23T05:10:07+03:00,RUN-B,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT,317,2,312,0.984,0.016,0,10,0,0,307,0,5,0,0
+d8296fc,2026-07-23T04:37:06+03:00,RUN-B,fix(localization/COND-S29): download button must download — signed-URL Content-Disposition attachment,78,6,78,1,0,26,52,0,0,0,26,52,0,0
+94e5b73,2026-07-23T03:51:40+03:00,RUN-B,fix(web/COND-S29): add the [[...path]] localization proxy + /health + proxy-routing test,140,0,140,1,0,102,38,0,0,0,102,38,0,0
+c805e3e,2026-07-23T03:01:31+03:00,RUN-B,fix(web/COND-S29): target chips render design language names + J2 ready-wait honesty,76,10,76,1,0,25,51,0,0,0,25,51,0,0
+32588ed,2026-07-23T01:38:53+03:00,RUN-B,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit),349,15,309,0.885,0.115,219,130,0,0,0,196,113,0,0
+d44300f,2026-07-23T01:05:13+03:00,RUN-B,"chore(orchestrator/COND-S28): UJA validation run ledger — uja_result=FAIL (J1/J2/J3), ground truth caught",27,0,27,1,0,0,0,0,0,27,0,0,0,0
+4540759,2026-07-23T00:55:48+03:00,RUN-B,feat(integrator/COND-S28): add playwright + author P8 UJA journeys (DEC-INT-0020),816,19,782,0.958,0.042,0,242,0,0,490,0,214,0,0
+bb017a5,2026-07-23T00:40:28+03:00,RUN-B,chore(ecosystem/COND-S28): sync to canon 04f5d3c — P8 user-journey-acceptance (DEC-DEV-0225),702,14,702,1,0,0,0,0,0,702,0,0,0,0
+7536b36,2026-07-22T20:47:11+03:00,RUN-B,"docs(RL-001/COND-S27): honest Cat.1 reconciliation — impl-sync collector NO-GO is dual-defect artifact, current-HEAD mech-green",47,0,47,1,0,0,0,24,0,23,0,0,24,0
+5f35da6,2026-07-22T20:11:48+03:00,RUN-B,docs(RL-001/PA-111): COND-S26 §Bring-forward — §14.7 auto-detect built+deployed+smoked,3,1,3,1,0,0,0,3,0,0,0,0,3,0
+0fd108e,2026-07-22T20:09:21+03:00,RUN-B,"chore(orchestrator/COND-S26): P6/deploy/P7 run ledgers + PA-115 (PA-109 dup, auto-resolved)",122,0,122,1,0,0,0,0,0,122,0,0,0,0
+870219f,2026-07-22T19:06:45+03:00,RUN-B,docs(PA-111): resolve → done — §14.7 auto-detect built in RL-001 (owner decision RUN-B.18),6,1,6,1,0,0,0,0,0,6,0,0,0,0
+d726bca,2026-07-22T19:05:55+03:00,RUN-B,feat(segment-regeneration/PA-111): auto-detect §14.7 integrity-freeze conditions (RL-001),491,2,491,1,0,218,273,0,0,0,218,273,0,0
+5bfd5cb,2026-07-22T18:49:31+03:00,RUN-B,docs(RL-001/PA-114): forward-edge LIVE-verified — full HTTP E2E real-smoke passed (COND-S25 step 7),17,2,17,1,0,0,0,3,0,14,0,0,3,0
+6f0dd85,2026-07-22T18:04:22+03:00,RUN-B,fix(localization): dead-seam web new-form multipart producer (NewLocalizationView) <-> API upload-edge create consumer (job.controller.create / UploadEdgeService.parseUploadConfig),26,4,26,1,0,12,14,0,0,0,12,14,0,0
+c13ddf1,2026-07-22T18:01:41+03:00,RUN-B,"fix(localization): design-divergence design.md §System Flows ""Скачивание + идемпотентный trial_completed"" sequence diagram (lines 320-333): signed URL generated before BEGIN...COMMIT",1,1,1,1,0,0,0,0,1,0,0,0,0,1
+8022e63,2026-07-22T17:11:24+03:00,RUN-B,fix(e2e): thread render dep + bytes-port into localization-journeys drain (COND-S25 P6 re-gate),19,3,19,1,0,0,19,0,0,0,0,19,0,0
+3ce39ce,2026-07-22T17:06:30+03:00,RUN-B,fix(localization): dead-seam deliverable-bytes producer (worker GcsDeliverableStorage.put / assemble.processor writing to DELIVERABLE_GCS_BUCKET) ↔ deliverable-bytes consumer (API DownloadService.getS,287,15,281,0.979,0.021,188,99,0,0,0,182,99,0,0
+f34155a,2026-07-22T16:57:13+03:00,RUN-B,fix(localization): design-divergence design.md §File Structure Plan line 195 (`elevenlabs-tts.adapter.ts`); tasks.md §1.2 note line 32 + §Implementation Note line 238 (ElevenLabs as real TTS vendor),3,3,3,1,0,0,0,0,3,0,0,0,0,3
+9748e84,2026-07-22T16:31:34+03:00,RUN-B,"feat(localization): multipart upload edge on POST /api/localizations (forward-edge, PA-114)",590,2,590,1,0,332,258,0,0,0,332,258,0,0
+7b1ed87,2026-07-22T16:10:15+03:00,RUN-B,feat(localization): real GCS deliverable storage + ffmpeg render (honest bytes) behind LOCALIZATION_DELIVERABLE_STORAGE_GCS_ENABLED,642,44,642,1,0,365,277,0,0,0,365,277,0,0
+1d4a2a3,2026-07-22T15:58:13+03:00,RUN-B,docs(RL-001/PA-114): un-defer forward-edge into RL-001 (upload-edge + real IDeliverableStoragePort),8,6,6,0.75,0.25,0,0,4,4,0,0,0,2,4
+d20fd87,2026-07-22T15:04:22+03:00,RUN-B,chore(orchestrator): run records COND-S24 (P6 re-gates vvn8mg/vyhiq0 + deploy w03thk),407,0,407,1,0,0,0,0,0,407,0,0,0,0
+32f3ad7,2026-07-22T15:04:11+03:00,RUN-B,docs(RL-001/COND-S24): media pipeline real-flags live on staging; GCS deployed; DoD Кат.5 Mock removed; PA-114 forward-edge gap (COND-S24 step 8),132,3,127,0.962,0.038,0,0,13,0,119,0,0,10,0
+0713704,2026-07-22T14:14:16+03:00,RUN-B,"fix(segment-regeneration): design-divergence design.md §Components ""ISegmentSplicePort"" (FitReport.significantMismatch → Req 3.6) + §Monitoring line 626 / Req 3.6 / NOTE-027 (tempoFactor out-of-bounds",92,4,92,1,0,53,39,0,0,0,53,39,0,0
+bb72d72,2026-07-22T13:30:50+03:00,RUN-B,fix(api/test): make IC-003 LRU-eviction assertion load-invariant; add deterministic LRU-ordering test (COND-S24 step 4),49,9,49,1,0,0,49,0,0,0,0,49,0,0
+83c7da1,2026-07-22T12:54:56+03:00,RUN-B,fix(segment-regeneration): orphan-export design.md §Requirements Traceability Req 11 → RegenerationAuditEmitter (single unified emitter for segment_regenerated / _failed / _rejected); §Data Contracts ,61,212,61,1,0,34,18,0,9,0,34,18,0,9
+3617795,2026-07-22T12:23:00+03:00,RUN-B,feat(fm-004): real OpenAI regeneration re-translate behind REGENERATION_TRANSLATION_OPENAI_ENABLED (COND-S24 step 3),150,7,150,1,0,64,86,0,0,0,64,86,0,0
+53e3cae,2026-07-22T12:17:54+03:00,RUN-B,fix(api/test): make login-captcha timing-parity assertion load-invariant (COND-S24 step 2),33,10,33,1,0,0,33,0,0,0,0,33,0,0
+7a0df37,2026-07-22T12:05:40+03:00,RUN-B,docs(PA-109/FM-004): owner-ratified RL-002 deferral of live SI-4→SI-6 UI transition (COND-S24 step 1),10,7,10,1,0,0,0,1,5,4,0,0,1,5
+c4ed9cd,2026-07-22T11:46:56+03:00,RUN-B,docs(PA-108/RL-001): COND-S23 — billing tails CLOSED (TTS live + GCS smoke + NFR-010); GCS deploy escalated,42,4,37,0.881,0.119,0,0,5,0,37,0,0,2,0
+02d8a23,2026-07-22T11:33:06+03:00,RUN-B,"fix(segment-regeneration): design-divergence design.md §Components → SegmentOverviewService, line 389 (`list(...): Promise<SegmentOverviewItem[]>`)",8,1,8,1,0,0,0,0,8,0,0,0,0,8
+647817e,2026-07-22T11:30:38+03:00,RUN-B,fix(segment-regeneration): uncovered-requirement 14.7,492,5,492,1,0,206,246,38,2,0,206,246,38,2
+b90cce9,2026-07-22T11:19:11+03:00,RUN-B,fix(segment-regeneration): uncovered-requirement 15.5,43,2,43,1,0,2,41,0,0,0,2,41,0,0
+5236b79,2026-07-22T10:47:18+03:00,RUN-B,"feat(fm-004): real GCS storage backend for swap#4 ports (FB-013/PA-108, COND-S23)",604,8,594,0.983,0.017,400,204,0,0,0,390,204,0,0
+214e9c7,2026-07-22T09:34:01+03:00,RUN-B,feat(web/ds): per-feature styles + states + responsive (COND-S22 step 2+3),1665,0,1663,0.999,0.001,1665,0,0,0,0,1663,0,0,0
+1e848ba,2026-07-22T09:26:54+03:00,RUN-B,feat(web/ds): DS tokens → globals.css + base/reset/primitives (COND-S22 step 1),484,0,484,1,0,484,0,0,0,0,484,0,0,0
+be0e2f4,2026-07-22T09:15:41+03:00,RUN-B,docs(RL-001): §Bring-forward swap#4 done (COND-S21) + DoD Кат.5 Mock-оговорки по факту; PA-108 GCS-хвост; PA-109 UI-conflict escalation,54,9,47,0.87,0.13,0,0,14,0,40,0,0,9,0
+162a7c1,2026-07-22T09:12:19+03:00,RUN-B,"chore(orchestrator): run-ledger — P7 runtime-smoke FM-004/worker (COND-S21 von6js, swap#4) — documented false-negative",33,0,33,1,0,0,0,0,0,33,0,0,0,0
+6b63c85,2026-07-22T09:09:23+03:00,RUN-B,"chore(orchestrator): run-ledger — E.B deploy-to-stage FM-004 DEPLOYED×READY (COND-S21 vnlezc, swap#4 splice)",40,0,40,1,0,0,0,0,0,40,0,0,0,0
+758b060,2026-07-22T08:39:23+03:00,RUN-B,"chore(orchestrator): run-ledger — P6 validate-feature-impl FM-004/segment-regeneration MANUAL_VERIFY (COND-S21 vlrc4g, swap#4 re-gate)",30,0,30,1,0,0,0,0,0,30,0,0,0,0
+9043025,2026-07-22T08:32:47+03:00,RUN-B,"fix(segment-regeneration): dead-seam IncrementalReassembler.srtStore seam (real reassembler ↔ MockReassemblySrtStore, no real object-store PUT)",163,6,159,0.975,0.025,76,87,0,0,0,72,87,0,0
+477821e,2026-07-22T08:19:14+03:00,RUN-B,"fix(segment-regeneration): design-divergence design.md §Components ""IncrementalReassembler"" lines 459-467 ('reassemble returns {mp4Key, srtKey}; swap — снаружи, в вызывающей TX')",6,3,6,1,0,0,0,0,6,0,0,0,0,6
+f106dfa,2026-07-22T07:45:59+03:00,RUN-B,"docs(FM-004): reverse cancelled MUST→SHOULD demotion — bring-forward FfmpegSpliceAdapter+reassembler back to RL-001 (owner 2026-07-22, RUN-B.2)",4,9,4,1,0,0,0,4,0,0,0,0,4,0
+cd0f738,2026-07-22T07:44:19+03:00,RUN-B,"feat(FM-004): select real FfmpegSpliceAdapter + reassembler in regeneration splice seam behind dark flag (bring-forward swap #4, RUN-B.2)",193,23,188,0.974,0.026,56,118,0,0,19,51,118,0,0
+68f755f,2026-07-22T07:28:53+03:00,RUN-B,docs(RL-001): update §Bring-forward status (swaps #1-3 done/deployed); fix stale PA-107 provenance; file PA-108 (TTS real-smoke billing block),30,9,27,0.9,0.1,0,0,8,0,22,0,0,6,0
+fa0fac8,2026-07-22T07:27:24+03:00,RUN-B,"chore(orchestrator): run-ledger — P7 runtime-smoke FM-002/worker (COND-S20 vkw6zc, swap#3) — documented false-negative",85,0,85,1,0,0,0,0,0,85,0,0,0,0
+eb85c0e,2026-07-22T07:24:29+03:00,RUN-B,"chore(orchestrator): run-ledger — E.B deploy-to-stage FM-002 DEPLOYED×READY (COND-S20 vjlpdc, swap#3 Google TTS)",234,0,234,1,0,0,0,0,0,234,0,0,0,0
+b158f7f,2026-07-22T06:48:20+03:00,RUN-B,"chore(orchestrator): run-ledger — P6 validate-feature-impl localization GO×READY (COND-S20 vhxjh4, swap#3 re-gate)",131,0,131,1,0,0,0,0,0,131,0,0,0,0
+01a990a,2026-07-22T06:41:23+03:00,RUN-B,fix(localization): design-divergence design.md §JobRetryService req 7.5 / BR-029 'restart from failure_stage (reusing transcribe cache)',2,2,2,1,0,0,0,0,2,0,0,0,0,2
+74ab438,2026-07-22T06:35:33+03:00,RUN-B,fix(localization): no-call-site 12.6,170,20,152,0.894,0.106,133,37,0,0,0,115,37,0,0
+d0b3e45,2026-07-22T06:00:26+03:00,RUN-B,"feat(FM-002): wire real Google Cloud TTS in voice stage behind dark flag; drop orphan ElevenLabs skeleton (bring-forward swap #3, RUN-B.2)",910,178,908,0.998,0.002,637,273,0,0,0,635,273,0,0
+2ccade8,2026-07-22T05:52:26+03:00,RUN-B,chore(orchestrator): run-ledger — P7 runtime-smoke FM-002/worker (COND-S20 vhi708) — documented false-negative,85,0,85,1,0,0,0,0,0,85,0,0,0,0
+eb292fb,2026-07-22T05:49:22+03:00,RUN-B,"chore(orchestrator): run-ledger — E.B deploy-to-stage FM-002 DEPLOYED×READY (COND-S20 vgfajk, swap#2 whisper tail)",238,0,238,1,0,0,0,0,0,238,0,0,0,0
+f801f93,2026-07-22T05:17:47+03:00,RUN-B,"chore(localization): resolve PA-107 → done — owner ruling TTS swap#3 vendor=Google Cloud TTS, drive now (COND-S20)",20,1,20,1,0,0,0,0,0,20,0,0,0,0
+82ce3b4,2026-07-22T05:09:54+03:00,RUN-B,fix(hooks): guard `bd prime` SessionStart/PreCompact hooks against missing beads binary (COND-S19 step 4),2,2,2,1,0,0,0,0,0,2,0,0,0,0
+3d34353,2026-07-22T05:06:51+03:00,RUN-B,chore(orchestrator): run-ledger + PA-107 — P6 validate-feature-impl localization MANUAL_VERIFY (COND-S19 ve6hlc),67,0,65,0.97,0.03,0,0,0,0,67,0,0,0,0
+b2acec5,2026-07-22T04:58:45+03:00,RUN-B,fix(localization): dead-seam provider-error → StageError bridge in runStageWithRetry,109,4,105,0.963,0.037,44,65,0,0,0,40,65,0,0
+2486752,2026-07-22T04:51:04+03:00,RUN-B,fix(localization): design-divergence NFR-006 / requirements.md req 12.5 structured stage-log `vendor` field; design.md §Monitoring line 640,249,9,244,0.98,0.02,73,176,0,0,0,68,176,0,0
+4542570,2026-07-22T04:14:06+03:00,RUN-B,"feat(FM-002): wire real OpenAI Whisper transcription in transcribe-stage behind dark flag (bring-forward swap #2, RUN-B.2)",778,67,762,0.979,0.021,424,354,0,0,0,419,343,0,0
+3d78d1b,2026-07-22T03:53:08+03:00,RUN-B,chore(orchestrator): run-ledger records — P7 runtime-smoke FM-002/worker (COND-S18 vd82e8) — documented false-negative,80,0,80,1,0,0,0,0,0,80,0,0,0,0
+116ee1d,2026-07-22T03:49:11+03:00,RUN-B,chore(orchestrator): run-ledger records — E.B deploy-to-stage FM-002 DEPLOYED×READY (COND-S18 vcbvg0),235,0,235,1,0,0,0,0,0,235,0,0,0,0
+267690f,2026-07-22T03:23:40+03:00,RUN-B,chore(orchestrator): run-ledger records — P6 validate-feature-impl localization GO×READY (COND-S18 vazryo),126,0,126,1,0,0,0,0,0,126,0,0,0,0
+8f2287d,2026-07-22T03:20:41+03:00,RUN-B,fix(localization): dead-seam Retry producer (JobRetryService.re-enqueue via RedisPipelineEnqueueAdapter) ↔ worker drain consumer (pipeline-drain.ts single transcribe-entry loop),147,16,144,0.98,0.02,64,83,0,0,0,61,83,0,0
+f5b16ad,2026-07-22T02:46:03+03:00,RUN-B,"feat(FM-002): select real OpenAI gpt-4o translation in translate-stage behind dark flag (bring-forward swap #1, RUN-B.2)",126,4,119,0.944,0.056,46,80,0,0,0,39,80,0,0
+4d3e32e,2026-07-22T02:41:22+03:00,RUN-B,"docs(RL-001): bring-forward real media pipeline into RL-001 scope (owner 2026-07-22, RUN-B.2)",43,10,30,0.698,0.302,0,0,43,0,0,0,0,30,0
+096e34b,2026-07-20T10:55:00+03:00,RUN-A,docs(RL-001): impl-sync --all --dry-run dispositions into DoD cat.1 (cond-s17 step 4),21,3,19,0.905,0.095,0,0,21,0,0,0,0,19,0
+30ce6de,2026-07-20T10:52:50+03:00,RUN-A,docs(RL-001): DA release-scope review + resolve findings (cond-s17 step 3),229,36,219,0.956,0.044,0,0,229,0,0,0,0,219,0
+304e565,2026-07-20T10:40:02+03:00,RUN-A,docs(RL-001): rebuild 6-category Release DoD by actual evidence + add Rollback plan (cond-s17),81,0,68,0.84,0.16,0,0,81,0,0,0,0,68,0
+4d0e03e,2026-07-20T10:35:24+03:00,RUN-A,"chore(segment-regeneration): demote FM-004 MUST→SHOULD for RL-001 (owner-ratified 2026-07-20, cond-s17)",21,12,11,0.524,0.476,0,0,9,12,0,0,0,1,10
+18177cf,2026-07-20T01:28:53+03:00,RUN-A,chore(segment-regeneration): PA-106 done + P7 re-run STARTS (cond-s16) — worker env-not-loaded cleared,46,1,46,1,0,0,0,0,0,46,0,0,0,0
+4cbdea8,2026-07-20T01:23:27+03:00,RUN-A,"fix(segment-regeneration): worker env-loading — dotenv preload + fail-fast config validation (PA-106, task 7.2)",197,4,197,1,0,94,100,0,0,0,94,100,0,0
+d8d6ee3,2026-07-20T01:04:34+03:00,RUN-A,chore(orchestrator): run-ledger records — RL-001 staging deploy (cond-s15),108,0,108,1,0,0,0,0,0,108,0,0,0,0
+a0c1fb2,2026-07-20T00:57:33+03:00,RUN-A,"chore(segment-regeneration): file PA-106 — apps/worker FAILS_TO_START on staging (P7 env-not-loaded), task 7.2 blocked",29,0,28,0.966,0.034,0,0,0,0,29,0,0,0,0
+aa3bf5b,2026-07-20T00:25:01+03:00,RUN-A,fix(build): guard beads prepare hook for git-less checkouts (unblocks staging deploy),1,1,1,1,0,0,0,0,0,0,0,0,0,0
+4a10f93,2026-07-20T00:01:25+03:00,RUN-A,chore(integrator): flip CNT-005 deploy-capability contract draft→active (owner-accepted),2,1,2,1,0,0,0,0,0,2,0,0,0,0
+6b718e0,2026-07-20T00:00:31+03:00,RUN-A,chore(localization): ratify PA-104 done — as-built usage_finalized_at overload accepted (BR-043 gate),2,1,2,1,0,0,0,0,0,2,0,0,0,0
+22b92cd,2026-07-19T23:59:57+03:00,RUN-A,"fix(auth): ratify PA-103 amend — descope req 12.5 deletion-SLA to RL-002+, relabel tests 12.5→12.4",16,12,16,1,0,5,8,0,1,2,5,8,0,1
+de4397a,2026-07-19T23:58:00+03:00,RUN-A,chore(billing): ratify PA-102 done — listInvoices orphan accepted as RL-001 forward-provision (req 10.1),2,1,2,1,0,0,0,0,0,2,0,0,0,0
+670405e,2026-07-19T23:01:13+03:00,RUN-A,chore(orchestrator): run residue P6 re-gate round-final (cond-s14) — 3 ledger verdicts + PA-105 escalation,117,0,117,1,0,0,0,0,0,117,0,0,0,0
+a91e447,2026-07-19T22:14:53+03:00,RUN-A,"fix(segment-regeneration): orphan-export FfmpegSpliceAdapter (producer, packages/providers/src/splice) ↔ buildRegenerationProcessor splice seam (consumer, apps/worker regeneration.worker.ts)",88,12,62,0.705,0.295,70,18,0,0,0,44,18,0,0
+f8b8d84,2026-07-19T21:57:44+03:00,RUN-A,"fix(segment-regeneration): orphan-export DeferredIncrementalReassembler (retired placeholder, apps/worker/regeneration) ↔ (no consumer — superseded by real IncrementalReassembler)",2,36,2,1,0,2,0,0,0,0,2,0,0,0
+f312b66,2026-07-19T21:50:54+03:00,RUN-A,"fix(segment-regeneration): design-divergence design.md §System Flows / §Testing E2E (SC-015e1); requirements 8.9, 15.10",3,1,3,1,0,0,0,0,3,0,0,0,0,3
+969bed4,2026-07-19T21:44:58+03:00,RUN-A,fix(segment-regeneration): uncovered-requirement 12.5,69,0,69,1,0,16,53,0,0,0,16,53,0,0
+9d5ffd2,2026-07-19T21:06:20+03:00,RUN-A,"fix(localization): orphan-export producer StageLogger (apps/worker/src/jobs/localization/stages/stage-logger.ts, Task 5.3) ↔ intended consumer the pipeline transition/fail paths (pipeline-orchestrator",269,33,240,0.892,0.108,217,52,0,0,0,188,52,0,0
+263563a,2026-07-19T20:55:29+03:00,RUN-A,"fix(localization): orphan-export producer StuckJobWatchdog + ErrorSignatureAggregator (apps/worker/src/jobs/localization/stuck-job.watchdog.ts, Task 5.3) ↔ intended consumer worker bootstrap (apps/wor",259,0,259,1,0,224,35,0,0,0,224,35,0,0
+1a5b91c,2026-07-19T20:49:50+03:00,RUN-A,"fix(localization): orphan-export producer MultiTargetNotificationDispatcher (apps/worker/src/jobs/localization/multi-target-notification.dispatcher.ts, Task 3.6) ↔ intended consumer the multi-target f",283,2,283,1,0,125,158,0,0,0,125,158,0,0
+6d466e4,2026-07-19T20:34:47+03:00,RUN-A,"fix(localization): orphan-export producer NotificationDispatcher / INotificationGateway (apps/worker/src/jobs/localization/notification.dispatcher.ts, Task 3.5) ↔ intended consumer the running worker ",141,0,141,1,0,103,38,0,0,0,103,38,0,0
+8f7b0fa,2026-07-19T20:22:36+03:00,RUN-A,fix(localization): design-divergence design.md §Data Models — Physical model lines 556-587 (LocalizationJob field list) + Logical model line 534; Revalidation Trigger line 57,15,2,15,1,0,0,0,0,15,0,0,0,0,15
+bdc54fd,2026-07-19T20:18:44+03:00,RUN-A,fix(localization): design-divergence design.md §Data Models line 536 (Deliverable field list) + §DownloadService lines 456-483 + §API Contract line 424 (download errors = 404 only),6,4,6,1,0,0,0,0,6,0,0,0,0,6
+d9307d5,2026-07-19T19:43:27+03:00,RUN-A,"chore(orchestrator): run residue P6 re-gate round-final (cond-s13, interrupted by VM poweroff): 4 ledger verdicts + stale rsznt4 marker + PA-101/PA-102 escalations",242,0,239,0.988,0.012,0,0,0,0,242,0,0,0,0
+f9cc170,2026-07-19T17:01:40+03:00,RUN-A,"fix(localization): dead-seam producer JobCreationService.create multi-target branch (apps/api/.../services/job-creation.service.ts:407-445, RPUSH parentJobId → localization:stage:transcribe) ↔ intende",312,0,307,0.984,0.016,164,148,0,0,0,159,148,0,0
+929a903,2026-07-19T16:46:57+03:00,RUN-A,fix(localization): design-divergence design.md §Technology Stack / §Architecture / §System Flows 'Конвейер стадий' — 'BullMQ на Redis 7 (транспорт стадий + exp-backoff авто-retry)' + per-stage enqueue,2,0,1,0.5,0.5,0,0,0,2,0,0,0,0,1
+e47b97e,2026-07-19T16:43:44+03:00,RUN-A,fix(localization): design-divergence Requirement 7.5,49,25,49,1,0,30,19,0,0,0,30,19,0,0
+5c21786,2026-07-19T15:58:51+03:00,RUN-A,fix(admin): orphan-export producer apps/web/lib/admin-contract.ts:250 isAdminAuthFailed ↔ intended-but-absent consumer: admin login/hub islands,11,42,11,1,0,6,5,0,0,0,6,5,0,0
+93a9f55,2026-07-19T15:33:24+03:00,RUN-A,fix(auth): orphan-export producer apps/api/src/modules/auth/log-mask.ts (maskSensitive/SENSITIVE_KEYS) ↔ intended consumer NestJS LoggingInterceptor (does not exist),196,0,196,1,0,96,100,0,0,0,96,100,0,0
+6791cf3,2026-07-19T15:27:50+03:00,RUN-A,fix(auth): design-divergence design.md §Architecture 'authoritative session store' lines 130-134 + §Performance line 563 (Redis mirror accelerates session-resolution / reduces per-request DB load; Red,254,9,254,1,0,104,150,0,0,0,104,150,0,0
+5a6e430,2026-07-19T14:43:06+03:00,RUN-A,"fix(billing): design-divergence design.md §API Contract (billing.controller) table, lines 573-579 (enumerates 5 endpoints; checkout-abandoned absent)",1,0,1,1,0,0,0,0,1,0,0,0,0,1
+29cd28b,2026-07-19T02:09:49+03:00,RUN-A,docs(segment-regeneration): ratify OQ-2/3/4/5/7 + close PA-093/094/095/096/098/099/100 (owner 2026-07-19),16,14,16,1,0,0,0,0,9,7,0,0,0,9
+b2f54a0,2026-07-19T02:09:39+03:00,RUN-A,feat(segment-regeneration): PA-099/100 — convert regeneration transport BullMQ → ioredis-RPUSH (owner-ratified option B),739,151,736,0.996,0.004,402,337,0,0,0,399,337,0,0
+d5425c3,2026-07-19T01:40:20+03:00,RUN-A,chore(segment-regeneration): P5/P6 residual — transport-fork escalations (PA-099/100) + run-ledger,92,0,90,0.978,0.022,0,0,0,0,92,0,0,0,0
+c36a024,2026-07-19T01:06:48+03:00,RUN-A,fix(segment-regeneration): no-call-site Requirement 7 (BR-061 / IC-019 — incremental reassembly + atomic swap) [readiness=DEGRADED: re-verify on a READY re-run],77,14,61,0.792,0.208,55,22,0,0,0,41,20,0,0
+8a8e40e,2026-07-19T00:57:39+03:00,RUN-A,"fix(segment-regeneration): dead-seam RenditionHydrator (Task 1.2, only production writer of segment_renditions) ↔ ISrtDeliverableReader (SRT_DELIVERABLE_READER) [readiness=DEGRADED: re-verify on a REA",150,3,148,0.987,0.013,67,83,0,0,0,65,83,0,0
+7ce0740,2026-07-19T00:47:55+03:00,RUN-A,fix(segment-regeneration): dead-seam SegmentEditService.saveDraft / controller `PATCH /:jobId/segments/:segmentId/draft` (Tasks 2.1/2.5) ↔ web SegmentEditor (Task 6.2) [readiness=DEGRADED: re-verify o,177,21,177,1,0,80,97,0,0,0,80,97,0,0
+398006a,2026-07-19T00:29:14+03:00,RUN-A,"fix(segment-regeneration): design-divergence design.md §System Flows 'Допуск + CAS' (AdmitSvc --enqueue--> RegProc, 202 → SI-4 regenerating) + §Architecture (BullMQ enqueue); requirements Req 5.1 / Re",32,7,18,0.563,0.438,21,11,0,0,0,7,11,0,0
+395d482,2026-07-19T00:17:00+03:00,RUN-A,fix(segment-regeneration): no-call-site Requirement 14 (NFR-011 — reliability of regeneration) [readiness=DEGRADED: re-verify on a READY re-run],230,0,228,0.991,0.009,198,32,0,0,0,196,32,0,0
+32d15c8,2026-07-19T00:06:45+03:00,RUN-A,fix(segment-regeneration): no-call-site Requirement 8 (SC-015e1 / BR-060 — failure isolation) [readiness=DEGRADED: re-verify on a READY re-run],26,1,17,0.654,0.346,15,11,0,0,0,6,11,0,0
+a607ff3,2026-07-19T00:02:02+03:00,RUN-A,fix(segment-regeneration): no-call-site Requirement 9 (BR-063 — watchdog timeout of stuck regeneration) [readiness=DEGRADED: re-verify on a READY re-run],218,0,218,1,0,186,32,0,0,0,186,32,0,0
+184cce7,2026-07-18T23:56:46+03:00,RUN-A,fix(segment-regeneration): no-call-site Requirement 6 (SC-015a / BR-057 — retranslate_revoice + frozen snapshot) [readiness=DEGRADED: re-verify on a READY re-run],161,0,80,0.497,0.503,128,33,0,0,0,58,22,0,0
+82a602a,2026-07-18T23:15:11+03:00,RUN-A,feat(segment-regeneration): 7.3,459,2,454,0.989,0.011,0,0,0,1,458,0,0,0,1
+9179bb6,2026-07-18T23:04:40+03:00,RUN-A,chore(segment-regeneration): block 7.2 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+4a63171,2026-07-18T22:55:25+03:00,RUN-A,feat(segment-regeneration): 7.1,1339,1,1335,0.997,0.003,875,462,0,2,0,873,460,0,2
+e8ee526,2026-07-18T22:30:40+03:00,RUN-A,feat(segment-regeneration): 6.3,890,28,861,0.967,0.033,593,295,0,2,0,567,292,0,2
+f394b2a,2026-07-18T22:02:49+03:00,RUN-A,feat(segment-regeneration): 6.2,835,8,823,0.986,0.014,532,301,0,2,0,523,298,0,2
+8f859fa,2026-07-18T21:39:47+03:00,RUN-A,feat(segment-regeneration): 6.1,1506,2,1492,0.991,0.009,922,582,0,2,0,908,582,0,2
+17cce3a,2026-07-18T20:34:07+03:00,RUN-A,feat(segment-regeneration): 5.3,709,1,705,0.994,0.006,0,707,0,2,0,0,703,0,2
+7dd2e81,2026-07-18T19:50:37+03:00,RUN-A,feat(segment-regeneration): 5.2,844,1,844,1,0,350,492,0,2,0,350,492,0,2
+d783092,2026-07-18T19:23:47+03:00,RUN-A,feat(segment-regeneration): 5.1,725,5,725,1,0,376,347,0,2,0,376,347,0,2
+6d2b458,2026-07-18T19:04:56+03:00,RUN-A,feat(segment-regeneration): 4.3,588,1,588,1,0,230,357,0,1,0,230,357,0,1
+3a6ee3c,2026-07-18T18:44:03+03:00,RUN-A,feat(segment-regeneration): 4.2,622,57,578,0.929,0.071,156,465,0,1,0,112,465,0,1
+41e8667,2026-07-18T17:10:47+03:00,RUN-A,feat(segment-regeneration): 4.1,596,1,596,1,0,218,377,0,1,0,218,377,0,1
+a7beb76,2026-07-18T16:44:40+03:00,RUN-A,feat(segment-regeneration): 3.2,619,46,609,0.984,0.016,129,488,0,2,0,119,488,0,2
+1da35a3,2026-07-18T16:23:59+03:00,RUN-A,feat(segment-regeneration): 3.1,586,1,489,0.834,0.166,304,281,0,1,0,207,281,0,1
+0b97ced,2026-07-18T16:02:15+03:00,RUN-A,feat(segment-regeneration): 2.5,1490,1,1436,0.964,0.036,818,671,0,1,0,768,667,0,1
+0db4e06,2026-07-18T15:25:59+03:00,RUN-A,feat(segment-regeneration): 2.4,504,1,297,0.589,0.411,236,266,0,2,0,150,145,0,2
+5ea1e00,2026-07-18T15:10:07+03:00,RUN-A,feat(segment-regeneration): 2.3,841,1,840,0.999,0.001,354,486,0,1,0,353,486,0,1
+fe1260f,2026-07-18T14:51:44+03:00,RUN-A,feat(segment-regeneration): 2.2,230,1,230,1,0,120,109,0,1,0,120,109,0,1
+8cc6f13,2026-07-18T14:40:18+03:00,RUN-A,feat(segment-regeneration): 2.1,531,1,531,1,0,272,257,0,2,0,272,257,0,2
+6d50613,2026-07-18T14:17:24+03:00,RUN-A,feat(segment-regeneration): 1.3,393,1,389,0.99,0.01,217,175,0,1,0,213,175,0,1
+46ec5f7,2026-07-18T14:03:20+03:00,RUN-A,feat(segment-regeneration): 1.2,612,1,612,1,0,319,292,0,1,0,319,292,0,1
+c90e937,2026-07-18T13:39:25+03:00,RUN-A,feat(segment-regeneration): 1.1,463,1,463,1,0,127,331,0,5,0,127,331,0,5
+50bf240,2026-07-18T13:18:26+03:00,RUN-A,feat(segment-regeneration): 0.1 confirm FM-002/FM-003 upstream contracts,1,1,1,1,0,0,0,0,1,0,0,0,0,1
+3122944,2026-07-18T12:44:46+03:00,RUN-A,feat(localization): wire worker-drain on as-built ioredis-RPUSH transport (PA-076/PA-064),1003,3,976,0.973,0.027,674,324,0,3,2,650,324,0,0
+fe3ebb9,2026-07-18T12:25:26+03:00,RUN-A,docs(admin): DoD checklist for FM-007 cross-FM enforcement rollout (env-path),92,0,92,1,0,92,0,0,0,0,92,0,0,0
+3875fa4,2026-07-18T12:23:55+03:00,RUN-A,fix(auth): amend req 12.3 cert-expiry→503 to reverse-proxy infra contract (PA-075),4,4,4,1,0,0,0,0,3,1,0,0,0,3
+5386573,2026-07-18T02:12:45+03:00,RUN-A,test(glossary): pin NFR-008 req 8.3 Lighthouse gate wiring,95,8,95,1,0,0,95,0,0,0,0,95,0,0
+d27829a,2026-07-18T02:12:38+03:00,RUN-A,feat(glossary): NFR-008 req 8.3 /glossary Lighthouse CI gate (absolute floor),1646,5,1646,1,0,0,0,0,0,0,0,0,0,0
+6ce685f,2026-07-18T01:34:30+03:00,RUN-A,chore(orchestrator): P6 re-gate FM-002 (localization) run sediment + PA-076,181,0,180,0.994,0.006,0,0,0,0,181,0,0,0,0
+0a1aa46,2026-07-18T01:21:39+03:00,RUN-A,fix(localization): design-divergence design.md §Data Contracts line 594-597: IGlossarySnapshotPort.buildSnapshot(input): Promise<{snapshotId}>,8,2,8,1,0,0,0,0,8,0,0,0,0,8
+0c0d2ab,2026-07-18T01:18:24+03:00,RUN-A,fix(localization): uncovered-requirement 12.1,115,0,115,1,0,56,59,0,0,0,56,59,0,0
+a43eda2,2026-07-18T01:13:00+03:00,RUN-A,fix(localization): missing-test 12.3,85,10,85,1,0,60,25,0,0,0,60,25,0,0
+fc57210,2026-07-18T00:47:12+03:00,RUN-A,chore(orchestrator): P6 re-gate FM-001 (auth) run sediment + PA-075,169,0,168,0.994,0.006,0,0,0,0,169,0,0,0,0
+c344b21,2026-07-18T00:39:18+03:00,RUN-A,fix(auth): design-divergence design.md §Data Models — Session model: `device_fingerprint (UA + city-level)` (also Logical Data Model Session bullet and §Data Models RequestContext note),98,5,98,1,0,49,49,0,0,0,49,49,0,0
+c37f951,2026-07-18T00:34:05+03:00,RUN-A,fix(auth): missing-test 12.6,137,0,137,1,0,0,137,0,0,0,0,137,0,0
+c9e7bfb,2026-07-18T00:19:37+03:00,RUN-A,fix(auth): dead-seam producer: SensitiveOpGuard 403 envelope deeplink `/account/resend-confirmation` (apps/api/src/modules/auth/guards/sensitive-op.guard.ts:79 RESEND_CONFIRMATION_DEEPLINK) ↔ consumer,88,0,88,1,0,31,57,0,0,0,31,57,0,0
+a35c864,2026-07-18T00:09:34+03:00,RUN-A,fix(auth): missing-test 12.7,100,0,100,1,0,0,100,0,0,0,0,100,0,0
+cc28a46,2026-07-17T23:34:03+03:00,RUN-A,chore(orchestrator): P6 re-gate FM-007 (admin) run sediment — MANUAL_VERIFY,138,0,138,1,0,0,0,0,0,138,0,0,0,0
+3d8efd3,2026-07-17T23:24:31+03:00,RUN-A,fix(admin): orphan-export UserAdminService.sessions (AdminSessionInvalidator) seam: apps/api/src/modules/admin/services/user-admin.service.ts:185 (interface) + :413 (call) ↔ AdminModule factory apps/a,19,7,19,1,0,19,0,0,0,0,19,0,0,0
+e8125ec,2026-07-17T22:59:34+03:00,RUN-A,chore(orchestrator): P6 re-gate FM-005 (billing) run sediment — GO,122,0,122,1,0,0,0,0,0,122,0,0,0,0
+eda6936,2026-07-17T22:56:47+03:00,RUN-A,fix(billing): dead-seam CheckoutService.mode (Task 3.4) → payment adapter (Task 2.1 Mock / 2.2 Stripe) → WebhookProcessor.checkoutMode() on customer.subscription.created (Task 3.5),38,2,38,1,0,13,25,0,0,0,13,25,0,0
+446f08d,2026-07-17T22:30:52+03:00,RUN-A,chore(orchestrator): P6 re-gate FM-003 (glossary) run sediment + PA-074,197,0,197,1,0,0,0,0,0,197,0,0,0,0
+2845824,2026-07-17T22:30:27+03:00,RUN-A,"test(glossary,localization): migrate integration tests to PA-071/072 snapshot API",27,20,27,1,0,0,27,0,0,0,0,27,0,0
+b573b4d,2026-07-17T22:16:09+03:00,RUN-A,fix(glossary): missing-test 8.3,143,0,143,1,0,0,143,0,0,0,0,143,0,0
+df2c135,2026-07-17T21:10:51+03:00,RUN-A,docs(segment-regeneration): ratify OQ-1 (concurrency default) + OQ-6 (HYP-003 → RL-002),4,4,4,1,0,0,0,0,4,0,0,0,0,4
+98db1d6,2026-07-17T21:09:09+03:00,RUN-A,fix(cascade): V-11 reverse-refs for SC-010e4 (PA-072) — BR-028 scenarios[] + MK-002 back-links,6,1,6,1,0,0,0,6,0,0,0,0,6,0
+dba9c4d,2026-07-17T21:08:27+03:00,RUN-A,feat(billing): PA-029 — implement dunning email (FM-001 EmailPort + real bind + surfaced failures),188,26,188,1,0,160,21,0,4,3,160,21,0,4
+4e28c4a,2026-07-17T20:57:37+03:00,RUN-A,docs(glossary): PA-073 — retain in-process probing aggregate as a documented RL-001 tradeoff,13,3,13,1,0,11,0,0,1,1,11,0,0,1
+14543ad,2026-07-17T20:56:12+03:00,RUN-A,refactor(glossary): PA-071 — type-split buildSnapshot into InTx/Standalone (compile-time tx enforcement),160,109,157,0.981,0.019,88,48,0,23,1,85,48,0,23
+ea0850b,2026-07-17T20:47:16+03:00,RUN-A,feat(glossary): PA-069 — land DEC-PLAN-041 durable audit envelope (same-TX metadata emission),78,18,78,1,0,34,32,0,10,2,34,32,0,10
+1d51da0,2026-07-17T20:43:29+03:00,RUN-A,"docs(glossary): PA-070 — bless tx-bound audit delegate (variant c, same-TX/CTE, not outbox)",44,7,44,1,0,0,0,0,43,1,0,0,0,43
+0d1c437,2026-07-17T20:40:29+03:00,RUN-A,feat(localization): PA-072 — flip glossary-snapshot adapter default to real (+SC-010e4 error state),225,27,218,0.969,0.031,88,63,68,5,1,81,63,68,5
+b9936e4,2026-07-17T16:30:09+03:00,RUN-A,chore(consilium): jury recommendation packages for PA-029/070/072/073; refusals PA-069/071,183,0,181,0.989,0.011,0,0,4,0,179,0,0,4,0
+05470d2,2026-07-17T15:52:57+03:00,RUN-A,chore(orchestrator): run-ledger record for P3 batch-features-to-cc-sdd FM-004 (ows50w),29,0,29,1,0,0,0,0,0,29,0,0,0,0
+6681ddf,2026-07-17T15:52:20+03:00,RUN-A,feat(specs): batch segment-regeneration → cc-sdd specs,1343,0,1291,0.961,0.039,0,0,0,1343,0,0,0,0,1291
+79d7766,2026-07-17T15:22:30+03:00,RUN-A,fix(cascade): V-11 reverse ref — add VC-037 to FM-006.verification[],1,1,1,1,0,0,0,1,0,0,0,0,1,0
+91a984c,2026-07-17T15:21:34+03:00,RUN-A,chore(pending-actions): dismiss PA-065..068 scope-guard test-residue; note audit_logs expansion on PA-046..049,20,4,20,1,0,0,0,0,0,20,0,0,0,0
+97b872a,2026-07-17T15:20:00+03:00,RUN-A,fix(hooks): complete husky->beads migration — beads owns git hooks via core.hooksPath,1,1,0,0,1,0,0,0,0,0,0,0,0,0
+3da18eb,2026-07-17T15:09:50+03:00,RUN-A,"chore(orchestrator): P6 capture-only batch RL-001 DoD — 5 features gated, 0 remediation",400,0,391,0.978,0.022,0,0,0,0,400,0,0,0,0
+c9b8c5b,2026-07-17T06:32:42+03:00,RUN-A,fix(glossary): dead-seam producer: apps/web/app/api/glossary/[...path]/route.ts (Task 6.2 proxy) ↔ consumer: apps/web/components/GlossaryTermForm.tsx:192 (Task 6.2 Add form),134,0,134,1,0,0,134,0,0,0,0,134,0,0
+6fce065,2026-07-17T06:27:19+03:00,RUN-A,"fix(glossary): design-divergence design.md as a whole — no §Feature Flag / dark-ship concept appears anywhere (grep for ""flag""/""dark""/""GLOSSARY_"" over design.md returns only unrelated matches).",23,1,23,1,0,0,0,0,23,0,0,0,0,23
+61bc9cc,2026-07-17T06:20:58+03:00,RUN-A,"fix(glossary): design-divergence design.md §Snapshot sequence line 214 and §GlossarySnapshotService line 299 — ""FM-003 НЕ открывает собственную TX и НЕ enqueue-ит фоновую задачу""; §Service Interface l",39,8,23,0.59,0.41,9,0,0,30,0,5,0,0,18
+3fbb315,2026-07-17T06:05:53+03:00,RUN-A,fix(glossary): missing-test Requirement 7.7,70,1,69,0.986,0.014,26,44,0,0,0,26,43,0,0
+b582521,2026-07-17T05:53:46+03:00,RUN-A,fix(glossary): dead-seam Requirement 2.6,141,5,141,1,0,33,108,0,0,0,33,108,0,0
+4f0d843,2026-07-17T05:01:56+03:00,RUN-A,"docs(product): regenerate stale handoff FM-006 v1 -> v2 (PA-051 Side-B drift: SC-025, BR-080)",72,15,69,0.958,0.042,0,0,72,0,0,0,0,69,0
+4b98345,2026-07-17T04:58:48+03:00,RUN-A,docs(product): RL-001 -> in-progress + Release DoD baseline (6 categories),27,3,4,0.148,0.852,0,0,27,0,0,0,0,4,0
+9a0f813,2026-07-17T04:56:46+03:00,RUN-A,chore(orchestrator): commit run artifacts lymzao/lzg7rk (deploy-to-stage 2026-07-15),135,0,135,1,0,0,0,0,0,135,0,0,0,0
+74d33e8,2026-07-17T04:28:57+03:00,RUN-A,fix(product): migrate linked_segment -> segment in VP-001..003 + HYP-001..004 (canonical per VP.md/HYP.md; unblocks V-09 checkpoint),7,7,7,1,0,0,0,7,0,0,0,0,7,0
+6965aa2,2026-07-17T04:20:51+03:00,RUN-A,"chore(ecosystem): sync 1.12.1 -> 1.12.2 (coherence track: V-09 checkpoint move, install version parse, skill/spec alignment)",191,66,189,0.99,0.01,0,0,0,0,191,0,0,0,0
+119a7fa,2026-07-17T02:31:54+03:00,RUN-A,"chore(ecosystem): sync 1.12.0 -> 1.12.1 (collector empty-queue fix, bg-extractor allowlist, SPEC 8.4 internal-fallback)",83,21,76,0.916,0.084,0,0,0,0,83,0,0,0,0
+cf1a039,2026-07-17T01:46:44+03:00,RUN-A,fix(product): regenerate stale handoffs FM-001..005 + root-fix glossary id: BG (G22 fresh 6/7),144,32,120,0.833,0.167,0,0,92,0,52,0,0,77,0
+af55cb5,2026-07-17T01:20:11+03:00,RUN-A,"fix(hygiene): wire the secret-gate into pre-commit for real (hooksPath, no husky); align deploy docs with reality; re-audit pmo-mapping D3-04 rationale",30,20,28,0.933,0.067,19,0,0,0,9,18,0,0,0
+d8a10cc,2026-07-17T01:20:11+03:00,RUN-A,"chore(ecosystem): sync patch -> 18cffa5 (/product:status deterministic collector + ghost-check, DEC-DEV-0217)",883,62,878,0.994,0.006,0,0,0,0,883,0,0,0,0
+9e6a9b3,2026-07-15T18:02:37+03:00,pre-conductor,chore(ecosystem): sync post-release patch e546442 -> afb129d,196,24,194,0.99,0.01,0,0,0,0,196,0,0,0,0
+e0e808c,2026-07-15T13:43:23+03:00,pre-conductor,feat(product): impl-sync FM-006 → shipped (GO gate e3kh9s),32,2,32,1,0,0,0,32,0,0,0,0,32,0
+b5c99b5,2026-07-15T13:23:15+03:00,pre-conductor,chore(orchestrator): run records of campaign round 3 (deploy/rollback live runs),358,0,358,1,0,0,0,0,0,358,0,0,0,0
+cbe5e20,2026-07-15T13:23:15+03:00,pre-conductor,chore(integrator): journal auto-entry for CNT-005 draft→active flip,6,0,6,1,0,0,0,0,0,6,0,0,0,0
+464f34f,2026-07-15T13:19:38+03:00,pre-conductor,chore(integrator): flip CNT-005 deploy-staging draft→active on live verify,4,3,1,0.25,0.75,0,0,0,0,4,0,0,0,0
+38e20f0,2026-07-15T04:37:48+03:00,pre-conductor,chore(ecosystem): sync 1.12.0 post-release (2a5f5c5 → e546442),14,4,9,0.643,0.357,0,0,0,0,14,0,0,0,0
+623baf2,2026-07-15T04:10:54+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (85af1a7 → 2a5f5c5),16,2,14,0.875,0.125,0,0,0,0,16,0,0,0,0
+69d5c34,2026-07-15T03:41:26+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (c91f17e → 85af1a7),41,335,39,0.951,0.049,0,0,0,0,41,0,0,0,0
+ff7c9f8,2026-07-15T01:05:03+03:00,pre-conductor,chore(orchestrator): land Epic E deploy-campaign run records (l62yt4 = first live DEPLOYED),608,0,608,1,0,0,0,0,0,608,0,0,0,0
+efcf2f1,2026-07-15T00:25:58+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (fa38f16 → c91f17e),64,7,62,0.969,0.031,0,0,0,0,64,0,0,0,0
+1a774a6,2026-07-14T22:13:11+03:00,pre-conductor,"chore(integrator): re-provision deploy-staging for upgraded deploy-manifest validator (DEC-INT-0018, CNT-005 still draft)",140,30,140,1,0,0,0,0,0,140,0,0,0,0
+f9992a3,2026-07-14T21:50:13+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (42827f8 → fa38f16),183,24,180,0.984,0.016,0,0,0,0,183,0,0,0,0
+aa7a049,2026-07-14T20:18:12+03:00,pre-conductor,test(measurement): make BR-079 advisory-lock concurrency gate deterministic,67,9,67,1,0,0,67,0,0,0,0,67,0,0
+5375159,2026-07-14T19:27:09+03:00,pre-conductor,"chore(integrator): re-provision deploy-staging to deploy-manifest.cjs schema_version 1 (CNT-005, still draft)",275,231,242,0.88,0.12,0,0,0,0,275,0,0,0,0
+4fe8748,2026-07-14T19:01:18+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (fca121f → 42827f8) — seam-protocol-v1,1066,44,1037,0.973,0.027,0,0,0,0,1066,0,0,0,0
+8cc4dab,2026-07-14T15:24:19+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (7f0f668 → fca121f),361,26,347,0.961,0.039,0,0,0,0,361,0,0,0,0
+43361c4,2026-07-14T15:03:35+03:00,pre-conductor,"fix(api): inject GlossaryRateLimitStore by token in GlossaryRateLimitGuard — DI-дефект, вскрытый живым P7 (upstream: FM-003 Task 4.1 guard × Task 1.4 store wiring)",12,1,12,1,0,12,0,0,0,0,12,0,0,0
+e602110,2026-07-14T14:36:21+03:00,pre-conductor,"fix(api): export EMAIL_PORT from AuthModule — DI-дефект, вскрытый живым P7 (upstream: bd 8h0 dunning-seam)",1,1,1,1,0,1,0,0,0,0,1,0,0,0
+b1840f5,2026-07-14T13:44:24+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (d6fefb5 → 7f0f668),101,20,97,0.96,0.04,0,0,0,0,101,0,0,0,0
+02573fa,2026-07-14T13:40:09+03:00,pre-conductor,chore(evidence): E.A provision + E.D run 1 — deploy-capability CNT-005 + P7 bootSmoke,663,6,430,0.649,0.351,0,0,0,0,663,0,0,0,0
+c4f1170,2026-07-14T02:43:33+03:00,pre-conductor,chore(ecosystem): sync 1.11.0 post-release (138783f → d6fefb5),1847,118,1764,0.955,0.045,0,0,0,0,1847,0,0,0,0
+31ddb65,2026-07-11T22:40:48+03:00,pre-conductor,chore(ecosystem): update 1.9.1 → 1.11.0 (upstream 138783f),2988,1447,2947,0.986,0.014,0,0,0,0,2988,0,0,0,0
+eb1172d,2026-07-11T15:25:01+03:00,pre-conductor,chore(integrator): journal auto-log sweep (session git-ops),9,0,9,1,0,0,0,0,0,9,0,0,0,0
+8159da5,2026-07-11T15:21:44+03:00,pre-conductor,chore(integrator): cc-sdd --repair — C-03 drift fix to instance (DEC-INT-0015),212,16,212,1,0,0,0,0,0,212,0,0,0,0
+76cbdeb,2026-07-11T15:20:57+03:00,pre-conductor,chore(ecosystem): update 1.9.0 → 1.9.1 (upstream 35395869),608,49,271,0.446,0.554,0,0,0,0,608,0,0,0,0
+54dd35a,2026-07-11T06:46:48+03:00,pre-conductor,"chore(integrator): maintenance sweep — verify last_audit stamps, debug DEC-INT-0013 (C-03 drift, cancelled), cc-sdd tool-docs manual block",106,0,96,0.906,0.094,0,0,0,0,106,0,0,0,0
+202c882,2026-07-11T06:22:14+03:00,pre-conductor,chore(ecosystem): update 1.8.1 → 1.9.0 (upstream 91b690d),1098,42,1063,0.968,0.032,0,0,0,0,1098,0,0,0,0
+f6c444b,2026-07-11T04:49:38+03:00,pre-conductor,"feat(product): FM-002 manifest — TTS capability (RL-002 vendor wiring leg): provider = OpenAI TTS, reuses provisioned OPENAI_API_KEY (owner decision 2026-07-11)",5,0,5,1,0,0,0,5,0,0,0,0,5,0
+42748ed,2026-07-11T03:46:33+03:00,pre-conductor,chore(ecosystem): update 1.8.0 → 1.8.1 (orchestrator/fabric sync),254,79,224,0.882,0.118,0,0,0,0,254,0,0,0,0
+8945960,2026-07-11T00:26:44+03:00,pre-conductor,chore(product): record D1.0b domain_fit block (assess mode) — A2 fit @ 90,19,0,19,1,0,0,0,0,0,19,0,0,0,0
+f2eaf9d,2026-07-11T00:14:29+03:00,pre-conductor,chore(localization): apply PA-064 owner decision — split Task 5.4 (5.4a done / 5.4b deferred),18,21,16,0.889,0.111,0,0,0,12,6,0,0,0,10
+313437e,2026-07-11T00:05:01+03:00,pre-conductor,chore(orchestrator): FM-002 line → escalated (PA-064); Task 5.4 mis-sizing gate,108,5,93,0.861,0.139,0,0,0,1,107,0,0,0,0
+7d15233,2026-07-11T00:01:00+03:00,pre-conductor,feat(localization): Task 5.4 route-X glossary snapshot swap (Mock→real) — PARTIAL,423,9,397,0.939,0.061,208,215,0,0,0,187,210,0,0
+3d29bd4,2026-07-10T23:56:04+03:00,pre-conductor,chore(localization): block 5.4 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+2405f4e,2026-07-10T23:35:49+03:00,pre-conductor,chore(localization): Task 5.4 — clear stale _Blocked marker (route X ratified),6,15,0,0,1,0,0,0,2,4,0,0,0,0
+721300a,2026-07-10T23:27:15+03:00,pre-conductor,chore(pa): PA-062 -> done — OPENAI_API_KEY provisioned (Integrator act: session-env via settings.local.json),2,1,2,1,0,0,0,0,0,2,0,0,0,0
+743cd78,2026-07-10T23:11:04+03:00,pre-conductor,chore(orchestrator): FM-002 line P5 → parked awaiting_capability_impl (PA-062),53,6,47,0.887,0.113,0,0,0,0,53,0,0,0,0
+05e00b9,2026-07-10T22:53:08+03:00,pre-conductor,"chore(pa): PA-061 -> done — Blocker 1 closed (route X, DEC-PLAN-045); key provisioning deferred to capability gate",2,1,2,1,0,0,0,0,0,2,0,0,0,0
+d4cbd30,2026-07-10T22:45:57+03:00,pre-conductor,chore(localization): ratify route X (DEC-PLAN-045) — FM-003 exports GlossarySnapshotService; hold FM-002 line on OPENAI_API_KEY,29,2,27,0.931,0.069,0,0,19,2,8,0,0,19,0
+703d70b,2026-07-10T22:39:02+03:00,pre-conductor,chore(orchestrator): FM-002 line P5 → parked awaiting_product (PA-061),105,3,100,0.952,0.048,0,0,0,0,105,0,0,0,0
+8456324,2026-07-10T22:35:13+03:00,pre-conductor,chore(localization): block 5.4 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+4be9299,2026-07-10T22:19:35+03:00,pre-conductor,chore(localization): unblock Task 5.4 — PA-035 ratified route (a) thread-the-tx; record decided contract for P5 impl,2,2,0,0,1,0,0,0,2,0,0,0,0,0
+06dcdd5,2026-07-10T22:14:12+03:00,pre-conductor,"chore(pa): PA-035 ratified route (a) thread-the-tx (owner via operator, OD7 live-run) — PA-058/PA-059 -> done, line may resume",6,3,6,1,0,0,0,0,0,6,0,0,0,0
+54596fd,2026-07-10T22:06:43+03:00,pre-conductor,chore(orchestrator): FM-002 line P5 → parked awaiting_product (PA-035 blocks atomic Task 5.4),140,8,125,0.893,0.107,0,0,0,0,140,0,0,0,0
+d2ac91a,2026-07-10T22:02:07+03:00,pre-conductor,chore(localization): block 5.4 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+787f530,2026-07-10T21:34:00+03:00,pre-conductor,"chore(pa): PA-056 -> done — DEF-4 workspace-scan fix delivered (1.8.0) and confirmed live by probe (READY_TO_SMOKE, run_target apps/web)",2,1,2,1,0,0,0,0,0,2,0,0,0,0
+972c262,2026-07-10T20:57:36+03:00,pre-conductor,chore(ecosystem): update 1.7.0 → 1.8.0,1315,75,1277,0.971,0.029,0,0,0,0,1315,0,0,0,0
+4e0dfa6,2026-07-10T02:19:58+03:00,pre-conductor,"chore(orchestrator): FM-006 forced re-run line → done (instance e16txs) — planted regression caught+reverted, Resolution 2 applied, P7 false-negative reclassified",340,24,338,0.994,0.006,0,0,0,0,340,0,0,0,0
+d684d1b,2026-07-10T02:08:25+03:00,pre-conductor,fix(conversion-measurement): orphan-export classifyCohort (producer apps/worker/src/measurement/cohort-classifier.ts:59) <-> no production consumer,43,190,43,1,0,13,30,0,0,0,13,30,0,0
+f0a253f,2026-07-10T02:04:18+03:00,pre-conductor,fix(conversion-measurement): no-call-site 6.5,129,1,129,1,0,36,93,0,0,0,36,93,0,0
+2787205,2026-07-10T01:46:22+03:00,pre-conductor,fix(conversion-measurement): PA-054/055 Resolution 2 — sanction api↔worker constant two-copy seam + drift-guard,93,10,93,1,0,14,56,0,23,0,14,56,0,23
+bfbdc9b,2026-07-10T01:19:48+03:00,pre-conductor,fix(conversion-measurement): orphan-export enqueueManualAggregation (producer) ↔ no production consumer (manual aggregation trigger seam),27,4,27,1,0,14,13,0,0,0,14,13,0,0
+e072db1,2026-07-10T01:15:29+03:00,pre-conductor,fix(conversion-measurement): design-divergence Requirement 5.5 (also 5.4) — BR-080 / DA F6 insufficient-sample floor,1,1,1,1,0,1,0,0,0,0,1,0,0,0
+277ad40,2026-07-10T00:50:50+03:00,pre-conductor,feat(specs): batch conversion-measurement → cc-sdd specs,11,4,11,1,0,0,0,0,11,0,0,0,0,11
+d312e9c,2026-07-10T00:32:30+03:00,pre-conductor,"chore(validation): negative-control C2 — planted suppression inversion (snapshot-reader:240) + fabric-engine DEF-3 guard (operator patch, ecosystem PR pending)",51,5,22,0.431,0.569,1,0,0,0,50,0,0,0,0
+f6e7763,2026-07-10T00:16:20+03:00,pre-conductor,chore(orchestrator): FM-006 line → done — PA-051 Side-B implemented + verified; runtime-ready GO,15,3,15,1,0,0,0,0,0,15,0,0,0,0
+0eced8a,2026-07-10T00:15:08+03:00,pre-conductor,feat(conversion-measurement): PA-051 Side-B amendment — derive-on-read + single-run pinning (FM-006),221,414,221,1,0,45,48,88,40,0,45,48,88,40
+b8d6853,2026-07-09T23:50:14+03:00,pre-conductor,chore(pending): PA-051 ratified by owner — Side-B + full amendment scope; PA-052 gate flipped to done,13,1,13,1,0,0,0,0,0,13,0,0,0,0
+3683834,2026-07-09T23:48:22+03:00,pre-conductor,chore(ecosystem): /ecosystem:update sync to upstream cf8dfd6 (1.7.0 [Unreleased]),9,5,7,0.778,0.222,0,0,0,0,9,0,0,0,0
+83ce237,2026-07-08T21:17:57+03:00,pre-conductor,"chore(consilium): PA-051 jury recommendation — Side-B (derive-on-read), strong-CONDITIONAL",40,0,40,1,0,0,0,1,0,39,0,0,1,0
+581527f,2026-07-08T21:06:50+03:00,pre-conductor,chore(orchestrator): FM-006 P5 impl done → parked at awaiting_product (PA-051 SIDE A/B design fork),233,2,222,0.953,0.047,0,0,0,0,233,0,0,0,0
+ca342ac,2026-07-08T20:57:45+03:00,pre-conductor,fix(conversion-measurement): design-divergence design.md §Boundary/Allowed Dependencies line 86 + boundary-map AuditW line 133 + §Monitoring line 578 [readiness=DEGRADED: re-verify on a READY re-run],15,7,15,1,0,0,0,0,15,0,0,0,0,15
+af9268e,2026-07-08T20:34:38+03:00,pre-conductor,feat(conversion-measurement): 6.4,508,1,508,1,0,0,506,0,2,0,0,506,0,2
+14be2ad,2026-07-08T20:18:10+03:00,pre-conductor,feat(conversion-measurement): 6.3,479,1,470,0.981,0.019,0,477,0,2,0,0,468,0,2
+8fb8ecf,2026-07-08T20:00:36+03:00,pre-conductor,feat(conversion-measurement): 6.2,422,1,422,1,0,0,421,0,1,0,0,421,0,1
+980f7ec,2026-07-08T19:44:20+03:00,pre-conductor,feat(conversion-measurement): 6.1,239,1,239,1,0,0,238,0,1,0,0,238,0,1
+94ddc8f,2026-07-08T19:28:07+03:00,pre-conductor,feat(conversion-measurement): 5.4,420,2,419,0.998,0.002,238,180,0,2,0,237,180,0,2
+52c6487,2026-07-08T19:04:47+03:00,pre-conductor,feat(conversion-measurement): 5.3,1094,1,1094,1,0,594,499,0,1,0,594,499,0,1
+309b25a,2026-07-08T18:47:16+03:00,pre-conductor,feat(conversion-measurement): 5.2 snapshot-reader.service.ts + dashboard.controller.ts — SC-025/025e1 + freshness + audit,1138,1,1117,0.982,0.018,629,507,0,2,0,611,504,0,2
+5ff7b00,2026-07-08T18:18:53+03:00,pre-conductor,feat(conversion-measurement): 5.1,553,1,553,1,0,292,260,0,1,0,292,260,0,1
+b02fe49,2026-07-08T17:59:20+03:00,pre-conductor,feat(conversion-measurement): 4.3,419,1,415,0.99,0.01,268,150,0,1,0,264,150,0,1
+93e2ac6,2026-07-08T17:44:20+03:00,pre-conductor,feat(conversion-measurement): 4.2 alert-emitter — stale/failing/integrity alerts with dedup,494,1,494,1,0,250,242,0,2,0,250,242,0,2
+da3ad24,2026-07-08T17:26:24+03:00,pre-conductor,feat(conversion-measurement): 4.1,795,1,793,0.997,0.003,401,392,0,2,0,399,392,0,2
+e668091,2026-07-08T16:59:39+03:00,pre-conductor,feat(conversion-measurement): 3.1,756,1,756,1,0,366,389,0,1,0,366,389,0,1
+ea5b832,2026-07-08T16:41:49+03:00,pre-conductor,feat(conversion-measurement): 2.4,205,1,422,2.059,0,0,204,0,1,0,217,204,0,1
+0ef50b3,2026-07-08T16:26:50+03:00,pre-conductor,feat(conversion-measurement): 2.3,302,1,112,0.371,0.629,115,186,0,1,0,66,45,0,1
+e8b1744,2026-07-08T16:16:30+03:00,pre-conductor,feat(conversion-measurement): 2.2,352,1,2,0.006,0.994,156,194,0,2,0,0,0,0,2
+3f42602,2026-07-08T16:05:27+03:00,pre-conductor,feat(conversion-measurement): 2.1,289,1,284,0.983,0.017,136,151,0,2,0,131,151,0,2
+53886fa,2026-07-08T15:53:38+03:00,pre-conductor,feat(conversion-measurement): 1.3,422,1,416,0.986,0.014,213,207,0,2,0,207,207,0,2
+ad7463f,2026-07-08T15:21:35+03:00,pre-conductor,"feat(conversion-measurement): 1.2 миграция UNIQUE(user_id, aggregation_run_id) + latest_snapshot_per_user view + индексы",271,1,271,1,0,80,186,0,5,0,80,186,0,5
+474512e,2026-07-08T15:07:19+03:00,pre-conductor,feat(conversion-measurement): 1.1,239,1,237,0.992,0.008,85,153,0,1,0,83,153,0,1
+a0e4e27,2026-07-08T14:47:14+03:00,pre-conductor,"chore(pending): PA-045 gate resolved by owner — spec faithful, BR-081 deferred (PA-044 open)",2,1,2,1,0,0,0,0,0,2,0,0,0,0
+924b0f9,2026-07-08T14:44:08+03:00,pre-conductor,chore(orchestrator): FM-006 line parked at awaiting_product (P3+P4 done),158,0,138,0.873,0.127,0,0,0,0,158,0,0,0,0
+0fc5ad7,2026-07-08T14:30:13+03:00,pre-conductor,feat(specs): batch conversion-measurement → cc-sdd specs,1236,0,1183,0.957,0.043,0,0,0,1236,0,0,0,0,1183
+b1ec19b,2026-07-08T14:04:17+03:00,pre-conductor,chore(ecosystem): /ecosystem:update sync to upstream HEAD 20bb912 (post-1.7.0),4277,117,4154,0.971,0.029,0,0,0,0,4277,0,0,0,0
+7cc0353,2026-07-07T21:03:50+03:00,pre-conductor,chore(notes): fix mixed-script typo in NOTE-013 (регardless -> regardless),1,1,1,1,0,0,0,1,0,0,0,0,1,0
+00a0b45,2026-07-04T01:11:43+03:00,pre-conductor,chore(pending): resolve PA-043 as G2 (owner 2026-07-04) — account-closure stays deferred to RL-002; branches run/v2-personas + run/g3-glossary retired,1,1,1,1,0,0,0,0,0,1,0,0,0,0
+3d14586,2026-07-03T22:38:09+03:00,pre-conductor,chore(pending): fold V-2 worktree-local escalation into canonical ledger as PA-043 (was worktree-local PA-034 on run/v2-personas; FB-LR-29/23 collision class; content verbatim + provenance note),39,0,38,0.974,0.026,0,0,0,0,39,0,0,0,0
+a3eabb0,2026-07-03T22:07:18+03:00,pre-conductor,"chore(ecosystem): sync to upstream 73a1341 (1.7.0 HEAD) — /product:complete completeness-loop (product/processes/complete-feature.mjs + hooks/product/lib/gap-classifier + completeness-loop skill), /ec",2112,102,2074,0.982,0.018,0,0,0,0,2112,0,0,0,0
+2ef51c5,2026-07-01T12:53:57+03:00,pre-conductor,chore(checkpoint): ratify PA-027/028/029/030 → DEC-PLAN-041..044; resolve PA-024; bd follow-ups,86,5,84,0.977,0.023,0,0,81,0,5,0,0,81,0
+68c77ee,2026-07-01T12:31:45+03:00,pre-conductor,chore(localization): allocate Task 5.4 worker-bootstrap spec — ratifies PA-040/042 (DEC-PLAN-039/040),11,0,7,0.636,0.364,0,0,0,11,0,0,0,0,7
+b5f45dd,2026-07-01T12:29:23+03:00,pre-conductor,chore(decision): ratify PA-040/042 (a)+(a) → DEC-PLAN-039/040 + record 5 P2 consilium proposals,465,2,465,1,0,0,0,53,0,412,0,0,53,0
+016da47,2026-07-01T10:25:02+03:00,pre-conductor,chore(memory): sync decision-memory layers — PA-038/PA-039 localization capability tracking,139,0,130,0.935,0.065,0,0,0,0,139,0,0,0,0
+99300dc,2026-07-01T10:24:42+03:00,pre-conductor,"chore(ecosystem): sync to upstream 8f975d2 (1.6.0 HEAD) — orchestrator P2 architecture-consilium (decide-architecture-foundation lib+process+skill), BPMN process-map guide (ecosystem-processes + cytos",8154,11,8096,0.993,0.007,0,0,0,0,8154,0,0,0,0
+d0299f9,2026-07-01T01:47:10+03:00,pre-conductor,"fix(localization): orphan-export ElevenLabsTtsAdapter / WhisperTranscriptionAdapter (packages/providers/src/tts/elevenlabs-tts.adapter.ts, packages/providers/src/transcription/whisper-transcription.ad",130,0,0,0,1,0,130,0,0,0,0,0,0,0
+0f82e6f,2026-07-01T00:36:40+03:00,pre-conductor,feat(localization): 7.1,892,50,892,1,0,558,332,0,2,0,558,332,0,2
+d86bab7,2026-06-30T23:43:34+03:00,pre-conductor,chore(localization): provider choice DeepL→OpenAI for RL-002 task 7.1 (Product cascade),11,7,10,0.909,0.091,0,0,7,4,0,0,0,7,3
+69f6861,2026-06-30T15:53:56+03:00,pre-conductor,feat(localization): RL-002 — real DeepL translation provider (retire Mock for prod path),18,2,12,0.667,0.333,0,0,9,9,0,0,0,6,6
+bb09593,2026-06-30T15:42:59+03:00,pre-conductor,"chore(ecosystem): sync to upstream eea31f07 (1.6.0 HEAD) — orchestrator runtime-readiness lib+process, docs/guide map + FM.md + orchestrator SPEC, CHANGELOG/ROADMAP, sync-metadata restamp",1478,11,1434,0.97,0.03,0,0,0,0,1478,0,0,0,0
+cb5a6e6,2026-06-30T14:57:27+03:00,pre-conductor,chore(memory): sync decision-memory layers — PA-034..037 + journal + beads export,163,0,162,0.994,0.006,0,0,24,0,139,0,0,24,0
+ee8983f,2026-06-29T04:47:27+03:00,pre-conductor,fix(glossary): design-divergence design.md §Snapshot sequence lines 201-214 + §GlossarySnapshotService lines 299/311-315 + req 7.1/7.9 (buildSnapshot executes on the caller's Job-creation TX; freeze +,51,9,31,0.608,0.392,51,0,0,0,0,31,0,0,0
+fed8398,2026-06-29T04:06:31+03:00,pre-conductor,chore(orchestrator): record P6 billing re-gate escalations PA-031/032/033 (folded → PA-029),90,0,90,1,0,0,0,0,0,90,0,0,0,0
+1974c4d,2026-06-29T03:40:27+03:00,pre-conductor,fix(billing): design-divergence requirements.md req 9.4 + design.md §SC-022 (update_payment suppression off checkout.session.completed),1,1,1,1,0,0,0,0,1,0,0,0,0,1
+1764d53,2026-06-29T03:28:20+03:00,pre-conductor,fix(billing): dead-seam requirements.md req 2.6 (paywall_shown 5-minute dedup window),223,12,223,1,0,95,128,0,0,0,95,128,0,0
+bfef870,2026-06-29T03:17:27+03:00,pre-conductor,fix(billing): no-call-site requirements.md req 10.4 (activate Stripe Live only in production),228,15,226,0.991,0.009,143,85,0,0,0,141,85,0,0
+2526a16,2026-06-29T01:24:19+03:00,pre-conductor,chore(ecosystem): sync .claude/ to upstream 120bc3f (within-1.6.0 Orchestrator gate-precision update),103,24,96,0.932,0.068,0,0,0,0,103,0,0,0,0
+46abcd2,2026-06-27T01:45:56+03:00,pre-conductor,chore(orchestrator): record P6 billing escalations PA-029 (dunning-email FM-005↔FM-001 seam) + PA-030 (Stripe orphan/prod-boot wiring),80,0,78,0.975,0.025,0,0,0,0,80,0,0,0,0
+6673d49,2026-06-27T01:34:48+03:00,pre-conductor,fix(billing): design-divergence design.md §Error Handling → Error Categories → System Errors (provider unavailable on createCheckoutSession → graceful 'try again later'),100,11,92,0.92,0.08,49,51,0,0,0,41,51,0,0
+d92774f,2026-06-27T01:27:13+03:00,pre-conductor,fix(billing): dead-seam design.md req 2.4/2.5 + line 204 (paywall heading/CTA by subscription_state),98,17,98,1,0,73,25,0,0,0,73,25,0,0
+5c33fb8,2026-06-27T01:19:50+03:00,pre-conductor,"fix(billing): design-divergence design.md §Data Contracts line 659 (account.confirmed(user_id, signup_method)) vs §TrialService line 560 (account.confirmed(user_id))",1,1,1,1,0,0,0,0,1,0,0,0,0,1
+46066cd,2026-06-27T00:11:18+03:00,pre-conductor,"fix(test): IC-009 — compare snapshot createdAt as ISO string, not Date.getTime()",4,2,4,1,0,0,4,0,0,0,0,4,0,0
+3a474f6,2026-06-27T00:11:52+03:00,pre-conductor,chore(orchestrator): reconcile P6 glossary re-gate escalations into pilot canon — PA-024 re-verify + PA-027 + PA-028,79,0,77,0.975,0.025,0,0,0,0,79,0,0,0,0
+9ac3639,2026-06-26T22:02:31+03:00,pre-conductor,feat(skills): worktree-bootstrap — auto-enter worktree after create,28,6,28,1,0,0,0,0,0,28,0,0,0,0
+71bb333,2026-06-26T21:34:42+03:00,pre-conductor,fix(skills): worktree-bootstrap — resolve main session dir from worktree + auto-revert .beads churn,3,0,3,1,0,0,0,0,0,3,0,0,0,0
+13c45c1,2026-06-26T20:53:02+03:00,pre-conductor,feat(skills): add worktree-bootstrap — full-fidelity worktree + session context + memory primer,171,0,165,0.965,0.035,0,0,0,0,171,0,0,0,0
+1bb6e1d,2026-06-26T20:31:38+03:00,pre-conductor,chore(product): resolve advisor-pending queue — MK-001 ux-review + dismiss/ack/defer (DEC-PLAN-037),80,0,80,1,0,0,0,80,0,0,0,0,80,0
+99d488f,2026-06-26T20:11:08+03:00,pre-conductor,chore(product): process pending queues — bg/cascade/da (advisor deferred),185,0,185,1,0,0,0,185,0,0,0,0,185,0
+4924fb8,2026-06-26T17:31:27+03:00,pre-conductor,chore(pilot): post-glossary-promotion WIP — settings/verify/PA-reconcile,88,1,88,1,0,0,0,0,0,88,0,0,0,0
+8c53c0e,2026-06-26T14:56:24+03:00,pre-conductor,chore(ecosystem): sync .claude/ to upstream 37ec14e (within-1.6.0 content update),876,53,46,0.053,0.947,0,0,0,0,876,0,0,0,0
+3489e34,2026-06-26T14:56:24+03:00,pre-conductor,chore(ecosystem): sync .claude/ to upstream 37ec14e (within-1.6.0 content update),876,53,771,0.88,0.12,0,0,0,0,876,0,0,0,0
+36c82f1,2026-06-26T14:50:52+03:00,pre-conductor,"fix(auth,billing): had_trial single-writer — auth stops pre-flipping, billing owns the gate",134,116,134,1,0,80,31,3,20,0,80,31,3,20
+5a7412d,2026-06-25T14:20:14+03:00,pre-conductor,chore(orchestrator): consolidate duplicate PA entries — localization cluster (PA-013) + glossary snapshot seam (PA-024),9,5,8,0.889,0.111,0,0,0,0,9,0,0,0,0
+da791c2,2026-06-25T14:07:11+03:00,pre-conductor,chore(orchestrator): route glossary cross-FM seams to FM-002/Product/Integrator (PA-021/022/024),83,0,81,0.976,0.024,0,0,0,0,83,0,0,0,0
+3acf09b,2026-06-25T06:20:09+03:00,pre-conductor,fix(glossary): design-divergence requirements.md §7.9 + design.md line 201 / line 299: the snapshot active-terms SELECT must run under isolation ≥ REPEATABLE_READ to freeze a consistent point-in-time ,91,4,84,0.923,0.077,27,64,0,0,0,21,63,0,0
+345336e,2026-06-25T06:13:15+03:00,pre-conductor,"fix(glossary): design-divergence design.md §GlossarySnapshotService Service Interface, lines 327-336 (esp. line 334): the FM-003-OWNED, BR-028-exposed GlossarySnapshot contract specifies `sourceGlossa",29,17,29,1,0,29,0,0,0,0,29,0,0,0
+7e4ea7e,2026-06-25T06:08:36+03:00,pre-conductor,fix(glossary): missing-test Requirement 8.3 (/glossary FCP <5s / LCP <3s),11,4,5,0.455,0.545,0,11,0,0,0,0,5,0,0
+2ccf2a9,2026-06-25T05:50:08+03:00,pre-conductor,feat(glossary): 7.2 feature-level integration verification of load-bearing invariants (IC-014..018 + NFR-007/008),848,1,835,0.985,0.015,0,846,0,2,0,0,833,0,2
+2314060,2026-06-25T05:34:14+03:00,pre-conductor,feat(glossary): 7.1,1598,62,1568,0.981,0.019,762,834,0,2,0,734,832,0,2
+c838e93,2026-06-25T04:45:34+03:00,pre-conductor,feat(glossary): 6.2,1504,3,1504,1,0,1117,385,0,2,0,1117,385,0,2
+6ab3004,2026-06-25T03:55:06+03:00,pre-conductor,feat(glossary): 6.1,857,1,855,0.998,0.002,641,214,0,2,0,640,213,0,2
+40dee90,2026-06-25T03:38:40+03:00,pre-conductor,feat(glossary): 5.2 readSnapshot read-path + synchronous buildSnapshot FM-002 seam (no worker/queue),415,7,405,0.976,0.024,95,318,0,2,0,92,311,0,2
+076411f,2026-06-25T03:20:08+03:00,pre-conductor,feat(glossary): 5.1 GlossarySnapshotService.buildSnapshot (BR-051/SC-014/IC-009/IC-017),624,1,588,0.942,0.058,234,388,0,2,0,216,371,0,1
+24e8253,2026-06-25T03:03:01+03:00,pre-conductor,feat(glossary): 4.4 register GlossaryModule in app.module.ts,272,2,271,0.996,0.004,12,258,0,2,0,11,258,0,2
+2471a8a,2026-06-25T02:43:41+03:00,pre-conductor,feat(glossary): 4.3 GlossaryController + DTO + guard wiring (BR-013→066→047 chain),1084,1,1069,0.986,0.014,637,445,0,2,0,622,445,0,2
+c618636,2026-06-25T02:19:13+03:00,pre-conductor,feat(glossary): 4.2 ULID term_id generator (NFR-007/req 5.6) — self-contained node:crypto ULID + UUID-v4 fallback,309,1,309,1,0,162,145,0,2,0,162,145,0,2
+c847013,2026-06-25T02:04:15+03:00,pre-conductor,feat(glossary): 4.1 GlossaryRateLimitGuard (NFR-007) — cross-user-404 sliding-window throttle: canActivate entry-check (≥threshold → 429 + Retry-After + RATE_LIMITED envelope) + recordCrossUser404 pri,647,1,646,0.998,0.002,225,420,0,2,0,224,420,0,2
+07b515e,2026-06-25T01:41:40+03:00,pre-conductor,feat(glossary): 3.4 GlossaryService.listTerms (read-path normalization BR-050),535,1,535,1,0,166,367,0,2,0,166,367,0,2
+2a0495f,2026-06-25T01:25:01+03:00,pre-conductor,"feat(glossary): 3.3 GlossaryService.archiveTerm + restoreTerm (BR-048 transitions, LC-005)",512,2,499,0.975,0.025,129,381,0,2,0,118,379,0,2
+9f81798,2026-06-25T01:09:21+03:00,pre-conductor,feat(glossary): 1.1,208,1,207,0.995,0.005,0,206,0,2,0,0,206,0,1
+2e32902,2026-06-24T22:58:59+03:00,pre-conductor,feat(glossary): 3.2 GlossaryService.addTerm + editTerm (BR-044->045->046->049 gate chain),1042,1,1021,0.98,0.02,516,524,0,2,0,495,524,0,2
+8a1eeb3,2026-06-24T22:14:57+03:00,pre-conductor,feat(glossary): 3.1 glossary.errors — Cat 1-4 → BR-052 envelope mapping,754,1,754,1,0,395,357,0,2,0,395,357,0,2
+4b68b2e,2026-06-24T21:44:49+03:00,pre-conductor,feat(glossary): 2.2,983,1,983,1,0,459,522,0,2,0,459,522,0,2
+197fd8c,2026-06-24T21:25:25+03:00,pre-conductor,feat(glossary): 2.1,339,1,339,1,0,166,171,0,2,0,166,171,0,2
+0a5ab21,2026-06-24T21:11:36+03:00,pre-conductor,feat(glossary): 1.4 Redis sliding-window rate-limit infrastructure (NFR-007 / §5.7),443,1,443,1,0,192,249,0,2,0,192,249,0,2
+1d25f37,2026-06-24T20:52:46+03:00,pre-conductor,"feat(glossary): 1.3 migration partial-unique active index, status CHECK, GS sequence, snapshots WORM immutability (BR-046/IC-014, BR-051/IC-017) + integration test",431,1,431,1,0,84,345,0,2,0,84,345,0,2
+cc4aa96,2026-06-24T20:35:59+03:00,pre-conductor,feat(glossary): 1.2 define GlossaryTerm/GlossarySnapshot models + GlossaryTermStatus enum,567,48,534,0.942,0.058,178,384,0,5,0,145,384,0,5
+ec875aa,2026-06-24T19:44:17+03:00,pre-conductor,"fix(billing): no-call-site producer apps/api/src/modules/billing/outbox/outbox-writer.ts (OutboxWriter.emit, live via billing.module.ts:347) ↔ consumer apps/worker/src/outbox-drain/worker.ts:110 start",75,1,75,1,0,0,59,0,0,0,0,59,0,0
+2da88dd,2026-06-24T19:38:41+03:00,pre-conductor,"fix(billing): design-divergence design.md §IPaymentProvider Service Interface (line 366): getSubscription returns Promise<{ state, planId, currentPeriodEnd, cancelAtPeriodEnd }> — no cardLast4 / provi",1,1,1,1,0,0,0,0,1,0,0,0,0,1
+d898ab5,2026-06-24T19:13:39+03:00,pre-conductor,"fix(billing): resolve design.md FK self-contradiction (PA-020, side B)",44,3,44,1,0,0,0,0,2,42,0,0,0,2
+b67798c,2026-06-24T18:17:21+03:00,pre-conductor,fix(billing): design-divergence design.md §Funnel-event taxonomy line 497 (`checkout_abandoned` | billing | ... explicit cancel-url → null | SC-022e1) + requirements.md req 5.2 (emit `checkout_abandon,169,5,169,1,0,99,70,0,0,0,99,70,0,0
+17ae6e8,2026-06-24T17:09:28+03:00,pre-conductor,fix(specs): localization (FM-002) fidelity,2,2,2,1,0,0,0,0,2,0,0,0,0,2
+b6c18e4,2026-06-24T16:56:19+03:00,pre-conductor,chore(orchestrator): rename S7-FEEDBACK-JOURNAL → RUN-C-FEEDBACK-JOURNAL (FB-LR-14),3,3,3,1,0,0,0,0,0,3,0,0,0,0
+43be70e,2026-06-24T16:52:11+03:00,pre-conductor,"docs(handoff): add FM-006 production handoff (Conversion measurement, no-UI)",1682,0,1665,0.99,0.01,0,0,1682,0,0,0,0,1665,0
+40d3f81,2026-06-24T16:51:01+03:00,pre-conductor,"docs(app-map): re-derive AM to v2 — 7 FM (+FM-007 admin), FM-006 → no-UI, 6/6 NM live",51,28,51,1,0,0,0,51,0,0,0,0,51,0
+ea807da,2026-06-24T02:15:53+03:00,pre-conductor,chore(ecosystem): /ecosystem:update sync to upstream f76f5c1,3282,359,3190,0.972,0.028,0,0,0,0,3282,0,0,0,0
+ee7cd0e,2026-06-23T01:59:31+03:00,pre-conductor,chore(orchestrator): S7 RUN 03 (P6 ground-truth gate x2) — FB-028 + resolve PA-017/018,30,2,30,1,0,0,0,0,0,30,0,0,0,0
+9213620,2026-06-23T01:49:00+03:00,pre-conductor,fix(admin): dead_route_seam_caller_uses_unregistered_url consumer apps/web/components/admin/AdminShell.tsx:49 (href `/api/admin/logout`) via proxy apps/web/app/api/admin/[...path]/route.ts  ↔  produce,22,14,22,1,0,8,14,0,0,0,8,14,0,0
+bdd1012,2026-06-23T01:44:37+03:00,pre-conductor,fix(admin): dead_route_seam_caller_uses_unregistered_url producer apps/web/lib/admin-contract.ts:39 (ADMIN_HOME_HREF='/admin/users') + route-producers apps/web/app/(admin)/users/page.tsx (resolves /us,87,39,87,1,0,29,54,0,4,0,29,54,0,4
+e02200a,2026-06-23T01:17:23+03:00,pre-conductor,fix(test): conform localization AuthGuard prerequisite test to now-async canActivate (admin 4.1 cross-seam),11,9,11,1,0,0,11,0,0,0,0,11,0,0
+becbb12,2026-06-23T01:11:09+03:00,pre-conductor,"fix(admin): orphan_export_dead_provisioning_seam producer: AdminAuthService.register (apps/api/src/modules/admin/services/admin-auth.service.ts:170, INSERT into admin_users) <-> consumer/login: AdminA",235,3,235,1,0,103,132,0,0,0,103,132,0,0
+b6717a3,2026-06-23T01:05:39+03:00,pre-conductor,"fix(admin): silent_redesign_data_source design.md §Allowed Dependencies line 68-69 (""billing (FM-005): read-only SubscriptionService.getSubscription() + BillingEvent (последние N, normalized type-enum",17,6,17,1,0,0,0,0,17,0,0,0,0,17
+a0070f8,2026-06-23T01:02:18+03:00,pre-conductor,"fix(admin): silent_redesign_named_component design.md §AdminAuthGuard line 316 (""Если сам admin-аккаунт adminState=suspended — не проходит (IC-033 применяется и к admin)""); design.md §Overview line 64",10,3,10,1,0,0,0,0,10,0,0,0,0,10
+cfd7f7b,2026-06-23T00:38:32+03:00,pre-conductor,chore(orchestrator): S7 run records — admin P5 feedback journal (FB-019..027) + cross-owner PAs (PA-017..019),302,0,296,0.98,0.02,0,0,0,0,302,0,0,0,0
+df129bb,2026-06-23T00:23:39+03:00,pre-conductor,feat(admin): 7.1 AdminModule assembly + AppModule registration + dark-flag enable + guard mount + FB-010 subscription route,830,21,819,0.987,0.013,380,448,0,2,0,369,448,0,2
+017ce65,2026-06-22T23:21:53+03:00,pre-conductor,feat(admin): 2.2 AdminAuthGuard default-deny + binary authz + admin_user_id propagation,348,1,348,1,0,151,195,0,2,0,151,195,0,2
+44136c8,2026-06-22T22:52:48+03:00,pre-conductor,chore(admin): close tasks-authoring gap — add 7.1 AdminModule assembly + clear 2.2 block for re-drive,20,1,19,0.95,0.05,0,0,0,20,0,0,0,0,19
+1af41ff,2026-06-22T22:21:18+03:00,pre-conductor,feat(admin): 6.1,1139,1,1139,1,0,0,1082,0,2,0,0,1082,0,2
+99b02c7,2026-06-22T21:53:41+03:00,pre-conductor,feat(admin): 5.4 desktop-first layout + WCAG-AA + no audit-log viewer (RL-001),204,3,200,0.98,0.02,26,176,0,2,0,26,172,0,2
+d850939,2026-06-22T21:32:26+03:00,pre-conductor,feat(admin): 5.3,1006,1,992,0.986,0.014,654,350,0,2,0,641,349,0,2
+ffe2f8c,2026-06-22T21:09:02+03:00,pre-conductor,feat(admin): 5.2 User Card hub (SI-3) + SearchBar/UserCard/read-only SubscriptionPanel/DataTable + suspend/unsuspend ReasonModal (SI-4),1080,1,1063,0.984,0.016,759,319,0,2,0,743,318,0,2
+d8c5ec0,2026-06-22T20:47:09+03:00,pre-conductor,feat(admin): 5.1 admin-shell + Admin Login (SI-1) on (admin) routes,574,1,516,0.899,0.101,384,188,0,2,0,355,159,0,2
+9dd1028,2026-06-22T20:28:52+03:00,pre-conductor,"feat(admin): 4.3 expose FM-005 read-only getSubscription (BR-071, IC-022/IC-036)",213,7,213,1,0,18,193,0,2,0,18,193,0,2
+fb85763,2026-06-22T19:50:57+03:00,pre-conductor,feat(admin): 4.2,353,11,353,1,0,100,251,0,2,0,100,251,0,2
+6b4e709,2026-06-22T19:24:11+03:00,pre-conductor,feat(admin): 4.1 amend FM-001 auth seam — IC-033 per-request + at-login admin_state enforcement (NOTE-030),849,26,849,1,0,187,660,0,2,0,187,660,0,2
+623883f,2026-06-22T18:12:06+03:00,pre-conductor,"feat(admin): 3.4 ContentAdminService takedown/restore — Deliverable.state transition + atomic audit (BR-088, LC-009, IC-035)",1173,17,1157,0.986,0.014,450,721,0,2,0,445,710,0,2
+ad20493,2026-06-22T17:25:51+03:00,pre-conductor,"feat(admin): 3.3 SubscriptionViewService read-only subscription projection (BR-090, IC-036)",890,1,890,1,0,313,575,0,2,0,313,575,0,2
+3a2e2cf,2026-06-22T17:03:22+03:00,pre-conductor,"feat(admin): 3.2 suspend/unsuspend — atomic adminState transition + audit (BR-087, LC-008, IC-035)",1045,9,1031,0.987,0.013,364,679,0,2,0,358,671,0,2
+6f4091f,2026-06-22T16:37:37+03:00,pre-conductor,feat(admin): 3.1 UserAdminService lookup by email|user_id without enumeration,515,1,506,0.983,0.017,208,305,0,2,0,199,305,0,2
+e9bca3a,2026-06-22T16:17:24+03:00,pre-conductor,chore(admin): block 2.2 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+b515d80,2026-06-22T16:08:51+03:00,pre-conductor,feat(admin): 2.1,681,1,678,0.996,0.004,382,297,0,2,0,379,297,0,2
+868ef1c,2026-06-22T15:50:07+03:00,pre-conductor,feat(admin): 1.2,570,1,570,1,0,221,347,0,2,0,221,347,0,2
+199e1b6,2026-06-22T15:29:24+03:00,pre-conductor,feat(admin): 1.1,438,2,435,0.993,0.007,130,303,0,5,0,127,303,0,5
+54dc40f,2026-06-21T10:09:33+03:00,pre-conductor,"fix(billing): orphan-export / dead cross-task seam (FB-010) producer auth.module.ts:159 (TRIAL_SIGNAL_PORT → LoggingTrialSignalAdapter, no-op) ↔ consumer billing TrialService.activateIfEligible (apps/",368,8,363,0.986,0.014,176,192,0,0,0,171,192,0,0
+4830c52,2026-06-21T09:48:15+03:00,pre-conductor,fix(billing): silent_redesign_status_field design.md §API Contract line 577 + §Data Contracts line 656 (SubscriptionStatusResponse includes `card_last4`); §IPaymentProvider line 366 exposes `getSubscr,83,2,83,1,0,52,31,0,0,0,52,31,0,0
+8cfc289,2026-06-21T09:28:56+03:00,pre-conductor,fix(billing): modeled_field_never_written design.md §Data Models line 590 + §Physical Data Model line 633 — `BillingEvent.processed_at` (nullable timestamp) is modeled as part of the BillingEvent shap,2,2,2,1,0,0,0,0,2,0,0,0,0,2
+151ea38,2026-06-21T09:26:27+03:00,pre-conductor,fix(billing): taxonomy_registry_drift design.md §Funnel-event taxonomy (BR-074) table lines 491-510 — the authoritative `event_type` registry — omits `subscription_cancel_requested`; requirements.md r,1,0,1,1,0,0,0,0,1,0,0,0,0,1
+00fabf5,2026-06-21T09:22:15+03:00,pre-conductor,fix(billing): coverage_gap req 7.3,65,0,65,1,0,0,65,0,0,0,0,65,0,0
+d3bbd2a,2026-06-21T09:19:08+03:00,pre-conductor,fix(billing): coverage_gap req 7.2,75,0,75,1,0,0,75,0,0,0,0,75,0,0
+3f67116,2026-06-21T08:31:08+03:00,pre-conductor,chore(orchestrator): P4 fidelity audit re-run routes 3 localization drifts to Product (PA-015),28,0,26,0.929,0.071,0,0,0,0,28,0,0,0,0
+039f154,2026-06-21T07:55:58+03:00,pre-conductor,chore(orchestrator): P4 fidelity audit re-run routes 4 localization drifts to Product (PA-014),30,0,29,0.967,0.033,0,0,0,0,30,0,0,0,0
+9fa1bcd,2026-06-21T00:53:06+03:00,pre-conductor,chore(orchestrator): P4 fidelity audit routes 5 localization drifts to Product (PA-013),30,0,29,0.967,0.033,0,0,0,0,30,0,0,0,0
+5ff51bf,2026-06-20T22:46:19+03:00,pre-conductor,chore(ecosystem): sync 47ef5cf->3c65c50 — self-deletion fix (DEC-DEV-0088) + P4 verify (DEC-DEV-0087),116,12,95,0.819,0.181,0,0,0,0,116,0,0,0,0
+9fe4463,2026-06-20T21:39:12+03:00,pre-conductor,chore(ecosystem): sync ecosystem to upstream 47ef5cf (post-1.6.0),933,45,816,0.875,0.125,0,0,0,0,933,0,0,0,0
+e9061ca,2026-06-19T21:04:13+03:00,pre-conductor,docs(orchestrator): add S6 feedback journal (FB-012..018),112,0,112,1,0,0,0,0,0,112,0,0,0,0
+613d10a,2026-06-19T15:28:25+03:00,pre-conductor,bd: update sync.remote,2,0,2,1,0,0,0,0,0,0,0,0,0,0
+c87ad02,2026-06-19T13:20:21+03:00,pre-conductor,feat(localization): 6.2 E2E critical user journeys (single/multi-target/retry/cap),939,1,927,0.987,0.013,0,937,0,2,0,0,925,0,2
+628eda1,2026-06-19T12:52:57+03:00,pre-conductor,feat(localization): 6.1 consolidated gating suite for load-bearing invariants (IC-008/009/010/011/012/013 + BR-053),1020,1,1005,0.985,0.015,0,1018,0,2,0,0,1003,0,2
+36eeb18,2026-06-19T12:35:56+03:00,pre-conductor,feat(localization): 3.6 multi-target notification consolidation (BR-043 §consolidation),761,1,761,1,0,318,441,0,2,0,318,441,0,2
+df881cd,2026-06-19T12:20:08+03:00,pre-conductor,chore(localization): clear 3.6/6.1/6.2 transient-impl blocks (RUN 04 re-drive prep),60,5,60,1,0,0,0,0,1,59,0,0,0,1
+d1ca7b9,2026-06-19T12:09:52+03:00,pre-conductor,feat(localization): 6.3 NFR validation suite (reliability/performance/observability),896,1,886,0.989,0.011,0,857,0,2,0,0,847,0,2
+012ecca,2026-06-19T11:42:56+03:00,pre-conductor,chore(localization): block 6.2 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+dd0f36b,2026-06-19T11:33:02+03:00,pre-conductor,chore(localization): block 6.1 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+eb3649c,2026-06-19T11:15:33+03:00,pre-conductor,feat(localization): 5.3 StuckJobWatchdog + structured per-stage logging (NFR-004/006),961,1,961,1,0,474,485,0,2,0,474,485,0,2
+15693a1,2026-06-19T11:01:44+03:00,pre-conductor,feat(localization): 5.2 SI-2/SI-3/SI-4 web pages (new + [jobId] status) with same-origin API proxy,1701,1,1616,0.95,0.05,1251,448,0,2,0,1166,448,0,2
+f7192b4,2026-06-19T10:32:46+03:00,pre-conductor,feat(localization): 5.1 assemble JobController + localization.module + guards (auth/subscription/ownership),1734,6,1698,0.979,0.021,1088,644,0,2,0,1054,642,0,2
+7776add,2026-06-19T09:43:50+03:00,pre-conductor,feat(localization): 4.3 DownloadService — signed URL + idempotent trial_completed (SC-011 / BR-035/036 / IC-013),710,1,703,0.99,0.01,308,400,0,2,0,301,400,0,2
+32827e9,2026-06-19T09:27:15+03:00,pre-conductor,chore(localization): block 3.6 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+4329308,2026-06-19T09:17:16+03:00,pre-conductor,feat(localization): 3.5 permanent-failure → failed + Rollback + notification (SC-010e2 / BR-032/043),1056,12,1056,1,0,462,592,0,2,0,462,592,0,2
+bce7252,2026-06-19T09:02:10+03:00,pre-conductor,feat(localization): 3.4 multi-target sub-job isolation + shared transcribe (BR-029/BR-030),754,7,751,0.996,0.004,298,454,0,2,0,298,451,0,2
+1eaa9ef,2026-06-19T08:43:59+03:00,pre-conductor,feat(localization): 3.2 ErrorClassifier (BR-039) + RetryPolicy (BR-040),524,1,524,1,0,328,194,0,2,0,328,194,0,2
+0038c9d,2026-06-19T08:33:30+03:00,pre-conductor,feat(localization): 2.4 trial cap exceeded reject + audit (SC-010e3 / BR-031 / BR-037),648,1,648,1,0,210,436,0,2,0,210,436,0,2
+9dc22f1,2026-06-19T08:19:02+03:00,pre-conductor,feat(localization): 2.3 upload-validation reject + cleanup + audit (SC-010e1 / BR-038),591,31,591,1,0,220,369,0,2,0,220,369,0,2
+d13da9d,2026-06-19T07:58:35+03:00,pre-conductor,feat(localization): 1.4 FunnelEmitter producer seam over billing OutboxWriter.emit,392,1,391,0.997,0.003,153,237,0,2,0,153,237,0,1
+6c997bc,2026-06-19T07:35:03+03:00,pre-conductor,chore(localization): clear transient/cascade blocks + widen 3.4 boundary (RUN 02 re-drive prep),121,9,119,0.983,0.017,0,0,0,2,119,0,0,0,2
+7edd8de,2026-06-19T07:35:02+03:00,pre-conductor,fix(billing): register FM-002 localization funnel event types in BR-074 taxonomy,25,4,25,1,0,14,11,0,0,0,14,11,0,0
+35af416,2026-06-19T04:10:10+03:00,pre-conductor,chore(localization): block 4.3 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+b2723b7,2026-06-19T03:58:40+03:00,pre-conductor,feat(localization): 4.2 JobStatusService + uniform-404 ownership resolve (SC-011 / BR-034 / IC-010),824,1,821,0.996,0.004,391,431,0,2,0,390,429,0,2
+5fda469,2026-06-19T03:41:09+03:00,pre-conductor,feat(localization): 4.1 JobRetryService — user-initiated retry of a failed job (SC-010e2 / BR-041/042/033),697,1,683,0.98,0.02,293,402,0,2,0,284,397,0,2
+5db5302,2026-06-19T03:14:38+03:00,pre-conductor,chore(localization): block 3.6 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+1b13032,2026-06-19T03:06:00+03:00,pre-conductor,chore(localization): block 3.5 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+1bb2c15,2026-06-19T02:58:55+03:00,pre-conductor,chore(localization): block 3.4 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+6c045ce,2026-06-19T02:25:12+03:00,pre-conductor,feat(localization): 3.3 стадии конвейера transcribe/translate/voice/assemble,1098,1,1045,0.952,0.048,644,452,0,2,0,599,444,0,2
+1190360,2026-06-19T01:51:37+03:00,pre-conductor,chore(localization): block 3.2 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+c14620c,2026-06-19T01:39:38+03:00,pre-conductor,feat(localization): 3.1 PipelineOrchestrator — monotonic LC-004 transitions + CAS (IC-008),703,1,686,0.976,0.024,305,396,0,2,0,288,396,0,2
+4e1546e,2026-06-19T01:25:37+03:00,pre-conductor,feat(localization): 2.5 multi-target создание (parent + N sub-jobs) (SC-010a),463,37,454,0.981,0.019,73,388,0,2,0,67,385,0,2
+d198e9e,2026-06-19T01:01:59+03:00,pre-conductor,chore(localization): block 2.4 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+9bbd30b,2026-06-19T00:54:57+03:00,pre-conductor,chore(localization): block 2.3 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+2298870,2026-06-19T00:47:41+03:00,pre-conductor,feat(localization): 2.2 JobCreationService single-target create + durable persist (SC-010/BR-053),864,1,797,0.922,0.078,401,461,0,2,0,337,458,0,2
+8e029b3,2026-06-19T00:30:06+03:00,pre-conductor,feat(localization): 2.1,661,1,661,1,0,310,349,0,2,0,310,349,0,2
+0a21beb,2026-06-18T23:57:21+03:00,pre-conductor,chore(localization): block 1.4 (surface blocker),1,0,0,0,1,0,0,0,1,0,0,0,0,0
+8e35c52,2026-06-18T23:50:51+03:00,pre-conductor,feat(localization): 1.3 IGlossarySnapshotPort + Mock adapter (BR-028 consumer seam),379,1,342,0.902,0.098,226,151,0,2,0,196,144,0,2
+a5352af,2026-06-18T23:37:00+03:00,pre-conductor,feat(localization): 1.2 define ITranslationProvider/ITtsProvider/ITranscriptionProvider ports + Mock adapters,740,1,669,0.904,0.096,509,229,0,2,0,440,228,0,1
+6f7e3f5,2026-06-18T23:25:06+03:00,pre-conductor,feat(localization): 1.1,660,4,649,0.983,0.017,277,381,0,2,0,273,374,0,2
+5f2e094,2026-06-18T23:10:52+03:00,pre-conductor,feat(localization): 0.2,417,1,417,1,0,0,415,0,2,0,0,415,0,2
+1c623c5,2026-06-18T23:00:03+03:00,pre-conductor,feat(localization): 0.1,143,1,134,0.937,0.063,0,138,0,5,0,0,129,0,5
+7d3c3dd,2026-06-18T22:38:01+03:00,pre-conductor,chore(ecosystem): bump version strings to 1.6.0,4,4,3,0.75,0.25,0,0,0,0,2,0,0,0,0
+ea18582,2026-06-18T22:14:57+03:00,pre-conductor,chore(ecosystem): update 1.5.0 -> 1.6.0 + backfill product_class,613,42,559,0.912,0.088,0,0,0,0,613,0,0,0,0
+a3b5c3f,2026-06-16T13:57:00+03:00,pre-conductor,fix(integrator): re-sync cc-sdd adapter to restore C-07 (FB-009/PA-003),62,20,57,0.919,0.081,0,0,0,0,62,0,0,0,0
+e5b9972,2026-06-16T13:38:24+03:00,pre-conductor,feat(billing): 5.3 husky-free secret-hygiene gate (scripts/check-no-secrets.sh + beads-coexisting pre-commit) — closes NFR-015 / GO-gate,100,17,99,0.99,0.01,0,98,0,0,0,0,98,0,0
+349de57,2026-06-16T13:16:10+03:00,pre-conductor,docs(orchestrator): FB-010 cross-task seam missed by per-task review,14,0,14,1,0,0,0,0,0,14,0,0,0,0
+11972d0,2026-06-16T13:09:37+03:00,pre-conductor,feat(billing): wire 4 webhook event types + DunningService; unblock 5.2 e2e (5/5 green),1068,13,1067,0.999,0.001,334,678,0,1,0,334,677,0,1
+e7068df,2026-06-16T11:08:59+03:00,pre-conductor,docs(orchestrator): RUN 4 (P3 success) + final validation scorecard,32,0,31,0.969,0.031,0,0,0,0,32,0,0,0,0
+1785de8,2026-06-16T11:06:49+03:00,pre-conductor,feat(specs): batch admin → cc-sdd specs,1303,10,1274,0.978,0.022,0,0,0,1303,0,0,0,0,1274
+8de7a06,2026-06-16T10:47:53+03:00,pre-conductor,docs(orchestrator): RUN 3 (P3/FM-007) results + FB-009 + PA-003,42,0,41,0.976,0.024,0,0,0,0,42,0,0,0,0
+a71b74f,2026-06-16T10:36:16+03:00,pre-conductor,docs(orchestrator): journal RUN 2 results + FB-004..008 (caveat #2 confirmed),65,0,65,1,0,0,0,0,0,65,0,0,0,0
+f84fddf,2026-06-16T10:36:15+03:00,pre-conductor,fix(billing): commit selective-commit stragglers + 5.2 blocked annotation,407,0,396,0.973,0.027,403,0,0,1,0,393,0,0,0
+4b127fd,2026-06-16T06:44:27+03:00,pre-conductor,feat(billing): 5.1,1178,1,1178,1,0,0,1120,0,2,0,0,1120,0,2
+0a4f56e,2026-06-16T05:52:27+03:00,pre-conductor,feat(billing): 5.3,871,1,855,0.982,0.018,49,820,0,2,0,49,804,0,2
+6c5f8ab,2026-06-16T05:18:03+03:00,pre-conductor,feat(billing): 4.4,686,1,686,1,0,243,441,0,2,0,243,441,0,2
+24158a8,2026-06-16T04:14:29+03:00,pre-conductor,feat(billing): 4.2,1211,1,1187,0.98,0.02,847,362,0,2,0,823,362,0,2
+d3b9e9a,2026-06-16T03:49:22+03:00,pre-conductor,"feat(billing): 4.3 outbox-drain worker (at-least-once publish to FM-006, IC-028)",718,3,718,1,0,412,304,0,2,0,412,304,0,2
+ea2e2bb,2026-06-16T03:35:47+03:00,pre-conductor,feat(billing): 4.1,1275,5,1232,0.966,0.034,823,450,0,2,0,780,450,0,2
+a4b7420,2026-06-16T02:51:05+03:00,pre-conductor,feat(billing): 3.6,841,1,832,0.989,0.011,355,484,0,2,0,348,483,0,1
+71093f7,2026-06-16T01:57:44+03:00,pre-conductor,chore(orchestrator): checkpoint billing P5 at 11/19 (resume protocol),67,0,67,1,0,0,0,0,0,67,0,0,0,0
+6bf0853,2026-06-16T01:42:35+03:00,pre-conductor,feat(billing): 3.5,1169,1,1159,0.991,0.009,501,666,0,2,0,491,666,0,2
+45ce1f9,2026-06-16T01:10:18+03:00,pre-conductor,feat(billing): 3.4 CheckoutService — createCheckoutSession + BR-068 idempotency + BR-076 update_payment pre-check,520,1,517,0.994,0.006,209,309,0,2,0,207,308,0,2
+ed214a0,2026-06-16T00:55:54+03:00,pre-conductor,feat(billing): 3.3,766,1,760,0.992,0.008,300,464,0,2,0,294,464,0,2
+c35e7a9,2026-06-16T00:40:27+03:00,pre-conductor,"feat(billing): 3.2 SubscriptionGateMiddleware + @RequiresPaidSubscription (BR-066/IC-024, EXPOSED)",930,1,930,1,0,537,391,0,2,0,537,391,0,2
+69a007b,2026-06-16T00:20:11+03:00,pre-conductor,docs(orchestrator): live-run feedback journal for ecosystem handoff,88,0,88,1,0,0,0,0,0,88,0,0,0,0
+1432495,2026-06-16T00:20:11+03:00,pre-conductor,fix(orchestrator): parse string args in P3/P5 process scripts (FB-001),2,2,0,0,1,0,0,0,0,2,0,0,0,0
+0e17a07,2026-06-15T23:56:54+03:00,pre-conductor,feat(billing): 3.1 TrialService — single-shot trial activation (SC-020 / IC-027),463,1,457,0.987,0.013,194,267,0,2,0,190,265,0,2
+c8ed9b1,2026-06-15T23:21:53+03:00,pre-conductor,feat(billing): 2.3 OutboxWriter — in-transaction funnel-event emission (IC-028),420,1,416,0.99,0.01,157,261,0,2,0,154,260,0,2
+33f1238,2026-06-15T23:01:55+03:00,pre-conductor,feat(billing): 2.2 StripePaymentProvider (prod IPaymentProvider adapter),740,1,739,0.999,0.001,349,389,0,2,0,348,389,0,2
+a04b964,2026-06-15T22:49:51+03:00,pre-conductor,feat(billing): 2.1 Реализовать MockPaymentProvider (dev/alpha) с loopback webhook dispatch и idempotency,647,2,646,0.998,0.002,343,302,0,2,0,342,302,0,2
+89e201f,2026-06-15T22:32:54+03:00,pre-conductor,"feat(billing): 1.3 startup env-guard (PAYMENT_PROVIDER, ENVIRONMENT) mutual exclusion (IC-026)",402,4,394,0.98,0.02,177,223,0,2,0,169,223,0,2
+a19f73e,2026-06-15T22:12:55+03:00,pre-conductor,feat(billing): 1.2 define IPaymentProvider port + normalized webhook schema + plan-config,439,1,436,0.993,0.007,249,188,0,2,0,246,188,0,2
+e5a1a69,2026-06-15T21:59:54+03:00,pre-conductor,feat(billing): 1.1 Prisma billing core models + load-bearing DB invariants,506,6,499,0.986,0.014,194,307,0,5,0,187,307,0,5
+928c971,2026-06-15T21:03:49+03:00,pre-conductor,chore(ecosystem): add Orchestrator runtime (processes + lib) missed by prior update,1130,0,1093,0.967,0.033,0,0,0,0,1130,0,0,0,0
+f2d7aaa,2026-06-15T20:44:30+03:00,pre-conductor,chore(ecosystem): update to 1.5.0 (Orchestrator module + level-2 wipe protection),795,57,744,0.936,0.064,0,0,0,0,795,0,0,0,0
+09435cd,2026-06-15T20:30:52+03:00,pre-conductor,chore(ecosystem): safety snapshot before /ecosystem:update [level-2 wipe protection],6,0,6,1,0,0,0,0,0,6,0,0,0,0
+a218fa2,2026-06-14T05:45:12+03:00,pre-conductor,fix(auth): reset-email link points at /reset-password (validation-gate finding),21,4,20,0.952,0.048,5,8,0,8,0,5,8,0,7
+cacab92,2026-06-14T05:33:39+03:00,pre-conductor,test(auth): 6.3 NFR validation — PII allow-list guard + degradation + perf checklist,781,1,765,0.98,0.02,124,651,0,6,0,118,642,0,5
+1b85332,2026-06-14T05:17:12+03:00,pre-conductor,test(auth): 6.2 e2e critical user journeys,428,1,428,1,0,0,426,0,2,0,0,426,0,2
+c71a24b,2026-06-14T05:03:01+03:00,pre-conductor,test(auth): 6.1 load-bearing invariant gating suite (IC-001..007),734,1,730,0.995,0.005,0,732,0,2,0,0,728,0,2
+38ebc05,2026-06-14T04:49:22+03:00,pre-conductor,feat(auth): 5.4 trial signal on →confirmed + TLS/HSTS/timing,1046,32,960,0.918,0.082,496,548,0,2,0,434,525,0,1
+d2db7a7,2026-06-14T04:26:03+03:00,pre-conductor,feat(auth): 5.3 session-cleanup worker — GC terminal sessions + tokens,477,5,471,0.987,0.013,248,221,0,2,0,245,221,0,2
+7174c1a,2026-06-14T04:16:32+03:00,pre-conductor,"feat(auth): 5.2 web auth pages (auth)/{signup,login,reset-password,confirm}",2645,15,2647,1.001,0,1170,251,0,2,0,1168,251,0,2
+9fee98b,2026-06-14T03:58:56+03:00,pre-conductor,feat(auth): 5.1 AuthController + auth.module DI assembly (HTTP layer),1465,43,1444,0.986,0.014,1018,349,0,2,0,997,349,0,2
+8b88bcd,2026-06-14T03:32:19+03:00,pre-conductor,feat(auth): 4.7 OAuthService + OAuth controller — Google (SC-001a),1573,5,1527,0.971,0.029,977,594,0,2,0,931,594,0,2
+f4e9dbc,2026-06-14T03:11:40+03:00,pre-conductor,feat(auth): 4.6 password recovery + atomic reset (SC-003 / IC-006),1052,1,1049,0.997,0.003,463,587,0,2,0,461,586,0,2
+2fd599d,2026-06-14T02:40:31+03:00,pre-conductor,feat(auth): 4.5 wrong-credentials handling + soft CAPTCHA (SC-002e1),766,33,756,0.987,0.013,207,557,0,2,0,207,547,0,2
+dd67eee,2026-06-14T02:22:09+03:00,pre-conductor,feat(auth): 4.4 LoginService — email/password login (SC-002) + session LRU,687,9,655,0.953,0.047,341,344,0,2,0,311,342,0,2
+45bde99,2026-06-14T02:06:19+03:00,pre-conductor,feat(auth): 4.3 email confirm + resend — SC-001e2,745,50,695,0.933,0.067,312,429,0,4,0,262,429,0,4
+e24e745,2026-06-14T01:50:38+03:00,pre-conductor,feat(auth): 4.2 email-uniqueness conflict UX — SC-001e1/BR-008,209,8,209,1,0,74,133,0,2,0,74,133,0,2
+3c509f1,2026-06-14T01:36:32+03:00,pre-conductor,docs(auth): add loop-continuation protocol to tasks.md Implementation Notes,23,0,23,1,0,0,0,0,23,0,0,0,0,23
+f5d9529,2026-06-14T01:35:40+03:00,pre-conductor,feat(auth): 4.1 SignupService — email signup (SC-001),667,1,653,0.979,0.021,370,296,0,1,0,356,296,0,1
+69c8f98,2026-06-14T01:26:06+03:00,pre-conductor,feat(auth): 3.5 EmailPort + CaptchaPort ports/adapters (provider-agnostic) — completes group 3,962,6,956,0.994,0.006,517,438,0,1,0,512,438,0,1
+53a3e2b,2026-06-14T01:13:17+03:00,pre-conductor,"feat(auth): 3.4 SensitiveOpGuard (BR-010 / IC-005) — confirmed-only, per-request re-check",414,1,414,1,0,141,272,0,1,0,141,272,0,1
+b9fda20,2026-06-14T01:04:14+03:00,pre-conductor,feat(auth): 3.3 session-resolution middleware + AuthGuard (default-deny),781,11,762,0.976,0.024,162,246,0,2,0,143,246,0,2
+e4b6d88,2026-06-14T00:51:23+03:00,pre-conductor,"feat(auth): 3.2 SessionService — LRU cap (IC-003), sliding TTL, bulk-invalidate",614,1,588,0.958,0.042,309,304,0,1,0,288,299,0,1
+35364ce,2026-06-14T00:43:08+03:00,pre-conductor,"feat(auth): 3.1 AuthTokenService — one-time tokens, atomic consume (IC-002), supersede (BR-009)",406,6,402,0.99,0.01,192,203,0,8,0,189,203,0,7
+8ee8da9,2026-06-14T00:32:07+03:00,pre-conductor,feat(auth): 2.4 PasswordService (bcrypt cost 12) + log masking,342,3,336,0.982,0.018,175,147,0,1,0,170,147,0,1
+c348f42,2026-06-14T00:23:10+03:00,pre-conductor,"feat(auth): 2.3 shared audit-writer (DB + graceful fallback, hashed email)",444,3,444,1,0,274,159,0,1,0,274,159,0,1
+f4d33e2,2026-06-14T00:13:46+03:00,pre-conductor,feat(auth): 2.2 shared error-envelope + anti-enumeration uniform responses,311,5,308,0.99,0.01,193,114,0,1,0,191,114,0,1
+00c6872,2026-06-14T00:03:29+03:00,pre-conductor,"feat(auth): 2.1 Prisma core models + load-bearing invariant migration (IC-001/004/007, BR-007)",1605,5,1601,0.998,0.002,262,162,0,1,0,260,162,0,1
+679f63a,2026-06-13T23:48:33+03:00,pre-conductor,"feat(auth): 1.3 prisma init in packages/db (datasource + generator, empty baseline)",349,5,346,0.991,0.009,57,0,0,1,0,54,0,0,1
+6669867,2026-06-13T23:34:32+03:00,pre-conductor,feat(auth): 1.2 docker-compose stack (PostgreSQL 16 + Redis 7) live,90,1,89,0.989,0.011,0,0,0,1,0,0,0,0,1
+b4aa01e,2026-06-13T23:07:03+03:00,pre-conductor,"feat(auth): 1.1 monorepo pnpm-workspaces scaffold (apps/{api,worker,web} + packages/{db,shared,providers})",4934,2,4868,0.987,0.013,355,0,0,2,0,316,0,0,2
+1221195,2026-06-13T22:42:17+03:00,pre-conductor,chore(kiro): pin Node 22 LTS in tech steering (toolchain reality for pre-cc-sdd-pilot impl),1,1,0,0,1,0,0,0,1,0,0,0,0,0
+fd41693,2026-06-13T22:38:00+03:00,pre-conductor,fix(kiro): restore NFR-002 PII allow-list fidelity in auth spec (audit D-1),2,2,0,0,1,0,0,0,2,0,0,0,0,0
+22c308a,2026-06-13T22:10:31+03:00,pre-conductor,feat(kiro): generate batch-1 specs (auth/localization/glossary/billing) + cross-spec remediation,4063,6,3899,0.96,0.04,0,0,0,4063,0,0,0,0,3899
+5c90396,2026-06-13T21:30:22+03:00,pre-conductor,feat(kiro): bootstrap steering + briefs + roadmap for batch-1 (auth/localization/glossary/billing),651,0,630,0.968,0.032,0,0,0,651,0,0,0,0,630
+97c31d2,2026-06-13T21:22:27+03:00,pre-conductor,fix(integrator): CNT-001 adapter — stop §10 UI sub-docs clobbering handoff §1-7,100,5,70,0.7,0.3,0,0,0,0,100,0,0,0,0
+e612088,2026-06-13T20:46:59+03:00,pre-conductor,chore(integrator): journal-hook bookkeeping for scan baseline update,6,0,6,1,0,0,0,0,0,6,0,0,0,0
+9449209,2026-06-13T20:43:59+03:00,pre-conductor,chore(integrator): scan cleanup — prune stale worktrees + adapter debris (drift-9/10),6,0,6,1,0,0,0,0,0,6,0,0,0,0
+89556cf,2026-06-13T20:06:36+03:00,pre-conductor,chore(da): reconcile BR-086..090 findings ledger to actioned,18,2,18,1,0,0,0,18,0,0,0,0,18,0
+b2d549f,2026-06-13T19:24:28+03:00,pre-conductor,"docs(handoff): generate FM-007 admin console handoff (v1, production, ready)",2186,0,2181,0.998,0.002,0,0,2186,0,0,0,0,2181,0
+1dd05ca,2026-06-13T18:40:31+03:00,pre-conductor,feat(design): P2.5 design session FM-007 admin console (MK-007/NM-007/DS) — D.1-D.6,250,7,249,0.996,0.004,0,0,250,0,0,0,0,249,0
+987b70c,2026-06-13T14:35:54+03:00,pre-conductor,chore(ecosystem): sync .claude to canon fbdb0bd — Flow A reconciliation (DEC-DEV-0065 Step 4),2579,163,2475,0.96,0.04,0,0,0,0,2579,0,0,0,0
+a30fe07,2026-06-13T02:03:24+03:00,pre-conductor,feat(product): pivot FM-006 to conversion measurement + add FM-007 admin console,2065,55,1988,0.963,0.037,0,0,2037,0,28,0,0,1961,0
+ee157f8,2026-06-12T14:35:20+03:00,pre-conductor,feat(product): FM-004 segment-regeneration — feature DA review + handoff v2,2219,13,2209,0.995,0.005,0,0,2219,0,0,0,0,2209,0
+f6d91a3,2026-06-12T14:09:20+03:00,pre-conductor,feat(handoff): FM-003 personal glossary handoff v2 (ready) + DA re-review,4953,0,4945,0.998,0.002,0,0,4935,0,18,0,0,4927,0
+887c52f,2026-06-12T13:14:22+03:00,pre-conductor,feat(hooks): worktree pre-flight advisory + EnterWorktree guard,362,0,360,0.994,0.006,0,0,0,0,362,0,0,0,0
+a841ca9,2026-06-11T23:59:37+03:00,pre-conductor,feat(design): formalize DS.color.on-success-container token + regen FM-005 handoff v2,19,16,14,0.737,0.263,0,0,19,0,0,0,0,14,0
+2427e74,2026-06-11T23:50:45+03:00,pre-conductor,feat(design): FM-004 Segment-level regeneration — MK-004 + NM-004 + DS (open-design),345,8,332,0.962,0.038,0,0,344,0,1,0,0,332,0
+d6371f7,2026-06-11T17:26:16+03:00,pre-conductor,"docs(handoff): generate FM-005 subscription & billing handoff (v1, production)",3754,0,3735,0.995,0.005,0,0,3754,0,0,0,0,3735,0
+d12b7a7,2026-06-11T17:14:59+03:00,pre-conductor,feat(design): P2.5 design session FM-005 subscription & billing (MK-005/NM-005),309,6,304,0.984,0.016,0,0,308,0,1,0,0,303,0
+f5fc98b,2026-06-11T15:56:15+03:00,pre-conductor,feat(integrator): complete stitch install — close pdc + cleanup worktrees,703,28,703,1,0,0,0,0,0,703,0,0,0,0
+edf7057,2026-06-06T22:57:28+03:00,pre-conductor,"feat(integrator,design): open-design native D.2 generator (CNT-004) + FM-003 design + OD structure cleanup",1052,26,1029,0.978,0.022,0,0,289,0,747,0,0,283,0
+c561dc1,2026-06-06T19:45:03+03:00,pre-conductor,feat(design): FM-001 real screen pixels in App Map + canonical asset source (59o),64,8,60,0.938,0.063,0,0,25,0,39,0,0,25,0
+c7503e4,2026-06-06T19:26:35+03:00,pre-conductor,feat(FM-002): handoff v2 + canonical UI assets (m5k) + DA F10-F12 fixes,1053,38,1042,0.99,0.01,0,0,1053,0,0,0,0,1042,0
+019bf5e,2026-06-06T19:18:43+03:00,pre-conductor,feat(design): App Map (AM) — tier-3 app overview + USER FLOW HTML walker + CJM,1594,7,1531,0.96,0.04,0,0,192,0,1402,0,0,164,0
+ad17588,2026-06-06T19:08:46+03:00,pre-conductor,chore(open-design): reconcile stitch-to-opendesign adapter + ecosystem-patch prompt (DEC-DEV-0063),296,43,296,1,0,0,0,0,0,296,0,0,0,0
+ca6240e,2026-06-06T00:37:07+03:00,pre-conductor,@ chore: bump session model to claude-opus-4-8 + sync bd records,1,1,0,0,1,0,0,0,0,1,0,0,0,0
+2bd0806,2026-06-06T00:28:34+03:00,pre-conductor,feat(integrator): open-design browser viewing via token-proxy + dup cleanup,46,1,46,1,0,0,0,0,0,46,0,0,0,0
+2a8e685,2026-06-06T00:16:29+03:00,pre-conductor,docs(integrator): record full Stitch->open-design migration (DEC-INT-0011 addendum 2),35,0,35,1,0,0,0,0,0,35,0,0,0,0
+9812215,2026-06-06T00:04:46+03:00,pre-conductor,feat(integrator): add open-design (Dockerized) + CNT-003 + migration fidelity check,1766,5,1707,0.967,0.033,0,0,0,0,1766,0,0,0,0
+1e5e7d6,2026-06-05T22:22:00+03:00,pre-conductor,feat(integrator): cherry-pick superpowers skills (worktrees + branch-finishing),632,3,631,0.998,0.002,0,0,0,0,632,0,0,0,0
+370fe27,2026-06-05T22:07:22+03:00,pre-conductor,feat(design): FM-002 UI — MK-002/NM-002 active + DS localization components,403,10,383,0.95,0.05,0,0,403,0,0,0,0,383,0
+af2b1b8,2026-06-02T19:53:52+03:00,pre-conductor,@ chore(ecosystem): commit pending 1.4.0 update artifacts + FM-002 design mapping,590,63,439,0.744,0.256,0,0,0,0,588,0,0,0,0
+ba3777a,2026-06-02T18:36:10+03:00,pre-conductor,@ chore(design): commit Design Module 1.4.0 primitives + harden .gitignore,3227,0,3214,0.996,0.004,0,0,0,0,3227,0,0,0,0
+7663575,2026-06-02T17:00:51+03:00,pre-conductor,feat(product): FM-001 DA fixes (F1/F2/F3) + production handoff v2,1170,531,1155,0.987,0.013,0,0,1170,0,0,0,0,1155,0
+95bd226,2026-06-01T12:08:57+03:00,pre-conductor,feat(design): FM-001 UI — MK-001/DS/NM-001 + Stitch org convention,574,3,556,0.969,0.031,0,0,479,0,95,0,0,466,0
+f636151,2026-05-31T12:42:57+03:00,pre-conductor,chore: allowlist `claude mcp list` to reduce permission prompts,20,15,18,0.9,0.1,0,0,0,0,20,0,0,0,0
+7056e16,2026-05-31T00:47:07+03:00,pre-conductor,@ docs(integrator): stitch runtime auth resolved — DEC-INT-0009,166,36,142,0.855,0.145,0,0,0,0,166,0,0,0,0
+6448580,2026-05-31T00:31:35+03:00,pre-conductor,feat(integrator): add stitch (Google hosted MCP) — Stages 1-5 + OAuth recipe,1482,7,1432,0.966,0.034,0,0,79,0,1391,0,0,79,0
+28f2963,2026-05-30T12:28:00+03:00,pre-conductor,chore(integrator): commit adapters reference sync (DEC-DEV-0040 Q1),7,0,1,0.143,0.857,0,0,0,0,7,0,0,0,0
+25cdd0d,2026-05-28T13:44:01+03:00,pre-conductor,docs(da): findings для BR-063 + IC-022..028 batch,362,0,362,1,0,0,0,362,0,0,0,0,362,0
+da2b9b1,2026-05-27T22:53:06+03:00,pre-conductor,docs(integrator): expand cc-sdd PMO coverage — DEC-INT-0008,414,20,394,0.952,0.048,0,0,0,0,414,0,0,0,0
+135d68e,2026-05-27T22:16:43+03:00,pre-conductor,docs(integrator): rewrite cc-sdd tool-docs per SPEC §14,477,129,473,0.992,0.008,0,0,0,0,477,0,0,0,0
+1218106,2026-05-27T22:01:53+03:00,pre-conductor,feat(integrator): re-add cc-sdd@3.0.2 + commit state — DEC-INT-0007,6937,254,6877,0.991,0.009,0,0,0,982,5906,0,0,0,982
+206d3df,2026-05-27T18:08:39+03:00,pre-conductor,chore(ecosystem): update 1.3.1 → 1.3.3,1979,190,1838,0.929,0.071,0,0,0,0,1978,0,0,0,0
+9dae758,2026-05-27T18:00:34+03:00,pre-conductor,fix(product): FM-006 verification refs + cleanup pass — DEC-CLEANUP-004,51,1,50,0.98,0.02,0,0,51,0,0,0,0,50,0
+5978df9,2026-05-27T17:54:20+03:00,pre-conductor,feat(product): FM-006 P2.A enrichment complete — DEC-PLAN-031,3275,27,3234,0.987,0.013,0,0,3275,0,0,0,0,3234,0
+a67a482,2026-05-26T18:23:27+03:00,pre-conductor,bd init: initialize beads issue tracking,143,0,143,1,0,0,0,0,0,0,0,0,0,0
+5e55b00,2026-05-26T17:50:50+03:00,pre-conductor,chore(integrator): register cc-sdd D3-01 coverage — DEC-INT-0004,108,4,87,0.806,0.194,0,0,0,0,108,0,0,0,0
+e48a4ee,2026-05-26T16:42:02+03:00,pre-conductor,chore(integrator): commit team-shared state — cc-sdd@3.0.2 + CNT-001,1610,0,1302,0.809,0.191,0,0,0,0,1610,0,0,0,0
+e248abd,2026-05-26T12:44:22+03:00,pre-conductor,chore(ecosystem): update 1.2.1 → 1.3.1,2623,26736,2379,0.907,0.093,0,0,0,0,2622,0,0,0,0
+bc3b4d4,2026-05-26T12:12:55+03:00,pre-conductor,chore(cascade): close 14 stale entries — DEC-CASCADE-004/005,3118,17,99,0.032,0.968,0,0,3118,0,0,0,0,99,0
+ac10dca,2026-05-26T00:12:46+03:00,pre-conductor,docs(FM-005): P2.A enrichment + F.5a NFR Review complete (subscription & billing),4757,36,4737,0.996,0.004,0,0,4757,0,0,0,0,4737,0
+e5fb526,2026-05-25T12:38:38+03:00,pre-conductor,chore(cleanup): pending hygiene + ecosystem bump 1.2.0→1.2.1,90,149,87,0.967,0.033,0,0,88,0,1,0,0,87,0
+4ddf1fd,2026-05-25T12:37:57+03:00,pre-conductor,docs(FM-004): P2.A enrichment complete (segment-level regeneration),4143,84,2709,0.654,0.346,0,0,4143,0,0,0,0,2709,0
+9eb2b02,2026-05-15T21:45:25+03:00,pre-conductor,chore(snapshot): phase-4 smoke test baseline,69074,0,40532,0.587,0.413,0,0,198,0,29483,0,0,0,0
+c08cbab,2026-05-15T17:51:50+03:00,pre-conductor,fix(BR-027): replace LC-Job placeholder with LC-004 in lifecycles ref,3,3,3,1,0,0,0,3,0,0,0,0,3,0
+12665cb,2026-05-15T14:14:19+03:00,pre-conductor,docs(decisions): log cleanup pass — DEC-CLEANUP-002 + DEC-CASCADE-002 + DEC-DA-FM002-002,128,0,128,1,0,0,0,128,0,0,0,0,128,0
+17a7244,2026-05-15T13:20:25+03:00,pre-conductor,chore: baseline commit of .product/ artifacts before cleanup sweep,22531,0,21735,0.965,0.035,0,0,22188,0,343,0,0,21456,0
