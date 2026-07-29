@@ -70,6 +70,7 @@ node dev/global-loop/analysis/scripts/metrics-core.cjs        # METRICS_CORE.md
 node dev/global-loop/analysis/scripts/baseline-m5.cjs         # M5_BASELINE.md
 node dev/global-loop/analysis/scripts/defect-metrics.cjs      # PHASE1_DEFECTS.md + fix_survival.csv
 node dev/global-loop/analysis/scripts/phase2-conductor.cjs    # PHASE2_CONDUCTOR.md
+node dev/global-loop/analysis/scripts/extract-intents.cjs      # owner_utterances.csv (сырьё M1)
 node dev/global-loop/analysis/scripts/build-intents.cjs       # intents.csv (M1)
 node dev/global-loop/analysis/scripts/make-judge-packets.cjs  # JUDGE/PACKET_*.md
 node dev/global-loop/analysis/scripts/finalize-m1.cjs         # M1_RESULT.md + intents_verdicts.csv
