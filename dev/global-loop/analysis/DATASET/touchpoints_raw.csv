@@ -1,0 +1,194 @@
+tp_id,entry_id,date,time,type,what,source_ref
+T001,RUN-A.1,2026-07-17,04:20,OWNER_UTTERANCE,сосед недавно работал,ASSIST_LOG.md:55
+T002,RUN-A.1,2026-07-17,04:20,OWNER_UTTERANCE,ACK до первой правки,ASSIST_LOG.md:55
+T003,RUN-A.2,2026-07-17,04:45,OWNER_UTTERANCE,по умолчанию,ASSIST_LOG.md:76
+T004,RUN-A.3,2026-07-17,05:05,OWNER_UTTERANCE,6 FM почти готовы,ASSIST_LOG.md:98
+T005,RUN-A.4,2026-07-17,05:15,OWNER_UTTERANCE,absent → BLOCK,ASSIST_LOG.md:120
+T006,RUN-A.5,2026-07-17,05:25,OWNER_UTTERANCE,Pasted text #1 +33 lines,ASSIST_LOG.md:135
+T007,RUN-A.5,2026-07-17,05:25,OWNER_UTTERANCE,Очередь итерации,ASSIST_LOG.md:135
+T008,RUN-A.5,2026-07-17,05:25,OWNER_UTTERANCE,SUMMARY-COND-S1:,ASSIST_LOG.md:135
+T009,RUN-A.6,2026-07-17,05:55,OWNER_UTTERANCE,gh-токен невалиден,ASSIST_LOG.md:161
+T010,RUN-A.7,2026-07-17,06:05,OWNER_UTTERANCE,+18 lines,ASSIST_LOG.md:186
+T011,RUN-A.8,2026-07-17,06:25,ESCALATE,"escalateConflict пишет PA-записи в pending-actions.md — мутация артефакта?» → ответ: вариант 1 «пусть пишет, включить в коммит» (рекоменд.). - классификация qa (для мандата): оба — fork-decision. Q1 разрешён ПЕРЕСМОТРОМ собственного брифа кондуктора: мой capture-don't-fix был операторским оверлеем п",ASSIST_LOG.md:203
+T012,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,P6 remediation loop: сток (чинит+коммитит) или capture-only (rounds:0)?,ASSIST_LOG.md:203
+T013,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,"сток, fix-коммиты перечисляются отдельно от осадка",ASSIST_LOG.md:203
+T014,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,escalateConflict пишет PA-записи в pending-actions.md — мутация артефакта?,ASSIST_LOG.md:203
+T015,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,"пусть пишет, включить в коммит",ASSIST_LOG.md:203
+T016,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,бриф vs канон процесса,ASSIST_LOG.md:203
+T017,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,P6 = сток с ремедиацией; fix-коммиты отдельно,ASSIST_LOG.md:203
+T018,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,Launching run 1 of 6,ASSIST_LOG.md:203
+T019,RUN-A.8,2026-07-17,06:25,OWNER_UTTERANCE,esc to interrupt,ASSIST_LOG.md:203
+T020,RUN-A.9,2026-07-17,,ESCALATE,"escalateConflict), active-tools.yaml, project-journal.md, .scope-guard-dedup.json (owner-pending, не трогаем). - решение кондуктора (бывший Q2, теперь напрямую): 5 коммитов держать ЛОКАЛЬНО — не ревертить (миграция уже применялась к dev-БД: реверт кода при мигрированной базе = третье состояние), не ",ASSIST_LOG.md:230
+T021,RUN-A.9,2026-07-17,,OWNER_UTTERANCE,как гнать оставшиеся 5,ASSIST_LOG.md:230
+T022,RUN-A.9,2026-07-17,,OWNER_UTTERANCE,"remediation, трогающая shared/спорный ресурс",ASSIST_LOG.md:230
+T023,RUN-A.10,2026-07-17,,ESCALATE,"escalateConflict коммитятся; 5 локальных коммитов не трогать/не пушить; push в конце ЗАПРЕЩЁН (иначе протащит спорный 3fbb315); + prisma migrate status в сводку (владельцу нужен факт применённости audit_logs-миграции к dev-БД). - грабля пульта (новая, в скилл-кандидаты): send-keys ""$(cat file)"" на д",ASSIST_LOG.md:259
+T024,RUN-A.13,2026-07-17,,OWNER_UTTERANCE,аномалии push,ASSIST_LOG.md:306
+T025,RUN-A.13,2026-07-17,,OWNER_UTTERANCE,rounds: 0,ASSIST_LOG.md:306
+T026,RUN-A.13,2026-07-17,,OWNER_UTTERANCE,unresolved after -1 round(s),ASSIST_LOG.md:306
+T027,RUN-A.14,2026-07-17,,OWNER_UTTERANCE,applied,ASSIST_LOG.md:344
+T028,RUN-A.14,2026-07-17,,OWNER_UTTERANCE,"рекомендации-only, не применять",ASSIST_LOG.md:344
+T029,RUN-A.14,2026-07-17,,OWNER_UTTERANCE,RUN-2026-07-17-A — живое состояние,ASSIST_LOG.md:344
+T030,RUN-A.16,2026-07-17,,OWNER_UTTERANCE,strong,ASSIST_LOG.md:395
+T031,RUN-A.17,2026-07-17,,OWNER_UTTERANCE,COND-S6-DONE,ASSIST_LOG.md:412
+T032,RUN-A.18,2026-07-17,,ESCALATE,"escalateConflict пишет+коммитит. 🛑 ГРАНИЦЫ (эскалировать, не решать): тронуть ратифицированное решение (перечислены 8), продуктовое/scope-решение, autonomy/ floor/deploy/prod. Полный api-прогон + push в конце. - expectation: значимая доля → GO (874/874 api зелёные после cond-s6 — сильный сигнал); о",ASSIST_LOG.md:455
+T033,RUN-A.18,2026-07-17,,OWNER_UTTERANCE,"гони до упора, выноси только owner-class",ASSIST_LOG.md:455
+T034,RUN-A.18,2026-07-17,,OWNER_UTTERANCE,+29 lines,ASSIST_LOG.md:455
+T035,RUN-A.19,2026-07-17,,OWNER_UTTERANCE,абсолютный порог,ASSIST_LOG.md:474
+T036,RUN-A.19,2026-07-17,,OWNER_UTTERANCE,"satisfied на staging, не на юнит-P6",ASSIST_LOG.md:474
+T037,RUN-A.19,2026-07-17,,OWNER_UTTERANCE,регрессия,ASSIST_LOG.md:474
+T038,RUN-A.20,2026-07-18,,ESCALATE,"ESCALATE #1): enforcement-asymmetry — admin авто-включает 5 write-флагов, но cross-FM ADMIN_STATE_ENFORCEMENT_ENABLED (auth) + CONTENT_TAKEDOWN_ENFORCEMENT_ENABLED (localization) не ставит НИКАКОЙ код → suspend/takedown инертны без rollout-config (security-релевантно). * FM-001 (ESCALATE #2, PA-075)",ASSIST_LOG.md:499
+T039,RUN-A.20,2026-07-18,,OWNER_UTTERANCE,Do NOT auto-drive,ASSIST_LOG.md:499
+T040,RUN-A.21,2026-07-18,,OWNER_UTTERANCE,регрессия >20 пунктов,ASSIST_LOG.md:527
+T041,RUN-A.22,2026-07-18,,ESCALATE,"ESCALATE: none): все 3 owner-ratified фикса легли. * FM-007: ADMIN_STATE_ENFORCEMENT_ENABLED + CONTENT_TAKEDOWN_ENFORCEMENT_ENABLED =true в ~/deploy/.../shared/.env (staging EnvironmentFile, вне репо — по env-пути; committed артефакт = DEPLOY-CHECKLIST-admin.md fe3ebb9); 11/11 enforcement-тестов (su",ASSIST_LOG.md:550
+T042,RUN-A.23,2026-07-18,,OWNER_UTTERANCE,esc to interrupt,ASSIST_LOG.md:573
+T043,RUN-A.23,2026-07-18,,OWNER_UTTERANCE,SUMMARY-COND-S10,ASSIST_LOG.md:573
+T044,RUN-A.23,2026-07-18,,OWNER_UTTERANCE,верифицируй сводку ДО kill,ASSIST_LOG.md:573
+T045,RUN-A.23,2026-07-18,,OWNER_UTTERANCE,TUI idle,ASSIST_LOG.md:573
+T046,RUN-A.23,2026-07-18,,OWNER_UTTERANCE,готово,ASSIST_LOG.md:573
+T047,RUN-A.23,2026-07-18,,OWNER_UTTERANCE,"P5 штатно 12/23, жду завершения",ASSIST_LOG.md:573
+T048,RUN-A.24,2026-07-18,,OWNER_FINDING,"probe-miss, перепроверю",ASSIST_LOG.md:604
+T049,RUN-A.24,2026-07-18,,OWNER_UTTERANCE,не смог проверить ≠ мёртво,ASSIST_LOG.md:604
+T050,RUN-A.24,2026-07-18,,OWNER_UTTERANCE,не смог проверить ≠ свободно,ASSIST_LOG.md:604
+T051,RUN-A.24,2026-07-18,,OWNER_UTTERANCE,готово,ASSIST_LOG.md:604
+T052,RUN-A.24,2026-07-18,,OWNER_UTTERANCE,мертво,ASSIST_LOG.md:604
+T053,RUN-A.24,2026-07-18,,OWNER_UTTERANCE,занято,ASSIST_LOG.md:604
+T054,RUN-A.24,2026-07-18,,OWNER_UTTERANCE,один зашумлённый сэмпл принят за истину,ASSIST_LOG.md:604
+T055,RUN-A.25,2026-07-19,,OWNER_UTTERANCE,код провалился,ASSIST_LOG.md:622
+T056,RUN-A.25,2026-07-19,,OWNER_UTTERANCE,"hook-relay, не pane-peek",ASSIST_LOG.md:622
+T057,RUN-A.25,2026-07-19,,OWNER_UTTERANCE,сессия ЗАВЕРШЕНА,ASSIST_LOG.md:622
+T058,RUN-A.25,2026-07-19,,OWNER_UTTERANCE,"Кондуктор читает файлы/состояние, не скребёт экран",ASSIST_LOG.md:622
+T059,RUN-A.28,2026-07-19,,OWNER_UTTERANCE,следующую по команде,ASSIST_LOG.md:697
+T060,RUN-A.28,2026-07-19,,OWNER_UTTERANCE,Следующий шаг,ASSIST_LOG.md:697
+T061,RUN-A.29,2026-07-19,,OWNER_UTTERANCE,продолжай по шву,ASSIST_LOG.md:722
+T062,RUN-A.29,2026-07-19,,OWNER_UTTERANCE,автономно выполняй план из той сессии до конца,ASSIST_LOG.md:722
+T063,RUN-A.29,2026-07-19,,OWNER_UTTERANCE,медленнее — норма,ASSIST_LOG.md:722
+T064,RUN-A.30,2026-07-19,,GO,"текущую сессию дождёмся, следующую запустим по команде",ASSIST_LOG.md:759
+T065,RUN-A.30,2026-07-19,,OWNER_UTTERANCE,автономно выполняй план из той сессии до конца,ASSIST_LOG.md:759
+T066,RUN-A.30,2026-07-19,,OWNER_UTTERANCE,когда скажете,ASSIST_LOG.md:759
+T067,RUN-A.30,2026-07-19,,OWNER_UTTERANCE,маппинг вердикт→фича прошлой сессией НЕ снят,ASSIST_LOG.md:759
+T068,RUN-A.30,2026-07-19,,OWNER_UTTERANCE,4 vCPU = медленнее это норма,ASSIST_LOG.md:759
+T069,RUN-A.30,2026-07-19,,OWNER_UTTERANCE,+21 lines,ASSIST_LOG.md:759
+T070,RUN-A.30,2026-07-19,,OWNER_UTTERANCE,SUMMARY-COND-S14:,ASSIST_LOG.md:759
+T071,RUN-A.31,2026-07-19,,OWNER_UTTERANCE,You've hit your session limit · resets 6:20pm Helsinki,ASSIST_LOG.md:802
+T072,RUN-A.31,2026-07-19,,OWNER_UTTERANCE,human-gate,ASSIST_LOG.md:802
+T073,RUN-A.31,2026-07-19,,OWNER_UTTERANCE,разбор residuals,ASSIST_LOG.md:802
+T074,RUN-A.31,2026-07-19,,OWNER_UTTERANCE,req 12.5,ASSIST_LOG.md:802
+T075,RUN-A.31,2026-07-19,,OWNER_UTTERANCE,не явно санкционированные,ASSIST_LOG.md:802
+T076,RUN-A.32,2026-07-19,,OWNER_UTTERANCE,DEVIATION: 4 vCPU,ASSIST_LOG.md:846
+T077,RUN-A.32,2026-07-19,,OWNER_UTTERANCE,12 vCPU,ASSIST_LOG.md:846
+T078,RUN-A.32,2026-07-19,,OWNER_UTTERANCE,до конца,ASSIST_LOG.md:846
+T079,RUN-A.32,2026-07-19,,OWNER_UTTERANCE,poweroff,ASSIST_LOG.md:846
+T080,RUN-A.32,2026-07-19,,OWNER_UTTERANCE,"верифицируй машинным состоянием, не носителем",ASSIST_LOG.md:846
+T081,RUN-A.34,2026-07-19,,OWNER_UTTERANCE,+18 lines,ASSIST_LOG.md:912
+T082,RUN-A.35,2026-07-20,,ESCALATE,"ESCALATE на потом: (2) admission↔WORKER_AUTOSTART coupling — на staging benign, на prod = strand-occupancy риск → в prod-план RL-002/R3; (3) орфан worker PID 419575. - DoD-сдвиг: cat.3 (stage) существенно позеленел — api+web состав задеплоен и здоров, rollback-нога валидирована ранее (E.C ROLLED_BAC",ASSIST_LOG.md:939
+T083,RUN-A.36,2026-07-20,,ESCALATE,ESCALATE владельцу (ниже). - DoD-сдвиг: deploy-механика ЦЕЛИКОМ зелёная (api+web 200 · Lighthouse 0.94 · worker STARTS · rollback валидирован ранее). Единственный остаток до пересбора = **task 7.2 fork**: (а) строить FB-013 сейчас (real ffmpeg + object-store + живой замер) vs (б) owner-ратификация д,ASSIST_LOG.md:971
+T084,RUN-A.36,2026-07-20,,OWNER_UTTERANCE,продукт стартует,ASSIST_LOG.md:971
+T085,RUN-A.37,2026-07-20,,ESCALATE,"escalate. F1🔴 = МОЙ дефект ШАГА2 (стейл verdict-таблица под новой секцией) — DA поймал, executor убрал (adversarial-ревью сработал ровно по назначению). journal DEC-PLAN-046. * ШАГ4 (096e34b) impl-sync --all --dry-run: 0 авто-флипов (все FM `gate-not-passed`/ `already-shipped`). ⚠ BLINDSPOT коллект",ASSIST_LOG.md:1006
+T086,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,всё кроме платежей,ASSIST_LOG.md:1047
+T087,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,"нет стилизации, просто html",ASSIST_LOG.md:1047
+T088,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,Scaffold-only,ASSIST_LOG.md:1047
+T089,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,"дизайн есть, CSS-имплементация реализатором не доведена",ASSIST_LOG.md:1047
+T090,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,фича выглядит как её MK,ASSIST_LOG.md:1047
+T091,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,7/7 FM отгейчены,ASSIST_LOG.md:1047
+T092,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,released,ASSIST_LOG.md:1047
+T093,RUN-A.38,2026-07-20,,OWNER_UTTERANCE,фича реализована,ASSIST_LOG.md:1047
+T094,RUN-B.1,2026-07-22,02:25,OWNER_UTTERANCE,НЕ НАЙДЕН,ASSIST_LOG.md:1082
+T095,RUN-B.2,2026-07-22,02:30,OWNER_UTTERANCE,"используем их же, они работали",ASSIST_LOG.md:1096
+T096,RUN-B.2,2026-07-22,02:30,OWNER_UTTERANCE,закрыть на Mock → RL-002,ASSIST_LOG.md:1096
+T097,RUN-B.2,2026-07-22,02:30,OWNER_UTTERANCE,default,ASSIST_LOG.md:1096
+T098,RUN-B.3,2026-07-22,02:45,OWNER_UTTERANCE,/bin/sh: 1: bd: not found,ASSIST_LOG.md:1115
+T099,RUN-B.4,2026-07-22,04:00,OWNER_UTTERANCE,completion-детект по машинному состоянию,ASSIST_LOG.md:1132
+T100,RUN-B.5,2026-07-22,04:05,OWNER_UTTERANCE,bd: not found,ASSIST_LOG.md:1164
+T101,RUN-B.6,2026-07-22,05:15,OWNER_UTTERANCE,используем их же,ASSIST_LOG.md:1179
+T102,RUN-B.7,2026-07-22,05:25,OWNER_UTTERANCE,bd: not found,ASSIST_LOG.md:1206
+T103,RUN-B.8,2026-07-22,06:55,OWNER_UTTERANCE,включить биллинг GCP translateit-482623,ASSIST_LOG.md:1221
+T104,RUN-B.10,2026-07-22,08:50,ESCALATE,"escalated → PA-109); deploy vnlezc → DEPLOYED × READY (релиз 20260722T055851Z, regeneration-drain живой); P7 von6js — документированный false-negative (4-й раз, класс стабилен) · splice real-smoke: testsrc 6s + espeak ru-фрагмент, окно [2000,4000]ms → контейнер валиден, duration 6.000s, h264 без пер",ASSIST_LOG.md:1261
+T105,RUN-B.11,2026-07-22,09:00,OWNER_UTTERANCE,прямой CSS-слой,ASSIST_LOG.md:1288
+T106,RUN-B.12,2026-07-22,10:20,OWNER_UTTERANCE,стилизовано по мокапу,ASSIST_LOG.md:1304
+T107,RUN-B.12,2026-07-22,10:20,OWNER_UTTERANCE,голый HTML,ASSIST_LOG.md:1304
+T108,RUN-B.14,2026-07-22,10:45,OWNER_UTTERANCE,"принимай все рекомендации — деферрал, свой флаг, включай real-флаги",ASSIST_LOG.md:1341
+T109,RUN-B.15,2026-07-22,12:10,OWNER_UTTERANCE,без CDP,ASSIST_LOG.md:1359
+T110,RUN-B.18,2026-07-22,16:00,OWNER_UTTERANCE,принять adapter-level,ASSIST_LOG.md:1428
+T111,RUN-B.18,2026-07-22,16:00,OWNER_UTTERANCE,отложить в RL-002,ASSIST_LOG.md:1428
+T112,RUN-B.21,2026-07-22,19:50,ESCALATE,ESCALATE) → тесты → PA-111 done (провенанс RUN-B.18) → P6/deploy/P7 → безопасный smoke срабатывания на синтетике → финальная карта остатка: per-FM диспозиции impl-sync --dry-run для терминатор-пакета владельцу - target: tmux cond-s26; транскрипт 3c9dc831-caac-44c4-99b1-5cf5f66855a7.jsonl; бриф — vm-,ASSIST_LOG.md:1482
+T113,RUN-B.22,2026-07-22,21:20,ESCALATE,"ESCALATE non-blocking: авто-freeze actuation (нератиф. развилка) · incident-observer producer отсутствует в спеке (конвейер инертен до owner-верификатора) — оба в очередь RL-002-планирования, released не держат - 🔴 НАХОДКА (ж): /product:impl-sync --dry-run даёт latest-gate NO-GO / gate-not-passed д",ASSIST_LOG.md:1495
+T114,RUN-B.23,2026-07-22,21:30,OWNER_UTTERANCE,что видит коллектор vs что есть в реальности,ASSIST_LOG.md:1521
+T115,RUN-B.23,2026-07-22,21:30,OWNER_UTTERANCE,готов к [Y] / не готов + почему,ASSIST_LOG.md:1521
+T116,RUN-B.26,2026-07-22,23:20,OWNER_UTTERANCE,нога приёмки user-journey,ASSIST_LOG.md:1571
+T117,RUN-B.26,2026-07-22,23:20,OWNER_UTTERANCE,почему пропустили,ASSIST_LOG.md:1571
+T118,RUN-B.26,2026-07-22,23:20,OWNER_UTTERANCE,полное ручное тестирование с самой правдоподобной имитацией пользователя,ASSIST_LOG.md:1571
+T119,RUN-B.26,2026-07-22,23:20,OWNER_UTTERANCE,Сразу и проверим новую систему тестирования,ASSIST_LOG.md:1571
+T120,RUN-B.26,2026-07-22,23:20,OWNER_UTTERANCE,нет реального рендера,ASSIST_LOG.md:1571
+T121,RUN-B.27,2026-07-22,23:30,OWNER_UTTERANCE,Го по плану,ASSIST_LOG.md:1601
+T122,RUN-B.30,2026-07-23,01:10,OWNER_UTTERANCE,"Смержи, продолжай",ASSIST_LOG.md:1651
+T123,RUN-B.30,2026-07-23,01:10,OWNER_UTTERANCE,после валидации UJA,ASSIST_LOG.md:1651
+T124,RUN-B.30,2026-07-23,01:10,OWNER_UTTERANCE,paste again to expand,ASSIST_LOG.md:1651
+T125,RUN-B.31,2026-07-23,03:10,OWNER_UTTERANCE,…emit the final SUMMARY-COND-S28 block,ASSIST_LOG.md:1668
+T126,RUN-B.33,2026-07-23,05:20,OWNER_UTTERANCE,пустым скаффолдом,ASSIST_LOG.md:1704
+T127,RUN-B.35,2026-07-23,09:50,OWNER_UTTERANCE,кейс не описан → не построен → не проверен,ASSIST_LOG.md:1750
+T128,RUN-B.35,2026-07-23,09:50,OWNER_UTTERANCE,auth-state × маршрут,ASSIST_LOG.md:1750
+T129,RUN-B.35,2026-07-23,09:50,OWNER_UTTERANCE,матрица доступа — обязательная часть спеки has_ui,ASSIST_LOG.md:1750
+T130,RUN-B.36,2026-07-23,10:15,OWNER_UTTERANCE,матрица переходов для продуктов с UI — обязательна,ASSIST_LOG.md:1768
+T131,RUN-B.36,2026-07-23,10:15,OWNER_UTTERANCE,видео от 30 минут до 2 часов,ASSIST_LOG.md:1768
+T132,RUN-B.36,2026-07-23,10:15,OWNER_UTTERANCE,30 мин–2 ч,ASSIST_LOG.md:1768
+T133,RUN-B.37,2026-07-23,11:30,OWNER_UTTERANCE,"кондуктор сессия — это именно пульт с языка пользователя на язык экосистемы с МИНИМАЛЬНОЙ профанацией, оптимизаций на уровне интенций в промпте к экосистеме — быть не должно! Можно и нужно понимать, какие задачи можно смело давать батчем или по порядку, транзакционная оптимизация — окей. Но миновать каноны и пути решения, прописанные в экосистеме — нельзя!",ASSIST_LOG.md:1784
+T134,RUN-B.37,2026-07-23,11:30,OWNER_UTTERANCE,если что-то из найденного не подлежит решению на уровне экосистемы — заносим в пересмотр и проектирование доработки экосистемы,ASSIST_LOG.md:1784
+T135,RUN-B.38,2026-07-23,12:40,OWNER_UTTERANCE,пробел выхода,ASSIST_LOG.md:1806
+T136,RUN-B.38,2026-07-23,12:40,OWNER_UTTERANCE,функция покрыта preflight+сьютами — экономия токенов,ASSIST_LOG.md:1806
+T137,RUN-B.38,2026-07-23,12:40,OWNER_UTTERANCE,дорого,ASSIST_LOG.md:1806
+T138,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,откатить и перестроить?,ASSIST_LOG.md:1833
+T139,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,исправить кривой код vs откатиться и с новым знанием сделать сразу хорошо,ASSIST_LOG.md:1833
+T140,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,fix-forward vs rollback/re-derive,ASSIST_LOG.md:1833
+T141,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,Deviation triage,ASSIST_LOG.md:1833
+T142,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,fix vs re-derive slice,ASSIST_LOG.md:1833
+T143,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,откатить и перестроить?,ASSIST_LOG.md:1850
+T144,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,исправить кривой код vs откатиться и с новым знанием сделать сразу хорошо,ASSIST_LOG.md:1850
+T145,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,fix-forward vs rollback/re-derive,ASSIST_LOG.md:1850
+T146,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,Deviation triage,ASSIST_LOG.md:1850
+T147,RUN-B.39,2026-07-23,13:10,OWNER_UTTERANCE,fix vs re-derive slice,ASSIST_LOG.md:1850
+T148,RUN-B.41,2026-07-23,14:00,GO,"Делай B, A заноси в RL-002",ASSIST_LOG.md:1887
+T149,RUN-B.42,2026-07-23,16:30,ESCALATE,ESCALATE: PA-118 (NON-BLOCKING) — canon-catch-up ратифицированных PA-103/PA-075 в .product/nfr/ + FM-001 excerpts; routed в Product (owner-зона) - остаток до released (из SUMMARY): HEAD на 3 коммита впереди живого деплоя (редеплой сессией не запрашивался — вопрос владельцу); PA-118; полный e2e async,ASSIST_LOG.md:1898
+T150,RUN-B.42,2026-07-23,16:30,OWNER_UTTERANCE,s31 упала с API ошибкой,ASSIST_LOG.md:1898
+T151,RUN-B.42,2026-07-23,16:30,OWNER_UTTERANCE,падение,ASSIST_LOG.md:1898
+T152,RUN-B.43,2026-07-23,16:45,OWNER_UTTERANCE,Аллоцировано,ASSIST_LOG.md:1955
+T153,RUN-B.44,2026-07-23,17:00,OWNER_UTTERANCE,упавшая,ASSIST_LOG.md:1973
+T154,RUN-B.44,2026-07-23,17:00,OWNER_UTTERANCE,s31 закрыт образцово… dispatch s32,ASSIST_LOG.md:1973
+T155,RUN-B.44,2026-07-23,17:00,OWNER_UTTERANCE,канонический дом RL-002-очереди,ASSIST_LOG.md:1973
+T156,RUN-B.44,2026-07-23,17:00,OWNER_UTTERANCE,сессия упала,ASSIST_LOG.md:1973
+T157,RUN-B.44,2026-07-23,17:00,OWNER_UTTERANCE,какая хост-сессия остаётся единственной,ASSIST_LOG.md:1973
+T158,RUN-B.45,2026-07-23,17:10,OWNER_UTTERANCE,"Кондуктором остаёшься ты, на harvest s32 сверь дубли",ASSIST_LOG.md:1999
+T159,RUN-B.46,2026-07-23,17:20,OWNER_UTTERANCE,PASS на текущем составе,ASSIST_LOG.md:2013
+T160,RUN-B.46,2026-07-23,17:20,OWNER_UTTERANCE,выключение =0/unset,ASSIST_LOG.md:2013
+T161,RUN-B.47,2026-07-23,17:55,OWNER_UTTERANCE,"подготовь к ручной проверке, перезагрузи и пересобери всё",ASSIST_LOG.md:2043
+T162,RUN-B.48,2026-07-23,18:20,ESCALATE,"ESCALATE: нет admin seed-учётки - mode: assist - итоги s33 (SUMMARY-COND-S33; верифицировано и с хоста): · deploy DEPLOYED × READY — run xmhir4, СВЕЖИЙ релиз 20260723T150800Z (полный 5-шаговый брекет; prior 135538Z сохранён rollback-target); данные staging сохранены, продуктовый код не менялся · smo",ASSIST_LOG.md:2062
+T163,RUN-B.48,2026-07-23,18:20,OWNER_UTTERANCE,как посмотреть макеты и флоу,ASSIST_LOG.md:2062
+T164,RUN-B.49,2026-07-23,18:30,ESCALATE,"ESCALATE s33), admin-realm входит через отдельный /admin/login. Матрица вела себя честно (generic 401, без утечки существования email). Решение — cond-s34 (скаффолд seed) по «го» - coverage-check вопроса owner «есть ли механизм анализа console/api/devtools в реальном времени при ручном хождении»: по",ASSIST_LOG.md:2090
+T165,RUN-B.49,2026-07-23,18:30,OWNER_UTTERANCE,live-devtools при ручном хождении,ASSIST_LOG.md:2090
+T166,RUN-B.49,2026-07-23,18:30,OWNER_UTTERANCE,есть ли механизм анализа console/api/devtools в реальном времени при ручном хождении,ASSIST_LOG.md:2090
+T167,RUN-B.50,2026-07-23,18:40,OWNER_UTTERANCE,Целевой язык не может совпадать с языком оригинала,ASSIST_LOG.md:2109
+T168,RUN-B.51,2026-07-23,18:50,ESCALATE,"ESCALATE follow-on (COND-S29)». Т.е. не потеря данных, а недостроенная фича, известная с s29 - «как проверяем» (честный ответ на вопрос владельца): UJA ассертит дизайн-маркеры ПОСТРОЕННОГО — j1 принимает empty-state как валидный маркер MK-002:153 (first-run), j2 весь цикл живёт на /localizations/:id",ASSIST_LOG.md:2131
+T169,RUN-B.51,2026-07-23,18:50,OWNER_UTTERANCE,нет локализаций,ASSIST_LOG.md:2131
+T170,RUN-B.51,2026-07-23,18:50,OWNER_UTTERANCE,the library is an ESCALATE follow-on (COND-S29),ASSIST_LOG.md:2131
+T171,RUN-B.51,2026-07-23,18:50,OWNER_UTTERANCE,как проверяем,ASSIST_LOG.md:2131
+T172,RUN-B.51,2026-07-23,18:50,OWNER_UTTERANCE,"задумано дизайном, не построено, выпало из журнеев",ASSIST_LOG.md:2131
+T173,RUN-B.51,2026-07-23,18:50,OWNER_UTTERANCE,Trial cap exceeded,ASSIST_LOG.md:2131
+T174,RUN-B.52,2026-07-23,19:00,GO,"Го на s34, добавь в него ПОЛНЫЙ МНОГОАГЕНТНЫЙ ПЕРЕСМОТР ВСЕГО интерфейса, во всех видах и местах, т.к. сейчас у нас капитальные расхождения между картой приложения, отдельными страницами и формами, их картинками и текстовыми описаниями, нужен полный синк!! После этого - делай весь батч. Буду вопросы - зови меня.",ASSIST_LOG.md:2158
+T175,RUN-B.53,2026-07-23,20:50,ESCALATE,"ESCALATE: SI-png regen backlog (design-pipeline, отдельная единица); CD-14/15/12 — стройка отдельными единицами - операционная фактура: 2 API-обрыва «Connection closed mid-response» (оба на длинной генерации workflow-скрипта) → recovery-промпты, второй с тактикой «пиши файлы частями» — сработало; по",ASSIST_LOG.md:2174
+T176,RUN-B.53,2026-07-23,20:50,OWNER_UTTERANCE,synced to build 20260723T150800Z,ASSIST_LOG.md:2174
+T177,RUN-B.53,2026-07-23,20:50,OWNER_UTTERANCE,Connection closed mid-response,ASSIST_LOG.md:2174
+T178,RUN-B.53,2026-07-23,20:50,OWNER_UTTERANCE,пиши файлы частями,ASSIST_LOG.md:2174
+T179,RUN-B.53,2026-07-23,20:50,OWNER_UTTERANCE,проверять почаще,ASSIST_LOG.md:2174
+T180,RUN-B.54,2026-07-23,21:00,OWNER_UTTERANCE,"сделаем ШОВ, чтобы продолжить после exit",ASSIST_LOG.md:2202
+T181,RUN-B.54,2026-07-23,21:00,GO,сделай шов,ASSIST_LOG.md:2202
+T182,RUN-B.54,2026-07-23,21:00,OWNER_UTTERANCE,продолжай,ASSIST_LOG.md:2202
+T183,RUN-B.55,2026-07-23,21:20,OWNER_UTTERANCE,"Перезагрузились, продолжаем",ASSIST_LOG.md:2222
+T184,RUN-B.55,2026-07-23,21:20,OWNER_UTTERANCE,Esc → RESUME-заметка → kill → ребут → tmux+--resume,ASSIST_LOG.md:2222
+T185,RUN-B.56,2026-07-23,23:00,ESCALATE,"ESCALATE владельцу (NOTE-033, non-blocking): trial cap проецируется на ВСЕХ юзеров включая paid/active (trial-cap-hit.service без subscription-exemption) — противоречит дизайну «paid вне квоты». Решение владельца: exempt active ИЛИ re-affirm lifetime-cap. (Потому 402 и бил active demo) - среда: нова",ASSIST_LOG.md:2238
+T186,RUN-B.56,2026-07-23,23:00,OWNER_UTTERANCE,paid вне квоты,ASSIST_LOG.md:2238
+T187,RUN-B.57,2026-07-23,23:15,OWNER_UTTERANCE,Ничего — ждать,ASSIST_LOG.md:2271
+T188,RUN-B.58,2026-07-23,23:40,OWNER_UTTERANCE,"постоянно что-то ломается, нужны системные доработки экосистемы",ASSIST_LOG.md:2288
+T189,RUN-B.58,2026-07-23,23:40,OWNER_UTTERANCE,тихий degrade в empty при 401,ASSIST_LOG.md:2288
+T190,RUN-B.58,2026-07-23,23:40,OWNER_UTTERANCE,на этом пока завершаем трек,ASSIST_LOG.md:2288
+T191,RUN-B.58,2026-07-23,23:40,OWNER_UTTERANCE,шов=wind-down,ASSIST_LOG.md:2288
+T192,RUN-B.58,2026-07-23,23:40,OWNER_UTTERANCE,"сделать VM одинаково доступной для сессий Claude и для визуального осмотра владельцем; всю работу делать видимой, а не только в терминале",ASSIST_LOG.md:2288
+T193,RUN-B.58,2026-07-23,23:40,OWNER_UTTERANCE,накидать в концепт,ASSIST_LOG.md:2288

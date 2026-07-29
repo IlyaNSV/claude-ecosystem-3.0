@@ -53,6 +53,14 @@ CLAUDE_CODE_ENABLE_PROMPT_SUGGESTION=false, промпт через файл+cap
 harvest (SUMMARY + транскрипт scp на хост, сверка байт) → гашение сессии поимённо →
 ledger-запись RUN-B.NN (в этой ветке) → push (сеть: dangerouslyDisableSandbox=true).
 
+### ⏳ ИДЁТ СЕЙЧАС (2026-07-29): исполнение анализа эффективности
+
+Отдельная Opus 5 сессия исполняет `EFFECTIVENESS_ANALYSIS_PLAN.md` по «го» владельца
+(+ уточнение «продолжай автономно до owner class решений»). **Рабочий шов этой единицы —
+`dev/global-loop/analysis/SEAM-ANALYSIS.md`: при потере контекста читать ЕГО, он несёт
+состояние датасета, сделанные замеры и очередь.** Рамки: VM read-only, продукт — датасет
+и отчёты в `analysis/`, M16 и merge в main — только по отдельному «го».
+
 Старт КАЖДОЙ хост-сессии кондуктора — онбординг-пак (DEC-DEV-0222, влито из main
 merge'ем 2026-07-28): `CONDUCTOR_SESSION=1 claude` (авто-хук) · `/host:onboard` ·
 вручную `node dev/meta-improvement/scripts/host-onboard.cjs` (~38k ток., детали —

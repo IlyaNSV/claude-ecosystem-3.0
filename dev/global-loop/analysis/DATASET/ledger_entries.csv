@@ -1,0 +1,99 @@
+id,run,num,date,time,line,title,mode,attention_min,has_escalate,has_owner_decision,has_incident,shas,releases,cond_sessions,run_ids,pa_refs,dec_refs,owner_quotes,body_len
+RUN-A.1,RUN-A,1,2026-07-17,04:20,55,–04:35 — admin (вход в трек + setup),autonomous-conductor,15,0,0,0,c35ec61,,,,,,2,1376
+RUN-A.2,RUN-A,2,2026-07-17,04:45,76,"observe (слепок пилота, recon-интеграция)",autonomous-conductor,10,0,0,0,6965aa2,,,,,,1,1559
+RUN-A.3,RUN-A,3,2026-07-17,05:05,98,"observe + admin (сенсоры, R0 = PR #229)",autonomous-conductor,35,0,0,0,f9e92f8,20260715T112801Z,,,PA-065 PA-046,DEC-DEV-0221,1,1407
+RUN-A.4,RUN-A,4,2026-07-17,05:15,120,provision (OPENAI_API_KEY: already-set),autonomous-conductor,5,0,0,0,,,,,PA-038 PA-039,,1,949
+RUN-A.5,RUN-A,5,2026-07-17,05:25,135,dispatch (executor-сессия cond-s1: гигиена + DoD baseline + handoff FM-006),autonomous-conductor,15,0,0,0,4ab462c5 94cfd3e3ead5,,s1,,PA-065,,3,1807
+RUN-A.6,RUN-A,6,2026-07-17,05:55,161,observe (итоги cond-s1: всё по ожиданиям + 2 находки),autonomous-conductor,7,0,1,0,9a0f813 4b98345 4f0d843 6965aa2,,s1,,,,1,1849
+RUN-A.7,RUN-A,7,2026-07-17,06:05,186,dispatch (cond-s2: P6-батч по 6 FM),autonomous-conductor,10,0,0,0,c46bb722 e60f17b25753,,s2,,,,1,1091
+RUN-A.8,RUN-A,8,2026-07-17,06:25,203,qa-answer ×2 (fork-меню cond-s2 перед стартом батча),autonomous-conductor,12,1,0,0,c46bb722,,s2,,,,8,1983
+RUN-A.9,RUN-A,9,2026-07-17,,230,~06:40 — deviation + escalation (инцидент audit_logs) и обрыв (ребут хоста),autonomous-conductor,25,1,0,1,3fbb315 ffdfbf4 f9e92f8 b582521 61bc9cc 6fce065 c9b8c5b,,s2,,PA-046,,2,2187
+RUN-A.10,RUN-A,10,2026-07-17,,259,"~07:00 — dispatch (cond-s3: перезапуск P6-батча, capture-only ×6)",autonomous-conductor,15,1,0,0,1ce1b611 aaaecd16db5a 3fbb315,,s3,,,,0,1060
+RUN-A.11,RUN-A,11,2026-07-17,,276,owner-decisions ×2 исполнены (PR #229 merged; audit_logs принят),autonomous-conductor,10,0,0,0,100c637 3fbb315 4f0d843 c9b8c5b,,s3,,PA-046 PA-065,DEC-DEV-0217,0,1296
+RUN-A.12,RUN-A,12,2026-07-17,,295,owner-decisions ×2 (PA-065..068 закрыть; cascade VC-037),autonomous-conductor,2,0,0,0,,,s3,or5kl4,PA-065 PA-046,,0,602
+RUN-A.13,RUN-A,13,2026-07-17,,306,~15:20 — observe (итоги P6-батча cond-s3) + dispatch (cond-s4),autonomous-conductor,30,0,0,0,3da18eb af55cb5 da096f60,,s3 s4 s2,,PA-064 PA-029 PA-069 PA-065 PA-046,,3,2883
+RUN-A.14,RUN-A,14,2026-07-17,,344,~16:20 — observe (cond-s4: всё чисто) + dispatch (cond-s5 consilium) + seam-update,autonomous-conductor,20,0,0,0,05470d2 eb5a3a5a,,s4 s5,,PA-065 PA-046 PA-072,,3,1894
+RUN-A.15,RUN-A,15,2026-07-17,,370,~17:30 — observe (consilium cond-s5) → пакет ратификаций владельцу,autonomous-conductor,25,0,0,0,b9936e4,,s5,,PA-072 PA-070 PA-073 PA-029 PA-069 PA-071,DEC-PLAN-043 DEC-PLAN-041,0,1869
+RUN-A.16,RUN-A,16,2026-07-17,,395,~17:50 — owner-ratify ×4 (AskUserQuestion) + dispatch (cond-s6 fix-итерация),autonomous-conductor,20,0,0,0,add7e94c,,s6,,PA-072 PA-070 PA-073 PA-071 PA-069 PA-029,,1,1180
+RUN-A.17,RUN-A,17,2026-07-17,,412,~21:25 — observe (итоги cond-s6) + 🔄 HANDOFF модели Fable 5 → Opus 4.8,autonomous-conductor,,0,0,1,b9936e4 df2c135 0d1c437 1d51da0 ea0850b 14543ad 4e28c4a dba9c4d 98db1d6,,s6,,PA-072 PA-070 PA-069 PA-027 PA-071 PA-073 PA-029,DEC-PLAN-041,1,3364
+RUN-A.18,RUN-A,18,2026-07-17,,455,"~21:45 — dispatch (cond-s7: P6 round-2 стоковый, 5 реализованных FM) [Opus]","autonomous-conductor (Opus 4.8; директива владельца «гони до упора, выноси только owner-class»)",12,1,0,0,df2c135 5b611897 22b3c6ead814,,s7 s6,,,,2,1354
+RUN-A.19,RUN-A,19,2026-07-17,,474,~22:20 — owner-decision (Lighthouse NFR-008 = абсолютный порог) + P6 round-2 промежуточно,autonomous-conductor (Opus),10,0,0,0,,,s7,pd3f00,,,3,1901
+RUN-A.20,RUN-A,20,2026-07-18,,499,~00:10 — observe (P6 round-2 сводка) → 3 owner-class эскалации [Opus],autonomous-conductor (Opus),20,1,0,0,6ce685f,,s7 s8,,PA-071 PA-075 PA-076 PA-064 PA-074,DEC-PLAN-039,1,2107
+RUN-A.21,RUN-A,21,2026-07-18,,527,~00:40 — owner-ratify ×3 + Lighthouse готов → fix-волна [Opus],autonomous-conductor (Opus),15,0,0,0,d27829a,,s8 s9 s10 s11,,PA-075 PA-076 PA-064 PA-071,DEC-PLAN-039,1,1760
+RUN-A.22,RUN-A,22,2026-07-18,,550,~01:30 — observe (fix-волна cond-s9 чистая) + dispatch (cond-s10 FM-004 P5) [Opus],autonomous-conductor (Opus),15,1,0,0,fe3ebb9 3875fa4,,s9 s10,,PA-075 PA-072 PA-076 PA-064,,0,1728
+RUN-A.23,RUN-A,23,2026-07-18,,573,~18:00 — 🔴 ИНЦИДЕНТ: премат. kill оборвал фоновый P5-Workflow на 12/23 + recovery [Opus],autonomous-conductor (Opus),25,0,0,1,,,s10,,PA-077 PA-078,,6,2358
+RUN-A.24,RUN-A,24,2026-07-18,,604,"~18:12 — Monitor false-positive #2 (transient probe → SESSION-GONE), фикс [Opus]",autonomous-conductor (Opus),10,0,0,1,0c4c37c3,,s11,,PA-077,,7,1316
+RUN-A.25,RUN-A,25,2026-07-19,,622,~01:50 — FM-004 построена+запушена (P6 MANUAL_VERIFY×DEGRADED) + 🎯 главный урок монитора [Opus],autonomous-conductor (Opus),40,0,0,0,d5425c3,,s11 s10 s9,,PA-099 PA-076 PA-093,,4,2877
+RUN-A.26,RUN-A,26,2026-07-19,,658,~02:00 — owner-ratify ×2 (FM-004 транспорт + OQ-пакет) → dispatch cond-s12 [Opus],autonomous-conductor (Opus),8,0,0,0,,,s12,,PA-099 PA-076 PA-093,,0,1088
+RUN-A.27,RUN-A,27,2026-07-19,,673,~02:45 — FM-004 транспорт готов (cond-s12) + monitor testproc-багфикс [Opus],autonomous-conductor (Opus),30,0,0,0,29cd28b,,s12 s13,,PA-099 PA-093,,0,1818
+RUN-A.28,RUN-A,28,2026-07-19,,697,⏸ ПАУЗА: API-ошибка + VM poweroff во время cond-s13 (ре-гейт) [Opus],"autonomous-conductor (Opus) — владелец приостановил drive («следующую по команде»),",10,0,0,1,29cd28b 2e510d2,,s13 s12 s1,,,,2,1960
+RUN-A.29,RUN-A,29,2026-07-19,,722,"~19:50 — resume после паузы A.28 (новая сессия, Fable 5) + страховка осадка cond-s13",autonomous-conductor (Fable 5 — новая сессия-кондуктор; команда владельца «продолжай по,40,0,0,0,5a6e430 f9cc170 d9307d5 29cd28b f23719c7,,s13 s14,,PA-101 PA-073 PA-102,,3,2910
+RUN-A.30,RUN-A,30,2026-07-19,,759,~20:15 — транскрипт-дайджесты интегрированы + dispatch cond-s14 (добивка re-gate) + Monitor v3,autonomous-conductor (Fable 5),35,0,0,1,f23719c7 3199d4d7 5736206f 4072bd48 c30f0e52622f d9307d5,,s14 s12 s13,,,,7,3337
+RUN-A.31,RUN-A,31,2026-07-19,,802,~20:40 — residual-разбор cond-s13 (sonnet-дайджест транскрипта) + КОРРЕКЦИЯ причины смерти,autonomous-conductor (Fable 5),15,0,0,0,5a6e430 6791cf3 93a9f55 5c21786 e47b97e 929a903 f9cc170 d9307d5,,s13 s14,,PA-071 PA-101 PA-073 PA-102 PA-103 PA-104,,5,3409
+RUN-A.32,RUN-A,32,2026-07-19,,846,~21:20 — онбординг-пак загружен + конформанс-аудит двух сессий (запрос владельца) + corrigendum,autonomous-conductor (Fable 5),30,0,0,1,f23719c7 bdc54fd 8f7b0fa,,s14 s13,,,DEC-DEV-0222 DEC-DEV-0216,5,2650
+RUN-A.33,RUN-A,33,2026-07-19,,881,"~23:10 — ✅ P6 ROUND-FINAL ЗАКРЫТ (cond-s14): 7/7 FM на READY, 0 NO-GO",autonomous-conductor (Fable 5),25,0,0,1,d9307d5 670405e,,s14,,PA-105 PA-073 PA-101 PA-102,,0,2316
+RUN-A.34,RUN-A,34,2026-07-19,,912,~23:30 — owner-ratify ×4 (deploy-чекпойнт) → dispatch cond-s15 (deploy состава RL-001),autonomous-conductor (Fable 5),20,0,0,1,97a7fc93 a0c9ff2547fd,,s15 s12,,PA-102 PA-103 PA-104 PA-073,,1,1924
+RUN-A.35,RUN-A,35,2026-07-20,,939,"~00:20 — итоги cond-s15: DEPLOYED + Lighthouse PASS, worker FAILS_TO_START (PA-106) → dispatch cond-s16",autonomous-conductor (Fable 5),25,1,0,0,d8d6ee3 aa3bf5b,20260719T214340Z,s15 s16,,PA-106 PA-102,,0,2261
+RUN-A.36,RUN-A,36,2026-07-20,,971,"~01:35 — ✅ cond-s16: worker STARTS, P7 зелёный; блокер DoD сузился до task 7.2 (owner-развилка)",autonomous-conductor (Fable 5),20,1,1,0,18177cf 4cbdea8,20260719T214340Z,s16 s12 s17,,PA-106,,1,2453
+RUN-A.37,RUN-A,37,2026-07-20,,1006,~02:30 — 🏁 DoD RL-001 СОБРАН; прогон достиг ТЕРМИНАТОРА-МИНУС-OWNER,autonomous-conductor (Fable 5),25,1,0,0,096e34b 4d0e03e 304e565 30ce6de,,s17 s1,,,DEC-PLAN-046 DEC-DEV-0216,0,3018
+RUN-A.38,RUN-A,38,2026-07-20,,1047,~03:15 — owner UI-walkthrough setup + 🔴 находка: CSS-слой RL-001 НЕ реализован (DoD-gap),assist (владелец захотел вручную пройтись по UI задеплоенного RL-001),30,0,1,0,,,,,,,8,2619
+RUN-B.1,RUN-B,1,2026-07-22,02:25,1082,admin (старт сессии-кондуктора),assist (хост-сессия объявлена владельцем кондуктором; `/host:onboard`),20,0,0,0,2a40c98 ae0af56,,,,,,1,859
+RUN-B.2,RUN-B,2,2026-07-22,02:30,1096,escalation (3 развилки → решения владельца) + provision-источник,assist,15,0,1,0,,,,,,,3,1278
+RUN-B.3,RUN-B,3,2026-07-22,02:45,1115,dispatch (cond-s18: staging up + RL-001 bring-forward + свап перевода),assist,15,0,0,0,5b4b22e8 0c2ed4a1955f,,s18,,,,1,1063
+RUN-B.4,RUN-B,4,2026-07-22,04:00,1132,harvest cond-s18 (свап #1 перевод: ЗАВЕРШЁН GO×READY×DEPLOYED) + deviation монитора,assist,20,0,0,0,4d3e32e f5b16ad 8f2287d 3d78d1b,20260722T004120Z,s18,vazryo vcbvg0,,,1,2342
+RUN-B.5,RUN-B,5,2026-07-22,04:05,1164,dispatch (cond-s19: свап #2 транскрипция Mock → OpenAI Whisper),assist,10,0,0,0,f5b16ad 226221cf ced2cc9f14b2,,s19,,,,1,799
+RUN-B.6,RUN-B,6,2026-07-22,05:15,1179,"harvest cond-s19 (свап #2 ASR: код+smoke PASS, деплой held) + применение owner-решений к эскалациям + provision SA",assist,20,0,0,0,b2acec5 82ce3b4 4d3e32e,,s19,ve6hlc,PA-107,,1,1858
+RUN-B.7,RUN-B,7,2026-07-22,05:25,1206,dispatch (cond-s20: деплой хвоста свапа #2 + свап #3 TTS → Google Cloud),assist,10,0,0,0,7d5fa2ac 2498c0b7d80d 82ce3b4,,s20,,PA-107,,1,827
+RUN-B.8,RUN-B,8,2026-07-22,06:55,1221,harvest cond-s20 (свапы #2/#3 введены и задеплоены; TTS-smoke заблокирован биллингом → PA-108),assist,20,0,0,0,f801f93 4d3e32e d0b3e45 74ab438 01a990a 68f755f,20260722T023857Z 20260722T040850Z,s20,,PA-108 PA-107,,1,1675
+RUN-B.9,RUN-B,9,2026-07-22,07:05,1246,dispatch (cond-s21: свап #4 splice/reassembly FB-013 + FM-004 frontmatter),assist,10,0,0,0,107ad5bf 855b46ee5995,,s21,,PA-108,,0,871
+RUN-B.10,RUN-B,10,2026-07-22,08:50,1261,harvest cond-s21 (свап #4 splice: ВВЕДЁН + real-smoke ffmpeg PASS; шаг 1 исчерпан до owner-действий),assist,20,1,0,0,cd0f738 477821e f106dfa 68f755f be0e2f4,20260722T055851Z,s21,,PA-108 PA-109,,0,1870
+RUN-B.11,RUN-B,11,2026-07-22,09:00,1288,dispatch (cond-s22: шаг 2a — имплементация CSS-слоя по готовому дизайну),assist,10,0,0,0,93186b7c aeffae9b71c1,,s22,,PA-109,,1,937
+RUN-B.12,RUN-B,12,2026-07-22,10:20,1304,"harvest cond-s22 (CSS-слой: ГОТОВ, 6/6 MK, Lighthouse ~1.00) + owner включил биллинг GCP",assist,20,0,0,0,1e848ba 214e9c7,20260722T070924Z,s22,,PA-108,,2,1351
+RUN-B.13,RUN-B,13,2026-07-22,10:30,1325,dispatch (cond-s23: PA-108-хвосты после включения биллинга),assist,10,0,0,0,025965e6 812ba18c7557,,s23,,PA-108,,0,847
+RUN-B.14,RUN-B,14,2026-07-22,10:45,1341,решения владельца по батчу ②③④ (все по рекомендациям),assist,5,0,1,1,,,,,PA-109,,1,1102
+RUN-B.15,RUN-B,15,2026-07-22,12:10,1359,"harvest cond-s23 (PA-108 ЗАКРЫТ ЦЕЛИКОМ: TTS live ✅, GCS ✅, NFR-010 1981ms ≪ цели)",assist,20,0,0,0,5236b79 c4ed9cd,,s23,,PA-108 PA-109,,1,1717
+RUN-B.16,RUN-B,16,2026-07-22,12:20,1384,dispatch (cond-s24: применение решений ②③④ + постоянный real-пайплайн — финальная содержательная единица),assist,10,0,0,0,09fcb20f 603097541fa0,,s24,,PA-109,,0,779
+RUN-B.17,RUN-B,17,2026-07-22,15:50,1398,harvest cond-s24 (решения ②③④ применены; staging на ПОСТОЯННОМ real-пайплайне; ТЕРМИНАТОР ДОСТИГНУТ),assist,25,0,0,0,7a0df37 53e3cae bb72d72 d20fd87,20260722T114731Z,s24,,PA-109 PA-111 PA-114,,0,2061
+RUN-B.18,RUN-B,18,2026-07-22,16:00,1428,решения владельца по финальному батчу (ОБА против рекомендаций — выбор владельца),assist,5,0,1,0,,,,,PA-114 PA-111,,2,816
+RUN-B.19,RUN-B,19,2026-07-22,16:10,1443,dispatch (cond-s25: forward-edge un-defer — upload + real deliverable-storage + полный HTTP E2E),assist,10,0,0,0,8ee1e1a9 4d2f1bee3c0c,,s25,,PA-114,,0,700
+RUN-B.20,RUN-B,20,2026-07-22,19:40,1456,harvest cond-s25 (🏁 forward-edge LIVE: первый полный HTTP E2E real-job пилота ПРОШЁЛ),assist,20,0,0,0,5bfd5cb 1d4a2a3 7b1ed87 9748e84 8022e63 3ce39ce 6f0dd85 43da37a6,20260722T152924Z,s25,,PA-114 PA-111,,0,1718
+RUN-B.21,RUN-B,21,2026-07-22,19:50,1482,dispatch (cond-s26: PA-111 авто-детект freeze §14.7 — последняя стройка RL-001),assist,10,1,0,0,3c9dc831 5cf5f66855a7,,s26,,PA-111,,0,701
+RUN-B.22,RUN-B,22,2026-07-22,21:20,1495,harvest cond-s26 (авто-детект §14.7 ГОТОВ; 🔴 impl-sync map противоречит фактам — вероятный live-манифест meta-feedback #4),assist,20,1,0,1,d726bca 870219f 5f35da6,20260722T165506Z,s26,,PA-111 PA-109,,0,1819
+RUN-B.23,RUN-B,23,2026-07-22,21:30,1521,dispatch (cond-s27: диагностика impl-sync-коллектора + честная реконсиляция evidence),assist,10,0,0,0,7100d76a 9027ababb2ea,,s27,,,,2,855
+RUN-B.24,RUN-B,24,2026-07-22,22:40,1536,harvest cond-s27 (диагноз: ДВА дефекта коллектора; Кат.1 реконсилирована честно; терминатор СОБИРАЕТСЯ),assist,20,0,0,0,5f35da6 7536b36,,s27,,PA-116 PA-103,,0,1338
+RUN-B.25,RUN-B,25,2026-07-22,23:00,1557,подготовка owner UX-прохода (шаг 2b) перед ратификацией,assist,20,0,0,0,,,,,,,0,761
+RUN-B.26,RUN-B,26,2026-07-22,23:20,1571,owner UX-проход: 3 навигационные дыры + directive «нога приёмки user-journey» + coverage-check AS IS,assist,40,0,0,0,,,,,,DEC-DEV-0222,5,2233
+RUN-B.27,RUN-B,27,2026-07-22,23:30,1601,«го» владельца по плану UJA; старт этапов 1-3,assist,10,0,0,0,40ca497,,,,,DEC-DEV-0225,1,794
+RUN-B.28,RUN-B,28,2026-07-23,00:05,1615,research-вердикт + approve инструмента + dispatch стройки UJA в каноне,assist,15,0,0,0,,,,,,,0,1098
+RUN-B.29,RUN-B,29,2026-07-23,00:50,1632,стройка UJA завершена; спот-ревью main PASS; PR #234 готов к merge,assist,25,0,0,0,9f122b8,,,,,DEC-DEV-0200,0,1155
+RUN-B.30,RUN-B,30,2026-07-23,01:10,1651,merge #234 по мандату владельца; доставка UJA в пилот + dispatch валидации (cond-s28),assist,20,0,1,0,04f5d3c 5465afea e05ae1f75994,,s28,,,,3,1106
+RUN-B.31,RUN-B,31,2026-07-23,03:10,1668,harvest cond-s28: ✅ UJA-ВАЛИДАЦИЯ ПРОШЛА — приёмка поймала ground truth И БОЛЬШЕ,assist,25,0,0,0,04f5d3c d44300f,,s28,,,DEC-INT-0020,1,1601
+RUN-B.32,RUN-B,32,2026-07-23,03:20,1692,dispatch (cond-s29: web-UI фикс по показаниям UJA → зелёный UJA),assist,10,0,0,0,6acfa4e8 54c87663d17f,,s29,,,,0,680
+RUN-B.33,RUN-B,33,2026-07-23,05:20,1704,harvest cond-s29: 🏁 UJA GREEN (машинно верифицирован) — продуктовый гейт RL-001 закрыт,assist,25,0,0,0,32588ed b40f413,20260723T015725Z,s29,wvcqeg,,,1,1789
+RUN-B.34,RUN-B,34,2026-07-23,09:20,1730,owner повторный ручной проход: 2 НОВЫЕ дыры мимо зелёного UJA; разбор = дыры МОЕГО дизайна приёмки,assist,30,0,0,1,af7ce35a,,,,,,0,1319
+RUN-B.35,RUN-B,35,2026-07-23,09:50,1750,"находки #3/#4 владельца (свободные переходы, нет logout) + dispatch cond-s30",assist,20,0,0,0,eaca8d8e,,s30,,,,3,1231
+RUN-B.36,RUN-B,36,2026-07-23,10:15,1768,канон-директивы владельца (матрица доступа has_ui; DoD-вход 30 мин–2 ч) + фиксация в файловую память,assist,15,0,1,0,,,,,PA-116,,3,1021
+RUN-B.37,RUN-B,37,2026-07-23,11:30,1784,ИНВАРИАНТ владельца: кондуктор = транслятор без профанации интенций (I-8),assist,20,0,1,0,,,,,,,2,1433
+RUN-B.38,RUN-B,38,2026-07-23,12:40,1806,harvest cond-s30 (UJA v2 GREEN 7/7 машинно; P2028 подтверждён экспериментально) + I-8-нарушение executor-а → dispatch s31 (канонический догон),assist,30,0,1,0,e1363e8 99fdc9d e0dfbdf a0dc6be 90a4561 616d9e9,,s30 s31,,,,3,1725
+RUN-B.39,RUN-B,39,2026-07-23,13:10,1833,вопрос владельца «откатить и перестроить?» → оценка + находка #6 (нет механизма fix-vs-rebuild),assist,15,0,0,0,,,,,,,5,1140
+RUN-B.39,RUN-B,39,2026-07-23,13:10,1850,вопрос владельца «откатить и перестроить?» → оценка + находка #6 (нет механизма fix-vs-rebuild),assist,15,0,0,0,,,,,,,5,1140
+RUN-B.40,RUN-B,40,2026-07-23,13:40,1867,merge PR #4 (I-8 в каноне) + outbox deep-dive: consumer-endpoint НЕ СУЩЕСТВУЕТ,assist,15,0,0,0,d73b4b3,,,,,,0,1318
+RUN-B.41,RUN-B,41,2026-07-23,14:00,1887,"решение владельца по outbox: B сейчас, A в RL-002",assist,5,0,1,0,,,s31,,,,1,652
+RUN-B.42,RUN-B,42,2026-07-23,16:30,1898,harvest cond-s31: канонический догон ЗАКРЫТ (7/7 зелёные); API-stall пережит авторетраем без потери нити,assist,25,1,0,1,0e84140 6cb3ae1 d744367 054f868 1e947c4 4d87c82,20260723T111720Z,s31,xefgmg xfeiyw xgi11c xims5k,PA-118 PA-103 PA-075,DEC-INT-0021,2,2413
+RUN-B.42,RUN-B,42,2026-07-23,14:40,1935,harvest cond-s31 (канонический догон ЗАКРЫТ образцово) + dispatch s32,assist,25,0,0,1,6cb3ae1 d744367 4d87c82,,s31 s32,,PA-118 PA-103 PA-075,DEC-INT-0021,0,1306
+RUN-B.43,RUN-B,43,2026-07-23,16:45,1955,пост-s31 единица исполнена: outbox B применён + A зарегистрирован в RL-002 (DEC-PLAN-047),assist,20,0,0,0,2571d5c,,,,,DEC-PLAN-047 DEC-PLAN-039,1,1080
+RUN-B.44,RUN-B,44,2026-07-23,17:00,1973,"🔴 КОЛЛИЗИЯ: ДВЕ хост-сессии вели прогон параллельно; таймлайн разобран, ущерба нет, решение о единственной — владельцу",assist,15,0,0,1,2fd7c82 51343a1 2571d5c 019db5a,,s32,,,DEC-PLAN-047,5,1735
+RUN-B.45,RUN-B,45,2026-07-23,17:10,1999,решение владельца: кондуктор — ЭТА сессия (единственная); мандат на сверку дублей на harvest s32,assist,5,0,1,1,2571d5c,,s32,,,DEC-PLAN-047,1,802
+RUN-B.46,RUN-B,46,2026-07-23,17:20,2013,harvest cond-s32: staging-сторона RL-001 ЗАВЕРШЕНА (deploy HEAD + UJA PASS 7/7); сверка дублей — расхождений НЕТ,assist,15,0,0,0,d744367 2c99b69 9710fcc a07ca3d,20260723T135538Z,s32,wiyf4yhkm wb1i1b96g,,DEC-PLAN-047,2,1916
+RUN-B.47,RUN-B,47,2026-07-23,17:55,2043,"распоряжение владельца «подготовь к ручной проверке, перезагрузи и пересобери всё» → инфра-перезагрузка + dispatch cond-s33",assist,15,0,1,1,f56f90c8,,s33,,,,1,1177
+RUN-B.48,RUN-B,48,2026-07-23,18:20,2062,harvest cond-s33: staging пересобран для ручной owner-проверки; доступ с хоста верифицирован; ESCALATE: нет admin seed-учётки,assist,20,1,0,0,5343c94,20260723T150800Z,s33,xmhir4,,DEC-PLAN-047,1,1649
+RUN-B.49,RUN-B,49,2026-07-23,18:30,2090,owner начал ручную проверку: 401 admin-логина диагностирован (не баг); coverage-вопрос «live-devtools при ручном хождении» → находка #7,assist,10,1,0,0,,,s34,,,,2,1229
+RUN-B.50,RUN-B,50,2026-07-23,18:40,2109,"owner-находка №1 ручного прохода: языковой чип-тупик на /localizations/new; репро+root cause за минуты, фикс — по «го»",assist,20,0,0,0,,,,,,,1,1404
+RUN-B.51,RUN-B,51,2026-07-23,18:50,2131,owner-находка №2: dashboard всегда «нет локализаций» — библиотека работ НЕ ПОСТРОЕНА (known residual s29); job владельца цел,assist,15,1,0,0,b2abd829,,s34,,,,5,1707
+RUN-B.52,RUN-B,52,2026-07-23,19:00,2158,"ГО владельца: s34 = полный многоагентный UI-аудит-синк, затем s35 = батч строек",assist,15,0,1,0,,,s34 s35,,,,1,945
+RUN-B.53,RUN-B,53,2026-07-23,20:50,2174,"harvest cond-s34: многоагентный UI-аудит-синк ЗАВЕРШЁН (13 D-STALE починено, 16 C-DRIFT в реестре, 2 AMBIG владельцу); пережил 2 API-обрыва",assist,25,1,0,1,e689479 0af151d a48fbda,20260723T150800Z,s34 s35,,PA-109,,4,1699
+RUN-B.54,RUN-B,54,2026-07-23,21:00,2202,"плановая остановка под ребут VM: s35 остановлена корректно (resume-точка), VM перезагружена, хост-сессия закрывается по шву",assist,20,0,1,1,6d019763,,,,,,3,1221
+RUN-B.55,RUN-B,55,2026-07-23,21:20,2222,"возобновление после ребута: стенд проверен, cond-s35 продолжена через --resume",assist,10,0,0,1,ddcf00e 0af151d 6d019763,,s35,,,,2,936
+RUN-B.56,RUN-B,56,2026-07-23,23:00,2238,"harvest cond-s35: БАТЧ ЗАКРЫТ ЦЕЛИКОМ (library + чип + admin-seed + квота), релиз 20260723T193232Z, UJA PASS 7/7 (обновлённый j1)",assist,20,1,1,0,3841b8d 6560e72 57ceaf5455d04546a9a23f54 5d25bf7 5c1055d 61c21f8,20260723T193232Z,s35,,,,1,2174
+RUN-B.57,RUN-B,57,2026-07-23,23:15,2271,решения владельца по трём открытым вопросам; режим = ожидание (ручная проверка владельца),assist,5,0,1,0,,,,,PA-118,,1,973
+RUN-B.58,RUN-B,58,2026-07-23,23:40,2288,"owner-находка #9 (cross-realm дыра, capture-only) + 🏁 RUN-B ЗАВЕРШЁН владельцем",assist,20,0,1,0,61c21f8,20260723T193232Z,,,,DEC-DEV-0227,6,4142
