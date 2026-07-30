@@ -1,6 +1,6 @@
 export const meta = {
   name: 'validate-feature-impl',
-  description: 'Orchestrator P6 — feature-level GO/NO-GO gate AFTER a feature\'s tasks are implemented. A mechanical layer (full suite + build) + 3 parallel validators (requirements-coverage RA-8 / design-alignment RA-9 / integration-boundary RA-10) + verify-finding-before-act (a validator finding is remediated ONLY after it is confirmed against ground truth, bounded). Replaces the thin kiro-validate-impl lift P5 used inline; P5 delegates here via workflow().',
+  description: 'Orchestrator P6 — feature-level GO/NO-GO gate AFTER a feature\'s tasks are implemented. A mechanical layer (full suite + build) + 4 parallel validators (requirements-coverage RA-8 / design-alignment RA-9 / integration-boundary RA-10 / constants-fidelity RA-11) + verify-finding-before-act (a validator finding is remediated ONLY after it is confirmed against ground truth, bounded) + root-cause-first triage of a wide finding set + a prepare-only deviation-triage when the bounded forward-fix is exhausted (DEC-DEV-0231). Replaces the thin kiro-validate-impl lift P5 used inline; P5 delegates here via workflow().',
   phases: [
     { title: 'Mechanical' },
     { title: 'Validate' },
@@ -21,12 +21,25 @@ export const meta = {
  * a real gate: a deterministic mechanical layer (the whole suite + build must be green) +
  * THREE parallel validators, each with a distinct lens.
  *
- * THREE VALIDATORS (RA-8/9/10, determinism model §2 — Layer-2 judgment):
+ * FOUR VALIDATORS (RA-8/9/10/11, determinism model §2 — Layer-2 judgment):
  *   requirements-coverage (RA-8) — every requirement has BOTH an implementation and a test;
  *     reuses coverage-oracle (P1-1) as the deterministic anti-self-report backbone.
  *   design-alignment (RA-9) — the impl honours the design.md decisions (no silent re-design).
  *   integration-boundary (RA-10) — cross-task seams are wired: no orphan export, no event
  *     emitted-but-unhandled, no caller referencing a name the producer never exposes.
+ *   constants-fidelity (RA-11, DEC-DEV-0231) — every numeric constant the Business Rules fix
+ *     (thresholds, caps, schedules) is enforced by the code with the exact source value;
+ *     br-constants-oracle.cjs is the deterministic backbone (the M16 defect class: a truncated
+ *     retry schedule and a cap taken "on the client's word" — the CODE↔BR layer; the SPEC↔BR
+ *     layer is P4 audit-spec-fidelity's value-mismatch, NOT duplicated here).
+ *
+ * ROOT-CAUSE-FIRST + DEVIATION-TRIAGE (DEC-DEV-0231, ENFORCEMENT_PLAN 2.3/2.4): a wide
+ * confirmed-present set (≥ rootCauseThreshold) is first triaged for ONE common mechanical root
+ * before per-finding remediation (the RUN-A gate loop re-diagnosed one root five times, 24.6%
+ * of run tokens). When the bounded forward-fix is exhausted and the verdict is still NO-GO wide,
+ * a PREPARE-ONLY deviation-triage (single judge + premise verification + reverse pass — the
+ * 2026-07-30 adjudication policy, NOT a consilium) prepares the "fix-forward vs re-derive"
+ * fork for the OWNER to ratify; the gate never takes that fork itself.
  *
  * VERIFY-FINDING-BEFORE-ACT (P6's core value, RUN_01 E5): a validator can hallucinate a
  * defect. So NO finding is remediated on the validator's word — each is first CONFIRMED by
@@ -65,6 +78,7 @@ const A = (typeof args === 'string' ? JSON.parse(args) : args) || {}
 const FEATURE = A.feature || ''                                  // cc-sdd feature slug (e.g. "auth")
 const SPEC_DIR = A.specDir || `.kiro/specs/${FEATURE}`
 const ORACLE = A.oracle || '.claude/orchestrator/lib/coverage-oracle.cjs'
+const CONSTANTS_ORACLE = A.constantsOracle || '.claude/orchestrator/lib/br-constants-oracle.cjs' // DEC-DEV-0231: CODE↔BR numeric-constants backbone (M16)
 const ENV_PROBE = A.envProbe || '.claude/orchestrator/lib/env-readiness.cjs' // DEC-DEV-0092: readiness-axis backbone
 const REMEDIATION_GUARD = A.remediationGuard || '.claude/orchestrator/lib/remediation-guard.cjs' // DEC-DEV-0096: remediation-discretion backbone (T5)
 const AUTONOMY_LIB = A.autonomyLib || '.claude/orchestrator/lib/autonomy-policy.cjs' // DEC-DEV-0193 (F2): disposition-resolver CLI seam (the harness cannot require() a lib — DEC-DEV-0073 §D.1)
@@ -75,6 +89,8 @@ const DEGRADED = !!A.degraded                                    // P5 had block
 const FWD_READINESS = A.readiness || ''                          // DEC-DEV-0092: optional readiness hint forwarded from P5 pre-flight
 const MAX_REMEDIATION_ROUNDS = A.maxRemediationRounds || 3
 const MAX_VALIDATOR_RESPAWN = A.maxValidatorRespawn || 2          // FB-LR-15 (DEC-DEV-0101): bounded re-spawn of a validator slot dropped on a terminal API error
+const ROOT_CAUSE_THRESHOLD = A.rootCauseThreshold || 3            // DEC-DEV-0231 (2.3): ≥ this many confirmed-present findings → diagnose the COMMON root once before per-finding remediation
+const DEVIATION_TRIAGE_THRESHOLD = A.deviationTriageThreshold || 3 // DEC-DEV-0231 (2.4): NO-GO with ≥ this many unresolved findings → prepare-only fix-forward-vs-re-derive triage for the owner
 
 // FB-002: refuse to run with no target rather than scanning .kiro/specs/ and picking one.
 if (!FEATURE) {
@@ -123,10 +139,32 @@ const INTEGRATION_BOUNDARY = [
   'This lens is where cross-task integration gaps surface.',
 ].join(' ')
 
+const CONSTANTS_FIDELITY = [
+  'Act as the constants-fidelity validator (RA-11, DEC-DEV-0231). Verify every NUMERIC constant the',
+  'product Business Rules fix (thresholds, caps, schedules, limits) is ENFORCED by the implemented code',
+  'with the EXACT source value — the M16 defect class: a truncated retry schedule (15/30 instead of',
+  '15/30/60) and a cap taken "on the client\'s word" instead of enforced. Use the br-constants-oracle as',
+  `the deterministic anti-self-report backbone: run \`node ${CONSTANTS_ORACLE} --handoff <source>\` (when a`,
+  '.product handoff source is available) to extract the canonical constants inventory from ground truth,',
+  'then for EACH constant grep the codebase for its enforcement site, build the claims JSON',
+  '([{rule, name, values, where}] — values expressed in the SPEC\'S units, converting code units yourself),',
+  `write it to a temp file and run \`node ${CONSTANTS_ORACLE} --handoff <source> --claims <that-file>\` and`,
+  'relay its JSON — the missing/mismatched verdict comes from code, never from your own summary.',
+  'Report ONLY defects as findings: kind constant-mismatch (the code enforces a DIFFERENT value than the',
+  'BR fixes — severity high); kind constant-unenforced (NO enforcement site exists, or the value is',
+  'accepted from user/client input without validation against the BR threshold — severity high).',
+  'ref = the BR id; where_to_verify = the code site (or the oracle JSON). A correctly enforced constant',
+  'is NOT a finding — it contributes to clean:true (FB-028). When no .product handoff source is',
+  `available, degrade honestly: derive the numeric-constant inventory from ${SPEC_DIR}/requirements.md`,
+  'yourself and check each enforcement site the same way, noting in every finding detail that the oracle',
+  'backbone was unavailable.',
+].join(' ')
+
 const VALIDATORS = [
   { key: 'requirements-coverage', ra: 'RA-8', role: REQUIREMENTS_COVERAGE },
   { key: 'design-alignment', ra: 'RA-9', role: DESIGN_ALIGNMENT },
   { key: 'integration-boundary', ra: 'RA-10', role: INTEGRATION_BOUNDARY },
+  { key: 'constants-fidelity', ra: 'RA-11', role: CONSTANTS_FIDELITY },   // DEC-DEV-0231: CODE↔BR constants (M16)
 ]
 
 // ---- schemas ---------------------------------------------------------------
@@ -160,6 +198,7 @@ const DEFECT_KINDS = [
   'uncovered-requirement', 'missing-test', 'no-call-site',          // RA-8 requirements-coverage — GAPS only
   'design-divergence',                                             // RA-9 design-alignment
   'orphan-export', 'dead-seam', 'unhandled-event', 'dangling-import', // RA-10 integration-boundary
+  'constant-mismatch', 'constant-unenforced',                      // RA-11 constants-fidelity (DEC-DEV-0231, M16 CODE↔BR)
   'other-defect',                                                 // genuine novel defect (NOT a positive)
 ]
 
@@ -345,6 +384,52 @@ const alreadyResolved = checked.filter((f) => f.disposition === 'already-resolve
 const refuted = checked.filter((f) => f.disposition === 'refuted')                        // hallucination → drop
 log(`verify-finding-before-act (order-aware): ${present.length} present, ${alreadyResolved.length} already-resolved (real, fixed since baseline), ${refuted.length} refuted/dropped`)
 
+// ROOT-CAUSE-FIRST (DEC-DEV-0231, ENFORCEMENT_PLAN 2.3): the RUN-A gate loop paid 24.6% of its
+// tokens re-diagnosing ONE mechanical root five times — each verdict derived the same broken-
+// substrate cause from scratch. So a WIDE confirmed-present set (≥ rootCauseThreshold) is first
+// triaged for a COMMON root, and the root — if one exists — is remediated ONCE before the
+// per-finding loop. The loop needs no special re-verify pass: its single-writer re-check already
+// returns resolved-by-concurrent-commit for findings the root fix cleared (no double-commit).
+// The TRIGGER and the routing are deterministic (code); the diagnosis itself is causal judgment
+// no script can make — the П-2 justification lives in DEC-DEV-0231.
+const ROOT_CAUSE_SCHEMA = {
+  type: 'object',
+  required: ['common_root'],
+  properties: {
+    common_root: { type: 'boolean' },                  // one concrete cause explains ≥2 of the findings
+    root_detail: { type: 'string' },                   // the single cause, stated concretely (file/config/seam)
+    affected: { type: 'array', items: { type: 'string' } },   // refs/kinds of the findings it explains
+    fix_hint: { type: 'string' },                      // where/how the ONE fix lands
+  },
+}
+let rootCause = null
+let rootRemediated = false
+if (present.length >= ROOT_CAUSE_THRESHOLD) {
+  rootCause = await agent(
+    `Root-cause-first triage (DEC-DEV-0231): feature ${FEATURE} has ${present.length} confirmed-present findings — ` +
+    `BEFORE they are fixed one by one, determine whether they share ONE common mechanical/structural root ` +
+    `(e.g. a broken tool/config/substrate seam failing many lenses at once — the RUN-A precedent: five NO-GO verdicts, one husky→beads root, diagnosed five times).\n` +
+    `Findings:\n${present.map((f) => `- [${f.validator}/${f.kind}] ${f.ref || ''}: ${f.detail}`).join('\n')}\n` +
+    `Inspect ground truth (code/config/tests) — do NOT infer from the finding texts alone. common_root=true ONLY if ` +
+    `one concrete cause explains ≥2 of them; name it in root_detail + list the affected refs + a fix_hint. Do NOT fix anything yourself.`,
+    { model: 'opus', schema: ROOT_CAUSE_SCHEMA, phase: 'Synthesize', label: 'root-cause-first' },   // MDP: cross-finding causal judgment (high R — shapes the whole remediation)
+  )
+  if (rootCause && rootCause.common_root) {
+    log(`root-cause-first: COMMON ROOT found (explains ${(rootCause.affected || []).length} finding(s)) — remediating the root ONCE before per-finding rounds`)
+    const rootFix = await agent(
+      `Remediate the COMMON ROOT of ${present.length} confirmed findings in feature ${FEATURE} (root-cause-first, DEC-DEV-0231): ${rootCause.root_detail}\n` +
+      `Fix hint: ${rootCause.fix_hint || 'derive from the root detail'}.\n` +
+      `Fix ONLY the root cause (no scope creep, no per-finding fixes), then selective-commit (NEVER git add -A — explicit paths) ` +
+      `with message: fix(${FEATURE}): common root — root-cause-first (DEC-DEV-0231); return remediated:true, block_class:'fixed'. ` +
+      `The same discretion rules apply (T5, FB-LR-07): a cross-spec/design contradiction is NOT yours to resolve — ` +
+      `return remediated:false with the matching block_class instead; do NOT pick a side, do NOT commit.`,
+      { model: 'opus', schema: REMEDIATE_SCHEMA, phase: 'Synthesize', label: 'remediate:common-root' },   // MDP: fixes + commits the shared root (impl, high R)
+    )
+    rootRemediated = !!(rootFix && rootFix.remediated)
+    log(`root-cause-first: root ${rootRemediated ? 'REMEDIATED — per-finding loop will re-confirm each finding against the fixed tree' : `NOT remediated (${(rootFix && rootFix.block_class) || 'no result'}) — falling through to per-finding remediation`}`)
+  }
+}
+
 // FB-LR-23 (parallel-worktree PA-id safety): shared instruction so the escalation PA-write below
 // targets the SINGLE canonical pending-actions file (the main checkout) + allocates its id from it —
 // a worktree-local copy let two parallel runs mint the same `PA-027` (G-1). Duplicated verbatim across
@@ -483,7 +568,54 @@ if (conflicts.length && result === 'GO') result = 'MANUAL_VERIFY_REQUIRED'
 // GO to MANUAL_VERIFY (never NO-GO — the lens is UNKNOWN, not failed). Conservative toward surfacing.
 if (incompleteValidators.length && result === 'GO') result = 'MANUAL_VERIFY_REQUIRED'
 
-// findings to surface: unresolved confirmed defects + mechanical failures + forwarded deferred-capability CONCERNS (FB-013 disclosure)
+// DEVIATION-TRIAGE (DEC-DEV-0231, ENFORCEMENT_PLAN 2.4 — feedback B1): when the gate's bounded
+// forward-fix machinery is exhausted and the feature still fails WIDE (NO-GO with a threshold-wide
+// unresolved set, or unresolved findings left after all remediation rounds), "keep fixing forward"
+// stops being the only honest option — the alternative is re-deriving the slice from spec. This
+// step PREPARES that fork; it never takes it: ONE judge (NOT a consilium — the owner's 2026-07-30
+// adjudication policy: single judge + mandatory premise verification + a reverse pass), prepare-only,
+// the OWNER ratifies via the pending-actions route. The TRIGGER is deterministic (code); the fork
+// judgment is not scriptable — П-2 justification in DEC-DEV-0231.
+const TRIAGE_SCHEMA = {
+  type: 'object',
+  required: ['recommendation', 'premises_verified'],
+  properties: {
+    recommendation: { type: 'string', enum: ['fix-forward', 're-derive'] },
+    premises_verified: { type: 'boolean' },            // the judge re-checked each unresolved finding against ground truth before judging
+    premise_notes: { type: 'array', items: { type: 'string' } },
+    criteria: {
+      type: 'object',
+      properties: {
+        cost: { type: 'string' },                      // estimated cost of each fork
+        blast_radius: { type: 'string' },              // how much of the tree each fork touches
+        spec_completeness: { type: 'string' },         // are the specs complete enough to re-derive from?
+        validated_state_value: { type: 'string' },     // what already-validated state a re-derive would discard
+        git_strategy: { type: 'string' },              // how each fork lands in git (branch / revert / rebuild)
+      },
+    },
+    counter_case: { type: 'string' },                  // the reverse pass: the strongest case FOR the option NOT recommended
+    rationale: { type: 'string' },
+  },
+}
+let deviationTriage = null
+const roundsExhausted = round >= MAX_REMEDIATION_ROUNDS && unresolved.length > 0
+if (result === 'NO-GO' && (unresolved.length >= DEVIATION_TRIAGE_THRESHOLD || roundsExhausted)) {
+  deviationTriage = await agent(
+    `Deviation-triage (PREPARE-ONLY, DEC-DEV-0231): feature ${FEATURE} is NO-GO with ${unresolved.length} unresolved confirmed finding(s) ` +
+    `after ${round} bounded remediation round(s). Prepare — do NOT take — the fork decision "fix-forward vs re-derive the slice from spec".\n` +
+    `PREMISE VERIFICATION FIRST (the 2026-07-30 adjudication policy): re-check each unresolved finding against ground truth (code/tests/spec) — ` +
+    `a triage built on an unverified premise is void; set premises_verified + premise_notes.\n` +
+    `Findings:\n${unresolved.map((f) => `- [${f.validator}/${f.kind}] ${f.ref || ''}: ${f.detail}`).join('\n')}\n` +
+    `Judge the fork on the criteria: cost · blast radius · spec completeness · value of the already-validated state · git strategy.\n` +
+    `REVERSE PASS: before finalising, write the strongest case for the option you are NOT recommending (counter_case) — only then commit to recommendation + rationale.\n` +
+    `PREPARE-ONLY: do NOT fix, do NOT revert, do NOT commit — the owner ratifies the fork. ` +
+    `Append the prepared triage as a NON-BLOCKING entry to the canonical pending-actions file (route: owner ratification of the fork). ` + PA_CANON,
+    { model: 'opus', schema: TRIAGE_SCHEMA, phase: 'Synthesize', label: 'deviation-triage' },   // MDP judging: single pinned judge + premise verification + reverse pass (DEC-DEV-0230 policy — консилиум демоутнут)
+  )
+  log(`deviation-triage prepared: ${deviationTriage ? `${deviationTriage.recommendation} (premises_verified=${!!deviationTriage.premises_verified})` : 'n/a (judge dropped)'} — prepare-only, owner ratifies`)
+}
+
+// findings to surface: unresolved confirmed defects + mechanical failures + forwarded implementer CONCERNS/deviations (FB-013 / DEC-DEV-0231 disclosure)
 const readinessReasons = (mech && mech.readiness_reasons) || []
 const findings = [
   ...(readiness !== 'READY'
@@ -503,7 +635,13 @@ const findings = [
   ...unresolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (confirmed-present; unresolved after ${MAX_REMEDIATION_ROUNDS} round(s))`),
   ...alreadyResolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (already-resolved since baseline, DEC-DEV-0093 — was REAL, fixed by a commit during/before the gate; NOT a hallucination. VERIFY the resolution is genuine, not a mask — single-writer remediation is now DEC-DEV-0096/T5.)`),
   ...conflicts.map((c) => `cross-spec/design conflict (FB-LR-07, T5/DEC-DEV-0096): ${c.validator}/${c.kind} ${c.ref || ''}: ${c.conflict_detail} — ESCALATED, not self-resolved; needs an upstream decision (Product for a cross-spec/requirement contradiction or a provider/design choice; the owning spec's author for a design self-contradiction).${c.masked ? ' A remediation reported a UNILATERAL resolution — VERIFY it did not mask the conflict.' : ''}`),
-  ...CONCERNS.map((c) => `deferred-capability (FB-013): ${typeof c === 'string' ? c : `${c.task || ''}: ${c.concern || ''}`} — disclose at GO; a GO over a mock-only/unwired real seam is GO-with-caveats`),
+  ...CONCERNS.map((c) => `implementer concern/deviation (FB-013, DEC-DEV-0231): ${typeof c === 'string' ? c : `${c.task || ''}: ${c.concern || ''}`} — disclose at GO; a GO over an undeclared deviation or a mock-only/unwired real seam is GO-with-caveats, not clean`),
+  ...(rootCause && rootCause.common_root
+    ? [`root-cause-first (DEC-DEV-0231): ${present.length} findings shared ONE root — ${rootCause.root_detail} — ${rootRemediated ? 'remediated once before per-finding rounds' : 'diagnosed but NOT remediated (see block class in log)'}; diagnosed ONCE, not per-verdict (the RUN-A anti-pattern).`]
+    : []),
+  ...(deviationTriage
+    ? [`deviation-triage (DEC-DEV-0231, prepare-only): recommendation=${deviationTriage.recommendation}; premises_verified=${!!deviationTriage.premises_verified}; counter-case recorded. The fork (fix-forward vs re-derive) is PREPARED, NOT taken — owner ratifies via pending-actions.`]
+    : []),
 ]
 log(`feature GO-gate: ${result} [readiness=${readiness}]${readiness !== 'READY' ? ' (advisory — gate could not fully judge)' : ''}; ${findings.length} finding(s) surfaced`)
 
@@ -540,7 +678,9 @@ return {
   committed_under_non_ready: nonReadyRemediation ? remediated.length : 0,   // FB-LR-16 (DEC-DEV-0102): fixes committed during a non-READY run — disclosed for a READY re-check
   residual: unresolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),
   conflicts: conflicts.map((c) => ({ validator: c.validator, ref: c.ref || null, kind: c.kind, conflict_class: c.conflict_class, masked: !!c.masked })),   // DEC-DEV-0096 (T5, FB-LR-07): escalated cross-spec/design contradictions — surfaced, never self-resolved; forces ≥ MANUAL_VERIFY
-  concerns: CONCERNS,                                 // FB-013: deferred-capability flags, disclosed not dropped
+  concerns: CONCERNS,                                 // FB-013 / DEC-DEV-0231: implementer concerns/deviations, disclosed not dropped
+  root_cause: rootCause ? { common_root: !!rootCause.common_root, root_detail: rootCause.root_detail || null, affected: rootCause.affected || [], remediated: rootRemediated } : null,   // DEC-DEV-0231 (2.3): the shared-root diagnosis, made ONCE
+  deviation_triage: deviationTriage || null,          // DEC-DEV-0231 (2.4): prepare-only fix-forward-vs-re-derive packet — owner ratifies, the gate never executes it
   result,                                             // GO | NO-GO | MANUAL_VERIFY_REQUIRED
   findings,
   go_gate: result,                                    // alias P5 reads (mirrors feature-to-tdd-impl's go_gate key)

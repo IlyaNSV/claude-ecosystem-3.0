@@ -96,4 +96,4 @@
 | Канон Кондуктора (`factory-conductor/CONDUCTOR.md`) | I-8 (B3) | ✅ merged PR #4 |
 | Память ассистента | `project_uja_acceptance_findings` (реестр, дополнен #7-#9) · `feedback_conductor_translation_fidelity` · `project_host_console_track` | ✅ |
 | Пилот `.product/notes` | NOTE-031/032/033 (+ DEC-PLAN-047, реестры продуктовых долгов) | ✅ |
-| Канон экосистемы (SPEC/чеклисты) | A1-A4, B1-B2, B4, C1-C5 — НЕ внесены (это и есть «системные доработки», ждут отдельной единицы дизайна по «го») | ⏳ |
+| Канон экосистемы (SPEC/чеклисты) | **Внесены волной носителей принуждения (DEC-DEV-0230/0231):** A1 → канон P8 (full design-state + `specs_skipped[]`, пакет 1) · A2 → RPM Access Matrix + V-19 + neg-журнеи P8 (пакет 1) · A3 → handoff §10 сквозной SI (вкл. error/interaction-состояния) + NM Dead Ends (пакеты 1-2) · A4 → RL DoD кат.3 realistic-input + P8 `dodRun`/`input_profile` (пакет 2) · B1 → P6 deviation-triage prepare-only (пакет 2). **Остались:** B2 (remediation-режим), B4 (reconcile-шаг), C1-C5 (кондуктор-инструментал) — пакет 3 по новому «го» | ⏳→✅ (частично) |

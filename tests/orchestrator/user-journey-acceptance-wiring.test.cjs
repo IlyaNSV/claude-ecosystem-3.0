@@ -73,11 +73,37 @@ test('preflight is a DoR gate: Playwright equipped? journeys present? staging 2x
   assert(hcIdx !== -1, 'no staging healthcheck probe');
   assert(runIdx !== -1, 'no run-journeys agent');
   assert(preIdx < runIdx && hcIdx < runIdx, 'the DoR probes must run BEFORE the journey run');
-  // the deterministic gate reads all three signals
+  // the deterministic gate reads all the DoR signals
   assert(/const playwrightPresent\b/.test(SRC) && /const journeysPresent\b/.test(SRC) && /const negativePresent\b/.test(SRC) && /const stagingTwoxx\b/.test(SRC),
     'the gate must read playwright_present + journeys_present + the staging 2xx signals');
-  assert(/if \(!playwrightPresent \|\| !journeysPresent \|\| !negativePresent \|\| !STAGING_URL \|\| !stagingTwoxx\)/.test(SRC),
-    'any missing DoR piece must short-circuit to ENV_NOT_READY');
+  assert(/if \(!playwrightPresent \|\| !journeysPresent \|\| !negativePresent \|\| !STAGING_URL \|\| !stagingTwoxx \|\| \(DOD_RUN && INPUT_PROFILE !== 'realistic'\)\)/.test(SRC),
+    'any missing DoR piece (incl. a dev-profile DoD run, DEC-DEV-0231) must short-circuit to ENV_NOT_READY');
+});
+
+test('realistic-input DoD leg (DEC-DEV-0231 2.5): a DoD run on dev fixtures is an honest DoR gap, and the profile is auditable', () => {
+  assert(/const DOD_RUN\b/.test(SRC) && /const INPUT_PROFILE\b/.test(SRC), 'no dodRun / inputProfile args');
+  // the owner directive is named with its numbers (видео 30 мин – 2 ч; 5-сек — только dev)
+  assert(/30 мин/.test(SRC) && /2 ч/.test(SRC) && /5-сек|5-second|5-sec/i.test(SRC),
+    'the realistic-input directive (видео 30 мин – 2 ч; 5-сек только dev) is not named');
+  assert(/2026-07-23/.test(SRC), 'the owner-directive provenance date is not carried');
+  // both return arms carry input_profile so RL DoD категория 3 can read it from run.json
+  const returns = (SRC.match(/return \{[\s\S]*?\n\}/g) || []).filter((r) => /uja_result/.test(r));
+  for (const r of returns) {
+    assert(/input_profile\s*:/.test(r), 'a return arm drops input_profile — RL DoD cannot audit the run');
+  }
+  // the realistic profile swaps the minimal-fixtures guard for the realistic-load instruction (still single-pass)
+  assert(/REALISTIC-INPUT PROFILE/.test(SRC), 'the run prompt has no realistic-profile branch');
+  assert(/INPUT_PROFILE === 'realistic'/.test(SRC), 'the run prompt is not conditional on the input profile');
+});
+
+test('forwarded implementer deviations are DISCLOSED in the P8 verdict (DEC-DEV-0231 2.2)', () => {
+  assert(/const CONCERNS = A\.concerns \|\| \[\]/.test(SRC), 'P8 does not accept forwarded concerns');
+  const returns = (SRC.match(/return \{[\s\S]*?\n\}/g) || []).filter((r) => /uja_result/.test(r));
+  for (const r of returns) {
+    assert(/concerns\s*:/.test(r), 'a return arm drops the forwarded concerns');
+  }
+  assert(/PASS-with-caveats/.test(SRC), 'a PASS over a declared deviation must be disclosed as PASS-with-caveats');
+  assert(/RL DoD п\.5/.test(SRC), 'the disclosure does not route deviations to owner ratification (RL DoD п.5)');
 });
 
 test('an ENV_NOT_READY DoR gap is DISCLOSED with hints (integrator:add playwright / author journeys / staging up), never a fake pass', () => {
