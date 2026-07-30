@@ -108,25 +108,44 @@ FM-005 Req 2.1–2.7 (единственная фича с настоящей м
 консилиум»): агрегатор risks_of_recommendation (4.1 = D025 = meta-feedback #2) · cost-линза
 (4.2 = D026 = meta-feedback #3) — зафиксировано в паттерне §Policy п.7.
 
-## Пакеты 5–7 — по новому «го» (состав зафиксирован, не исполнять)
-- **Пакет 5 — датчики H0/H1:** СНАЧАЛА DEF-CTX-4 (доставка dev-хуков, install-скрипт по
+## Пакет 6 — дрейф документов — ✅ ПОСТРОЕН 2026-07-31 (DEC-DEV-0234; «го» «мёрж и го дальше»)
+
+| # | Дельта | Носитель | Режим | Что сворачивается |
+|---|---|---|---|---|
+| 6.1 | N-1: запрет заявлять несуществующий механизм принуждения | **V-20** enforcement-claim honesty (🔴; claim-паттерн ⇒ frontmatter `enforcement_mechanism` либо `planned`) | **hard** (V-rule) | REPORT/M11 N-1 → носитель ✅; «построить CI» отвергнут (зона продуктового репо) |
+| 6.2 | N-2: content-revalidation VC/design при пивоте | строка FM-пивот в cascade-таблице processes.md §4.1 + VC.md Cascade impact (содержательная ревалидация тел) | канон каскада | M11 N-2 → закрыто |
+| 6.3 | N-14: freshness-lint frontmatter MK/NM | **V-21** (🔴; git-дата файла новее `updated` ⇒ violation; нет git ⇒ skip с note) | **hard** (V-rule) | M11 N-14 → носитель ✅ |
+| 6.4 | N-3: правило drift-аудитов «код+флаг, не живой билд» | **P-RULE-03** (вердикт «не построено» = код+флаги + код-указатель) + Limitations drift-detector.md | process rule | M11 N-3 → закрыто |
+| 6.5 | meta-feedback #1: falsy `\|\|3` глотает rounds:0 (D022) | `Number.isInteger`-гард в validate-feature-impl.mjs + wiring-пин | **hard** (код) | строка NEXT-HORIZON → ✅-указатель |
+| 6.6 | meta-feedback #4: impl-sync слеп к slug-прогонам (+D094 object-form) | slug-матч (целый токен, ≥4) + `gateOf()` по precedence run-ledger + `matched_by`-дисклоз + 5 тестов | **hard** (код) | строка NEXT-HORIZON → ✅-указатель |
+| 6.7 | R4 из PHASE_4 (E2/E5: активация IC/BR без DA) | **V-22** DA-provenance (🔴 с водяным знаком 2026-07-31; grandfather 🟡; re-DA 🟡) + поля `da_review_ref`/`enforcement_mechanism` в канонах и B1-зеркалах скиллов | **hard** (V-rule) | PHASE_4 R4 → `[FIXED]` |
+
+Каталог 45 → **48 правил** (Artifact 17→20, P-RULE 2→3); вся цепочка счётчиков сведена
+(`check-counts` + `check-validation-sync` зелёные). Попутный фикс: BOM в
+`skills/product/validation-runner.md` (дефект пакета 1) ломал parse frontmatter и discovery
+скилла — снят. Хвост: meta-feedback #5 (DoD/P6 не гейтит visual-имплементацию has_ui) —
+кандидат следующей волны.
+
+## Пакет 7 — методологическая гигиена D7 — ✅ ПОСТРОЕН 2026-07-31 (DEC-DEV-0235; то же «го»)
+
+| # | Дельта | Носитель | Режим | Что сворачивается |
+|---|---|---|---|---|
+| 7.1 | Чеклист «поле зрения исполнителя» | `dev/meta-improvement/checklists/executor-field-of-view.md` (8 фактов-команд из M16_ERROR_LEDGER) + ссылка из blind-comparison step 2 | дисциплина (чек-команды) | таблица M16_ERROR_LEDGER → канонизирована |
+| 7.2 | Паттерн канареечной записи | `patterns/canary-write-probe.md` (provisional, ERR-06/07) + ростер | дисциплина + код preflight'а харнесса | ERR-06 «кандидат в enforcement» → паттерн ✅ |
+| 7.3 | vm-factory-ops (глобальный скилл хоста, ВНЕ репо) | §0 += `docker compose up/down` в клоне · §2 конфигурация 12→**4 vCPU** (верифицировано showvminfo) · §3 п.6 stdin-грабля (`-nostdin`) · §4 манёвр C4 Esc→RESUME→resume полным текстом · §5 рецепт изоляции compose-стенда | дисциплина | ERR-01/02 + C4 → канонизированы |
+
+## Пакет 5 — по отдельному «го» на H0 (состав зафиксирован, не исполнять)
+
+- **Датчики H0/H1:** СНАЧАЛА DEF-CTX-4 (доставка dev-хуков, install-скрипт по
   образцу install-git-hooks.cjs) — иначе датчики наследуют дыру. Затем 8 датчиков
   REPORT §7.3 (детерминированные; телеметрия по OTel GenAI conventions; расход только по
-  `message.usage` — урок ×9.4). Поля токенов в ledger `factory.cjs` — addition.
-- **Пакет 6 — дрейф документов:** M11 N-1 (CI-гейт построить или запретить заявлять
-  несуществующий — канонический пример П-1/П-2) · N-2 (content-revalidation VC/design при
-  пивоте) · N-14 (freshness-lint frontmatter при правке MK/NM) · правило drift-аудитов
-  «код+флаг, не живой билд» · meta-feedback #1 (falsy `||3`) и #4 (impl-sync collector).
-  Пересечение с открытым долгом R4/E1/E2/E5 (PHASE_4.md) — брать набросок R4.
-- **Пакет 7 — методологическая гигиена D7:** чеклист «поле зрения исполнителя»
-  (`dev/meta-improvement/checklists/`, парный к blind-comparison-protocol; таблица команд
-  готова в M16_ERROR_LEDGER) · vm-factory-ops §0 += `docker compose up` (+ `docker compose
-  config` до `up`) · §3 stdin-грабля ffmpeg · §4 манёвр Esc→RESUME→resume · §2 фикс
-  «12 vCPU»→4 · паттерн «канареечная запись пишущего харнесса».
+  `message.usage` — урок ×9.4). Поля токенов в ledger `factory.cjs` — addition
+  (⚠ рамка «fc = фундамент» 2026-07-31: addition в `factory.cjs` = стройка пульта —
+  согласовать с владельцем при «го» на H0).
 
 ## Порядок и срезы
 
-0 → 1 → 2 → **срез П-3 ✅ (чист)** → (3 ∥ 4) ✅ → **срез П-3 + новое «го»** → 6 → 7 → 5 (по «го» на H0).
+0 → 1 → 2 → **срез П-3 ✅** → (3 ∥ 4) ✅ → **срез П-3 ✅** → 6 ✅ → 7 ✅ → **срез П-3 + доклад** → 5 (по «го» на H0).
 Пакеты 1–2 — consumer-zone канона: стандартный цикл (ветка → CHANGELOG/DEV_JOURNAL по
 таблице Process triggers → PR; merge — владелец).
 

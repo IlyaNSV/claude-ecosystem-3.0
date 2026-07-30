@@ -25,11 +25,21 @@ status: draft | active | deprecated
 testable_as: unit | integration | runtime-monitor | design-time
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
+da_review_ref: "string"                          # опционально; ОБЯЗАТЕЛЬНО по V-22 при активации
+                                                 # с 2026-07-31 — ссылка на DA-findings запись/файл
+                                                 # (след ревью, которого требует P-RULE-01)
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 version: 1
 ---
 ```
+
+> **`da_review_ref` — след DA-ревью, а не его замена (V-22, DEC-DEV-0234).** P-RULE-01 требует
+> Product DA review на любое изменение IC, но требование процесса без артефактного следа не
+> проверяется никем: 7 IC были активированы без DA, и это всплыло только на аудите
+> (`dev/tech-debt/PHASE_4.md` E2, dev-zone). С 2026-07-31 активация IC без `da_review_ref` — 🔴;
+> активные раньше — 🟡 grandfather (ретро-восстановление провенанса «из памяти» = фабрикация).
+> Правка тела после ревью (git-дата новее даты в ссылке) → 🟡 «re-DA рекомендуется» (E5).
 
 ## Body Structure
 

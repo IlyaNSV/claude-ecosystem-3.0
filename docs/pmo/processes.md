@@ -565,6 +565,7 @@ auto_approve_confirmation_artifacts:
 | Изменение | Cascade scope |
 |---|---|
 | PS изменён | ALL artifacts (pivot scenario) |
+| **FM-пивот** (смена направления/`has_ui` решением DEC-*) | VC, MK, NM, design фичи → `requires_review` с **СОДЕРЖАТЕЛЬНОЙ ревалидацией** тел, не только frontmatter (DEC-DEV-0234; урок M11 N-2: пивот-коммит `a30fe07` тронул все 4 VC и поменял в каждом одну YAML-строку — утверждения о снесённом дашборде пережили собственный пивот) |
 | MR/CA изменён | SEG, VP, HYP, possibly MVP |
 | SEG изменён | VP (1:1), FM с этим SEG, HYP, RPM |
 | VP изменён | FM ссылающиеся, HYP проверяющие |

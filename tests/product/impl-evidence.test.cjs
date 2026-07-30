@@ -154,6 +154,106 @@ test('runs: NO-GO newer than GO → latest_gate NO-GO → disposition gate-not-p
   } finally { rm(dir); }
 });
 
+// ── runs: slug-addressed runs (meta-feedback #4, DEC-DEV-0234) ──────────────────
+
+test('runs: a run addressed by FEATURE SLUG (no FM-id anywhere) is matched via slug(title)', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-040-x.md', fmFile('FM-040', 'in-progress', 'Auth', ['SC-040']));
+    write(dir, '.product/scenarios/SC-040-x.md', scFile('SC-040', 'active'));
+    // The orchestrator takes a cc-sdd slug, not an FM-id — this run never names FM-040.
+    write(dir, '.claude/orchestrator/runs/run-slug/run.json', runJson({
+      run_id: 'run-slug', args_summary: 'auth main', finished_at: '2026-07-11T10:00:00Z',
+      result_summary: { verdict: 'GO', result: 'GO', readiness: 'READY', conflicts: 0, counts: null },
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-040' });
+    eq(ev.runs.count, 1, 'slug-addressed run is visible');
+    eq(ev.runs.matches[0].matched_by, 'feature-slug', 'match provenance recorded');
+    eq(ev.runs.latest_gate, 'GO', 'its gate verdict is read');
+    const fm = { id: 'FM-040', status: 'in-progress', scenarios: ['SC-040'] };
+    eq(lib.disposition(fm, ev, lib.checkV01(dir, fm)).disposition, 'ready-to-ship',
+      'the slug-addressed GO now carries the FM to ready-to-ship (was: no-evidence)');
+  } finally { rm(dir); }
+});
+
+test('runs: slug match is anti-noise — whole token only, and not below the length floor', () => {
+  const dir = mkProject();
+  try {
+    // (a) substring, not a token: slug `auth` must NOT match the run of feature `author-flow`.
+    write(dir, '.product/features/FM-041-x.md', fmFile('FM-041', 'in-progress', 'Auth', []));
+    write(dir, '.claude/orchestrator/runs/run-other/run.json', runJson({
+      run_id: 'run-other', args_summary: 'author-flow main',
+      result_summary: { verdict: 'GO', result: 'GO', readiness: 'READY', conflicts: 0, counts: null },
+    }));
+    eq(lib.collectEvidence({ root: dir, fmId: 'FM-041' }).runs.count, 0,
+      'a neighbouring feature\'s run must not be attributed by substring');
+    // (b) below the 4-char floor: slug `api` is an ordinary word in an args line.
+    write(dir, '.product/features/FM-042-x.md', fmFile('FM-042', 'in-progress', 'API', []));
+    write(dir, '.claude/orchestrator/runs/run-api/run.json', runJson({
+      run_id: 'run-api', args_summary: 'api main',
+      result_summary: { verdict: 'GO', result: 'GO', readiness: 'READY', conflicts: 0, counts: null },
+    }));
+    eq(lib.collectEvidence({ root: dir, fmId: 'FM-042' }).runs.count, 0, 'short slug is not evidence');
+  } finally { rm(dir); }
+});
+
+test('runs: literal FM-id matching is unchanged (regression) — args_summary AND dump', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-043-x.md', fmFile('FM-043', 'in-progress', 'Payments Ledger', []));
+    write(dir, '.claude/orchestrator/runs/run-args/run.json', runJson({
+      run_id: 'run-args', args_summary: 'FM-043 --deep', finished_at: '2026-07-11T10:00:00Z',
+      result_summary: { verdict: 'GO', result: 'GO', readiness: 'READY', conflicts: 0, counts: null },
+    }));
+    write(dir, '.claude/orchestrator/runs/run-dump/run.json', runJson({
+      run_id: 'run-dump', args_summary: '', finished_at: '2026-07-11T09:00:00Z',
+      result_summary: { verdict: null, result: null, readiness: null, conflicts: 0, counts: null, decision_trail: { note: 'covers FM-043' } },
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-043' });
+    eq(ev.runs.count, 2, 'both id paths still match');
+    eq(ev.runs.matches.every((m) => m.matched_by === 'fm-id'), true, 'both recorded as fm-id matches');
+    eq(ev.runs.latest_gate, 'GO', 'gate unchanged');
+  } finally { rm(dir); }
+});
+
+// ── runs: object-form result_summary (D094) ──────────────────────────────────────
+
+test('runs: object-form result_summary.result (wrapped envelope) — gate is unwrapped, not lost (D094)', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-044-x.md', fmFile('FM-044', 'in-progress', 'Wrapped', []));
+    // run-ledger's summarizeResult copies the process outcome VERBATIM — a wrapped return
+    // lands an OBJECT in result_summary.result, where the bare-string check read straight over it.
+    write(dir, '.claude/orchestrator/runs/run-obj/run.json', runJson({
+      run_id: 'run-obj', args_summary: 'FM-044',
+      result_summary: { verdict: null, result: { result: 'GO', readiness: 'READY' }, readiness: null, conflicts: 0, counts: null },
+    }));
+    eq(lib.collectEvidence({ root: dir, fmId: 'FM-044' }).runs.latest_gate, 'GO', 'GO read out of the object form');
+  } finally { rm(dir); }
+});
+
+test('runs: object-form unwrap follows OUTCOME_KEYS precedence + ignores a non-verdict object', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-045-x.md', fmFile('FM-045', 'in-progress', 'Keys', []));
+    // go_gate/p7_result/uja_result are the other names processes give their outcome.
+    write(dir, '.claude/orchestrator/runs/run-gg/run.json', runJson({
+      run_id: 'run-gg', args_summary: 'FM-045', finished_at: '2026-07-11T10:00:00Z',
+      result_summary: { verdict: { go_gate: 'NO-GO' }, result: null, readiness: null, conflicts: 0, counts: null },
+    }));
+    eq(lib.collectEvidence({ root: dir, fmId: 'FM-045' }).runs.latest_gate, 'NO-GO', 'verdict object unwrapped via go_gate');
+
+    write(dir, '.product/features/FM-046-x.md', fmFile('FM-046', 'in-progress', 'NoGate', []));
+    write(dir, '.claude/orchestrator/runs/run-nogate/run.json', runJson({
+      run_id: 'run-nogate', args_summary: 'FM-046',
+      result_summary: { verdict: null, result: { counts: 3, note: 'no outcome here' }, readiness: null, conflicts: 0, counts: null },
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-046' });
+    eq(ev.runs.count, 1, 'run still counted as activity');
+    eq(ev.runs.latest_gate, null, 'an object without a gate key is NOT invented into a verdict');
+  } finally { rm(dir); }
+});
+
 // ── fabric evidence ─────────────────────────────────────────────────────────────
 
 test('fabric: state.json done + mentions FM → fabric_done', () => {

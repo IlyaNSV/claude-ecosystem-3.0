@@ -27,11 +27,24 @@ testable: true | false                 # можно ли автоматизир�
 suggested_test_type: unit | integration | e2e | manual
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
+enforcement_mechanism: "string"                  # опционально; ОБЯЗАТЕЛЬНО по V-20, если тело
+                                                 # несёт enforcement-claim («CI-gated»,
+                                                 # «blocks PR merge», «MANDATORY automated»…).
+                                                 # Значение — проверяемый указатель: путь
+                                                 # CI-конфига / имя гейта / запускаемая команда
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 version: 1
 ---
 ```
+
+> **`enforcement_mechanism` — про честность гарантии, не про бюрократию (V-20, DEC-DEV-0234).**
+> Поле нужно ровно тогда, когда VC заявляет, что проверка **уже принуждается машиной**. Нет
+> носителя — либо назови его, либо пометь claim словом `planned` в той же строке тела. Прецедент:
+> VC-032 заявлял «CI-gated, blocks PR merge» при полном отсутствии CI в репозитории (M11, N-1) —
+> ложная гарантия снимает бдительность и потому опаснее честного «пока проверяем руками».
+> Поле **type-agnostic**: канон живёт здесь, но любой артефакт `.product/`, несущий
+> enforcement-claim, обязан нести и его.
 
 ## Body Structure
 
@@ -84,6 +97,11 @@ Then <expected outcome 1>
 - Изменение SC → все VC в `requires_review`
 - Изменение BR → VC ссылающиеся на BR — regen
 - Изменение LC → VC с transitions — regen
+- **FM-пивот** (смена направления/`has_ui` решением DEC-*) → ВСЕ VC фичи в `requires_review`
+  с **содержательной ревалидацией тел** — каждая проверочная строка перечитывается против
+  нового направления, не только frontmatter (DEC-DEV-0234; урок M11 N-2: пивот-коммит
+  тронул все 4 VC фичи и поменял в каждом одну YAML-строку — утверждения об отменённом
+  дашборде пережили собственный пивот и прожили ложными 47 дней)
 
 ## Review Level: 🟢 Confirmation
 

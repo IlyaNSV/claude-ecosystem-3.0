@@ -77,6 +77,9 @@ confidence: high | medium | low
 confidence_notes: |
   <what's solid: rule explicit в SC, parameters extracted, category clear>
   <what's assumed: parameter values might need tuning post-pilot>
+da_review_ref: "<DA-findings record/file>"  # required by V-22 when activating (status: active)
+                                            # on/after 2026-07-31 — the trace of the P-RULE-02
+                                            # review; omit while draft
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 version: 1
@@ -89,6 +92,13 @@ version: 1
 - ❌ `scenario_refs`, `scs` → `scenarios`
 - ❌ `params`, `parameter_list` → `parameters`
 - ❌ `owner`, `parent_feature`, `fm` → `owner_feature`
+- ❌ `da_ref`, `da_review`, `reviewed_by` → `da_review_ref`
+
+**V-22 — DA-provenance активации (🔴 Blocking, DEC-DEV-0234).** Перевод BR в `status: active`
+начиная с 2026-07-31 требует `da_review_ref` — ссылки на запись/файл DA-findings (impact-анализ
+P-RULE-02). Требование ревью существовало и раньше, но без артефактного следа его выполнение
+непроверяемо. BR, активные до 2026-07-31, поля не требуют (🟡 grandfather). Правка тела после
+ревью (git-дата новее даты в ссылке) → 🟡 «re-DA рекомендуется».
 
 ### Step 4: Per-BR body structure
 

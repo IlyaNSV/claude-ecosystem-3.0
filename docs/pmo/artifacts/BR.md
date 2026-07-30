@@ -27,11 +27,20 @@ parameters:                            # параметризация (если 
 owner_feature: FM-<NNN>                # первичная фича; BR может использоваться в других
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
+da_review_ref: "string"                          # опционально; ОБЯЗАТЕЛЬНО по V-22 при активации
+                                                 # с 2026-07-31 — ссылка на DA-findings запись/файл
+                                                 # (след ревью, которого требует P-RULE-02)
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 version: 1
 ---
 ```
+
+> **`da_review_ref` — след DA-ревью, а не его замена (V-22, DEC-DEV-0234).** P-RULE-02 требует
+> impact-анализ через DA на любое изменение активного BR; без артефактного следа выполнение
+> требования непроверяемо (симметрично IC — `dev/tech-debt/PHASE_4.md` E2/E5, dev-zone). С
+> 2026-07-31 активация BR без `da_review_ref` — 🔴; активные раньше — 🟡 grandfather. Правка тела
+> после ревью (git-дата новее даты в ссылке) → 🟡 «re-DA рекомендуется».
 
 ## Body Structure
 

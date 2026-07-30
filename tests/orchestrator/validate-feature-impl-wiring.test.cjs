@@ -125,6 +125,15 @@ test('remediation is bounded', () => {
   assert(/round < MAX_REMEDIATION_ROUNDS/.test(SRC), 'remediation loop not bounded by the cap');
 });
 
+test('meta-feedback #1: rounds:0 is honoured (no falsy || default) — D022, DEC-DEV-0234', () => {
+  // `maxRemediationRounds: 0` means "capture findings, remediate nothing". A falsy-OR default
+  // ate that 0 and ran three rounds anyway (the live executor smuggled it through as -1).
+  assert(/Number\.isInteger\(A\.maxRemediationRounds\)/.test(SRC),
+    'MAX_REMEDIATION_ROUNDS must be resolved by an explicit integer check, not truthiness');
+  assert(!/A\.maxRemediationRounds \|\| 3/.test(SRC),
+    'the falsy `A.maxRemediationRounds || 3` default is back — an explicit rounds:0 would be swallowed again');
+});
+
 test('T5: remediation discretion — block_class + conflict_detail + unilateral self-check (DEC-DEV-0096)', () => {
   assert(/REMEDIATE_SCHEMA[\s\S]*block_class/.test(SRC), 'REMEDIATE_SCHEMA does not carry block_class');
   assert(/conflict_detail/.test(SRC), 'no conflict_detail field for an escalated contradiction');

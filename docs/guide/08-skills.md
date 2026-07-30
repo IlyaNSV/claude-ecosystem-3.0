@@ -60,7 +60,7 @@ doc_type: reference
 | `product/rpm-derivation` | F.7 step — update Role & Permission Model (RPM singleton) с new actors из SC.actors + actions из SC steps + conditional permissions из authorization BR. 🟢 Confirmation level — A1 auto-approve eligible per DEC-DEV-0013. |
 | `product/scenario-authoring` | F.2 step — author User Scenarios (SC-*) from FM context. Per-FM 2-4 main SC + alternative + error flows. Actor-verb format. Strategic per-SC approve. Called by feature-session. |
 | `product/segment-discovery` | D1.4 step — synthesize segments + JTBD from PS + MR + CA drafts. Produces SEG-* artifacts with priority tagging. |
-| `product/validation-runner` | — |
+| `product/validation-runner` | On-demand validation runner — executes the artifact (V-01..V-22) + handoff (V-H-01..V-H-11) + lesson (V-LE-01..05) catalog; V-MK-*/V-AM-* — acknowledged skips (см. таблицы). Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4 (V-H-11 added post-review per R5/B1 fix-up). |
 | `product/validation-tune` | C3 modification — pattern analysis for project-local validation tuning. Proposes rule overrides / config tweaks based on observed usage IN THIS PROJECT. Systemic defects escalate via /ecosystem:meta-feedback. |
 | `product/vc-derivation` | F.6 step — derive Verification Criteria (VC-*) from active SC + BR + LC. Gherkin-like Given/When/Then format. 🟢 Confirmation level — A1 auto-approve eligible per DEC-DEV-0013. |
 | `product/vp-design` | D1.4a step — design Value Proposition per active SEG (1:1). Simplified Strategyzer-style. Produces VP-* artifacts. |
