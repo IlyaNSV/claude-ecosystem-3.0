@@ -179,7 +179,7 @@ dev/meta-improvement/
 
 | Канон | Порог ротации | Что уезжает | Куда | Ритуал-носитель |
 |---|---|---|---|---|
-| `DEV_JOURNAL.md` | живой файл >~250 КБ или >~50 записей | самые старые записи — столько, чтобы в живом файле осталось **~40 последних**; резать ТОЛЬКО по границе записи | `dev/_archive/journal/DEV_JOURNAL_<первыйID>-<последнийID>.md` | этот § (проверять на patch-cut) |
+| `DEV_JOURNAL.md` | живой файл >~250 КБ **или** >~50 записей | выносить старые записи, пока НЕ выполнены **оба** условия: ≤~40 записей **И** ≤~250 КБ (берётся то, что жёстче); резать ТОЛЬКО по границе записи | `dev/_archive/journal/DEV_JOURNAL_<первыйID>-<последнийID>.md` | этот § (проверять на patch-cut) |
 | `CHANGELOG.md` | >~150 КБ на cut версии | релизы старше текущего квартала; `[Unreleased]` + текущие релизы + footer остаются | `dev/_archive/changelog/CHANGELOG_<диапазон>.md` | `checklists/patch-cut.md` |
 | `ROADMAP.md` | closure фазы | развёрнутый блок закрытой фазы → строка pointer-таблицы; «Где мы сейчас» — НИКОГДА (SSOT + входящие якоря) | `dev/_archive/roadmap/` | `checklists/phase-closure.md` |
 | `audit-index.md` | rows clean/dismissed или >1 мес | Processed-строки; sentinel-пары и Pending — НИКОГДА | `dev/_archive/audit-index-<YYYY>.md` | audit-index §Notes |

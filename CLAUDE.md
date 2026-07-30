@@ -21,7 +21,7 @@ Ecosystem 3.0 — PMO-слой над Claude Code:
 
 **Единственный источник статуса** — [ROADMAP.md «Где мы сейчас»](ROADMAP.md#где-мы-сейчас) (verify против `git log`). Снапшот здесь намеренно **не дублируется**: pointer-collapse против triple-declaration drift (Tier-1 doc reform; ранее README/CLAUDE/ROADMAP держали три расходящиеся копии).
 
-`last memory-sync: 2026-07-17` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
+`last memory-sync: 2026-07-29` — дата последней синхронизации этого файла со снапшотом ROADMAP; зеркалит строку «Последнее обновление» в [ROADMAP.md](ROADMAP.md). Если расходится с `git log` — снапшот устарел, доверяй ROADMAP + git, затем обнови эту дату.
 
 **Открытые readiness / smoke-гейты — состояние живёт в самих файлах** (`dev/gates/` + `dev/deferred/`), а не здесь. Реестр в always-on файле не окупается: к моменту чистки 2026-07-28 пять его шести строк были `✅ ЗАКРЫТ`/`EXECUTED`, то есть он занимал контекст каждой сессии, чтобы перечислить сделанное (DEC-DEV-0227). Открыто сейчас — [`dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md`](dev/deferred/PHASE_D_DOCS_WIKI_READINESS.md) (DEFERRED, resumption по bring-forward-триггеру); закрытые уехали в `dev/_archive/`. Обязательство «перед фазой — [`phase-kickoff.md`](dev/meta-improvement/checklists/phase-kickoff.md) + readiness» — в SSOT-таблице «Process triggers» ниже.
 

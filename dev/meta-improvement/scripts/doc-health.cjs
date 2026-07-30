@@ -19,9 +19,11 @@
  *       that still exist — mechanical damage from moving docs deeper, not history.
  *
  * ── POSTURE ──
- * WARN-ONLY by default: prints findings, exits 0. `--strict` makes findings exit 1 — do that
- * only after the numbers have been watched for a while (the repo's own lesson: a gate on a
- * shared resource without an off switch eventually jams someone else's cycle).
+ * WARN-ONLY by default: prints findings, exits 0. `--strict` makes findings of severity `warn`
+ * and above exit 1; `info`-findings NEVER gate — they are observations without a defect
+ * (e.g. archive links whose targets never existed in the repo: history has the right to point
+ * nowhere). Flip to strict only after the numbers have been watched for a while (the repo's own
+ * lesson: a gate on a shared resource without an off switch eventually jams someone else's cycle).
  * "Blind" is never "clean": if a needed input is missing, this says so loudly and still exits 0.
  * Absence of evidence is not evidence of absence.
  *
@@ -216,7 +218,10 @@ if (JSON_MODE) {
   if (!findings.length) {
     console.log('doc-health: ✓ чисто — пороги ротации, статусы швов, ссылки архива, always-on объём, слипшиеся строки.');
   } else {
-    console.log(`doc-health: ${findings.length} находок${STRICT ? ' [strict]' : ' (warn-only, exit 0)'}\n`);
+    const gatingCount = findings.filter(f => f.severity !== 'info').length;
+    console.log(`doc-health: ${findings.length} находок${STRICT
+      ? ` [strict: гейтят ${gatingCount} (severity warn+), info не гейтит никогда]`
+      : ' (warn-only, exit 0)'}\n`);
     const TITLES = {
       rotation: '① ПОРОГИ РОТАЦИИ (CONVENTIONS §5.1) — правило записано, но никем не измерялось',
       'stale-status': '② ПРОТУХШИЙ СТАТУС — опасен не возрастом, а механизированной доставкой',
@@ -238,4 +243,7 @@ if (JSON_MODE) {
   console.log('Процедура разбора находок — dev/meta-improvement/skills/repo-hygiene.md');
 }
 
-process.exit(STRICT && findings.length ? 1 : 0);
+// Strict gates ONLY on severity `warn` and above. `info` never gates: it marks observations
+// that are not defects (archive targets that never existed — history may point nowhere).
+const gating = findings.filter(f => f.severity !== 'info');
+process.exit(STRICT && gating.length ? 1 : 0);
