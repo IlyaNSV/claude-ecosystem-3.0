@@ -171,8 +171,8 @@
 <!-- Data island: generator replaces the single token below with JSON.stringify(DATA). -->
 <script id="proc-data" type="application/json">{
   "_build": {
-    "date": "2026-07-28",
-    "sha": "74f9e7d",
+    "date": "2026-07-30",
+    "sha": "fdc4a21",
     "lanes": 5,
     "processes": 26,
     "steps": 134,
@@ -6337,6 +6337,12 @@
         "scope": "IC/BR/SC",
         "severity": "warning",
         "what": "Frontmatter типа соответствует канону.",
+        "group": "Artifact Validation"
+      },
+      "V-19": {
+        "scope": "RPM, FM",
+        "severity": "blocking",
+        "what": "При has_ui-фичах RPM несёт Access Matrix (auth-state × route × realm): forward/reverse-гард + realm×realm, ячейка без двусмысленности (DEC-DEV-0230).",
         "group": "Artifact Validation"
       },
       "V-H-01": {

@@ -1,4 +1,4 @@
-# Product Module — Спецификация
+﻿# Product Module — Спецификация
 
 > **Статус:** v1.0 (2026-04-18)
 > **Роль:** ядро Ecosystem 3.0 — управление D1 (Discovery + Planning) и D2-Behavioral артефактами через унифицированный паттерн «Продуктовый ассистент draft → iterate → approve».
@@ -1128,7 +1128,7 @@ Design Module — отдельный SPEC (`design-module/`). Интегриру
 
 - ✅ Artifacts catalog (24 типа)
 - ✅ Handoff spec (universal, tool-agnostic)
-- ✅ Validation (44 rules + 2 process rules)
+- ✅ Validation (45 rules + 2 process rules)
 - ✅ Processes (P1-P5 + P2.5 outline)
 - ✅ Integrator Module SPEC
 - ✅ **Product Module SPEC (этот документ)**

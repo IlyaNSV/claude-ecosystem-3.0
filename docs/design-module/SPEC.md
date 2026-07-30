@@ -1,4 +1,4 @@
-# Design Module — Спецификация
+﻿# Design Module — Спецификация
 
 > ⚠ **SPEC-ahead-of-code дрейф (G36), не устранён — промаркирован:** субагент `screen-generator`
 > (DEC-I06, §5.1) описан в теле SPEC, но файл агента `agents/design/screen-generator.md` **НЕ
@@ -1018,7 +1018,7 @@ machine-readable structured snapshot. Оба хранятся; синхрони�
 
 - ✅ Artifacts catalog (24 типа, считая NOTE, LESSON и AM)
 - ✅ Handoff spec (universal, tool-agnostic)
-- ✅ Validation (44 rules + 2 process rules)
+- ✅ Validation (45 rules + 2 process rules)
 - ✅ Processes (P1-P5 + P2.5 с полной детализацией через Design Module SPEC)
 - ✅ Integrator Module SPEC
 - ✅ Product Module SPEC

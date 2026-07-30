@@ -1,4 +1,4 @@
----
+﻿---
 description: On-demand validation runner — executes the artifact (V-01..V-18) + handoff (V-H-01..V-H-11) + lesson (V-LE-01..05) catalog; V-MK-*/V-AM-* — acknowledged skips (см. таблицы). Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4 (V-H-11 added post-review per R5/B1 fix-up).
 ---
 
@@ -45,7 +45,7 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 
 ## Rule catalog (hardcoded)
 
-### V-01..V-18 — Artifact validation
+### V-01..V-19 — Artifact validation
 
 | Rule | Severity | Artifacts | Check method | Description |
 |---|---|---|---|---|
@@ -65,6 +65,7 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 | V-15 | 🟡 Warning | all | graph: no incoming refs from active artifacts | Orphan artifacts detection |
 | V-16 | varies | FM, NFR | tier × `nfr_status` × high_risk matrix (см. ниже) | NFR Review status tracking |
 | V-18 | 🟡 Warning | IC, BR, SC | per-type frontmatter schema per `docs/pmo/artifacts/<TYPE>.md`: значение `type`, обязательные per-type поля, scalar-enum'ы (on-demand scope IC/BR/SC; inline-check `artifact-validate.js` **дополнительно** покрывает `NFR` с DEC-DEV-0198 — этот on-demand путь NFR пока не enforce-ит; override-aware) | Per-type frontmatter schema conformance (IC/BR/SC) |
+| V-19 | 🔴 Blocking | RPM, FM | IF `count(FM where has_ui AND status ∈ {in-progress, shipped}) ≥ 1`: RPM body содержит секцию `## Access Matrix`; в ней присутствуют все 3 класса строк — forward-guard (guest → protected), reverse-guard (authenticated → `/login`/`/signup`), realm×realm при ≥2 реалмах; каждая ячейка несёт ровно одно наблюдаемое поведение (флаг ячейки с `или`/`/`-перечислением поведений). Полнота route-классов — human/DA, runner проверяет структуру | RPM Access Matrix present & unambiguous (UI products; DEC-DEV-0230, hard-block by design) |
 
 V-13 dropped per `validation.md §0` → process rule P-RULE-01 (см. agents/product/devils-advocate.md adaptive-depth). V-17 перемещён в Integrator namespace (V-I-*, future) per `validation.md §0`.
 
@@ -302,7 +303,7 @@ Actionable next:
 
 ## Related
 
-- Catalog spec: `.claude/docs/pmo/validation.md` (44 rules + 2 process rules)
+- Catalog spec: `.claude/docs/pmo/validation.md` (45 rules + 2 process rules)
 - Sync linter (dev-репо экосистемы, не деплоится): `dev/meta-improvement/scripts/check-validation-sync.cjs` (G19, DEC-DEV-0158)
 - Companion command: `.claude/commands/product/validate.md`
 - Inline hook (Phase 2): `.claude/hooks/product/artifact-validate.js`

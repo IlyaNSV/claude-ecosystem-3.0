@@ -1,7 +1,7 @@
-# Validation Rules Catalog — Ecosystem 3.0
+﻿# Validation Rules Catalog — Ecosystem 3.0
 
 > **Версия:** 1.0 (2026-04-18)
-> **Объём:** 44 активных правила (V-*: 16, V-H-*: 11, V-MK-*: 8, V-LE-*: 5, V-AM-*: 4) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
+> **Объём:** 45 активных правил (V-*: 17, V-H-*: 11, V-MK-*: 8, V-LE-*: 5, V-AM-*: 4) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
 > **Назначение:** единый каталог валидационных правил для артефактов D1-D2, handoff и Design Module.
 > **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:validation-tune` workflow), D2 (`approve_overrides` per artifact).
 > **Читать вместе с:** [pmo-map.md](pmo-map.md) (functional zones), [processes.md](processes.md) (P1-P5 methodology), [artifacts/](artifacts/) (24 типа артефактов), [../product-module/handoff-spec.md](../product-module/handoff-spec.md) (V-H-* handoff rules).
@@ -50,7 +50,7 @@
 
 | Namespace | Префикс | Покрытие | Кол-во |
 |---|---|---|---|
-| Artifact validation | V-01..V-18 | Интегральная проверка артефактов `.product/` (без V-13/V-17 — см. §0) | 16 |
+| Artifact validation | V-01..V-19 | Интегральная проверка артефактов `.product/` (без V-13/V-17 — см. §0) | 17 |
 | Handoff validation | V-H-01..V-H-11 | Структурная целостность handoff.md | 11 |
 | Design validation | V-MK-01..V-MK-08 | UI spec completeness (conditional has_ui) | 8 |
 | Lesson validation | V-LE-01..V-LE-05 | Corrective LESSON-* артефакты (DEC-DEV-0062) | 5 |
@@ -109,7 +109,7 @@ Validation — это **safety net**, а не bureaucracy. Каждое прав
 |---|---|---|
 | **`pilot`** (default для bootstrap) | Только 🔴 Blocking | 🟡 Warning, 🔵 Info |
 | **`mvp`** | 🔴 Blocking + 🟡 Warning | 🔵 Info |
-| **`full`** | Все 44 правила | (none) |
+| **`full`** | Все 45 правил | (none) |
 
 **Обоснование:** на ранних стадиях продукта (pilot, ≤5 active FM) бóльшая часть правил не имеет реального application. Tier-based activation снижает ноткс-шум, не отключая правила полностью. Upgrade tier — осознанное решение когда продукт растёт.
 
@@ -202,7 +202,7 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 ┌────────────────────────────────────────────────────────────────────┐
 │  PRODUCT LAYER VALIDATION                                           │
 │                                                                     │
-│  V-* (16)           : интегральность артефактов .product/          │
+│  V-* (17)           : интегральность артефактов .product/          │
 │  V-H-* (11)         : структура handoff.md                         │
 │  V-MK-* (8)         : UI completeness (conditional has_ui)         │
 │  P-RULE-* (2)       : process rules для non-automatable            │
@@ -218,7 +218,7 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 
 ## 5. Full Catalog
 
-### 5.1 Artifact Validation (V-01..V-18)
+### 5.1 Artifact Validation (V-01..V-19)
 
 #### V-01: FM has ≥1 active SC
 - **Tier:** 🔴 Blocking
@@ -378,6 +378,16 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 - **When:** Inline save (PostToolUse), On-demand validate.
 - **On failure:** 🟡 Warning list (non-blocking) с указанием каноничного значения; легитимные локальные конвенции снимаются через `validation_overrides`.
 - **Rationale:** B.1 templates предотвращают drift только когда creating-skill в контексте; при inline/bulk-авторинге шаблон не загружен, и ни inline-хук (до DEC-DEV-0064), ни on-demand runner не проверяли per-type schema → одна и та же IC-сигнатура (`type=invariant`, missing severity/entity/testable_as) рецидивировала across сессий (Session Audit cluster `D2B-behavioral::A`). Наименьший gap-closing механизм — расширить уже работающий save-хук. Per DEC-DEV-0064.
+
+#### V-19: RPM Access Matrix present & unambiguous (UI products)
+- **Tier:** 🔴 Blocking
+- **Statement:** Если ≥1 FM-* в status ∈ {in-progress, shipped} имеет `has_ui: true` → RPM обязан содержать секцию «Access Matrix» (auth-state × route-class × realm) с тремя обязательными классами строк: **forward-guard** (guest → каждый protected route-class), **reverse-guard** (authenticated → `/login`, `/signup`), **realm × realm** (при ≥2 реалмах — оба направления). Каждая ячейка несёт ровно одно наблюдаемое поведение (`render` / `redirect → <target>` / `403` / `404`; условность — ссылкой на BR).
+- **Artifacts affected:** RPM, FM-*, NM-*
+- **Automation:** ⚠ Partial (наличие секции и классов строк — структурно; полнота route-классов и корректность поведений — human при approve + DA review)
+- **When:** Approve gate (RPM), Handoff generation, On-demand
+- **On failure:** 🔴 Blocking: handoff generation для has_ui FM блокируется; FM с has_ui не переходит в in-progress, пока RPM не несёт Access Matrix.
+- **Rationale:** Анализ эффективности (DEC-DEV-0228, M10): матрица доступа — единственная проваленная ось спек (1.86/3 при остальных ≥2.7), и ровно у неё не было носителя в шаблоне. Из этой дыры пришли самые дорогие находки владельца (свободные auth-переходы, отсутствующий logout, cross-realm дыра #9), а тема «приёмка не ловит базовых ошибок» переоткрывалась трижды. Дыры доступа живут в стыках между фичами и реалмами — пофичной проработки недостаточно by construction. Hard-block by design (DEC-DEV-0230): warn-канал измеримо не меняет поведение (рецидив P21 после ратификации I-8).
+- **Note:** Негативные журнеи P8 (`tests/uja/neg-*.spec.ts`) генерятся из строк матрицы; их отсутствие preflight P8 считает DoR-gap (ENV_NOT_READY). Silent-degrade-to-empty-on-401 — анти-паттерн, зафиксирован в RPM.md/NM.md Content Rules.
 
 ### 5.1a NOTE-* validation (D3 modification — minimal coverage)
 
@@ -942,4 +952,4 @@ function getRuleSeverity(ruleId, projectConfig) {
 
 **Конец каталога.**
 
-Статус: **консолидировано, готово к имплементации.** Критический обзор пройден — 44 активных правила + 2 process rules, все остальные либо автоматизируются, либо явно заменены на process.
+Статус: **консолидировано, готово к имплементации.** Критический обзор пройден — 45 активных правил + 2 process rules, все остальные либо автоматизируются, либо явно заменены на process.
