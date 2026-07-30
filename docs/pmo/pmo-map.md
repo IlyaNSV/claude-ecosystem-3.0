@@ -173,7 +173,7 @@ Activation Matrix говорит, какие **процессы** включен
 |---|---|
 | `pilot` (default для bootstrap) | Только 🔴 Blocking. Остальное queued в `/product:status` |
 | `mvp` | + 🟡 Warning |
-| `full` | Все 44 V-* правила |
+| `full` | Все 45 правил |
 
 Это разделение защищает ранние стадии от validation-шума, не отключая правила полностью.
 

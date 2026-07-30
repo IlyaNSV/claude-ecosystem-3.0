@@ -165,10 +165,18 @@ C (кондуктор-инструментал) / D (продуктовые до
 | Пакет 1 (матрица доступа) | `npm run verify` → EXIT=0 | ✅ ЦЕЛИКОМ (PR #244 merged): RPM.md секция «Access Matrix» + NM.md негативные потоки + **V-19 🔴 hard-block** (каталог 44→45) + P8 neg-журнеи (`uja-report.cjs` v2: `negative_present`, `specs_skipped[]`) + handoff переносит матрицу целиком |
 | Каталог правил | `node dev/meta-improvement/scripts/check-counts.js` | 45 правил, все count-доки сведены |
 | Кондуктор | factory-conductor `git log --oneline -2` | `c2f99fd` = merge PR #6: секция «Вход в H0 — выноски анализа эффективности» в CONDUCTOR.md |
-| Журнал | хвост DEV_JOURNAL.md | DEC-DEV-0230 с Outcome пакета 1 |
+| Пакет 2 (носители M16 + гейты приёмки) | `npm run verify` → EXIT=0; ветка `feat/enforcement-pack2` | ✅ ПОСТРОЕН 2026-07-30 (DEC-DEV-0231): `br-constants-oracle.cjs` + RA-11 в P6 · concerns required (deviations-отчёт) + прокидка в P8 · root-cause-first + deviation-triage (prepare-only, судья) в P6 · realistic-input DoD (`dodRun`/`input_profile`) в P8 + RL DoD кат.3 · handoff §10 SI-сквозняк / §12 симметрия / NFR risk≠has_ui. Срез П-3 снят (см. DEC-DEV-0231 Outcome) |
+| Журнал | хвост DEV_JOURNAL.md | DEC-DEV-0231 (пакет 2) поверх DEC-DEV-0230 |
 | Память | `project_global_loop_effectiveness_analysis` + `project_ecosystem_status` | синхронизированы 2026-07-30 |
 
-### Очередь — ПАКЕТ 2 (следующая работа; «го» УЖЕ ЕСТЬ, новое не требуется)
+### Очередь — ✅ ПАКЕТ 2 ПОСТРОЕН 2026-07-30 (DEC-DEV-0231); дальше — ТОЛЬКО по новому «го» владельца на пакеты 3–7
+
+> Состав ниже — история исполнения (всё построено, детали в DEC-DEV-0231 + CHANGELOG).
+> Срез П-3 снят: 97/162 no-gate дефектов базы; носители пакетов 1–2 закрыли acceptance-gap
+> целиком, частично product-bug/code-drift/process-anomaly; doc-stale + infra-failure —
+> адресаты пакетов 5–7. Always-on строк добавлено 0. Стоп-правило не срабатывает.
+> **Следующее действие трека: доклад владельцу → его «го» на пакеты 3–7 (состав в
+> ENFORCEMENT_PLAN; без «го» не исполнять).**
 
 Состав из `ENFORCEMENT_PLAN.md` (там же колонки «носитель/режим/что сворачивается»):
 - **2.1 Гейт сверки числовых констант код↔BR** — новый детерминированный оракул

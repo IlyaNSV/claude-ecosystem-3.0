@@ -360,7 +360,10 @@ Workflow({
     journeysDir: 'tests/uja',                   // convention: tests/uja/*.spec.ts — one spec file == one journey
     ujaLib: '.claude/orchestrator/lib/uja-report.cjs',   // DEC-DEV-0225: deterministic preflight + verdict core
     artifactsDir: 'test-results',               // where Playwright writes step screenshots / trace (visual-conformance evidence)
-    runId: "$RUN_ID"                            // the ledger run-id (evidence handle)
+    runId: "$RUN_ID",                           // the ledger run-id (evidence handle)
+    concerns: [],                               // DEC-DEV-0231 (2.2): forward the P5/P6 `concerns[]` (implementer deviations) so P8 discloses them in ITS verdict too
+    dodRun: false,                              // DEC-DEV-0231 (2.5): set true ONLY for the Release-DoD confirmation run (RL DoD категория 3)
+    inputProfile: 'dev'                         // 'dev' | 'realistic' — a dodRun on 'dev' is an honest ENV_NOT_READY (владелец 2026-07-23: видео 30 мин – 2 ч; 5-сек — только dev)
   }
 })
 ```
@@ -370,7 +373,10 @@ Workflow({
 > the "false DEPLOYED" class one layer up. **The zero-evidence rule:** a report with 0 journeys is
 > `ENV_NOT_READY` (could-not-judge), NEVER a PASS. `PASS` → `done`; `FAIL` → `awaiting_journey_fix`
 > (owner re-drives the fix through `implementing`); `ENV_NOT_READY` → `runtime_gate_retry`. **Budget:**
-> journeys hit the real deployed app — keep them on minimal fixtures.
+> journeys hit the real deployed app — keep them on minimal fixtures; the ONE exception is a
+> `dodRun` on `inputProfile: 'realistic'` (DEC-DEV-0231): the Release-DoD confirmation must exercise the
+> realistic load (видео 30 мин – 2 ч) in a SINGLE pass per journey — RL DoD категория 3 reads
+> `input_profile` from the P8 `run.json`.
 
 ### Run ledger (dispatcher wiring — VC-087 / VC-134)
 

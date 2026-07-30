@@ -72,5 +72,32 @@ test('the feature-level gate is told about concerns (disclosed at GO, not hidden
   assert(/concernNote/.test(src), 'concerns are not threaded into the GO-gate prompt (no concernNote)');
 });
 
+// ---- DEC-DEV-0231 (2.2): concerns is the MANDATORY deviations report -----------------------------
+// M16: the control arm won the honesty axis by FORM (its cycle forces a decisions register); the
+// canon arm shipped two UNDECLARED deviations. An optional field is carrier-less discipline.
+
+test('DEC-DEV-0231: concerns is REQUIRED in IMPL_SCHEMA (silence is not representable)', () => {
+  const m = src.match(/const IMPL_SCHEMA[\s\S]*?required:\s*\[([^\]]*)\]/);
+  assert(m, 'could not locate IMPL_SCHEMA.required');
+  assert(/'concerns'/.test(m[1]), `IMPL_SCHEMA.required must include 'concerns' — got [${m[1].trim()}]`);
+});
+
+test('DEC-DEV-0231: the implementer prompt demands EVERY deviation or the literal none', () => {
+  assert(/mandatory deviations report/i.test(src), 'the implement() prompt does not name the mandatory deviations report');
+  assert(/literal 'none'/.test(src), 'the prompt does not give the explicit no-deviations sentinel');
+  assert(/truncated schedule/i.test(src), 'the prompt does not name the M16 deviation classes (truncated schedule/threshold)');
+});
+
+test('DEC-DEV-0231: the none-sentinel is filtered — only substantive deviations propagate', () => {
+  assert(/concernIsNone/.test(src), 'no none-sentinel filter — a literal "none" would spam the concern route');
+  assert(/\^\(none\|/.test(src), 'the sentinel regex does not anchor on none');
+});
+
+test('DEC-DEV-0231: surfaceConcern triages the SPEC DEVIATION class to owner ratification', () => {
+  const seg = src.slice(src.indexOf('const surfaceConcern'), src.indexOf('const surfaceCapability'));
+  assert(/SPEC DEVIATION/.test(seg), 'surfaceConcern has no spec-deviation class (only the mock/deferred class)');
+  assert(/owner ratification|принят/i.test(seg), 'a spec deviation is not routed to owner ratification (RL DoD п.5)');
+});
+
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);

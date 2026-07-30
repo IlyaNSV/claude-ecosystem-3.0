@@ -1,6 +1,6 @@
 export const meta = {
   name: 'user-journey-acceptance',
-  description: 'Orchestrator P8 — the user-journey acceptance gate AFTER a staging deploy (E.B DEPLOYED), the last check before `done`. It drives DETERMINISTIC Playwright browser journeys (tests/uja/*.spec.ts) against the live staging URL with a realistic user simulation, and answers the question P7 cannot: "does the FIRST user touch actually work?" (the live precedent: P6/P7/deploy all green, yet the pilot post-login hit a 404 — HTTP-liveness ≠ a working journey). Preflight is a Definition-of-Readiness check (Playwright equipped? journeys authored — incl. NEGATIVE access journeys neg-*.spec.ts from the RPM Access Matrix? staging 2xx?) → an honest ENV_NOT_READY with a DoR hint when not; the run + verdict are read through the deterministic uja-report.cjs lib — no LLM judgment (DEC-DEV-0225; neg-leg + full design-state rule — DEC-DEV-0230).',
+  description: 'Orchestrator P8 — the user-journey acceptance gate AFTER a staging deploy (E.B DEPLOYED), the last check before `done`. It drives DETERMINISTIC Playwright browser journeys (tests/uja/*.spec.ts) against the live staging URL with a realistic user simulation, and answers the question P7 cannot: "does the FIRST user touch actually work?" (the live precedent: P6/P7/deploy all green, yet the pilot post-login hit a 404 — HTTP-liveness ≠ a working journey). Preflight is a Definition-of-Readiness check (Playwright equipped? journeys authored — incl. NEGATIVE access journeys neg-*.spec.ts from the RPM Access Matrix? staging 2xx? a DoD run on a realistic input profile?) → an honest ENV_NOT_READY with a DoR hint when not; the run + verdict are read through the deterministic uja-report.cjs lib — no LLM judgment. Implementer deviations forwarded from P5/P6 are DISCLOSED in the verdict (DEC-DEV-0225; neg-leg + full design-state rule — DEC-DEV-0230; realistic-input DoD leg + deviations disclosure — DEC-DEV-0231).',
   phases: [
     { title: 'Preflight' },
     { title: 'Run' },
@@ -74,6 +74,14 @@ const PROJECT_ROOT = A.root || '.'                              // the target pr
 const UJA_LIB = A.ujaLib || '.claude/orchestrator/lib/uja-report.cjs'  // DEC-DEV-0225: the deterministic preflight + verdict core
 const ARTIFACTS_DIR = A.artifactsDir || 'test-results'          // where Playwright writes step screenshots / trace (the visual-conformance evidence)
 const RUN_ID = A.runId || ''                                    // the ledger bracket run-id, forwarded (evidence handle; the harness may not read a clock/FS)
+const CONCERNS = A.concerns || []                               // DEC-DEV-0231 (2.2): implementer deviations forwarded from P5/P6 — disclosed in THIS verdict too, not only at the GO-gate
+// DEC-DEV-0231 (2.5) — the realistic-input DoD leg (owner directive 2026-07-23, RUN-B.36 / feedback A4):
+// a DoD-confirmation run of a FIRST release must exercise a REALISTIC load ("видео 30 мин – 2 ч"),
+// not the 5-second dev fixtures — a 5-sec pass tells the owner nothing about the real pipeline
+// (Whisper ~25MB chunking, cost, duration). dodRun marks the run as the release-DoD confirmation;
+// inputProfile declares what the journeys feed the app. dev profile on a DoD run ⇒ an honest DoR gap.
+const DOD_RUN = !!A.dodRun                                      // this run is the Release-DoD confirmation run (RL DoD категория 3)
+const INPUT_PROFILE = A.inputProfile || 'dev'                   // 'dev' (minimal fixtures) | 'realistic' (DoD-grade load, e.g. видео 30 мин – 2 ч)
 
 // ---- schemas ---------------------------------------------------------------
 const PREFLIGHT_SCHEMA = {
@@ -187,8 +195,10 @@ const dorReasons = [
     ? [`no NEGATIVE access journey (${JOURNEYS_DIR}/neg-*.spec.ts) — the suite is positive-only. DoR: author negative access journeys from the RPM Access Matrix rows (guest → protected; authenticated → /login, /signup; cross-realm: a realm-A session on realm-B routes, both directions).`] : []),
   ...(!STAGING_URL ? ['no staging URL supplied (args.stagingUrl / baseUrl) — the journeys have no live target to run against. DoR: forward the DEPLOYED staging URL from the deploy result, or set it in env.'] : []),
   ...(STAGING_URL && !stagingTwoxx ? [`staging ${STAGING_URL} did not answer 2xx (${(stagingUp && stagingUp.observed) || 'unreachable'}) — bring the staging target up and re-run (the deploy cell owns provisioning, not this gate).`] : []),
+  ...(DOD_RUN && INPUT_PROFILE !== 'realistic'
+    ? [`this is a Release-DoD confirmation run but inputProfile='${INPUT_PROFILE}' — a DoD run MUST exercise a realistic load (owner directive 2026-07-23 / DEC-DEV-0231: видео 30 мин – 2 ч; 5-сек фикстуры — только dev). DoR: prepare realistic fixtures, re-run with inputProfile:'realistic'. A 5-sec pass proves nothing about the real pipeline (chunking, cost, duration).`] : []),
 ]
-if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL || !stagingTwoxx) {
+if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL || !stagingTwoxx || (DOD_RUN && INPUT_PROFILE !== 'realistic')) {
   await recordDoRGap(dorReasons)
   log(`P8 ENV_NOT_READY: DoR gap (${dorReasons.length} reason(s)) — recorded, routed to owner. Not running journeys.`)
   phase('Report')
@@ -201,9 +211,12 @@ if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL |
     journeys_failed: [],
     specs_skipped: [],
     artifacts_dir: null,
+    input_profile: INPUT_PROFILE,                            // DEC-DEV-0231 (2.5): what the journeys feed the app — RL DoD reads this from run.json
+    dod_run: DOD_RUN,
+    concerns: CONCERNS,                                      // DEC-DEV-0231 (2.2): forwarded implementer deviations, carried even on a DoR gap
     readiness: 'ENV_NOT_READY',
     readiness_reasons: dorReasons,                           // the DoR hints — the gate must be auditable from run.json alone
-    disclosures: dorReasons.concat(['readiness=ENV_NOT_READY — the journeys could not be RUN/judged; this is NOT a journey FAIL. Remedy: close the DoR gap (equip Playwright / author journeys incl. neg-*.spec.ts / bring staging up) and re-run.']),
+    disclosures: dorReasons.concat(['readiness=ENV_NOT_READY — the journeys could not be RUN/judged; this is NOT a journey FAIL. Remedy: close the DoR gap (equip Playwright / author journeys incl. neg-*.spec.ts / bring staging up / realistic input on a DoD run) and re-run.']),
     run_id: RUN_ID || null,
   }
 }
@@ -216,7 +229,10 @@ phase('Run')
 // report; the agent transports it. Capture-don't-fix.
 const verdict = await agent(
   `Run the user-journey acceptance suite against the LIVE staging deploy, then relay the DETERMINISTIC verdict (VM-gated; capture-don't-fix — SURFACE a failed journey, do NOT remediate/re-run to get green/edit code).\n` +
-  `1) Point Playwright at the staging URL: ${STAGING_URL} (export it as PLAYWRIGHT_BASE_URL, or pass it however the project's playwright config reads the base URL). ⚠ BUDGET GUARD (real-vendor spend): the journeys may create REAL jobs on the deployed app — they MUST use MINIMAL fixtures (a throwaway/seed account, the smallest input that exercises the flow). Do NOT run a production-scale pass, do NOT loop, do NOT hammer paid endpoints.\n` +
+  `1) Point Playwright at the staging URL: ${STAGING_URL} (export it as PLAYWRIGHT_BASE_URL, or pass it however the project's playwright config reads the base URL). ` +
+  (INPUT_PROFILE === 'realistic'
+    ? `⚠ REALISTIC-INPUT PROFILE (DoD leg, DEC-DEV-0231): this run MUST exercise the realistic load the release will face (owner directive: видео 30 мин – 2 ч, not the 5-sec dev fixtures) — the point is to prove the REAL pipeline (chunking, cost, duration). Still ONE realistic pass per journey on a throwaway/seed account: do NOT loop, do NOT hammer paid endpoints beyond the single realistic pass.\n`
+    : `⚠ BUDGET GUARD (real-vendor spend): the journeys may create REAL jobs on the deployed app — they MUST use MINIMAL fixtures (a throwaway/seed account, the smallest input that exercises the flow). Do NOT run a production-scale pass, do NOT loop, do NOT hammer paid endpoints.\n`) +
   `2) Run HEADLESS with the JSON reporter, capturing the report to a file even when tests fail (playwright exits non-zero on a failing journey but STILL writes the report — capture it):\n` +
   `   \`npx playwright test ${JOURNEYS_DIR} --reporter=json > ${ARTIFACTS_DIR}/uja-report.json\` (create ${ARTIFACTS_DIR} first if absent; keep the step screenshots / trace Playwright writes under ${ARTIFACTS_DIR} — that is the visual-conformance evidence for owner review against the MK).\n` +
   `3) Reduce the report to the verdict through the DETERMINISTIC lib and relay its JSON VERBATIM:\n` +
@@ -250,11 +266,16 @@ return {
   journeys_failed: journeysFailed,                           // [{ journey, failing[] }] — the failing journeys, surfaced (capture-don't-fix)
   specs_skipped: specsSkipped,                               // [{ journey, skipped[] }] — designed-but-unbuilt states, disclosed EXPLICITLY (DEC-DEV-0230), never silent
   artifacts_dir: artifactsDir,                               // step screenshots / trace — the visual-conformance evidence for owner review vs MK
+  input_profile: INPUT_PROFILE,                              // DEC-DEV-0231 (2.5): 'realistic' is what RL DoD категория 3 requires of the DoD run — auditable from run.json
+  dod_run: DOD_RUN,
+  concerns: CONCERNS,                                        // DEC-DEV-0231 (2.2): forwarded implementer deviations — disclosed here, not only at the GO-gate
   readiness: ujaResult === 'ENV_NOT_READY' ? 'ENV_NOT_READY' : 'READY',
   readiness_reasons: ujaResult === 'ENV_NOT_READY' ? verdictReasons : [],
   disclosures: verdictReasons
     .concat(ujaResult === 'FAIL' ? ['a FAILED journey is the first-user-touch breaking (the P7-green-but-404 class) — route to a P5/P6 re-drive (awaiting_journey_fix); this gate does not remediate.'] : [])
     .concat(specsSkipped.length ? [`${specsSkipped.length} journey file(s) carry SKIPPED specs — each skip must map to a designed-but-unbuilt state and ESCALATE to the owner (the "designed — not built — invisible to acceptance" class, pilot finding #8); a skip with no such mapping is a gap in the suite.`] : [])
+    .concat(CONCERNS.length ? [`${CONCERNS.length} implementer deviation(s)/concern(s) declared at impl (DEC-DEV-0231): ${CONCERNS.map((c) => (typeof c === 'string' ? c : `${c.task || ''}: ${c.concern || ''}`)).join(' | ')} — a PASS over a declared deviation is PASS-with-caveats; each deviation needs owner ratification (RL DoD п.5).`] : [])
+    .concat(DOD_RUN ? [`DoD run on input_profile='${INPUT_PROFILE}' — RL DoD категория 3 reads this field; only 'realistic' satisfies the first-release DoD (владелец 2026-07-23).`] : [])
     .concat(['visual-conformance: the step screenshots / trace under ' + artifactsDir + ' are the owner-review evidence against the design MK (owner reviews reality↔MK; an automatic MK-diff is v1.1).']),
   run_id: RUN_ID || null,
 }

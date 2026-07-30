@@ -7,9 +7,12 @@
  * return) and cannot run standalone, so this asserts P6's structural invariants at the source
  * level (same approach as audit-fidelity-wiring.test.cjs / concerns-propagation.test.cjs):
  *  - a mechanical layer runs the FULL suite + build (not "tasks all [x]");
- *  - three parallel validators with distinct lenses (RA-8/9/10), inlined per D.1;
+ *  - four parallel validators with distinct lenses (RA-8/9/10/11), inlined per D.1;
  *  - requirements-coverage reuses the coverage-oracle as its anti-self-report backbone;
+ *  - constants-fidelity (RA-11) reuses the br-constants-oracle as the CODE↔BR backbone (DEC-DEV-0231);
  *  - verify-finding-before-act: a finding is confirmed against ground truth before remediation;
+ *  - a wide confirmed set is root-cause-first triaged BEFORE per-finding remediation (DEC-DEV-0231 2.3);
+ *  - an exhausted NO-GO prepares a PREPARE-ONLY deviation-triage for the owner (DEC-DEV-0231 2.4);
  *  - remediation is bounded; refuted findings are dropped;
  *  - GO is synthesized deterministically (mechanical green AND no residual AND not degraded);
  *  - forwarded deferred-capability CONCERNS are disclosed (FB-013);
@@ -48,11 +51,23 @@ test('mechanical layer runs the FULL suite + build (not "tasks all [x]")', () =>
   assert(/suite|build/i.test(SRC), 'mechanical layer does not mention suite/build');
 });
 
-test('defines THREE inline validators with distinct lenses (RA-8/9/10, per D.1)', () => {
+test('defines FOUR inline validators with distinct lenses (RA-8/9/10/11, per D.1)', () => {
   assert(/REQUIREMENTS_COVERAGE\s*=/.test(SRC), 'requirements-coverage (RA-8) role missing');
   assert(/DESIGN_ALIGNMENT\s*=/.test(SRC), 'design-alignment (RA-9) role missing');
   assert(/INTEGRATION_BOUNDARY\s*=/.test(SRC), 'integration-boundary (RA-10) role missing');
-  assert(/RA-8/.test(SRC) && /RA-9/.test(SRC) && /RA-10/.test(SRC), 'RA-8/9/10 ids not referenced');
+  assert(/CONSTANTS_FIDELITY\s*=/.test(SRC), 'constants-fidelity (RA-11) role missing (DEC-DEV-0231)');
+  assert(/RA-8/.test(SRC) && /RA-9/.test(SRC) && /RA-10/.test(SRC) && /RA-11/.test(SRC), 'RA-8/9/10/11 ids not referenced');
+  assert(/'constants-fidelity'/.test(SRC), 'constants-fidelity not registered in VALIDATORS');
+});
+
+test('RA-11 reuses the br-constants-oracle (CODE↔BR backbone, DEC-DEV-0231) + defect kinds representable', () => {
+  assert(/br-constants-oracle\.cjs/.test(SRC), 'process does not reference br-constants-oracle.cjs');
+  assert(/CONSTANTS_ORACLE\b/.test(SRC), 'no CONSTANTS_ORACLE arg for the oracle path');
+  assert(/--claims/.test(SRC), 'RA-11 does not run the oracle check mode (--claims)');
+  assert(/'constant-mismatch'/.test(SRC) && /'constant-unenforced'/.test(SRC),
+    'DEFECT_KINDS does not carry the RA-11 kinds (constant-mismatch / constant-unenforced)');
+  // the M16 defect class must be named so the lens knows what it exists to catch
+  assert(/on the client'?s word|15\/30/.test(SRC), 'RA-11 lens does not name the M16 defect class');
 });
 
 test('validators run in parallel()', () => {
@@ -127,6 +142,43 @@ test('T5: a cross-spec/design conflict ESCALATES, never self-resolved (FB-LR-07)
   assert(/FB-LR-07/.test(SRC), 'FB-LR-07 (no unilateral resolution) not referenced');
   // an escalated conflict must NOT be pushed back into the remediation set (no retry)
   assert(/escalateConflict\(f, fix\)\s*continue/.test(SRC), 'an escalated conflict must skip remediation (continue after escalateConflict), not retry');
+});
+
+test('root-cause-first: a wide confirmed set is triaged for ONE common root BEFORE per-finding rounds (DEC-DEV-0231 2.3)', () => {
+  assert(/ROOT_CAUSE_THRESHOLD\b/.test(SRC), 'no ROOT_CAUSE_THRESHOLD arg');
+  assert(/ROOT_CAUSE_SCHEMA\b/.test(SRC), 'no ROOT_CAUSE_SCHEMA');
+  assert(/present\.length >= ROOT_CAUSE_THRESHOLD/.test(SRC), 'root-cause triage not keyed on the confirmed-present threshold');
+  assert(/label: 'root-cause-first'/.test(SRC), 'no root-cause-first diagnosis agent');
+  assert(/label: 'remediate:common-root'/.test(SRC), 'a found common root is not remediated once');
+  // the diagnosis + root fix must run BEFORE the per-finding remediation loop
+  const rcIdx = SRC.indexOf("label: 'root-cause-first'");
+  const loopIdx = SRC.indexOf('while (remaining.length');
+  assert(rcIdx !== -1 && loopIdx !== -1 && rcIdx < loopIdx, 'root-cause-first must precede the per-finding remediation loop');
+  // the RUN-A provenance (one root diagnosed five times) must be named
+  assert(/RUN-A/.test(SRC) && /24\.6%/.test(SRC), 'RUN-A five-fold-diagnosis provenance not documented');
+  // the return envelope carries the diagnosis
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /root_cause:/.test(m[0]), 'return envelope does not carry root_cause');
+});
+
+test('deviation-triage: an exhausted NO-GO prepares the fix-forward-vs-re-derive fork, PREPARE-ONLY (DEC-DEV-0231 2.4)', () => {
+  assert(/DEVIATION_TRIAGE_THRESHOLD\b/.test(SRC), 'no DEVIATION_TRIAGE_THRESHOLD arg');
+  assert(/TRIAGE_SCHEMA\b/.test(SRC), 'no TRIAGE_SCHEMA');
+  assert(/'fix-forward',\s*'re-derive'/.test(SRC), 'the fork enum (fix-forward | re-derive) missing');
+  assert(/premises_verified/.test(SRC), 'the judge is not required to verify premises (2026-07-30 adjudication policy)');
+  assert(/counter_case/.test(SRC), 'no reverse pass (counter_case) in the triage schema');
+  assert(/NOT a consilium/.test(SRC), 'the single-judge (not consilium) policy is not documented in code');
+  assert(/label: 'deviation-triage'/.test(SRC), 'no deviation-triage judge agent');
+  // triage fires only on a NO-GO past the threshold / exhausted rounds, and is prepare-only
+  assert(/result === 'NO-GO' && \(unresolved\.length >= DEVIATION_TRIAGE_THRESHOLD \|\| roundsExhausted\)/.test(SRC),
+    'the deterministic trigger (NO-GO ∧ (threshold ∨ exhausted)) is not in code');
+  assert(/do NOT fix, do NOT revert, do NOT commit/.test(SRC), 'the triage is not prepare-only');
+  // the triage PA-write must target the canonical pending-actions file
+  const tIdx = SRC.indexOf("label: 'deviation-triage'");
+  const tSeg = SRC.slice(SRC.indexOf('Deviation-triage (PREPARE-ONLY'), tIdx);
+  assert(/PA_CANON/.test(tSeg), 'the triage packet is not routed via PA_CANON');
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /deviation_triage:/.test(m[0]), 'return envelope does not carry deviation_triage');
 });
 
 test('T5: single-writer — sequential remediation + resolved-by-concurrent-commit guard (extends FB-004)', () => {
@@ -236,7 +288,7 @@ test('FB-LR-21: RA-10 surfaces a deferred/spec-sanctioned orphan, not a silent c
 test('returns the P6 contract keys', () => {
   const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
   assert(m, 'could not locate the process return object');
-  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'validators_incomplete', 'confirmed_findings', 'remediated', 'committed_under_non_ready', 'residual', 'conflicts', 'result', 'findings', 'go_gate', 'autonomy']) {
+  for (const key of ['feature', 'mechanical', 'readiness', 'validators', 'validators_incomplete', 'confirmed_findings', 'remediated', 'committed_under_non_ready', 'residual', 'conflicts', 'root_cause', 'deviation_triage', 'result', 'findings', 'go_gate', 'autonomy']) {
     assert(new RegExp('(^|[\\s{,])' + key + '\\s*[:,]').test(m[0]), `return object missing key: ${key}`);
   }
 });

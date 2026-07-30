@@ -95,9 +95,14 @@ version: 1
 7. **Entity lifecycles touched.** Какие LC затрагиваются.
 8. **Verification overview.** Список VC-* и критерий полноты покрытия.
 9. **Invariants touched.** Какие IC применяются.
-10. **UI overview** (если has_ui=true). Список MK-* (Design Package references).
+10. **UI overview** (если has_ui=true). Список MK-* (Design Package references). Обзор обязан
+    покрывать ПОЛНЫЙ Screen Inventory пакета (все SI-состояния, включая with-data/empty/error) —
+    handoff переносит SI сквозняком, выборка здесь = SKIP-дыры в приёмке P8 (DEC-DEV-0231; M10 §3.4).
 11. **NFR summary** (когда артефакт NFR будет введён).
-12. **Dependencies on other features.** Какие FM должны быть shipped раньше.
+12. **Dependencies on other features.** Какие FM должны быть shipped раньше. Если фича задаёт
+    интеграционное требование к чужому модулю (эффект реализуется в чужом коде) — назови
+    симметричное требование в спеке модуля-владельца; одностороннее обязательство = дефект
+    спек (DEC-DEV-0231; M10 §3.3).
 
 Опциональные:
 

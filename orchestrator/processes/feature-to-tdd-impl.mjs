@@ -104,14 +104,19 @@ const PLAN_SCHEMA = {
 
 const IMPL_SCHEMA = {
   type: 'object',
-  required: ['status', 'task'],
+  // DEC-DEV-0231 (2.2, M16): `concerns` is REQUIRED — the mandatory deviations report. M16 showed
+  // the control arm won the honesty axis by FORM (its phase cycle forces a decisions register),
+  // while the canon arm shipped two UNDECLARED deviations; an optional field is exactly the
+  // carrier-less discipline that drifts. The implementer must either declare every deviation or
+  // write the literal 'none' — silence is no longer representable.
+  required: ['status', 'task', 'concerns'],
   properties: {
     status: { type: 'string', enum: ['READY_FOR_REVIEW', 'BLOCKED', 'NEEDS_CONTEXT'] },
     task: { type: 'string' },
     files_changed: { type: 'array', items: { type: 'string' } },
     red_phase_output: { type: 'string' },
     requirements_checked: { type: 'string' },
-    concerns: { type: 'string' },                              // FB-013: deferred-capability / mock-stand-in flags — read + propagated, not dropped
+    concerns: { type: 'string' },                              // FB-013 + DEC-DEV-0231: MANDATORY deviations report — EVERY deviation from the spec (truncated schedule/threshold, value taken on the user's word, simplified flow, mock/deferred seam) or the literal 'none'; read + propagated, never dropped
     blocker: { type: 'string' },
     block_class: { type: 'string', enum: ['transient', 'content', 'capability', 'cross-spec-conflict', 'design-contradiction'] }, // DEC-DEV-0096 (T5): implementer's self-classification of a BLOCK (the classify-block agent + remediation-guard are the authoritative backbone)
     missing: { type: 'string' },
@@ -222,7 +227,7 @@ const implement = (task, extra = '') =>
     `Spec: ${SPEC_DIR}/{requirements,design,tasks}.md. Requirements §: ${(task.requirements || []).join(', ')}. _Boundary_: ${task.boundary || 'n/a'}. ` +
     `Validation commands: ${JSON.stringify((plan && plan.validation_commands) || {})}. ${task.behavioral ? 'BEHAVIORAL — apply the Feature Flag Protocol.' : 'Non-behavioral.'}\n` +
     `FB-006: do NOT make project-global changes outside your _Boundary_ — never alter git core.hooksPath, root package.json lifecycle scripts (prepare/postinstall), or install hook-managing tooling (e.g. husky) that hijacks git hooks (the pilot's beads owns core.hooksPath). If the task seems to require it, return BLOCKED and surface it rather than silently doing it.\n` +
-    `FB-013: if you satisfy a real external/provider/secret/adapter seam with a Mock or unwired skeleton because real access is DEFERRED (not out of scope), state that explicitly in the CONCERNS field of your Status Report — it is propagated downstream, not dropped.\n` +
+    `FB-013 + DEC-DEV-0231 (mandatory deviations report): the CONCERNS field is REQUIRED. Declare EVERY deviation from the spec — a truncated schedule/threshold (e.g. implementing 15/30 where the BR says 15/30/60), a value accepted from user/client input instead of enforced, a simplified flow, AND any real external/provider/secret/adapter seam satisfied by a Mock or unwired skeleton because real access is DEFERRED. If the implementation matches the spec exactly, write the literal 'none'. It is propagated downstream and disclosed in the P6/P8 verdicts — an undeclared deviation found later is a defect of the report, not just of the code.\n` +
     `FB-LR-07 (T5): NEVER resolve a cross-spec/requirement contradiction or a design self-contradiction yourself. If this task requires picking a side of such a conflict, return BLOCKED, set block_class:'cross-spec-conflict' or 'design-contradiction', and state the contradiction explicitly in the blocker — do NOT commit a unilateral choice.\n` +
     `Do NOT commit, do NOT edit tasks.md. End with the exact ## Status Report block.${extra}`,
     { model: 'opus', schema: IMPL_SCHEMA, phase: 'Implement', label: `impl:${task.id}` },   // MDP: TDD implementer writes REAL runtime code (deep + high R)
@@ -321,18 +326,20 @@ const recordBlock = (taskId, reason) =>
 // block the task and does NOT commit code — it records a tracking item so the gap is visible.
 const surfaceConcern = (taskId, concern) =>
   agent(
-    `Task ${taskId} reached APPROVED but its implementer reported a CONCERN: "${concern}".\n` +
-    `Decide whether it flags a DEFERRED CAPABILITY or external seam that must outlive this run — ` +
-    `a real provider/API/secret/tool satisfied in-dev by a Mock or unwired skeleton because real ` +
-    `access is deferred (NOT out of product scope), or any acceptance/E2E that ran on a stand-in.\n` +
-    `If so: append a NON-BLOCKING tracking entry to .claude/pending-actions.md (create if absent) — ` +
-    `the deferred capability, its route (Integrator for access/tool/secret; Product for provider CHOICE), ` +
-    `and provisioning-tier (staging/prod). Mark it tracking/disclosure, NOT a blocking request now ` +
-    `(real access is a future deliverable, not something to provision today).\n` +
-    `If the concern is a routine note (refactor/cleanup/style), do NOTHING. ` +
+    `Task ${taskId} reached APPROVED but its implementer reported a CONCERN/DEVIATION: "${concern}".\n` +
+    `Triage it into one of three classes (DEC-DEV-0231 broadened FB-013 beyond the mock/deferred class):\n` +
+    `  • DEFERRED CAPABILITY — a real provider/API/secret/tool satisfied in-dev by a Mock or unwired skeleton because real ` +
+    `access is deferred (NOT out of product scope), or any acceptance/E2E that ran on a stand-in. ` +
+    `Append a NON-BLOCKING tracking entry to the canonical pending-actions file — the deferred capability, its route ` +
+    `(Integrator for access/tool/secret; Product for provider CHOICE), and provisioning-tier (staging/prod). Tracking/disclosure, NOT a blocking request now.\n` +
+    `  • SPEC DEVIATION — the implementation departs from what the spec fixes (truncated schedule/threshold, a value accepted ` +
+    `on the user's word instead of enforced, a simplified/re-scoped flow). Append a NON-BLOCKING deviation-disclosure entry ` +
+    `to the canonical pending-actions file: the deviation verbatim, the spec anchor it departs from, route = owner ratification ` +
+    `(RL DoD п.5: оговорки действительны только когда приняты владельцем). Do NOT fix it here.\n` +
+    `  • routine note (refactor/cleanup/style) — do NOTHING.\n` +
     PA_CANON +
     `Never block the task, never commit code.`,
-    { model: 'sonnet', phase: 'Implement', label: `concern:${taskId}` },   // MDP: non-blocking concern PA write + light triage (standard/mechanical)
+    { model: 'sonnet', phase: 'Implement', label: `concern:${taskId}` },   // MDP: non-blocking concern/deviation PA write + light triage (standard/mechanical)
   )
 
 // DEC-DEV-0117 (§6 detect-leg, fix #4): proactively surface the capability-items the
@@ -491,14 +498,18 @@ for (const task of tasks) {
     `Commit message: feat(${FEATURE}): ${task.id} ${task.text || ''}. Return the sha.`,
     { model: 'sonnet', schema: COMMIT_SCHEMA, phase: 'Implement', label: `commit:${task.id}` },   // MDP: selective commit + git-status reconcile (mechanical)
   )
-  // FB-013 (DEC-DEV-0081 fix #1): propagate a non-blocking CONCERN (deferred-capability /
-  // mock-stand-in) rather than dropping it — read it from the final implementer report and
-  // route it via surfaceConcern (non-blocking; the task still committed cleanly above).
-  if (impl.concerns && impl.concerns.trim()) {
-    concerns.push({ task: task.id, concern: impl.concerns.trim() })
-    await surfaceConcern(task.id, impl.concerns.trim())
+  // FB-013 (DEC-DEV-0081 fix #1) + DEC-DEV-0231 (2.2): propagate a non-blocking CONCERN/DEVIATION
+  // rather than dropping it — read it from the final implementer report and route it via
+  // surfaceConcern (non-blocking; the task still committed cleanly above). The field is REQUIRED
+  // now, so the literal 'none' sentinel (no deviations) is filtered here — an explicit "nothing
+  // to declare" is the point of the form; only substantive entries propagate.
+  const declaredConcern = ((impl.concerns || '') + '').trim()
+  const concernIsNone = /^(none|нет|no deviations?|n\/a|-)$/i.test(declaredConcern)
+  if (declaredConcern && !concernIsNone) {
+    concerns.push({ task: task.id, concern: declaredConcern })
+    await surfaceConcern(task.id, declaredConcern)
   }
-  implemented.push({ id: task.id, tier: task.tier, sha: commit && commit.sha, concern: (impl.concerns && impl.concerns.trim()) || null })
+  implemented.push({ id: task.id, tier: task.tier, sha: commit && commit.sha, concern: (concernIsNone || !declaredConcern) ? null : declaredConcern })
   log(`task ${task.id} ✓ committed ${(commit && commit.sha) || ''}`)
 }
 
