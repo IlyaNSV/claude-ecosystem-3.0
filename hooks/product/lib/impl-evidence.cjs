@@ -24,13 +24,14 @@
  *   both in this repo (hooks/… + orchestrator/…) and in a pilot (.claude/hooks/… +
  *   .claude/orchestrator/…, three levels up from hooks/product/lib/ == the shared root),
  *   so the reuse survives deployment. (slugify below is NOT an oracle algorithm — it is
- *   a small local mirror of the adapter's spec-dir slug, so external dirs can be matched
- *   by title as well as by FM-id.)
+ *   a small local mirror of the adapter's spec-dir slug, so external dirs AND slug-addressed
+ *   orchestrator runs can be matched by title as well as by FM-id.)
  *
  * MODEL (per FM):
  *   collectEvidence pulls from four fail-tolerant sources (a missing dir/file yields
  *   empty evidence, never a throw):
- *     - runs    : .claude/orchestrator/runs/<id>/run.json mentioning the FM → gate verdict
+ *     - runs    : .claude/orchestrator/runs/<id>/run.json mentioning the FM (by id, or by
+ *                 the feature slug the run was addressed with) → gate verdict
  *     - fabric  : .claude/orchestrator/fabric/<id>/state.json (FM mention OR subject in
  *                 handoff) → fabric_done when state === 'done'
  *     - external: .kiro/specs/<dir>/… mentioning the FM, or whose dir == slug(title)
@@ -193,13 +194,60 @@ function collectHandoffEvidence(root, fmId) {
 }
 
 /**
- * runs: .claude/orchestrator/runs/<id>/run.json mentioning the FM (id in the JSON dump,
- * or a substring hit in args_summary). Records each match + the LATEST gate verdict
- * (GO | NO-GO | MANUAL_VERIFY_REQUIRED) by finished_at across P5/P6-class gate runs.
+ * Slug-shaped tokens of a run's `args_summary`. The feature slug is matched as a WHOLE
+ * TOKEN (`auth` in `"auth main"` or `{"feature":"auth"}`), never as a substring (`auth`
+ * inside `author-flow`) — a substring rule would silently attribute a NEIGHBOURING
+ * feature's run to this FM, and a false GO here proposes shipping an unshipped feature.
  */
-function collectRunsEvidence(root, fmId) {
+function slugTokens(s) {
+  return new Set(String(s == null ? '' : s).toLowerCase().split(/[^a-z0-9-]+/).filter(Boolean));
+}
+
+/**
+ * ANTI-NOISE FLOOR for the slug match: a slug shorter than this is not evidence. Short
+ * slugs ("api", "ui", "db") collide with ordinary words in an args line, and the slug path
+ * is a heuristic, not an id. Below the floor only the literal FM-id match applies.
+ */
+const MIN_SLUG_MATCH_LEN = 4;
+
+/**
+ * The key precedence a run_ledger `result_summary` outcome can hide behind — mirrors
+ * OUTCOME_KEYS in orchestrator/lib/run-ledger.cjs, so the sensor and the ledger cannot
+ * disagree about which key wins when several are present.
+ */
+const OUTCOME_KEYS = ['result', 'p7_result', 'go_gate', 'uja_result'];
+
+/**
+ * Resolve a gate verdict out of one `result_summary` field (D094). The field is USUALLY a
+ * bare string ('GO'), because run-ledger's summarizeResult copies the process' outcome
+ * VERBATIM — but a process that returns a wrapped envelope lands an OBJECT here, and a bare
+ * `GATE_VERDICTS.has(obj)` read straight over it: a real GO looked like no gate at all, and
+ * the FM fell through to `gate-not-passed`. Bare-string path is unchanged; the object form
+ * is unwrapped by OUTCOME_KEYS precedence. Anything else → null.
+ */
+function gateOf(v) {
+  if (typeof v === 'string') return GATE_VERDICTS.has(v) ? v : null;
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null;
+  for (const k of OUTCOME_KEYS) {
+    if (typeof v[k] === 'string' && GATE_VERDICTS.has(v[k])) return v[k];
+  }
+  return null;
+}
+
+/**
+ * runs: .claude/orchestrator/runs/<id>/run.json mentioning the FM — by id (in the JSON dump
+ * or as a substring of args_summary), or, when a `title` is supplied, by the FEATURE SLUG the
+ * run was addressed with (meta-feedback #4, DEC-DEV-0234: orchestrator processes take a
+ * cc-sdd slug — `{feature:"auth"}` — not an FM-id, so an id-only matcher was blind to every
+ * slug-addressed run and reported `no-evidence` for features that had actually been gated).
+ * Records each match (+ how it matched) + the LATEST gate verdict (GO | NO-GO |
+ * MANUAL_VERIFY_REQUIRED) by finished_at across P5/P6-class gate runs.
+ */
+function collectRunsEvidence(root, fmId, title) {
   const base = path.join(root, '.claude', 'orchestrator', 'runs');
   const matches = [];
+  const slug = slugify(title || '');
+  const wantSlug = slug.length >= MIN_SLUG_MATCH_LEN ? slug : null;
   let entries;
   try { entries = fs.readdirSync(base, { withFileTypes: true }); } catch (_) { entries = []; }
   for (const ent of entries) {
@@ -209,9 +257,13 @@ function collectRunsEvidence(root, fmId) {
     let run;
     try { run = JSON.parse(raw); } catch (_) { continue; }
     const dump = JSON.stringify(run);
-    const mentioned = extractIds(dump, 'FM').includes(fmId)
-      || (typeof run.args_summary === 'string' && run.args_summary.includes(fmId));
-    if (!mentioned) continue;
+    const argsSummary = typeof run.args_summary === 'string' ? run.args_summary : '';
+    const byId = extractIds(dump, 'FM').includes(fmId) || argsSummary.includes(fmId);
+    // Slug evidence is read from args_summary ONLY (how the run was ADDRESSED), never from the
+    // whole JSON dump: the dump carries paths, commit text and prose where a slug turns up for
+    // reasons unrelated to this feature.
+    const bySlug = !byId && wantSlug != null && slugTokens(argsSummary).has(wantSlug);
+    if (!byId && !bySlug) continue;
     const rs = run.result_summary || {};
     matches.push({
       run_id: run.run_id || ent.name,
@@ -221,10 +273,11 @@ function collectRunsEvidence(root, fmId) {
       verdict: rs.verdict != null ? rs.verdict : null,
       readiness: rs.readiness != null ? rs.readiness : null,
       finished_at: run.finished_at || null,
+      matched_by: byId ? 'fm-id' : 'feature-slug',
     });
   }
   const gateRuns = matches
-    .map((m) => ({ m, gate: GATE_VERDICTS.has(m.result) ? m.result : (GATE_VERDICTS.has(m.verdict) ? m.verdict : null) }))
+    .map((m) => ({ m, gate: gateOf(m.result) || gateOf(m.verdict) }))
     .filter((x) => x.gate != null)
     .sort((a, b) => tsOf(b.m.finished_at) - tsOf(a.m.finished_at));
   const latest = gateRuns.length ? gateRuns[0] : null;
@@ -309,11 +362,14 @@ function collectEvidence(opts) {
   const root = o.root;
   const fmId = o.fmId;
   const fm = readFm(root, fmId);
-  const title = fm && fm.title ? fm.title : fmId;
+  const fmTitle = fm && fm.title ? fm.title : null;
+  const title = fmTitle || fmId;
   const handoff = collectHandoffEvidence(root, fmId);
   return {
     fm_id: fmId,
-    runs: collectRunsEvidence(root, fmId),
+    // Runs get the REAL title only (never the fmId fallback): slugify('FM-001') would add a
+    // second, redundant spelling of a match the literal id path already makes.
+    runs: collectRunsEvidence(root, fmId, fmTitle),
     fabric: collectFabricEvidence(root, fmId, handoff.raw),
     external: collectExternalEvidence(root, fmId, title),
     handoff,

@@ -172,7 +172,7 @@
 <script id="proc-data" type="application/json">{
   "_build": {
     "date": "2026-07-30",
-    "sha": "a4303b5",
+    "sha": "6d25894",
     "lanes": 5,
     "processes": 26,
     "steps": 134,
@@ -6345,6 +6345,24 @@
         "what": "При has_ui-фичах RPM несёт Access Matrix (auth-state × route × realm): forward/reverse-гард + realm×realm, ячейка без двусмысленности (DEC-DEV-0230).",
         "group": "Artifact Validation"
       },
+      "V-20": {
+        "scope": "все артефакты",
+        "severity": "blocking",
+        "what": "Enforcement-claim в теле («CI-gated», «blocks merge») требует frontmatter enforcement_mechanism с проверяемым указателем — либо пометки planned (DEC-DEV-0234).",
+        "group": "Artifact Validation"
+      },
+      "V-21": {
+        "scope": "MK, NM",
+        "severity": "blocking",
+        "what": "Дата последнего git-коммита файла не новее frontmatter updated; git недоступен → skip с note, не pass (DEC-DEV-0234).",
+        "group": "Artifact Validation"
+      },
+      "V-22": {
+        "scope": "IC, BR",
+        "severity": "blocking",
+        "what": "IC/BR, активированные с 2026-07-31, несут da_review_ref (след DA-ревью); активные раньше — 🟡 grandfather (DEC-DEV-0234).",
+        "group": "Artifact Validation"
+      },
       "V-H-01": {
         "scope": "Handoff",
         "severity": "blocking",
@@ -6523,6 +6541,12 @@
         "scope": "BR",
         "severity": "blocking",
         "what": "Любое изменение активного BR триггерит DA subagent для impact-анализа. Реализован хуком br-change-trigger.",
+        "group": "Process rule"
+      },
+      "P-RULE-03": {
+        "scope": "drift/inventory-аудиты",
+        "severity": "blocking",
+        "what": "Вердикт «не построено» верифицируется по коду и feature-флагам (не по живому билду) и несёт код-указатель файл:строка. «Флаг OFF» ≠ «кода нет». Ручная проверка (DEC-DEV-0234).",
         "group": "Process rule"
       }
     },

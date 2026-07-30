@@ -156,6 +156,10 @@ version: 1
 ---
 ```
 
+> `da_review_ref` в промоут-шаблоне нет намеренно: артефакт рождается `status: draft`, а поле
+> требуется **при активации** с 2026-07-31 (V-22, DEC-DEV-0234) — вместе с DA-ревью P-RULE-02.
+> Канон поля — [BR.md](../../docs/pmo/artifacts/BR.md).
+
 #### Target = IC
 
 ```yaml
@@ -176,6 +180,9 @@ updated: <today>
 version: 1
 ---
 ```
+
+> Та же оговорка, что у BR: `da_review_ref` появляется **при активации** (V-22, с 2026-07-31),
+> не при промоуте в `draft`. Канон — [IC.md](../../docs/pmo/artifacts/IC.md).
 
 #### Target = NFR
 

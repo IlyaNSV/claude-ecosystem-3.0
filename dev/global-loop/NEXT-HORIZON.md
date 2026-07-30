@@ -134,11 +134,13 @@ owner-финал RL-001 (impl-sync [Y] + ratify released)  ← незакрыт�
 
 ## Связи с накопленными долгами (не потерять)
 
-- **5 meta-feedback дефектов экосистемы** (копятся, чинить вне live-прогона):
-  #1 `validate-feature-impl.mjs:76` falsy `||3` глотает rounds:0 · #2 consilium-synth
-  strength только по scores{} · #3 consilium-панель без cost-линзы · #4 impl-sync collector
-  матчит по литеральному FM-ID (не видит feature-slug-прогоны) · #5 DoD/P6 не гейтит
-  visual-имплементацию has_ui-фич.
+- **5 meta-feedback дефектов экосистемы** (статус на 2026-07-31):
+  #1 falsy `||3` — ✅ ЗАЧИНЕН пакетом 6 (DEC-DEV-0234: `Number.isInteger`-гард в
+  validate-feature-impl.mjs) · #2 consilium-synth strength только по scores{} — отложен
+  (= D025 = пакет 4.1, bring-forward «владелец явно запросил консилиум») · #3 панель без
+  cost-линзы — отложен (= D026 = 4.2, тот же bring-forward) · #4 impl-sync collector
+  literal-FM-ID матч — ✅ ЗАЧИНЕН пакетом 6 (slug-матч + object-form result_summary/D094) ·
+  #5 DoD/P6 не гейтит visual-имплементацию has_ui-фич — ОТКРЫТ (кандидат следующей волны).
 - **RL-002-долг** (из прогона): FB-013 (real splice/reassembly — теперь = ядро шага 1) ·
   manifest `draft→active` · substrate-graduation-gate формулировка · DA F7 threshold-mismatch
   · HYP-003 measurement-design · BullMQ-транспорт (демоушнут с ioredis-RPUSH).

@@ -46,7 +46,7 @@ node .claude/hooks/product/lib/impl-evidence.cjs --root . --fm FM-003 --json   #
 ```
 
 It re-derives evidence from ground truth (reusing the Orchestrator coverage-oracle id extractors, per the reconcile pattern parse→unify→dedupe→disposition):
-- **runs** — `.claude/orchestrator/runs/*/run.json` mentioning the FM → latest gate verdict (GO / NO-GO / MANUAL_VERIFY_REQUIRED).
+- **runs** — `.claude/orchestrator/runs/*/run.json` mentioning the FM — by literal `FM-NNN` id, or by the feature's title-slug in `args_summary` (whole-token, ≥4 chars; slug-addressed runs were invisible before — meta-feedback #4, DEC-DEV-0234) → latest gate verdict (GO / NO-GO / MANUAL_VERIFY_REQUIRED); each match discloses `matched_by: fm-id | feature-slug`.
 - **fabric** — `.claude/orchestrator/fabric/*/state.json` (FM mention or subject-in-handoff) → `fabric_done`.
 - **external** — `.kiro/specs/*/…` dirs that mention the FM or match its title slug.
 - **handoff** — `.product/handoffs/<FM>-handoff.md` source SC/BR/IC ids + advisory coverage against external spec text.

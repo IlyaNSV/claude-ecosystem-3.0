@@ -108,6 +108,10 @@ confidence: high | medium | low
 confidence_notes: |
   <what's solid: SC steps clear, BRs assert points explicit, LC transitions identified>
   <what's assumed: edge cases speculative pre-pilot data>
+enforcement_mechanism: "<checkable pointer>"  # OMIT unless body claims machine enforcement;
+                                              # required by V-20 when body says «CI-gated»,
+                                              # «blocks PR merge», «MANDATORY automated» etc.
+                                              # Value = CI config path / gate name / runnable cmd
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 version: 1
@@ -123,6 +127,14 @@ version: 1
 - ❌ `derived` → `derived_from`
 - ❌ `is_testable`, `automatable` → `testable`
 - ❌ `test_type` → `suggested_test_type`
+- ❌ `enforced_by`, `ci_gate`, `enforcement` → `enforcement_mechanism`
+
+**V-20 — enforcement-claim honesty (🔴 Blocking, DEC-DEV-0234).** Пишешь в теле VC, что проверка
+уже принуждается машиной («CI-gated», «blocks PR merge», «MANDATORY automated», «блокирует
+merge», «auto-enforced», «MUST PASS for PR») — обязан назвать носитель в
+`enforcement_mechanism` **или** пометить claim словом `planned` в той же строке. Прецедент:
+VC-032 заявлял «CI-gated, blocks PR merge» при полном отсутствии CI в репозитории. Ложная
+гарантия хуже честного отсутствия: она снимает бдительность у всех, кто читает VC.
 
 ### Step 7: Per-VC body structure
 

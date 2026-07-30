@@ -115,6 +115,9 @@ confidence: high | medium | low
 confidence_notes: |
   <what's solid: predicate formal, supporting BRs identified, severity rationale clear>
   <what's assumed: severity «critical» based on VP-001 promise — verify with user>
+da_review_ref: "<DA-findings record/file>"  # required by V-22 when activating (status: active)
+                                            # on/after 2026-07-31 — the trace of the P-RULE-01
+                                            # review; omit while draft
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 version: 1
@@ -128,6 +131,13 @@ version: 1
 - ❌ `supporting_rules`, `brs` → `rules`
 - ❌ `related_lifecycles`, `lcs` → `lifecycles`
 - ❌ `testability`, `test_method`, `detection` → `testable_as`
+- ❌ `da_ref`, `da_review`, `reviewed_by` → `da_review_ref`
+
+**V-22 — DA-provenance активации (🔴 Blocking, DEC-DEV-0234).** Перевод IC в `status: active`
+начиная с 2026-07-31 требует `da_review_ref` — ссылки на запись/файл DA-findings. P-RULE-01
+требовал ревью и раньше, но без следа это не проверялось: 7 IC были активированы без DA и это
+всплыло только на аудите. IC, активные до 2026-07-31, поля не требуют (🟡 grandfather) —
+ретро-восстановление провенанса «из памяти» было бы фабрикацией, а не закрытием дыры.
 
 ### Step 8: Per-IC body structure
 

@@ -27,7 +27,9 @@ be rationalized.
    The rubric predating the data is the anchor — you cannot rationalize toward a preferred answer
    if you committed the yardstick first.
 2. **Symmetric conditions — vary only the independent variable.** Same inputs, same output
-   contract, same budget / model tier for both arms. **Equalize the INPUT explicitly** — give both
+   contract, same budget / model tier for both arms. Before EITHER arm runs, sweep the stand
+   with `../checklists/executor-field-of-view.md` (M16 lesson: an arm inherited the operator's
+   `~/.claude` commands + full git history — leakage the rubric never sees). **Equalize the INPUT explicitly** — give both
    arms the *identical* source, not "arm A's distilled brief" vs "arm B's raw source" (see
    anti-pattern 4; this is the exact flaw the P2 study caught in itself).
 3. **No treatment leakage into the baseline.** Do NOT inject the very thing under test into the

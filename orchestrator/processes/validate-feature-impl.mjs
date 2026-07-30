@@ -87,7 +87,12 @@ const SOURCE = A.source || ''                                    // optional .pr
 const CONCERNS = A.concerns || []                                // FB-013: deferred-capability flags forwarded from P5
 const DEGRADED = !!A.degraded                                    // P5 had blocked tasks → feature NOT complete → advisory
 const FWD_READINESS = A.readiness || ''                          // DEC-DEV-0092: optional readiness hint forwarded from P5 pre-flight
-const MAX_REMEDIATION_ROUNDS = A.maxRemediationRounds || 3
+// meta-feedback #1 / defect D022 (DEC-DEV-0234): `0` is a LEGAL value here — "capture the
+// findings, remediate nothing" — and the old falsy `|| 3` silently turned that explicit 0 into
+// three live remediation rounds (the live executor had to smuggle it through as `-1`). Integer
+// check, not truthiness; Math.max keeps that historical `-1` meaning "0 rounds" instead of
+// breaking. A non-integer (absent / null / 'two') still falls back to the documented default 3.
+const MAX_REMEDIATION_ROUNDS = Number.isInteger(A.maxRemediationRounds) ? Math.max(0, A.maxRemediationRounds) : 3
 const MAX_VALIDATOR_RESPAWN = A.maxValidatorRespawn || 2          // FB-LR-15 (DEC-DEV-0101): bounded re-spawn of a validator slot dropped on a terminal API error
 const ROOT_CAUSE_THRESHOLD = A.rootCauseThreshold || 3            // DEC-DEV-0231 (2.3): ≥ this many confirmed-present findings → diagnose the COMMON root once before per-finding remediation
 const DEVIATION_TRIAGE_THRESHOLD = A.deviationTriageThreshold || 3 // DEC-DEV-0231 (2.4): NO-GO with ≥ this many unresolved findings → prepare-only fix-forward-vs-re-derive triage for the owner

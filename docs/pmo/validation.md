@@ -1,7 +1,7 @@
 ﻿# Validation Rules Catalog — Ecosystem 3.0
 
 > **Версия:** 1.0 (2026-04-18)
-> **Объём:** 45 активных правил (V-*: 17, V-H-*: 11, V-MK-*: 8, V-LE-*: 5, V-AM-*: 4) + 2 process rules (adaptive-depth — refactored DEC-DEV-0012) + tier-based activation system
+> **Объём:** 48 активных правил (V-*: 20, V-H-*: 11, V-MK-*: 8, V-LE-*: 5, V-AM-*: 4) + 3 process rules (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012; P-RULE-03 — DEC-DEV-0234) + tier-based activation system
 > **Назначение:** единый каталог валидационных правил для артефактов D1-D2, handoff и Design Module.
 > **v1 modifications:** A3 (P-RULE-01/02 adaptive-depth — refactored DEC-DEV-0012 from magnitude-gated), B1 (validation_tier per project), B2 (quiet draft hooks), C3 (`/product:validation-tune` workflow), D2 (`approve_overrides` per artifact).
 > **Читать вместе с:** [pmo-map.md](pmo-map.md) (functional zones), [processes.md](processes.md) (P1-P5 methodology), [artifacts/](artifacts/) (24 типа артефактов), [../product-module/handoff-spec.md](../product-module/handoff-spec.md) (V-H-* handoff rules).
@@ -41,6 +41,14 @@
 - V-22 (VC → VERIFICATION.md) → adapter contract
 - V-23 (FM → tasks.json) → adapter contract
 
+> ⚠ **Номера V-20/V-21/V-22 переиспользованы — коллизия разрешена явно (DEC-DEV-0234).** В списке
+> выше это *исторические предложения из ART §7*, которые переехали в namespace `V-I-*` и **больше
+> не носят V-2x-идентификаторов** — их живые имена `V-I-<tool>-01..04` (§8.2). Номера освободились
+> и с DEC-DEV-0234 заняты новыми артефактными правилами §5.1: **V-20** (enforcement-claim honesty),
+> **V-21** (frontmatter freshness MK/NM), **V-22** (DA-provenance активации). Ссылка «V-21» без
+> квалификатора всегда означает **живое** правило §5.1; исторические номера встречаются только
+> здесь и в §8.2, оба раза с явной пометкой.
+
 **Downgraded severity:**
 - V-02 (SC→BR) с 🔴→🟡 (некоторые SC — чистая навигация)
 - V-MK-04 (tab order) с 🟡→🔵 Info
@@ -50,13 +58,13 @@
 
 | Namespace | Префикс | Покрытие | Кол-во |
 |---|---|---|---|
-| Artifact validation | V-01..V-19 | Интегральная проверка артефактов `.product/` (без V-13/V-17 — см. §0) | 17 |
+| Artifact validation | V-01..V-22 | Интегральная проверка артефактов `.product/` (без V-13/V-17 — см. §0) | 20 |
 | Handoff validation | V-H-01..V-H-11 | Структурная целостность handoff.md | 11 |
 | Design validation | V-MK-01..V-MK-08 | UI spec completeness (conditional has_ui) | 8 |
 | Lesson validation | V-LE-01..V-LE-05 | Corrective LESSON-* артефакты (DEC-DEV-0062) | 5 |
 | App Map validation | V-AM-* | AM derived-обзор: singleton id + modules/NM refs (DEC-DEV-0066) | 4 |
 | Integrator validation | V-I-* | Cross-boundary (контракты с внешними инструментами) | future |
-| Process rules | P-RULE-* | Обязательные ручные проверки (не автоматизация) | 2 |
+| Process rules | P-RULE-* | Обязательные ручные проверки (не автоматизация) | 3 |
 
 ---
 
@@ -109,7 +117,7 @@ Validation — это **safety net**, а не bureaucracy. Каждое прав
 |---|---|---|
 | **`pilot`** (default для bootstrap) | Только 🔴 Blocking | 🟡 Warning, 🔵 Info |
 | **`mvp`** | 🔴 Blocking + 🟡 Warning | 🔵 Info |
-| **`full`** | Все 45 правил | (none) |
+| **`full`** | Все 48 правил | (none) |
 
 **Обоснование:** на ранних стадиях продукта (pilot, ≤5 active FM) бóльшая часть правил не имеет реального application. Tier-based activation снижает ноткс-шум, не отключая правила полностью. Upgrade tier — осознанное решение когда продукт растёт.
 
@@ -202,10 +210,10 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 ┌────────────────────────────────────────────────────────────────────┐
 │  PRODUCT LAYER VALIDATION                                           │
 │                                                                     │
-│  V-* (17)           : интегральность артефактов .product/          │
+│  V-* (20)           : интегральность артефактов .product/          │
 │  V-H-* (11)         : структура handoff.md                         │
 │  V-MK-* (8)         : UI completeness (conditional has_ui)         │
-│  P-RULE-* (2)       : process rules для non-automatable            │
+│  P-RULE-* (3)       : process rules для non-automatable            │
 ├────────────────────────────────────────────────────────────────────┤
 │  INTEGRATOR LAYER VALIDATION (future, не в этом документе)         │
 │                                                                     │
@@ -218,7 +226,7 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 
 ## 5. Full Catalog
 
-### 5.1 Artifact Validation (V-01..V-19)
+### 5.1 Artifact Validation (V-01..V-22)
 
 #### V-01: FM has ≥1 active SC
 - **Tier:** 🔴 Blocking
@@ -388,6 +396,39 @@ draft_mode_quiet_hooks: true      # default true; false = классически
 - **On failure:** 🔴 Blocking: handoff generation для has_ui FM блокируется; FM с has_ui не переходит в in-progress, пока RPM не несёт Access Matrix.
 - **Rationale:** Анализ эффективности (DEC-DEV-0228, M10): матрица доступа — единственная проваленная ось спек (1.86/3 при остальных ≥2.7), и ровно у неё не было носителя в шаблоне. Из этой дыры пришли самые дорогие находки владельца (свободные auth-переходы, отсутствующий logout, cross-realm дыра #9), а тема «приёмка не ловит базовых ошибок» переоткрывалась трижды. Дыры доступа живут в стыках между фичами и реалмами — пофичной проработки недостаточно by construction. Hard-block by design (DEC-DEV-0230): warn-канал измеримо не меняет поведение (рецидив P21 после ратификации I-8).
 - **Note:** Негативные журнеи P8 (`tests/uja/neg-*.spec.ts`) генерятся из строк матрицы; их отсутствие preflight P8 считает DoR-gap (ENV_NOT_READY). Silent-degrade-to-empty-on-401 — анти-паттерн, зафиксирован в RPM.md/NM.md Content Rules.
+
+#### V-20: Enforcement-claim honesty
+- **Tier:** 🔴 Blocking
+- **Statement:** Если тело артефакта `.product/` содержит **enforcement-claim** — совпадение с классом паттернов «CI-gated», «blocks (PR )?merge», «MANDATORY automated», «блокирует merge», «auto-enforced», «MUST PASS for PR» — то frontmatter обязан нести `enforcement_mechanism: "<проверяемый указатель>"` (путь CI-конфига / имя гейта / команда, которую можно запустить и увидеть исход), **ЛИБО** сам claim помечен словом `planned` в той же строке.
+- **Artifacts affected:** любой `.product/**` (провенанс — VC-*; правило type-agnostic). Канон поля — [VC.md](artifacts/VC.md) §Frontmatter Schema; поле опционально по схеме и **обязательно по этому правилу**, когда claim присутствует.
+- **Automation:** ✅ Fully (regex по телу + lookup frontmatter). Проверяемость самого указателя (существует ли гейт) — human/DA при approve.
+- **When:** Inline (на save), Approve gate (draft→active), Handoff generation, On-demand
+- **On failure:** 🔴 Blocking: артефакт не переходит в `active`, handoff с ним не генерируется — пока claim не получит носителя (`enforcement_mechanism`) или честной пометки `planned`.
+- **Rationale:** M11, находка N-1: VC-032 и `tasks.md` пилота заявляли «CI-gated, blocks PR merge» при **полном отсутствии CI в репозитории**. Enforcement-claim без носителя — не безобидная неточность, а **ложная гарантия**: она снимает бдительность у каждого, кто читает артефакт («это уже проверяется машиной — можно не смотреть»), и потому опаснее честного отсутствия проверки. Симметрично канону волны носителей (DEC-DEV-0230): работает то, у чего есть носитель принуждения; заявить носитель, которого нет, — худшая из форм его отсутствия.
+- **Note:** `planned` — намеренно дешёвый выход: цель правила не запретить планы, а запретить выдавать план за действующий механизм. Смежное правило-близнец на уровне процесса — P-RULE-03 (вердикт «не построено» тоже требует носителя-доказательства, только с другой стороны).
+
+#### V-21: Frontmatter freshness (MK/NM)
+- **Tier:** 🔴 Blocking
+- **Statement:** Для MK-* и NM-* со `status != draft`: дата последнего git-коммита, менявшего файл (`git log -1 --format=%cs -- <file>`), **не должна быть новее** frontmatter `updated`. Новее → violation «файл правлен без бампа `updated`/`version`».
+- **Artifacts affected:** MK-*, NM-*
+- **Automation:** ✅ Fully (git-дата vs frontmatter-дата). **Git недоступен** (не-git окружение, отсутствует история файла) → правило **skip с note**, никогда не false-pass: «чекер ослеп» ≠ «нарушения нет».
+- **When:** Approve gate (MK/NM), Handoff generation, On-demand
+- **On failure:** 🔴 Blocking: MK/NM не считается свежим — бампнуть `updated` (+ `version`, если менялось содержание) либо вернуть в `draft`.
+- **Rationale:** M11, находка N-14: MK-002/MK-003 были содержательно правлены 2026-07-23, а frontmatter `updated:` остался `2026-06-06` — **47 дней лжи о свежести**. Дата в frontmatter — единственный дешёвый сигнал «актуально ли это ещё», на неё опираются V-12 (stale drafts), drift-check и человек при ревью; молча разошедшаяся дата отравляет все три. Git знает правду бесплатно — правило просто перестаёт ей противоречить.
+- **Note:** Scope сознательно узкий (MK/NM): именно у них тело живёт итерациями Design-сессии, где правка тела и правка frontmatter разъезжаются чаще всего. Расширение на остальные типы — по первому наблюдённому рецидиву, не раньше (тот же on-ramp, что у extended-счётчиков `check-counts`).
+
+#### V-22: DA-provenance активации (IC/BR)
+- **Tier:** 🔴 Blocking (с водяным знаком) · 🟡 Warning (grandfather + post-DA правка)
+- **Statement:** IC-* и BR-* со `status: active`, **активированные с 2026-07-31** (водяной знак: frontmatter `updated`/`created` >= 2026-07-31), обязаны нести frontmatter `da_review_ref: "<ссылка на DA-findings запись/файл>"` — провенанс DA-ревью, которого требуют P-RULE-01/02.
+  - Попал под водяной знак, поля нет → **🔴 Blocking**.
+  - Активен **до** водяного знака, поля нет → **🟡 Warning** (grandfather).
+  - `da_review_ref` есть и датирован, но тело правлено позже (git-дата новее даты в ссылке) → **🟡 Warning** «re-DA рекомендуется».
+- **Artifacts affected:** IC-*, BR-*
+- **Automation:** ✅ Fully для наличия поля + сравнения дат; ⚠ Partial для «ссылка ведёт в настоящее DA-ревью» (human/DA при approve).
+- **When:** Approve gate (IC/BR — там же, где срабатывают P-RULE-01/02), On-demand
+- **On failure:** 🔴 — IC/BR не переходит в `active` без указателя на DA-ревью. 🟡 — flag в отчёте, не блокирует.
+- **Rationale:** реестр техдолга экосистемы `dev/tech-debt/PHASE_4.md` (dev-zone, в поставку не входит), E2: **7 IC были активированы без DA-ревью** — прямое нарушение P-RULE-01, которое никто не заметил, потому что процессное правило не оставляло *следа*. E5: правки тела после DA-ревью не вызывали re-DA по той же причине. Правило переводит требование процесса в **проверяемый артефактный след**: нет следа — нет активации.
+- **Note (почему водяной знак, а не сплошная проверка):** ретро-восстановление провенанса для уже активных IC/BR означало бы **выдумать** ссылку на ревью, которого, возможно, не было — то есть закрыть дыру фабрикацией. Grandfather 🟡 честно показывает объём исторического долга, не требуя его подделать. Реализация — вариант «frontmatter-constraint» из наброска R4 (`dev/tech-debt/PHASE_4.md`); альтернатива «глобальный хук на любое активирование» отвергнута: тот же контроль ценой рантайм-связности, которую нечем проверить в user-проекте.
 
 ### 5.1a NOTE-* validation (D3 modification — minimal coverage)
 
@@ -739,6 +780,17 @@ Approve bundle? (y/n/per-item)
 - **Enforcement:** hook `br-change-trigger.js` invokes subagent on PostToolUse `.product/business-rules/*.md`.
 - **Blocking:** BR нельзя в active без impact analysis approve (всех magnitudes).
 
+### P-RULE-03: Вердикт «не построено» — только по коду и флагам (DEC-DEV-0234)
+- **Statement:** Любой drift- / inventory-аудит, выносящий вердикт «**не построено** / не реализовано», обязан верифицировать это утверждение на уровне **кода и feature-флагов** — не только по живому билду / видимому UI — и нести **код-указатель**: `путь:строка` либо коммит, где искомого нет (или где оно есть, но выключено).
+- **Два разных вердикта, не один:**
+  - `кода нет` — функциональность отсутствует; стоимость = построить;
+  - `флаг OFF` — код есть, скрыт за feature-флагом; стоимость = включить + проверить.
+    Смешивать их запрещено: они дают разные оценки объёма работ, разные риски и разные решения владельца.
+- **Automation:** ❌ Нет (process rule). Ground truth «чего нет» невыразим как проверка — грепа по неизвестному имени недостаточно; нужна человеческая/агентская верификация с предъявлением указателя.
+- **When:** `/product:drift-check`, любые inventory-аудиты и реестры находок (NOTE-*, сессионные аудиты), приёмочные отчёты.
+- **On failure:** вердикт «не построено» без код-указателя **не принимается** — возвращается автору на верификацию.
+- **Rationale:** M11, находка N-3: реестр NOTE-032 записал «billing UI не построена», тогда как UI **был построен** и скрыт за флагом `NEXT_PUBLIC_BILLING_UI_ENABLED` (default OFF). Метод «ground truth = живой билд» систематически путает «флаг OFF» с «кода нет» — и путает в дорогую сторону: владельцу докладывают о работе, которая уже сделана. Правило-близнец V-20 закрывает симметричную ложь с другого конца (заявленный носитель, которого нет); здесь — незамеченный носитель, который есть.
+
 ### Почему adaptive-depth вместо прежней magnitude-gated модели
 
 > **Refactor history (DEC-DEV-0012, 2026-04-20):** ранее P-RULE-01/02 использовали magnitude-gated модель с **skip + DA debt** для cosmetic changes. Накопленный долг проверялся batch'ем на FM-level approve gate.
@@ -761,6 +813,9 @@ Approve bundle? (y/n/per-item)
 ### 8.2 Перемещённые в Integrator namespace (V-I-*)
 
 Следующие правила — **cross-boundary** между Product Layer и внешними инструментами. Они не валидация Product Layer, а контракты между ним и tool-конвейером. Переходят под ответственность Integrator Module (создаются автоматически при `/integrator:add <tool>` и живут в `.claude/integrator/validation-rules.yaml`).
+
+> ⚠ **Колонка «Было» — исторические номера, освободившиеся при переезде.** Живые правила V-20/V-21/V-22
+> из §5.1 (DEC-DEV-0234) к этой таблице отношения не имеют — см. пометку в §0.
 
 | Было | Статус | Integrator namespace | Описание |
 |---|---|---|---|
@@ -946,10 +1001,12 @@ function getRuleSeverity(ruleId, projectConfig) {
 - [ ] **Fixture tests** на real `.product/` snapshots (regression coverage) — v1.1+ candidate
 - [x] **Catalog↔runner sync linter** (drift detection между этим документом и `validation-runner.md` hardcoded tables) — shipped per DEC-DEV-0158 (G19): `dev/meta-improvement/scripts/check-validation-sync.cjs` в `npm run verify`; trigger «first observed drift» сработал (V-18 + V-AM-* отсутствовали в раннере молча). ID-множества: каталог (`#### V-…` заголовки) ↔ таблицы раннера + `catalog-sync:acknowledged`-маркеры; плюс внутрикаталожные инварианты (prose-итог, namespace-таблица §0)
 - [x] **V-MK-01..V-MK-08** реализация — Phase 6 shipped (релиз 1.4.0): skill [`skills/design/design-validation.md`](../../skills/design/design-validation.md) (V-MK-01..08, часть — partial/manual per Q3/C5) + hook `hooks/design/design-artifact-validate.js` (V-MK-08 + frontmatter/ref-проверки). **Известный gap:** хук эмитит ID `V-MK-frontmatter` / `V-MK-feature-ref` / `V-MK-sc-ref`, которых в этом каталоге нет — они не покрыты `check-validation-sync.cjs` (он сверяет каталог с раннером, не с хуками)
+- [ ] **V-20 / V-21 / V-22** (DEC-DEV-0234, пакет 6 волны носителей) — **в каталоге и в раннере, в inline-хуке `artifact-validate.js` пока нет**. Носитель на сегодня: on-demand `/product:validate` + approve gate (человек/агент по таблице раннера). Инлайн-нога — отдельная единица работы; до неё правило принуждается на gate, а не на каждом save. *(Запись стоит здесь ровно по букве V-20: заявлять принуждение, которого нет, — хуже, чем честно назвать его границу.)*
+- [ ] **P-RULE-03** — ручная (process rule by construction, §7): «не построено» без код-указателя возвращается автору. Носитель — дисциплина ревьюера, автоматизации нет и не планируется.
 - [ ] **V-I-*** правила через Integrator при `/integrator:add <tool>` — не построены (Installation-фаза Integrator закрыта, `validation-rules.yaml` per-tool — открытый пункт)
 
 ---
 
 **Конец каталога.**
 
-Статус: **консолидировано, готово к имплементации.** Критический обзор пройден — 45 активных правил + 2 process rules, все остальные либо автоматизируются, либо явно заменены на process.
+Статус: **консолидировано, готово к имплементации.** Критический обзор пройден — 48 активных правил + 3 process rules, все остальные либо автоматизируются, либо явно заменены на process.

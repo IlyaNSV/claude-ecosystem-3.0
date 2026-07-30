@@ -114,16 +114,20 @@ Re-run только S12 с seed-фикстурами, без полного S1�
 
 ---
 
-### R4 — P-RULE-01 / P-RULE-02 enforcement hook
+### R4 — `[FIXED]` P-RULE-01 / P-RULE-02 enforcement hook → реализован как V-22 (DEC-DEV-0234, пакет 6 волны носителей)
 
 Для blocking E2 (7 ICs без DA) и recurring E5 (post-DA edits without re-DA) — рассмотреть pre-commit / PreToolUse hook, flag-ящий активацию (`status: active`) IC/BR артефактов без соответствующего DA-findings record.
 
 **Закрывает.** E2 + E5 (полностью), E1 (частично — если hook валидирует DA findings provenance).
 
-⚠ **Альтернативы для перепроверки:**
-- Status-machine на artifact level вместо free-form `status:` поля (frontmatter constraint: `active` requires `da_review_ref`).
-- Hook только на cleanup/promote команды, не глобально на write (меньше шумa).
-- Linter-only режим (warn at session end, не блокирует) → meta-improvement скилл `memory-sync` отлавливает.
+**Реализация (2026-07-31):** из альтернатив выбран **frontmatter-constraint** — правило
+**V-22 DA-provenance** (`docs/pmo/validation.md`, 🔴 Blocking): IC/BR со `status: active`,
+активированные с 2026-07-31, обязаны нести `da_review_ref`; активные до водяного знака —
+🟡 grandfather (ретро-восстановление провенанса из памяти = фабрикация); post-DA правка
+тела новее da_review_ref → 🟡 «re-DA рекомендуется» (E5). Глобальный write-hook отвергнут
+(шум), linter-only отвергнут владельческим решением hard-block (DEC-DEV-0230).
+
+⚠ Прежние альтернативы (для истории): status-machine · hook только на promote · linter-only.
 
 ---
 
@@ -150,3 +154,4 @@ Re-run только S12 с seed-фикстурами, без полного S1�
 |---|---|---|
 | 2026-05-26 | Файл создан по результатам `/meta:audit-smoke --phase=4` | автоматически (audit + ручная фиксация) |
 | 2026-07-17 | R1 → `[FIXED]` (паттерн создан 2026-06-12, DEC-DEV-0064; enforcement-нога НЕ построена — E1 остаётся `[OPEN]`); ссылка на источник → архив (DEC-DEV-0185) | DEC-DEV-0220-e |
+| 2026-07-31 | R4 → `[FIXED]` как V-22 DA-provenance (вариант frontmatter-constraint; DEC-DEV-0234). E2/E5: enforcement-нога построена (рецидив для новых активаций блокируется); остаток E2 — ретро-решение по 7 историческим IC (grandfather 🟡, решение владельца), потому E2/E5 остаются `[OPEN]` до него. E1 — частично (V-22 валидирует провенанс, subagent_type-дрейф не адресован) | DEC-DEV-0234 |

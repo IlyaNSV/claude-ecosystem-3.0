@@ -132,6 +132,10 @@ Don't journal «all aligned» checks — noise.
 - Heuristic-based — 10-20% false positive rate typical. State в confidence note.
 - Works best на stable anchor. If PS/HYP recently changed, use time window post-change only.
 - Not a replacement for periodic human strategy review.
+- **A "not built" verdict from ANY drift/inventory audit obeys P-RULE-03** (`docs/pmo/validation.md`,
+  DEC-DEV-0234): verify at the CODE + feature-flag level, never the live build/UI alone, and carry
+  a code pointer (file:line / commit). "Flag OFF" and "no code" are different verdicts — the live-UI
+  method mistook a dark-rollout for an unimplemented module (M11 finding N-3, 🔴 mis-severity).
 
 ## Example: full drift-check output
 
