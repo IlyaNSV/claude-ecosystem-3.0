@@ -1228,13 +1228,13 @@
       "domain": "D3",
       "command": "orchestrator:run",
       "doc": "commands/orchestrator/run.md",
-      "what": "Валидация имплементации против spec/design: 3 валидатора + verify-finding-before-act. Итог GO / NO-GO / MANUAL_VERIFY.",
+      "what": "Валидация имплементации против spec/design: 4 валидатора + verify-finding-before-act. Итог GO / NO-GO / MANUAL_VERIFY.",
       "steps": [
         {
           "id": "P6o.validators",
           "kind": "task",
-          "label": "3 validators (RA-8/9/10)",
-          "what": "Mechanical + 3 валидатора по spec/design.",
+          "label": "4 validators (RA-8/9/10/11)",
+          "what": "Mechanical + 4 валидатора по spec/design/BR-константам.",
           "consumes": [
             "spec"
           ]

@@ -32,7 +32,7 @@ doc_type: how-to
 | **P3** `batch-features-to-cc-sdd` | Превращает handoffs в спеки cc-sdd (kiro-specs) | `coverage_incomplete`, `blocked` |
 | **P4** `audit-spec-fidelity` | До имплементации сверяет спеку с `.product` (нет ли дрейфа, фабрикаций, непокрытых модулей) | `impl_ready`, `spec_fixed`, `product_routed`, `residual`, `coverage_gaps` |
 | **P5** `feature-to-tdd-impl` | Имплементирует фичу через TDD, по-задачно коммитит; сам делегирует финальный гейт P6 | `implemented`, `blocked`, `conflicts`, `concerns`, `readiness` |
-| **P6** `validate-feature-impl` | Фичевый GO/NO-GO **после** impl: полный прогон тестов + сборка + 3 валидатора (покрытие требований / соответствие дизайну / межзадачные стыки) + verify-finding | `result`, `readiness`, `confirmed_findings`, `conflicts` |
+| **P6** `validate-feature-impl` | Фичевый GO/NO-GO **после** impl: полный прогон тестов + сборка + 4 валидатора (покрытие требований / соответствие дизайну / межзадачные стыки / константы код↔BR — DEC-DEV-0231) + verify-finding | `result`, `readiness`, `confirmed_findings`, `conflicts` |
 
 P6 запускается из P5 автоматически, но его можно прогнать и отдельно — пере-гейтнуть уже реализованную фичу.
 

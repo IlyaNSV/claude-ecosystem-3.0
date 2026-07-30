@@ -515,7 +515,7 @@ for (const task of tasks) {
 
 // ---- Phase 3: feature-level GO/NO-GO — delegate to full P6 validate-feature-impl ----
 // (DEC-DEV-0085, N+1b): the thin inline kiro-validate-impl lift is replaced by the full P6
-// process (mechanical layer + 3 parallel validators RA-8/9/10 + verify-finding-before-act).
+// process (mechanical layer + 4 parallel validators RA-8/9/10/11 + verify-finding-before-act).
 // P5 DELEGATES via workflow(). FB-010 still holds: the gate runs whenever ANY task landed —
 // a single blocked task must NOT suppress it (the feature-level gate is the only check wide
 // enough to catch a cross-task seam built by task A but never wired by task B); with blocked

@@ -41,7 +41,7 @@ orchestrator/
 │   ├── batch-features-to-cc-sdd.mjs   # P3
 │   ├── feature-to-tdd-impl.mjs        # P5 (делегирует feature-гейт в P6; §6 detect-leg pre-flight)
 │   ├── audit-spec-fidelity.mjs        # P4 — pre-impl fidelity-гейт (spec vs .product)
-│   ├── validate-feature-impl.mjs      # P6 — feature GO-gate (suite+build + 3 валидатора)
+│   ├── validate-feature-impl.mjs      # P6 — feature GO-gate (suite+build + 4 валидатора RA-8/9/10/11)
 │   └── runtime-smoke-readiness.mjs    # P7 — «стартует ли dev?» readiness-гейт (boot=substrate-gated)
 ├── charters/                       # Process Fabric: декларативные statechart'ы линий (JSON)
 │   └── feature-production-line.json   # сквозная линия фичи P3→P7 (DEC-DEV-0153)
