@@ -1,0 +1,75 @@
+defect_id,class,fix_sha,verdict,commit_date,subject
+D003,doc-stale,4f0d843,жив в HEAD,2026-07-17,"docs(product): regenerate stale handoff FM-006 v1 -> v2 (PA-051 Side-B drift: SC-025, BR-080)"
+D004,process-anomaly,9a0f813,жив в HEAD,2026-07-17,chore(orchestrator): commit run artifacts lymzao/lzg7rk (deploy-to-stage 2026-07-15)
+D007,infra-failure,82ce3b4,жив в HEAD,2026-07-22,fix(hooks): guard `bd prime` SessionStart/PreCompact hooks against missing beads binary (COND-S19 step 4)
+D011,process-anomaly,3fbb315,жив в HEAD,2026-07-17,fix(glossary): missing-test Requirement 7.7
+D015,product-bug,32588ed,жив в HEAD,2026-07-23,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit)
+D015,product-bug,b40f413,жив в HEAD,2026-07-23,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT
+D016,product-bug,fe3ebb9,жив в HEAD,2026-07-18,docs(admin): DoD checklist for FM-007 cross-FM enforcement rollout (env-path)
+D017,product-bug,3122944,жив в HEAD,2026-07-18,feat(localization): wire worker-drain on as-built ioredis-RPUSH transport (PA-076/PA-064)
+D018,product-bug,dba9c4d,жив в HEAD,2026-07-17,feat(billing): PA-029 — implement dunning email (FM-001 EmailPort + real bind + surfaced failures)
+D019,product-bug,d27829a,жив в HEAD,2026-07-18,feat(glossary): NFR-008 req 8.3 /glossary Lighthouse CI gate (absolute floor)
+D019,product-bug,5386573,жив в HEAD,2026-07-18,test(glossary): pin NFR-008 req 8.3 Lighthouse gate wiring
+D028,product-bug,dba9c4d,жив в HEAD,2026-07-17,feat(billing): PA-029 — implement dunning email (FM-001 EmailPort + real bind + surfaced failures)
+D029,process-anomaly,df2c135,жив в HEAD,2026-07-17,docs(segment-regeneration): ratify OQ-1 (concurrency default) + OQ-6 (HYP-003 → RL-002)
+D039,code-drift,3875fa4,жив в HEAD,2026-07-18,fix(auth): amend req 12.3 cert-expiry→503 to reverse-proxy infra contract (PA-075)
+D049,code-drift,29cd28b,жив в HEAD,2026-07-19,docs(segment-regeneration): ratify OQ-2/3/4/5/7 + close PA-093/094/095/096/098/099/100 (owner 2026-07-19)
+D052,infra-failure,d9307d5,жив в HEAD,2026-07-19,"chore(orchestrator): run residue P6 re-gate round-final (cond-s13, interrupted by VM poweroff): 4 ledger verdicts + stal"
+D062,product-bug,d8d6ee3,жив в HEAD,2026-07-20,chore(orchestrator): run-ledger records — RL-001 staging deploy (cond-s15)
+D069,infra-failure,aa3bf5b,жив в HEAD,2026-07-20,fix(build): guard beads prepare hook for git-less checkouts (unblocks staging deploy)
+D070,product-bug,4cbdea8,жив в HEAD,2026-07-20,"fix(segment-regeneration): worker env-loading — dotenv preload + fail-fast config validation (PA-106, task 7.2)"
+D070,product-bug,18177cf,жив в HEAD,2026-07-20,chore(segment-regeneration): PA-106 done + P7 re-run STARTS (cond-s16) — worker env-not-loaded cleared
+D073,doc-stale,30ce6de,жив в HEAD,2026-07-20,docs(RL-001): DA release-scope review + resolve findings (cond-s17 step 3)
+D075,product-bug,1e848ba,жив в HEAD,2026-07-22,feat(web/ds): DS tokens → globals.css + base/reset/primitives (COND-S22 step 1)
+D075,product-bug,214e9c7,жив в HEAD,2026-07-22,feat(web/ds): per-feature styles + states + responsive (COND-S22 step 2+3)
+D076,acceptance-gap,9f122b8,НЕ НАЙДЕН в истории пилота,,
+D076,acceptance-gap,04f5d3c,НЕ НАЙДЕН в истории пилота,,
+D081,code-drift,f106dfa,жив в HEAD,2026-07-22,docs(FM-004): reverse cancelled MUST→SHOULD demotion — bring-forward FfmpegSpliceAdapter+reassembler back to RL-001 (own
+D082,product-bug,b2acec5,жив в HEAD,2026-07-22,fix(localization): dead-seam provider-error → StageError bridge in runStageWithRetry
+D083,product-bug,2486752,жив в HEAD,2026-07-22,fix(localization): design-divergence NFR-006 / requirements.md req 12.5 structured stage-log `vendor` field; design.md §
+D084,code-drift,f801f93,жив в HEAD,2026-07-22,"chore(localization): resolve PA-107 → done — owner ruling TTS swap#3 vendor=Google Cloud TTS, drive now (COND-S20)"
+D086,product-bug,477821e,жив в HEAD,2026-07-22,"fix(segment-regeneration): design-divergence design.md §Components ""IncrementalReassembler"" lines 459-467 ('reassemble r"
+D086,product-bug,9043025,жив в HEAD,2026-07-22,"fix(segment-regeneration): dead-seam IncrementalReassembler.srtStore seam (real reassembler ↔ MockReassemblySrtStore, no"
+D087,code-drift,7a0df37,жив в HEAD,2026-07-22,docs(PA-109/FM-004): owner-ratified RL-002 deferral of live SI-4→SI-6 UI transition (COND-S24 step 1)
+D088,acceptance-gap,53e3cae,жив в HEAD,2026-07-22,fix(api/test): make login-captcha timing-parity assertion load-invariant (COND-S24 step 2)
+D088,acceptance-gap,bb72d72,жив в HEAD,2026-07-22,fix(api/test): make IC-003 LRU-eviction assertion load-invariant; add deterministic LRU-ordering test (COND-S24 step 4)
+D090,product-bug,9748e84,жив в HEAD,2026-07-22,"feat(localization): multipart upload edge on POST /api/localizations (forward-edge, PA-114)"
+D090,product-bug,7b1ed87,жив в HEAD,2026-07-22,feat(localization): real GCS deliverable storage + ffmpeg render (honest bytes) behind LOCALIZATION_DELIVERABLE_STORAGE_
+D091,product-bug,8022e63,жив в HEAD,2026-07-22,fix(e2e): thread render dep + bytes-port into localization-journeys drain (COND-S25 P6 re-gate)
+D091,product-bug,3ce39ce,жив в HEAD,2026-07-22,fix(localization): dead-seam deliverable-bytes producer (worker GcsDeliverableStorage.put / assemble.processor writing t
+D091,product-bug,6f0dd85,жив в HEAD,2026-07-22,fix(localization): dead-seam web new-form multipart producer (NewLocalizationView) <-> API upload-edge create consumer (
+D092,code-drift,d726bca,жив в HEAD,2026-07-22,feat(segment-regeneration/PA-111): auto-detect §14.7 integrity-freeze conditions (RL-001)
+D095,product-bug,32588ed,жив в HEAD,2026-07-23,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit)
+D095,product-bug,b40f413,жив в HEAD,2026-07-23,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT
+D096,product-bug,32588ed,жив в HEAD,2026-07-23,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit)
+D096,product-bug,b40f413,жив в HEAD,2026-07-23,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT
+D097,acceptance-gap,04f5d3c,НЕ НАЙДЕН в истории пилота,,
+D100,product-bug,32588ed,жив в HEAD,2026-07-23,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit)
+D100,product-bug,b40f413,жив в HEAD,2026-07-23,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT
+D101,product-bug,32588ed,жив в HEAD,2026-07-23,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit)
+D101,product-bug,b40f413,жив в HEAD,2026-07-23,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT
+D102,product-bug,32588ed,жив в HEAD,2026-07-23,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit)
+D102,product-bug,b40f413,жив в HEAD,2026-07-23,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT
+D103,product-bug,32588ed,жив в HEAD,2026-07-23,feat(web/COND-S29): build SI-1 dashboard + app-nav + root redirect + GA feature-flags (UJA fix-unit)
+D103,product-bug,b40f413,жив в HEAD,2026-07-23,chore(RL-001/COND-S29): UJA GREEN — J1 locator + J2 waitForURL fixes land; run-ledger SSOT
+D104,infra-failure,0e84140,жив в HEAD,2026-07-23,fix(integrator/COND-S31): web healthcheck /→/health — kill false DEPLOY_FAILED (DEC-INT-0021)
+D108,product-bug,99fdc9d,жив в HEAD,2026-07-23,feat(web/COND-S30): auth-state × route middleware guard (both sides) + zone tests
+D109,product-bug,a0dc6be,жив в HEAD,2026-07-23,fix(worker/COND-S30): P2028 — move Whisper call OUT of the transcribe DB transaction
+D112,product-bug,e1363e8,жив в HEAD,2026-07-23,spec(FM-001/COND-S30): auth-state × route access matrix (RPM) + user logout (SC-004)
+D112,product-bug,99fdc9d,жив в HEAD,2026-07-23,feat(web/COND-S30): auth-state × route middleware guard (both sides) + zone tests
+D113,product-bug,e1363e8,жив в HEAD,2026-07-23,spec(FM-001/COND-S30): auth-state × route access matrix (RPM) + user logout (SC-004)
+D113,product-bug,e0dfbdf,жив в HEAD,2026-07-23,feat(auth/COND-S30): user logout (SC-004) — POST /api/auth/logout + app-nav «Выйти»
+D113,product-bug,1e947c4,жив в HEAD,2026-07-23,fix(specs): auth fidelity — bring SC-004 logout into requirements + tasks
+D115,product-bug,90a4561,жив в HEAD,2026-07-23,fix(web/COND-S30): auth proxy 204 → 500 (logout); J-neg-3 fix
+D117,canon-violation,054f868,жив в HEAD,2026-07-23,docs(handoffs/COND-S31): regenerate all 7 stale handoffs — spec-snapshots catch up to s30 code
+D117,canon-violation,1e947c4,жив в HEAD,2026-07-23,fix(specs): auth fidelity — bring SC-004 logout into requirements + tasks
+D118,doc-stale,054f868,жив в HEAD,2026-07-23,docs(handoffs/COND-S31): regenerate all 7 stale handoffs — spec-snapshots catch up to s30 code
+D129,product-bug,5d25bf7,жив в HEAD,2026-07-23,feat(db/COND-S35): idempotent admin seed — packages/db/prisma/seed.ts + db:seed (operator /admin login)
+D131,product-bug,6560e72,жив в HEAD,2026-07-23,fix(localization/COND-S35): source-language change auto-drops matched target chip (req 1.9 / RUN-B.50)
+D132,product-bug,3841b8d,жив в HEAD,2026-07-23,"feat(localization/COND-S35): owner-scoped job library — GET /api/localizations + SI-1 dashboard list (req 13, closes CON"
+D141,doc-stale,e689479,жив в HEAD,2026-07-23,docs(mockups/fm001/COND-S34): D-STALE build-sync — auth CTA labels + screen microcopy → shipped build
+D141,doc-stale,eaab27f,жив в HEAD,2026-07-23,docs(mockups/fm002/COND-S34): D-STALE build-sync — «Выйти» logout shell control into app-nav
+D141,doc-stale,b089c08,жив в HEAD,2026-07-23,docs(mockups/fm003/COND-S34): D-STALE build-sync — glossary nav rename + RU copy + label sync
+D141,doc-stale,7be0491,жив в HEAD,2026-07-23,docs(mockups/fm004/COND-S34): D-STALE build-sync — shell descriptor + nav label to unified top app-nav
+D141,doc-stale,4f667c7,жив в HEAD,2026-07-23,docs(mockups/fm007/COND-S34): D-STALE build-sync — admin login copy + AdminShell logout cut
+D141,doc-stale,0af151d,жив в HEAD,2026-07-23,docs(notes/COND-S34): NOTE-032 — 4-layer UI audit-sync registry (16 C-DRIFT + 2 AMBIG + SI-png backlog)

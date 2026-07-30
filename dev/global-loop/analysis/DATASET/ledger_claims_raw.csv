@@ -1,0 +1,284 @@
+claim_id,entry_id,date,claim_type,types_all,has_anchor,shas,releases,text,source_ref
+C001,RUN-A.2,2026-07-17,deploy,deploy,0,,,"run-ledger 33 прогона, последний lzg7rk DEPLOYED 07-15 (до того BLOCKED-серия из-за",ASSIST_LOG.md:76
+C002,RUN-A.2,2026-07-17,deploy,deploy,0,,,+ untracked run-каталоги lymzao/lzg7rk — похоже на незакоммиченный осадок deploy-сессий);,ASSIST_LOG.md:76
+C003,RUN-A.3,2026-07-17,deploy,deploy,0,,,read-only; run.json деплоев lymzao/lzg7rk разобраны; .kiro-спеки и deploy-capability,ASSIST_LOG.md:98
+C004,RUN-A.3,2026-07-17,deploy,deploy,1,,,"через конвейер P3-P7 реально прошла только FM-006 (33 прогона, P6 GO, DEPLOYED",ASSIST_LOG.md:98
+C005,RUN-A.4,2026-07-17,deploy,deploy,0,,,в обоих контурах: ~/projects/my-first-test/.env и ~/deploy/my-first-test/shared/.env,ASSIST_LOG.md:120
+C006,RUN-A.4,2026-07-17,code-fix,code-fix,0,,,- evidence: вывод проверок в транскрипте сессии (только длины/префиксы),ASSIST_LOG.md:120
+C007,RUN-A.5,2026-07-17,deploy,deploy,1,,,"~= [1:🟠 (1/7 shipped), 2:❌ (P6 GO только FM-006), 3:🟠/✅ (DEPLOYED+ROLLED_BACK),",ASSIST_LOG.md:135
+C008,RUN-A.6,2026-07-17,deploy,deploy,1,,,"3🟠 (DEPLOYED+ROLLED_BACK, но деплой --feature FM-006, worker/BullMQ не верифицирован) ·",ASSIST_LOG.md:161
+C009,RUN-A.6,2026-07-17,code-fix,code-fix,1,,,SC-025.verification с ним — решение владельца (cascade или ручной фикс); (3),ASSIST_LOG.md:161
+C010,RUN-A.9,2026-07-17,doc-sync,doc-sync,1,,,"+5, migration.sql +13), P6-вердикт FM-003 в ledger НЕ записан (прогон оборван до finish,",ASSIST_LOG.md:230
+C011,RUN-A.11,2026-07-17,code-fix,code-fix,1,,,вопрос формы audit-persistence из связки PA-046..049 частично закрыт решением владельца —,ASSIST_LOG.md:276
+C012,RUN-A.11,2026-07-17,code-fix,code-fix,1,,,в DEC-DEV-0217); файл давно удалён → ревертить нечего. Рекомендация: закрыть все 4 как,ASSIST_LOG.md:276
+C013,RUN-A.12,2026-07-17,code-fix,code-fix,1,,,owner-decisions ×2 (PA-065..068 закрыть; cascade VC-037),ASSIST_LOG.md:295
+C014,RUN-A.12,2026-07-17,code-fix,code-fix,1,,,"- action: владелец согласовал: (1) PA-065..068 закрыть как test-residue (confirm, не revert);",ASSIST_LOG.md:295
+C015,RUN-A.12,2026-07-17,test-pass,test-pass,1,,,"- статус батча на момент записи: FM-003 ре-ран → NO-GO × READY (run or5kl4, 25 мин,",ASSIST_LOG.md:295
+C016,RUN-A.13,2026-07-17,test-pass,test-pass,1,,,NO-GO × READY (or5kl4 FM-003 / os1rjc FM-005 / otd4s8 FM-007 / oubc9k FM-001 / ov68x4,ASSIST_LOG.md:306
+C017,RUN-A.13,2026-07-17,code-fix,code-fix,0,,,nfr-webhook-security-latency:171 требует beads-владение хуками) — до фикса НИ ОДНА фича,ASSIST_LOG.md:306
+C018,RUN-A.13,2026-07-17,code-fix,code-fix,0,,,(remediated: 0 ×5). Фикс-кандидат: Number.isInteger-проверка. Плюс косметика: «unresolved,ASSIST_LOG.md:306
+C019,RUN-A.13,2026-07-17,test-pass,test-pass,0,,,(1) husky→beads доводка с доказательствами (hooksPath+секрет-проба+зелёный тест);,ASSIST_LOG.md:306
+C020,RUN-A.14,2026-07-17,code-fix,code-fix,1,,,целевой тест 15/15 — механический корень пяти NO-GO устранён. (2) PA-065..068 dismissed,ASSIST_LOG.md:344
+C021,RUN-A.14,2026-07-17,code-fix,code-fix,1,,,(по санкции A.12). (3) cascade: VC-037 дописан в FM-006.verification[] (V-11 закрыт);,ASSIST_LOG.md:344
+C022,RUN-A.14,2026-07-17,code-fix,code-fix,0,,,2 cross-spec конфликта починены В СПЕКЕ (SegmentRendition-модель; admission-гейт,ASSIST_LOG.md:344
+C023,RUN-A.14,2026-07-17,doc-sync,doc-sync,0,,,"(не apps/api/prisma); «applied» записано со слов владельца-мандата, живьём не проверялось",ASSIST_LOG.md:344
+C024,RUN-A.14,2026-07-17,code-fix,code-fix,0,,,- seam-update: в dev/global-loop/SEAM.md добавлен блок «RUN-2026-07-17-A — живое состояние»,ASSIST_LOG.md:344
+C025,RUN-A.16,2026-07-17,code-fix,code-fix,1,,,"после PA-070, PA-029 confirmation-datapoint + must-not-ship фикс sendAfterCommit.",ASSIST_LOG.md:395
+C026,RUN-A.17,2026-07-17,code-fix,code-fix,0,,,"(сводка cond-s6 готова, но Fable НЕ УСПЕЛ её снять/зафиксировать). Владелец переключил на",ASSIST_LOG.md:412
+C027,RUN-A.17,2026-07-17,test-pass,test-pass,1,b9936e4 df2c135,,"origin пилота (b9936e4..df2c135, ahead 0). **Полный api-прогон 874/874 passed, exit 0",ASSIST_LOG.md:412
+C028,RUN-A.17,2026-07-17,code-fix,code-fix,1,,,"реализован: EmailPort FM-001 + real bind + must-not-ship фикс sendAfterCommit, surfaced",ASSIST_LOG.md:412
+C029,RUN-A.17,2026-07-17,code-fix,code-fix,1,98db1d6,,"failures) · V-11 cascade авто-фикс (98db1d6, законный, от SC-010e4) · OQ-1/OQ-6",ASSIST_LOG.md:412
+C030,RUN-A.17,2026-07-17,test-pass,test-pass,0,,,"зелёные — сильный сигнал), но СТОКОВЫЙ P6 round-2 по 6 FM НЕ прогнан, формальных GO пока",ASSIST_LOG.md:412
+C031,RUN-A.17,2026-07-17,code-fix,code-fix,1,,,- СЛЕДУЮЩИЙ ШАГ (для продолжателя): P6 round-2 СТОКОВЫЙ по FM-001..007 (ре-гейт после фиксов;,ASSIST_LOG.md:412
+C032,RUN-A.17,2026-07-17,deploy,deploy,0,,,"fix-итерацию → deploy состава релиза + P7 → /product:impl-sync (flip FM→shipped, owner",ASSIST_LOG.md:412
+C033,RUN-A.17,2026-07-17,test-pass,test-pass,0,,,[Y]) → /product:da-review RL-001 → пересборка DoD-секции → зелёный DoD + пакет владельцу,ASSIST_LOG.md:412
+C034,RUN-A.17,2026-07-17,code-fix,code-fix,0,,,- attention (Opus-хвост): ~20 мин recovery+фиксация,ASSIST_LOG.md:412
+C035,RUN-A.18,2026-07-17,code-fix,code-fix,0,,,"~21:45 — dispatch (cond-s7: P6 round-2 стоковый, 5 реализованных FM) [Opus]",ASSIST_LOG.md:455
+C036,RUN-A.18,2026-07-17,deploy,deploy,0,,,floor/deploy/prod. Полный api-прогон + push в конце.,ASSIST_LOG.md:455
+C037,RUN-A.18,2026-07-17,test-pass,test-pass,1,,,- expectation: значимая доля → GO (874/874 api зелёные после cond-s6 — сильный сигнал);,ASSIST_LOG.md:455
+C038,RUN-A.19,2026-07-17,test-pass,test-pass,1,,,tasks.md:156/182 (wall-clock smoke уже покрыт интеграционным тестом; Lighthouse — отдельно).,ASSIST_LOG.md:474
+C039,RUN-A.19,2026-07-17,code-fix,code-fix,0,,,- attention: ~10 мин (recon Lighthouse + фиксация решения),ASSIST_LOG.md:474
+C040,RUN-A.20,2026-07-18,code-fix,code-fix,1,,,"FM-007/001/002 → MANUAL_VERIFY, но с массой in-loop фиксов (orphan sessions wired, /account/",ASSIST_LOG.md:499
+C041,RUN-A.21,2026-07-18,code-fix,code-fix,0,,,concern; общий re-gate contingent на механику (paer28 buildSnapshot-error похоже уже устранён,ASSIST_LOG.md:527
+C042,RUN-A.21,2026-07-18,code-fix,code-fix,1,,,- fix-волна (план): cond-s9 = 3 ратифицированных фикса (FM-007 env / FM-001 amend / FM-002,ASSIST_LOG.md:527
+C043,RUN-A.22,2026-07-18,code-fix,code-fix,0,,,exit 0; ESCALATE: none): все 3 owner-ratified фикса легли.,ASSIST_LOG.md:550
+C044,RUN-A.22,2026-07-18,deploy,deploy,0,,,"~/deploy/.../shared/.env (staging EnvironmentFile, вне репо — по env-пути; committed",ASSIST_LOG.md:550
+C045,RUN-A.22,2026-07-18,deploy,deploy|test-pass,1,fe3ebb9,,"артефакт = DEPLOY-CHECKLIST-admin.md fe3ebb9); 11/11 enforcement-тестов (suspend→403,",ASSIST_LOG.md:550
+C046,RUN-A.22,2026-07-18,deploy,deploy|code-fix,1,,,FM-003 Lighthouse подключён; остаётся FM-004 (не построена) + сам re-gate + deploy+impl-sync+DA.,ASSIST_LOG.md:550
+C047,RUN-A.24,2026-07-18,code-fix,code-fix,0,,,"~18:12 — Monitor false-positive #2 (transient probe → SESSION-GONE), фикс [Opus]",ASSIST_LOG.md:604
+C048,RUN-A.24,2026-07-18,code-fix,code-fix,0,,,- ФИКС Monitor (2-й урок робастности после A.23): SESSION-GONE и POLL-FAIL — только после,ASSIST_LOG.md:604
+C049,RUN-A.25,2026-07-19,code-fix,code-fix,1,,,~01:50 — FM-004 построена+запушена (P6 MANUAL_VERIFY×DEGRADED) + 🎯 главный урок монитора [Opus],ASSIST_LOG.md:622
+C050,RUN-A.25,2026-07-19,test-pass,test-pass,1,,,"971/971 + worker 268/268 зелёные. Модели пинованы корректно (opus impl/gate, sonnet транспорт).",ASSIST_LOG.md:622
+C051,RUN-A.25,2026-07-19,code-fix,code-fix,0,,,"предписывает BullMQ (worker построен как BullMQ Worker), НО ратифицирован ioredis-RPUSH",ASSIST_LOG.md:622
+C052,RUN-A.25,2026-07-19,deploy,deploy,0,,,(подтвердить GO после cond-s9) → deploy состава + P7 (разблокирует 7.2) → impl-sync → DA → DoD.,ASSIST_LOG.md:622
+C053,RUN-A.26,2026-07-19,code-fix,code-fix,0,,,"loud DeferredRegenerationEnqueueAdapter на ioredis-RPUSH enqueue), amend design.md, закрыть",ASSIST_LOG.md:658
+C054,RUN-A.26,2026-07-19,test-pass,test-pass,1,,,"PA-099/100, ратифицировать PA-093/094/095/096/098 + roadmap-правка OQ-7, e2e-тест, push.",ASSIST_LOG.md:658
+C055,RUN-A.26,2026-07-19,deploy,deploy,1,,,- очередь после cond-s12: READY ре-гейт FM-004 + re-gate FM-001/002/003/007 → deploy состава +,ASSIST_LOG.md:658
+C056,RUN-A.27,2026-07-19,code-fix,code-fix,1,,,~02:45 — FM-004 транспорт готов (cond-s12) + monitor testproc-багфикс [Opus],ASSIST_LOG.md:673
+C057,RUN-A.27,2026-07-19,deploy,deploy,0,,,deploy-gated с REGENERATION_WORKER_ENABLED (иначе admit без дренажа → strand occupancy) —,ASSIST_LOG.md:673
+C058,RUN-A.27,2026-07-19,deploy,deploy,0,,,для deploy-брифа: ставить ОБА флага в staging-env.,ASSIST_LOG.md:673
+C059,RUN-A.27,2026-07-19,code-fix,code-fix,0,,,"- monitor-багфикс (4-й класс, косметика): testproc-паттерн `[p]npm --filter` ложно матчил",ASSIST_LOG.md:673
+C060,RUN-A.27,2026-07-19,deploy,deploy,0,,,"имеют имплементации + fixes. Осталось: re-gate GO-подтверждение + deploy (cat.3, 7.2) +",ASSIST_LOG.md:673
+C061,RUN-A.27,2026-07-19,deploy,deploy,1,,,FM-006 shipped — skip. FM-004 ожидаемо 7.2-blocked (deploy-gated) — не дефект.,ASSIST_LOG.md:673
+C062,RUN-A.27,2026-07-19,code-fix,code-fix,0,,,- attention: ~30 мин (диагностика proc-аномалии + верификация + багфикс монитора),ASSIST_LOG.md:673
+C063,RUN-A.28,2026-07-19,code-fix,code-fix|doc-sync,0,,,psql/redis-cli сработала со 2-го). Эти вердикты в durable-ledger НЕ зафиксированы (VM умерла,ASSIST_LOG.md:697
+C064,RUN-A.28,2026-07-19,deploy,deploy|code-fix,0,,,бесконечный фикс) → deploy-чекпойнт (🔴 owner-class: CNT-005 draft + autonomy) → impl-sync,ASSIST_LOG.md:697
+C065,RUN-A.29,2026-07-19,test-pass,test-pass,1,,,MANUAL_VERIFY×READY · rs9zfc=admin/FM-007 GO×READY · rsznt4=localization/FM-002 оборван,ASSIST_LOG.md:722
+C066,RUN-A.30,2026-07-19,deploy,deploy,0,,,* целевая последовательность (чекпойнт A.17 подтверждён): re-gate → deploy состава + P7 →,ASSIST_LOG.md:759
+C067,RUN-A.30,2026-07-19,deploy,deploy,0,,,deploy-чекпойнт = owner-class (CNT-005 + staging-autonomy elevation);,ASSIST_LOG.md:759
+C068,RUN-A.30,2026-07-19,deploy,deploy,1,,,* deploy-флаги staging: FM-007 enforcement уже =true в ~/deploy/.../shared/.env (вне репо);,ASSIST_LOG.md:759
+C069,RUN-A.30,2026-07-19,code-fix,code-fix,0,,,* предупреждение дайджеста «маппинг вердикт→фича прошлой сессией НЕ снят» — уже ЗАКРЫТО в,ASSIST_LOG.md:759
+C070,RUN-A.30,2026-07-19,doc-sync,doc-sync,0,,,"- ⚠ РЕСУРС: 7d-лимит VM-аккаунта 89% (reset 21.07 16:00 Хельсинки), 5h-окно 11% — добивка",ASSIST_LOG.md:759
+C071,RUN-A.31,2026-07-19,test-pass,test-pass,0,,,"прогнала полный suite отдельно: exit 0, ВСЕ зелёные (api 973/worker 271/web 273/shared",ASSIST_LOG.md:802
+C072,RUN-A.31,2026-07-19,code-fix,code-fix,1,5a6e430,,req 10.1 vs RL-001 scope). Остальное починено (5a6e430 doc-only).,ASSIST_LOG.md:802
+C073,RUN-A.31,2026-07-19,code-fix,code-fix,1,6791cf3 93a9f55,,тестируют 12.4). Фиксы 6791cf3/93a9f55 — код+тесты (Redis-first session store,ASSIST_LOG.md:802
+C074,RUN-A.31,2026-07-19,test-pass,test-pass,1,5c21786,,* FM-007 admin GO×READY: чистый; 5c21786 = удаление orphan isAdminAuthFailed,ASSIST_LOG.md:802
+C075,RUN-A.31,2026-07-19,test-pass,test-pass|code-fix,0,,,"(упрощение, не новый consumer); suite зелёный уже С auth-фиксами.",ASSIST_LOG.md:802
+C076,RUN-A.31,2026-07-19,deploy,deploy,1,,,"- owner-package формируется (вынесу на deploy/DoD-чекпойнте, батчем): PA-102 (accept orphan",ASSIST_LOG.md:802
+C077,RUN-A.31,2026-07-19,deploy,deploy,0,,,CNT-005 draft→active · staging-autonomy на deploy.,ASSIST_LOG.md:802
+C078,RUN-A.32,2026-07-19,code-fix,code-fix,0,,,"верны) — по букве протокола недобор, закрыт ex post паком + чтением журнала (:2819).",ASSIST_LOG.md:846
+C079,RUN-A.32,2026-07-19,code-fix,code-fix|doc-sync,0,,,причина в A.28 была записана неточно («poweroff») — исправлено A.31.,ASSIST_LOG.md:846
+C080,RUN-A.32,2026-07-19,code-fix,code-fix|doc-sync,0,,,* (прогон) все зафиксированные им самим инциденты подтверждаю по транскрипту (A.23 kill,ASSIST_LOG.md:846
+C081,RUN-A.33,2026-07-19,code-fix,code-fix,1,,,"~23:10 — ✅ P6 ROUND-FINAL ЗАКРЫТ (cond-s14): 7/7 FM на READY, 0 NO-GO",ASSIST_LOG.md:881
+C082,RUN-A.33,2026-07-19,test-pass,test-pass,1,,,"* FM-002 localization → **GO×READY** (6/6 findings ремедиированы: notify-seam,",ASSIST_LOG.md:881
+C083,RUN-A.33,2026-07-19,deploy,deploy,0,,,staging-smoke deploy-gated + real-ffmpeg deferred FB-013 — НЕ дефект; 4 fix-коммита:,ASSIST_LOG.md:881
+C084,RUN-A.33,2026-07-19,deploy,deploy,0,,,его проверка едет в deploy/P7 (соответствует решению A.19: staging-контурная).,ASSIST_LOG.md:881
+C085,RUN-A.33,2026-07-19,deploy,deploy,1,,,MANUAL_VERIFY×READY (residuals = только owner-развилки PA-102/103 + deploy-gated 7.2 +,ASSIST_LOG.md:881
+C086,RUN-A.33,2026-07-19,code-fix,code-fix,0,,,0 новых эскалаций.** DoD cat.2 закрыт с точностью до owner-акцепта MANUAL_VERIFY-хвостов.,ASSIST_LOG.md:881
+C087,RUN-A.33,2026-07-19,deploy,deploy,0,,,"- next: deploy-чекпойнт — owner-class пакет (батч, I-7): CNT-005 draft→accept + деплой",ASSIST_LOG.md:881
+C088,RUN-A.34,2026-07-19,deploy,deploy,0,,,~23:30 — owner-ratify ×4 (deploy-чекпойнт) → dispatch cond-s15 (deploy состава RL-001),ASSIST_LOG.md:912
+C089,RUN-A.34,2026-07-19,deploy,deploy,1,,,(draft→active) + deploy состава RL-001 на staging + P7**; (2) PA-102 → orphan listInvoices,ASSIST_LOG.md:912
+C090,RUN-A.34,2026-07-19,deploy,deploy,0,,,"deploy атомарен (симлинк-флип + авто-rollback E.C), пошаговые коммиты переживают",ASSIST_LOG.md:912
+C091,RUN-A.34,2026-07-19,doc-sync,doc-sync,0,,,limit-kill; при стопе — resume с чекпойнта после reset (21.07 16:00 Хельсинки).,ASSIST_LOG.md:912
+C092,RUN-A.34,2026-07-19,deploy,deploy,1,,,сводку) → deploy-to-stage полным брекетом → P7 runtime-smoke (закрывает FM-004 task 7.2),ASSIST_LOG.md:912
+C093,RUN-A.34,2026-07-19,deploy,deploy,0,,,- Monitor v3 для s15 вооружён (тик 150с; L = wc -l ledger — ловит deploy/P7 брекеты,ASSIST_LOG.md:912
+C094,RUN-A.35,2026-07-20,deploy,deploy,1,,,"~00:20 — итоги cond-s15: DEPLOYED + Lighthouse PASS, worker FAILS_TO_START (PA-106) → dispatch cond-s16",ASSIST_LOG.md:939
+C095,RUN-A.35,2026-07-20,test-pass,test-pass|code-fix,1,,,* Часть 1 ЗАКРЫТА: PA-102/103/104 → done (amend req 12.5 исполнен + relabel тестов,ASSIST_LOG.md:939
+C096,RUN-A.35,2026-07-20,deploy,deploy,1,,20260719T214340Z,"* **Deploy: DEPLOYED×READY** (sb11w8) — симлинк → releases/20260719T214340Z, api",ASSIST_LOG.md:939
+C097,RUN-A.35,2026-07-20,deploy,deploy,0,,,"executor корректно НЕ чинил: P5/P6-класс, не deploy-правка). Task 7.2 честно не отмечен.",ASSIST_LOG.md:939
+C098,RUN-A.36,2026-07-20,test-pass,test-pass,0,,,"~01:35 — ✅ cond-s16: worker STARTS, P7 зелёный; блокер DoD сузился до task 7.2 (owner-развилка)",ASSIST_LOG.md:971
+C099,RUN-A.36,2026-07-20,test-pass,test-pass,0,,,"* worker: mft-worker.service **active (running)**, NRestarts=0, все очереди подняты",ASSIST_LOG.md:971
+C100,RUN-A.36,2026-07-20,deploy,deploy,1,,20260719T214340Z,сконструирован ⇒ секрет прочитан. Релиз 20260719T214340Z стартует as-is.,ASSIST_LOG.md:971
+C101,RUN-A.36,2026-07-20,test-pass,test-pass,0,,,"* **P7: READY_TO_SMOKE × STARTS** (sjk680, полный брекет) — нога DoD «продукт стартует»",ASSIST_LOG.md:971
+C102,RUN-A.36,2026-07-20,test-pass,test-pass,0,,,ЗЕЛЁНАЯ. Примечание: finished_at в записи содержит clock-skew артефакт (started,ASSIST_LOG.md:971
+C103,RUN-A.36,2026-07-20,code-fix,code-fix,0,,,(остановка убила бы здоровую api). cond-s12 coupling для staging закрыт: admission +,ASSIST_LOG.md:971
+C104,RUN-A.36,2026-07-20,deploy,deploy|test-pass,0,,,- DoD-сдвиг: deploy-механика ЦЕЛИКОМ зелёная (api+web 200 · Lighthouse 0.94 · worker,ASSIST_LOG.md:971
+C105,RUN-A.36,2026-07-20,test-pass,test-pass,0,,,STARTS · rollback валидирован ранее). Единственный остаток до пересбора = **task 7.2,ASSIST_LOG.md:971
+C106,RUN-A.37,2026-07-20,test-pass,test-pass,1,,,"Truth по round-final: FM-002/007 GO×READY (чистые кандидаты shipped), FM-001/003/004/",ASSIST_LOG.md:1006
+C107,RUN-A.37,2026-07-20,deploy,deploy|test-pass,0,,,"0 NO-GO, 0 дефектов кода. Deploy staging DEPLOYED×READY, worker STARTS, Lighthouse PASS.",ASSIST_LOG.md:1006
+C108,RUN-A.38,2026-07-20,code-fix,code-fix,0,,,~03:15 — owner UI-walkthrough setup + 🔴 находка: CSS-слой RL-001 НЕ реализован (DoD-gap),ASSIST_LOG.md:1047
+C109,RUN-A.38,2026-07-20,code-fix,code-fix,0,,,НЕ реализован. Диагноз (не баг деплоя/туннеля): нет globals.css/Tailwind/PostCSS/,ASSIST_LOG.md:1047
+C110,RUN-A.38,2026-07-20,test-pass,test-pass,0,,,"- 🔴 DoD-GAP (meta-feedback #5, копить): зелёный DoD round-final не поймал невизуализацию",ASSIST_LOG.md:1047
+C111,RUN-A.38,2026-07-20,deploy,deploy,0,,,has_ui-фич — P6 validate-feature-impl/deploy/tests меряют ФУНКЦИОНАЛЬНУЮ имплементацию,ASSIST_LOG.md:1047
+C112,RUN-A.38,2026-07-20,code-fix,code-fix,0,,,"здесь = функционально, не визуально. Кандидат: DoD-категория «фича реализована» для",ASSIST_LOG.md:1047
+C113,RUN-B.2,2026-07-22,code-fix,code-fix,0,,,рекомендации «закрыть на Mock → RL-002»); (2) TTS = **Google Cloud TTS** (фактический,ASSIST_LOG.md:1096
+C114,RUN-B.3,2026-07-22,code-fix,code-fix,0,,,падает «/bin/sh: 1: bd: not found» (non-blocking) — кандидат в фикс пилота/meta-feedback,ASSIST_LOG.md:1115
+C115,RUN-B.4,2026-07-22,deploy,deploy|test-pass,0,,,harvest cond-s18 (свап #1 перевод: ЗАВЕРШЁН GO×READY×DEPLOYED) + deviation монитора,ASSIST_LOG.md:1132
+C116,RUN-B.4,2026-07-22,code-fix,code-fix|doc-sync,1,4d3e32e,,"· RL-001 bring-forward зафиксирован (`4d3e32e`, провенанс RUN-B.2); FB-013 возвращён в RL-001",ASSIST_LOG.md:1132
+C117,RUN-B.4,2026-07-22,test-pass,test-pass,1,,,"· P6 validate-feature-impl → GO × READY, conflicts ∅ (run vazryo)",ASSIST_LOG.md:1132
+C118,RUN-B.4,2026-07-22,deploy,deploy,1,,20260722T004120Z,"· E.B deploy-to-stage → DEPLOYED × READY, релиз 20260722T004120Z (run vcbvg0)",ASSIST_LOG.md:1132
+C119,RUN-B.4,2026-07-22,test-pass,test-pass,0,,,"задеплоенный mft-worker STARTS (NRestarts=0, все 7 очередей). Кандидат meta-feedback #6",ASSIST_LOG.md:1132
+C120,RUN-B.4,2026-07-22,code-fix,code-fix,0,,,поймал текст собственного брифа в user-записи). Фикс: маркер только в assistant-строках.,ASSIST_LOG.md:1132
+C121,RUN-B.5,2026-07-22,deploy,deploy,1,f5b16ad,,(whisper-1) за dark-флагом по паттерну f5b16ad → P6 → deploy → P7 (с известным,ASSIST_LOG.md:1164
+C122,RUN-B.5,2026-07-22,code-fix,code-fix,0,,,монитор перевзведён (детект по assistant-роли — фикс deviation RUN-B.4),ASSIST_LOG.md:1164
+C123,RUN-B.6,2026-07-22,test-pass,test-pass,1,,,"· P6 → MANUAL_VERIFY × READY (run ve6hlc): механика зелёная, единственный конфликт —",ASSIST_LOG.md:1179
+C124,RUN-B.7,2026-07-22,deploy,deploy,0,,,по staging-конвенции → P6/deploy/P7 → real-smoke TTS одной фразы → гигиена статус-колонки,ASSIST_LOG.md:1206
+C125,RUN-B.7,2026-07-22,code-fix,code-fix,1,82ce3b4,,- expectation → actual: TUI поднялся ЧИСТО — hook-фикс 82ce3b4 подтверждён live (ошибка,ASSIST_LOG.md:1206
+C126,RUN-B.8,2026-07-22,deploy,deploy,1,,20260722T023857Z,· хвост свапа #2: deploy vgfajk → DEPLOYED × READY (релиз 20260722T023857Z); P7 vhi708 —,ASSIST_LOG.md:1221
+C127,RUN-B.8,2026-07-22,test-pass,test-pass,1,01a990a,,"`01a990a`, отревьюены executor-ом, сьют зелёный)",ASSIST_LOG.md:1221
+C128,RUN-B.8,2026-07-22,deploy,deploy|test-pass,0,,,"· P6 vhxjh4 → GO × READY, conflicts ∅; deploy vjlpdc → DEPLOYED × READY (релиз",ASSIST_LOG.md:1221
+C129,RUN-B.9,2026-07-22,deploy,deploy,0,,,regeneration-translation реюз → P6/deploy/P7 → real-smoke splice mini-видео (ffprobe) →,ASSIST_LOG.md:1246
+C130,RUN-B.10,2026-07-22,code-fix,code-fix|doc-sync,1,,,инъекция spliceStorage = точка будущего real-GCS за PA-108); ffmpeg 6.1.1 зафиксирован,ASSIST_LOG.md:1261
+C131,RUN-B.10,2026-07-22,deploy,deploy|code-fix,1,477821e,,"в deploy-manifest runtime_dependencies; + P6-фиксы `477821e`, `9043025` (half-wiring",ASSIST_LOG.md:1261
+C132,RUN-B.10,2026-07-22,code-fix,code-fix,0,,,srt-store: real .mp4 при Mock .srt — закрыт FilesystemReassemblySrtStore),ASSIST_LOG.md:1261
+C133,RUN-B.10,2026-07-22,deploy,deploy,1,,20260722T055851Z,"deploy vnlezc → DEPLOYED × READY (релиз 20260722T055851Z, regeneration-drain живой);",ASSIST_LOG.md:1261
+C134,RUN-B.10,2026-07-22,deploy,deploy,0,,,- итог шага 1: ВСЕ 4 свапа введены dark-by-default с P6/deploy/P7-циклами; real-подтверждено,ASSIST_LOG.md:1261
+C135,RUN-B.11,2026-07-22,deploy,deploy,0,,,"build + сьют + deploy-to-stage + Lighthouse re-run (порог ≥0.90, было 0.94) → карта",ASSIST_LOG.md:1288
+C136,RUN-B.12,2026-07-22,deploy,deploy,1,,20260722T070924Z,· deploy vнлежит wf_479c740e-730 → DEPLOYED × READY (релиз 20260722T070924Z); Lighthouse,ASSIST_LOG.md:1304
+C137,RUN-B.12,2026-07-22,code-fix,code-fix,0,,,· RUN-A.38 находка «голый HTML» ЗАКРЫТА; остаток шага 2b — owner UX-проход,ASSIST_LOG.md:1304
+C138,RUN-B.13,2026-07-22,code-fix,code-fix,0,,,NFR-010 revoice-замер (состав ног зафиксировать: regen-translation намеренно Mock) →,ASSIST_LOG.md:1325
+C139,RUN-B.13,2026-07-22,deploy,deploy,1,,,P6/deploy/P7 → authenticated-скриншоты (demo-креды из RUN-A.38 переданы) → PA-108,ASSIST_LOG.md:1325
+C140,RUN-B.15,2026-07-22,code-fix,code-fix,1,,,"harvest cond-s23 (PA-108 ЗАКРЫТ ЦЕЛИКОМ: TTS live ✅, GCS ✅, NFR-010 1981ms ≪ цели)",ASSIST_LOG.md:1359
+C141,RUN-B.15,2026-07-22,test-pass,test-pass,0,,,"· P6 wf_ccee23dd-9ca → NO-GO × READY, но обе причины вырождены: (1) genuine conflict =",ASSIST_LOG.md:1359
+C142,RUN-B.15,2026-07-22,deploy,deploy,0,,,· deploy GCS-кода HELD (эскалация исполнителя — корректно по его границам); P7 заменён,ASSIST_LOG.md:1359
+C143,RUN-B.16,2026-07-22,test-pass,test-pass|code-fix,1,,,"(деферрал req 8.9/15.10 → RL-002, провенанс RUN-B.14) → фикс brittle timing-теста",ASSIST_LOG.md:1384
+C144,RUN-B.16,2026-07-22,deploy,deploy,0,,,за своим флагом → P6 ре-гейт (ожидание GO: оба блокера сняты) → deploy всего,ASSIST_LOG.md:1384
+C145,RUN-B.17,2026-07-22,code-fix,code-fix,1,53e3cae,,· оба flaky-класса починены load-инвариантно: `53e3cae` (login-captcha timing-parity) +,ASSIST_LOG.md:1398
+C146,RUN-B.17,2026-07-22,test-pass,test-pass,1,bb72d72,,`bb72d72` (IC-003 LRU-race) — изолированно и в сьюте зелёные (api 982-987),ASSIST_LOG.md:1398
+C147,RUN-B.17,2026-07-22,code-fix,code-fix,0,,,· P6 ре-гейт vyhiq0 → MANUAL_VERIFY × READY: mechanical GREEN (фиксы сработали); residuals,ASSIST_LOG.md:1398
+C148,RUN-B.17,2026-07-22,deploy,deploy,0,,,прецедент COND-S21 → deploy,ASSIST_LOG.md:1398
+C149,RUN-B.17,2026-07-22,deploy,deploy,1,,20260722T114731Z,"· deploy w03thk → DEPLOYED × READY, релиз 20260722T114731Z; 9 real-флагов ПОСТОЯННО",ASSIST_LOG.md:1398
+C150,RUN-B.17,2026-07-22,test-pass,test-pass,0,,,"google-tts live; NRestarts=0, healthcheck чист",ASSIST_LOG.md:1398
+C151,RUN-B.18,2026-07-22,code-fix,code-fix,0,,,- план: s25 = forward-edge юнит (un-defer фиксация + deliverable-storage GCS + upload-edge +,ASSIST_LOG.md:1428
+C152,RUN-B.19,2026-07-22,code-fix,code-fix,0,,,"- action: спавн cond-s25 (bypass), бриф файлом prompt-s25.txt. Бриф: un-defer фиксация",ASSIST_LOG.md:1443
+C153,RUN-B.19,2026-07-22,deploy,deploy,0,,,P6/deploy/P7 → постоянное включение новых флагов (санкция ④) → 🏁 полный HTTP E2E,ASSIST_LOG.md:1443
+C154,RUN-B.20,2026-07-22,code-fix,code-fix|doc-sync,1,1d4a2a3,,"· un-defer зафиксирован (`1d4a2a3`, провенанс PA-114/RUN-B.18)",ASSIST_LOG.md:1456
+C155,RUN-B.20,2026-07-22,test-pass,test-pass|code-fix,1,8022e63,,· P6 → GO × READY (wf_68dc3043-878; первый заход NO-GO по e2e-drain — починен 8022e63;,ASSIST_LOG.md:1456
+C156,RUN-B.20,2026-07-22,code-fix,code-fix,1,3ce39ce 6f0dd85,,"2 dead-seam'а закрыты: deliverable-bytes producer↔consumer 3ce39ce, web-form↔API 6f0dd85)",ASSIST_LOG.md:1456
+C157,RUN-B.20,2026-07-22,deploy,deploy|test-pass,1,,20260722T152924Z,"· deploy → DEPLOYED × READY, релиз 20260722T152924Z; P7 → READY_TO_SMOKE × STARTS —",ASSIST_LOG.md:1456
+C158,RUN-B.20,2026-07-22,deploy,deploy,0,,,env-not-loaded класс НЕ воспроизвёлся (deploy-faithful systemd EnvironmentFile) —,ASSIST_LOG.md:1456
+C159,RUN-B.20,2026-07-22,code-fix,code-fix,0,,,· эскалаций нет; download-gap авто-закрыт P6-ремедиацией; 2 доп-флага (infra) прозрачно,ASSIST_LOG.md:1456
+C160,RUN-B.21,2026-07-22,deploy,deploy,0,,,P6/deploy/P7 → безопасный smoke срабатывания на синтетике → финальная карта остатка:,ASSIST_LOG.md:1482
+C161,RUN-B.22,2026-07-22,deploy,deploy,1,,20260722T165506Z,PA-109); deploy wb23xk → DEPLOYED × READY (релиз 20260722T165506Z); P7 wbxyjc —,ASSIST_LOG.md:1495
+C162,RUN-B.22,2026-07-22,test-pass,test-pass,0,,,run-command false-negative (задеплоенный сервис верифицирован STARTS напрямую),ASSIST_LOG.md:1495
+C163,RUN-B.22,2026-07-22,code-fix,code-fix,0,,,где evidence реально устарел); фикс самого коллектора экосистемы — после прогона (канон),ASSIST_LOG.md:1495
+C164,RUN-B.23,2026-07-22,code-fix,code-fix,0,,,вердикты НЕ фабриковать; коллектор инсталляции НЕ патчить (upstream-фикс — после,ASSIST_LOG.md:1521
+C165,RUN-B.24,2026-07-22,code-fix,code-fix,1,,,Гипотеза ordering ОПРОВЕРГНУТА. Оба дефекта оформлены PA-116 → upstream (двухосевой фикс),ASSIST_LOG.md:1536
+C166,RUN-B.26,2026-07-22,code-fix,code-fix|doc-sync,0,,,улики были в сводке s23 (dashboard=scaffold) — пропущены МНОЙ на harvest (зафиксировано,ASSIST_LOG.md:1571
+C167,RUN-B.26,2026-07-22,deploy,deploy,0,,,"НЕ покрыта — P7/deploy меряют HTTP-liveness (runtime-readiness.cjs:293-304), DoD 6",ASSIST_LOG.md:1571
+C168,RUN-B.26,2026-07-22,code-fix,code-fix,0,,,доставка в пилот → валидация на RL-001 по known-defects ground truth (3 дыры) → фикс →,ASSIST_LOG.md:1571
+C169,RUN-B.27,2026-07-22,test-pass,test-pass|code-fix,0,,,остаётся отложенной до зелёного UJA-re-run после фиксов. Запущено:,ASSIST_LOG.md:1601
+C170,RUN-B.28,2026-07-23,code-fix,code-fix,0,,,"Playwright MCP НЕТ download-тула (issue #154 закрыт без фикса), а скачивание deliverable",ASSIST_LOG.md:1615
+C171,RUN-B.28,2026-07-23,deploy,deploy,0,,,"+ charter v6 (journey_acceptance между deploy и done, парковка awaiting_journey_fix)",ASSIST_LOG.md:1615
+C172,RUN-B.28,2026-07-23,test-pass,test-pass,0,,,"+ DoD-ноги (Кат.3 UJA PASS, Кат.5 visual-conformance для has_ui) + доки + журнал",ASSIST_LOG.md:1615
+C173,RUN-B.29,2026-07-23,test-pass,test-pass,0,,,"протестирован, тесты перепрогнаны мной — зелёные; verify EXIT 0 (executor) ; DoD-строки",ASSIST_LOG.md:1632
+C174,RUN-B.29,2026-07-23,code-fix,code-fix,0,,,"journey-авторинг из NM (≥2 журнея, минимальные фикстуры) → валидационный прогон по",ASSIST_LOG.md:1632
+C175,RUN-B.29,2026-07-23,code-fix,code-fix,0,,,"known-defects ground truth (3 дыры, S2 смоук-плана) → фикс-единица навигации → UJA",ASSIST_LOG.md:1632
+C176,RUN-B.30,2026-07-23,code-fix,code-fix,0,,,ОТЛОЖЕН до «после валидации UJA» — фиксы находок войдут в ту же нарезку (одна вместо,ASSIST_LOG.md:1651
+C177,RUN-B.30,2026-07-23,doc-sync,doc-sync,0,,,двух); пилот получает dev-срез main (прецеденты синков в кампании). VM-клон канона,ASSIST_LOG.md:1651
+C178,RUN-B.31,2026-07-23,code-fix,code-fix,1,,,· журнеи J1/J2/J3 из NM-001/002/003 (строго as-designed) + фикстура; закоммичены,ASSIST_LOG.md:1668
+C179,RUN-B.31,2026-07-23,code-fix,code-fix,0,,,"scaffold-плейсхолдер БЕЗ формы (API forward-edge live, а web-страница не построена);",ASSIST_LOG.md:1668
+C180,RUN-B.31,2026-07-23,test-pass,test-pass,0,,,· смоук S1-S5 все PASS (S1 зелёный sentinel; S2 несущий; S3/S4/S5 честные ENV_NOT_READY),ASSIST_LOG.md:1668
+C181,RUN-B.31,2026-07-23,deploy,deploy,0,,,· charter v6 в инсталляции: deploy.succeeded → journey_acceptance подтверждён,ASSIST_LOG.md:1668
+C182,RUN-B.31,2026-07-23,code-fix,code-fix,0,,,реплике («…emit the final SUMMARY-COND-S28 block») — фикс: якорить блок-форму с,ASSIST_LOG.md:1668
+C183,RUN-B.31,2026-07-23,code-fix,code-fix,0,,,следующая единица s29 — web-UI фикс по показаниям UJA → UJA re-run PASS → терминатор,ASSIST_LOG.md:1668
+C184,RUN-B.32,2026-07-23,test-pass,test-pass|code-fix,0,,,dispatch (cond-s29: web-UI фикс по показаниям UJA → зелёный UJA),ASSIST_LOG.md:1692
+C185,RUN-B.32,2026-07-23,deploy,deploy,0,,,и готовых стилях → полный цикл P6/deploy/P7 → UJA re-run (ожидание PASS J1+J2+J3);,ASSIST_LOG.md:1692
+C186,RUN-B.33,2026-07-23,test-pass,test-pass|code-fix,0,,,harvest cond-s29: 🏁 UJA GREEN (машинно верифицирован) — продуктовый гейт RL-001 закрыт,ASSIST_LOG.md:1704
+C187,RUN-B.33,2026-07-23,deploy,deploy,0,,,deploy: 4 захода (2 ложных DEPLOY_FAILED от 307-редиректа корня — эскалация на,ASSIST_LOG.md:1704
+C188,RUN-B.33,2026-07-23,deploy,deploy,1,,20260723T015725Z,"калибровку healthcheck), финал wucx1s DEPLOYED × READY, релиз 20260723T015725Z;",ASSIST_LOG.md:1704
+C189,RUN-B.33,2026-07-23,test-pass,test-pass,1,,,· 🏁 UJA re-run wvcqeg: PASS 3/3 (J1 login→SI-1; J2 ПОЛНЫЙ цикл c download-attachment;,ASSIST_LOG.md:1704
+C190,RUN-B.33,2026-07-23,deploy,deploy,0,,,"- owner-queue (non-blocking, копятся к пост-релизу): калибровка deploy-healthcheck",ASSIST_LOG.md:1704
+C191,RUN-B.33,2026-07-23,test-pass,test-pass|code-fix,0,,,- статус: продуктовый/UJA-гейт RL-001 ЗАКРЫТ ЗЕЛЁНЫМ. Остаток = ЧИСТО owner: impl-sync,ASSIST_LOG.md:1704
+C192,RUN-B.34,2026-07-23,test-pass,test-pass,0,,,owner повторный ручной проход: 2 НОВЫЕ дыры мимо зелёного UJA; разбор = дыры МОЕГО дизайна приёмки,ASSIST_LOG.md:1730
+C193,RUN-B.34,2026-07-23,code-fix,code-fix,0,,,БД-транзакции; лабораторная 5-с фикстура J2 влезала в таймаут — реальный файл нет.,ASSIST_LOG.md:1730
+C194,RUN-B.34,2026-07-23,test-pass,test-pass,0,,,обязательные классы журнеев negative-auth + realistic-input; зелёный без них ≠ зелёный,ASSIST_LOG.md:1730
+C195,RUN-B.34,2026-07-23,code-fix,code-fix,0,,,- решения: ратификация снята с повестки до фиксов + re-run с новыми классами + повторной,ASSIST_LOG.md:1730
+C196,RUN-B.34,2026-07-23,code-fix,code-fix,0,,,ручной проверки владельца; s30 = фикс-единица (auth-guard + вынос внешних вызовов из,ASSIST_LOG.md:1730
+C197,RUN-B.35,2026-07-23,code-fix,code-fix,0,,,«кейс не описан → не построен → не проверен»: (3) свободные переходы по auth-состояниям —,ASSIST_LOG.md:1750
+C198,RUN-B.35,2026-07-23,code-fix,code-fix,0,,,"- dispatch cond-s30 (объединённая фикс-единица, спека-first): матрица доступа в артефактах",ASSIST_LOG.md:1750
+C199,RUN-B.35,2026-07-23,code-fix,code-fix,1,,,"→ UJA v2: + J-neg-1/2/3 (негативные обе стороны + logout) + J2-real (фикстура ≥45 с,",ASSIST_LOG.md:1750
+C200,RUN-B.35,2026-07-23,code-fix,code-fix,0,,,- канон-очередь (после пилот-фикса): UJA journey-классы negative-auth/realistic-input,ASSIST_LOG.md:1750
+C201,RUN-B.36,2026-07-23,code-fix,code-fix,0,,,канон-директивы владельца (матрица доступа has_ui; DoD-вход 30 мин–2 ч) + фиксация в файловую память,ASSIST_LOG.md:1768
+C202,RUN-B.36,2026-07-23,code-fix,code-fix,0,,,"для dev-тестов/багфиксов, но DoD-подтверждение 1-го релиза обязано включать реалистичную",ASSIST_LOG.md:1768
+C203,RUN-B.36,2026-07-23,code-fix,code-fix|doc-sync,0,,,180 мин. По запросу владельца весь реестр находок RUN-B зафиксирован в файловой памяти,ASSIST_LOG.md:1768
+C204,RUN-B.36,2026-07-23,code-fix,code-fix,1,,,«30 мин–2 ч» для первого релиза (с chunking-предпосылкой); (в) upstream-фиксы PA-116 и,ASSIST_LOG.md:1768
+C205,RUN-B.36,2026-07-23,code-fix,code-fix,0,,,накопленных дефект-классов — всё после закрытия s30,ASSIST_LOG.md:1768
+C206,RUN-B.37,2026-07-23,code-fix,code-fix,0,,,- action: владелец зафиксировал фундаментальное правило кондуктор-сессий (дословно):,ASSIST_LOG.md:1784
+C207,RUN-B.37,2026-07-23,code-fix,code-fix|doc-sync,0,,,- зафиксировано структурно (не на словах): (1) память feedback,ASSIST_LOG.md:1784
+C208,RUN-B.38,2026-07-23,code-fix,code-fix,0,,,"(новый), MK-001 v2, LC-002 v3 (давний «пробел выхода» закрыт), cascade back-refs",ASSIST_LOG.md:1806
+C209,RUN-B.38,2026-07-23,test-pass,test-pass|code-fix,1,90a4561,,auth-proxy 204→500 (кука не чистилась) → фикс 90a4561 → прогон-2 xdy22w PASS 7/7,ASSIST_LOG.md:1806
+C210,RUN-B.38,2026-07-23,code-fix,code-fix,0,,,"- 🔴 I-8-НАРУШЕНИЕ (моя фиксация, не пропущено): executor срезал standalone P6/P7",ASSIST_LOG.md:1806
+C211,RUN-B.38,2026-07-23,code-fix,code-fix,0,,,Dispatch cond-s31 — канонический догон: манифест-фикс healthcheck через,ASSIST_LOG.md:1806
+C212,RUN-B.38,2026-07-23,deploy,deploy,0,,,integrator-механику → честный DEPLOYED → standalone P6 → standalone P7 → регенерация,ASSIST_LOG.md:1806
+C213,RUN-B.39,2026-07-23,code-fix,code-fix,0,,,"UJA-журнеи, код прошёл гейты и live-валидацию, фиксы локальны; средний путь = P4-аудит",ASSIST_LOG.md:1833
+C214,RUN-B.39,2026-07-23,code-fix,code-fix,0,,,"UJA-журнеи, код прошёл гейты и live-валидацию, фиксы локальны; средний путь = P4-аудит",ASSIST_LOG.md:1850
+C215,RUN-B.42,2026-07-23,test-pass,test-pass|code-fix,1,,,harvest cond-s31: канонический догон ЗАКРЫТ (7/7 зелёные); API-stall пережит авторетраем без потери нити,ASSIST_LOG.md:1898
+C216,RUN-B.42,2026-07-23,code-fix,code-fix,1,0e84140,,CNT-005 re-verified) — 0e84140; класс ложных DEPLOY_FAILED закрыт,ASSIST_LOG.md:1898
+C217,RUN-B.42,2026-07-23,deploy,deploy,1,,20260723T111720Z,"· (б) честный DEPLOYED × READY — run xefgmg, release 20260723T111720Z, worker active",ASSIST_LOG.md:1898
+C218,RUN-B.42,2026-07-23,test-pass,test-pass,1,6cb3ae1,,· (в) standalone P6 GO × READY — run xfeiyw; 2 находки remediated: 6cb3ae1,ASSIST_LOG.md:1898
+C219,RUN-B.42,2026-07-23,test-pass,test-pass,1,,,"· (г) standalone P7 READY_TO_SMOKE × STARTS — run xgi11c, чистый пасс (обошёл",ASSIST_LOG.md:1898
+C220,RUN-B.42,2026-07-23,code-fix,code-fix,1,054f868,,· (д) регенерированы ВСЕ 7 stale handoff'ов — 054f868; staleness-чекер 0/7 (метод-,ASSIST_LOG.md:1898
+C221,RUN-B.42,2026-07-23,code-fix,code-fix,0,,,harvest cond-s31 (канонический догон ЗАКРЫТ образцово) + dispatch s32,ASSIST_LOG.md:1935
+C222,RUN-B.42,2026-07-23,code-fix,code-fix,1,,,"· манифест-фикс канонически (/integrator:debug, DEC-INT-0021, CNT-005 re-verified)",ASSIST_LOG.md:1935
+C223,RUN-B.42,2026-07-23,deploy,deploy|code-fix,0,,,"· честный DEPLOYED × READY (xefgmg, релиз 111720Z) — класс ложных DEPLOY_FAILED закрыт",ASSIST_LOG.md:1935
+C224,RUN-B.42,2026-07-23,test-pass,test-pass,1,6cb3ae1,,"· standalone P6 GO × READY (xfeiyw; 2 ремедиации: 6cb3ae1 logout-fidelity design.md,",ASSIST_LOG.md:1935
+C225,RUN-B.42,2026-07-23,test-pass,test-pass,1,d744367,,"d744367 dead-seam /admin) · standalone P7 чистый STARTS (xgi11c, env-not-loaded",ASSIST_LOG.md:1935
+C226,RUN-B.42,2026-07-23,code-fix,code-fix,1,,,"· handoff'ы: все 7 регенерированы, staleness 0/7 (спот-чек повторён)",ASSIST_LOG.md:1935
+C227,RUN-B.42,2026-07-23,deploy,deploy|code-fix,1,,,- dispatch cond-s32: deploy HEAD (middleware-фикс на staging) → UJA re-run 7/7 на новом,ASSIST_LOG.md:1935
+C228,RUN-B.43,2026-07-23,deploy,deploy,0,,,· B: `BILLING_OUTBOX_DRAIN_ENABLED=false` в `deploy/my-first-test/shared/.env`,ASSIST_LOG.md:1955
+C229,RUN-B.44,2026-07-23,code-fix,code-fix,1,51343a1,,«s31 закрыт образцово… dispatch s32») лёг ПОВЕРХ моего 51343a1 (RUN-B.42 harvest,ASSIST_LOG.md:1973
+C230,RUN-B.44,2026-07-23,deploy,deploy,1,,,- пересечения с брифом s32 (deploy HEAD → UJA 7/7 → outbox B → регистрация A → DoD):,ASSIST_LOG.md:1973
+C231,RUN-B.44,2026-07-23,code-fix,code-fix,0,,,s32 просит найти → ожидание: s32 распознает already-done и зафиксирует; дубли,ASSIST_LOG.md:1973
+C232,RUN-B.45,2026-07-23,code-fix,code-fix,0,,,соседняя диспатчей больше не ведёт (закрытие/простой — за владельцем),ASSIST_LOG.md:1999
+C233,RUN-B.45,2026-07-23,deploy,deploy,1,2571d5c,,- s32 на 17:10: задача 1 (deploy HEAD 2571d5c) — workflow deploy-to-stage 2/3 agents,ASSIST_LOG.md:1999
+C234,RUN-B.46,2026-07-23,deploy,deploy|test-pass,1,,,harvest cond-s32: staging-сторона RL-001 ЗАВЕРШЕНА (deploy HEAD + UJA PASS 7/7); сверка дублей — расхождений НЕТ,ASSIST_LOG.md:2013
+C235,RUN-B.46,2026-07-23,deploy,deploy,1,,20260723T135538Z,"· (а) deploy full-bracket DEPLOYED × READY — run wiyf4yhkm, релиз 20260723T135538Z;",ASSIST_LOG.md:2013
+C236,RUN-B.46,2026-07-23,code-fix,code-fix,1,d744367,,"HEAD == живому деплою, middleware-фикс d744367 ЖИВОЙ",ASSIST_LOG.md:2013
+C237,RUN-B.46,2026-07-23,test-pass,test-pass,1,,,"· (б) UJA re-run полным составом на новом релизе: PASS 7/7, run wb1i1b96g —",ASSIST_LOG.md:2013
+C238,RUN-B.46,2026-07-23,code-fix,code-fix,0,,,DoD Кат.3 «PASS на текущем составе» закрыта,ASSIST_LOG.md:2013
+C239,RUN-B.46,2026-07-23,test-pass,test-pass,0,,,штатный рестарт (NRestarts=0). Находка s32: в брифе соседа «выключение =0/unset»,ASSIST_LOG.md:2013
+C240,RUN-B.46,2026-07-23,doc-sync,doc-sync,1,,,· (г) регистрация A: s32 нашла НАСТОЯЩИЙ канонический дом — NOTE-025 (FM-006,ASSIST_LOG.md:2013
+C241,RUN-B.46,2026-07-23,doc-sync,doc-sync,1,,,RL-002 tech-debt index) → создала NOTE-031 + вписала в индекс + двунаправленный,ASSIST_LOG.md:2013
+C242,RUN-B.46,2026-07-23,doc-sync,doc-sync,1,,,флага (:136); DEC-PLAN-047 — по 1 упоминанию в journal/roadmap; NOTE-031 — не,ASSIST_LOG.md:2013
+C243,RUN-B.46,2026-07-23,doc-sync,doc-sync,1,,,(+ Кат.5 pre-public-launch prod-готовность); RL-002: NOTE-031 consumer-нога.,ASSIST_LOG.md:2013
+C244,RUN-B.47,2026-07-23,code-fix,code-fix,0,,,"контур свободен, чужая radar-b8 не задета): NAT-форварды хоста добавлены на лету",ASSIST_LOG.md:2043
+C245,RUN-B.47,2026-07-23,deploy,deploy,1,f56f90c8,,(2) каноническая часть — dispatch cond-s33 (id f56f90c8): полный deploy-to-stage,ASSIST_LOG.md:2043
+C246,RUN-B.47,2026-07-23,deploy,deploy,0,,,брекет HEAD (пересборка) → post-deploy smoke → owner-пакет ручной проверки,ASSIST_LOG.md:2043
+C247,RUN-B.48,2026-07-23,deploy,deploy,1,,20260723T150800Z,"· deploy DEPLOYED × READY — run xmhir4, СВЕЖИЙ релиз 20260723T150800Z (полный",ASSIST_LOG.md:2062
+C248,RUN-B.48,2026-07-23,test-pass,test-pass,0,,,· smoke: readiness READY; api/web /health 200; worker active NRestarts=0;,ASSIST_LOG.md:2062
+C249,RUN-B.50,2026-07-23,code-fix,code-fix,0,,,"owner-находка №1 ручного прохода: языковой чип-тупик на /localizations/new; репро+root cause за минуты, фикс — по «го»",ASSIST_LOG.md:2109
+C250,RUN-B.50,2026-07-23,code-fix,code-fix,0,,,"- вариант фикса (кандидат, решает спека): auto-deselect при смене source —",ASSIST_LOG.md:2109
+C251,RUN-B.50,2026-07-23,code-fix,code-fix,0,,,- канон-маршрут (I-8): продуктовый код с хоста НЕ правил; фикс = executor-единица,ASSIST_LOG.md:2109
+C252,RUN-B.51,2026-07-23,code-fix,code-fix,0,,,owner-находка №2: dashboard всегда «нет локализаций» — библиотека работ НЕ ПОСТРОЕНА (known residual s29); job владельца цел,ASSIST_LOG.md:2131
+C253,RUN-B.51,2026-07-23,code-fix,code-fix,0,,,ПОСТРОЕННОГО — j1 принимает empty-state как валидный маркер MK-002:153,ASSIST_LOG.md:2131
+C254,RUN-B.51,2026-07-23,test-pass,test-pass|code-fix,0,,,"Зелёный UJA честен в своих границах, но границы = построенный состав; ручной",ASSIST_LOG.md:2131
+C255,RUN-B.51,2026-07-23,code-fix,code-fix,0,,,"owner-проход ловит ровно класс «задумано дизайном, не построено, выпало из",ASSIST_LOG.md:2131
+C256,RUN-B.51,2026-07-23,code-fix,code-fix,0,,,"дизайн-состава (SI-1 c ДАННЫМИ, не только first-run), а непостроенные состояния",ASSIST_LOG.md:2131
+C257,RUN-B.51,2026-07-23,code-fix,code-fix,0,,,- предложение владельцу: cond-s34 батчем: (1) чип-фикс; (2) admin-seed;,ASSIST_LOG.md:2131
+C258,RUN-B.52,2026-07-23,doc-sync,doc-sync,0,,,"ГО владельца: s34 = полный многоагентный UI-аудит-синк, затем s35 = батч строек",ASSIST_LOG.md:2158
+C259,RUN-B.52,2026-07-23,doc-sync,doc-sync,0,,,"картинками и текстовыми описаниями, нужен полный синк!! После этого - делай",ASSIST_LOG.md:2158
+C260,RUN-B.52,2026-07-23,doc-sync,doc-sync,0,,,"- декомпозиция (транзакционная, I-8-совместимая): cond-s34 = аудит-синк 4 слоёв",ASSIST_LOG.md:2158
+C261,RUN-B.52,2026-07-23,code-fix,code-fix,0,,,"(jobs library spec-first, чип-фикс, admin-seed, сброс trial-квоты) — диспатч",ASSIST_LOG.md:2158
+C262,RUN-B.53,2026-07-23,code-fix,code-fix|doc-sync,0,,,"harvest cond-s34: многоагентный UI-аудит-синк ЗАВЕРШЁН (13 D-STALE починено, 16 C-DRIFT в реестре, 2 AMBIG владельцу); пережил 2 API-обрыва",ASSIST_LOG.md:2174
+C263,RUN-B.53,2026-07-23,code-fix,code-fix,1,e689479 0af151d,,· [D-STALE]=13 починено — 6 коммитов e689479→0af151d (штамп «synced to build,ASSIST_LOG.md:2174
+C264,RUN-B.53,2026-07-23,doc-sync,doc-sync,1,,,· [C-DRIFT]=16 — реестр .product/notes/NOTE-032; топ: CD-14 🔴 вся billing UI,ASSIST_LOG.md:2174
+C265,RUN-B.53,2026-07-23,code-fix,code-fix,0,,,"не построена (5 рутов-заглушек), CD-15 admin-хабы dark за флагами, CD-12",ASSIST_LOG.md:2174
+C266,RUN-B.53,2026-07-23,deploy,deploy,0,,,- next: dispatch cond-s35 (батч: library+чип+seed+квота+deploy+UJA); AMBIG-вопросы,ASSIST_LOG.md:2174
+C267,RUN-B.54,2026-07-23,doc-sync,doc-sync,0,,,- остановка s35 (чистая): Esc → RESUME-заметка записана сессией в транскрипт,ASSIST_LOG.md:2202
+C268,RUN-B.54,2026-07-23,code-fix,code-fix,0,,,- SEAM.md обновлён дважды (s34 закрыта; s35 resume-точка + чек стенда после,ASSIST_LOG.md:2202
+C269,RUN-B.56,2026-07-23,deploy,deploy|test-pass|code-fix,1,,20260723T193232Z,"harvest cond-s35: БАТЧ ЗАКРЫТ ЦЕЛИКОМ (library + чип + admin-seed + квота), релиз 20260723T193232Z, UJA PASS 7/7 (обновлённый j1)",ASSIST_LOG.md:2238
+C270,RUN-B.56,2026-07-23,code-fix,code-fix,0,,,· (б) чип-фикс — Requirement 1.9 + auto-drop в NewLocalizationView + тест сценария,ASSIST_LOG.md:2238
+C271,RUN-B.56,2026-07-23,doc-sync,doc-sync,1,5c1055d,,"(consumed 27→0), cap глобально жив; journaled NOTE-033 — 5c1055d",ASSIST_LOG.md:2238
+C272,RUN-B.56,2026-07-23,deploy,deploy,1,,20260723T193232Z,· (д) deploy DEPLOYED × READY — релиз 20260723T193232Z (wf_8e5c5737); pre-deploy,ASSIST_LOG.md:2238
+C273,RUN-B.56,2026-07-23,deploy,deploy|code-fix,0,,,(cc-sdd-deploy) с нулевой мутацией — исправлен на deploy-staging,ASSIST_LOG.md:2238
+C274,RUN-B.56,2026-07-23,test-pass,test-pass,1,,,· (е) UJA PASS 7/7 (wf_89b5302e) с ОБНОВЛЁННЫМ j1 (list XOR empty) + library-,ASSIST_LOG.md:2238
+C275,RUN-B.56,2026-07-23,code-fix,code-fix,0,,,ассерты в j2/j2-real — дыра находки #8 в этой зоне закрыта журнеями,ASSIST_LOG.md:2238
+C276,RUN-B.56,2026-07-23,doc-sync,doc-sync,1,,,"- 🔴 ESCALATE владельцу (NOTE-033, non-blocking): trial cap проецируется на ВСЕХ",ASSIST_LOG.md:2238
+C277,RUN-B.57,2026-07-23,doc-sync,doc-sync,0,,,"привести к факту (док-синк, D-STALE класс)",ASSIST_LOG.md:2271
+C278,RUN-B.57,2026-07-23,doc-sync,doc-sync,0,,,MK-005/NM-005/README привести к факту (док-синк); учесть при стройке CD-14,ASSIST_LOG.md:2271
+C279,RUN-B.57,2026-07-23,code-fix,code-fix,0,,,"фикс-единица (гейт создания + тест + спека-дельта BR-031) — В ОЧЕРЕДЬ, диспатч",ASSIST_LOG.md:2271
+C280,RUN-B.57,2026-07-23,doc-sync,doc-sync,1,,,"- очередь на «го» (сформирована, не исполняется): (1) док-синки AMBIG-01/02;",ASSIST_LOG.md:2271
+C281,RUN-B.57,2026-07-23,code-fix,code-fix,0,,,(2) фикс trial-cap exempt active; (3) CD-14 billing UI; (4) канон-пакет экосистемы,ASSIST_LOG.md:2271
+C282,RUN-B.58,2026-07-23,deploy,deploy|test-pass,1,,20260723T193232Z,"трек»). Финальное состояние: релиз 20260723T193232Z DEPLOYED×READY, UJA PASS 7/7,",ASSIST_LOG.md:2288
+C283,RUN-B.58,2026-07-23,code-fix,code-fix,0,,,"манёвр, «шов=wind-down») · D (продуктовые долги пилота) + карта фиксации",ASSIST_LOG.md:2288
