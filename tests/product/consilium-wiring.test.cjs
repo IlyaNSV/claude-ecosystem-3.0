@@ -74,6 +74,17 @@ test('FB-002: an empty pa_id is refused with a well-formed report, never scanned
   assert(/consilium: empty pa_id/.test(runner), 'empty-pa_id refusal report missing');
 });
 
+test('D027 gate (DEC-DEV-0233): an already-ratified/closed PA is refused IN CODE before any convening', () => {
+  assert(/D027 GATE \(DEC-DEV-0233/.test(runner), 'D027 gate provenance comment missing');
+  assert(runner.includes("status: { type: 'string' }"), 'FORK_SCHEMA does not lift the PA status (D027 gate input)');
+  assert(/ratif\|closed\|resolved/.test(runner), 'ratified/closed status detection missing');
+  assert(/already ratified\/closed/.test(runner), 'D027 refusal report missing');
+  // the gate must refuse BEFORE the Scope declaration and the Jury fan-out (source order).
+  assert(runner.indexOf('D027 GATE') < runner.indexOf("phase('Scope')"), 'D027 gate is not before the Scope/Jury fan-out');
+  // absent/unknown status must PASS (conservative — no false refusals on PAs without a Status line).
+  assert(/absent\/unknown status passes/i.test(runner), 'conservative absent-status pass rule not documented');
+});
+
 test('R1 fork guard: <2 options -> honest refusal BEFORE any jury spawn, never fabricate an option', () => {
   assert(runner.includes('optionIds.length >= 2'), 'fork >=2-options guard missing');
   assert(runner.includes('if (!decidable)'), 'decidable code-guard missing');

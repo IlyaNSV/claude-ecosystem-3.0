@@ -22,6 +22,12 @@ deterministically, and a recommendation package is written back into the same PA
 >
 > **PREPARE-ONLY (DEC-DEV-0145, decision в):** the jury recommends, the **owner ratifies**. This never
 > closes the PA, edits a spec, or finalizes the decision. Auto-proceed on confidence is F2/L2, not here.
+>
+> **The consilium is an OPT-IN instrument, not the default (DEC-DEV-0230/0233):** the default
+> adjudication policy is a **single pinned judge + mandatory premise verification + a reverse pass**
+> (`dev/meta-improvement/patterns/adjudication-policy.md`); convene this jury only on the owner's
+> explicit request. The runner enforces the **D027 gate**: an already-ratified/closed PA is refused
+> in code before any jury spawns (1 of 6 M13 runs was burned on a fork ratified 16 days earlier).
 
 ## Process
 

@@ -17,6 +17,7 @@
 | [DA Subagent-Type Contract](da-subagent-type-contract.md) | Authoring/auditing any path that spawns the DA subagent; «Agent type not found» = loud error, no silent fallback | provisional | 2 audit clusters (DEC-DEV-0064) |
 | [Config-Failure-First Triage](config-failure-first-triage.md) | Agent/subagent/hook/process misbehaved — BEFORE blaming the model or patching the prompt blind, run the harness-cause checklist | provisional | 1 (DEC-DEV-0144 / VC-096 — FB-020) |
 | [Context Seam](context-seam.md) | Многосессионная единица работы; ~45%+ окна или симптомы потери контекста; продолжение трека с живым `dev/<track>/SEAM.md` | validated (R10-тест инстанса #3 = PARTIAL: содержательная передача чистая; SSOT — `dev/deferred/CONTEXT_SEAM_PROTOCOL.md`) | 3 (DEC-DEV-0197, 0202, 0207; промоушен — 0208) |
+| [Adjudication Policy](adjudication-policy.md) | Вердикт по ОДНОЙ открытой развилке (fix-forward vs re-derive, опция PA, GO/NO-GO-суждение); любой порыв созвать жюри/консилиум — сначала через эту политику. НЕ для сравнения плеч (это Blind Comparison) и не для механически проверяемого (script > judge) | validated (owner-ратификация 2026-07-30, DEC-DEV-0230; демоушн консилиума) | 3 (M13 · P6 deviation-triage DEC-DEV-0231 · D027-гейт consilium.mjs DEC-DEV-0233) |
 
 ## How to use
 

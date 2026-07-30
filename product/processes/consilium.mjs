@@ -154,6 +154,7 @@ const FORK_SCHEMA = {
     pa_id: { type: 'string' },
     subject: { type: 'string' },                       // what the decision is (1-2 sentences)
     category: { type: 'string' },                      // gap-classifier category (threshold/moscow/screen-decision/*-semantic/...)
+    status: { type: 'string' },                        // the PA's status marker, lifted VERBATIM (input of the D027 gate below); omitted when the block carries none
     has_ui: { type: 'boolean' },                       // the decision touches UI (drives the ux-advisor gate, R3)
     options: {                                         // >=2 mutually-exclusive options the PA enumerates
       type: 'array',
@@ -252,7 +253,7 @@ const fork = await agent(
   `Assemble the decision-fork for consilium prep on pending-action "${PA_ID}"${FEATURE ? ` (feature ${FEATURE})` : ''}. `
   + `This is DECISION-SUPPORT prep for the OWNER, NOT a decision.\n`
   + `ANCHORED ROOT (FB-LR-28): ${ANCHOR_ROOT} — build every path from it.\n`
-  + `1) Resolve the PA. ${PA_CANON}Find the pending-action block whose id is "${PA_ID}". If no such PA exists, return {options:[], decidable:false, note:"PA ${PA_ID} not found in the canonical ledger"}.\n`
+  + `1) Resolve the PA. ${PA_CANON}Find the pending-action block whose id is "${PA_ID}". If no such PA exists, return {options:[], decidable:false, note:"PA ${PA_ID} not found in the canonical ledger"}. Lift the PA's status marker VERBATIM into \`status\` (its \`Status:\` line or an explicit ratified/closed/resolved mark); omit the field when the block carries none.\n`
   + `2) LIFT — do NOT invent — the mutually-exclusive options (a/b/c…) the PA enumerates: each with an id and a short summary. Read the cited artifacts ONLY to understand the options; NEVER add an option the PA does not pose. If the PA states a decision but enumerates FEWER THAN 2 options, set decidable:false + a one-line note naming what is missing — do NOT fabricate a second option.\n`
   + `3) Classify the decision \`category\` from the PA (gap-classifier vocabulary: threshold | moscow | screen-decision | ic-semantic | br-semantic | sc-semantic | broken-ref | fm-status | other) and set \`has_ui\`:true if the decision touches UI (a screen/MK/NM choice, a flow, or the feature's has_ui is true).\n`
   + `4) Collect \`artifact_refs\`: the absolute PATHS (under ${ANCHOR_ROOT}/.product/) of the raw artifacts a juror must read to weigh the options — the FM + the specific SC/BR/IC/NFR/VC/MK the decision hinges on. Paths only — the jurors read the files themselves (FB-LR-31).\n`
@@ -267,6 +268,21 @@ const optionIds = options.map((o) => o && o.id).filter(Boolean)
 const category = (fork && fork.category) || ''
 const decidable = optionIds.length >= 2 && !(fork && fork.decidable === false)
 const categoryEligible = !category || ELIGIBLE_CATEGORIES.includes(category)
+
+// D027 GATE (DEC-DEV-0233, ENFORCEMENT_PLAN 4.3) — "is the question already ratified?" BEFORE any
+// convening. Precedent: 1 of the 6 consilium runs in the M13 corpus re-judged a fork the owner had
+// ratified 16 days earlier (defect D027 — the brief never checked the PA's Status; 3.38M tokens of
+// pure waste). Re-judging a closed question can only burn tokens or contradict the ratified record,
+// so a ratified/closed PA is refused IN CODE, before the Scope/Jury fan-out. The status is lifted
+// verbatim by the Load agent; an absent/unknown status passes (conservative: no false refusals).
+const paStatus = ((fork && fork.status) || '').toLowerCase()
+if (/ratif|closed|resolved|done|принят|ратифицир|закрыт|решен/.test(paStatus)) {
+  log(`PA "${PA_ID}" status "${fork.status}" — already ratified/closed; refusing to convene (D027 gate, DEC-DEV-0233).`)
+  return refusal(
+    `PA ${PA_ID} is already ratified/closed (status: "${fork.status}") — the D027 gate: a jury only convenes on a still-open question; nothing to adjudicate.`,
+    { subject: (fork && fork.subject) || '', category },
+  )
+}
 
 // R1 — the fork guard, IN CODE, BEFORE any jury spawn. <2 options → honest refusal, no fabrication.
 if (!decidable) {

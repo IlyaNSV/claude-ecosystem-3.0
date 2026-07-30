@@ -35,6 +35,12 @@ tmux-вводе; floor `{prod_deploy, destructive, spend_money, provision_real_s
 логируется классом `provision` (сам секрет в ledger НЕ пишется — только факт и источник);
 §0-проба занятости VM перед каждым разрушающим действием (vm-factory-ops).
 
+**Якорь обязателен (DEC-DEV-0232, урок M7 — якорность была 38.5%):** каждая запись с
+2026-07-31 несёт ≥1 машинный якорь на claim о сделанном — commit sha / `PR #N` / release-id /
+run-id / счёт `N/M` / артефакт-ID (NOTE-/PA-/FM-/RL-/DEC-*) / путь транскрипта; осознанное
+отсутствие — явной строкой `evidence: N/A (причина)`. Принуждается чекером
+`dev/global-loop/scripts/ledger-anchor-check.cjs` в цепи `npm run verify`.
+
 ---
 
 ## RUN-2026-07-17-A — автономный прогон кондуктора: первый релиз пилота (dev-контур)

@@ -12,6 +12,8 @@
 > стартует»; живой boot + полный Epic E (deploy) — substrate-gated (нужен Integrator D3-runtime).
 > P2 `decide-architecture-foundation` (DEC-DEV-0129) — консилиум-гейт: жюри ×3 (velocity/
 > fidelity/integrity) → scored recommendation + DRAFT DEC владельцу (рекомендация, не авто-решение).
+> Жюри — **opt-in по явному запросу владельца** (DEC-DEV-0230/0233); дефолт адъюдикации — одиночный
+> судья + верификация посылок + реверс (`dev/meta-improvement/patterns/adjudication-policy.md`).
 
 ## Принцип: оркеструем, не переписываем (DEC-DEV-0076)
 
