@@ -4,6 +4,12 @@ description: "Orchestrator P2 methodology — run an undecided architecture fork
 
 # architecture-consilium — an architecture fork as a jury verdict (P2 / RA-1)
 
+> **Opt-in instrument, not the default (DEC-DEV-0230/0233):** the ecosystem's default
+> adjudication policy is a **single pinned judge + mandatory premise verification + a reverse
+> pass** (`dev/meta-improvement/patterns/adjudication-policy.md`); a jury convenes only on the
+> owner's explicit request, and only after the **D027 gate** — verify the question is not
+> already ratified (a `Status:` read of the PA / decision registers) before any convening.
+
 P2 `decide-architecture-foundation` is **decision SUPPORT**, not a decision. It takes an
 already-posed architecture fork (best: a cross-spec-conflict pending-action that already
 enumerates the options) and compresses it to a decidable shape — *options × lenses × risks
