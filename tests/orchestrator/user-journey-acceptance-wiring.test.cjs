@@ -74,9 +74,9 @@ test('preflight is a DoR gate: Playwright equipped? journeys present? staging 2x
   assert(runIdx !== -1, 'no run-journeys agent');
   assert(preIdx < runIdx && hcIdx < runIdx, 'the DoR probes must run BEFORE the journey run');
   // the deterministic gate reads all three signals
-  assert(/const playwrightPresent\b/.test(SRC) && /const journeysPresent\b/.test(SRC) && /const stagingTwoxx\b/.test(SRC),
+  assert(/const playwrightPresent\b/.test(SRC) && /const journeysPresent\b/.test(SRC) && /const negativePresent\b/.test(SRC) && /const stagingTwoxx\b/.test(SRC),
     'the gate must read playwright_present + journeys_present + the staging 2xx signals');
-  assert(/if \(!playwrightPresent \|\| !journeysPresent \|\| !STAGING_URL \|\| !stagingTwoxx\)/.test(SRC),
+  assert(/if \(!playwrightPresent \|\| !journeysPresent \|\| !negativePresent \|\| !STAGING_URL \|\| !stagingTwoxx\)/.test(SRC),
     'any missing DoR piece must short-circuit to ENV_NOT_READY');
 });
 

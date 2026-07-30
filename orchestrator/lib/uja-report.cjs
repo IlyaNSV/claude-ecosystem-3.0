@@ -33,10 +33,15 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const UJA_REPORT_SCHEMA_VERSION = 1;
+const UJA_REPORT_SCHEMA_VERSION = 2;
 
 // The journey-file convention (DEC-DEV-0225): one *.spec.ts under the journeys dir == one journey.
 const JOURNEY_SPEC_RE = /\.spec\.(?:ts|tsx|js|mjs|cjs)$/;
+// Negative access journeys (DEC-DEV-0230, package 1): generated from the RPM Access Matrix
+// (auth-state × route-class × realm — guest on protected, authed on /login, cross-realm cookie).
+// Their ABSENCE is a DoR gap: an acceptance suite of positive-only journeys is exactly the class
+// that let the pilot's cross-realm hole (#9) ship behind three green UJA runs.
+const NEG_JOURNEY_RE = /^neg-.*\.spec\.(?:ts|tsx|js|mjs|cjs)$/;
 const PLAYWRIGHT_CONFIGS = [
   'playwright.config.ts', 'playwright.config.js', 'playwright.config.mjs', 'playwright.config.cjs',
 ];
@@ -58,6 +63,19 @@ function specPassed(spec) {
     && t.results.every((r) => r && (r.status === 'passed' || r.status === 'skipped')));
 }
 
+/**
+ * Was this spec SKIPPED (every result status 'skipped')? A skip does not fail the verdict, but it
+ * must be SURFACED, never silent: the P8 authoring rule (DEC-DEV-0230) is "journeys cover the FULL
+ * design-state inventory; a designed-but-unbuilt state is an EXPLICIT skip/ESCALATE" — the pilot's
+ * dashboard-library hole (#8) shipped precisely because an unbuilt state was silently absent.
+ */
+function specSkipped(spec) {
+  const tests = (spec && Array.isArray(spec.tests)) ? spec.tests : [];
+  if (!tests.length) return false;
+  return tests.every((t) => Array.isArray(t.results) && t.results.length > 0
+    && t.results.every((r) => r && r.status === 'skipped'));
+}
+
 /** Flatten the Playwright suite tree into { file, title, passed } specs. Recurses describe blocks. */
 function collectSpecs(suites, inheritedFile, out) {
   if (!Array.isArray(suites)) return;
@@ -67,7 +85,7 @@ function collectSpecs(suites, inheritedFile, out) {
     for (const spec of (Array.isArray(s.specs) ? s.specs : [])) {
       if (!spec || typeof spec !== 'object') continue;
       const specFile = (typeof spec.file === 'string' && spec.file) ? spec.file : (file || 'unknown');
-      out.push({ file: specFile, title: String(spec.title == null ? '' : spec.title), passed: specPassed(spec) });
+      out.push({ file: specFile, title: String(spec.title == null ? '' : spec.title), passed: specPassed(spec), skipped: specSkipped(spec) });
     }
     if (Array.isArray(s.suites)) collectSpecs(s.suites, file, out);
   }
@@ -92,7 +110,7 @@ function extractArtifactsDir(report) {
 function parseReport(report) {
   if (!report || typeof report !== 'object' || Array.isArray(report)) {
     return {
-      uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], artifacts_dir: null,
+      uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], specs_skipped: [], artifacts_dir: null,
       reasons: ['no parseable Playwright JSON report — the journey run produced nothing to judge (could-not-judge, NOT a code FAIL): re-run once the report is produced'],
     };
   }
@@ -106,11 +124,14 @@ function parseReport(report) {
   }
   const journeys_total = byFile.size;
   const journeys_failed = [];
+  const specs_skipped = [];
   let journeys_passed = 0;
   for (const [file, list] of byFile) {
     const failing = list.filter((s) => !s.passed).map((s) => s.title);
     if (failing.length) journeys_failed.push({ journey: file, failing });
     else journeys_passed += 1;
+    const skipped = list.filter((s) => s.skipped).map((s) => s.title);
+    if (skipped.length) specs_skipped.push({ journey: file, skipped });
   }
   const artifacts_dir = extractArtifactsDir(report);
   const reasons = [];
@@ -129,7 +150,14 @@ function parseReport(report) {
     uja_result = 'PASS';
     reasons.push(`all ${journeys_total} journey(s) passed`);
   }
-  return { uja_result, journeys_total, journeys_passed, journeys_failed, artifacts_dir, reasons };
+  if (specs_skipped.length) {
+    // Surface, don't fail: a skip is legitimate ONLY as an explicit designed-but-unbuilt disclosure
+    // (DEC-DEV-0230). Silent skips hide exactly the "designed — not built — invisible to acceptance"
+    // class (pilot finding #8), so every skip is named in the verdict for the owner to see.
+    const n = specs_skipped.reduce((acc, s) => acc + s.skipped.length, 0);
+    reasons.push(`${n} spec(s) SKIPPED (${specs_skipped.map((s) => s.journey).join(', ')}) — a skip must be an EXPLICIT designed-but-unbuilt disclosure (ESCALATE), never a silent gap`);
+  }
+  return { uja_result, journeys_total, journeys_passed, journeys_failed, specs_skipped, artifacts_dir, reasons };
 }
 
 /** Read a report file and parse it. A read/JSON error is DATA (ENV_NOT_READY), never a throw. */
@@ -139,14 +167,14 @@ function readReport(file, opts) {
   let raw;
   try { raw = String(readFile(file)); } catch (e) {
     return {
-      uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], artifacts_dir: null,
+      uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], specs_skipped: [], artifacts_dir: null,
       reasons: [`Playwright report not readable at ${file}: ${e.code || e.message} — the journey run left no report (could-not-judge, NOT a FAIL): re-run`],
     };
   }
   let report;
   try { report = JSON.parse(raw); } catch (e) {
     return {
-      uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], artifacts_dir: null,
+      uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], specs_skipped: [], artifacts_dir: null,
       reasons: [`Playwright report at ${file} is not valid JSON (${raw.length} bytes): ${e.message} — could-not-judge, NOT a FAIL`],
     };
   }
@@ -189,6 +217,18 @@ function assessPreflight(opts) {
   }
   const journeys_present = journeys.length > 0;
 
+  // (1b) NEGATIVE access journeys present? (DEC-DEV-0230, hard DoR leg) — the neg-*.spec.ts
+  // convention, generated from the RPM Access Matrix. A positive-only suite is NOT equipped:
+  // three green UJA runs on the pilot never exercised "admin cookie on a user route" and the
+  // cross-realm hole (#9) shipped. Absence ⇒ a DoR reason (the process gates on it).
+  const negative_journeys = journeys.filter((f) => NEG_JOURNEY_RE.test(String(f)));
+  const negative_present = negative_journeys.length > 0;
+  if (journeys_present && !negative_present) {
+    reasons.push(`journeys dir "${journeysDir}" carries no NEGATIVE access journey (neg-*.spec.ts) — the suite is positive-only. `
+      + `DoR: author negative access journeys at ${journeysDir}/neg-*.spec.ts from the RPM Access Matrix rows `
+      + `(guest → protected routes; authenticated → /login, /signup; cross-realm: a realm-A session on realm-B routes, both directions).`);
+  }
+
   // (2) Playwright equipped? — a dep in package.json OR a playwright.config.* on disk.
   let pkg = null;
   try { pkg = JSON.parse(String(readFile(path.join(root, 'package.json')))); } catch (_e) { pkg = null; }
@@ -201,7 +241,7 @@ function assessPreflight(opts) {
       + '(no dep in package.json, no playwright.config.*). DoR: `/integrator:add playwright`.');
   }
 
-  return { playwright_present, journeys_present, journeys, reasons };
+  return { playwright_present, journeys_present, journeys, negative_present, negative_journeys, reasons };
 }
 
 // ---------------------------------------------------------------------------
@@ -227,11 +267,12 @@ function printHelp() {
     'uja-report.cjs — deterministic core of the P8 user-journey-acceptance process (DEC-DEV-0225).',
     '',
     'PREFLIGHT:  node uja-report.cjs preflight [--root <dir>] [--journeys-dir <dir=tests/uja>]',
-    '  → JSON { playwright_present, journeys_present, journeys[], reasons[] }',
-    '    A DoR check: is Playwright installed + are journeys authored at <journeys-dir>/*.spec.ts?',
+    '  → JSON { playwright_present, journeys_present, journeys[], negative_present, negative_journeys[], reasons[] }',
+    '    A DoR check: is Playwright installed + are journeys authored at <journeys-dir>/*.spec.ts',
+    '    + are NEGATIVE access journeys authored at <journeys-dir>/neg-*.spec.ts (from the RPM Access Matrix)?',
     '',
     'PARSE:      node uja-report.cjs parse --report <playwright-json-report>',
-    '  → JSON { uja_result, journeys_total, journeys_passed, journeys_failed[], artifacts_dir, reasons[] }',
+    '  → JSON { uja_result, journeys_total, journeys_passed, journeys_failed[], specs_skipped[], artifacts_dir, reasons[] }',
     '    uja_result  PASS | FAIL | ENV_NOT_READY. One *.spec.ts == one journey; a journey fails if',
     '                ANY of its specs fails. A report with 0 journeys is ENV_NOT_READY (could-not-judge),',
     '                NEVER a PASS — a gate that goes green on zero evidence is a false green.',
@@ -276,8 +317,10 @@ if (require.main === module) {
 module.exports = {
   UJA_REPORT_SCHEMA_VERSION,
   JOURNEY_SPEC_RE,
+  NEG_JOURNEY_RE,
   PLAYWRIGHT_CONFIGS,
   specPassed,
+  specSkipped,
   collectSpecs,
   extractArtifactsDir,
   parseReport,

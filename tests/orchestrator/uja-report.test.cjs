@@ -125,6 +125,17 @@ test('a null / non-object / array report ⇒ ENV_NOT_READY (could-not-judge, nev
   }
 });
 
+test('SKIPPED specs are SURFACED (specs_skipped + a reason), never silent — and do not fail the verdict', () => {
+  const skippedSpec = { title: 'library with data (designed, not built)', ok: true, file: 'dashboard.spec.ts', tests: [{ results: [{ status: 'skipped' }] }] };
+  const rep = { suites: [{ file: 'dashboard.spec.ts', specs: [Object.assign(spec('empty state renders', true), { file: 'dashboard.spec.ts' }), skippedSpec] }] };
+  const v = parseReport(rep);
+  assert.strictEqual(v.uja_result, 'PASS', 'an explicit skip does not fail the verdict');
+  assert.strictEqual(v.specs_skipped.length, 1);
+  assert.strictEqual(v.specs_skipped[0].journey, 'dashboard.spec.ts');
+  assert.deepStrictEqual(v.specs_skipped[0].skipped, ['library with data (designed, not built)']);
+  assert.ok(/SKIPPED/.test(v.reasons.join(' ')), 'every skip must be NAMED in the verdict (the designed-but-unbuilt class must be visible, pilot finding #8)');
+});
+
 // ==== determinism (the whole reason it is a lib) =================================================
 
 test('DETERMINISM: N parses of one report are byte-identical (clock-free reduction)', () => {
@@ -185,13 +196,28 @@ test('preflight: journeys present + Playwright dep ⇒ both present, journeys en
   fs.mkdirSync(path.join(base, 'tests', 'uja'), { recursive: true });
   fs.writeFileSync(path.join(base, 'tests', 'uja', 'login.spec.ts'), '// journey');
   fs.writeFileSync(path.join(base, 'tests', 'uja', 'checkout.spec.ts'), '// journey');
+  fs.writeFileSync(path.join(base, 'tests', 'uja', 'neg-guest-protected.spec.ts'), '// negative access journey');
   fs.writeFileSync(path.join(base, 'tests', 'uja', 'helper.ts'), '// NOT a spec');
   fs.writeFileSync(path.join(base, 'package.json'), JSON.stringify({ devDependencies: { '@playwright/test': '^1.40.0' } }));
   const p = assessPreflight({ root: base, journeysDir: 'tests/uja' });
   assert.strictEqual(p.playwright_present, true);
   assert.strictEqual(p.journeys_present, true);
-  assert.deepStrictEqual(p.journeys, ['checkout.spec.ts', 'login.spec.ts'], 'only *.spec.ts count, sorted; helper.ts excluded');
+  assert.deepStrictEqual(p.journeys, ['checkout.spec.ts', 'login.spec.ts', 'neg-guest-protected.spec.ts'], 'only *.spec.ts count, sorted; helper.ts excluded');
+  assert.strictEqual(p.negative_present, true, 'neg-*.spec.ts is recognized as the negative access leg');
+  assert.deepStrictEqual(p.negative_journeys, ['neg-guest-protected.spec.ts']);
   assert.deepStrictEqual(p.reasons, []);
+});
+
+test('preflight: positive-only suite ⇒ negative_present false + an RPM-Access-Matrix DoR hint (DEC-DEV-0230)', () => {
+  const base = mkTmp();
+  fs.mkdirSync(path.join(base, 'tests', 'uja'), { recursive: true });
+  fs.writeFileSync(path.join(base, 'tests', 'uja', 'login.spec.ts'), '// journey');
+  fs.writeFileSync(path.join(base, 'package.json'), JSON.stringify({ devDependencies: { '@playwright/test': '^1.40.0' } }));
+  const p = assessPreflight({ root: base, journeysDir: 'tests/uja' });
+  assert.strictEqual(p.journeys_present, true);
+  assert.strictEqual(p.negative_present, false, 'a positive-only suite is NOT equipped (the cross-realm-hole class ships behind green positive runs)');
+  assert.ok(p.reasons.some((r) => /neg-\*\.spec\.ts/.test(r) && /Access Matrix/i.test(r)),
+    'the DoR hint must name the neg-*.spec.ts convention and the RPM Access Matrix as the source');
 });
 
 test('preflight: no journeys dir ⇒ journeys_present false + a DoR hint to author journeys', () => {

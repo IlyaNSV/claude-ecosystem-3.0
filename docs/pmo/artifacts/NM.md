@@ -36,7 +36,7 @@ version: 1
 1. **Flow Diagram.** Mermaid-граф переходов между экранами. Screens из Screen Inventory MK; edges с trigger + guard.
 2. **Entry Points.** Как пользователь попадает в flow (по ролям): через sidebar nav, deep link, notification click, etc.
 3. **Screen Transitions.** Таблица: from-screen → to-screen с trigger, guard (ссылки на BR/LC), animation.
-4. **Dead Ends & Error Flows.** 404, unauthorized, session expired, max items reached — как обрабатываются.
+4. **Dead Ends & Error Flows.** 404, unauthorized, session expired, max items reached — как обрабатываются. **Обязательно включает негативные auth/realm-потоки из RPM Access Matrix**: для экранов flow — наблюдаемое поведение для guest и (при ≥2 реалмах) для сессии чужого реалма, ссылкой на ячейку матрицы, не пересказом.
 
 ## Content Rules
 
@@ -44,7 +44,7 @@ version: 1
 - **Каждый transition имеет trigger.** «Переход из A в B» без объяснения — нет.
 - **Guard conditions через LC/BR.** Условные переходы должны ссылаться на LC transitions или BR rules, не inline.
 - **Entry points явные.** Нельзя предполагать «пользователь как-то попадает сюда».
-- **Error flows обязательны.** Хотя бы 404 + unauthorized.
+- **Error flows обязательны.** Минимум: 404 + unauthorized + негативные auth/realm-потоки из RPM Access Matrix (guest на protected-экране; чужой реалм при ≥2 реалмах). **Silent degrade в empty-state при 401 — анти-паттерн, не error flow** (маскирует realm-дыру; прецедент — находка #9 пилота).
 
 ### Mermaid format
 
@@ -202,6 +202,7 @@ flowchart TD
 3. **Inline guards.** «Если все ok → next» без ссылки на BR.
 4. **Dead ends не отмечены.** Пользователь застрял на экране без back link — UX-баг.
 5. **Orphan screens.** MK screen, в который никто не переходит — либо забыли edge, либо лишний экран в MK.
+6. **Silent degrade как «обработка».** Экран рендерит пустое состояние при 401 от API вместо гарда из Access Matrix — дыра замаскирована под норму, а не обработана.
 
 ## Related Skills
 

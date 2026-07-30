@@ -272,6 +272,7 @@ Embedded excerpt из FM, плюс relevant excerpts из SEG, VP, HYP.
 - Список релевантных ролей с описаниями
 - Permission matrix, отфильтрованная до actions фичи
 - Conditional permissions со ссылками на embedded BR
+- **Access Matrix (auth-state × route-class × realm) — целиком, БЕЗ фильтрации по фиче** (когда RPM её несёт, т.е. продукт с has_ui; V-19): дыры доступа живут в стыках между фичами и реалмами, поэтому фильтрация матрицы до одной фичи уничтожила бы ровно ту информацию, ради которой она существует
 
 ### Раздел 5: Scenarios (MUST)
 

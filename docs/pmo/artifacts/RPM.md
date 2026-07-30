@@ -38,6 +38,7 @@ version: 1
 3. **Permission matrix.** Таблица: роль × действие → allowed/denied/conditional (+ ссылка на BR для conditional).
 4. **Role relationships.** Иерархия или наложение (если есть) — например «Admin inherits all Freelancer permissions».
 5. **Derivation trace.** Откуда выведены roles (SEG-*) и actions (SC-*).
+6. **Access Matrix** *(conditional — обязательна, когда у продукта есть UI-слой: ≥1 FM `has_ui: true`; V-19)*. Таблица **auth-state × route-class × realm**: строки — классы маршрутов (по зонам/layout, не каждый URL), колонки — `guest` + каждая auth-роль в каждом реалме; **ячейка — ровно одно наблюдаемое поведение** (`render` / `redirect → <target>` / `403` / `404`; условность — ссылкой на BR). Обязательные классы строк: **forward-guard** (guest → каждый protected-класс), **reverse-guard** (authenticated → `/login`, `/signup`), **realm × realm** (при ≥2 реалмах: сессия реалма А на маршрутах реалма Б — в обе стороны).
 
 Опциональные:
 
@@ -51,6 +52,9 @@ version: 1
 - **Conditional permissions со ссылкой на BR.** «Freelancer может delete_project ЕСЛИ project_owner = user» → `conditional: BR-025`.
 - **Матрица exhaustive.** Каждая пара (роль × action) имеет явное значение: allowed, denied, or conditional.
 - **Не привязываемся к framework.** Никаких «Django User.is_staff» — это зона implementation.
+- **Access Matrix: ячейка без двусмысленности.** «403 или redirect» в одной ячейке — не значение. Одно наблюдаемое поведение на ячейку; выбор между вариантами — решение, а не перечисление.
+- **Access Matrix: UI и API согласованы.** Поведение UI-рендера и API-ответов в каждой ячейке совпадает. **Тихая деградация в empty-state при 401 от API — анти-паттерн**: страница «выглядит нормально», а реалм-дыра замаскирована (live-прецедент: cross-realm находка #9 пилота — admin-сессия на user-маршрутах рендерила authed-вид при мёртвых действиях).
+- **Access Matrix — источник негативных журнеев.** Негативные журнеи приёмки P8 (`tests/uja/neg-*.spec.ts`) генерятся из строк матрицы; их отсутствие preflight P8 считает DoR-gap.
 
 ### Роли: не только пользователи
 
@@ -183,6 +187,25 @@ version: 2
   (privacy from SEG interviews)
 - R-system-scheduler НИКОГДА не применяет revisions автоматически 
   (решение freelancer'а строго обязательно)
+
+## Access Matrix
+
+Реалмы: user (`(app)`-маршруты), admin (`/admin/*`). Auth-состояния: guest, 
+user-session, admin-session.
+
+| Route class            | guest              | user-session       | admin-session      |
+|------------------------|--------------------|--------------------|--------------------|
+| `(app)` protected      | redirect → /login  | render             | redirect → /admin  |
+| `/login`, `/signup`    | render             | redirect → /dashboard | redirect → /admin |
+| `/admin/*` (кроме login)| redirect → /admin/login | 403           | render             |
+| `/admin/login`         | render             | 403                | redirect → /admin  |
+| public (`/`, `/pricing`)| render            | render             | render             |
+
+- forward-guard: строка 1 (guest на protected); reverse-guard: строка 2 
+  (authed на auth-формах); realm × realm: строки 1/3 (admin-session на user-маршрутах 
+  и user-session на admin-маршрутах — оба направления заданы явно).
+- API-поведение совпадает с ячейкой: `(app)` protected при admin-session отвечает 
+  той же семантикой (redirect/403), UI НЕ рендерит authed-вид на чужом реалме.
 ```
 
 **Anti-example:**
@@ -200,6 +223,8 @@ Admin can do everything                             ❌ опасно и не п�
 3. **Conditional без BR.** «Может если owner» — где это правило? Должна быть ссылка BR-XXX.
 4. **Забыть system roles.** Auto-archive, scheduled tasks — actors; их надо в RPM.
 5. **Role ≠ SEG.** Не всегда 1:1. SEG — бизнес-сегмент, Role — роль в системе. Один SEG может иметь две роли (freelancer + project-owner).
+6. **Access Matrix отсутствует или собрана пофично.** О доступе думали глубоко, но в каждой фиче отдельно — а дыры доступа живут в **стыках между фичами и реалмами** (анализ эффективности, M10: единственная проваленная ось спек — 1.86/3 — именно эта; из неё пришли самые дорогие находки владельца). Сводная матрица обязательна при has_ui — V-19.
+7. **Silent degrade вместо гарда.** UI рендерит authed-вид, API отвечает 401, страница выглядит «нормально пустой» — дыра замаскирована под норму. Ячейка матрицы обязана задавать честное поведение (redirect/403), и UI обязан ему следовать.
 
 ## Related Skills
 

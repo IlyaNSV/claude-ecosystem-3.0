@@ -1,6 +1,6 @@
 export const meta = {
   name: 'user-journey-acceptance',
-  description: 'Orchestrator P8 — the user-journey acceptance gate AFTER a staging deploy (E.B DEPLOYED), the last check before `done`. It drives DETERMINISTIC Playwright browser journeys (tests/uja/*.spec.ts) against the live staging URL with a realistic user simulation, and answers the question P7 cannot: "does the FIRST user touch actually work?" (the live precedent: P6/P7/deploy all green, yet the pilot post-login hit a 404 — HTTP-liveness ≠ a working journey). Preflight is a Definition-of-Readiness check (Playwright equipped? journeys authored? staging 2xx?) → an honest ENV_NOT_READY with a DoR hint when not; the run + verdict are read through the deterministic uja-report.cjs lib — no LLM judgment (DEC-DEV-0225).',
+  description: 'Orchestrator P8 — the user-journey acceptance gate AFTER a staging deploy (E.B DEPLOYED), the last check before `done`. It drives DETERMINISTIC Playwright browser journeys (tests/uja/*.spec.ts) against the live staging URL with a realistic user simulation, and answers the question P7 cannot: "does the FIRST user touch actually work?" (the live precedent: P6/P7/deploy all green, yet the pilot post-login hit a 404 — HTTP-liveness ≠ a working journey). Preflight is a Definition-of-Readiness check (Playwright equipped? journeys authored — incl. NEGATIVE access journeys neg-*.spec.ts from the RPM Access Matrix? staging 2xx?) → an honest ENV_NOT_READY with a DoR hint when not; the run + verdict are read through the deterministic uja-report.cjs lib — no LLM judgment (DEC-DEV-0225; neg-leg + full design-state rule — DEC-DEV-0230).',
   phases: [
     { title: 'Preflight' },
     { title: 'Run' },
@@ -83,6 +83,8 @@ const PREFLIGHT_SCHEMA = {
     playwright_present: { type: 'boolean' },                   // @playwright/test dep OR a playwright.config.* on disk
     journeys_present: { type: 'boolean' },                     // ≥1 *.spec.ts under the journeys dir
     journeys: { type: 'array', items: { type: 'string' } },    // the journey spec files discovered
+    negative_present: { type: 'boolean' },                     // ≥1 neg-*.spec.ts (RPM Access Matrix journeys) — DEC-DEV-0230; not `required` so an older lib degrades to a DoR gap, not a schema error
+    negative_journeys: { type: 'array', items: { type: 'string' } },
     reasons: { type: 'array', items: { type: 'string' } },     // DoR hints for each missing piece
   },
 }
@@ -106,6 +108,7 @@ const VERDICT_SCHEMA = {
     journeys_total: { type: 'number' },
     journeys_passed: { type: 'number' },
     journeys_failed: { type: 'array', items: { type: 'object' } },   // [{ journey, failing[] }]
+    specs_skipped: { type: 'array', items: { type: 'object' } },     // [{ journey, skipped[] }] — explicit designed-but-unbuilt disclosures (DEC-DEV-0230), surfaced never silent
     artifacts_dir: { type: ['string', 'null'] },               // step screenshots / trace dir (visual-conformance evidence)
     reasons: { type: 'array', items: { type: 'string' } },
   },
@@ -130,7 +133,7 @@ const recordDoRGap = (reasons) =>
   agent(
     `The user-journey acceptance (P8) is ENV_NOT_READY: the target is not equipped to run browser journeys, OR the staging target is not up. This is a Definition-of-Readiness gap, NOT a journey failure.\n` +
     `Reasons (each already carries its remedy): ${JSON.stringify(reasons)}\n` +
-    `Append a NON-BLOCKING tracking entry to the canonical pending-actions file: "P8 user-journey-acceptance could not run — DoR gap", listing each reason verbatim and its DoR hint (\`/integrator:add playwright\` when Playwright is missing; "author journeys at ${JOURNEYS_DIR}/*.spec.ts from the feature's NM" when journeys are missing; "bring the staging target up and re-run" when the healthcheck was not 2xx). Route the owner (provisioning / journey authoring) — do NOT invent journeys or fake a pass. ` +
+    `Append a NON-BLOCKING tracking entry to the canonical pending-actions file: "P8 user-journey-acceptance could not run — DoR gap", listing each reason verbatim and its DoR hint (\`/integrator:add playwright\` when Playwright is missing; "author journeys at ${JOURNEYS_DIR}/*.spec.ts from the feature's NM covering the FULL design-state inventory — every MK Screen Inventory state incl. with-data, where a designed-but-unbuilt state is an EXPLICIT skip/ESCALATE, never silence" when journeys are missing; "author NEGATIVE access journeys at ${JOURNEYS_DIR}/neg-*.spec.ts from the RPM Access Matrix rows" when the suite is positive-only; "bring the staging target up and re-run" when the healthcheck was not 2xx). Route the owner (provisioning / journey authoring) — do NOT invent journeys or fake a pass. ` +
     PA_CANON +
     `Do NOT commit code. Return a one-line confirmation.`,
     { model: 'sonnet', phase: 'Report', label: 'dor-gap' },   // MDP: non-blocking PA tracking write (standard/mechanical)
@@ -154,8 +157,13 @@ const preflight = await agent(
 const playwrightPresent = !!(preflight && preflight.playwright_present)
 const journeysPresent = !!(preflight && preflight.journeys_present)
 const journeys = (preflight && preflight.journeys) || []
+// DEC-DEV-0230 (hard DoR leg): a positive-only suite is NOT equipped — the pilot's cross-realm hole
+// (#9) shipped behind three green UJA runs that never sent an admin cookie down a user route. An
+// older uja-report.cjs (no negative_present field) degrades to false ⇒ an honest DoR gap.
+const negativePresent = !!(preflight && preflight.negative_present)
+const negativeJourneys = (preflight && preflight.negative_journeys) || []
 const preflightReasons = (preflight && preflight.reasons) || []
-log(`preflight: playwright=${playwrightPresent ? 'present' : 'MISSING'}, journeys=${journeysPresent ? `${journeys.length} present` : 'MISSING'}${preflightReasons.length ? ` — ${preflightReasons.join('; ')}` : ''}`)
+log(`preflight: playwright=${playwrightPresent ? 'present' : 'MISSING'}, journeys=${journeysPresent ? `${journeys.length} present` : 'MISSING'}, negative=${negativePresent ? `${negativeJourneys.length} present` : 'MISSING'}${preflightReasons.length ? ` — ${preflightReasons.join('; ')}` : ''}`)
 
 // (b) live staging healthcheck — the journeys need a live target answering 2xx. READ-ONLY: a down
 // staging is EVIDENCE (ENV_NOT_READY), never something to bring up here (the deploy cell owns that).
@@ -174,10 +182,13 @@ else log(`preflight: staging ${STAGING_URL} → ${stagingTwoxx ? '2xx (live)' : 
 // ---- deterministic DoR gate: any missing piece ⇒ ENV_NOT_READY (never fake a pass) ------------
 const dorReasons = [
   ...preflightReasons,
+  // fallback when the target still carries a pre-neg-leg uja-report.cjs (its reasons[] then has no neg hint)
+  ...(!negativePresent && !preflightReasons.some((r) => /neg-/.test(r))
+    ? [`no NEGATIVE access journey (${JOURNEYS_DIR}/neg-*.spec.ts) — the suite is positive-only. DoR: author negative access journeys from the RPM Access Matrix rows (guest → protected; authenticated → /login, /signup; cross-realm: a realm-A session on realm-B routes, both directions).`] : []),
   ...(!STAGING_URL ? ['no staging URL supplied (args.stagingUrl / baseUrl) — the journeys have no live target to run against. DoR: forward the DEPLOYED staging URL from the deploy result, or set it in env.'] : []),
   ...(STAGING_URL && !stagingTwoxx ? [`staging ${STAGING_URL} did not answer 2xx (${(stagingUp && stagingUp.observed) || 'unreachable'}) — bring the staging target up and re-run (the deploy cell owns provisioning, not this gate).`] : []),
 ]
-if (!playwrightPresent || !journeysPresent || !STAGING_URL || !stagingTwoxx) {
+if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL || !stagingTwoxx) {
   await recordDoRGap(dorReasons)
   log(`P8 ENV_NOT_READY: DoR gap (${dorReasons.length} reason(s)) — recorded, routed to owner. Not running journeys.`)
   phase('Report')
@@ -188,10 +199,11 @@ if (!playwrightPresent || !journeysPresent || !STAGING_URL || !stagingTwoxx) {
     journeys_total: journeys.length,
     journeys_passed: 0,
     journeys_failed: [],
+    specs_skipped: [],
     artifacts_dir: null,
     readiness: 'ENV_NOT_READY',
     readiness_reasons: dorReasons,                           // the DoR hints — the gate must be auditable from run.json alone
-    disclosures: dorReasons.concat(['readiness=ENV_NOT_READY — the journeys could not be RUN/judged; this is NOT a journey FAIL. Remedy: close the DoR gap (equip Playwright / author journeys / bring staging up) and re-run.']),
+    disclosures: dorReasons.concat(['readiness=ENV_NOT_READY — the journeys could not be RUN/judged; this is NOT a journey FAIL. Remedy: close the DoR gap (equip Playwright / author journeys incl. neg-*.spec.ts / bring staging up) and re-run.']),
     run_id: RUN_ID || null,
   }
 }
@@ -217,6 +229,7 @@ const ujaResult = (verdict && verdict.uja_result) || 'ENV_NOT_READY'
 const journeysTotal = (verdict && verdict.journeys_total) || 0
 const journeysPassed = (verdict && verdict.journeys_passed) || 0
 const journeysFailed = (verdict && verdict.journeys_failed) || []
+const specsSkipped = (verdict && verdict.specs_skipped) || []
 const artifactsDir = (verdict && verdict.artifacts_dir) || ARTIFACTS_DIR
 const verdictReasons = (verdict && verdict.reasons) || []
 log(`P8 verdict: ${ujaResult} (${journeysPassed}/${journeysTotal} journeys passed${journeysFailed.length ? `; failed: ${journeysFailed.map((j) => j && j.journey).join(', ')}` : ''})`)
@@ -235,11 +248,13 @@ return {
   journeys_total: journeysTotal,
   journeys_passed: journeysPassed,
   journeys_failed: journeysFailed,                           // [{ journey, failing[] }] — the failing journeys, surfaced (capture-don't-fix)
+  specs_skipped: specsSkipped,                               // [{ journey, skipped[] }] — designed-but-unbuilt states, disclosed EXPLICITLY (DEC-DEV-0230), never silent
   artifacts_dir: artifactsDir,                               // step screenshots / trace — the visual-conformance evidence for owner review vs MK
   readiness: ujaResult === 'ENV_NOT_READY' ? 'ENV_NOT_READY' : 'READY',
   readiness_reasons: ujaResult === 'ENV_NOT_READY' ? verdictReasons : [],
   disclosures: verdictReasons
     .concat(ujaResult === 'FAIL' ? ['a FAILED journey is the first-user-touch breaking (the P7-green-but-404 class) — route to a P5/P6 re-drive (awaiting_journey_fix); this gate does not remediate.'] : [])
+    .concat(specsSkipped.length ? [`${specsSkipped.length} journey file(s) carry SKIPPED specs — each skip must map to a designed-but-unbuilt state and ESCALATE to the owner (the "designed — not built — invisible to acceptance" class, pilot finding #8); a skip with no such mapping is a gap in the suite.`] : [])
     .concat(['visual-conformance: the step screenshots / trace under ' + artifactsDir + ' are the owner-review evidence against the design MK (owner reviews reality↔MK; an automatic MK-diff is v1.1).']),
   run_id: RUN_ID || null,
 }

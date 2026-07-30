@@ -320,10 +320,10 @@
   ],
 
   "validation": {
-    "count": 44,
-    "note": "Канон: 44 автоматизируемых правила (V-*:16, V-H-*:11, V-MK-*:8, V-LE-*:5, V-AM-*:4) + 2 process rule (P-RULE-01/02, неавтоматизируемые — реализованы через DA-хуки, см. секцию гейтов). Source: docs/pmo/validation.md §объём. Tier-based activation (pilot/mvp/full) управляет инлайн-проверками по стадии продукта.",
+    "count": 45,
+    "note": "Канон: 45 автоматизируемых правил (V-*:17, V-H-*:11, V-MK-*:8, V-LE-*:5, V-AM-*:4) + 2 process rule (P-RULE-01/02, неавтоматизируемые — реализованы через DA-хуки, см. секцию гейтов). Source: docs/pmo/validation.md §объём. Tier-based activation (pilot/mvp/full) управляет инлайн-проверками по стадии продукта.",
     "groups": [
-      {"id": "artifact", "name": "Artifact Validation", "range": "V-01..V-18", "count": 16,
+      {"id": "artifact", "name": "Artifact Validation", "range": "V-01..V-19", "count": 17,
         "what": "Целостность артефактов D1-D2: обязательные ссылки, достижимость состояний, orphan/stale, frontmatter-канон.",
         "linkCommand": "product:validate",
         "rules": [
@@ -342,7 +342,8 @@
           {"id": "V-14a", "scope": "BR", "severity": "warning", "what": "Два BR с перекрытием scope и конфликтом параметров."},
           {"id": "V-15", "scope": "много типов", "severity": "warning", "what": "Артефакт без FM-использования → orphan."},
           {"id": "V-16", "scope": "FM, NFR", "severity": "условно", "what": "FM прошла NFR Review (active/declined/pending по tier)."},
-          {"id": "V-18", "scope": "IC/BR/SC", "severity": "warning", "what": "Frontmatter типа соответствует канону."}
+          {"id": "V-18", "scope": "IC/BR/SC", "severity": "warning", "what": "Frontmatter типа соответствует канону."},
+          {"id": "V-19", "scope": "RPM, FM", "severity": "blocking", "what": "При has_ui-фичах RPM несёт Access Matrix (auth-state × route × realm): forward/reverse-гард + realm×realm, ячейка без двусмысленности (DEC-DEV-0230)."}
         ]},
       {"id": "handoff", "name": "Handoff Validation", "range": "V-H-01..V-H-11", "count": 11,
         "what": "Самодостаточность handoff: 13 секций, хеши артефактов, резолв ссылок, валидный YAML.",
