@@ -20,7 +20,7 @@ DEC-DEV-0076).
 | `batch-features-to-cc-sdd` | Route a batch of `status: ready\|partial` handoffs into cc-sdd specs (P3) | D2-T01/T06 |
 | `audit-spec-fidelity` | Audit generated specs against `.product` for fidelity drift, before impl (P4) | D2-T verify |
 | `feature-to-tdd-impl` | Drive one feature's `tasks.md` to implemented code via native TDD loop (P5) | D3 |
-| `validate-feature-impl` | Feature-level GO/NO-GO gate after impl: full suite+build + 3 validators (RA-8/9/10) + verify-finding (P6) | D3 verify |
+| `validate-feature-impl` | Feature-level GO/NO-GO gate after impl: full suite+build + 4 validators (RA-8/9/10/11) + verify-finding + root-cause-first + prepare-only deviation-triage (P6) | D3 verify |
 | `runtime-smoke-readiness` | Runtime-smoke gate after P6 GO: is a boot ATTEMPTABLE (run-target + §6 boot-caps + env)? boot the dev server + diagnose a failed start (P7) | D3+ runtime |
 | `deploy-to-stage` | Staging deploy cell AFTER a P7 PASS: env+manifest preflight → clean build/test → **§3.2 autonomy-policy GATE** → build `releases/<ts>` + flip `current` + restart → healthcheck (E.B) | D3-05/06 |
 | `rollback-release` | Auto-rollback cell (staging): **§3.2 GATE** (`rollback`→staging auto, level-independent) → revert `current` to the prior release + restart → verify (E.C) | D3-05/06 |

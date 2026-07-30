@@ -91,7 +91,7 @@ In-harness Workflow-механизм (Opus 4.8) поддерживает это 
 | **P3** | `batch-features-to-cc-sdd` ⟸ это и есть §8 первый инкремент | D2-T01/T06 | батч готовых handoff'ов | spec-author, cross-spec-reviewer, spec-fixer | ✅ cc-sdd заведён |
 | **P4** | `audit-spec-fidelity` | D2-T verify | перед route-to-impl | fidelity-auditor ×N | ✅ |
 | **P5** | `feature-to-tdd-impl` | D3 | spec готов, depth=до-кода | tdd-implementer, adversarial-reviewer | ⚠ нужен env-стек (Docker/PG/Redis); реализуется нативно (§2-bis) |
-| **P6** | `validate-feature-impl` (GO-gate) | D3 verify | последняя задача `[x]` | 3 валидатора | ✅ |
+| **P6** | `validate-feature-impl` (GO-gate) | D3 verify | последняя задача `[x]` | 4 валидатора (RA-8/9/10/11) | ✅ |
 | **P7** | `runtime-smoke-readiness` | D3+ runtime | «стартует ли dev?» | — (+capability→Integrator) | ⚠ readiness-нога построена (DEC-DEV-0120); живой boot substrate-gated (нужен D3-runtime) |
 | **E.B/E.C** | `deploy-to-stage` / `rollback-release` | D3-05/06 | выкатка/откат staging | — | ✅ построены (DEC-DEV-0198, fabric deploy-брекет: §3.2-гейт → build/flip/healthcheck → auto-rollback); живой деплой VM-gated |
 | **P8** | `user-journey-acceptance` | D3+ acceptance | приёмка user-journey после `DEPLOYED` (перед `done`) | — | ✅ построена (DEC-DEV-0225): детерминированные Playwright-журнеи `tests/uja/*.spec.ts` против staging-URL → PASS/FAIL/ENV_NOT_READY; живой прогон VM-gated |

@@ -316,7 +316,7 @@
       "what": "Имплементация фичи в TDD-цикле; bounded auto-retry transient, эскалация конфликтов (не self-resolve)."},
     {"id": "P6o", "owner": "orchestrator", "name": "validate-feature-impl", "status": "shipped",
       "domain": "D3", "commands": ["orchestrator:run"],
-      "what": "Валидация имплементации против spec/design: 3 валидатора + verify-finding-before-act; GO/NO-GO/MANUAL_VERIFY."}
+      "what": "Валидация имплементации против spec/design: 4 валидатора + verify-finding-before-act; GO/NO-GO/MANUAL_VERIFY."}
   ],
 
   "validation": {
