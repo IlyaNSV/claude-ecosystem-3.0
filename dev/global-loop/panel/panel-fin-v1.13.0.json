@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-07-31T17:42:48.446Z",
+  "label": "fin-v1.13.0",
+  "window": {
+    "from": null,
+    "to": "2026-07-31T17:42:48.446Z"
+  },
+  "sensors": [
+    {
+      "id": "S1_cost_per_resolved_intent",
+      "title": "Цена решённой интенции",
+      "value": 1294892.2,
+      "unit": "tokens/intent",
+      "threshold": {
+        "op": "trend-up-2",
+        "value": null,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": null,
+      "status": "NO-DATA",
+      "provenance": "mixed",
+      "input_freshness": [
+        {
+          "input": "transcripts",
+          "newest": "2026-07-30T18:29:24.640Z",
+          "fresh": true
+        },
+        {
+          "input": "intents_verdicts",
+          "newest": "2026-07-23T20:15",
+          "fresh": true
+        }
+      ],
+      "reason": "история <3 прогонов (1) — тренд не оценивается; значение 1294892.2 tokens/intent записано как точка для будущих сравнений",
+      "detail": {
+        "tokens_total": 49205904,
+        "resolved_n": 38,
+        "history_points": 1,
+        "trend": [
+          {
+            "label": "fin-v1.13.0",
+            "value": 1294892.2
+          }
+        ]
+      }
+    },
+    {
+      "id": "S2_console_overhead",
+      "title": "Оверхед пульта",
+      "value": 2.494,
+      "unit": "ratio",
+      "threshold": {
+        "op": ">",
+        "value": 0.4,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": true,
+      "status": "ALARM",
+      "provenance": "raw-logs",
+      "input_freshness": [
+        {
+          "input": "transcripts_host",
+          "newest": "2026-07-30T18:29:24.640Z",
+          "fresh": true
+        },
+        {
+          "input": "transcripts_executor",
+          "newest": "2026-07-23T17:49:01.879Z",
+          "fresh": true
+        }
+      ],
+      "reason": "значение 2.494 > порога 0.400 (REPORT.md §7.3)",
+      "detail": {
+        "host_tokens": 35123742,
+        "executor_tokens": 14082162,
+        "sessions_host": 79,
+        "sessions_executor": 122
+      }
+    },
+    {
+      "id": "S3_defects_no_gate",
+      "title": "Доля дефектов без гейта",
+      "value": 0.596,
+      "unit": "ratio",
+      "threshold": {
+        "op": ">",
+        "value": 0.4,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": true,
+      "status": "ALARM",
+      "provenance": "curated",
+      "input_freshness": [
+        {
+          "input": "defects",
+          "newest": "2026-07-28",
+          "fresh": true
+        }
+      ],
+      "reason": "значение 0.596 > порога 0.400 (REPORT.md §7.3)",
+      "detail": {
+        "rows_total": 162,
+        "rows_in_window": 161,
+        "rows_undated": 1,
+        "no_gate": 96
+      }
+    },
+    {
+      "id": "S4_defect_escape",
+      "title": "Defect-escape (поймал владелец)",
+      "value": 0.087,
+      "unit": "ratio",
+      "threshold": {
+        "op": ">",
+        "value": 0.2,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": false,
+      "status": "OK",
+      "provenance": "curated",
+      "input_freshness": [
+        {
+          "input": "defects",
+          "newest": "2026-07-28",
+          "fresh": true
+        }
+      ],
+      "reason": null,
+      "detail": {
+        "rows_in_window": 161,
+        "owner": 14,
+        "by_caught_by": {
+          "assistant": 101,
+          "machine": 46,
+          "owner": 14
+        }
+      }
+    },
+    {
+      "id": "S5_signal_coverage_24h",
+      "title": "Покрытие сигналом за 24 ч",
+      "value": 0.445,
+      "unit": "ratio",
+      "threshold": {
+        "op": "<",
+        "value": 0.8,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": true,
+      "status": "ALARM",
+      "provenance": "raw-logs",
+      "input_freshness": [
+        {
+          "input": "pilot_git",
+          "newest": "2026-07-23T22:52:26+03:00",
+          "fresh": true
+        },
+        {
+          "input": "run_ledger:ledger.ndjson",
+          "newest": "2026-07-23T14:44:46Z",
+          "fresh": true
+        },
+        {
+          "input": "run_ledger:run_ledger.ndjson",
+          "newest": "2026-07-23T14:44:46Z",
+          "fresh": true
+        },
+        {
+          "input": "releases",
+          "newest": "2026-07-23T19:32:32Z",
+          "fresh": true
+        }
+      ],
+      "reason": "значение 0.445 < порога 0.800 (REPORT.md §7.3)",
+      "detail": {
+        "commits_in_window": 586,
+        "evaluable": 586,
+        "covered": 261,
+        "not_yet_evaluable": 0,
+        "signals_total": 114
+      }
+    },
+    {
+      "id": "S6_self_churn_14d",
+      "title": "Self-churn (14 дней)",
+      "value": 0.13,
+      "unit": "ratio",
+      "threshold": {
+        "op": ">",
+        "value": 0.1,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": true,
+      "status": "ALARM",
+      "provenance": "raw-logs",
+      "input_freshness": [
+        {
+          "input": "pilot_git",
+          "newest": "2026-07-23T22:52:26+03:00",
+          "fresh": true
+        }
+      ],
+      "reason": "значение 0.130 > порога 0.100 (REPORT.md §7.3)",
+      "detail": {
+        "method": "head-approx (upper bound)",
+        "method_note": "«живо» = живо в HEAD сейчас, не на срезе «коммит + 14 дней»; законно удалённая позже строка тоже попадает в churn — читать динамику, не абсолют",
+        "evaluable": 378,
+        "added_lines": 310547,
+        "alive_lines": 270096
+      }
+    },
+    {
+      "id": "S7_spec_drift_velocity",
+      "title": "Spec-drift velocity",
+      "value": 16,
+      "unit": "days",
+      "threshold": {
+        "op": "<",
+        "value": 14,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": false,
+      "status": "OK",
+      "provenance": "curated",
+      "input_freshness": [
+        {
+          "input": "spec_drift",
+          "newest": "2026-07-23",
+          "fresh": true
+        }
+      ],
+      "reason": null,
+      "detail": {
+        "rows_total": 38,
+        "rows_with_drift": 16
+      }
+    },
+    {
+      "id": "S8_claim_anchor_rate",
+      "title": "Claim-anchor rate",
+      "value": 0.385,
+      "unit": "ratio",
+      "threshold": {
+        "op": "<",
+        "value": 0.6,
+        "source": "REPORT.md §7.3"
+      },
+      "alarm": true,
+      "status": "ALARM",
+      "provenance": "raw-logs",
+      "input_freshness": [
+        {
+          "input": "assist_log",
+          "newest": "2026-07-28",
+          "fresh": true
+        }
+      ],
+      "reason": "значение 0.385 < порога 0.600 (REPORT.md §7.3)",
+      "detail": {
+        "gate": {
+          "gate_since": "2026-07-31",
+          "entries_checked": 0,
+          "violations": 0,
+          "passed": true
+        },
+        "entries_in_window": 99,
+        "claims_total": 283,
+        "claims_anchored": 109,
+        "claims_anchored_wide": 131
+      }
+    }
+  ],
+  "skipped": [],
+  "history_appended": true
+}
