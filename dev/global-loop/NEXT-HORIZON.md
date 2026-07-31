@@ -103,9 +103,9 @@ staging; сценарии по MK/NM; visual-regression (снапшот-срав
 браузер-теста, MCP-браузера, playwright-обвязки; предложить MCP/расширения доступа к данным
 (feedback `propose-data-access-extensions`); только потом проектировать дельту.
 
-**Связь с DoD (meta-feedback #5):** автовизуальный тест — прямой кандидат закрыть
-DoD-visual-gap (зелёный DoD не ловил невизуализацию has_ui-фич). Если механизм строится —
-рассмотреть visual-conformance-ногу в DoD-категории «фича реализована» для has_ui.
+**Связь с DoD (meta-feedback #5):** ✅ ЗАКРЫТО DEC-DEV-0237 — visual-нога P8 (`visual_evidence`) + `impl_sync.visual_review` + правило **V-23** + два машинных предиката в DoD кат.5 (`RL.md`).
+
+**Forward (не потерять при свёртке #5):** закрытая нога проверяет только **наличие** evidence на каждое designed-состояние; сравнения с макетом в ней нет. Авто-diff MK (пиксель/DOM) — **кандидат v1.1**; связка с VM-observability (headed-прогон + video/trace как канал) — шаг 3 выше.
 
 **Конкретизация (2026-07-28, трек наблюдаемости VM — только зафиксировано в концепт, не
 построено):** кандидат-реализация Шага 3 поверх **уже существующего P8 UJA** — тумблер
@@ -140,7 +140,8 @@ owner-финал RL-001 (impl-sync [Y] + ratify released)  ← незакрыт�
   (= D025 = пакет 4.1, bring-forward «владелец явно запросил консилиум») · #3 панель без
   cost-линзы — отложен (= D026 = 4.2, тот же bring-forward) · #4 impl-sync collector
   literal-FM-ID матч — ✅ ЗАЧИНЕН пакетом 6 (slug-матч + object-form result_summary/D094) ·
-  #5 DoD/P6 не гейтит visual-имплементацию has_ui-фич — ОТКРЫТ (кандидат следующей волны).
+  #5 DoD/P6 не гейтит visual-имплементацию has_ui-фич — ✅ ЗАЧИНЕН (DEC-DEV-0237: P8
+  visual-нога + `impl_sync.visual_review` + V-23).
 - **RL-002-долг** (из прогона): FB-013 (real splice/reassembly — теперь = ядро шага 1) ·
   manifest `draft→active` · substrate-graduation-gate формулировка · DA F7 threshold-mismatch
   · HYP-003 measurement-design · BullMQ-транспорт (демоушнут с ioredis-RPUSH).

@@ -221,7 +221,7 @@ For detailed info, browse `.claude/docs/`:
 - `.claude/README.md` — ecosystem overview
 - `.claude/docs/pmo/pmo-map.md` — PMO map (D1-D6 domains)
 - `.claude/docs/pmo/processes.md` — P1-P5 process methodology
-- `.claude/docs/pmo/validation.md` — 48 validation rules + 3 process rules
+- `.claude/docs/pmo/validation.md` — 49 validation rules + 3 process rules
 - `.claude/docs/pmo/artifacts/README.md` — 24 artifact types catalog
 - `.claude/docs/product-module/SPEC.md` — Product Module detailed spec
 - `.claude/docs/product-module/handoff-spec.md` — handoff format

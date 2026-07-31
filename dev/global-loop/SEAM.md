@@ -246,6 +246,7 @@ cost per resolved intent — на ближайшем живом прогоне. 
 ### Очередь ФИНАЛИЗАЦИИ Ф-1..Ф-5 («го» владельца 2026-07-31 вечер; исполнить в ОДНОЙ сессии)
 
 **Ф-1. Пакет 5 — датчики H0/H1 (решение 1: «берём + исключение из рамки»).**
+✅ ПОСТРОЕН И АУДИРОВАН 2026-07-31 (DEC-DEV-0236, ветка `feat/enforcement-pack5-tails` + fc `feat/ledger-tokens`): (а) DEF-CTX-4 закрыт подъёмом WIP `fix/dev-env-delivery` (вердикт read-first: ПОДНЯТЬ; NUL-фикс, манифест освежён, `check:devhooks` в verify; судьба ветки — владельцу, рекомендация удалить после merge); (б) чтец `orchestrator/lib/transcript-usage.cjs` (найдена вторая ловушка счёта: по записи на content-блок, дедуп по `message.id`, ×1.78 корпусно) + панель `sensors-panel.cjs` S1–S8 (S8 воспроизводит M7 109/283=0.385; живые ALARM: S2 2.47 · S3 0.596 · S5 0.445 · S8 0.385); (в) fc-патч tokens@1 addition-only. Аудит: поведение чисто, LOW-фиксы внесены.
 Порядок внутри: **(а) СНАЧАЛА DEF-CTX-4** — install-скрипт доставки dev-хуков по образцу
 `dev/meta-improvement/scripts/install-git-hooks.cjs` (иначе датчики наследуют дыру
 недоставки — класс D067). ⚠ **НЕ строить с нуля:** на origin живёт ветка
@@ -262,6 +263,7 @@ GenAI conventions; расход ТОЛЬКО по `message.usage` (урок ×9.
 (absent == старое поведение), по прецеденту `ledgerStart/ledgerFinish`.
 
 **Ф-2. Хвосты волны (решение 2: «берём в работу + откатывать»).**
+✅ Ф-2а ПОСТРОЕН И АУДИРОВАН 2026-07-31 (DEC-DEV-0237, та же ветка): четырёхзвенный носитель — uja-report v3 `visual` (per-SI evidence против Screen Inventory, skip-манифест с reason) + P8 DoD-нога (INCOMPLETE ⇒ ENV_NOT_READY, FAIL не маскируется) + `impl_sync.visual_review` через approve-gate Step 4a (C/D-вердикт, терминатор shipped для has_ui) + **V-23** (водяной знак 2026-07-31, grandfather 🟡; каталог 48→49). Аудитор нашёл HIGH-дыру шва (visual_evidence не доезжал до run.json) — закрыта TRAIL_KEYS-фиксом, E2E-шов INTACT 5/5. Ф-2б (E2-откат 7 IC) — на VM-заезде Ф-3.
 **(а) meta-feedback #5** — DoD/P6 не гейтит visual-имплементацию has_ui-фич: сначала
 coverage-check AS IS (что уже держат V-MK-*/UJA-скриншоты DoD кат.5/SI-сквозняк handoff
 §10) → дизайн носителя (вероятная точка: P8-нога «скриншот против MK» или DoD кат.5

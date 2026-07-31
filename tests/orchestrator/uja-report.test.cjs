@@ -255,5 +255,396 @@ test('CLI preflight prints JSON + exits 0 (a not-ready target is DATA)', () => {
   assert.strictEqual(j.journeys_present, false);
 });
 
+// ==== visual conformance (DEC-DEV-0237) ==========================================================
+//
+// WHAT THIS LEG PINS: green journeys prove the flow WORKS; they say nothing about whether the
+// DESIGNED screens were built. The gate intersects each has_ui feature's active MK Screen Inventory
+// (`SI-<n>` rows) with the files the run captured under <artifacts>/visual/<MK-id>/. The load-bearing
+// properties, each with its own failure mode:
+//   · zero evidence ≠ green (no visual/ dir at all ⇒ INCOMPLETE, never COMPLETE);
+//   · BLIND ≠ pass (missing FM/MK, empty mockups[], unparseable Screen Inventory ⇒ INCOMPLETE + a
+//     reason — the gate must never answer "conformant" to a question it could not read);
+//   · a skip is a DISCLOSURE, not a mute button (declared + reasoned ⇒ COMPLETE_WITH_SKIPS and named
+//     in reasons; unreasoned ⇒ it does NOT close the hole);
+//   · SI-1 must never be satisfied by SI-10.png (an off-by-nine false green).
+// Fixtures are injected (readFile/readdir/exists), like assessPreflight — no temp FS in the matrix.
+
+const { assessVisualEvidence } = lib;
+const FX = path.resolve(path.sep + 'uja-fx');   // a fake absolute root; nothing is ever written
+
+/** Inject a virtual FS: files = { 'rel/path': content }, dirs = ['rel/path', …] (empty dirs). */
+function vfs(root, files, dirs) {
+  const F = new Map();
+  const D = new Set([root]);
+  const abs = (p) => path.join(root, ...String(p).split('/'));
+  const parents = (a) => {
+    let d = path.dirname(a);
+    for (let i = 0; i < 32 && d && d !== path.dirname(d); i += 1) { D.add(d); if (d === root) break; d = path.dirname(d); }
+  };
+  for (const [p, c] of Object.entries(files || {})) { const a = abs(p); F.set(a, String(c)); parents(a); }
+  for (const p of (dirs || [])) { const a = abs(p); D.add(a); parents(a); }
+  const enoent = (p) => { const e = new Error(`ENOENT: ${p}`); e.code = 'ENOENT'; throw e; };
+  return {
+    root,
+    readFile: (p) => (F.has(p) ? F.get(p) : enoent(p)),
+    readdir: (p) => {
+      if (!D.has(p)) return enoent(p);
+      const out = new Set();
+      for (const f of F.keys()) if (path.dirname(f) === p) out.add(path.basename(f));
+      for (const d of D) if (d !== p && path.dirname(d) === p) out.add(path.basename(d));
+      return [...out].sort();
+    },
+    exists: (p) => F.has(p) || D.has(p),
+    // the virtual FS knows the difference a bare listing cannot express: a name in `dirs` is a
+    // DIRECTORY, however file-shaped it looks (`SI-1.png/`).
+    isFile: (p) => F.has(p),
+  };
+}
+
+const fmDoc = (id, hasUi, mockups) => ['---', `id: ${id}`, 'type: feature-map-entry',
+  `has_ui: ${hasUi}                   # активирует Design Module`,
+  `mockups: [${(mockups || []).join(', ')}]`, 'status: in-progress', '---', '', `# ${id}`, ''].join('\n');
+
+/** An MK with a canonical Screen Inventory table (docs/pmo/artifacts/MK.md §Screen Inventory формат). */
+const mkDoc = (id, feature, sis, status, nl) => {
+  const eol = nl || '\n';
+  return ['---', `id: ${id}`, 'type: mockup-package', `feature: ${feature}`, `status: ${status || 'active'}`, '---', '',
+    '## 1. Screen Inventory', '',
+    '| Screen ID | Title      | Type   | SC step  | Purpose |',
+    '|-----------|------------|--------|----------|---------|',
+    ...(sis || []).map((si, i) => `| ${si}      | Screen ${i + 1}   | screen | SC-001/${i + 1} | purpose |`),
+    ''].join(eol);
+};
+
+test('visual N/A: no has_ui feature in scope ⇒ N/A said EXPLICITLY (an empty scope is not a pass-by-default)', () => {
+  const fs1 = vfs(FX, { '.product/features/FM-001-api.md': fmDoc('FM-001', 'false', []) });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-001'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'N/A');
+  assert.deepStrictEqual(v.mk_scope, []);
+  assert.ok(/has_ui/.test(v.reasons.join(' ')), 'the N/A must SAY why (no has_ui feature), never be silent');
+
+  const v2 = assessVisualEvidence({ root: FX, features: [], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v2.visual_evidence, 'N/A');
+  assert.ok(/no features supplied/i.test(v2.reasons.join(' ')), 'an empty scope must be named as such (the DoD gate reads this)');
+});
+
+test('visual COMPLETE: every designed SI has a file — suffixed slugs and .jpg/.webp count', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2', 'SI-3']),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+    'test-results/visual/MK-003/SI-2-empty-state.jpg': 'x',
+    'test-results/visual/MK-003/SI-3.webp': 'x',
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'COMPLETE');
+  assert.strictEqual(v.mk_scope.length, 1);
+  assert.strictEqual(v.mk_scope[0].mk, 'MK-003');
+  assert.strictEqual(v.mk_scope[0].feature, 'FM-003');
+  assert.strictEqual(v.mk_scope[0].si_total, 3);
+  assert.deepStrictEqual(v.mk_scope[0].si_covered, ['SI-1', 'SI-2', 'SI-3']);
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, []);
+});
+
+test('visual: SI-1 is NOT satisfied by SI-10.png (word-boundary prefix — the off-by-nine false green)', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-10']),
+    'test-results/visual/MK-003/SI-10.png': 'x',
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE');
+  assert.deepStrictEqual(v.mk_scope[0].si_covered, ['SI-10']);
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, ['SI-1'], 'SI-10.png must not count as evidence for SI-1');
+});
+
+test('visual INCOMPLETE: the reason carries the EXACT expected path (a self-healing hint, not a scolding)', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2']),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE');
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, ['SI-2']);
+  assert.strictEqual(v.mk_scope[0].evidence_dir, 'test-results/visual/MK-003');
+  const joined = v.reasons.join(' ');
+  assert.ok(joined.includes('test-results/visual/MK-003/SI-2.png'), `the exact expected path must be in the reason; got: ${joined}`);
+  assert.ok(joined.includes('tests/uja/visual-skips.json'), 'the reason must name the declare-a-skip alternative');
+});
+
+test('visual: NO visual/ dir at all ⇒ INCOMPLETE (zero evidence is not a green), and it is SAID', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2']),
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE', 'a run that captured nothing must never be COMPLETE');
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, ['SI-1', 'SI-2']);
+  assert.ok(/does not exist/.test(v.reasons.join(' ')), 'the absent evidence dir must be named, not inferred from the per-SI list');
+});
+
+test('visual COMPLETE_WITH_SKIPS: a reasoned declared skip closes the hole and is SURFACED', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-4']),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+    'tests/uja/visual-skips.json': JSON.stringify([{ mk: 'MK-003', si: 'SI-4', reason: 'dismiss dialog designed, not built yet (RL-2)' }]),
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'COMPLETE_WITH_SKIPS');
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, []);
+  assert.deepStrictEqual(v.mk_scope[0].si_skipped, [{ si: 'SI-4', reason: 'dismiss dialog designed, not built yet (RL-2)' }]);
+  assert.ok(/SI-4: dismiss dialog designed/.test(v.reasons.join(' ')), 'every skip must be NAMED (surface, don\'t fail — pilot finding #8)');
+});
+
+test('visual: a skip with NO reason does NOT close the hole (silence with extra steps) ⇒ INCOMPLETE + a reason', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-4']),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+    'tests/uja/visual-skips.json': JSON.stringify([{ mk: 'MK-003', si: 'SI-4', reason: '   ' }]),
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE');
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, ['SI-4']);
+  assert.ok(/carries NO reason/.test(v.reasons.join(' ')), 'an unreasoned skip must be called out');
+});
+
+test('visual: a skip for an SI outside the judged scope is SURFACED (a stale skip is not coverage)', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1']),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+    'tests/uja/visual-skips.json': JSON.stringify([{ mk: 'MK-003', si: 'SI-9', reason: 'was dropped in iteration 2' }]),
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'COMPLETE', 'a stale skip does not change the verdict…');
+  assert.ok(/not in the judged visual scope/i.test(v.reasons.join(' ')), '…but it must be surfaced');
+});
+
+test('visual: an MK with no parseable Screen Inventory ⇒ INCOMPLETE + a named reason (blind ≠ pass, blind ≠ silence)', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': ['---', 'id: MK-003', 'status: active', '---', '', '## 1. Screen Inventory', '', 'TODO: draw the table', ''].join('\n'),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE');
+  assert.ok(/no parseable Screen Inventory rows/.test(v.reasons.join(' ')));
+  assert.strictEqual(v.mk_scope[0].si_total, 0, 'the blind MK is still listed in the scope (auditable), with 0 states');
+});
+
+test('visual: CRLF artifacts parse identically (the DEC-DEV-0190 lesson — no trailing \\r in ids/values)', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']).replace(/\n/g, '\r\n'),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2'], 'active', '\r\n'),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+    'test-results/visual/MK-003/SI-2.png': 'x',
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'COMPLETE', 'a CRLF checkout must not turn has_ui/status/SI ids into misses');
+  assert.deepStrictEqual(v.mk_scope[0].si_covered, ['SI-1', 'SI-2']);
+});
+
+test('visual: several MKs per feature — SI numbers are keyed BY MK, never pooled', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003', 'MK-004']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2']),
+    '.product/mockups/MK-004-settings.md': mkDoc('MK-004', 'FM-003', ['SI-1', 'SI-2']),
+    // MK-003 fully captured; MK-004 has only SI-1 — the shared SI numbering must NOT cross-cover
+    'test-results/visual/MK-003/SI-1.png': 'x',
+    'test-results/visual/MK-003/SI-2.png': 'x',
+    'test-results/visual/MK-004/SI-1.png': 'x',
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE');
+  assert.strictEqual(v.mk_scope.length, 2);
+  const byMk = Object.fromEntries(v.mk_scope.map((m) => [m.mk, m]));
+  assert.deepStrictEqual(byMk['MK-003'].si_missing, []);
+  assert.deepStrictEqual(byMk['MK-004'].si_missing, ['SI-2'], 'MK-003/SI-2.png must not cover MK-004/SI-2');
+  assert.ok(v.reasons.join(' ').includes('test-results/visual/MK-004/SI-2.png'));
+});
+
+test('visual: a has_ui feature with an EMPTY mockups[] ⇒ INCOMPLETE + a design-gap reason (judging nothing ≠ conformant)', () => {
+  const fs1 = vfs(FX, { '.product/features/FM-007-ui.md': fmDoc('FM-007', 'true', []) }, ['.product/mockups', 'test-results/visual']);
+  const v = assessVisualEvidence({ root: FX, features: ['FM-007'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE');
+  assert.deepStrictEqual(v.mk_scope, []);
+  assert.ok(/mockups\[\] is EMPTY/.test(v.reasons.join(' ')) && /design gap/i.test(v.reasons.join(' ')),
+    'an empty mockups[] on a has_ui feature is a DESIGN gap the gate must name, not swallow');
+});
+
+test('visual: only an ACTIVE MK is a design contract — a draft is out of scope, and an all-draft feature is INCOMPLETE', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1'], 'draft'),
+  }, ['test-results/visual']);
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE', 'a has_ui feature whose MKs are all non-active leaves the scope unknown');
+  assert.deepStrictEqual(v.mk_scope, []);
+  assert.ok(/status='draft'/.test(v.reasons.join(' ')) && /ACTIVE MK/.test(v.reasons.join(' ')));
+});
+
+test('visual: an unreadable FM / a missing MK file ⇒ INCOMPLETE (could-not-judge, never a silent COMPLETE)', () => {
+  const noFm = vfs(FX, {}, ['.product/features', 'test-results/visual']);
+  const v1 = assessVisualEvidence({ root: FX, features: ['FM-042'], readFile: noFm.readFile, readdir: noFm.readdir, exists: noFm.exists });
+  assert.strictEqual(v1.visual_evidence, 'INCOMPLETE', 'an unresolvable FM must not degrade to N/A — that would read as "no UI here"');
+  assert.ok(/has_ui is UNKNOWN/.test(v1.reasons.join(' ')));
+
+  const noMk = vfs(FX, { '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']) }, ['.product/mockups', 'test-results/visual']);
+  const v2 = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: noMk.readFile, readdir: noMk.readdir, exists: noMk.exists });
+  assert.strictEqual(v2.visual_evidence, 'INCOMPLETE');
+  assert.ok(/no readable MK/.test(v2.reasons.join(' ')));
+});
+
+test('visual: a malformed visual-skips.json is DATA (a reason), never a throw — and it closes nothing', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1']),
+    'tests/uja/visual-skips.json': '{{ not json',
+  }, ['test-results/visual']);
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE');
+  assert.ok(/not valid JSON/.test(v.reasons.join(' ')));
+});
+
+test('visual DETERMINISM: N assessments of one tree are byte-identical', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2']),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+  });
+  const hashes = new Set();
+  for (let i = 0; i < 8; i += 1) {
+    hashes.add(crypto.createHash('sha256').update(JSON.stringify(assessVisualEvidence({
+      root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists,
+    }))).digest('hex'));
+  }
+  assert.strictEqual(hashes.size, 1);
+});
+
+test('CLI visual: reads a real tree, prints JSON + exits 0 (a non-conformant target is DATA)', () => {
+  const base = mkTmp();
+  fs.mkdirSync(path.join(base, '.product', 'features'), { recursive: true });
+  fs.mkdirSync(path.join(base, '.product', 'mockups'), { recursive: true });
+  fs.mkdirSync(path.join(base, 'test-results', 'visual', 'MK-003'), { recursive: true });
+  fs.writeFileSync(path.join(base, '.product', 'features', 'FM-003-inbox.md'), fmDoc('FM-003', 'true', ['MK-003']));
+  fs.writeFileSync(path.join(base, '.product', 'mockups', 'MK-003-inbox.md'), mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2']));
+  fs.writeFileSync(path.join(base, 'test-results', 'visual', 'MK-003', 'SI-1.png'), 'x');
+  const out = execFileSync(process.execPath, [LIB, 'visual', '--root', base, '--features', 'FM-003', '--artifacts-dir', 'test-results'], { encoding: 'utf8' });
+  const j = JSON.parse(out);
+  assert.strictEqual(j.visual_evidence, 'INCOMPLETE');
+  assert.strictEqual(j.uja_report_schema_version, lib.UJA_REPORT_SCHEMA_VERSION);
+  assert.deepStrictEqual(j.mk_scope[0].si_missing, ['SI-2']);
+
+  fs.writeFileSync(path.join(base, 'test-results', 'visual', 'MK-003', 'SI-2-with-data.png'), 'x');
+  const out2 = execFileSync(process.execPath, [LIB, 'visual', '--root', base, '--features', 'FM-003', '--artifacts-dir', 'test-results'], { encoding: 'utf8' });
+  assert.strictEqual(JSON.parse(out2).visual_evidence, 'COMPLETE', 'capturing the missing state flips the gate green');
+});
+
+test('CLI visual without --features is DATA (N/A + a reason), NOT a usage error — the transport must not break', () => {
+  const out = execFileSync(process.execPath, [LIB, 'visual', '--root', mkTmp()], { encoding: 'utf8' });
+  assert.strictEqual(JSON.parse(out).visual_evidence, 'N/A');
+});
+
+// ── the inventory is the SECTION, not the document (a decoy SI row must not inflate it) ─────────
+
+test('SI scope: an `| SI-9 |` row in ANOTHER section is NOT a designed state (no phantom INCOMPLETE)', () => {
+  // A Component State Matrix legitimately cites SI ids. Read document-wide, every such citation
+  // became a designed screen no screenshot could ever cover ⇒ a release blocked by a cross-reference.
+  const mkWithDecoy = [
+    '---', 'id: MK-003', 'type: mockup-package', 'feature: FM-003', 'status: active', '---', '',
+    '## 1. Screen Inventory', '',
+    '| Screen ID | Title | Type | SC step | Purpose |',
+    '|---|---|---|---|---|',
+    '| SI-1 | Inbox | screen | SC-001/1 | list |',
+    '',
+    '## 2. Component State Matrix', '',
+    '| Screen ID | Component | State |',
+    '|---|---|---|',
+    '| SI-9 | Toast | error |',       // ← a citation, not a designed screen of this inventory
+    '',
+  ].join('\n');
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkWithDecoy,
+    'test-results/visual/MK-003/SI-1.png': 'x',
+  });
+  assert.deepStrictEqual(lib.screenInventoryIds(mkWithDecoy), ['SI-1'],
+    'SI-9 lives outside the Screen Inventory section — it is not part of the designed inventory');
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'COMPLETE', 'the decoy row must not manufacture a missing state');
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, []);
+});
+
+test('SI scope: no Screen Inventory HEADING ⇒ no parseable rows ⇒ BLIND (INCOMPLETE + a reason), never a pass', () => {
+  const headless = [
+    '---', 'id: MK-004', 'type: mockup-package', 'feature: FM-004', 'status: active', '---', '',
+    '| SI-1 | Inbox | screen | SC-001/1 | list |', '',
+  ].join('\n');
+  assert.deepStrictEqual(lib.screenInventoryIds(headless), [], 'rows outside any section are not an inventory');
+  const fs1 = vfs(FX, {
+    '.product/features/FM-004-x.md': fmDoc('FM-004', 'true', ['MK-004']),
+    '.product/mockups/MK-004-x.md': headless,
+  }, ['test-results/visual']);
+  const v = assessVisualEvidence({ root: FX, features: ['FM-004'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE', 'blind ≠ pass — the existing behaviour is preserved');
+  assert.ok(/no parseable Screen Inventory rows/.test(v.reasons.join(' ')), 'and it says so');
+});
+
+test('SI scope: a `### Screen Inventory` sub-section ends at the next same-or-higher heading', () => {
+  const nested = [
+    '### Screen Inventory', '',
+    '| SI-1 | A | screen | SC-1/1 | x |',
+    '| SI-2 | B | screen | SC-1/2 | x |', '',
+    '### Interaction Spec', '',
+    '| SI-7 | cited elsewhere | — | — | — |', '',
+  ].join('\n');
+  assert.deepStrictEqual(lib.screenInventoryIds(nested), ['SI-1', 'SI-2'], 'the section stops at the sibling heading');
+});
+
+// ── a directory is not evidence (listSafe/isFile) ────────────────────────────────────────────────
+
+test('evidence: a DIRECTORY named SI-1.png is NOT a screenshot (an empty dir must never close a gap)', () => {
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1']),
+  }, ['test-results/visual/MK-003/SI-1.png']);   // ← a DIRECTORY wearing a screenshot's name
+  const v = assessVisualEvidence({
+    root: FX, features: ['FM-003'],
+    readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists, isFile: fs1.isFile,
+  });
+  assert.strictEqual(v.visual_evidence, 'INCOMPLETE',
+    'a listing entry is a NAME, not a file — `mkdir SI-1.png` built a false green out of an empty directory');
+  assert.deepStrictEqual(v.mk_scope[0].si_missing, ['SI-1']);
+});
+
+test('evidence: the isFile default TRUSTS a listing it cannot stat (the injected-FS contract survives)', () => {
+  // Every other test in this file injects readdir/readFile/exists but NOT isFile: nothing exists on
+  // disk, so a strict default would filter every listing to empty and silently break the matrix.
+  const fs1 = vfs(FX, {
+    '.product/features/FM-003-inbox.md': fmDoc('FM-003', 'true', ['MK-003']),
+    '.product/mockups/MK-003-inbox.md': mkDoc('MK-003', 'FM-003', ['SI-1']),
+    'test-results/visual/MK-003/SI-1.png': 'x',
+  });
+  const v = assessVisualEvidence({ root: FX, features: ['FM-003'], readFile: fs1.readFile, readdir: fs1.readdir, exists: fs1.exists });
+  assert.strictEqual(v.visual_evidence, 'COMPLETE', 'no isFile injected ⇒ the listing is trusted, as before');
+});
+
+test('CLI visual on a REAL tree: a directory named SI-2.png does not cover SI-2 (the default isFile bites)', () => {
+  const base = mkTmp();
+  fs.mkdirSync(path.join(base, '.product', 'features'), { recursive: true });
+  fs.mkdirSync(path.join(base, '.product', 'mockups'), { recursive: true });
+  fs.mkdirSync(path.join(base, 'test-results', 'visual', 'MK-003', 'SI-2.png'), { recursive: true });
+  fs.writeFileSync(path.join(base, '.product', 'features', 'FM-003-inbox.md'), fmDoc('FM-003', 'true', ['MK-003']));
+  fs.writeFileSync(path.join(base, '.product', 'mockups', 'MK-003-inbox.md'), mkDoc('MK-003', 'FM-003', ['SI-1', 'SI-2']));
+  fs.writeFileSync(path.join(base, 'test-results', 'visual', 'MK-003', 'SI-1.png'), 'x');
+  const j = JSON.parse(execFileSync(process.execPath,
+    [LIB, 'visual', '--root', base, '--features', 'FM-003', '--artifacts-dir', 'test-results'], { encoding: 'utf8' }));
+  assert.strictEqual(j.visual_evidence, 'INCOMPLETE');
+  assert.deepStrictEqual(j.mk_scope[0].si_missing, ['SI-2'], 'the decoy directory covered nothing');
+});
+
 console.log(`\n${passed} check(s) passed${process.exitCode ? ' — SOME FAILED' : ''}`);
 if (process.exitCode) process.exit(process.exitCode);

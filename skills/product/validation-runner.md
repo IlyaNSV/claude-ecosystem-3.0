@@ -1,5 +1,5 @@
 ---
-description: On-demand validation runner — executes the artifact (V-01..V-22) + handoff (V-H-01..V-H-11) + lesson (V-LE-01..05) catalog; V-MK-*/V-AM-* — acknowledged skips (см. таблицы). Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4 (V-H-11 added post-review per R5/B1 fix-up).
+description: On-demand validation runner — executes the artifact (V-01..V-23) + handoff (V-H-01..V-H-11) + lesson (V-LE-01..05) catalog; V-MK-*/V-AM-* — acknowledged skips (см. таблицы). Tier-aware (B1 per product.yaml.validation_tier), quiet-mode-aware (B2 — draft artifacts queue findings), supports --rule/--scope/--tier filtering and --deep severity uplift. JSON + markdown report output. Phase 4 hardcode implementation per DEC-DEV-0025 C.4 (V-H-11 added post-review per R5/B1 fix-up).
 ---
 
 # Validation Runner — Phase 4 skill
@@ -45,7 +45,7 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 
 ## Rule catalog (hardcoded)
 
-### V-01..V-22 — Artifact validation
+### V-01..V-23 — Artifact validation
 
 | Rule | Severity | Artifacts | Check method | Description |
 |---|---|---|---|---|
@@ -69,8 +69,9 @@ Per `validation.md §3.1.1` + DEC-DEV-0023 F5:
 | V-20 | 🔴 Blocking | все `.product/**` | Regex по телу: `CI-gated` \| `blocks (PR )?merge` \| `MANDATORY automated` \| `блокирует merge` \| `auto-enforced` \| `MUST PASS for PR`. Совпало → frontmatter `enforcement_mechanism` non-empty (путь CI-конфига / имя гейта / запускаемая команда) ИЛИ в той же строке тела есть слово `planned`. Существование указанного носителя — human/DA | Enforcement-claim honesty (заявленный носитель принуждения существует; DEC-DEV-0234) |
 | V-21 | 🔴 Blocking | MK, NM | IF `status != draft`: `git log -1 --format=%cs -- <file>` ≤ frontmatter `updated`. Новее → violation. Git недоступен / нет истории файла → **skip с note**, не pass | Frontmatter freshness (тело правлено без бампа `updated`; DEC-DEV-0234) |
 | V-22 | 🔴/🟡 | IC, BR | IF `status: active`: `max(updated, created) >= 2026-07-31` → `da_review_ref` non-empty, иначе 🔴. Активен до водяного знака без поля → 🟡 grandfather. `da_review_ref` датирован И git-дата тела новее этой даты → 🟡 «re-DA рекомендуется» | DA-provenance активации (след DA-ревью P-RULE-01/02; DEC-DEV-0234) |
+| V-23 | 🔴/🟡 | FM, MK | IF `has_ui: true` AND `status: shipped`: `impl_sync.synced_at >= 2026-07-31` → `impl_sync.visual_review` c non-empty `reviewed_on` + `verdict ∈ {conforms, deviations-accepted}` + `evidence_ref` (+ non-empty `deviations[]` если `verdict: deviations-accepted`; + non-empty `manual_reason` если `evidence_source: owner-manual`), иначе 🔴. Shipped до знака ИЛИ `impl_sync` отсутствует целиком → 🟡 grandfather. `git log -1 --format=%cs -- <MK из mockups[]>` новее `reviewed_on` → 🟡 «re-review рекомендуется»; git недоступен → **skip с note** на дата-ноге | Visual review has_ui-реализации против MK (терминатор `shipped`; DEC-DEV-0237) |
 
-**V-20/V-21/V-22 — on-demand и approve gate, НЕ inline.** Inline-хук `artifact-validate.js` их не исполняет (см. `validation.md §11`); в общем прогоне раннера они работают полноценно. V-21 при недоступном git — **skip с note**, никогда «✅ pass»: та же семантика, что у V-MK-*/V-AM-* (анти-паттерн 4).
+**V-20/V-21/V-22/V-23 — on-demand и approve gate, НЕ inline.** Inline-хук `artifact-validate.js` их не исполняет (см. `validation.md §11`); в общем прогоне раннера они работают полноценно. V-21 при недоступном git — **skip с note**, никогда «✅ pass»: та же семантика, что у V-MK-*/V-AM-* (анти-паттерн 4); то же — дата-нога V-23 (сравнение с git-датой MK). Approve gate для V-23 — Step 4a команды `/product:impl-sync`: без owner-вердикта `C`/`D` флип в `shipped` не выполняется.
 
 V-13 dropped per `validation.md §0` → process rule P-RULE-01 (см. agents/product/devils-advocate.md adaptive-depth). V-17 перемещён в Integrator namespace (V-I-*, future) per `validation.md §0`.
 
@@ -308,7 +309,7 @@ Actionable next:
 
 ## Related
 
-- Catalog spec: `.claude/docs/pmo/validation.md` (48 rules + 3 process rules)
+- Catalog spec: `.claude/docs/pmo/validation.md` (49 rules + 3 process rules)
 - Sync linter (dev-репо экосистемы, не деплоится): `dev/meta-improvement/scripts/check-validation-sync.cjs` (G19, DEC-DEV-0158)
 - Companion command: `.claude/commands/product/validate.md`
 - Inline hook (Phase 2): `.claude/hooks/product/artifact-validate.js`

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "_comment": "Входы панели 8 датчиков H0/H1 (REPORT.md §7.3). Пути с ~ разворачиваются через USERPROFILE||HOME; относительные — от корня репо. Отсутствующий вход = NO-DATA у зависимых датчиков, панель НЕ падает. ЛЕЙАУТ ПРОВЕРЕН 2026-07-31: host-корень — 81 top-level *.jsonl, executor-корень (VM-CORPUS) — 122 top-level *.jsonl, оба читаются listSessionFiles. ОГОВОРКА: VM-CORPUS — это harvest-СНАПШОТ сессий VM, а не живой каталог; свежесть S1/S2 по слою executor не может опережать последний harvest.",
+  "_comment_run_ledgers": "Оба пути ПРОВЕРЕНЫ на существование 2026-07-31 и держат ОДИН И ТОТ ЖЕ набор из 91 машинного run (одинаковые run_id, диапазон started_at 2026-07-08T11:11:12Z .. 2026-07-23T14:44:46Z; sha256 разный — PILOT-DOCS это harvest-копия оригинала из PILOT-CLONE). Вписаны оба намеренно: если harvest отстанет или клон пересоберут, датчик переживёт потерю любого одного. Дубли снимаются дедупом по ключу ts|what в loadSignals, поэтому signals_total не удваивается.",
+  "transcript_roots": [
+    {"path": "~/.claude/projects/C--Users-pw201-WebstormProjects-claude-ecosystem-3-0", "layer": "host"},
+    {"path": "~/WebstormProjects/vm-harvests/VM-CORPUS/-home-cc-dev-projects-my-first-test", "layer": "executor"}
+  ],
+  "pilot_repo": "~/WebstormProjects/vm-harvests/PILOT-CLONE",
+  "run_ledgers": [
+    "~/WebstormProjects/vm-harvests/PILOT-CLONE/.claude/orchestrator/runs/ledger.ndjson",
+    "~/WebstormProjects/vm-harvests/PILOT-DOCS/run_ledger.ndjson"
+  ],
+  "releases_file": "dev/global-loop/analysis/DATASET/vm_releases.txt",
+  "dataset_dir": "dev/global-loop/analysis/DATASET",
+  "assist_log": "dev/global-loop/ASSIST_LOG.md",
+  "freshness_max_days": {"defects": 14, "intents_verdicts": 14, "spec_drift": 14}
+}

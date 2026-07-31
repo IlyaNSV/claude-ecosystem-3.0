@@ -124,7 +124,8 @@ FM-005 Req 2.1–2.7 (единственная фича с настоящей м
 (`check-counts` + `check-validation-sync` зелёные). Попутный фикс: BOM в
 `skills/product/validation-runner.md` (дефект пакета 1) ломал parse frontmatter и discovery
 скилла — снят. Хвост: meta-feedback #5 (DoD/P6 не гейтит visual-имплементацию has_ui) —
-кандидат следующей волны.
+✅ ЗАЧИНЕН отдельным носителем **DEC-DEV-0237** (P8 visual-нога + `impl_sync.visual_review` +
+V-23 + DoD кат.5 на машинных предикатах); каталог 48 → **49 правил** (Artifact 20→21).
 
 ## Пакет 7 — методологическая гигиена D7 — ✅ ПОСТРОЕН 2026-07-31 (DEC-DEV-0235; то же «го»)
 
@@ -134,18 +135,18 @@ FM-005 Req 2.1–2.7 (единственная фича с настоящей м
 | 7.2 | Паттерн канареечной записи | `patterns/canary-write-probe.md` (provisional, ERR-06/07) + ростер | дисциплина + код preflight'а харнесса | ERR-06 «кандидат в enforcement» → паттерн ✅ |
 | 7.3 | vm-factory-ops (глобальный скилл хоста, ВНЕ репо) | §0 += `docker compose up/down` в клоне · §2 конфигурация 12→**4 vCPU** (верифицировано showvminfo) · §3 п.6 stdin-грабля (`-nostdin`) · §4 манёвр C4 Esc→RESUME→resume полным текстом · §5 рецепт изоляции compose-стенда | дисциплина | ERR-01/02 + C4 → канонизированы |
 
-## Пакет 5 — по отдельному «го» на H0 (состав зафиксирован, не исполнять)
+## Пакет 5 — датчики H0/H1 — ✅ ПОСТРОЕН 2026-07-31 (DEC-DEV-0236; «го» на финализацию, решение владельца п.1: точечное исключение из fc-рамки)
 
-- **Датчики H0/H1:** СНАЧАЛА DEF-CTX-4 (доставка dev-хуков, install-скрипт по
-  образцу install-git-hooks.cjs) — иначе датчики наследуют дыру. Затем 8 датчиков
-  REPORT §7.3 (детерминированные; телеметрия по OTel GenAI conventions; расход только по
-  `message.usage` — урок ×9.4). Поля токенов в ledger `factory.cjs` — addition
-  (⚠ рамка «fc = фундамент» 2026-07-31: addition в `factory.cjs` = стройка пульта —
-  согласовать с владельцем при «го» на H0).
+| # | Дельта | Носитель | Режим | Что сворачивается |
+|---|---|---|---|---|
+| 5.1 | DEF-CTX-4: доставка dev-хуков (СНАЧАЛА — иначе датчики наследуют дыру недоставки) | `dev/meta-improvement/scripts/install-dev-hooks.cjs` + манифест-SSOT `hooks/dev-hooks.manifest.json` (поднят WIP `fix/dev-env-delivery` `c7c665b`, вердикт read-first: ПОДНЯТЬ) + `check:devhooks` в `verify` + npm `prepare` | **hard** (verify + prepare) | DEF-CTX-4 → `[FIXED]` в CONTEXT_AUDIT_D6 |
+| 5.2 | Генерик-чтец расхода из транскриптов (`message.usage`-only, дедуп по `message.id` — вторая ловушка счёта ×1.78 найдена стройкой) | `orchestrator/lib/transcript-usage.cjs` (consumer-zone, OTel GenAI имена triangulated informed-fetch'ем) + тест | **hard** (test:orchestrator) | дыра «генератор M16 A-metrics потерян на VM» → закрыта |
+| 5.3 | Панель 8 датчиков REPORT §7.3 (S1–S8; статусы OK/ALARM/NO-DATA/STALE, провенанс raw-logs/curated/mixed) | `dev/global-loop/scripts/sensors-panel.cjs` + `panel/panel-config.json`; НЕ в verify (непереносимые входы) — `--selftest` 119 assert'ов | детерминированная панель | REPORT §7.3 рекомендация → носитель ✅; строка порядка ниже → ✅ |
+| 5.4 | Поля токенов в ledger `factory.cjs` (**точечное исключение из рамки «fc = фундамент»** — решение владельца 2026-07-31 вечер, НЕ прецедент) | fc `feat/ledger-tokens`: `loadUsageModule()` (env `FACTORY_USAGE_READER`, прецедент `loadLedgerModule`), `tokens@1` 4-м опц. аргументом `ledgerFinish`; absent == старое поведение байт-в-байт | addition-only | CONDUCTOR.md строка «полей токенов нет — addition при H0» → ✅-указатель |
 
 ## Порядок и срезы
 
-0 → 1 → 2 → **срез П-3 ✅** → (3 ∥ 4) ✅ → **срез П-3 ✅** → 6 ✅ → 7 ✅ → **срез П-3 + доклад** → 5 (по «го» на H0).
+0 → 1 → 2 → **срез П-3 ✅** → (3 ∥ 4) ✅ → **срез П-3 ✅** → 6 ✅ → 7 ✅ → **срез П-3 ✅ + доклад** → 5 ✅ (финализация 2026-07-31, DEC-DEV-0236; + хвост meta-feedback #5 → DEC-DEV-0237). План ИСЧЕРПАН — остаток трека: доставка в пилот (Ф-3) по SEAM.md §⚡.
 Пакеты 1–2 — consumer-zone канона: стандартный цикл (ветка → CHANGELOG/DEV_JOURNAL по
 таблице Process triggers → PR; merge — владелец).
 

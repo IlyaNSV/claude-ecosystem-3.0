@@ -171,11 +171,11 @@
 <!-- Data island: generator replaces the single token below with JSON.stringify(DATA). -->
 <script id="proc-data" type="application/json">{
   "_build": {
-    "date": "2026-07-30",
-    "sha": "6d25894",
+    "date": "2026-07-31",
+    "sha": "46a324d",
     "lanes": 5,
     "processes": 26,
-    "steps": 134,
+    "steps": 135,
     "artifacts": 24,
     "hooks": 13,
     "rules": 28
@@ -2955,7 +2955,7 @@
         "domain": "D3",
         "command": "orchestrator:run",
         "doc": "commands/orchestrator/run.md",
-        "what": "Приёмочный гейт между staging-DEPLOYED и done: гонит детерминированные Playwright-журнеи против живого staging-URL и отвечает на вопрос, который P7 не задаёт — «проходит ли пользователь первый поток?» (живой прецедент: P6/P7/деплой зелёные, а пост-логин отдавал 404). DEC-DEV-0225; живой прогон VM-gated."
+        "what": "Приёмочный гейт между staging-DEPLOYED и done: гонит детерминированные Playwright-журнеи против живого staging-URL и отвечает на вопрос, который P7 не задаёт — «проходит ли пользователь первый поток?» (живой прецедент: P6/P7/деплой зелёные, а пост-логин отдавал 404). Вторым вопросом — «а спроектированные экраны вообще построены?»: нога визуальной конформности сверяет Screen Inventory MK с захваченными скриншотами (DEC-DEV-0237). DEC-DEV-0225; живой прогон VM-gated."
       }
     },
     {
@@ -3015,6 +3015,22 @@
         "status": "shipped",
         "process": "P8o",
         "what": "uja-report.cjs parse — детерминированная свёртка JSON-отчёта, БЕЗ суждения LLM. Правило нуля-доказательств: 0 журнеев ≠ PASS → ENV_NOT_READY.",
+        "review": "critical",
+        "hooks": [],
+        "rules": [],
+        "produces": [],
+        "consumes": []
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.visual",
+        "parent": "proc:P8o",
+        "label": "Визуальная конформность: SI × скриншоты",
+        "kind": "gateway",
+        "status": "shipped",
+        "process": "P8o",
+        "what": "uja-report.cjs visual (DEC-DEV-0237): пересечение Screen Inventory активных MK каждой has_ui-фичи релиза с файлами \u003cartifacts>/visual/\u003cMK-id>/SI-n.png и с ЯВНЫМИ записями tests/uja/visual-skips.json. COMPLETE | COMPLETE_WITH_SKIPS | INCOMPLETE | N/A. Зелёные журнеи доказывают, что поток РАБОТАЕТ, но не что спроектированные экраны построены; на DoD-прогоне INCOMPLETE (или недоступная нога) — ЖЁСТКИЙ блок в ENV_NOT_READY, вне DoD — дисклоз. Пиксельного diff'а с макетом нет (это v1.1): ревью владельца reality↔MK фиксируется через /product:impl-sync (V-23).",
         "review": "critical",
         "hooks": [],
         "rules": [],
@@ -5223,8 +5239,17 @@
     },
     {
       "data": {
-        "id": "s:P8o:P8o.verdict__s:P8o:P8o.report__sequence",
+        "id": "s:P8o:P8o.verdict__s:P8o:P8o.visual__sequence",
         "source": "s:P8o:P8o.verdict",
+        "target": "s:P8o:P8o.visual",
+        "type": "sequence",
+        "label": ""
+      }
+    },
+    {
+      "data": {
+        "id": "s:P8o:P8o.visual__s:P8o:P8o.report__sequence",
+        "source": "s:P8o:P8o.visual",
         "target": "s:P8o:P8o.report",
         "type": "sequence",
         "label": ""
@@ -6361,6 +6386,12 @@
         "scope": "IC, BR",
         "severity": "blocking",
         "what": "IC/BR, активированные с 2026-07-31, несут da_review_ref (след DA-ревью); активные раньше — 🟡 grandfather (DEC-DEV-0234).",
+        "group": "Artifact Validation"
+      },
+      "V-23": {
+        "scope": "FM, MK",
+        "severity": "blocking",
+        "what": "has_ui FM, синхронизированные в shipped с 2026-07-31, несут impl_sync.visual_review (owner-сверка UI против MK); shipped раньше — 🟡 grandfather; MK правлен позже ревью — 🟡 re-review (DEC-DEV-0237).",
         "group": "Artifact Validation"
       },
       "V-H-01": {

@@ -300,11 +300,11 @@
      The seed token must appear exactly once in this file. -->
 <script id="map-data" type="application/json">{
   "_build": {
-    "date": "2026-07-30",
-    "sha": "6d25894",
+    "date": "2026-07-31",
+    "sha": "46a324d",
     "commands": 53,
     "artifacts": 24,
-    "rules": 48,
+    "rules": 49,
     "gates": 18,
     "processes": 10
   },
@@ -2419,14 +2419,14 @@
     }
   ],
   "validation": {
-    "count": 48,
-    "note": "Канон: 48 автоматизируемых правил (V-*:20, V-H-*:11, V-MK-*:8, V-LE-*:5, V-AM-*:4) + 3 process rule (P-RULE-01/02 — неавтоматизируемые, реализованы через DA-хуки, см. секцию гейтов; P-RULE-03 — ручная проверка вердикта «не построено», DEC-DEV-0234). Source: docs/pmo/validation.md §объём. Tier-based activation (pilot/mvp/full) управляет инлайн-проверками по стадии продукта.",
+    "count": 49,
+    "note": "Канон: 49 автоматизируемых правил (V-*:21, V-H-*:11, V-MK-*:8, V-LE-*:5, V-AM-*:4) + 3 process rule (P-RULE-01/02 — неавтоматизируемые, реализованы через DA-хуки, см. секцию гейтов; P-RULE-03 — ручная проверка вердикта «не построено», DEC-DEV-0234). Source: docs/pmo/validation.md §объём. Tier-based activation (pilot/mvp/full) управляет инлайн-проверками по стадии продукта.",
     "groups": [
       {
         "id": "artifact",
         "name": "Artifact Validation",
-        "range": "V-01..V-22",
-        "count": 20,
+        "range": "V-01..V-23",
+        "count": 21,
         "what": "Целостность артефактов D1-D2: обязательные ссылки, достижимость состояний, orphan/stale, frontmatter-канон.",
         "linkCommand": "product:validate",
         "rules": [
@@ -2549,6 +2549,12 @@
             "scope": "IC, BR",
             "severity": "blocking",
             "what": "IC/BR, активированные с 2026-07-31, несут da_review_ref (след DA-ревью); активные раньше — 🟡 grandfather (DEC-DEV-0234)."
+          },
+          {
+            "id": "V-23",
+            "scope": "FM, MK",
+            "severity": "blocking",
+            "what": "has_ui FM, синхронизированные в shipped с 2026-07-31, несут impl_sync.visual_review (owner-сверка UI против MK); shipped раньше — 🟡 grandfather; MK правлен позже ревью — 🟡 re-review (DEC-DEV-0237)."
           }
         ]
       },

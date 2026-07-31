@@ -13,6 +13,11 @@
  *    and a missing piece is an honest ENV_NOT_READY with a DoR hint, NEVER a fabricated pass;
  *  - the run agent is capture-don't-fix and carries the real-vendor BUDGET GUARD (minimal fixtures);
  *  - the zero-evidence rule is respected (a 0-journey report is ENV_NOT_READY, never a PASS);
+ *  - the VISUAL-CONFORMANCE leg (DEC-DEV-0237) is wired: the release scope arrives as `features`, the
+ *    per-SI verdict is read through the same deterministic lib, its fields are OPTIONAL in the agent
+ *    schema (an older uja-report.cjs in the target degrades to an honest gap, not a schema error), and
+ *    on a Release-DoD run an INCOMPLETE / unavailable leg HARD-BLOCKS to ENV_NOT_READY — a green
+ *    acceptance over screens nobody ever saw is the "designed — not built" class at the pixel level;
  *  - PA-writes target the canonical worktree-shared file (PA_CANON / FB-LR-23);
  *  - MDP: every stage is a mechanical transport ⇒ sonnet (there is NO LLM-graded step in v0);
  *  - CHARTER v6: `journey_acceptance` sits BETWEEN deploying_staging and done; a P8 PASS → done,
@@ -76,8 +81,14 @@ test('preflight is a DoR gate: Playwright equipped? journeys present? staging 2x
   // the deterministic gate reads all the DoR signals
   assert(/const playwrightPresent\b/.test(SRC) && /const journeysPresent\b/.test(SRC) && /const negativePresent\b/.test(SRC) && /const stagingTwoxx\b/.test(SRC),
     'the gate must read playwright_present + journeys_present + the staging 2xx signals');
-  assert(/if \(!playwrightPresent \|\| !journeysPresent \|\| !negativePresent \|\| !STAGING_URL \|\| !stagingTwoxx \|\| \(DOD_RUN && INPUT_PROFILE !== 'realistic'\)\)/.test(SRC),
-    'any missing DoR piece (incl. a dev-profile DoD run, DEC-DEV-0231) must short-circuit to ENV_NOT_READY');
+  // the short-circuit reads EVERY DoR leg. Pinned leg-by-leg (not as one frozen line) so a NEW leg
+  // extends the gate instead of silently replacing it — the 0237 visual-scope leg was added this way.
+  const gate = SRC.split('\n').find((l) => /^if \(!playwrightPresent/.test(l)) || '';
+  assert(gate, 'the deterministic DoR short-circuit (if (!playwrightPresent …)) is gone');
+  for (const leg of ['!playwrightPresent', '!journeysPresent', '!negativePresent', '!STAGING_URL', '!stagingTwoxx',
+    "(DOD_RUN && INPUT_PROFILE !== 'realistic')", '(DOD_RUN && !FEATURES.length)']) {
+    assert(gate.includes(leg), `the DoR gate drops a leg: ${leg} — any missing piece (incl. a dev-profile DoD run, DEC-DEV-0231, and a scope-less DoD run, DEC-DEV-0237) must short-circuit to ENV_NOT_READY`);
+  }
 });
 
 test('realistic-input DoD leg (DEC-DEV-0231 2.5): a DoD run on dev fixtures is an honest DoR gap, and the profile is auditable', () => {
@@ -104,6 +115,89 @@ test('forwarded implementer deviations are DISCLOSED in the P8 verdict (DEC-DEV-
   }
   assert(/PASS-with-caveats/.test(SRC), 'a PASS over a declared deviation must be disclosed as PASS-with-caveats');
   assert(/RL DoD п\.5/.test(SRC), 'the disclosure does not route deviations to owner ratification (RL DoD п.5)');
+});
+
+// ---- the VISUAL-CONFORMANCE leg (DEC-DEV-0237) --------------------------------------------------
+
+test('visual leg: the release scope arrives as args.features (a DoD run must know WHICH features are has_ui)', () => {
+  assert(/const FEATURES\b/.test(SRC) && /A\.features/.test(SRC),
+    'P8 does not accept the release scope (args.features) — visual conformance is judged per has_ui feature');
+  assert(/DEC-DEV-0237/.test(SRC), 'DEC-DEV-0237 not referenced');
+  // the visual verdict is read through the SAME deterministic lib, relayed — never eyeballed
+  assert(/node \$\{UJA_LIB\} visual --root/.test(SRC), 'the visual verdict is not read through the deterministic lib');
+  assert(/--features \$\{FEATURES\.join\(','\)\}/.test(SRC), 'the visual lib call does not forward the release scope');
+  // …and the JOURNEYS dir: the lib reads `<journeys-dir>/visual-skips.json`, and the prompts tell
+  // the agent to declare skips at `${JOURNEYS_DIR}/visual-skips.json`. Without the flag the lib fell
+  // back to its default `tests/uja`, so on any project with a non-default journeys dir every DECLARED
+  // skip was invisible to the gate — the file the owner was told to write was never the file read.
+  assert(/visual --root[^`]*--journeys-dir \$\{JOURNEYS_DIR\}/.test(SRC),
+    'the visual lib call does not forward --journeys-dir — declared skips would be read from the wrong path');
+});
+
+test('visual leg: on a DoD run an INCOMPLETE (or an unavailable leg) HARD-BLOCKS to ENV_NOT_READY, never a silent PASS', () => {
+  assert(/const visualBlocks = DOD_RUN && \(visualEvidence === 'INCOMPLETE' \|\| visualEvidence === null\)/.test(SRC),
+    'the hard block must fire on a DoD run when the visual evidence is INCOMPLETE or the leg could not answer (null)');
+  assert(/const finalResult = \(visualBlocks && ujaResult !== 'FAIL'\) \? 'ENV_NOT_READY' : ujaResult/.test(SRC),
+    'a blocked visual leg must degrade the verdict to ENV_NOT_READY (could-not-judge ⇒ re-run) — but must NOT mask a real FAIL, '
+    + 'which the charter routes to awaiting_journey_fix (masking it would send the owner to "bring the env up" while the app is broken)');
+  assert(/uja_result: finalResult/.test(SRC), 'the returned uja_result must be the blocked-aware finalResult');
+  // and the block is still visible on a FAIL run: readiness answers a DIFFERENT question than uja_result
+  assert(/readiness: \(finalResult === 'ENV_NOT_READY' \|\| visualBlocks\)/.test(SRC),
+    'a visual block must show in readiness even when a FAIL keeps the routing verdict');
+  assert(/visualBlocks[\s\S]{0,120}recordDoRGap\(visualBlockReasons\)/.test(SRC),
+    'a visual hard block must record the DoR gap (routed to the owner), not just flip a field');
+  // null (a pre-0237 uja-report.cjs in the target) is could-not-judge, and says so with the remedy
+  assert(/ecosystem:update/.test(SRC), 'the null-leg reason must name the remedy (/ecosystem:update in the target)');
+});
+
+test('visual leg: both return arms carry visual_evidence (+ the per-MK matrix), auditable from run.json alone', () => {
+  const returns = (SRC.match(/return \{[\s\S]*?\n\}/g) || []).filter((r) => /uja_result/.test(r));
+  assert(returns.length >= 2, `expected the ENV_NOT_READY early return + the final return; found ${returns.length}`);
+  for (const r of returns) {
+    assert(/visual_evidence\s*:/.test(r), 'a return arm drops visual_evidence — the DoD gate cannot be audited from run.json');
+    assert(/(^|[\s{,])visual\s*:/.test(r), 'a return arm drops the visual{} matrix');
+    assert(/features\s*:/.test(r), 'a return arm drops the judged release scope (features)');
+  }
+  // "auditable from run.json alone" is a claim about the WHOLE seam, and the arms are only its first
+  // half. It was FALSE while the ledger's summarizeResult projected visual_evidence away: the process
+  // returned the field, run.json never carried it, and `/product:impl-sync` read `visual: none` on
+  // every judged feature. A return arm that nothing transports is not an audit trail — so pin the
+  // carrier here too, in the test that makes the claim (DEC-DEV-0237).
+  const TRAIL_KEYS = require(path.join(__dirname, '..', '..', 'orchestrator', 'lib', 'run-ledger.cjs')).TRAIL_KEYS;
+  for (const k of ['visual_evidence', 'artifacts_dir']) {
+    assert(TRAIL_KEYS.includes(k),
+      `run-ledger drops ${k} from the summary — the arm carries it, run.json does not, and the claim above is a lie`);
+  }
+});
+
+test('visual leg: the new schema fields are OPTIONAL (an older uja-report.cjs degrades to a gap, not a schema error)', () => {
+  const seg = SRC.slice(SRC.indexOf('const VERDICT_SCHEMA'), SRC.indexOf('const PA_CANON'));
+  assert(/visual_evidence:/.test(seg) && /visual_mk_scope:/.test(seg) && /visual_reasons:/.test(seg),
+    'the verdict schema does not declare the visual fields');
+  const required = (seg.match(/required:\s*\[([^\]]*)\]/) || [])[1] || '';
+  for (const f of ['visual_evidence', 'visual_mk_scope', 'visual_reasons']) {
+    assert(!required.includes(f), `${f} must NOT be required (precedent negative_present): a pre-0237 lib in the target must degrade to an honest gap, not a schema failure`);
+  }
+});
+
+test('visual leg: the authoring rule is carried in the prompts (per-SI path + the declared-skip file), never silence', () => {
+  for (const needle of ['visual/<MK-id>/SI-', 'visual-skips.json']) {
+    assert(SRC.includes(needle), `the authoring rule does not name ${needle}`);
+  }
+  const runSeg = SRC.slice(SRC.indexOf('const verdict = await agent'), SRC.indexOf("label: 'run-journeys'"));
+  assert(/visual\/<MK-id>\/SI-/.test(runSeg) && /visual-skips\.json/.test(runSeg),
+    'the RUN prompt must carry the authoring rule (capture every SI state, or DECLARE it unbuilt with a reason)');
+  const gapSeg = SRC.slice(SRC.indexOf('const recordDoRGap'), SRC.indexOf('// ====='));
+  assert(/visual\/<MK-id>\/SI-/.test(gapSeg) && /visual-skips\.json/.test(gapSeg),
+    'the DoR-gap note must carry the same authoring rule — a hint that names no path is not a hint');
+  assert(/a skip without a reason does NOT count/.test(SRC), 'an unreasoned skip must be declared not to count');
+});
+
+test('visual leg: the disclosure line routes the owner reality↔MK review to /product:impl-sync (V-23), MK-diff still v1.1', () => {
+  assert(/visual-conformance: per-SI evidence under/.test(SRC), 'the visual-conformance disclosure line drifted');
+  assert(/\/product:impl-sync/.test(SRC) && /impl_sync\.visual_review/.test(SRC) && /V-23/.test(SRC),
+    'the disclosure must say the owner review is RECORDED via /product:impl-sync (impl_sync.visual_review, V-23) — not left as an unrecorded eyeball');
+  assert(/an automatic MK-diff is v1\.1/.test(SRC), 'the disclosure must still scope out the automatic MK-diff (v1.1)');
 });
 
 test('an ENV_NOT_READY DoR gap is DISCLOSED with hints (integrator:add playwright / author journeys / staging up), never a fake pass', () => {

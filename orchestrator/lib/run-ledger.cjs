@@ -234,6 +234,12 @@ const TRAIL_KEYS = [
   'contract_status',    // the DEC-DEV-0201 trust axis (draft | active)
   'contract_evidence',  // …and the live-verify a DEPLOYED run earns for a draft CNT
   'disclosures',        // the human-readable why (every failure arm concats its diagnosis here)
+  // DEC-DEV-0237 — the P8 VISUAL leg. Same defect, same lib, third time: user-journey-acceptance
+  // returns `visual_evidence` + `artifacts_dir` from BOTH arms, and the summary projected them
+  // away, so `/product:impl-sync`'s collector (which reads run.json and nothing else) saw every
+  // has_ui feature as `visual: none`. A gate whose evidence never reaches the record is not a gate.
+  'visual_evidence',    // COMPLETE | COMPLETE_WITH_SKIPS | INCOMPLETE | N/A — the visual verdict
+  'artifacts_dir',      // …and WHERE the per-screen evidence sits (the owner's review pairs)
 ];
 
 function decisionTrail(r) {

@@ -160,6 +160,11 @@ flipped a release that then failed its healthcheck):
    MUST use minimal fixtures (a throwaway/seed account, smallest input). **Substrate-gated:** the live
    `npx playwright test` runs only against a real staging deploy; `env_tier` is `staging`, **prod is out
    of scope for v0**.
+5. **Visual conformance (DEC-DEV-0237):** the journeys must CAPTURE every designed screen state — one
+   file per MK Screen Inventory row at `<artifactsDir>/visual/<MK-id>/SI-<n>.png` — and every
+   designed-but-unbuilt state must be an EXPLICIT reasoned entry in `tests/uja/visual-skips.json`.
+   Pass the release scope as `features` (which FM-ids this acceptance covers): without it a `dodRun`
+   cannot tell "no UI in this release" from "nobody told me", so it reports `ENV_NOT_READY`.
 
 ## Launch
 
@@ -355,6 +360,7 @@ Workflow({
   scriptPath: '.claude/orchestrator/processes/user-journey-acceptance.mjs',
   args: {
     feature: "<.product/features key, e.g. FM-006>",   // optional lens: which feature this acceptance covers
+    features: [],                               // DEC-DEV-0237: the RELEASE SCOPE (FM-ids) the visual-conformance leg judges — defaults to [feature]. A dodRun without it is an honest ENV_NOT_READY (it cannot know which features are has_ui)
     stagingUrl: "<the DEPLOYED staging URL>",   // from the deploy result (or env) — the live target journeys run against
     root: '.',                                  // the target project checkout (package.json + tests/uja live here)
     journeysDir: 'tests/uja',                   // convention: tests/uja/*.spec.ts — one spec file == one journey
@@ -377,6 +383,21 @@ Workflow({
 > `dodRun` on `inputProfile: 'realistic'` (DEC-DEV-0231): the Release-DoD confirmation must exercise the
 > realistic load (видео 30 мин – 2 ч) in a SINGLE pass per journey — RL DoD категория 3 reads
 > `input_profile` from the P8 `run.json`.
+>
+> ⚠ **Visual conformance (DEC-DEV-0237).** Green journeys prove the flow WORKS; they do not prove the
+> designed SCREENS were built (the pilot's "designed — not built — invisible to acceptance" class
+> survived three green UJA runs). A second deterministic leg — `uja-report.cjs visual` — intersects the
+> Screen Inventory of every **active** MK of every `has_ui` feature in `features` with the files under
+> `<artifactsDir>/visual/<MK-id>/SI-<n>.png` (suffixes and `.jpg/.jpeg/.webp` count) and with the
+> EXPLICIT designed-but-unbuilt declarations in `tests/uja/visual-skips.json` (`[{ mk, si, reason }]` —
+> a skip with no reason does not count). Verdict `visual_evidence` ∈ `COMPLETE` |
+> `COMPLETE_WITH_SKIPS` | `INCOMPLETE` | `N/A`; blind (missing FM/MK, empty `mockups[]`, unparseable
+> Screen Inventory) is `INCOMPLETE`, never a pass. **On a `dodRun` an `INCOMPLETE` — or an unavailable
+> leg (`visual_evidence: null`, a pre-0237 `uja-report.cjs` in the target) — HARD-BLOCKS the verdict to
+> `ENV_NOT_READY`** and records the gap for the owner (a real journey `FAIL` is not masked — it is the
+> sharper signal and already blocks `done`); off a DoD run it is a disclosure. No pixel diff
+> against the mockup here (auto MK-diff is v1.1): the owner's reality↔MK review is RECORDED one layer
+> up, via `/product:impl-sync` (`impl_sync.visual_review`, V-23).
 
 ### Run ledger (dispatcher wiring — VC-087 / VC-134)
 
@@ -736,8 +757,15 @@ P7's readiness probe is cheap and re-assesses from zero. This closes the OD7
   **deterministic** byte-reduction over the Playwright JSON report (`uja-report.cjs`), never an LLM
   reading — and **the zero-evidence rule** makes a 0-journey report `ENV_NOT_READY`, never a PASS (a
   green gate over nothing exercised is the "false DEPLOYED" class). `journeys_failed[]` names the broken
-  journeys; `artifacts_dir` holds the step screenshots / trace (the visual-conformance evidence the
-  owner reviews against the design MK — an automatic MK-diff is v1.1). The staging cell is **auto** at
+  journeys; `artifacts_dir` holds the step screenshots / trace. **`visual_evidence` (DEC-DEV-0237)** is
+  the second verdict on that evidence — `COMPLETE` / `COMPLETE_WITH_SKIPS` / `INCOMPLETE` / `N/A` over
+  "every designed `SI-<n>` of every active MK of every `has_ui` feature in `features` has a captured
+  file under `<artifacts_dir>/visual/<MK-id>/`, or an EXPLICIT reasoned skip in
+  `tests/uja/visual-skips.json`"; `visual.mk_scope[]` carries the per-MK matrix (covered / missing /
+  skipped). On a `dod_run` an `INCOMPLETE` or a `null` (leg unavailable) degrades `uja_result` to
+  `ENV_NOT_READY` — a release must not ship over screens nobody ever saw; elsewhere it is disclosed.
+  The owner's reality↔MK review is RECORDED via `/product:impl-sync` (`impl_sync.visual_review`, V-23);
+  an automatic MK-diff is v1.1. The staging cell is **auto** at
   the default level (read-mostly, reversible), but journeys hit the **real** deployed app, so the
   budget guard is a DoR contract: **minimal fixtures only** (real jobs = real-vendor spend). Live run
   is VM-gated (needs a DEPLOYED staging target + authored journeys); prod journeys are out of scope for v0.
