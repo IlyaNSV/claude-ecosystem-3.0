@@ -100,7 +100,21 @@
 
 ---
 
-### DEF-CTX-4 — `[OPEN]` dev-хуки (SessionStart / PostToolUse) не доставляются: регистрация живёт в gitignored-файле
+### DEF-CTX-4 — `[FIXED]` dev-хуки (SessionStart / PostToolUse) не доставляются: регистрация живёт в gitignored-файле
+
+> **FIXED 2026-07-31 (пакет 5 волны носителей):** поднят WIP-установщик с ветки
+> `fix/dev-env-delivery` (`c7c665b`, остановлен владельцем 2026-07-13) — вердикт read-first
+> осмотра: ПОДНЯТЬ (архитектура манифест-SSOT + двунаправленный crossCheck + prune-then-re-emit
+> совпадает с конвенциями репо; переписывание дало бы то же самое дороже). Дельты при подъёме:
+> литеральные NUL-байты → эскейп `\u0000` (git считал файл бинарным); манифест освежён под
+> текущий ростер (−`phase-closure-reminder.js` [удалён из репо], +`host-onboard-session-start`
+> +`seam-reinject-compact` (matcher compact) +`seam-freshness-warn` (Stop)); wiring: npm `prepare`
+> += `install-dev-hooks.cjs --best-effort`, `check:devhooks` в цепи `npm run verify`.
+> Установщик прогнан на живом `settings.local.json` — идемпотентный no-op (8 хуков уже
+> зарегистрированы, файл не тронут). Открытый вопрос из наброска решён манифестом:
+> `session-audit.js` — `register:false` + `why` (repo-only запись — осознанная, аудируемая).
+> Доставка на VM подтверждается Ф-3-заездом (`/ecosystem:update` → `npm install` → prepare).
+> «НЕ сделано» из WIP (память host→VM) — это DEF-CTX-6, остаётся `[OPEN]`.
 
 **Что наблюдается.** Все dev-хуки экосистемы (`dev/meta-improvement/hooks/*.js` — `rails-session-start.js`, `d7-hygiene-reminder.js`, `context-map-session-start.js`, три PostToolUse-напоминалки) зарегистрированы **только** в `.claude/settings.local.json`, который **gitignored** (`.gitignore` → `/.claude/*`). ⇒ В свежем клоне репо, на VM и в любом worktree этих хуков **нет вообще**. Контраст: git-хуки (`process-gate`, `pre-commit`) имеют установщик — `install-git-hooks.cjs`, запускаемый автоматически через npm `prepare` (DEC-DEV-0157).
 
