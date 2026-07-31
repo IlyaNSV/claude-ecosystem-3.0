@@ -66,6 +66,20 @@ impl_sync:                                 # optional; present only after a sync
   run_id: "<latest GO run id | null>"      # orchestrator run that produced GO; null if shipped via fabric+external
   evidence: [runs, fabric, external]       # which evidence sources actually fired
   coverage_missing: 0                      # advisory handoff→spec coverage gap; omit when coverage was null
+  # Owner's visual review of the implementation against its MK (DEC-DEV-0237). OPTIONAL BY
+  # SCHEMA, OBLIGATORY BY RULE: V-23 requires it on every has_ui FM whose impl_sync.synced_at
+  # is on/after the 2026-07-31 watermark. Same soft-migration shape as the block itself —
+  # features shipped before the watermark stay 🟡 grandfather, never retro-fabricated.
+  # Canonical sub-block name is `visual_review` ONLY — never visual_sync / ui_review /
+  # mk_review / design_review / visual_verification / impl_review.
+  visual_review:                           # required when has_ui: true (V-23; watermark 2026-07-31)
+    reviewed_on: YYYY-MM-DD                # when the owner actually looked
+    mks: [MK-003]                          # which MK the implementation was compared against
+    verdict: conforms | deviations-accepted
+    deviations: ["..."]                    # required NON-EMPTY when verdict: deviations-accepted
+    evidence_source: uja-run | owner-manual   # P8 run, or an owner-assembled visual trace
+    evidence_ref: "<run_id>"               # uja-run: run_id of the P8 run; owner-manual: path / URL of the evidence
+    manual_reason: "string"                # required when evidence_source: owner-manual
 
 confidence: high | medium | low                  # C2 modification — обязательно
 confidence_notes: "string"                       # required если confidence != high
@@ -182,6 +196,16 @@ planned ──(start D2 enrichment)──▶ in-progress ──(handoff & implem
 > переводит `in-progress → shipped` (или прыжок `planned → shipped` с пометкой), проставляя опциональный блок
 > `impl_sync`. Product — единственный писатель `.product/` (Integrator SPEC §8.3); Orchestrator/fabric оставляют
 > лишь note-prescription `project_fm_shipped_hint`, но статус не пишут.
+>
+> **Для `has_ui: true` — сверка UI против MK терминирует переход** (DEC-DEV-0237, meta-feedback #5):
+> без записанного `impl_sync.visual_review` (вердикт `conforms` / `deviations-accepted`) команда **не
+> флипает** фичу в `shipped` — правило **V-23** (водяной знак 2026-07-31). Машинный след даёт P8
+> `user-journey-acceptance` (`visual_evidence` + `artifacts_dir` → `evidence_source: uja-run`,
+> `evidence_ref` = run_id). `evidence_source: owner-manual` — **эскейп для has_ui-фич, шипающихся вне
+> оркестраторного контура**: след всё равно машинный (путь/URL к скриншотам или трейсу), но обязателен
+> `manual_reason` — почему сверка прошла мимо P8. Писатель блока по-прежнему **один** — команда
+> `/product:impl-sync`; FM-создающие скиллы `impl_sync` не штампуют, поэтому B1-зеркала шаблона в них
+> не заводятся.
 
 ## Examples
 

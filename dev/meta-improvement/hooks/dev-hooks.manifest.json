@@ -1,0 +1,88 @@
+{
+  "_doc": "dev-hooks.manifest.json — SSOT for the ecosystem repo's OWN dev hooks (DEF-CTX-4).",
+  "_why": [
+    "These hooks are registered in <repo>/.claude/settings.local.json, which is GITIGNORED.",
+    "Before this manifest existed the registration lived on exactly one machine (the owner's",
+    "host): a fresh clone / VM / worktree / CI got NO dev hooks at all, and nobody noticed —",
+    "the hooks are fail-safe, so they fail by being silent. This file makes the wiring a",
+    "tracked, delivered artifact; install-dev-hooks.cjs applies it (npm `prepare`).",
+    "Contrast: hooks/<module>/manifest.yaml declares CONSUMER hooks (deployed to user projects",
+    "by /ecosystem:bootstrap, parsed by an LLM prompt → YAML). THIS manifest is parsed by CODE",
+    "on every `npm install` → JSON, so a malformed entry throws loudly instead of half-parsing."
+  ],
+  "_schema": {
+    "id": "stable identifier (informational)",
+    "file": "basename inside dev/meta-improvement/hooks/ — MUST exist on disk (cross-checked)",
+    "event": "Claude Code hook event: SessionStart | PostToolUse | SessionEnd | ...",
+    "matcher": "optional — matcher for the event group: tool name for PostToolUse (e.g. \"Bash\"), source for SessionStart (e.g. \"compact\")",
+    "guard": "optional — \"exists\": wrap in `[ -f <p> ] && node <p> || true` (survives branches/worktrees where the file is absent)",
+    "register": "optional, default true — false = deliberately NOT wired from this repo; MUST carry `why`",
+    "why": "required when register=false — a dead mechanism is worse than an absent one; state the reason so the omission is auditable"
+  },
+  "_invariant": "Every *.js in dev/meta-improvement/hooks/ MUST appear below (register true or false). install-dev-hooks.cjs --check enforces this and is wired into `npm run verify` — so a new hook file cannot silently miss delivery, which is the exact drift this manifest would otherwise re-introduce.",
+  "version": 1,
+  "ownedPathPrefix": "dev/meta-improvement/hooks/",
+  "hooks": [
+    {
+      "id": "dev-journal-reminder",
+      "file": "dev-journal-reminder.js",
+      "event": "PostToolUse",
+      "matcher": "Bash",
+      "description": "warn-only: a non-trivial commit (feat/fix/spec/DEC-DEV) that did not touch DEV_JOURNAL.md."
+    },
+    {
+      "id": "memory-drift-reminder",
+      "file": "memory-drift-reminder.js",
+      "event": "PostToolUse",
+      "matcher": "Bash",
+      "description": "warn-only, detect-only: HEAD touched a status-bearing doc ⇒ memory-sync is due (never writes — a self-editing hook would recurse)."
+    },
+    {
+      "id": "rails-session-start",
+      "file": "rails-session-start.js",
+      "event": "SessionStart",
+      "description": "regenerates the work-rails digest (RAILS.md) and injects it via additionalContext. Kill-switch: RAILS_AUTOGEN=0."
+    },
+    {
+      "id": "context-map-session-start",
+      "file": "context-map-session-start.js",
+      "event": "SessionStart",
+      "description": "injects the context-map digest (docs/MAP.md + dev/INFORMATION-MAP.yaml) via additionalContext — push channel, DEC-DEV-0197 / D1."
+    },
+    {
+      "id": "d7-hygiene-reminder",
+      "file": "d7-hygiene-reminder.js",
+      "event": "SessionStart",
+      "guard": "exists",
+      "description": "surfaces standing D7 backlog conditions G25 / G26 / G27 (only the tripped arms print)."
+    },
+    {
+      "id": "host-onboard-session-start",
+      "file": "host-onboard-session-start.js",
+      "event": "SessionStart",
+      "guard": "exists",
+      "description": "conductor host-session onboarding pack: role detected by FACT (ledger branch docs/global-loop-assist-ledger / worktree ce3-wt-global-loop), env CONDUCTOR_SESSION=1 is the manual path (DEC-DEV-0232)."
+    },
+    {
+      "id": "seam-reinject-compact",
+      "file": "seam-reinject-compact.js",
+      "event": "SessionStart",
+      "matcher": "compact",
+      "description": "re-injects the STOP blocks of ACTIVE dev/<track>/SEAM.md files after compaction — the summary may have lost or inverted the author's intent (DEC-DEV-0202). Kill-switch: SEAM_REINJECT=0."
+    },
+    {
+      "id": "seam-freshness-warn",
+      "file": "seam-freshness-warn.js",
+      "event": "Stop",
+      "description": "warn-only, detect-only: the working tree has moved far ahead of an ACTIVE dev/<track>/SEAM.md — reminds to update (or close) the seam so the next session does not resume on a stale contract (context-seam protocol)."
+    },
+    {
+      "id": "session-audit",
+      "file": "session-audit.js",
+      "event": "SessionEnd",
+      "register": false,
+      "why": "NOT wired from the ecosystem repo — it is registered from the PILOT project's own .claude/settings.local.json (an absolute path back into this repo) and writes session markers for the project it ran in. Auto-registering it here would make every ecosystem-repo session append rows to dev/meta-improvement/audit-index.md — a behaviour change nobody asked for. Declared explicitly so the omission is a recorded decision, not an oversight.",
+      "description": "SessionEnd marker writer → dev/meta-improvement/audit-index.md Pending rows (consumed by /meta:audit-smoke)."
+    }
+  ]
+}

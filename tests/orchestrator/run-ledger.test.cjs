@@ -261,7 +261,35 @@ test('FIND-D: the ndjson line stays COMPACT — the trail lives in run.json only
   assert.deepStrictEqual(lib.TRAIL_KEYS, [
     'disposition', 'flipped', 'release', 'healthcheck', 'failure_class',
     'contract_status', 'contract_evidence', 'disclosures',
+    'visual_evidence', 'artifacts_dir',
   ], 'TRAIL_KEYS changed — is a process actually returning the new key? (update the guard + DEV_JOURNAL)');
+});
+
+// DEC-DEV-0237 — the P8 VISUAL leg reaches run.json. The seam this pins END-TO-END:
+// user-journey-acceptance returns visual_evidence + artifacts_dir → summarizeResult → run.json
+// → hooks/product/lib/impl-evidence.cjs (which reads `decision_trail` among its containers).
+// Before the widening the summary dropped both, so `/product:impl-sync` reported `visual: none`
+// for a feature the P8 gate had actually judged COMPLETE — a gate with no carrier to the record.
+test('FIND-D/0237: a P8 run keeps its VISUAL verdict + artifacts dir in the trail (the impl-sync seam)', () => {
+  const base = mkTmp();
+  const startIso = '2026-07-31T09:00:00.000Z';
+  const s = startRun({ process: 'user-journey-acceptance', iso: startIso, argsSummary: 'FM-050', baseRoot: base });
+  const f = finishRun({
+    runId: s.runId, iso: '2026-07-31T09:04:00.000Z', baseRoot: base,
+    result: {
+      uja_result: 'PASS', readiness: 'READY',
+      visual_evidence: 'COMPLETE', artifacts_dir: 'test-results',
+      visual: { mk_scope: [{ mk: 'MK-003' }], reasons: [] },
+    },
+  });
+  const rec = JSON.parse(fs.readFileSync(f.runJson, 'utf8'));
+  const t = rec.result_summary.decision_trail;
+  assert.ok(t, 'a P8 run must carry a decision_trail — the visual verdict is the record');
+  assert.strictEqual(t.visual_evidence, 'COMPLETE',
+    'THE ONE THAT HURT: the visual verdict never reached run.json, so impl-sync saw `visual: none` on a judged feature');
+  assert.strictEqual(t.artifacts_dir, 'test-results',
+    'the owner reviews MK ↔ reality PAIRS — without artifacts_dir the record names no reality half');
+  assert.strictEqual(rec.result_summary.result, 'PASS', 'the outcome columns are untouched by the widening');
 });
 
 test('a nested `verdict` object: readiness AND outcome are found one level down', () => {

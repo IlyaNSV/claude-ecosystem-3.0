@@ -28,10 +28,14 @@
  *   orchestrator runs can be matched by title as well as by FM-id.)
  *
  * MODEL (per FM):
- *   collectEvidence pulls from four fail-tolerant sources (a missing dir/file yields
+ *   collectEvidence pulls from five fail-tolerant sources (a missing dir/file yields
  *   empty evidence, never a throw):
  *     - runs    : .claude/orchestrator/runs/<id>/run.json mentioning the FM (by id, or by
  *                 the feature slug the run was addressed with) → gate verdict
+ *     - visual  : the SAME matched run.json records — the freshest P8 (user-journey-acceptance)
+ *                 run's `visual_evidence` + `artifacts_dir` (COMPLETE | COMPLETE_WITH_SKIPS |
+ *                 INCOMPLETE | N/A | none — where `N/A` is P8 saying "no has_ui in scope" and
+ *                 `none` is this lib saying "no P8 run answered"). Reported, never dispositioned.
  *     - fabric  : .claude/orchestrator/fabric/<id>/state.json (FM mention OR subject in
  *                 handoff) → fabric_done when state === 'done'
  *     - external: .kiro/specs/<dir>/… mentioning the FM, or whose dir == slug(title)
@@ -39,6 +43,14 @@
  *   checkV01 re-checks V-01 (shipped FM must have ≥1 active SC). computeImplCoverage is
  *   an ADVISORY coverage of handoff source-ids against external spec text (never a gate).
  *   disposition folds it all into one of six per-FM verdicts.
+ *
+ * WHY VISUAL EVIDENCE IS REPORTED BUT NEVER DISPOSITIONED (DEC-DEV-0237):
+ *   A has_ui candidate carries `visual_review_required: true` — the owner must confirm the
+ *   implementation against its MK before the flip (V-23). That hard-block lives in the
+ *   COMMAND's approve gate and in V-23, NOT in the disposition chain here: a blocking
+ *   `visual-evidence-missing` verdict would make the `owner-manual` escape (a has_ui feature
+ *   shipped outside the orchestrator contour, evidenced by hand) unreachable by construction.
+ *   The sensor's job is to disclose what the P8 leg saw, not to decide instead of the owner.
  *
  * Node stdlib only; cross-platform (path.join). Dual-use: require() the pure helpers
  * (unit-tested, tests/product/impl-evidence.test.cjs) or run as a CLI.
@@ -65,6 +77,30 @@ const { extractIds, extractSourceIds, computeCoverage } = oracle;
 
 const SCHEMA_VERSION = 1;
 const GATE_VERDICTS = new Set(['GO', 'NO-GO', 'MANUAL_VERIFY_REQUIRED']);
+
+/**
+ * The P8 visual-conformance verdicts (orchestrator/lib/uja-report.cjs). `none` is NOT one of
+ * them — it is this lib's honest report for "no P8 run carries a visual verdict", which is
+ * exactly what a pre-visual-leg run.json looks like. Anything unrecognized is read as absent
+ * rather than invented into a verdict (same discipline as gateOf).
+ */
+const VISUAL_VERDICTS = new Set(['COMPLETE', 'COMPLETE_WITH_SKIPS', 'INCOMPLETE']);
+
+/**
+ * `N/A` is the FOURTH value the lib emits, and it means something the other three do not: "no
+ * has_ui feature was in scope, so there was nothing to judge" — an EXPLICIT nothing-to-judge, said
+ * by a gate that ran. Folding it into `none` (which means "no P8 run carries a visual verdict at
+ * all") destroyed exactly that distinction: "the scope had no UI" became indistinguishable from
+ * "P8 never ran", and the owner reading `visual none` at the approve gate could not tell whether a
+ * gate had answered or had never been asked. Read as a value, reported verbatim, still never
+ * dispositioned. VISUAL_READABLE is what `visualOf` accepts; VISUAL_VERDICTS stays the set of
+ * CONFORMANCE verdicts (an `N/A` conforms to nothing — it judged nothing).
+ */
+const VISUAL_NOT_APPLICABLE = 'N/A';
+const VISUAL_READABLE = new Set([...VISUAL_VERDICTS, VISUAL_NOT_APPLICABLE]);
+
+/** The P8 process name — the only run class that produces visual-conformance evidence. */
+const P8_PROCESS = 'user-journey-acceptance';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Small helpers (fail-tolerant I/O + EOL-tolerant frontmatter parse)
@@ -150,19 +186,24 @@ function globById(dir, id) {
   return hit ? path.join(dir, hit) : null;
 }
 
-/** Read one FM's frontmatter into { id, file, status, title, scenarios[] }. */
+/** Read one FM's frontmatter into { id, file, status, title, has_ui, mockups[], scenarios[] }. */
 function readFm(root, fmId) {
   const file = globById(path.join(root, '.product', 'features'), fmId);
   if (!file) return null;
   const raw = readFileSafe(file);
   if (raw == null) return null;
   const flat = parseFm(raw);
+  const block = frontmatterBlock(raw);
   return {
     id: flat.id || fmId,
     file,
     status: flat.status || null,
     title: flat.title ? stripQuotes(flat.title) : null,
-    scenarios: fmList(frontmatterBlock(raw), 'scenarios'),
+    // has_ui gates the visual-review requirement (V-23). Absent / anything but a literal
+    // `true` == false: a feature is only a UI feature when it SAYS so.
+    has_ui: stripQuotes(flat.has_ui || '') === 'true',
+    mockups: fmList(block, 'mockups'),
+    scenarios: fmList(block, 'scenarios'),
   };
 }
 
@@ -235,6 +276,43 @@ function gateOf(v) {
 }
 
 /**
+ * The containers a P8 field can hide in inside `result_summary`, in read order: the summary
+ * itself (the flat/bare shape summarizeResult produces), then the wrapped-envelope objects
+ * (`result` / `verdict`) and the `decision_trail`. Same unwrap CLASS as gateOf/OUTCOME_KEYS —
+ * the D094 lesson was that a process returning a wrapped envelope must not read as an absence.
+ */
+function summaryContainers(rs) {
+  const out = [];
+  if (rs && typeof rs === 'object' && !Array.isArray(rs)) out.push(rs);
+  for (const k of ['result', 'verdict', 'decision_trail']) {
+    const v = rs ? rs[k] : null;
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.push(v);
+  }
+  return out;
+}
+
+/**
+ * The P8 visual verdict out of one `result_summary`, or null (absent / unrecognized).
+ * `N/A` is a VALUE here, not an absence — see VISUAL_READABLE above.
+ */
+function visualOf(rs) {
+  for (const c of summaryContainers(rs)) {
+    if (typeof c.visual_evidence === 'string' && VISUAL_READABLE.has(c.visual_evidence)) {
+      return c.visual_evidence;
+    }
+  }
+  return null;
+}
+
+/** The P8 artifacts dir (step screenshots / trace) out of one `result_summary`, or null. */
+function artifactsDirOf(rs) {
+  for (const c of summaryContainers(rs)) {
+    if (typeof c.artifacts_dir === 'string' && c.artifacts_dir) return c.artifacts_dir;
+  }
+  return null;
+}
+
+/**
  * runs: .claude/orchestrator/runs/<id>/run.json mentioning the FM — by id (in the JSON dump
  * or as a substring of args_summary), or, when a `title` is supplied, by the FEATURE SLUG the
  * run was addressed with (meta-feedback #4, DEC-DEV-0234: orchestrator processes take a
@@ -272,6 +350,8 @@ function collectRunsEvidence(root, fmId, title) {
       result: rs.result != null ? rs.result : null,
       verdict: rs.verdict != null ? rs.verdict : null,
       readiness: rs.readiness != null ? rs.readiness : null,
+      visual: visualOf(rs),
+      artifacts_dir: artifactsDirOf(rs),
       finished_at: run.finished_at || null,
       matched_by: byId ? 'fm-id' : 'feature-slug',
     });
@@ -281,11 +361,22 @@ function collectRunsEvidence(root, fmId, title) {
     .filter((x) => x.gate != null)
     .sort((a, b) => tsOf(b.m.finished_at) - tsOf(a.m.finished_at));
   const latest = gateRuns.length ? gateRuns[0] : null;
+  // The FRESHEST P8 record wins — a run is P8 either by process name or by the fact that it
+  // carries a visual verdict at all. A P8 run predating the visual leg has no `visual_evidence`
+  // → `none` (the record is old, not broken); its run_id is still disclosed, so "the sensor
+  // looked and found nothing" is distinguishable from "the sensor never looked".
+  const p8Runs = matches
+    .filter((m) => m.process === P8_PROCESS || m.visual != null)
+    .sort((a, b) => tsOf(b.finished_at) - tsOf(a.finished_at));
+  const p8 = p8Runs.length ? p8Runs[0] : null;
   return {
     count: matches.length,
     matches,
     latest_gate: latest ? latest.gate : null,
     latest_gate_run_id: latest ? latest.m.run_id : null,
+    visual: p8 && p8.visual ? p8.visual : 'none',
+    visual_run_id: p8 ? p8.run_id : null,
+    visual_artifacts_dir: p8 ? p8.artifacts_dir : null,
   };
 }
 
@@ -418,8 +509,12 @@ function checkV01(root, fm) {
 
 /**
  * Per-FM verdict (first match top-down). Returns { fm_id, current_status, disposition,
- * evidence_summary, reasons[] }. GO evidence == latest_gate 'GO' OR (fabric done AND
- * external present). ready-to-ship additionally requires V-01 to pass.
+ * visual_review_required, evidence_summary, reasons[] }. GO evidence == latest_gate 'GO' OR
+ * (fabric done AND external present). ready-to-ship additionally requires V-01 to pass.
+ *
+ * The visual leg does NOT participate in the chain (see the header note): it only raises
+ * `visual_review_required` on a has_ui CANDIDATE, which the command's approve gate turns into
+ * the C/D hard-block. Six verdicts in, six verdicts out.
  */
 function disposition(fm, evidence, v01) {
   const status = fm && fm.status ? fm.status : null;
@@ -460,15 +555,25 @@ function disposition(fm, evidence, v01) {
     reasons.push('Activity found (run / fabric / external) but no GO gate verdict yet — shipping not justified.');
   }
 
+  const visual = evidence.runs.visual || 'none';
+  const visualReviewRequired = !!(fm && fm.has_ui) && d === 'ready-to-ship';
+  if (visualReviewRequired) {
+    reasons.push(`has_ui feature — owner visual review against MK is required before the flip `
+      + `(V-23); P8 visual evidence: ${visual}`
+      + `${evidence.runs.visual_run_id ? ` (run ${evidence.runs.visual_run_id})` : ''}.`);
+  }
+
   return {
     fm_id: fm ? fm.id : null,
     current_status: status,
     disposition: d,
+    visual_review_required: visualReviewRequired,
     evidence_summary: {
       runs: runsCount,
       latest_gate: latestGate,
       fabric_done: fabricDone,
       external_files: evidence.external.file_count,
+      visual,
       v01_passed: v01.passed,
     },
     reasons,
@@ -482,6 +587,9 @@ function emitEvidence(ev) {
       count: ev.runs.count,
       latest_gate: ev.runs.latest_gate,
       latest_gate_run_id: ev.runs.latest_gate_run_id,
+      visual: ev.runs.visual,
+      visual_run_id: ev.runs.visual_run_id,
+      visual_artifacts_dir: ev.runs.visual_artifacts_dir,
       matches: ev.runs.matches,
     },
     fabric: { fabric_done: ev.fabric.fabric_done, instances: ev.fabric.instances },
@@ -513,7 +621,7 @@ function scanProject(opts) {
   const summary = { total: 0, ready: 0, blocked: 0, no_evidence: 0, already_shipped: 0, deprecated: 0 };
 
   for (const fmId of ids) {
-    const fm = readFm(root, fmId) || { id: fmId, status: null, scenarios: [] };
+    const fm = readFm(root, fmId) || { id: fmId, status: null, has_ui: false, mockups: [], scenarios: [] };
     const evidence = collectEvidence({ root, fmId });
     const v01 = checkV01(root, fm);
     const coverage = computeImplCoverage(evidence.handoff.sourceIds, evidence.external.texts);
@@ -546,10 +654,12 @@ function renderHuman(report) {
     const ev = r.evidence;
     const cov = r.coverage ? `coverage_missing ${r.coverage.missing_count}` : 'coverage n/a';
     out.push('');
-    out.push(`  ${r.fm_id}  [${r.current_status || '?'}]  → ${r.disposition.toUpperCase()}`);
+    out.push(`  ${r.fm_id}  [${r.current_status || '?'}]  → ${r.disposition.toUpperCase()}`
+      + `${r.visual_review_required ? '  (visual review required — V-23)' : ''}`);
     out.push(`      runs ${ev.runs.count} (latest gate: ${ev.runs.latest_gate || 'none'})`
       + ` · fabric_done ${ev.fabric.fabric_done}`
       + ` · external files ${ev.external.file_count}`
+      + ` · visual ${ev.runs.visual}`
       + ` · V-01 ${r.v01.passed ? 'pass' : 'FAIL'} · ${cov}`);
     for (const reason of r.reasons) out.push(`      - ${reason}`);
   }
@@ -626,8 +736,12 @@ if (require.main === module) {
 
 module.exports = {
   SCHEMA_VERSION,
+  VISUAL_VERDICTS,
+  VISUAL_READABLE,
+  VISUAL_NOT_APPLICABLE,
   // pure API
   collectEvidence,
+  readFm,
   computeImplCoverage,
   checkV01,
   disposition,

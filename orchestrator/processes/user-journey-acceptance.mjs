@@ -1,6 +1,6 @@
 export const meta = {
   name: 'user-journey-acceptance',
-  description: 'Orchestrator P8 — the user-journey acceptance gate AFTER a staging deploy (E.B DEPLOYED), the last check before `done`. It drives DETERMINISTIC Playwright browser journeys (tests/uja/*.spec.ts) against the live staging URL with a realistic user simulation, and answers the question P7 cannot: "does the FIRST user touch actually work?" (the live precedent: P6/P7/deploy all green, yet the pilot post-login hit a 404 — HTTP-liveness ≠ a working journey). Preflight is a Definition-of-Readiness check (Playwright equipped? journeys authored — incl. NEGATIVE access journeys neg-*.spec.ts from the RPM Access Matrix? staging 2xx? a DoD run on a realistic input profile?) → an honest ENV_NOT_READY with a DoR hint when not; the run + verdict are read through the deterministic uja-report.cjs lib — no LLM judgment. Implementer deviations forwarded from P5/P6 are DISCLOSED in the verdict (DEC-DEV-0225; neg-leg + full design-state rule — DEC-DEV-0230; realistic-input DoD leg + deviations disclosure — DEC-DEV-0231).',
+  description: 'Orchestrator P8 — the user-journey acceptance gate AFTER a staging deploy (E.B DEPLOYED), the last check before `done`. It drives DETERMINISTIC Playwright browser journeys (tests/uja/*.spec.ts) against the live staging URL with a realistic user simulation, and answers the question P7 cannot: "does the FIRST user touch actually work?" (the live precedent: P6/P7/deploy all green, yet the pilot post-login hit a 404 — HTTP-liveness ≠ a working journey). Preflight is a Definition-of-Readiness check (Playwright equipped? journeys authored — incl. NEGATIVE access journeys neg-*.spec.ts from the RPM Access Matrix? staging 2xx? a DoD run on a realistic input profile?) → an honest ENV_NOT_READY with a DoR hint when not; the run + verdict are read through the deterministic uja-report.cjs lib — no LLM judgment. Implementer deviations forwarded from P5/P6 are DISCLOSED in the verdict. A VISUAL-CONFORMANCE leg then asks what green journeys cannot answer — is there a captured screenshot for EVERY designed screen state (each MK Screen Inventory `SI-<n>`) of every has_ui feature in the release scope, or an EXPLICIT declared skip? — and on a Release-DoD run an INCOMPLETE (or an unavailable leg) HARD-BLOCKS to ENV_NOT_READY instead of shipping un-evidenced screens (DEC-DEV-0225; neg-leg + full design-state rule — DEC-DEV-0230; realistic-input DoD leg + deviations disclosure — DEC-DEV-0231; visual-conformance gate — DEC-DEV-0237).',
   phases: [
     { title: 'Preflight' },
     { title: 'Run' },
@@ -40,6 +40,18 @@ export const meta = {
  * THE ZERO-EVIDENCE RULE (the load-bearing safety property — inherited from the "false DEPLOYED"
  * lesson, DEC-DEV-0203): a report with 0 journeys is NOT a PASS. The lib maps empty/unparseable →
  * ENV_NOT_READY (could-not-judge), so a gate never goes green having exercised nothing.
+ *
+ * VISUAL CONFORMANCE (DEC-DEV-0237, meta-feedback #5 — the third leg): green journeys prove the flow
+ * WORKS; they say nothing about whether the designed SCREENS were built. RL DoD категория 5 already
+ * called the P8 screenshots "visual-conformance evidence" — but nothing checked that the evidence
+ * COVERS the design, so a has_ui feature could ship with half its states never seen (the pilot's
+ * "designed — not built — invisible to acceptance" class, finding #8, survived three green UJA runs).
+ * The leg is deterministic and lives in the SAME lib: `uja-report.cjs visual` intersects each has_ui
+ * FM's active MK Screen Inventory (`SI-<n>` rows) with the files under <artifacts>/visual/<MK-id>/ and
+ * with the DECLARED designed-but-unbuilt skips in tests/uja/visual-skips.json. It does NOT diff pixels
+ * against the mockup (an automatic MK-diff is v1.1) — the owner's reality↔MK review is RECORDED one
+ * layer over, in /product:impl-sync (impl_sync.visual_review, V-23). MODE: hard on a DoD confirmation
+ * run (INCOMPLETE or an unavailable leg ⇒ ENV_NOT_READY, never a silent PASS), disclosure otherwise.
  *
  * BUDGET GUARD (autonomy note): staging journeys are read-mostly and reversible ⇒ the charter cell
  * is `auto`. BUT a journey can create REAL jobs on the deployed app (real-vendor spend). The mitigation
@@ -82,6 +94,13 @@ const CONCERNS = A.concerns || []                               // DEC-DEV-0231 
 // inputProfile declares what the journeys feed the app. dev profile on a DoD run ⇒ an honest DoR gap.
 const DOD_RUN = !!A.dodRun                                      // this run is the Release-DoD confirmation run (RL DoD категория 3)
 const INPUT_PROFILE = A.inputProfile || 'dev'                   // 'dev' (minimal fixtures) | 'realistic' (DoD-grade load, e.g. видео 30 мин – 2 ч)
+// DEC-DEV-0237 — the VISUAL-CONFORMANCE leg (meta-feedback #5): the release scope this acceptance
+// covers. `feature` is a single-feature lens; `features` is the full scope a DoD run must know, because
+// visual conformance is judged PER has_ui FEATURE (its MK Screen Inventory × the captured screenshots).
+// A DoD run that cannot name its scope cannot judge it — that is a DoR gap, not a pass (see the gate below).
+const FEATURES = (Array.isArray(A.features) ? A.features
+  : (typeof A.features === 'string' && A.features ? A.features.split(',') : (FEATURE ? [FEATURE] : [])))
+  .map((f) => String(f).trim()).filter(Boolean)
 
 // ---- schemas ---------------------------------------------------------------
 const PREFLIGHT_SCHEMA = {
@@ -119,6 +138,12 @@ const VERDICT_SCHEMA = {
     specs_skipped: { type: 'array', items: { type: 'object' } },     // [{ journey, skipped[] }] — explicit designed-but-unbuilt disclosures (DEC-DEV-0230), surfaced never silent
     artifacts_dir: { type: ['string', 'null'] },               // step screenshots / trace dir (visual-conformance evidence)
     reasons: { type: 'array', items: { type: 'string' } },
+    // DEC-DEV-0237 — the visual-conformance leg, relayed from `uja-report.cjs visual` in the SAME
+    // transport step. NOT `required` (same precedent as negative_present): a target still carrying a
+    // pre-0237 uja-report.cjs cannot answer, and must degrade to an honest gap — not a schema error.
+    visual_evidence: { type: ['string', 'null'] },             // COMPLETE | COMPLETE_WITH_SKIPS | INCOMPLETE | N/A | null (lib too old / could not run)
+    visual_mk_scope: { type: 'array', items: { type: 'object' } },  // [{ mk, feature, si_total, si_covered[], si_missing[], si_skipped[], evidence_dir }]
+    visual_reasons: { type: 'array', items: { type: 'string' } },
   },
 }
 
@@ -143,6 +168,9 @@ const recordDoRGap = (reasons) =>
     `Reasons (each already carries its remedy): ${JSON.stringify(reasons)}\n` +
     `Append a NON-BLOCKING tracking entry to the canonical pending-actions file: "P8 user-journey-acceptance could not run — DoR gap", listing each reason verbatim and its DoR hint (\`/integrator:add playwright\` when Playwright is missing; "author journeys at ${JOURNEYS_DIR}/*.spec.ts from the feature's NM covering the FULL design-state inventory — every MK Screen Inventory state incl. with-data, where a designed-but-unbuilt state is an EXPLICIT skip/ESCALATE, never silence" when journeys are missing; "author NEGATIVE access journeys at ${JOURNEYS_DIR}/neg-*.spec.ts from the RPM Access Matrix rows" when the suite is positive-only; "bring the staging target up and re-run" when the healthcheck was not 2xx). Route the owner (provisioning / journey authoring) — do NOT invent journeys or fake a pass. ` +
     PA_CANON +
+    // DEC-DEV-0237 — the same authoring rule the run prompt carries, repeated here because THIS is the
+    // note the owner reads when the gap IS the visual evidence (a hint that names no path is not a hint).
+    `When a reason concerns VISUAL evidence, carry the authoring rule verbatim into the entry: "every designed screen state is CAPTURED — each MK Screen Inventory row \`SI-<n>\` is screenshotted by the journey to \`${ARTIFACTS_DIR}/visual/<MK-id>/SI-<n>.png\` (a suffix is fine: SI-3-empty-state.png; .jpg/.jpeg/.webp also count); a state that is DESIGNED BUT NOT BUILT is an EXPLICIT entry in \`${JOURNEYS_DIR}/visual-skips.json\` ([{ mk, si, reason }] — a skip without a reason does NOT count), never silence". Do NOT capture placeholder/blank screenshots to close a visual gap — that is fabricating evidence. ` +
     `Do NOT commit code. Return a one-line confirmation.`,
     { model: 'sonnet', phase: 'Report', label: 'dor-gap' },   // MDP: non-blocking PA tracking write (standard/mechanical)
   )
@@ -197,13 +225,20 @@ const dorReasons = [
   ...(STAGING_URL && !stagingTwoxx ? [`staging ${STAGING_URL} did not answer 2xx (${(stagingUp && stagingUp.observed) || 'unreachable'}) — bring the staging target up and re-run (the deploy cell owns provisioning, not this gate).`] : []),
   ...(DOD_RUN && INPUT_PROFILE !== 'realistic'
     ? [`this is a Release-DoD confirmation run but inputProfile='${INPUT_PROFILE}' — a DoD run MUST exercise a realistic load (owner directive 2026-07-23 / DEC-DEV-0231: видео 30 мин – 2 ч; 5-сек фикстуры — только dev). DoR: prepare realistic fixtures, re-run with inputProfile:'realistic'. A 5-sec pass proves nothing about the real pipeline (chunking, cost, duration).`] : []),
+  // DEC-DEV-0237 (visual leg, pre-run half): a DoD confirmation run MUST know its release scope —
+  // visual conformance is judged per has_ui FEATURE (MK Screen Inventory × captured screenshots), so
+  // with an empty features[] the gate cannot tell "no UI in this release" from "nobody told me".
+  // Blocking BEFORE the run also saves the real-vendor spend of journeys that could not be judged anyway.
+  ...(DOD_RUN && !FEATURES.length
+    ? ['this is a Release-DoD confirmation run but no features[] was supplied — a DoD run cannot judge VISUAL conformance without knowing the release scope (which features are has_ui, hence which MK Screen Inventories the screenshots must cover; DEC-DEV-0237). DoR: pass args.features (the FM-ids in this release) and re-run. An unknown scope is could-not-judge, never a pass.'] : []),
 ]
-if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL || !stagingTwoxx || (DOD_RUN && INPUT_PROFILE !== 'realistic')) {
+if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL || !stagingTwoxx || (DOD_RUN && INPUT_PROFILE !== 'realistic') || (DOD_RUN && !FEATURES.length)) {
   await recordDoRGap(dorReasons)
   log(`P8 ENV_NOT_READY: DoR gap (${dorReasons.length} reason(s)) — recorded, routed to owner. Not running journeys.`)
   phase('Report')
   return {
     feature: FEATURE || null,
+    features: FEATURES,                                      // DEC-DEV-0237: the release scope the visual leg judges against
     staging_url: STAGING_URL || null,
     uja_result: 'ENV_NOT_READY',                             // could-not-judge (DoR gap) — routes to a re-run, NEVER to `done`
     journeys_total: journeys.length,
@@ -211,6 +246,8 @@ if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL |
     journeys_failed: [],
     specs_skipped: [],
     artifacts_dir: null,
+    visual_evidence: null,                                   // DEC-DEV-0237: the journeys never ran ⇒ there is no visual evidence to judge (null ≠ COMPLETE)
+    visual: null,
     input_profile: INPUT_PROFILE,                            // DEC-DEV-0231 (2.5): what the journeys feed the app — RL DoD reads this from run.json
     dod_run: DOD_RUN,
     concerns: CONCERNS,                                      // DEC-DEV-0231 (2.2): forwarded implementer deviations, carried even on a DoR gap
@@ -238,7 +275,14 @@ const verdict = await agent(
   `3) Reduce the report to the verdict through the DETERMINISTIC lib and relay its JSON VERBATIM:\n` +
   `   \`node ${UJA_LIB} parse --report ${ARTIFACTS_DIR}/uja-report.json\`\n` +
   `   Return its { uja_result, journeys_total, journeys_passed, journeys_failed, artifacts_dir, reasons } object EXACTLY as printed. You are a TRANSPORT — do NOT judge PASS/FAIL yourself, do NOT re-interpret the report; the lib decides (PASS | FAIL | ENV_NOT_READY, where a 0-journey report is ENV_NOT_READY, never a PASS).\n` +
-  `🚫 CAPTURE-DON'T-FIX: if a journey fails, that is the RESULT — do NOT patch the app, retry until green, or comment out the failing step, and do NOT commit anything. If \`npx playwright test\` cannot run at all (Playwright not actually installed, staging unreachable mid-run), say so and relay the lib's ENV_NOT_READY on the (missing/empty) report — do NOT fabricate a verdict.`,
+  // DEC-DEV-0237 — the VISUAL-CONFORMANCE leg, relayed by the SAME transport (no new agent: this is
+  // another deterministic lib read, and a second agent would only add a hop + a model pin to drift).
+  `4) VISUAL-CONFORMANCE leg (DEC-DEV-0237) — does the run leave a screenshot for every DESIGNED screen state? Run it through the SAME deterministic lib and relay ITS JSON verbatim too:\n` +
+  `   \`node ${UJA_LIB} visual --root ${PROJECT_ROOT} --features ${FEATURES.join(',')} --artifacts-dir ${ARTIFACTS_DIR} --journeys-dir ${JOURNEYS_DIR}\`\n` +
+  `   Add its fields to the object you return, under these EXACT keys (verbatim values, namespaced so they do not collide with the parse output): \`visual_evidence\` = its visual_evidence string (COMPLETE | COMPLETE_WITH_SKIPS | INCOMPLETE | N/A), \`visual_mk_scope\` = its mk_scope array, \`visual_reasons\` = its reasons array. Again a TRANSPORT: do NOT judge coverage yourself, do NOT open the screenshots, do NOT re-derive the lib's verdict.\n` +
+  `   ⚠ If that command FAILS because the lib has no \`visual\` subcommand (an older uja-report.cjs in this target), do NOT improvise a substitute check and do NOT omit the fields: return \`visual_evidence: null\` and put the exact error text in \`visual_reasons\`. A null is an honest "could not judge"; a fabricated COMPLETE would be exactly the false green this gate exists to prevent.\n` +
+  `   📐 AUTHORING RULE (what the journeys must do, for the note you leave if evidence is missing): every designed screen state is CAPTURED — each MK Screen Inventory row \`SI-<n>\` is screenshotted to \`${ARTIFACTS_DIR}/visual/<MK-id>/SI-<n>.png\` (a suffix is fine: SI-3-empty-state.png; .jpg/.jpeg/.webp also count); a state that is DESIGNED BUT NOT BUILT is an EXPLICIT entry in \`${JOURNEYS_DIR}/visual-skips.json\` ([{ mk, si, reason }] — a skip without a reason does NOT count), never silence.\n` +
+  `🚫 CAPTURE-DON'T-FIX: if a journey fails, that is the RESULT — do NOT patch the app, retry until green, or comment out the failing step, and do NOT commit anything. If \`npx playwright test\` cannot run at all (Playwright not actually installed, staging unreachable mid-run), say so and relay the lib's ENV_NOT_READY on the (missing/empty) report — do NOT fabricate a verdict. The same holds for the visual leg: never hand-place, rename, or blank-capture files under ${ARTIFACTS_DIR}/visual/ to make the coverage look complete — a missing screenshot is the RESULT.`,
   { model: 'sonnet', schema: VERDICT_SCHEMA, phase: 'Run', label: 'run-journeys' },   // MDP: run playwright + relay the DETERMINISTIC lib verdict (mechanical transport — no LLM judgment)
 )
 const ujaResult = (verdict && verdict.uja_result) || 'ENV_NOT_READY'
@@ -250,32 +294,73 @@ const artifactsDir = (verdict && verdict.artifacts_dir) || ARTIFACTS_DIR
 const verdictReasons = (verdict && verdict.reasons) || []
 log(`P8 verdict: ${ujaResult} (${journeysPassed}/${journeysTotal} journeys passed${journeysFailed.length ? `; failed: ${journeysFailed.map((j) => j && j.journey).join(', ')}` : ''})`)
 
+// ---- the VISUAL-CONFORMANCE leg (DEC-DEV-0237) ------------------------------------------------
+// Green journeys prove the flow WORKS; they do not prove the designed SCREENS exist. The pilot's
+// "designed — not built — invisible to acceptance" class (finding #8) survived three green UJA runs
+// precisely because nothing checked the screenshots against the MK Screen Inventory. This leg does.
+// It is HARD only on a DoD confirmation run (the release gate): elsewhere it DISCLOSES.
+const visualEvidence = (verdict && typeof verdict.visual_evidence === 'string' && verdict.visual_evidence) || null
+const visualMkScope = (verdict && verdict.visual_mk_scope) || []
+const visualReasons = (verdict && verdict.visual_reasons) || []
+// null = the leg could not answer at all (a pre-0237 uja-report.cjs in the target, or the command
+// failed). On a DoD run that is NOT a pass — it is an un-judged release gate, i.e. a DoR gap.
+const visualBlocks = DOD_RUN && (visualEvidence === 'INCOMPLETE' || visualEvidence === null)
+const visualBlockReasons = visualBlocks
+  ? visualReasons.concat([visualEvidence === null
+    ? `the visual-conformance leg returned NOTHING (visual_evidence: null) — the target's uja-report.cjs has no \`visual\` subcommand (pre-DEC-DEV-0237) or the command failed. A release-DoD run cannot be judged without it: update the ecosystem in the target (\`/ecosystem:update\`) and re-run. Could-not-judge, NOT a pass.`
+    : `visual_evidence=INCOMPLETE on a Release-DoD confirmation run — designed screen states carry no captured evidence and no declared skip (DEC-DEV-0237). DoR: capture the missing states to ${ARTIFACTS_DIR}/visual/<MK-id>/SI-<n>.png, or declare each designed-but-unbuilt state in ${JOURNEYS_DIR}/visual-skips.json with a reason, then re-run. A DoD that ships un-evidenced screens is the "designed — not built — invisible to acceptance" class (pilot finding #8).`])
+    .concat([`⚠ WHAT TO ACTUALLY FIX: the missing thing is EVIDENCE, not the environment — prepare the evidence (capture the missing SI screenshots under ${ARTIFACTS_DIR}/visual/<MK-id>/ or declare each designed-but-unbuilt state as a reasoned skip in ${JOURNEYS_DIR}/visual-skips.json) and re-run P8. The route is unchanged (ENV_NOT_READY → runtime_gate_retry → \`evt:env.up\` once the evidence is ready): the verdict says "could not judge", so do NOT go debugging a staging environment that is already up.`])
+  : []
+// The final acceptance verdict: a blocked visual leg on a DoD run degrades the outcome to
+// ENV_NOT_READY (could-not-judge ⇒ re-run), NEVER to a silent PASS, and never to FAIL (nothing about
+// the journeys broke — the EVIDENCE is missing, which routes to fixing the suite, not the app).
+// A real FAIL is NOT masked, though: the charter routes on uja_result, so overwriting FAIL would send
+// the owner to `runtime_gate_retry` ("bring the env up") while the app is actually broken — the sharper
+// signal must win. The property this leg owns is narrower and still intact: nothing SHIPS (→ `done`)
+// over un-evidenced screens, and only a PASS ships. The gap is recorded either way (PA + disclosures).
+const finalResult = (visualBlocks && ujaResult !== 'FAIL') ? 'ENV_NOT_READY' : ujaResult
+log(`P8 visual-conformance: ${visualEvidence || 'null (leg unavailable)'}${visualMkScope.length ? ` over ${visualMkScope.length} MK(s)` : ''}${visualBlocks ? ' — HARD BLOCK on this DoD run ⇒ ENV_NOT_READY' : ''}`)
+
 // ---- Phase 3: Report — the two-leg contract (verdict + evidence + disclosures) ----------------
 phase('Report')
 // A zero-journey run comes back ENV_NOT_READY from the lib (the zero-evidence rule) — record it as a
 // DoR gap too, so a gate never silently "passes" having exercised nothing.
 if (ujaResult === 'ENV_NOT_READY') {
   await recordDoRGap(verdictReasons.length ? verdictReasons : ['the journey run produced no judgeable report (0 journeys or an unparseable report) — DoR: author/repair journeys and re-run'])
+} else if (visualBlocks) {
+  // (else-if: when the lib already said ENV_NOT_READY the gap is recorded above — one PA per run)
+  await recordDoRGap(visualBlockReasons)
 }
 return {
   feature: FEATURE || null,
+  features: FEATURES,                                        // DEC-DEV-0237: the release scope the visual leg judged
   staging_url: STAGING_URL || null,
-  uja_result: ujaResult,                                     // PASS | FAIL | ENV_NOT_READY — the outcome the charter routes on
+  uja_result: finalResult,                                   // PASS | FAIL | ENV_NOT_READY — the outcome the charter routes on (a blocked visual leg on a DoD run degrades PASS → ENV_NOT_READY)
   journeys_total: journeysTotal,
   journeys_passed: journeysPassed,
   journeys_failed: journeysFailed,                           // [{ journey, failing[] }] — the failing journeys, surfaced (capture-don't-fix)
   specs_skipped: specsSkipped,                               // [{ journey, skipped[] }] — designed-but-unbuilt states, disclosed EXPLICITLY (DEC-DEV-0230), never silent
   artifacts_dir: artifactsDir,                               // step screenshots / trace — the visual-conformance evidence for owner review vs MK
+  visual_evidence: visualEvidence,                           // DEC-DEV-0237: COMPLETE | COMPLETE_WITH_SKIPS | INCOMPLETE | N/A | null (leg unavailable)
+  visual: (visualEvidence || visualMkScope.length)           // the per-MK matrix: which designed SI states are covered / missing / declared-skipped
+    ? { mk_scope: visualMkScope, reasons: visualReasons }
+    : null,
   input_profile: INPUT_PROFILE,                              // DEC-DEV-0231 (2.5): 'realistic' is what RL DoD категория 3 requires of the DoD run — auditable from run.json
   dod_run: DOD_RUN,
   concerns: CONCERNS,                                        // DEC-DEV-0231 (2.2): forwarded implementer deviations — disclosed here, not only at the GO-gate
-  readiness: ujaResult === 'ENV_NOT_READY' ? 'ENV_NOT_READY' : 'READY',
-  readiness_reasons: ujaResult === 'ENV_NOT_READY' ? verdictReasons : [],
+  // readiness answers "was this acceptance judgeable?", uja_result answers "what happened" — so a
+  // visual block shows up here even when a FAIL keeps the routing verdict (the two are not the same question)
+  readiness: (finalResult === 'ENV_NOT_READY' || visualBlocks) ? 'ENV_NOT_READY' : 'READY',
+  readiness_reasons: ujaResult === 'ENV_NOT_READY' ? verdictReasons : visualBlockReasons,
   disclosures: verdictReasons
     .concat(ujaResult === 'FAIL' ? ['a FAILED journey is the first-user-touch breaking (the P7-green-but-404 class) — route to a P5/P6 re-drive (awaiting_journey_fix); this gate does not remediate.'] : [])
     .concat(specsSkipped.length ? [`${specsSkipped.length} journey file(s) carry SKIPPED specs — each skip must map to a designed-but-unbuilt state and ESCALATE to the owner (the "designed — not built — invisible to acceptance" class, pilot finding #8); a skip with no such mapping is a gap in the suite.`] : [])
     .concat(CONCERNS.length ? [`${CONCERNS.length} implementer deviation(s)/concern(s) declared at impl (DEC-DEV-0231): ${CONCERNS.map((c) => (typeof c === 'string' ? c : `${c.task || ''}: ${c.concern || ''}`)).join(' | ')} — a PASS over a declared deviation is PASS-with-caveats; each deviation needs owner ratification (RL DoD п.5).`] : [])
     .concat(DOD_RUN ? [`DoD run on input_profile='${INPUT_PROFILE}' — RL DoD категория 3 reads this field; only 'realistic' satisfies the first-release DoD (владелец 2026-07-23).`] : [])
-    .concat(['visual-conformance: the step screenshots / trace under ' + artifactsDir + ' are the owner-review evidence against the design MK (owner reviews reality↔MK; an automatic MK-diff is v1.1).']),
+    // DEC-DEV-0237: the visual leg's own reasons ride in the disclosures — a per-SI gap must be
+    // readable from run.json alone, not only from the PA note the DoD block writes.
+    .concat(visualReasons)
+    .concat([`visual-conformance: per-SI evidence under ${artifactsDir}/visual/<MK>/SI-n → owner review is RECORDED via /product:impl-sync (impl_sync.visual_review, V-23); an automatic MK-diff is v1.1`
+      + ` — verdict: ${visualEvidence || 'null (leg unavailable — pre-DEC-DEV-0237 uja-report.cjs in the target)'}${DOD_RUN ? '' : ' (disclosed here; the HARD block applies on a DoD confirmation run)'}.`]),
   run_id: RUN_ID || null,
 }

@@ -1128,7 +1128,7 @@ Design Module — отдельный SPEC (`design-module/`). Интегриру
 
 - ✅ Artifacts catalog (24 типа)
 - ✅ Handoff spec (universal, tool-agnostic)
-- ✅ Validation (48 rules + 3 process rules)
+- ✅ Validation (49 rules + 3 process rules)
 - ✅ Processes (P1-P5 + P2.5 outline)
 - ✅ Integrator Module SPEC
 - ✅ **Product Module SPEC (этот документ)**

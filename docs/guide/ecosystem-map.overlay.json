@@ -320,10 +320,10 @@
   ],
 
   "validation": {
-    "count": 48,
-    "note": "Канон: 48 автоматизируемых правил (V-*:20, V-H-*:11, V-MK-*:8, V-LE-*:5, V-AM-*:4) + 3 process rule (P-RULE-01/02 — неавтоматизируемые, реализованы через DA-хуки, см. секцию гейтов; P-RULE-03 — ручная проверка вердикта «не построено», DEC-DEV-0234). Source: docs/pmo/validation.md §объём. Tier-based activation (pilot/mvp/full) управляет инлайн-проверками по стадии продукта.",
+    "count": 49,
+    "note": "Канон: 49 автоматизируемых правил (V-*:21, V-H-*:11, V-MK-*:8, V-LE-*:5, V-AM-*:4) + 3 process rule (P-RULE-01/02 — неавтоматизируемые, реализованы через DA-хуки, см. секцию гейтов; P-RULE-03 — ручная проверка вердикта «не построено», DEC-DEV-0234). Source: docs/pmo/validation.md §объём. Tier-based activation (pilot/mvp/full) управляет инлайн-проверками по стадии продукта.",
     "groups": [
-      {"id": "artifact", "name": "Artifact Validation", "range": "V-01..V-22", "count": 20,
+      {"id": "artifact", "name": "Artifact Validation", "range": "V-01..V-23", "count": 21,
         "what": "Целостность артефактов D1-D2: обязательные ссылки, достижимость состояний, orphan/stale, frontmatter-канон.",
         "linkCommand": "product:validate",
         "rules": [
@@ -346,7 +346,8 @@
           {"id": "V-19", "scope": "RPM, FM", "severity": "blocking", "what": "При has_ui-фичах RPM несёт Access Matrix (auth-state × route × realm): forward/reverse-гард + realm×realm, ячейка без двусмысленности (DEC-DEV-0230)."},
           {"id": "V-20", "scope": "все артефакты", "severity": "blocking", "what": "Enforcement-claim в теле («CI-gated», «blocks merge») требует frontmatter enforcement_mechanism с проверяемым указателем — либо пометки planned (DEC-DEV-0234)."},
           {"id": "V-21", "scope": "MK, NM", "severity": "blocking", "what": "Дата последнего git-коммита файла не новее frontmatter updated; git недоступен → skip с note, не pass (DEC-DEV-0234)."},
-          {"id": "V-22", "scope": "IC, BR", "severity": "blocking", "what": "IC/BR, активированные с 2026-07-31, несут da_review_ref (след DA-ревью); активные раньше — 🟡 grandfather (DEC-DEV-0234)."}
+          {"id": "V-22", "scope": "IC, BR", "severity": "blocking", "what": "IC/BR, активированные с 2026-07-31, несут da_review_ref (след DA-ревью); активные раньше — 🟡 grandfather (DEC-DEV-0234)."},
+          {"id": "V-23", "scope": "FM, MK", "severity": "blocking", "what": "has_ui FM, синхронизированные в shipped с 2026-07-31, несут impl_sync.visual_review (owner-сверка UI против MK); shipped раньше — 🟡 grandfather; MK правлен позже ревью — 🟡 re-review (DEC-DEV-0237)."}
         ]},
       {"id": "handoff", "name": "Handoff Validation", "range": "V-H-01..V-H-11", "count": 11,
         "what": "Самодостаточность handoff: 13 секций, хеши артефактов, резолв ссылок, валидный YAML.",

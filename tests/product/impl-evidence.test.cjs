@@ -18,6 +18,30 @@ const { execFileSync } = require('node:child_process');
 const LIB_PATH = path.join(__dirname, '..', '..', 'hooks', 'product', 'lib', 'impl-evidence.cjs');
 const lib = require(LIB_PATH);
 
+/**
+ * THE REAL WRITER of `result_summary` (DEC-DEV-0237 seam pin). The visual-leg tests used to
+ * HAND-BUILD `result_summary: { visual_evidence: … }` flat — a shape the ledger never writes.
+ * They passed while the live chain was broken: summarizeResult projected visual_evidence away,
+ * so every real run.json reported `visual: none`. Requiring the actual summarizer means the
+ * fixtures are the LIVE form by construction: a P8-shaped process return → summarizeResult →
+ * run.json → this collector. A regression in the ledger now breaks these tests, which is the
+ * whole point — a test that invents its own input cannot pin a seam.
+ */
+const summarizeResult = require(
+  path.join(__dirname, '..', '..', 'orchestrator', 'lib', 'run-ledger.cjs'),
+).summarizeResult;
+
+/** A P8 (user-journey-acceptance) process return — the arm shape user-journey-acceptance.mjs uses. */
+function p8Result(fields) {
+  return Object.assign({
+    feature: null, features: [], staging_url: 'https://staging.example',
+    uja_result: 'PASS', journeys_total: 3, journeys_passed: 3, journeys_failed: [], specs_skipped: [],
+    artifacts_dir: 'test-results', visual_evidence: 'COMPLETE', visual: { mk_scope: [], reasons: [] },
+    input_profile: 'realistic', dod_run: true, concerns: [],
+    readiness: 'READY', readiness_reasons: [], disclosures: [],
+  }, fields);
+}
+
 let passed = 0;
 function test(name, fn) {
   try { fn(); passed += 1; console.log('  ✓', name); }
@@ -251,6 +275,166 @@ test('runs: object-form unwrap follows OUTCOME_KEYS precedence + ignores a non-v
     const ev = lib.collectEvidence({ root: dir, fmId: 'FM-046' });
     eq(ev.runs.count, 1, 'run still counted as activity');
     eq(ev.runs.latest_gate, null, 'an object without a gate key is NOT invented into a verdict');
+  } finally { rm(dir); }
+});
+
+// ── visual evidence: the 5th source (P8 visual leg, DEC-DEV-0237) ───────────────
+
+test('visual: THE LIVE SEAM — a real summarizeResult() record is read; freshest P8 run wins', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-050-x.md', fmFile('FM-050', 'in-progress', 'Gallery', []));
+    // No hand-built shape anywhere below: the ledger's own summarizer produces result_summary,
+    // exactly as finishRun() would write it to disk on a real P8 run.
+    write(dir, '.claude/orchestrator/runs/run-p8-old/run.json', runJson({
+      run_id: 'run-p8-old', process: 'user-journey-acceptance', args_summary: 'FM-050',
+      finished_at: '2026-07-11T09:00:00Z',
+      result_summary: summarizeResult(p8Result({ visual_evidence: 'INCOMPLETE', artifacts_dir: 'old-results' })),
+    }));
+    write(dir, '.claude/orchestrator/runs/run-p8-new/run.json', runJson({
+      run_id: 'run-p8-new', process: 'user-journey-acceptance', args_summary: 'FM-050',
+      finished_at: '2026-07-11T12:00:00Z',
+      result_summary: summarizeResult(p8Result({ visual_evidence: 'COMPLETE_WITH_SKIPS', artifacts_dir: 'test-results' })),
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-050' });
+    eq(ev.runs.visual, 'COMPLETE_WITH_SKIPS', 'freshest P8 run wins by finished_at');
+    eq(ev.runs.visual_run_id, 'run-p8-new', 'its run id is disclosed');
+    eq(ev.runs.visual_artifacts_dir, 'test-results', 'artifacts dir lifted from the same run');
+    // …and the shape really is the ledger's, not a flat convenience: prove where the fields sit.
+    const rs = JSON.parse(fs.readFileSync(path.join(dir, '.claude/orchestrator/runs/run-p8-new/run.json'), 'utf8')).result_summary;
+    eq(rs.visual_evidence, undefined, 'the ledger does NOT write visual_evidence flat — that shape was the fiction');
+    eq(rs.decision_trail.visual_evidence, 'COMPLETE_WITH_SKIPS', 'it rides in decision_trail (run-ledger TRAIL_KEYS)');
+    eq(rs.decision_trail.artifacts_dir, 'test-results', 'and so does the artifacts dir');
+  } finally { rm(dir); }
+});
+
+test('visual: a FLAT result_summary is still tolerated (backward compat with pre-0237 hand-written records)', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-057-x.md', fmFile('FM-057', 'in-progress', 'Flat', []));
+    write(dir, '.claude/orchestrator/runs/run-p8-flat/run.json', runJson({
+      run_id: 'run-p8-flat', process: 'user-journey-acceptance', args_summary: 'FM-057',
+      result_summary: {
+        verdict: null, result: 'PASS', readiness: null, conflicts: 0, counts: null,
+        visual_evidence: 'COMPLETE', artifacts_dir: 'test-results',
+      },
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-057' });
+    eq(ev.runs.visual, 'COMPLETE', 'the flat container stays readable — widening what is READ never narrows it');
+    eq(ev.runs.visual_artifacts_dir, 'test-results', 'artifacts dir too');
+  } finally { rm(dir); }
+});
+
+test('visual: object-form result_summary (wrapped envelope) — same gateOf-class unwrap', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-051-x.md', fmFile('FM-051', 'in-progress', 'Wrapped UI', []));
+    // A process returning its whole envelope lands an OBJECT in result_summary.result — the
+    // visual fields sit one level down, exactly like the D094 gate did.
+    write(dir, '.claude/orchestrator/runs/run-p8-obj/run.json', runJson({
+      run_id: 'run-p8-obj', process: 'user-journey-acceptance', args_summary: 'FM-051',
+      result_summary: {
+        verdict: null, readiness: null, conflicts: 0, counts: null,
+        result: { uja_result: 'PASS', visual_evidence: 'COMPLETE', artifacts_dir: 'test-results' },
+      },
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-051' });
+    eq(ev.runs.visual, 'COMPLETE', 'visual read out of the object form, not lost');
+    eq(ev.runs.artifacts_dir, undefined, 'no phantom top-level field on the evidence object');
+    eq(ev.runs.visual_artifacts_dir, 'test-results', 'artifacts dir unwrapped too');
+  } finally { rm(dir); }
+});
+
+test('visual: a pre-visual-leg run.json → none (never a throw, never an invented verdict)', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-052-x.md', fmFile('FM-052', 'in-progress', 'Legacy', []));
+    write(dir, '.claude/orchestrator/runs/run-p8-legacy/run.json', runJson({
+      run_id: 'run-p8-legacy', process: 'user-journey-acceptance', args_summary: 'FM-052',
+      result_summary: { verdict: null, result: 'PASS', readiness: null, conflicts: 0, counts: null },
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-052' });
+    eq(ev.runs.count, 1, 'the old record is still evidence of a run');
+    eq(ev.runs.visual, 'none', 'no visual fields → none');
+    eq(ev.runs.visual_run_id, 'run-p8-legacy', 'the run we looked at is still disclosed');
+    // …and an unrecognized value is treated as absent, not passed through as a verdict.
+    write(dir, '.product/features/FM-053-x.md', fmFile('FM-053', 'in-progress', 'Bogus', []));
+    write(dir, '.claude/orchestrator/runs/run-p8-bogus/run.json', runJson({
+      run_id: 'run-p8-bogus', process: 'user-journey-acceptance', args_summary: 'FM-053',
+      result_summary: { verdict: null, result: 'PASS', readiness: null, conflicts: 0, counts: null, visual_evidence: 'MOSTLY_FINE' },
+    }));
+    eq(lib.collectEvidence({ root: dir, fmId: 'FM-053' }).runs.visual, 'none', 'unknown value is not a verdict');
+  } finally { rm(dir); }
+});
+
+test('visual: N/A ("no has_ui in scope") is a VALUE, not an absence — never collapsed into none', () => {
+  const dir = mkProject();
+  try {
+    write(dir, '.product/features/FM-058-x.md', fmFile('FM-058', 'in-progress', 'Backend only', []));
+    write(dir, '.claude/orchestrator/runs/run-p8-na/run.json', runJson({
+      run_id: 'run-p8-na', process: 'user-journey-acceptance', args_summary: 'FM-058',
+      result_summary: summarizeResult(p8Result({ visual_evidence: 'N/A' })),
+    }));
+    const ev = lib.collectEvidence({ root: dir, fmId: 'FM-058' });
+    // The distinction that was destroyed: a gate that RAN and found nothing to judge vs a gate
+    // that was never asked. Both used to read `none` at the owner's approve gate.
+    eq(ev.runs.visual, 'N/A', 'P8 said "nothing to judge" — that is an answer, not a silence');
+    eq(ev.runs.visual_run_id, 'run-p8-na', 'and the run that answered is named');
+    // …still not a conformance verdict: N/A conforms to nothing, it judged nothing.
+    assert(!lib.VISUAL_VERDICTS.has('N/A'), 'N/A must not be counted among the CONFORMANCE verdicts');
+    assert(lib.VISUAL_READABLE.has('N/A'), 'but it must be READ');
+  } finally { rm(dir); }
+});
+
+test('visual: has_ui candidate carries visual_review_required; a non-UI candidate does not', () => {
+  const dir = mkProject();
+  try {
+    const uiFm = fmFile('FM-054', 'in-progress', 'Player', ['SC-054'])
+      .replace('status: in-progress', 'status: in-progress\nhas_ui: true\nmockups: [MK-003]');
+    write(dir, '.product/features/FM-054-x.md', uiFm);
+    write(dir, '.product/scenarios/SC-054-x.md', scFile('SC-054', 'active'));
+    write(dir, '.claude/orchestrator/runs/run-go-ui/run.json', runJson({
+      run_id: 'run-go-ui', args_summary: 'FM-054',
+      result_summary: { verdict: 'GO', result: 'GO', readiness: 'READY', conflicts: 0, counts: null },
+    }));
+    const fm = lib.readFm(dir, 'FM-054');
+    eq(fm.has_ui, true, 'has_ui parsed off the frontmatter');
+    eq(fm.mockups.join(','), 'MK-003', 'mockups parsed (which MK the review is against)');
+    const report = lib.scanProject({ root: dir, at: AT });
+    const r = report.results[0];
+    eq(r.disposition, 'ready-to-ship', 'the disposition chain is NOT extended by the visual leg');
+    eq(r.visual_review_required, true, 'has_ui candidate demands the owner visual review (V-23)');
+    eq(r.evidence_summary.visual, 'none', 'no P8 run here — reported honestly, still not blocking');
+    assert(r.reasons.some((x) => /V-23/.test(x)), 'the reason names the rule');
+
+    // …the same evidence on a non-UI feature raises nothing.
+    write(dir, '.product/features/FM-055-x.md', fmFile('FM-055', 'in-progress', 'Backend job', ['SC-055']));
+    write(dir, '.product/scenarios/SC-055-x.md', scFile('SC-055', 'active'));
+    write(dir, '.claude/orchestrator/runs/run-go-nonui/run.json', runJson({
+      run_id: 'run-go-nonui', args_summary: 'FM-055',
+      result_summary: { verdict: 'GO', result: 'GO', readiness: 'READY', conflicts: 0, counts: null },
+    }));
+    const r2 = lib.scanProject({ root: dir, at: AT }).results.find((x) => x.fm_id === 'FM-055');
+    eq(r2.visual_review_required, false, 'no has_ui → no visual review requirement');
+  } finally { rm(dir); }
+});
+
+test('visual: an already-shipped has_ui FM is not re-flagged (idempotent, nothing to gate)', () => {
+  const dir = mkProject();
+  try {
+    const uiFm = fmFile('FM-056', 'shipped', 'Shipped UI', ['SC-056'])
+      .replace('status: shipped', 'status: shipped\nhas_ui: true');
+    write(dir, '.product/features/FM-056-x.md', uiFm);
+    write(dir, '.product/scenarios/SC-056-x.md', scFile('SC-056', 'active'));
+    write(dir, '.claude/orchestrator/runs/run-p8-shipped/run.json', runJson({
+      run_id: 'run-p8-shipped', process: 'user-journey-acceptance', args_summary: 'FM-056',
+      // live form again: the summarizer writes the record, the test only supplies the process return
+      result_summary: summarizeResult(p8Result({ visual_evidence: 'COMPLETE' })),
+    }));
+    const r = lib.scanProject({ root: dir, at: AT }).results[0];
+    eq(r.disposition, 'already-shipped', 'idempotent skip unchanged');
+    eq(r.visual_review_required, false, 'no gate on a feature that is already shipped');
+    eq(r.evidence_summary.visual, 'COMPLETE', 'the visual evidence is still reported');
   } finally { rm(dir); }
 });
 

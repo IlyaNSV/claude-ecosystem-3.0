@@ -1,0 +1,13 @@
+{
+  "_why_this_file_exists": "The harness writes a *.meta.json companion next to every subagent transcript. It is NOT a transcript. Its numbers are DELIBERATELY poisoned: if the reader ever widened its glob past *.jsonl, the fixture arithmetic would blow up by six orders of magnitude and the test would fail loudly instead of drifting silently.",
+  "agentId": "agent-0001",
+  "agentType": "Explore",
+  "model": "claude-sonnet-5",
+  "totalTokens": 987654321,
+  "usage": {
+    "input_tokens": 500000,
+    "output_tokens": 500000,
+    "cache_creation_input_tokens": 500000,
+    "cache_read_input_tokens": 500000
+  }
+}
