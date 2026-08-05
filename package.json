@@ -23,6 +23,7 @@
     "gen:glossary:check": "node dev/meta-improvement/scripts/gen-glossary.cjs --check",
     "gen:glossary:selftest": "node dev/meta-improvement/scripts/gen-glossary.cjs --selftest",
     "next-dec-dev": "node dev/meta-improvement/scripts/next-dec-dev.js",
+    "frontier": "node dev/meta-improvement/scripts/frontier.cjs",
     "check:doctype": "node dev/meta-improvement/scripts/check-guide-doctype.cjs",
     "check:validation-sync": "node dev/meta-improvement/scripts/check-validation-sync.cjs",
     "check:infomap": "node dev/meta-improvement/scripts/check-information-map.js",
