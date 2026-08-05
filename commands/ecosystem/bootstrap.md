@@ -540,14 +540,46 @@ third-party (non-ecosystem) entries are kept verbatim.
    Only the `hooks` section is rewritten.
 
 4. **Re-derive ecosystem-owned hook entries** from the manifests. Group by `(event, matcher)` pair;
-   build command entries `node .claude/hooks/<module>/<file>`.
+   build each entry in **exec form** — `command: "node"` plus
+   `args: ["${CLAUDE_PROJECT_DIR}/.claude/hooks/<module>/<file>"]`.
 
-5. **Classify every entry already in `hooks`** — this is the prune step:
-   - **Pattern (primary):** `command` matching regex
-     `^node \.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/`
-     → **ecosystem-owned** → discard it and take the re-derived set instead. An entry whose hook
-     was removed from (or never declared in) the manifest therefore **disappears** — it is not
-     carried over.
+   **Why exec form with the placeholder, and not a bare relative path** (DEC-DEV-0241 — the class of
+   «39 silent hook failures»): a hook process runs in *the current directory*, which is **not**
+   guaranteed to be the project root — it follows the session's cwd, so it drifts the moment the
+   model `cd`s into a subdirectory. A relative `node .claude/hooks/...` then resolves against the
+   wrong root, node exits `Cannot find module`, and because almost every ecosystem hook is
+   non-blocking, **the enforcement silently switches itself off**. `${CLAUDE_PROJECT_DIR}` is
+   substituted by the harness itself (not by a shell) and is documented precisely as the way to
+   reference a script «regardless of the working directory when the hook runs».
+   Exec form (`args` present) is the documented preference for any hook referencing a path
+   placeholder: it spawns the executable directly with no shell, so no tokenization or quoting
+   happens *on any platform*. This matters on Windows specifically — shell form there runs under
+   Git Bash, or under **PowerShell** when Git Bash is absent, and `$CLAUDE_PROJECT_DIR` expansion
+   under PowerShell is undocumented. `node` + script path is also the one exec-form invocation the
+   docs certify as portable, because `node.exe` is a real binary (unlike `.cmd`/`.bat` shims).
+
+5. **Classify every entry already in `hooks`** — this is the prune step. An entry is
+   **ecosystem-owned** iff its *script path* falls under `.claude/hooks/<known-module>/`. Read that
+   path per form:
+   - **Exec form** (`args` present): `command` is exactly `node` **AND** `args[0]` matches
+     `^\$\{CLAUDE_PROJECT_DIR\}/\.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/`
+   - **Shell form** (`args` absent) — the **legacy** shapes, recognised so that re-running
+     bootstrap/update *migrates* them instead of duplicating them. `command` matching either:
+     - `^node\s+\.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/` — the
+       pre-DEC-DEV-0241 relative form, the one that dies on cwd drift;
+     - `^node\s+"?\$\{?CLAUDE_PROJECT_DIR\}?"?/\.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/`
+       — any shell-form variant carrying the placeholder.
+
+   Matched → **ecosystem-owned** → discard it and take the re-derived set instead. An entry whose
+   hook was removed from (or never declared in) the manifest therefore **disappears** — it is not
+   carried over; a legacy-form entry is likewise discarded and re-emitted in exec form.
+
+   🛑 **`command == "node"` alone NEVER decides ownership.** In exec form the discriminator lives
+   entirely in `args[0]`; classifying on the `command` field alone would sweep every third-party
+   node hook into the ecosystem-owned bucket and **delete it** — a direct breach of the
+   wipe-protection contract. If `args` is present and `args[0]` does not match, the entry is
+   third-party, full stop.
+
    - **Everything else** → **non-ecosystem** (third-party tool injections, e.g. `bd prime` from
      beads; user's own hooks) → **preserved verbatim**.
    - *(Optional, audit-only:* if `.claude/integrator/active-tools.yaml` exists and is parseable,
@@ -557,18 +589,22 @@ third-party (non-ecosystem) entries are kept verbatim.
 
 6. **Merge logic** (per `(event, matcher)` pair):
    - Union: re-derived ecosystem entries + preserved non-ecosystem entries
-   - Dedupe by `command` string (idempotent re-runs)
+   - Dedupe by the **`(command, args)` pair**, not by `command` alone (idempotent re-runs).
+     Exec-form entries all share `command: "node"`, so a `command`-only dedupe would collapse
+     every ecosystem hook of an event into one. Compare `command` plus the `args` array
+     element-wise (absent `args` ≡ `[]`).
    - Ordering: ecosystem entries first, preserved entries after (so the user can react to ecosystem findings)
    - An `(event, matcher)` pair left with **zero** entries after the prune → drop the pair.
 
 7. **Write merged settings.json** back.
 
-8. **Log summary** to user — **the prune must be visible**, never silent:
+8. **Log summary** to user — **the prune must be visible**, never silent. Render each entry as
+   `command` + `args` joined by spaces (display only; the stored shape is exec form):
    ```
    Hooks re-derived from manifests:
      PostToolUse (matcher: Write|Edit):
-       - node .claude/hooks/product/artifact-validate.js (inline validation)
-       - node .claude/hooks/product/session-state.js (session snapshot)
+       - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/artifact-validate.js (inline validation)
+       - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/session-state.js (session snapshot)
      PostToolUse (matcher: ...): ...
      Total ecosystem: N hooks across M event types
 
@@ -580,8 +616,13 @@ third-party (non-ecosystem) entries are kept verbatim.
 
    Pruned (ecosystem entries no longer declared by any manifest):
      PostToolUse (matcher: Write|Edit):
-       - node .claude/hooks/product/<retired-hook>.js
+       - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/<retired-hook>.js
      Total pruned: K   (or "none")
+
+   Migrated to absolute form (legacy relative commands rewritten, DEC-DEV-0241):
+     PostToolUse (matcher: Write|Edit):
+       - node .claude/hooks/product/artifact-validate.js  →  exec form
+     Total migrated: J   (or "none")
    ```
 
 **Example result in `.claude/settings.json`** (after Phase 2 manifest processed):
@@ -595,11 +636,13 @@ third-party (non-ecosystem) entries are kept verbatim.
         "hooks": [
           {
             "type": "command",
-            "command": "node .claude/hooks/product/artifact-validate.js"
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/product/artifact-validate.js"]
           },
           {
             "type": "command",
-            "command": "node .claude/hooks/product/session-state.js"
+            "command": "node",
+            "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/product/session-state.js"]
           }
         ]
       }
@@ -617,7 +660,7 @@ third-party (non-ecosystem) entries are kept verbatim.
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/product/lesson-gate.js" }
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/product/lesson-gate.js"] }
         ]
       }
     ],
@@ -625,7 +668,7 @@ third-party (non-ecosystem) entries are kept verbatim.
       {
         "matcher": "Write|Edit|Bash|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/product/lesson-presence-gate.js" }
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/product/lesson-presence-gate.js"] }
         ]
       }
     ],
@@ -633,7 +676,7 @@ third-party (non-ecosystem) entries are kept verbatim.
       {
         "matcher": "",
         "hooks": [
-          { "type": "command", "command": "node .claude/hooks/product/lesson-presence-gate.js" }
+          { "type": "command", "command": "node", "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/product/lesson-presence-gate.js"] }
         ]
       }
     ]

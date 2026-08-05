@@ -26,9 +26,11 @@
  *   - Disable entirely: remove the `override-sweep-check` entry from
  *     hooks/product/manifest.yaml and re-run /ecosystem:bootstrap (or update).
  *
- * Registration (deployed project, .claude/settings.json, via bootstrap Step 6b):
- *   "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command",
- *     "command": "node .claude/hooks/product/override-sweep-check.js" }] }]
+ * Registration (deployed project, .claude/settings.json, via bootstrap Step 6b) — exec form,
+ * absolute via the harness-substituted ${CLAUDE_PROJECT_DIR} placeholder (DEC-DEV-0241: a
+ * relative path dies silently once the session cwd leaves the project root):
+ *   "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command", "command": "node",
+ *     "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/product/override-sweep-check.js"] }] }]
  */
 
 const fs = require('fs');
