@@ -8,6 +8,8 @@
  *               journeys authored at the convention path? — a Definition-of-Readiness check)
  *   parse     — given a Playwright JSON reporter output, what is the VERDICT?
  *               (PASS | FAIL | ENV_NOT_READY) — a deterministic reduction over the report bytes.
+ *               It also HARVESTS the recordings the run attached (video_files[] / trace_files[]) —
+ *               the human-visual evidence a headed run leaves (UJA_HEADED=1, DEC-DEV-0240).
  *   visual    — does the run leave PER-SCREEN evidence for every DESIGNED state of every has_ui
  *               feature in the release scope? (DEC-DEV-0237 — the visual-conformance gate:
  *               COMPLETE | COMPLETE_WITH_SKIPS | INCOMPLETE | N/A over MK Screen Inventory × files)
@@ -36,9 +38,10 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
+// 4 — adds video_files / trace_files to parse (the headed-run recordings, DEC-DEV-0240).
 // 3 — adds the `visual` subcommand (visual-conformance evidence gate, DEC-DEV-0237).
 // 2 — adds negative_present / negative_journeys to preflight (DEC-DEV-0230).
-const UJA_REPORT_SCHEMA_VERSION = 3;
+const UJA_REPORT_SCHEMA_VERSION = 4;
 
 // The journey-file convention (DEC-DEV-0225): one *.spec.ts under the journeys dir == one journey.
 const JOURNEY_SPEC_RE = /\.spec\.(?:ts|tsx|js|mjs|cjs)$/;
@@ -50,6 +53,27 @@ const NEG_JOURNEY_RE = /^neg-.*\.spec\.(?:ts|tsx|js|mjs|cjs)$/;
 const PLAYWRIGHT_CONFIGS = [
   'playwright.config.ts', 'playwright.config.js', 'playwright.config.mjs', 'playwright.config.cjs',
 ];
+
+// ── the RECORDINGS a run leaves (DEC-DEV-0240 — the UJA_HEADED / video leg) ───────────────────────
+// Playwright attaches whatever it recorded to the JSON report as
+// `spec.tests[].results[].attachments[] = { name, contentType, path }` — a video is `name: 'video'`
+// + a `video/*` contentType (a .webm), a trace is `name: 'trace'` + an application/zip. Harvesting
+// those paths gives the owner (and the agent's "eyes") a MACHINE-READABLE handle on the recordings
+// instead of "look somewhere under test-results/".
+//
+// Read out of the REPORT, never off the FS: a directory scan would (a) break the purity of `parse`
+// (the whole reason this is a lib — N parses of one report must be byte-identical) and (b) sweep up
+// artifacts of OTHER runs sitting in the same output dir, i.e. present someone else's video as this
+// run's evidence. The report is the only source that knows which recording belongs to which run.
+//
+// The predicates are deliberately TOLERANT (name OR contentType OR extension): a missed video is a
+// lost handle to real evidence, while a mislabelled extra path costs nothing — video_files never
+// touches the verdict, which stays the reduction over pass/fail bytes.
+const VIDEO_ATTACHMENT_NAME_RE = /^video/i;
+const VIDEO_CONTENT_TYPE_RE = /^video\//i;
+const VIDEO_EXT_RE = /\.(?:webm|mp4|ogv|ogg)$/i;
+const TRACE_ATTACHMENT_NAME_RE = /^trace/i;
+const TRACE_PATH_RE = /(?:^|[\\/])trace[^\\/]*\.zip$/i;
 
 // ---------------------------------------------------------------------------
 // parse — the verdict reduction over a Playwright JSON report (PURE)
@@ -96,6 +120,64 @@ function collectSpecs(suites, inheritedFile, out) {
   }
 }
 
+/**
+ * Flatten every attachment the report carries into { name, contentType, path }, in document order.
+ * PURE (no FS) — it walks the same suite tree as collectSpecs, one level deeper (spec → tests →
+ * results → attachments). An attachment with no `path` (an inline body-only attachment) is skipped:
+ * there is nothing to point a human at.
+ */
+function collectAttachments(suites, out) {
+  if (!Array.isArray(suites)) return;
+  for (const s of suites) {
+    if (!s || typeof s !== 'object') continue;
+    for (const spec of (Array.isArray(s.specs) ? s.specs : [])) {
+      const tests = (spec && Array.isArray(spec.tests)) ? spec.tests : [];
+      for (const t of tests) {
+        const results = (t && Array.isArray(t.results)) ? t.results : [];
+        for (const r of results) {
+          const atts = (r && Array.isArray(r.attachments)) ? r.attachments : [];
+          for (const a of atts) {
+            if (!a || typeof a !== 'object') continue;
+            if (typeof a.path !== 'string' || !a.path) continue;
+            out.push({
+              name: String(a.name == null ? '' : a.name),
+              contentType: String(a.contentType == null ? '' : a.contentType),
+              path: a.path,
+            });
+          }
+        }
+      }
+    }
+    if (Array.isArray(s.suites)) collectAttachments(s.suites, out);
+  }
+}
+
+/** Is this attachment a VIDEO recording? (name `video*` OR a `video/*` contentType OR a video ext) */
+function isVideoAttachment(a) {
+  if (!a) return false;
+  return VIDEO_ATTACHMENT_NAME_RE.test(a.name)
+    || VIDEO_CONTENT_TYPE_RE.test(a.contentType)
+    || VIDEO_EXT_RE.test(a.path);
+}
+
+/** Is this attachment a Playwright TRACE? (name `trace*` OR a `trace*.zip` path — NOT any old zip) */
+function isTraceAttachment(a) {
+  if (!a) return false;
+  return TRACE_ATTACHMENT_NAME_RE.test(a.name) || TRACE_PATH_RE.test(a.path);
+}
+
+/** First-seen order, de-duplicated (a retried test re-attaches the same file). Deterministic. */
+function uniquePaths(list) {
+  const seen = new Set();
+  const out = [];
+  for (const p of list) {
+    if (seen.has(p)) continue;
+    seen.add(p);
+    out.push(p);
+  }
+  return out;
+}
+
 /** The artifacts (screenshots / trace) dir the report declares — never guessed. */
 function extractArtifactsDir(report) {
   const cfg = report && report.config;
@@ -107,7 +189,8 @@ function extractArtifactsDir(report) {
 
 /**
  * Reduce a parsed Playwright JSON report to the P8 verdict. PURE — no FS, no clock.
- * Returns { uja_result, journeys_total, journeys_passed, journeys_failed, artifacts_dir, reasons }.
+ * Returns { uja_result, journeys_total, journeys_passed, journeys_failed, artifacts_dir, reasons,
+ *           video_files, trace_files }.
  *   uja_result ∈ PASS | FAIL | ENV_NOT_READY   (ENV_NOT_READY = empty/unparseable — could-not-judge)
  *   journeys are GROUPED BY FILE — one *.spec.ts is one journey; a journey fails if ANY of its
  *   specs fails (a broken step anywhere breaks the journey).
@@ -117,6 +200,7 @@ function parseReport(report) {
     return {
       uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], specs_skipped: [], artifacts_dir: null,
       reasons: ['no parseable Playwright JSON report — the journey run produced nothing to judge (could-not-judge, NOT a code FAIL): re-run once the report is produced'],
+      video_files: [], trace_files: [],
     };
   }
   const specs = [];
@@ -139,6 +223,12 @@ function parseReport(report) {
     if (skipped.length) specs_skipped.push({ journey: file, skipped });
   }
   const artifacts_dir = extractArtifactsDir(report);
+  // DEC-DEV-0240 — the recordings this run left (empty on a default headless run that records none;
+  // absent video == the old behaviour, an empty array, never a reason to change the verdict).
+  const attachments = [];
+  collectAttachments(report.suites, attachments);
+  const video_files = uniquePaths(attachments.filter(isVideoAttachment).map((a) => a.path));
+  const trace_files = uniquePaths(attachments.filter(isTraceAttachment).map((a) => a.path));
   const reasons = [];
 
   let uja_result;
@@ -162,7 +252,16 @@ function parseReport(report) {
     const n = specs_skipped.reduce((acc, s) => acc + s.skipped.length, 0);
     reasons.push(`${n} spec(s) SKIPPED (${specs_skipped.map((s) => s.journey).join(', ')}) — a skip must be an EXPLICIT designed-but-unbuilt disclosure (ESCALATE), never a silent gap`);
   }
-  return { uja_result, journeys_total, journeys_passed, journeys_failed, specs_skipped, artifacts_dir, reasons };
+  if (video_files.length) {
+    // DEC-DEV-0240: name the recordings so they are reachable from the verdict alone (the reasons
+    // ride into the P8 disclosures, which the run-ledger DOES carry into run.json). Said explicitly:
+    // a video is evidence for a HUMAN, never an input to this verdict — the two-channel invariant of
+    // the vm-observability track (machine channel decides from bytes; the visual channel supplements).
+    reasons.push(`${video_files.length} video recording(s) captured (a headed/video run — UJA_HEADED=1, DEC-DEV-0240): ${video_files.join(', ')}`
+      + ' — the HUMAN-VISUAL evidence channel (replay what the run actually did on screen). A recording is EVIDENCE, never an input to this verdict: '
+      + 'the PASS/FAIL above is the reduction over the report bytes, unchanged by what any video shows.');
+  }
+  return { uja_result, journeys_total, journeys_passed, journeys_failed, specs_skipped, artifacts_dir, reasons, video_files, trace_files };
 }
 
 /** Read a report file and parse it. A read/JSON error is DATA (ENV_NOT_READY), never a throw. */
@@ -174,6 +273,7 @@ function readReport(file, opts) {
     return {
       uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], specs_skipped: [], artifacts_dir: null,
       reasons: [`Playwright report not readable at ${file}: ${e.code || e.message} — the journey run left no report (could-not-judge, NOT a FAIL): re-run`],
+      video_files: [], trace_files: [],
     };
   }
   let report;
@@ -181,6 +281,7 @@ function readReport(file, opts) {
     return {
       uja_result: 'ENV_NOT_READY', journeys_total: 0, journeys_passed: 0, journeys_failed: [], specs_skipped: [], artifacts_dir: null,
       reasons: [`Playwright report at ${file} is not valid JSON (${raw.length} bytes): ${e.message} — could-not-judge, NOT a FAIL`],
+      video_files: [], trace_files: [],
     };
   }
   return parseReport(report);
@@ -590,10 +691,15 @@ function printHelp() {
     '    + are NEGATIVE access journeys authored at <journeys-dir>/neg-*.spec.ts (from the RPM Access Matrix)?',
     '',
     'PARSE:      node uja-report.cjs parse --report <playwright-json-report>',
-    '  → JSON { uja_result, journeys_total, journeys_passed, journeys_failed[], specs_skipped[], artifacts_dir, reasons[] }',
+    '  → JSON { uja_result, journeys_total, journeys_passed, journeys_failed[], specs_skipped[], artifacts_dir,',
+    '           reasons[], video_files[], trace_files[] }',
     '    uja_result  PASS | FAIL | ENV_NOT_READY. One *.spec.ts == one journey; a journey fails if',
     '                ANY of its specs fails. A report with 0 journeys is ENV_NOT_READY (could-not-judge),',
     '                NEVER a PASS — a gate that goes green on zero evidence is a false green.',
+    '    video_files the recordings the run attached (DEC-DEV-0240 — a headed/video run, UJA_HEADED=1);',
+    '    trace_files empty on the default headless run. Read OUT OF THE REPORT, never scanned off disk',
+    '                (a scan would hand you another run\'s video). Evidence for humans — NEVER an input',
+    '                to uja_result, which stays the reduction over the pass/fail bytes.',
     '',
     'VISUAL:     node uja-report.cjs visual --root <dir> --features FM-001,FM-002 --artifacts-dir <dir>',
     '                                       [--product-dir .product] [--journeys-dir tests/uja]',
@@ -664,6 +770,8 @@ module.exports = {
   NEG_JOURNEY_RE,
   PLAYWRIGHT_CONFIGS,
   VISUAL_EVIDENCE_EXT_RE,
+  VIDEO_EXT_RE,
+  TRACE_PATH_RE,
   SI_ROW_RE,
   SI_SECTION_RE,
   VISUAL_SKIPS_FILE,
@@ -672,6 +780,9 @@ module.exports = {
   specPassed,
   specSkipped,
   collectSpecs,
+  collectAttachments,
+  isVideoAttachment,
+  isTraceAttachment,
   extractArtifactsDir,
   parseReport,
   readReport,
