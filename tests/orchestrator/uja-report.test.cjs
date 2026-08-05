@@ -15,6 +15,9 @@
  *    byte-identical (a stochastic verdict behind an acceptance gate is a coin-flip in both directions).
  *  - PREFLIGHT (Definition-of-Readiness). Playwright equipped (dep OR config) + journeys authored at
  *    the convention path — each missing piece yields an actionable DoR reason, never a fabricated pass.
+ *  - THE RECORDINGS (DEC-DEV-0240). A headed run (UJA_HEADED=1) leaves video/trace attachments; the
+ *    parse harvests their paths OUT OF THE REPORT (never a disk scan — that would attribute another
+ *    run's video to this one), and a recording never moves the verdict: evidence for humans only.
  *
  * Node stdlib only; run with `node tests/orchestrator/uja-report.test.cjs`.
  */
@@ -134,6 +137,122 @@ test('SKIPPED specs are SURFACED (specs_skipped + a reason), never silent — an
   assert.strictEqual(v.specs_skipped[0].journey, 'dashboard.spec.ts');
   assert.deepStrictEqual(v.specs_skipped[0].skipped, ['library with data (designed, not built)']);
   assert.ok(/SKIPPED/.test(v.reasons.join(' ')), 'every skip must be NAMED in the verdict (the designed-but-unbuilt class must be visible, pilot finding #8)');
+});
+
+// ==== the RECORDINGS a headed run leaves (DEC-DEV-0240) ==========================================
+//
+// WHAT THIS PINS: `UJA_HEADED=1` runs the same journeys with a visible browser + Playwright
+// video/trace, and the recordings must come back as a MACHINE-READABLE handle (video_files[]) —
+// otherwise the owner is told "the evidence is somewhere under test-results/". Three properties:
+//   · the paths are read OUT OF THE REPORT, never scanned off disk (a scan would hand back another
+//     run's video sitting in the same output dir — evidence attributed to the wrong run);
+//   · the DEFAULT headless run is unchanged: no attachments ⇒ [] ⇒ no reason, no verdict movement;
+//   · a recording NEVER moves uja_result. A FAIL with a beautiful video is still a FAIL.
+
+/** A Playwright spec carrying attachments on its result (the shape the JSON reporter emits). */
+const specWithAtt = (title, ok, file, attachments) => ({
+  title, ok, file, tests: [{ results: [{ status: ok ? 'passed' : 'failed', attachments }] }],
+});
+const VIDEO_ATT = { name: 'video', contentType: 'video/webm', path: 'test-results/login-flow/video.webm' };
+const TRACE_ATT = { name: 'trace', contentType: 'application/zip', path: 'test-results/login-flow/trace.zip' };
+
+test('video: a headed run\'s video/trace attachments are harvested into video_files[] / trace_files[]', () => {
+  const rep = {
+    config: { outputDir: 'test-results' },
+    suites: [{ file: 'login.spec.ts', specs: [specWithAtt('logs in', true, 'login.spec.ts', [VIDEO_ATT, TRACE_ATT])] }],
+  };
+  const v = parseReport(rep);
+  assert.strictEqual(v.uja_result, 'PASS');
+  assert.deepStrictEqual(v.video_files, ['test-results/login-flow/video.webm']);
+  assert.deepStrictEqual(v.trace_files, ['test-results/login-flow/trace.zip']);
+  assert.ok(/video recording\(s\) captured/.test(v.reasons.join(' ')),
+    'the recordings must be NAMED in the verdict — the reasons ride into the P8 disclosures, which are what run.json carries');
+  assert.ok(/never an input to this verdict/i.test(v.reasons.join(' ')),
+    'the reason must say a recording is evidence for humans, not an input to PASS/FAIL (the two-channel invariant)');
+});
+
+test('video: the DEFAULT headless run is unchanged — no attachments ⇒ empty arrays, no extra reason', () => {
+  const v = parseReport(PASS_REPORT);
+  assert.deepStrictEqual(v.video_files, [], 'a run that recorded nothing must report nothing (absent == old behaviour)');
+  assert.deepStrictEqual(v.trace_files, []);
+  assert.deepStrictEqual(v.reasons, ['all 2 journey(s) passed'], 'the headless verdict text must not grow a recording line');
+});
+
+test('video: recordings NEVER move the verdict — a FAIL with a video is still a FAIL', () => {
+  const rep = {
+    suites: [{ file: 'checkout.spec.ts', specs: [specWithAtt('buys an item', false, 'checkout.spec.ts', [VIDEO_ATT])] }],
+  };
+  const v = parseReport(rep);
+  assert.strictEqual(v.uja_result, 'FAIL', 'a recording is evidence, not an argument — it cannot rescue a failing journey');
+  assert.deepStrictEqual(v.video_files, ['test-results/login-flow/video.webm']);
+});
+
+test('video: paths are de-duplicated across retries and kept in document order (deterministic)', () => {
+  const retried = {
+    title: 'flaky step', ok: true, file: 'flaky.spec.ts',
+    tests: [{ results: [
+      { status: 'failed', attachments: [VIDEO_ATT] },
+      { status: 'passed', attachments: [VIDEO_ATT, { name: 'video', contentType: 'video/webm', path: 'test-results/flaky-retry/video.webm' }] },
+    ] }],
+  };
+  const v = parseReport({ suites: [{ file: 'flaky.spec.ts', specs: [retried] }] });
+  assert.deepStrictEqual(v.video_files,
+    ['test-results/login-flow/video.webm', 'test-results/flaky-retry/video.webm'],
+    'the same file re-attached on a retry must appear once, in first-seen order');
+});
+
+test('video: detection is tolerant (contentType or extension), and a screenshot is NOT a video', () => {
+  const rep = { suites: [{ file: 'x.spec.ts', specs: [specWithAtt('t', true, 'x.spec.ts', [
+    { name: 'screenshot', contentType: 'image/png', path: 'test-results/x/test-failed-1.png' },
+    { name: 'recording', contentType: 'video/mp4', path: 'test-results/x/run.mp4' },     // named oddly, typed right
+    { name: 'clip', contentType: '', path: 'test-results/x/clip.webm' },                  // typed nothing, named nothing — the extension carries it
+    { name: 'stdout', contentType: 'text/plain', path: 'test-results/x/out.txt' },
+  ])] }] };
+  const v = parseReport(rep);
+  assert.deepStrictEqual(v.video_files, ['test-results/x/run.mp4', 'test-results/x/clip.webm'],
+    'a video must be recognised by contentType OR extension (a missed recording is lost evidence); a screenshot/log must not be');
+  assert.deepStrictEqual(v.trace_files, [], 'nothing here is a trace');
+});
+
+test('video: a trace is `trace`-named or a trace*.zip — an arbitrary .zip attachment is not', () => {
+  const rep = { suites: [{ file: 'x.spec.ts', specs: [specWithAtt('t', true, 'x.spec.ts', [
+    { name: 'download', contentType: 'application/zip', path: 'test-results/x/export-bundle.zip' },
+    TRACE_ATT,
+  ])] }] };
+  assert.deepStrictEqual(parseReport(rep).trace_files, ['test-results/login-flow/trace.zip'],
+    'a downloaded .zip fixture must not be presented to the owner as a Playwright trace');
+});
+
+test('video: an attachment with no path (inline body) is skipped — there is nothing to point a human at', () => {
+  const rep = { suites: [{ file: 'x.spec.ts', specs: [specWithAtt('t', true, 'x.spec.ts', [
+    { name: 'video', contentType: 'video/webm' },   // body-only, no path
+    null,
+  ])] }] };
+  const v = parseReport(rep);
+  assert.deepStrictEqual(v.video_files, []);
+});
+
+test('video: nested describe suites are walked for attachments too (same recursion as the specs)', () => {
+  const rep = { suites: [{ file: 'n.spec.ts', specs: [], suites: [{ file: 'n.spec.ts', specs: [specWithAtt('inner', true, 'n.spec.ts', [VIDEO_ATT])] }] }] };
+  assert.deepStrictEqual(parseReport(rep).video_files, ['test-results/login-flow/video.webm']);
+});
+
+test('video: the error arms keep the shape (a broken/unreadable report still answers video_files: [])', () => {
+  for (const bad of [null, 42, []]) {
+    assert.deepStrictEqual(parseReport(bad).video_files, [], 'a could-not-judge arm must not omit the field');
+    assert.deepStrictEqual(parseReport(bad).trace_files, []);
+  }
+  assert.deepStrictEqual(readReport(path.join(mkTmp(), 'missing.json')).video_files, []);
+});
+
+test('CLI parse: video_files ride through the CLI seam (that is how the transport agent gets them)', () => {
+  const j = cliParse({
+    config: { outputDir: 'test-results' },
+    suites: [{ file: 'login.spec.ts', specs: [specWithAtt('logs in', true, 'login.spec.ts', [VIDEO_ATT, TRACE_ATT])] }],
+  });
+  assert.strictEqual(j.uja_result, 'PASS');
+  assert.deepStrictEqual(j.video_files, ['test-results/login-flow/video.webm']);
+  assert.deepStrictEqual(j.trace_files, ['test-results/login-flow/trace.zip']);
 });
 
 // ==== determinism (the whole reason it is a lib) =================================================
