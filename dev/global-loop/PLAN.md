@@ -1,6 +1,6 @@
 # PLAN — Global Loop: единый план треков «Release DoD» × «Host Console / Кондуктор»
 
-status: ACTIVE (слияние двух треков в один план — решение владельца 2026-07-15; живой шов — `SEAM.md` рядом)
+status: CLOSED (2026-07-31 — трек закрыт владельцем вместе со швом, см. `SEAM.md` рядом; наследие и hand-off — в шапке шва. Рассинхрон ACTIVE↔CLOSED устранён 2026-08-05)
 plan_ssot: этот файл — **порядок и зависимости работ**. Содержание НЕ дублируется:
 хартии — `dev/release-dod/TRACK.md` §0 и `dev/host-console/TRACK.md` §0 (дословные
 интенции владельца) · архитектура пульта — `factory-conductor/CONDUCTOR.md` (SSOT) ·
