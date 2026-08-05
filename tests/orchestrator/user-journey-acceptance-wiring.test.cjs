@@ -18,6 +18,10 @@
  *    schema (an older uja-report.cjs in the target degrades to an honest gap, not a schema error), and
  *    on a Release-DoD run an INCOMPLETE / unavailable leg HARD-BLOCKS to ENV_NOT_READY — a green
  *    acceptance over screens nobody ever saw is the "designed — not built" class at the pixel level;
+ *  - the HEADED/VIDEO channel (DEC-DEV-0240) is opt-in and SEPARATE from the verdict: headless stays
+ *    the default arm byte-for-byte (a gate whose default needs an X server breaks in CI/ssh), the
+ *    headed arm makes the browser visible + records video/trace WITHOUT editing the target's
+ *    playwright config, and a recording is evidence for HUMANS — it never feeds PASS/FAIL;
  *  - PA-writes target the canonical worktree-shared file (PA_CANON / FB-LR-23);
  *  - MDP: every stage is a mechanical transport ⇒ sonnet (there is NO LLM-graded step in v0);
  *  - CHARTER v6: `journey_acceptance` sits BETWEEN deploying_staging and done; a P8 PASS → done,
@@ -226,7 +230,84 @@ test('the run agent is capture-don\'t-fix, uses the JSON reporter, and carries t
   assert(/even when tests fail/i.test(seg), 'the report must be captured even on a non-zero playwright exit (a FAIL still writes a report)');
   assert(/BUDGET GUARD/.test(seg) && /MINIMAL fixtures/i.test(seg),
     'the run must carry the real-vendor budget guard — journeys MUST use minimal fixtures (real jobs = real spend)');
-  assert(/HEADLESS/i.test(seg), 'the journeys must run headless');
+  // HEADLESS IS THE DEFAULT ARM, not merely a word somewhere in the prompt (DEC-DEV-0240). The
+  // headed mode is opt-in, so the ELSE branch of the fork must still be the headless command: a
+  // gate whose default needs an X server breaks in exactly the environment it matters most (CI/ssh).
+  assert(/HEADED\s*\?[\s\S]*?\n\s*:\s*`2\) Run HEADLESS with the JSON reporter/.test(seg),
+    'the journeys must run HEADLESS BY DEFAULT — the headless command must be the ELSE arm of the HEADED fork, not an option among two');
+  assert(/:\s*`2\) Run HEADLESS with the JSON reporter, capturing the report to a file even when tests fail[\s\S]*?npx playwright test \$\{JOURNEYS_DIR\} --reporter=json > \$\{ARTIFACTS_DIR\}\/uja-report\.json/.test(seg),
+    'the DEFAULT (toggle absent) run command drifted — absent UJA_HEADED must send the byte-identical headless command this gate has always sent');
+});
+
+// ---- the HEADED / VIDEO channel (DEC-DEV-0240, vm-observability Волна B) -------------------------
+
+test('headed toggle: default headless, opt-in via UJA_HEADED=1 env OR args.headed (the env read is guarded)', () => {
+  assert(/const HEADED\b/.test(SRC), 'no HEADED toggle');
+  assert(/ENV\.UJA_HEADED === '1'/.test(SRC), 'the operator channel is the UJA_HEADED=1 env toggle (owner decision, DEC-DEV-0240)');
+  assert(/A\.headed/.test(SRC), 'the harness channel (args.headed) is missing — the Workflow dialect promises inputs via args, not a Node API');
+  // the env read MUST be guarded: DEC-DEV-0073 §D.1 — "No filesystem / Node.js API access" in a
+  // Workflow script, so `process` may not exist in the sandbox at all. An unguarded read would throw
+  // a ReferenceError and take the whole acceptance gate down instead of just the toggle.
+  assert(/typeof process !== 'undefined'/.test(SRC),
+    'the process.env read must be typeof-guarded (DEC-DEV-0073 §D.1: the harness promises no Node API — an unguarded read crashes the gate, not just the toggle)');
+  assert(/DEC-DEV-0240/.test(SRC), 'DEC-DEV-0240 not referenced');
+  assert(/const HEADED_DISPLAY\b/.test(SRC) && /UJA_DISPLAY/.test(SRC),
+    'the visible browser needs a display it can land on (UJA_DISPLAY, default :0) — hardcoding is how a "visible" run ends up visible to nobody');
+});
+
+test('headed run: visible browser + video/trace WITHOUT mutating the project\'s canonical playwright config', () => {
+  const seg = SRC.slice(SRC.indexOf('const verdict = await agent'), SRC.indexOf("label: 'run-journeys'"));
+  assert(/export DISPLAY=\$\{HEADED_DISPLAY\}/.test(seg), 'the headed arm must export DISPLAY — otherwise nothing is visible to the owner');
+  assert(/xvfb/i.test(seg), 'the headed arm must forbid xvfb — a framebuffer nobody can see defeats the mode');
+  assert(/video: 'on'/.test(seg) && /trace: 'on'/.test(seg), 'the headed arm must turn video + trace on');
+  assert(/--headed/.test(seg), 'the headed arm must pass --headed to playwright');
+  // the canonical config is the PROJECT's contract — a gate that edits the config it judges under is
+  // the evidence-fabrication this whole process exists to prevent (same family as hand-placing a
+  // screenshot to close a visual gap). The override must be a throwaway file that IMPORTS it.
+  assert(/WITHOUT TOUCHING THE PROJECT'S CANONICAL CONFIG/.test(seg),
+    'the headed arm must forbid mutating the target playwright.config.* (the gate never edits what it judges under)');
+  assert(/uja-headed\.config/.test(seg) && /IMPORTS the project's config/.test(seg),
+    'video has no CLI flag ⇒ the headed arm must use a throwaway override config that imports the project config');
+  // and the fallback is honest: no display ⇒ headless + video, DISCLOSED, never abandoned or faked
+  assert(/If no display is reachable[\s\S]{0,400}DISCLOSED, never silent/.test(seg),
+    'a missing display must degrade to headless-with-video and be DISCLOSED, never silently dropped or faked');
+});
+
+test('headed run: the recording is EVIDENCE FOR HUMANS — it never becomes an input to the verdict (two channels)', () => {
+  const seg = SRC.slice(SRC.indexOf('const verdict = await agent'), SRC.indexOf("label: 'run-journeys'"));
+  assert(/NEVER AN INPUT TO THE VERDICT/.test(seg),
+    'the headed arm must state that a recording never decides PASS/FAIL — the machine channel decides from the report bytes, the visual channel only supplements it');
+  assert(/do NOT re-run to get a cleaner recording/i.test(seg),
+    'a prettier video must never be a reason to re-run (that is retry-until-green wearing a camera)');
+  assert(/HUMAN-VISUAL CHANNEL \(DEC-DEV-0240/.test(SRC), 'the header contract does not document the human-visual channel');
+});
+
+test('headed run: video_files/trace_files are relayed (optional schema), returned, and DISCLOSED', () => {
+  const schemaSeg = SRC.slice(SRC.indexOf('const VERDICT_SCHEMA'), SRC.indexOf('const PA_CANON'));
+  assert(/video_files:/.test(schemaSeg) && /trace_files:/.test(schemaSeg), 'the verdict schema does not declare the recording fields');
+  const required = (schemaSeg.match(/required:\s*\[([^\]]*)\]/) || [])[1] || '';
+  for (const f of ['video_files', 'trace_files']) {
+    assert(!required.includes(f), `${f} must NOT be required — a pre-0240 uja-report.cjs in the target must degrade to "no recordings", not a schema failure`);
+  }
+  const returns = (SRC.match(/return \{[\s\S]*?\n\}/g) || []).filter((r) => /uja_result/.test(r));
+  assert(returns.length >= 2, `expected the ENV_NOT_READY early return + the final return; found ${returns.length}`);
+  for (const r of returns) {
+    for (const key of ['headed', 'video_files', 'trace_files']) {
+      assert(new RegExp('(^|[\\s{,])' + key + '\\s*:').test(r), `a return arm drops ${key} — a headed run must be auditable from run.json`);
+    }
+  }
+  // run.json carries `disclosures` (run-ledger TRAIL_KEYS) but NOT video_files — so the recordings
+  // must be NAMED in a disclosure, or a headed run leaves evidence nobody can find from the record.
+  assert(/disclosures[\s\S]*\.concat\(HEADED/.test(SRC), 'a headed run must disclose its recordings (disclosures is what the ledger carries)');
+  const TRAIL_KEYS = require(path.join(__dirname, '..', '..', 'orchestrator', 'lib', 'run-ledger.cjs')).TRAIL_KEYS;
+  assert(TRAIL_KEYS.includes('disclosures'), 'the ledger no longer carries disclosures — the headed recordings would vanish from run.json');
+  // a headed run with ZERO videos is a BROKEN CHANNEL, said out loud — and NOT a verdict change
+  assert(/NO video was recorded/.test(SRC), 'a headed run that recorded nothing must say so (a silent empty channel reads as "all fine")');
+  // …and the toggle stays OUT of the verdict computation entirely — the two channels do not mix.
+  const verdictAssignments = SRC.split('\n').filter((l) => /^(?:const|let)\s+(?:ujaResult|finalResult)\b/.test(l));
+  assert(verdictAssignments.length === 2, `expected ujaResult + finalResult to be computed once each; found ${verdictAssignments.length}`);
+  assert(!verdictAssignments.some((l) => /HEADED/.test(l)),
+    'the headed toggle must never enter the verdict computation — a run mode may change what is RECORDED, never what is JUDGED');
 });
 
 test('the zero-evidence rule + FAIL disclosure ride in the report phase (a 0-journey run is recorded, not silently passed)', () => {

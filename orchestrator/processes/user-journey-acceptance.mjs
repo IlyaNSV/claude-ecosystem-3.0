@@ -53,6 +53,16 @@ export const meta = {
  * layer over, in /product:impl-sync (impl_sync.visual_review, V-23). MODE: hard on a DoD confirmation
  * run (INCOMPLETE or an unavailable leg ⇒ ENV_NOT_READY, never a silent PASS), disclosure otherwise.
  *
+ * HUMAN-VISUAL CHANNEL (DEC-DEV-0240, vm-observability Волна B): `UJA_HEADED=1` (or args.headed)
+ * runs the SAME journeys with a VISIBLE browser on the VM desktop plus Playwright video + trace, so
+ * the owner can watch the pass live and re-watch it afterwards ("будто тестировщик снимал рабочий
+ * стол"). Default is headless and byte-identical to what this gate has always sent — headed needs a
+ * desktop that a CI/ssh run does not have. The recordings are harvested from the report by the SAME
+ * lib (`parse` → video_files[] / trace_files[]) and ride out in the return + disclosures. They are
+ * EVIDENCE FOR HUMANS ONLY: the verdict is the lib's byte-reduction, in both modes, always. That
+ * separation is the track's ratified invariant — the machine channel decides from events/reports,
+ * the human-visual channel supplements it and never becomes an input to an automatic decision.
+ *
  * BUDGET GUARD (autonomy note): staging journeys are read-mostly and reversible ⇒ the charter cell
  * is `auto`. BUT a journey can create REAL jobs on the deployed app (real-vendor spend). The mitigation
  * is NOT a floor — it is a DoR contract: journeys MUST use MINIMAL fixtures (a throwaway/seed account,
@@ -101,6 +111,35 @@ const INPUT_PROFILE = A.inputProfile || 'dev'                   // 'dev' (minima
 const FEATURES = (Array.isArray(A.features) ? A.features
   : (typeof A.features === 'string' && A.features ? A.features.split(',') : (FEATURE ? [FEATURE] : [])))
   .map((f) => String(f).trim()).filter(Boolean)
+// DEC-DEV-0240 — the HEADED/VIDEO toggle (vm-observability Волна B, owner decision 2026-08-05).
+// The owner's intent for the track, verbatim: «мне главное своими глазами увидеть кто, как и что
+// проверял в браузере, что вводил, какие кнопки нажимал… будто тестировщик снимал рабочий стол во
+// время проходов по сценариям». P8 already drives the browser — so the visual channel is a MODE of
+// this run, not a second process that would drive its own (divergent) journeys.
+//
+// DEFAULT IS HEADLESS AND STAYS BYTE-IDENTICAL. Absent toggle == the run prompt this process has
+// always sent, character for character (the canon the wiring test pins). Headed is opt-in because
+// it needs a desktop nobody can assume: a CI/ssh run has no display, and a gate whose DEFAULT
+// depends on an X server is a gate that breaks where it matters most.
+//
+// TWO CHANNELS (the track's load-bearing invariant, ratified in factory-conductor/CONDUCTOR.md
+// §Наблюдаемость): the MACHINE channel decides — the verdict is the deterministic lib's reduction
+// over the report bytes, always. The HUMAN-VISUAL channel (live browser + video + trace) only
+// SUPPLEMENTS it. Nothing below ever lets a recording move a PASS/FAIL.
+//
+// TWO SOURCES, on purpose. `UJA_HEADED=1` in the environment is the OPERATOR's channel (the owner
+// runs P8 on the VM and wants the browser visible for THIS run, without editing args). `args.headed`
+// is the HARNESS's channel — the Workflow dialect promises inputs via `args` and does NOT promise a
+// Node API (DEC-DEV-0073 §D.1: "No filesystem / Node.js API access"), so `process` may simply not
+// exist in the sandbox. Reading env behind a typeof guard keeps the operator toggle working where
+// the sandbox exposes it and degrades to args-only where it does not — an env-only toggle risked
+// being dead on arrival, an args-only one would not have been the toggle the owner asked for.
+const ENV = (typeof process !== 'undefined' && process && process.env) ? process.env : {}
+const HEADED = A.headed === true || A.headed === '1' || ENV.UJA_HEADED === '1'
+// Which desktop the visible browser lands on. `:0` is the VM's own session (what the owner watches
+// over RDP/noVNC); overridable because a second seat is `:1` and hardcoding is how a "visible" run
+// ends up visible to nobody.
+const HEADED_DISPLAY = String(A.display || ENV.UJA_DISPLAY || ':0')
 
 // ---- schemas ---------------------------------------------------------------
 const PREFLIGHT_SCHEMA = {
@@ -144,6 +183,12 @@ const VERDICT_SCHEMA = {
     visual_evidence: { type: ['string', 'null'] },             // COMPLETE | COMPLETE_WITH_SKIPS | INCOMPLETE | N/A | null (lib too old / could not run)
     visual_mk_scope: { type: 'array', items: { type: 'object' } },  // [{ mk, feature, si_total, si_covered[], si_missing[], si_skipped[], evidence_dir }]
     visual_reasons: { type: 'array', items: { type: 'string' } },
+    // DEC-DEV-0240 — the recordings a headed run leaves, harvested by `uja-report.cjs parse` out of
+    // the report's attachments. NOT `required` (same precedent as visual_evidence / negative_present):
+    // a target carrying a pre-0240 uja-report.cjs simply omits them, which must degrade to "no
+    // recordings", not to a schema error that would take the whole verdict down with it.
+    video_files: { type: 'array', items: { type: 'string' } },      // .webm recordings of the run (empty on the headless default)
+    trace_files: { type: 'array', items: { type: 'string' } },      // .zip traces (step-by-step: clicks/input/DOM)
   },
 }
 
@@ -248,6 +293,9 @@ if (!playwrightPresent || !journeysPresent || !negativePresent || !STAGING_URL |
     artifacts_dir: null,
     visual_evidence: null,                                   // DEC-DEV-0237: the journeys never ran ⇒ there is no visual evidence to judge (null ≠ COMPLETE)
     visual: null,
+    headed: HEADED,                                          // DEC-DEV-0240: was this the human-visible mode? (auditable from run.json — a headed run with 0 videos is a broken channel, not a clean run)
+    video_files: [],                                         // …and the journeys never ran, so there is nothing recorded either
+    trace_files: [],
     input_profile: INPUT_PROFILE,                            // DEC-DEV-0231 (2.5): what the journeys feed the app — RL DoD reads this from run.json
     dod_run: DOD_RUN,
     concerns: CONCERNS,                                      // DEC-DEV-0231 (2.2): forwarded implementer deviations, carried even on a DoR gap
@@ -270,8 +318,21 @@ const verdict = await agent(
   (INPUT_PROFILE === 'realistic'
     ? `⚠ REALISTIC-INPUT PROFILE (DoD leg, DEC-DEV-0231): this run MUST exercise the realistic load the release will face (owner directive: видео 30 мин – 2 ч, not the 5-sec dev fixtures) — the point is to prove the REAL pipeline (chunking, cost, duration). Still ONE realistic pass per journey on a throwaway/seed account: do NOT loop, do NOT hammer paid endpoints beyond the single realistic pass.\n`
     : `⚠ BUDGET GUARD (real-vendor spend): the journeys may create REAL jobs on the deployed app — they MUST use MINIMAL fixtures (a throwaway/seed account, the smallest input that exercises the flow). Do NOT run a production-scale pass, do NOT loop, do NOT hammer paid endpoints.\n`) +
-  `2) Run HEADLESS with the JSON reporter, capturing the report to a file even when tests fail (playwright exits non-zero on a failing journey but STILL writes the report — capture it):\n` +
-  `   \`npx playwright test ${JOURNEYS_DIR} --reporter=json > ${ARTIFACTS_DIR}/uja-report.json\` (create ${ARTIFACTS_DIR} first if absent; keep the step screenshots / trace Playwright writes under ${ARTIFACTS_DIR} — that is the visual-conformance evidence for owner review against the MK).\n` +
+  // DEC-DEV-0240 — the ONE behavioural fork of this prompt. The `:` arm below is the byte-identical
+  // headless command this gate has always sent (the default; the canon the wiring test pins). The
+  // headed arm is opt-in (UJA_HEADED=1 / args.headed) and adds the HUMAN-VISUAL channel — a visible
+  // browser + video + trace — WITHOUT moving the verdict, which stays the lib's byte-reduction.
+  (HEADED
+    ? `2) Run HEADED — a VISIBLE browser on the VM desktop — with the JSON reporter, capturing the report to a file even when tests fail (playwright exits non-zero on a failing journey but STILL writes the report — capture it). UJA_HEADED=1 is set, so this run is ALSO the human-visual evidence channel (DEC-DEV-0240): the owner watches the desktop live and re-watches the recording afterwards, "будто тестировщик снимал рабочий стол во время проходов по сценариям".\n`
+      + `   a) MAKE IT VISIBLE: \`export DISPLAY=${HEADED_DISPLAY}\` before the run — that is the desktop session the owner is looking at over RDP/noVNC. Do NOT wrap the run in \`xvfb-run\`/Xvfb: a virtual framebuffer nobody can see defeats the entire point of this mode. If no display is reachable, do NOT abandon the run and do NOT invent one — fall back to the plain headless command, KEEP the video recording on (Playwright records video headless too), and say so verbatim in your answer. A degraded channel is DISCLOSED, never silent.\n`
+      + `   b) TURN ON VIDEO + TRACE WITHOUT TOUCHING THE PROJECT'S CANONICAL CONFIG. \`playwright.config.*\` is the project's own contract — a gate that edits the config it is judging under is the evidence-fabrication this process exists to prevent. Instead write a THROWAWAY override next to the artifacts, e.g. \`${ARTIFACTS_DIR}/uja-headed.config.ts\`, that IMPORTS the project's config and merges ONLY the recording options, inheriting everything else (projects, baseURL, webServer, timeouts):\n`
+      + `      \`import base from '../playwright.config'; export default { ...base, use: { ...(base.use || {}), video: 'on', trace: 'on', screenshot: 'on' } }\` — adjust the relative path/extension to the config the project actually has; if it has NO config file, write the same \`use\` block as a standalone config. Note \`video\` has NO CLI flag (unlike \`--headed\` / \`--trace\`), which is exactly why the override file exists — check \`npx playwright test --help\` for what this build supports rather than assuming.\n`
+      + `   c) Sanity-check the override actually loads (\`npx playwright test ${JOURNEYS_DIR} --config=${ARTIFACTS_DIR}/uja-headed.config.ts --list\`), then run:\n`
+      + `      \`npx playwright test ${JOURNEYS_DIR} --config=${ARTIFACTS_DIR}/uja-headed.config.ts --headed --reporter=json > ${ARTIFACTS_DIR}/uja-report.json\` (create ${ARTIFACTS_DIR} first if absent; keep every artifact Playwright writes under ${ARTIFACTS_DIR} — step screenshots, .webm videos, .zip traces: that is the visual-conformance evidence for owner review against the MK, and the recordings this mode exists for).\n`
+      + `   d) ⚠ THE RECORDING IS EVIDENCE FOR HUMANS, NEVER AN INPUT TO THE VERDICT. The PASS/FAIL still comes from the deterministic lib in step 3, over the JSON report. Do NOT watch (or narrate) a video to decide an outcome, do NOT relax an assertion because "on screen it looked fine", and do NOT re-run to get a cleaner recording. A headed run MUST produce the same verdict a headless one would — if it does not, that difference is a FINDING to report, not a knob to tune.\n`
+      + `   e) The lib in step 3 lists the recordings it finds in the report under \`video_files[]\` / \`trace_files[]\` — relay those verbatim like every other field. Do NOT hand-assemble that list by globbing the artifacts dir (you would sweep in another run's files), and do NOT commit the override config, the videos or the traces.\n`
+    : `2) Run HEADLESS with the JSON reporter, capturing the report to a file even when tests fail (playwright exits non-zero on a failing journey but STILL writes the report — capture it):\n`
+      + `   \`npx playwright test ${JOURNEYS_DIR} --reporter=json > ${ARTIFACTS_DIR}/uja-report.json\` (create ${ARTIFACTS_DIR} first if absent; keep the step screenshots / trace Playwright writes under ${ARTIFACTS_DIR} — that is the visual-conformance evidence for owner review against the MK).\n`) +
   `3) Reduce the report to the verdict through the DETERMINISTIC lib and relay its JSON VERBATIM:\n` +
   `   \`node ${UJA_LIB} parse --report ${ARTIFACTS_DIR}/uja-report.json\`\n` +
   `   Return its { uja_result, journeys_total, journeys_passed, journeys_failed, artifacts_dir, reasons } object EXACTLY as printed. You are a TRANSPORT — do NOT judge PASS/FAIL yourself, do NOT re-interpret the report; the lib decides (PASS | FAIL | ENV_NOT_READY, where a 0-journey report is ENV_NOT_READY, never a PASS).\n` +
@@ -292,7 +353,12 @@ const journeysFailed = (verdict && verdict.journeys_failed) || []
 const specsSkipped = (verdict && verdict.specs_skipped) || []
 const artifactsDir = (verdict && verdict.artifacts_dir) || ARTIFACTS_DIR
 const verdictReasons = (verdict && verdict.reasons) || []
+// DEC-DEV-0240 — the recordings the run left, as the lib read them OUT OF THE REPORT. A pre-0240
+// uja-report.cjs in the target omits the fields ⇒ [] ⇒ "no recordings", never an error.
+const videoFiles = (verdict && verdict.video_files) || []
+const traceFiles = (verdict && verdict.trace_files) || []
 log(`P8 verdict: ${ujaResult} (${journeysPassed}/${journeysTotal} journeys passed${journeysFailed.length ? `; failed: ${journeysFailed.map((j) => j && j.journey).join(', ')}` : ''})`)
+if (HEADED) log(`P8 headed run (UJA_HEADED / args.headed, DISPLAY=${HEADED_DISPLAY}): ${videoFiles.length} video(s) + ${traceFiles.length} trace(s) captured${videoFiles.length ? '' : ' — ⚠ NO video came back: the recording override did not take effect (see the run agent\'s answer); the verdict above is unaffected'}`)
 
 // ---- the VISUAL-CONFORMANCE leg (DEC-DEV-0237) ------------------------------------------------
 // Green journeys prove the flow WORKS; they do not prove the designed SCREENS exist. The pilot's
@@ -345,6 +411,9 @@ return {
   visual: (visualEvidence || visualMkScope.length)           // the per-MK matrix: which designed SI states are covered / missing / declared-skipped
     ? { mk_scope: visualMkScope, reasons: visualReasons }
     : null,
+  headed: HEADED,                                            // DEC-DEV-0240: was this the human-visible mode? (a headed run that returned 0 videos is a broken CHANNEL — visible in the disclosures, never in the verdict)
+  video_files: videoFiles,                                   // the .webm recordings the run attached — the human-visual evidence handle
+  trace_files: traceFiles,                                   // the .zip traces (step-by-step: clicks / input / DOM)
   input_profile: INPUT_PROFILE,                              // DEC-DEV-0231 (2.5): 'realistic' is what RL DoD категория 3 requires of the DoD run — auditable from run.json
   dod_run: DOD_RUN,
   concerns: CONCERNS,                                        // DEC-DEV-0231 (2.2): forwarded implementer deviations — disclosed here, not only at the GO-gate
@@ -361,6 +430,15 @@ return {
     // readable from run.json alone, not only from the PA note the DoD block writes.
     .concat(visualReasons)
     .concat([`visual-conformance: per-SI evidence under ${artifactsDir}/visual/<MK>/SI-n → owner review is RECORDED via /product:impl-sync (impl_sync.visual_review, V-23); an automatic MK-diff is v1.1`
-      + ` — verdict: ${visualEvidence || 'null (leg unavailable — pre-DEC-DEV-0237 uja-report.cjs in the target)'}${DOD_RUN ? '' : ' (disclosed here; the HARD block applies on a DoD confirmation run)'}.`]),
+      + ` — verdict: ${visualEvidence || 'null (leg unavailable — pre-DEC-DEV-0237 uja-report.cjs in the target)'}${DOD_RUN ? '' : ' (disclosed here; the HARD block applies on a DoD confirmation run)'}.`])
+    // DEC-DEV-0240 — the headed/video channel discloses ITSELF: `disclosures` is what the run-ledger
+    // carries into run.json (TRAIL_KEYS), so a recording that nothing names is a recording nobody
+    // finds. A headed run that came back with ZERO videos is a BROKEN CHANNEL — said out loud here,
+    // and deliberately NOT a verdict change: the journeys were still judged from the report bytes.
+    .concat(HEADED
+      ? [`headed run (UJA_HEADED=1 / args.headed, DISPLAY=${HEADED_DISPLAY}, DEC-DEV-0240): ${videoFiles.length} video(s) + ${traceFiles.length} trace(s) under ${artifactsDir}`
+        + `${videoFiles.length ? ` — ${videoFiles.join(', ')}` : ' — ⚠ NO video was recorded: the video override did not take effect (the canonical playwright.config is never edited by this gate, so the run must pass an override config), or the run fell back to headless. Re-run to obtain the recording'}`
+        + '. The HUMAN-VISUAL channel: watch/replay what the run did on screen. It NEVER feeds the verdict above (which is the deterministic reduction over the report) — the two channels are separate by design (vm-observability track).']
+      : []),
   run_id: RUN_ID || null,
 }
