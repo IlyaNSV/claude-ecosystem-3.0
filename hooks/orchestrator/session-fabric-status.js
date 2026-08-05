@@ -24,9 +24,11 @@
  *     /ecosystem:update) so it re-derives .claude/settings.json without it.
  *   - Remove the feature: revert the wiring PR (DEC-DEV-0154, roadmap §2c).
  *
- * Registration (deployed project, .claude/settings.json, via bootstrap Step 6b):
- *   "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command",
- *     "command": "node .claude/hooks/orchestrator/session-fabric-status.js" }] }]
+ * Registration (deployed project, .claude/settings.json, via bootstrap Step 6b) — exec form,
+ * absolute via the harness-substituted ${CLAUDE_PROJECT_DIR} placeholder (DEC-DEV-0241: a
+ * relative path dies silently once the session cwd leaves the project root):
+ *   "SessionStart": [{ "matcher": "", "hooks": [{ "type": "command", "command": "node",
+ *     "args": ["${CLAUDE_PROJECT_DIR}/.claude/hooks/orchestrator/session-fabric-status.js"] }] }]
  */
 
 const { execFileSync } = require('child_process');

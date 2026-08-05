@@ -810,13 +810,24 @@ Mirror Bootstrap Step 6b logic, но против NEW manifest (just synced in S
 2. **Preserve verbatim:** `permissions` section (user's allowlist) + ALL other top-level fields (model, env, etc.)
 3. **Re-derive ecosystem-owned hook entries** from `.claude/hooks/*/manifest.yaml` (new manifests after Step 5):
    - Group by `(event, matcher)` pair
-   - Build command entries: `node .claude/hooks/<module>/<file>`
-4. **Identify and preserve non-ecosystem hook entries** (third-party tool injections):
-   - **Pattern (primary):** entry `command` matching regex `^node \.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/` → ecosystem-owned → re-derived from manifests. Everything else → preserved verbatim. (`orchestrator/` added with the first orchestrator hook — Process Fabric SessionStart injector, DEC-DEV-0154; same convention as the `design/` prefix landing with Phase 6 hooks.)
+   - Build each entry in **exec form** — `command: "node"` plus `args: ["${CLAUDE_PROJECT_DIR}/.claude/hooks/<module>/<file>"]`
+
+   **Why exec form with the placeholder** (DEC-DEV-0241 — «39 молчаливых падений хуков пилота»): a hook process runs in *the current directory*, which is **not** guaranteed to be the project root — it follows the session's cwd and drifts as soon as the model `cd`s into a subdirectory. A relative `node .claude/hooks/...` then resolves against the wrong root and dies with `Cannot find module`; since almost every ecosystem hook is non-blocking, **the enforcement silently switches itself off** (живой прецедент: пилот `my-first-test`, 39 падений за одну сессию 2026-08-04/05, три хука, два разных cwd — ни одного видимого сообщения). `${CLAUDE_PROJECT_DIR}` is substituted by the harness itself, not by a shell, and is documented as the way to reference a script «regardless of the working directory when the hook runs». Exec form (`args` present) spawns the binary directly with **no shell on any platform** — which is what makes it safe on Windows, where shell form runs under Git Bash or, when Git Bash is absent, under PowerShell (where `$CLAUDE_PROJECT_DIR` expansion is undocumented). `node` + script path is the portable exec-form invocation (`node.exe` is a real binary, unlike `.cmd`/`.bat` shims). Full rationale + rejected alternatives — DEC-DEV-0241 in `DEV_JOURNAL.md`.
+
+4. **Identify and preserve non-ecosystem hook entries** (third-party tool injections). An entry is **ecosystem-owned** iff its *script path* falls under `.claude/hooks/<known-module>/` — read that path per form:
+   - **Exec form** (`args` present): `command` is exactly `node` **AND** `args[0]` matches `^\$\{CLAUDE_PROJECT_DIR\}/\.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/`
+   - **Shell form** (`args` absent) — the **legacy** shapes, recognised so this step *migrates* them instead of leaving a dead duplicate behind. `command` matching either `^node\s+\.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/` (the pre-DEC-DEV-0241 relative form — the one that dies on cwd drift) or `^node\s+"?\$\{?CLAUDE_PROJECT_DIR\}?"?/\.claude/hooks/(product|integrator|ecosystem|design|orchestrator)/` (any shell-form variant carrying the placeholder).
+
+   Matched → ecosystem-owned → **discarded and re-derived from manifests in exec form**. Everything else → preserved verbatim. (`orchestrator/` added with the first orchestrator hook — Process Fabric SessionStart injector, DEC-DEV-0154; same convention as the `design/` prefix landing with Phase 6 hooks.)
+
+   🛑 **`command == "node"` alone NEVER decides ownership.** In exec form the discriminator lives entirely in `args[0]`; classifying on `command` alone would sweep every third-party node hook into the ecosystem-owned bucket and **delete it** — a direct breach of the wipe-protection contract (§«Backwards compatibility», CLAUDE.md). If `args` is present and `args[0]` does not match, the entry is third-party, full stop.
+
+   **This step IS the migration.** No separate migration runner exists or is needed: an existing project on the legacy relative form gets its ecosystem entries classified as owned, dropped, and re-emitted in exec form on the next `/ecosystem:update`. Until that update runs, the project's hooks stay silently broken whenever the session cwd leaves the project root.
+
    - **Audit-only (optional):** if `.claude/integrator/active-tools.yaml` exists и parseable, cross-reference preserved entries against `tools[*].claude_primitives[]` где `type: hook` — label preserved entries owning-tool в print confirmation. Does NOT gate merge — pattern (primary) — единственный решающий критерий.
 5. **Merge logic** (per `(event, matcher)` pair):
    - Union: ecosystem-derived entries + preserved non-ecosystem entries
-   - Dedupe by `command` string (идемпотентные re-runs)
+   - Dedupe by the **`(command, args)` pair**, not by `command` alone (идемпотентные re-runs). Exec-form entries all share `command: "node"`, so a `command`-only dedupe would collapse every ecosystem hook of an event into one. Compare `command` plus the `args` array element-wise (absent `args` ≡ `[]`).
    - Ordering: ecosystem entries first, preserved entries after
 6. **Write merged settings.json** back
 
@@ -838,20 +849,25 @@ one had already rotted before anyone noticed the claim it was propping up was un
 **Print confirmation** (extended):
 
 ```
-Hooks re-derived from new manifest:
+Hooks re-derived from new manifest (exec form: command "node" + args[0]):
   PostToolUse (matcher: Write|Edit):
-    - node .claude/hooks/product/artifact-validate.js
-    - node .claude/hooks/product/session-state.js
-    - node .claude/hooks/product/bg-extractor.js
-    - node .claude/hooks/product/cascade-check.js
-    - node .claude/hooks/product/br-change-trigger.js
-    - node .claude/hooks/product/ic-change-trigger.js
-    - node .claude/hooks/product/product-handoff-gate.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/artifact-validate.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/session-state.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/bg-extractor.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/cascade-check.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/br-change-trigger.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/ic-change-trigger.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/product/product-handoff-gate.js
   PostToolUse (matcher: Bash|Write|Edit|NotebookEdit):
-    - node .claude/hooks/integrator/journal-hook.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/integrator/journal-hook.js
   PreToolUse (matcher: Bash|Write|Edit|NotebookEdit):
-    - node .claude/hooks/integrator/scope-guard.js
+    - node ${CLAUDE_PROJECT_DIR}/.claude/hooks/integrator/scope-guard.js
   Total ecosystem: 9 hooks across 3 event types
+
+Migrated to absolute form (legacy relative commands rewritten, DEC-DEV-0241):
+  PostToolUse (matcher: Write|Edit):
+    - node .claude/hooks/product/artifact-validate.js  →  exec form
+  Total migrated: 9   (or "none" if the project was already on exec form)
 
 Preserved (non-ecosystem):
   SessionStart (matcher: ""):
@@ -874,7 +890,7 @@ Preserved (non-ecosystem, unattributed):
 - All entries match ecosystem pattern: behavior identical to old REPLACE — clean re-derivation, preserved=empty.
 - Malformed existing settings.json: skip hook re-derivation per existing error-handling table; warn user; preserve old settings.
 
-**Idempotency:** dedupe by command string гарантирует, что повторный `/ecosystem:update` не создаёт дубликатов.
+**Idempotency:** dedupe by the `(command, args)` pair гарантирует, что повторный `/ecosystem:update` не создаёт дубликатов. Первый прогон после DEC-DEV-0241 дополнительно **мигрирует** legacy relative-записи (они классифицируются как ecosystem-owned, отбрасываются и переизлучаются в exec-форме) — дублей не возникает именно потому, что старая форма распознаётся классификатором шага 4, а не проваливается в «preserved verbatim».
 
 ### Step 7: Cleanup + verify
 
