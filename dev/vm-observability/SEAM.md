@@ -2,6 +2,7 @@
 
 status: ACTIVE
 seam_written: 2026-07-28 (шаблон v3 — `dev/deferred/CONTEXT_SEAM_PROTOCOL.md` §4; трек заведён этой сессией)
+seam_revised: 2026-08-06 — **Волна B ПОСТРОЕНА и ДОСТАВЛЕНА** (DEC-DEV-0240, PR #256, релиз v1.13.1 в пилоте `93da614`): `UJA_HEADED=1`/`args.headed` в каноне P8 + video/trace в `uja-report parse`; гейт «CSS пилота — голый HTML» ОПРОВЕРГНУТ живой сверкой /login 2026-08-04. Runtime-валидация (первый живой headed-прогон на VM) — исполняется Ф0 трека `dev/uiux-identity/` (SEAM там), итог вернуть сюда. Остаток этого трека = Волна A (не строилась) + приём итога Ф0.
 track_ssot: этот файл (план + шов трека) · архитектурный принцип «два канала» — `factory-conductor/CONDUCTOR.md §Наблюдаемость` (ратифицирован, merge PR #5, main `1d5cff1`) · операторская механика каналов — скилл `vm-factory-ops §7` (вне репо) · эмпирика доступа — `dev/global-loop/ASSIST_LOG.md` OBS-2026-07-28.1 (ветка `docs/global-loop-assist-ledger`) · привязка слоя 3 к пилоту — `dev/global-loop/NEXT-HORIZON.md` Шаг 3
 
 ## 🛑 СТОП-БЛОК — интенции и инварианты (ре-инжектится после компактации)
@@ -60,7 +61,7 @@ track_ssot: этот файл (план + шов трека) · архитект
 |---|---|---|
 | **1. Десктоп VM** | RDP-управление + noVNC(viewonly)-наблюдение | гибрид (владелец согласовал) |
 | **2. Терминалы сессий** | 2A конвенция tmux-имён + доска занятости · 2B ttyd read-only в браузере | 2A+2B; **2C (asciinema-записи) выкинуто** — не нужны |
-| **3. Браузерные прогоны** | headed-браузер live (виден через слой 1) + Playwright video каждого прохода + trace (пошагово: клики/ввод/DOM) | live **И** запись-разбор; gated на CSS пилота (Шаг 2) |
+| **3. Браузерные прогоны** | headed-браузер live (виден через слой 1) + Playwright video каждого прохода + trace (пошагово: клики/ввод/DOM) | live **И** запись-разбор; **ПОСТРОЕНО 2026-08-05/06** (DEC-DEV-0240, v1.13.1): тумблер `UJA_HEADED` в P8, дефолт headless байт-в-байт; runtime-валидация → Ф0 трека uiux-identity |
 | **4. «Глаза» агента** | `vm-shot.ps1` (ручной снимок) + потребление артефактов слоя 3 (кадры video/trace) + poll-снимки во время прогона | lite + автономность через артефакты; «реальное время» = poll-снимки, НЕ поток |
 | **5. Пульт-подсистема** | десктоп-приложение / UI-пульт | **вне трека** — дом Кондуктора |
 
@@ -74,9 +75,10 @@ track_ssot: этот файл (план + шов трека) · архитект
 | RDP-канал | хост: `VBoxManage showvminfo Ubuntu-ClaudeCode --machinereadable \| grep vrde` | `vrde="on"`, порт 3390 на 127.0.0.1 (включён этой сессией; откат — `vrde off`) |
 | Гость: что НЕ установлено | ssh VM: `for p in x11vnc ttyd novnc websockify xdotool scrot; do command -v $p; done` | все ОТСУТСТВУЮТ (кандидаты, все в apt) |
 | Гость: что есть | ssh VM | `chromium`, `gnome-remote-desktop` 46.3 (inactive) |
-| UJA headless-инвариант | grep `HEADLESS` в `tests/orchestrator/user-journey-acceptance-wiring.test.cjs` | assert на стр.109 (headed = дельта → DEC-DEV) |
-| UJA video | grep `video\|recordVideo` в `orchestrator/` | 0 совпадений (сейчас не пишется) |
-| VM занятость | ssh VM: `tmux ls` | `radar-bot` — ЧУЖОЕ, не трогать |
+| UJA headless-инвариант | grep `HEADLESS` в `tests/orchestrator/user-journey-acceptance-wiring.test.cjs` | усиленный структурный assert (~стр.229+, ревизия DEC-DEV-0240): headless = ELSE-ветка HEADED-форка, байт-в-байт; + 4 headed-теста (прежняя запись «стр.109» была неточна уже на 2026-07-28) |
+| UJA headed/video в каноне | `grep -c UJA_HEADED orchestrator/processes/user-journey-acceptance.mjs` | ≥1; `uja-report.cjs parse` отдаёт `video_files[]`/`trace_files[]` (из attachments, не disk-scan) |
+| Доставка в пилот | ssh VM: `grep ecosystem_version ~/projects/my-first-test/.claude/product.yaml` | `1.13.1` (пилот `93da614`, verify Healthy 2026-08-06) |
+| VM занятость | ssh VM: `tmux ls` | сверять ЖИВЬЁМ на момент захода: чужие сессии приходят/уходят (radar-*, own-*); §0-проба перед разрушающим |
 
 ## Очередь — следующая сессия (по «го» владельца; НИЧЕГО из runtime не построено)
 
@@ -89,12 +91,16 @@ track_ssot: этот файл (план + шов трека) · архитект
    операторские кейсы → `vm-factory-ops §7` (раздел «Кейсы»); машиночитаемое — env-тумблеры
    при слое 3; для пользователя фича-приёмки — строка в `docs/guide/` при слое 3.
 
-**Волна B — слой 3 (headed+video/trace UJA), дом = экосистема P8 + пилот:**
-- ⚠ **Gated:** предусловие — CSS-имплементация пилота (NEXT-HORIZON Шаг 2 — сейчас «голый HTML»);
-  визуально тестировать нечего без стилей. **Сейчас преждевременно** — держать в очереди за Шагом 2.
-- Когда открыто: env-тумблер `UJA_HEADED=1` (дефолт headless — канон цел, absent==старое 1:1) +
-  Playwright `video`/`trace`; правка wiring-теста (:109) + `uja-report.cjs` (video в артефактах);
-  DEC-DEV + DEV_JOURNAL + CHANGELOG (consumer-zone orchestrator). Coverage-check AS IS уже начат.
+**Волна B — слой 3 (headed+video/trace UJA) — ✅ ПОСТРОЕНА 2026-08-05, ДОСТАВЛЕНА 2026-08-06:**
+- Гейт «CSS пилота — голый HTML» ОПРОВЕРГНУТ живой сверкой /login (2026-08-04: стилизованная
+  карточка, DS-токены без хардкода) — снят фактом, не решением.
+- Реализация ровно по дизайну выше: `UJA_HEADED=1`/`args.headed` (absent == старое байт-в-байт,
+  запинено структурным assert'ом), video через одноразовый override-конфиг (канонический
+  `playwright.config.*` пилота НЕ мутируется), `uja-report.cjs parse` → `video_files[]`/`trace_files[]`
+  из attachments. DEC-DEV-0240, PR #256; доставка v1.13.1 → пилот `93da614`, verify Healthy.
+- **Остаток Волны B: runtime-валидация** (первый живой headed-прогон на DISPLAY VM) — исполняется
+  **Ф0 трека `dev/uiux-identity/`** (там SEAM с планом), итог вернуть в этот шов. Follow-up'ы в
+  журнале DEC-DEV-0240: `video_files` в run-ledger TRAIL_KEYS (однострочный, по надобности).
 
 ## Отброшено / решено (не переоткрывать)
 
@@ -107,7 +113,8 @@ track_ssot: этот файл (план + шов трека) · архитект
 
 ## Грабли среды (учесть в стройке)
 
-- **VM занята `radar-bot`** — §0-проба перед `vrdemulticon on`/снапшотом/любым разрушающим.
+- **VM — общий ресурс, состав соседей плавает** (radar-*, own-*) — §0-проба перед `vrdemulticon on`/снапшотом/любым разрушающим; занятость сверять живьём, не по этому шву.
+- **Операторская эмпирика заезда 2026-08-04/06** — `vm-factory-ops/references/dev-stand-playbook.md` (dev-стенд рядом со staging, React-острова, обрывы API, ложные idle-детекты) — обязательное чтение перед VM-стройкой.
 - **Порты — только `127.0.0.1`**; `mstsc` ругнётся на self-signed VRDE-TLS (принять серт или
   `vrdeproperty Security/Method=RDP`).
 - **`graphicscontroller` дрейфует на `vmsvga`** — проверять ПЕРЕД стартом VM (`vm-factory-ops §2`);
@@ -130,4 +137,4 @@ track_ssot: этот файл (план + шов трека) · архитект
 2. Что такое «два канала», какой из них наш трек НЕ трогает и почему?
 3. Какой слой в каком доме реализуется (1/2/4 · 3 · 5)?
 4. Что уже сделано (ратифицировано/зафиксировано) этой сессией vs что осталось построить?
-5. Что gate'ит слой 3 и почему сейчас преждевременно?
+5. Что из Волны B построено (и каким инвариантом защищён дефолт), а что осталось — и в каком треке живёт runtime-валидация?
