@@ -99,9 +99,8 @@ track_ssot: этот файл (план + шов трека) · архитект
   запинено структурным assert'ом), video через одноразовый override-конфиг (канонический
   `playwright.config.*` пилота НЕ мутируется), `uja-report.cjs parse` → `video_files[]`/`trace_files[]`
   из attachments. DEC-DEV-0240, PR #256; доставка v1.13.1 → пилот `93da614`, verify Healthy.
-- **Остаток Волны B: runtime-валидация** (первый живой headed-прогон на DISPLAY VM) — исполняется
-  **Ф0 трека `dev/uiux-identity/`** (там SEAM с планом), итог вернуть в этот шов. Follow-up'ы в
-  журнале DEC-DEV-0240: `video_files` в run-ledger TRAIL_KEYS (однострочный, по надобности).
+- **Runtime-валидация ИСПОЛНЕНА 2026-08-07** (Ф0.2 uiux-identity, run `2026-08-06-user-journey-acceptance-hzclnc`, отчёт executor'а — `~/uja-headed-run-report.md` на VM). **Итог: headed НЕ включился — env-тумблер `UJA_HEADED=1` внутри Workflow-песочницы молча не считался** (`user-journey-acceptance.mjs:137` — guard-fallback `ENV={}`; ровно сценарий, который дизайн 0240 предвидел «env-тумблер — гипотеза»): headed-арм не выбран, override-конфиг не писался, `video_files: []`. Это НЕ «headed вернул 0 видео» и не деградация с disclosure — третья ветка «тумблер мёртв в этом канале». **Рабочий канал — `args.headed`; ре-ран с `args.headed=true` — следующая единица валидации.** Приёмочный вердикт прогона `ENV_NOT_READY` — транзиентный API-сталл убил verdict-агента (PA-131 записан процессом штатно), о приложении не говорит; побочно: headless 12/14 зелёный, 12 trace + 51 PNG на диске.
+- **Дефекты-кандидаты канона из валидации** (правка кода = отдельная единица с DEC-DEV): (а) env-нога тумблера мертва при запуске из Workflow — либо чинить проброс, либо канонизировать «args-only» в доке P8; (б) disclosure лжёт про причину `visual: null` («pre-DEC-DEV-0237 lib» захардкожен в `user-journey-acceptance.mjs` ~:434-441, а либ в пилоте свежий v4 — фактическая причина «агент не вернул объект»); (в) follow-up из 0240: `video_files` в run-ledger TRAIL_KEYS (однострочный, по надобности).
 
 ## Отброшено / решено (не переоткрывать)
 
