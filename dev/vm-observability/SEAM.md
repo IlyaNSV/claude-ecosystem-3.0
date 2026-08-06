@@ -2,7 +2,8 @@
 
 status: ACTIVE
 seam_written: 2026-07-28 (шаблон v3 — `dev/deferred/CONTEXT_SEAM_PROTOCOL.md` §4; трек заведён этой сессией)
-seam_revised: 2026-08-06 — **Волна B ПОСТРОЕНА и ДОСТАВЛЕНА** (DEC-DEV-0240, PR #256, релиз v1.13.1 в пилоте `93da614`): `UJA_HEADED=1`/`args.headed` в каноне P8 + video/trace в `uja-report parse`; гейт «CSS пилота — голый HTML» ОПРОВЕРГНУТ живой сверкой /login 2026-08-04. Runtime-валидация (первый живой headed-прогон на VM) — исполняется Ф0 трека `dev/uiux-identity/` (SEAM там), итог вернуть сюда. Остаток этого трека = Волна A (не строилась) + приём итога Ф0.
+seam_revised: 2026-08-06 — **Волна B ПОСТРОЕНА и ДОСТАВЛЕНА** (DEC-DEV-0240, PR #256, релиз v1.13.1 в пилоте `93da614`): `UJA_HEADED=1`/`args.headed` в каноне P8 + video/trace в `uja-report parse`; гейт «CSS пилота — голый HTML» ОПРОВЕРГНУТ живой сверкой /login 2026-08-04. Runtime-валидация (первый живой headed-прогон на VM) — исполняется Ф0 трека `dev/uiux-identity/` (SEAM там), итог вернуть сюда.
+seam_revised_2: 2026-08-06 (вторая сессия, «го» владельца) — **Волна A ПОСТРОЕНА живьём** (см. «Очередь» ниже): noVNC 6080 + ttyd 7681 + vm-shot.ps1 работают, доска `~/vm-board.md` создана; снапшот v4 + `vrdemulticon` ОТЛОЖЕНЫ (§0: на VM живой radar-стек в docker). Остаток трека = приём итога Ф0 + снапшот при первом законном poweroff-окне.
 track_ssot: этот файл (план + шов трека) · архитектурный принцип «два канала» — `factory-conductor/CONDUCTOR.md §Наблюдаемость` (ратифицирован, merge PR #5, main `1d5cff1`) · операторская механика каналов — скилл `vm-factory-ops §7` (вне репо) · эмпирика доступа — `dev/global-loop/ASSIST_LOG.md` OBS-2026-07-28.1 (ветка `docs/global-loop-assist-ledger`) · привязка слоя 3 к пилоту — `dev/global-loop/NEXT-HORIZON.md` Шаг 3
 
 ## 🛑 СТОП-БЛОК — интенции и инварианты (ре-инжектится после компактации)
@@ -73,23 +74,23 @@ track_ssot: этот файл (план + шов трека) · архитект
 | Эмпирика + слой-3-привязка | `git -C ../ce3-wt-global-loop log --oneline -1` | `adbee49` (ASSIST_LOG OBS-2026-07-28.1 + NEXT-HORIZON Шаг 3), запушено |
 | `vm-factory-ops §7` | grep `## 7. Каналы наблюдаемости` в `~/.claude/skills/vm-factory-ops/SKILL.md` | присутствует (вне git — сверять факт) |
 | RDP-канал | хост: `VBoxManage showvminfo Ubuntu-ClaudeCode --machinereadable \| grep vrde` | `vrde="on"`, порт 3390 на 127.0.0.1 (включён этой сессией; откат — `vrde off`) |
-| Гость: что НЕ установлено | ssh VM: `for p in x11vnc ttyd novnc websockify xdotool scrot; do command -v $p; done` | все ОТСУТСТВУЮТ (кандидаты, все в apt) |
-| Гость: что есть | ssh VM | `chromium`, `gnome-remote-desktop` 46.3 (inactive) |
+| Гость: установлено 2026-08-06 | ssh VM: `for p in x11vnc ttyd websockify xdotool scrot; do command -v $p; done; ls -d /usr/share/novnc` | все ПРИСУТСТВУЮТ (было: только `chromium`, `gnome-remote-desktop` inactive) |
+| Слои 1/2 живы (Волна A) | ssh VM: `systemctl is-active x11vnc novnc ttyd` | все `active` (enabled, переживают ребут) |
+| Каналы с хоста (Волна A) | `http://127.0.0.1:6080/vnc.html` (noVNC) · `http://127.0.0.1:7681` (ttyd) | HTTP 200; NAT-форварды `novnc`/`ttyd` персистентны в конфиге VM |
+| Слой 4 (Волна A) | `powershell -File ~/.claude/skills/vm-factory-ops/scripts/vm-shot.ps1` | печатает путь PNG; живой снимок проверен Read'ом 2026-08-06 |
 | UJA headless-инвариант | grep `HEADLESS` в `tests/orchestrator/user-journey-acceptance-wiring.test.cjs` | усиленный структурный assert (~стр.229+, ревизия DEC-DEV-0240): headless = ELSE-ветка HEADED-форка, байт-в-байт; + 4 headed-теста (прежняя запись «стр.109» была неточна уже на 2026-07-28) |
 | UJA headed/video в каноне | `grep -c UJA_HEADED orchestrator/processes/user-journey-acceptance.mjs` | ≥1; `uja-report.cjs parse` отдаёт `video_files[]`/`trace_files[]` (из attachments, не disk-scan) |
 | Доставка в пилот | ssh VM: `grep ecosystem_version ~/projects/my-first-test/.claude/product.yaml` | `1.13.1` (пилот `93da614`, verify Healthy 2026-08-06) |
 | VM занятость | ssh VM: `tmux ls` | сверять ЖИВЬЁМ на момент захода: чужие сессии приходят/уходят (radar-*, own-*); §0-проба перед разрушающим |
 
-## Очередь — следующая сессия (по «го» владельца; НИЧЕГО из runtime не построено)
+## Очередь (обновлено 2026-08-06 второй сессией)
 
-**Волна A — операторская видимость (слои 1/2/4), НЕЗАВИСИМО, дом = `vm-factory-ops` + конфиг VM:**
-1. Слой 1: `vrdemulticon on` (несколько зрителей; ⚠ VM выключена → §0-проба сначала, не гасить `radar-bot`) · x11vnc(`-viewonly`)+websockify+noVNC → systemd на loopback → NAT-форвард 6080.
-2. Слой 2: конвенция имён tmux (`cc-<трек>` мои / `own-<...>` чужие) · доска `~/vm-board.md` · ttyd(`-R`, `tmux attach -r`) → systemd loopback → NAT 7681.
-3. Слой 4: `vm-shot.ps1` (обёртка `screenshotpng` → PNG → Read) · агентское потребление артефактов слоя 3 · poll-снимки во время прогона.
-4. Закрепление: офлайн-снапшот `factory-ready-v4-observable` (⚠ требует poweroff → §0-проба, НЕ гасить чужое).
-5. Документирование (интенция владельца — «для LLM + для меня кейсы "надо X → запусти Y"»):
-   операторские кейсы → `vm-factory-ops §7` (раздел «Кейсы»); машиночитаемое — env-тумблеры
-   при слое 3; для пользователя фича-приёмки — строка в `docs/guide/` при слое 3.
+**Волна A — операторская видимость (слои 1/2/4): ✅ ПОСТРОЕНА 2026-08-06** («го» владельца этой датой; дом = `vm-factory-ops §7.1-7.5` + конфиг VM):
+1. ✅ Слой 1: x11vnc(`-viewonly -localhost`, auth gdm)+websockify/noVNC — systemd-юниты, NAT 6080 → `http://127.0.0.1:6080/vnc.html` живой (RFB-рукопожатие проверено).
+2. ✅ Слой 2: ttyd 1.7.4 (read-only ДЕФОЛТ, флага `-R` больше нет; `-i enp0s3` — NAT-форвард не достаёт guest-loopback) → `http://127.0.0.1:7681`; доска `~/vm-board.md` создана; конвенция имён — в §7.4 скилла.
+3. ✅ Слой 4: `vm-shot.ps1` в `~/.claude/skills/vm-factory-ops/scripts/` — живой снимок проверен Read'ом. **Урок первого снимка: vm-shot увидел чужой radar-стек в docker, который tmux-проба §0 НЕ видит** → перед poweroff §0 дополнять снимком + `docker ps` (внесено в скилл §7.3).
+4. ⏸ ОТЛОЖЕНО: офлайн-снапшот `factory-ready-v4-observable` + `vrdemulticon on` — оба требуют poweroff, а на VM живой radar-стек (docker, Up-часы). Исполнить при первом законном poweroff-окне (решение владельца или естественный ребут).
+5. ✅ Документирование: `vm-factory-ops §7.1-7.5` — статусы, кейсы «надо X → запусти Y», грабли биндов; строка в `docs/guide/` — остаётся за живым headed-прогоном (Ф0 uiux-identity).
 
 **Волна B — слой 3 (headed+video/trace UJA) — ✅ ПОСТРОЕНА 2026-08-05, ДОСТАВЛЕНА 2026-08-06:**
 - Гейт «CSS пилота — голый HTML» ОПРОВЕРГНУТ живой сверкой /login (2026-08-04: стилизованная
@@ -113,7 +114,7 @@ track_ssot: этот файл (план + шов трека) · архитект
 
 ## Грабли среды (учесть в стройке)
 
-- **VM — общий ресурс, состав соседей плавает** (radar-*, own-*) — §0-проба перед `vrdemulticon on`/снапшотом/любым разрушающим; занятость сверять живьём, не по этому шву.
+- **VM — общий ресурс, состав соседей плавает** (radar-*, own-*) — §0-проба перед `vrdemulticon on`/снапшотом/любым разрушающим; занятость сверять живьём, не по этому шву. **Сосед может жить в docker при пустом tmux** (урок 2026-08-06: radar-стек Up-часы, tmux-сокета нет вообще) — пробу дополнять `vm-shot` снимком + `docker ps`.
 - **Операторская эмпирика заезда 2026-08-04/06** — `vm-factory-ops/references/dev-stand-playbook.md` (dev-стенд рядом со staging, React-острова, обрывы API, ложные idle-детекты) — обязательное чтение перед VM-стройкой.
 - **Порты — только `127.0.0.1`**; `mstsc` ругнётся на self-signed VRDE-TLS (принять серт или
   `vrdeproperty Security/Method=RDP`).
