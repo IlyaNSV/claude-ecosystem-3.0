@@ -99,9 +99,10 @@ track_ssot: этот файл (план + шов трека) · архитект
   запинено структурным assert'ом), video через одноразовый override-конфиг (канонический
   `playwright.config.*` пилота НЕ мутируется), `uja-report.cjs parse` → `video_files[]`/`trace_files[]`
   из attachments. DEC-DEV-0240, PR #256; доставка v1.13.1 → пилот `93da614`, verify Healthy.
-- **Остаток Волны B: runtime-валидация** (первый живой headed-прогон на DISPLAY VM) — исполняется
-  **Ф0 трека `dev/uiux-identity/`** (там SEAM с планом), итог вернуть в этот шов. Follow-up'ы в
-  журнале DEC-DEV-0240: `video_files` в run-ledger TRAIL_KEYS (однострочный, по надобности).
+- **Runtime-валидация ЗАКРЫТА УСПЕХОМ 2026-08-07 двумя прогонами** (Ф0.2 uiux-identity; отчёты на VM: `~/uja-headed-run-report.md`, `~/f0-tail-report.md` Задача 3):
+  - прогон 1 (`…-hzclnc`, env-канал): **env-тумблер `UJA_HEADED=1` в Workflow-песочнице МЁРТВ** — `user-journey-acceptance.mjs:137` guard-fallback `ENV={}` (сценарий, который дизайн 0240 предвидел); headed-арм не выбран, видео нет; вердикт `ENV_NOT_READY` = транзиентный API-сталл (PA-131 штатно);
+  - прогон 2 (`…-1625fe`, args-канал): **`args.headed=true` РАБОТАЕТ** — `headed: true`, `uja_result: PASS` **14/14**, **14 `video.webm` + 14 `trace.zip`** (parse каноническим либом), канонический конфиг/tests не тронуты, ре-ранов ноль. Человеко-визуальный канал приёмки жив end-to-end.
+- **Дефекты-кандидаты канона из валидации** (правка кода = отдельная единица с DEC-DEV): (а) env-нога тумблера мертва из Workflow — чинить проброс или канонизировать «args-only» в доке P8; (б) disclosure лжёт про причину `visual: null` («pre-DEC-DEV-0237 lib» захардкожен ~:434-441 — всплыл в обоих прогонах); (в) 🔴 **буква 0240 «override-конфиг рядом с артефактами» самоуничтожается**: Playwright вайпает `outputDir` на старте и стирает только-что-записанный конфиг внутри него («Cannot find module» на всех спеках, ложный all-fail) — рабочая форма: throwaway-конфиг в scratchpad ВНЕ `outputDir` (импортирует канонический, мержит только `use.video/trace/screenshot`); (г) follow-up 0240: `video_files` в run-ledger TRAIL_KEYS; (д) `visual_evidence: INCOMPLETE 0/39 SI` — ни один journey не пишет пиксельные SI-свидетельства; закрывается обходчиками зон трека uiux-identity (Ф1+), на DoD-прогоне это хардблок.
 
 ## Отброшено / решено (не переоткрывать)
 
