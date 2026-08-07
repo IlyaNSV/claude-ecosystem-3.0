@@ -206,6 +206,42 @@ test('T5: an escalated conflict degrades a would-be GO to MANUAL_VERIFY (never a
   assert(degradeIdx !== -1 && returnIdx !== -1 && degradeIdx < returnIdx, 'the GO-degrade must run before the return');
 });
 
+test('DEC-DEV-0242: accept-ratified channel — an owner-ratified conflict leaves the verdict math, never the report', () => {
+  // (a) DEFAULT INVARIANT: absent/garbage arg == the old behaviour byte-for-byte. The arg is read
+  // behind an Array.isArray guard and shape-filtered to PA-NNN, so nothing else can reach the verifier.
+  assert(/const ACCEPT_RATIFIED\s*=\s*Array\.isArray\(A\.acceptRatified\)/.test(SRC),
+    'acceptRatified must be parsed behind an Array.isArray guard (absent == old behaviour, DEC-DEV-0079 soft migration)');
+  assert(SRC.includes('/^PA-\\d+$/.test(String(x))'),
+    'acceptRatified entries are not shape-filtered to PA-NNN');
+  // (b) the conflicts→MANUAL_VERIFY degrade is UNTOUCHED in form — it just reads a conflicts[] the
+  // acceptance step has already cleaned (the channel changes the INPUT, never the rule).
+  assert(/conflicts\.length && result === 'GO'/.test(SRC), 'the conflicts→MANUAL_VERIFY degrade must stay verbatim');
+  const matchIdx = SRC.indexOf("label: 'accept-ratified:match'");
+  const degradeIdx = SRC.indexOf("conflicts.length && result === 'GO'");
+  assert(matchIdx !== -1 && degradeIdx !== -1 && matchIdx < degradeIdx,
+    'acceptance must run BEFORE the GO-degrade reads conflicts[], else a ratified conflict still degrades the verdict');
+  // acceptance moves conflicts out of the array the verdict reads — copying would double-count
+  assert(/conflicts\.splice\(i, 1\)/.test(SRC), 'accepted conflicts are not REMOVED from conflicts[] (move, not copy)');
+  // (c) NO SILENCING: both an accepted conflict and a requested-but-refused PA are surfaced in findings
+  assert(/accepted per/.test(SRC), 'an accepted conflict is not disclosed in findings — the channel must never silence');
+  assert(/NOT accepted/.test(SRC), 'a requested-but-unverified PA is not surfaced in findings');
+  assert(/acceptRatifiedNotes\b/.test(SRC), 'no not-accepted disclosure accumulator');
+  // (d) the return envelope carries the accepted set alongside conflicts
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /accepted:/.test(m[0]), 'return envelope does not carry accepted');
+  // (e) MDP pinning: the status check is a mechanical read (sonnet); the conflict↔PA match is judgment (opus)
+  const statusIdx = SRC.indexOf("label: 'accept-ratified:status'");
+  assert(statusIdx !== -1, 'no accept-ratified status-check agent');
+  const statusSeg = SRC.slice(SRC.indexOf('Ratification STATUS CHECK'), statusIdx);
+  assert(/model: 'sonnet'/.test(statusSeg), "the ratification status check must be pinned to model 'sonnet' (mechanical read, no analysis)");
+  const matchSeg = SRC.slice(SRC.indexOf('Accept-ratified MATCHING'), matchIdx);
+  assert(/model: 'opus'/.test(matchSeg), "the conflict↔ratification match must be pinned to model 'opus' (judgment, high R)");
+  // (f) FAIL-SAFE: only an id CONFIRMED ratified against the canonical file may accept a conflict
+  assert(/ratifiedIds\.has\(by\)/.test(SRC),
+    'a conflict could be accepted by a PA that never passed the ratification status check');
+  assert(/PA_CANON/.test(statusSeg), 'the status check does not resolve the CANONICAL pending-actions file (FB-LR-23)');
+});
+
 test('integration-boundary lens covers cross-task seams (orphan export FB-010, /reset)', () => {
   assert(/FB-010/.test(SRC), 'FB-010 orphan-export not referenced');
   assert(/orphan|call-site|seam/i.test(SRC), 'no cross-task seam language in RA-10 lens');

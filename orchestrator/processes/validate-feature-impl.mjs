@@ -62,6 +62,21 @@ export const meta = {
  * unilateral resolution is surfaced. The remediation-guard.cjs lib is the deterministic
  * discretion backbone (classify a block / self-check a fix note), run by the agent via Bash.
  *
+ * ACCEPT-RATIFIED CHANNEL (DEC-DEV-0242, PA-139 пилота): escalation above is one-way — the gate
+ * could SPEAK a conflict to the owner but had no ear for the answer. So once the owner RATIFIED a
+ * conflict ("leave it as is", the pending-action closed as done/ratified), the next run escalated
+ * the very same contradiction as a BRAND-NEW pending action and degraded GO → MANUAL_VERIFY again,
+ * forever (live run 2026-08-07-validate-feature-impl-izrbls re-minted already-ratified PA-071/073/074).
+ * `args.acceptRatified: ["PA-NNN", …]` names the owner's ratified decisions. It does NOT weaken the
+ * check: the conflict is still DETECTED by the same lens, still escalated by the same rule, and
+ * ALWAYS disclosed in findings — ratification changes only the VERDICT MATH (an accepted conflict
+ * stops degrading a would-be GO), never the visibility. Nothing is ever silenced. FAIL-SAFE at every
+ * step: the arg absent == the old behaviour byte-for-byte; the ratification is VERIFIED against the
+ * canonical pending-actions Status line (by an agent — the script may not touch the FS, §D.1) rather
+ * than taken on the caller's word; the conflict↔decision match is a judgment where ANY doubt = not
+ * accepted; a dropped verifier / dropped matcher accepts NOTHING; and every requested-but-not-accepted
+ * PA is surfaced LOUDLY in findings, so a mis-typed or wishful id can never pass unnoticed.
+ *
  * HARNESS CONSTRAINT (DEC-DEV-0073 §D.1): no FS / Node API / Date.now() in the script. Every
  * suite run / oracle run / grep / file read / fix / commit happens INSIDE an agent(); inputs
  * via args. Validators run in parallel(); remediation is sequential (git-safety).
@@ -85,6 +100,11 @@ const AUTONOMY_LIB = A.autonomyLib || '.claude/orchestrator/lib/autonomy-policy.
 const VALIDATION = A.validationCommands || {}                    // {test, build, smoke} discovered by P5/preflight
 const SOURCE = A.source || ''                                    // optional .product handoff for the coverage-oracle backbone
 const CONCERNS = A.concerns || []                                // FB-013: deferred-capability flags forwarded from P5
+// DEC-DEV-0242 (PA-139): pending-action ids the OWNER has already ratified ("leave it as is").
+// Shape-filtered here (PA-NNN only) so a typo/garbage entry can never reach the verifier; ABSENT
+// or non-array == the old behaviour byte-for-byte (soft migration, DEC-DEV-0079). Naming an id
+// does NOT accept anything by itself — it only opens the verification below.
+const ACCEPT_RATIFIED = Array.isArray(A.acceptRatified) ? A.acceptRatified.filter((x) => /^PA-\d+$/.test(String(x))) : []
 const DEGRADED = !!A.degraded                                    // P5 had blocked tasks → feature NOT complete → advisory
 const FWD_READINESS = A.readiness || ''                          // DEC-DEV-0092: optional readiness hint forwarded from P5 pre-flight
 // meta-feedback #1 / defect D022 (DEC-DEV-0234): `0` is a LEGAL value here — "capture the
@@ -536,6 +556,127 @@ while (remaining.length && round < MAX_REMEDIATION_ROUNDS) {
   remaining = next
 }
 
+// ---- ACCEPT-RATIFIED: hear the owner's answer to an escalation (DEC-DEV-0242, PA-139) -----
+// The owner ratifies an escalated conflict through the pending-actions route ("leave it as is").
+// The gate had no input for that answer, so every re-run re-escalated the SAME contradiction as a
+// new PA and re-degraded GO → MANUAL_VERIFY (live run izrbls, already-ratified PA-071/073/074).
+// A conflict covered by a ratified decision moves conflicts[] → accepted[]: it is STILL reported in
+// findings below (disclosed, NOT silenced) — it merely stops counting against the verdict. Two
+// steps, both agent-side because the script may not read the FS (DEC-DEV-0073 §D.1): (1) a
+// MECHANICAL status check of each named PA against the canonical pending-actions file — the caller's
+// word is never enough; (2) a JUDGMENT of whether a ratified decision covers THIS conflict. Every
+// failure mode (arg absent / id not found / status not terminal / no match / agent dropped) falls
+// back to the OLD behaviour: the conflict stays a conflict.
+const RATIFIED_STATUS_SCHEMA = {
+  type: 'object',
+  required: ['checked'],
+  properties: {
+    checked: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['pa', 'exists', 'ratified'],
+        properties: {
+          pa: { type: 'string' },                        // the PA-NNN id as requested
+          exists: { type: 'boolean' },                   // an entry with that exact id is present in the canonical file
+          ratified: { type: 'boolean' },                 // its Status line carries a TERMINAL owner ratification (done/ratified) — never inferred from the body
+          status_line: { type: 'string' },               // the Status line VERBATIM (evidence, not a paraphrase)
+          summary: { type: 'string' },                   // what the entry decided — the matcher below judges coverage from this
+        },
+      },
+    },
+  },
+}
+const ACCEPT_MATCH_SCHEMA = {
+  type: 'object',
+  required: ['matches'],
+  properties: {
+    matches: {
+      type: 'array',
+      items: {
+        type: 'object',
+        required: ['conflict_ref', 'accepted_by', 'reason'],
+        properties: {
+          conflict_ref: { type: 'string' },              // the C<n> id handed to the judge (conflicts have no stable ref of their own)
+          accepted_by: { type: ['string', 'null'] },     // the ratified PA-NNN that covers it, or null — ANY doubt is null
+          reason: { type: 'string' },                    // the concrete evidence for the call (both directions)
+        },
+      },
+    },
+  },
+}
+const accepted = []            // conflicts the owner already ratified — out of the verdict math, still in the findings
+const acceptRatifiedNotes = [] // requested-but-NOT-accepted ids — surfaced loudly, never swallowed
+if (ACCEPT_RATIFIED.length && !conflicts.length) {
+  for (const pa of ACCEPT_RATIFIED) {
+    acceptRatifiedNotes.push(`acceptRatified requested for ${pa} but NOT accepted: no matching conflict — this run escalated no cross-spec/design conflict at all`)
+  }
+} else if (ACCEPT_RATIFIED.length) {
+  log(`accept-ratified (DEC-DEV-0242): ${ACCEPT_RATIFIED.length} ratified PA(s) offered against ${conflicts.length} escalated conflict(s) — verifying status first`)
+  const paStatus = await agent(
+    `Ratification STATUS CHECK (DEC-DEV-0242) — mechanical, READ-ONLY, no judgment. This gate was handed these pending-action ids ` +
+    `as OWNER-RATIFIED decisions: ${ACCEPT_RATIFIED.join(', ')}. Resolve the canonical pending-actions file and read each entry.\n` +
+    PA_CANON +
+    `READ-ONLY OVERRIDE of the instruction above: do NOT allocate an id, do NOT append, do NOT edit, do NOT commit — this step only READS.\n` +
+    `For EACH requested id return {pa, exists, ratified, status_line, summary}:\n` +
+    `  • exists   — an entry with EXACTLY that id is present in the canonical file.\n` +
+    `  • ratified — TRUE ONLY IF that entry's Status line carries a TERMINAL ratification by the owner (done / ratified / accepted-by-owner / closed-as-ratified ` +
+    `or an unambiguous equivalent). pending / open / escalated / in-progress / needs-decision / awaiting → FALSE. Missing or unreadable Status line → FALSE. ` +
+    `Any doubt → FALSE (a false TRUE would let a live conflict stop counting against the verdict).\n` +
+    `  • status_line — the Status line VERBATIM, not a paraphrase (it is the evidence).\n` +
+    `  • summary — what that entry actually decided, in one or two sentences: enough for another judge to tell WHICH contradiction it settles.\n` +
+    `Do NOT infer ratification from the entry's body text, from its age, or from your own opinion — only the Status line ratifies.`,
+    { model: 'sonnet', schema: RATIFIED_STATUS_SCHEMA, phase: 'Synthesize', label: 'accept-ratified:status' },   // MDP: mechanical read + verbatim relay of a status line (no critical analysis)
+  )
+  const paChecked = ((paStatus && paStatus.checked) || []).filter((c) => c && /^PA-\d+$/.test(String(c.pa)))
+  const paRatified = paChecked.filter((c) => c.exists === true && c.ratified === true)
+  const ratifiedIds = new Set(paRatified.map((c) => String(c.pa)))
+  if (!paStatus) log('accept-ratified: status check returned nothing — FAIL-SAFE: accepting nothing, every conflict stays a conflict')
+  const acceptedBy = new Map()   // PA-NNN → how many conflicts it accepted (drives the not-accepted disclosure below)
+  if (paRatified.length) {
+    const indexed = conflicts.map((c, i) => ({ id: `C${i + 1}`, i, c }))
+    const paMatch = await agent(
+      `Accept-ratified MATCHING (DEC-DEV-0242) — judgment. Feature ${FEATURE}. This gate escalated the cross-spec/design conflicts below, ` +
+      `and the OWNER has already ratified the decisions below. Decide, for EACH conflict, whether it is covered by EXACTLY ONE of those ratified decisions.\n` +
+      `CONFLICTS:\n${indexed.map(({ id, c }) => `- ${id} [${c.validator}/${c.kind}] ref: ${c.ref || 'n/a'} — ${c.conflict_detail || c.detail}`).join('\n')}\n` +
+      `RATIFIED DECISIONS (owner-closed pending actions):\n${paRatified.map((c) => `- ${c.pa} (Status: ${c.status_line || 'n/a'}) — ${c.summary || '(no summary relayed)'}`).join('\n')}\n` +
+      `A conflict is COVERED only if the ratified decision is about THE SAME contradiction: the same specs/requirements/design decisions disagreeing over the same ` +
+      `seam. The same feature, the same file, the same subsystem or a similar-sounding topic is NOT coverage. Read the ground truth (the spec/design/code the ` +
+      `conflict names, and the pending-actions entry) before deciding — do not judge from the summaries alone.\n` +
+      `ANY doubt = NOT covered (accepted_by: null). An over-broad match would let a LIVE contradiction stop counting against the verdict under a decision the owner ` +
+      `never made about it — that is the one failure this step must never produce; a missed match merely costs a MANUAL_VERIFY the owner can re-ratify.\n` +
+      `Return one entry per conflict id: accepted_by = the PA id exactly as given, or null; reason = the concrete evidence for your call (which part of the ` +
+      `decision covers which part of the conflict — or why it does not).`,
+      { model: 'opus', schema: ACCEPT_MATCH_SCHEMA, phase: 'Synthesize', label: 'accept-ratified:match' },   // MDP judging: does THIS ratification cover THIS conflict (high R — it changes the verdict math)
+    )
+    if (!paMatch) log('accept-ratified: matcher returned nothing — FAIL-SAFE: accepting nothing')
+    const drop = new Set()
+    for (const m of (paMatch && paMatch.matches) || []) {
+      const hit = indexed.find((x) => x.id === String((m && m.conflict_ref) || ''))
+      const by = String((m && m.accepted_by) || '')
+      // DETERMINISTIC gate over the judgment: only a CONFIRMED-ratified id may accept, and a
+      // conflict is accepted at most once. A judge naming an unverified/unknown PA accepts nothing.
+      if (!hit || drop.has(hit.i) || !ratifiedIds.has(by)) continue
+      drop.add(hit.i)
+      accepted.push({ ...hit.c, accepted_by: by, reason: (m && m.reason) || '' })
+      acceptedBy.set(by, (acceptedBy.get(by) || 0) + 1)
+    }
+    // move (never copy): conflicts[] is what the verdict synthesis reads below, and it must now
+    // carry ONLY the conflicts that are still open. Reverse order so the splices keep the indices valid.
+    for (let i = conflicts.length - 1; i >= 0; i -= 1) if (drop.has(i)) conflicts.splice(i, 1)
+  }
+  for (const pa of ACCEPT_RATIFIED) {
+    if (acceptedBy.get(pa)) continue
+    const rec = paChecked.find((c) => String(c.pa) === pa)
+    const why = !paStatus ? 'the ratification status check failed (agent returned nothing) — fail-safe: this run accepted nothing'
+      : !rec || rec.exists !== true ? 'no entry with that id in the canonical pending-actions file'
+      : rec.ratified !== true ? `its Status line is not a terminal owner ratification (Status: ${rec.status_line || 'n/a'})`
+        : 'no escalated conflict in this run is covered by that decision'
+    acceptRatifiedNotes.push(`acceptRatified requested for ${pa} but NOT accepted: ${why}`)
+  }
+  log(`accept-ratified: ${accepted.length} conflict(s) accepted as owner-ratified; ${conflicts.length} conflict(s) still open; ${acceptRatifiedNotes.length} requested PA(s) not honoured`)
+}
+
 // ---- synthesize the TWO-AXIS gate outcome (DEC-DEV-0092, FB-LR-02/04) ------
 // readiness ∈ {READY, DEGRADED, ENV_NOT_READY} — "did the gate get to judge?";
 // verdict (result) ∈ {GO, NO-GO, MANUAL_VERIFY_REQUIRED} — "is the code good?".
@@ -640,6 +781,10 @@ const findings = [
   ...unresolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (confirmed-present; unresolved after ${MAX_REMEDIATION_ROUNDS} round(s))`),
   ...alreadyResolved.map((f) => `${f.validator}/${f.kind} ${f.ref || ''}: ${f.detail} (already-resolved since baseline, DEC-DEV-0093 — was REAL, fixed by a commit during/before the gate; NOT a hallucination. VERIFY the resolution is genuine, not a mask — single-writer remediation is now DEC-DEV-0096/T5.)`),
   ...conflicts.map((c) => `cross-spec/design conflict (FB-LR-07, T5/DEC-DEV-0096): ${c.validator}/${c.kind} ${c.ref || ''}: ${c.conflict_detail} — ESCALATED, not self-resolved; needs an upstream decision (Product for a cross-spec/requirement contradiction or a provider/design choice; the owning spec's author for a design self-contradiction).${c.masked ? ' A remediation reported a UNILATERAL resolution — VERIFY it did not mask the conflict.' : ''}`),
+  // DEC-DEV-0242: an owner-ratified conflict is DISCLOSED, not silenced — it left the verdict math,
+  // it did not leave the report. And a requested-but-unverified ratification is surfaced LOUDLY.
+  ...accepted.map((a) => `ratified-conflict ACCEPTED (DEC-DEV-0242): ${a.validator}/${a.kind} ${a.ref || ''}: ${a.conflict_detail || a.detail} — accepted per ${a.accepted_by} (owner-ratified; disclosed, not silenced). Why it matches: ${a.reason || 'n/a'}. The contradiction itself is UNCHANGED — it no longer degrades this verdict, and it returns the moment the ratification is withdrawn or the id is dropped from acceptRatified.`),
+  ...acceptRatifiedNotes.map((n) => `${n} — the gate accepts nothing on the caller's word (DEC-DEV-0242, fail-safe): this conflict, if any, still counts against the verdict. If the ratification is real, record it in the canonical pending-actions entry with a terminal Status line and re-run.`),
   ...CONCERNS.map((c) => `implementer concern/deviation (FB-013, DEC-DEV-0231): ${typeof c === 'string' ? c : `${c.task || ''}: ${c.concern || ''}`} — disclose at GO; a GO over an undeclared deviation or a mock-only/unwired real seam is GO-with-caveats, not clean`),
   ...(rootCause && rootCause.common_root
     ? [`root-cause-first (DEC-DEV-0231): ${present.length} findings shared ONE root — ${rootCause.root_detail} — ${rootRemediated ? 'remediated once before per-finding rounds' : 'diagnosed but NOT remediated (see block class in log)'}; diagnosed ONCE, not per-verdict (the RUN-A anti-pattern).`]
@@ -683,6 +828,7 @@ return {
   committed_under_non_ready: nonReadyRemediation ? remediated.length : 0,   // FB-LR-16 (DEC-DEV-0102): fixes committed during a non-READY run — disclosed for a READY re-check
   residual: unresolved.map((f) => ({ validator: f.validator, ref: f.ref || null, kind: f.kind })),
   conflicts: conflicts.map((c) => ({ validator: c.validator, ref: c.ref || null, kind: c.kind, conflict_class: c.conflict_class, masked: !!c.masked })),   // DEC-DEV-0096 (T5, FB-LR-07): escalated cross-spec/design contradictions — surfaced, never self-resolved; forces ≥ MANUAL_VERIFY
+  accepted: accepted.map((a) => ({ validator: a.validator, ref: a.ref || null, kind: a.kind, accepted_by: a.accepted_by, reason: a.reason || null })),   // DEC-DEV-0242 (PA-139): conflicts the OWNER ratified — verified against the pending-actions Status line, moved OUT of conflicts[] so they stop degrading the verdict, still disclosed in findings
   concerns: CONCERNS,                                 // FB-013 / DEC-DEV-0231: implementer concerns/deviations, disclosed not dropped
   root_cause: rootCause ? { common_root: !!rootCause.common_root, root_detail: rootCause.root_detail || null, affected: rootCause.affected || [], remediated: rootRemediated } : null,   // DEC-DEV-0231 (2.3): the shared-root diagnosis, made ONCE
   deviation_triage: deviationTriage || null,          // DEC-DEV-0231 (2.4): prepare-only fix-forward-vs-re-derive packet — owner ratifies, the gate never executes it
