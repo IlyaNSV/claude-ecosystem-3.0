@@ -256,7 +256,8 @@ Workflow({
     validationCommands: {},                          // {test, build, smoke} if known; else discovered
     concerns: [],                                    // forwarded from P5 (deferred-capability flags)
     degraded: false,                                 // true if upstream tasks were blocked → advisory
-    readiness: 'READY'                               // optional pre-flight hint; P6 takes worst-of with its own probe
+    readiness: 'READY',                              // optional pre-flight hint; P6 takes worst-of with its own probe
+    acceptRatified: ["PA-NNN"]                       // DEC-DEV-0242: pending actions the OWNER already ratified ("leave it as is") — a conflict covered by one stops degrading the verdict but is STILL disclosed in findings; each id is verified against the canonical pending-actions Status line (absent == old behaviour)
   }
 })
 ```
