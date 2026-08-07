@@ -1,8 +1,8 @@
 # TRACK — Release DoD Loop: релизный Definition of Done как критерий остановки цикла
 
 status: RATIFIED (решения D1-D4 — DEC-DEV-0216, 2026-07-15) · **R0 ИСПОЛНЕН 2026-07-17** (DEC-DEV-0221, PR #229: термин «Release DoD» + опциональная 6-категорийная body-секция в `docs/pmo/artifacts/RL.md`, lifecycle-семантика soft) · **следующий шаг — R1** (детерминированный агрегатор, Волна 2), gated: вход — «го» владельца по опыту Волны 0
-track_ssot: этот файл — хартия и решения; **порядок исполнения — единый план `dev/global-loop/PLAN.md`** (слияние с треком Host Console, решение владельца 2026-07-15)
-seam_note: ⚠️ **живой шов трека — на ветке `docs/global-loop-assist-ledger`** (worktree `ce3-wt-global-loop`), а не в `dev/global-loop/SEAM.md` на `main` — та копия помечена `SUPERSEDED`. Волна 0 отработана двумя прогонами (RUN-2026-07-17-A завершён 2026-07-20; RUN-B закрыт владельцем 2026-07-23), опыт — в `ASSIST_LOG.md` и `ECOSYSTEM_FEEDBACK_RUN-B.md` на той же ветке
+track_ssot: этот файл — хартия и решения; **прежний «единый план» `dev/global-loop/PLAN.md` ЗАКРЫТ 2026-07-31 вместе с треком Global Loop** — вход в R1 остаётся гейтом этого файла («го» владельца по опыту Волны 0), H-наследие пульта — `factory-conductor/CONDUCTOR.md §«Вход в H0»` (актуализировано 2026-08-06)
+seam_note: трек Global Loop закрыт 2026-07-31 — `dev/global-loop/SEAM.md` на `main` = `status: CLOSED`; ветка `docs/global-loop-assist-ledger` влита. Волна 0 отработана двумя прогонами (RUN-2026-07-17-A завершён 2026-07-20; RUN-B закрыт владельцем 2026-07-23), опыт — `ASSIST_LOG.md` и `ECOSYSTEM_FEEDBACK_RUN-B.md` в main
 related: `dev/_archive/campaign-prod/PROD_READINESS_CAMPAIGN.md` (кампания — про готовность САМОЙ экосистемы; этот трек — про DoD релиза ПОЛЬЗОВАТЕЛЬСКОГО продукта, ведомого экосистемой) · `dev/host-console/TRACK.md` (пульт надзирает за DoD-циклами этого трека)
 
 ## 0. Хартия — интенция владельца, дословно (2026-07-15; НЕ пересказывать, цитировать)
