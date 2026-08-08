@@ -77,6 +77,22 @@ export const meta = {
  * accepted; a dropped verifier / dropped matcher accepts NOTHING; and every requested-but-not-accepted
  * PA is surfaced LOUDLY in findings, so a mis-typed or wishful id can never pass unnoticed.
  *
+ * SUITE REAPER (DEC-DEV-0243, THIRD live reproduction of the DEGRADED "forced to report" class —
+ * pilot runs of the paer28 class, izrbls, jei89c): the mechanical stage runs the WHOLE suite, and
+ * on a real project that suite outlives the agent's single-turn budget (`pnpm -r test`, 15+ min).
+ * The agent then did the only honest thing available to it — reported readiness=DEGRADED "forced to
+ * report before EXIT_CODE" — and DEGRADED deterministically synthesises MANUAL_VERIFY_REQUIRED, so
+ * GO became UNREACHABLE on any project whose suite is longer than one turn. The honesty of the
+ * stage was being converted into a false verdict. Fix: the suite is started DETACHED with a final
+ * `SUITE_EXIT:<code>` marker appended to its log, and a stage that runs out of turn hands the run
+ * OFF instead of judging it — `suite_in_progress` + `suite_pid` + `suite_log` + `suite_observed`
+ * (all OPTIONAL fields; absent == the old behaviour byte-for-byte) — to a BOUNDED loop of reaper
+ * agents (≤ `args.maxSuiteReaps`, default 6) that poll the log until the marker appears and then
+ * return the FULL mechanical verdict. FAIL-SAFE both ways: a reaper that drops leaves the last
+ * mechanical state untouched, and a suite still unfinished after the last round is forced to
+ * readiness=DEGRADED IN CODE with the reason surfaced ("suite did not reach EXIT marker after N
+ * reaper round(s)") — never a silent pass, never an invented exit code.
+ *
  * HARNESS CONSTRAINT (DEC-DEV-0073 §D.1): no FS / Node API / Date.now() in the script. Every
  * suite run / oracle run / grep / file read / fix / commit happens INSIDE an agent(); inputs
  * via args. Validators run in parallel(); remediation is sequential (git-safety).
@@ -114,6 +130,11 @@ const FWD_READINESS = A.readiness || ''                          // DEC-DEV-0092
 // breaking. A non-integer (absent / null / 'two') still falls back to the documented default 3.
 const MAX_REMEDIATION_ROUNDS = Number.isInteger(A.maxRemediationRounds) ? Math.max(0, A.maxRemediationRounds) : 3
 const MAX_VALIDATOR_RESPAWN = A.maxValidatorRespawn || 2          // FB-LR-15 (DEC-DEV-0101): bounded re-spawn of a validator slot dropped on a terminal API error
+// DEC-DEV-0243 (suite reaper): how many reaper agents may take turns waiting for a detached suite
+// to reach its SUITE_EXIT marker. Integer check, not truthiness — `0` is a LEGAL value ("do not
+// reap: one turn or nothing", the meta-feedback #1 / D022 class, DEC-DEV-0234) and a falsy `|| 6`
+// would silently turn that explicit 0 into six live reaper rounds. Absent / null / 'six' → 6.
+const MAX_SUITE_REAPS = Number.isInteger(A.maxSuiteReaps) ? A.maxSuiteReaps : 6
 const ROOT_CAUSE_THRESHOLD = A.rootCauseThreshold || 3            // DEC-DEV-0231 (2.3): ≥ this many confirmed-present findings → diagnose the COMMON root once before per-finding remediation
 const DEVIATION_TRIAGE_THRESHOLD = A.deviationTriageThreshold || 3 // DEC-DEV-0231 (2.4): NO-GO with ≥ this many unresolved findings → prepare-only fix-forward-vs-re-derive triage for the owner
 
@@ -207,6 +228,14 @@ const MECH_SCHEMA = {
     // code (substrate down / suite RED was an env artifact), NOT that the code failed.
     readiness: { type: 'string', enum: ['READY', 'DEGRADED', 'ENV_NOT_READY'] },
     readiness_reasons: { type: 'array', items: { type: 'string' } },
+    // DEC-DEV-0243 (SUITE REAPER): the hand-off envelope for a suite that outlived the turn.
+    // ALL OPTIONAL — `required` stays ['passed'], so absent == the old behaviour byte-for-byte
+    // (soft migration, DEC-DEV-0079). suite_in_progress:true means "I did NOT get to judge the
+    // suite yet, a reaper must finish the wait" — it is NOT a DEGRADED verdict and NOT a failure.
+    suite_in_progress: { type: 'boolean' },            // the detached suite has not reached its SUITE_EXIT marker yet
+    suite_pid: { type: 'string' },                     // pid of the detached wrapper (`kill -0` tells a reaper whether it is still alive)
+    suite_log: { type: 'string' },                     // absolute path of the log the marker will be appended to
+    suite_observed: { type: 'string' },                // what the log already shows (green counters / "0 failures so far") — evidence, never a verdict
   },
 }
 
@@ -305,25 +334,116 @@ const AUTONOMY_SCHEMA = {
 // build is GREEN but the suite is RED, classifies the failures through the
 // substrate-error allowlist. A suite that is RED only because the substrate was
 // down is ENV_NOT_READY (the gate could not judge the code) — NOT a NO-GO.
-phase('Mechanical')
-const mech = await agent(
-  `Feature-level mechanical gate for "${FEATURE}", in THIS order:\n` +
-  `1) READINESS PROBE FIRST — run \`node ${ENV_PROBE}\` via Bash and relay its JSON (readiness + checks). ` +
-  `This tells you whether the substrate the project uses (Docker/Postgres/Redis/migrations) is actually up BEFORE you run anything.\n` +
-  `2) Run the FULL validation suite and build for the whole feature (not one task): ` +
-  `${JSON.stringify(VALIDATION) !== '{}' ? `validation commands: ${JSON.stringify(VALIDATION)}` : 'discover TEST/BUILD/SMOKE commands from the repo manifests/CI'}. ` +
-  `Run them via Bash and report the real exit results — do NOT infer green from "tasks all [x]".\n` +
-  `3) If the build is GREEN but the suite has failures, write the failure lines to a temp file and run ` +
+// DEC-DEV-0243: the readiness-classification rule, extracted so the SUITE REAPER below judges a
+// finished suite by exactly the SAME allowlist logic as this stage — a verdict must not depend on
+// WHICH agent happened to see the suite finish.
+const READINESS_CLASSIFY =
+  `If the build is GREEN but the suite has failures, write the failure lines to a temp file and run ` +
   `\`node ${ENV_PROBE} --failures <that-file>\` to classify them against the substrate-error allowlist ` +
   `(PrismaClientInitializationError / ECONNREFUSED :5432|:6379 / "Cannot connect to the Docker daemon" / npipe / "Can't reach database").\n` +
   `SET readiness:\n` +
   `  • ENV_NOT_READY  — if the probe reports ENV_NOT_READY, OR build GREEN + suite RED + classify says all_substrate:true ` +
   `(the suite RED is an env artifact, the gate could NOT judge the code).\n` +
   `  • READY          — substrate up and any suite failures are REAL test failures (code).\n` +
-  `passed = (suite green AND build green). List every failure verbatim in failures[]; put the probe/allowlist reasons in readiness_reasons[].`,
+  `passed = (suite green AND build green). List every failure verbatim in failures[]; put the probe/allowlist reasons in readiness_reasons[].`
+
+// DEC-DEV-0243 (SUITE REAPER): how the long suite is launched so it can OUTLIVE the launching turn.
+// The whole point is the final marker: a log that ends in `SUITE_EXIT:<code>` is the ONLY proof the
+// suite finished and the ONLY source of its exit code (three live runs died on an agent being
+// forced to report a verdict before the code existed).
+const DETACHED_SUITE =
+  `LONG SUITE → RUN IT DETACHED (DEC-DEV-0243). A full-repo suite (e.g. \`pnpm -r test\`) routinely runs LONGER than ` +
+  `your single-turn budget. Do NOT run it in the foreground and do NOT let it be cut off — start it DETACHED with a ` +
+  `final exit marker, in ONE Bash call:\n` +
+  `    nohup sh -c '{ <SUITE_CMD>; echo "SUITE_EXIT:$?"; } > "<LOG>" 2>&1' >/dev/null 2>&1 & echo "SUITE_PID:$!"\n` +
+  `  • <LOG> — an ABSOLUTE path in a temp dir (e.g. /tmp/p6-suite-${FEATURE}.log). Report it verbatim in suite_log.\n` +
+  `  • The braces matter: \`$?\` is the SUITE's exit code, and \`echo "SUITE_EXIT:$?"\` lands INSIDE the same log, as its LAST line.\n` +
+  `  • Report the printed pid verbatim in suite_pid (as a string). If \`nohup\` is unavailable use \`setsid sh -c '…' &\`; ` +
+  `if detaching is impossible in this environment at all, say so in readiness_reasons and run the suite in the foreground as before.\n` +
+  `  • While it runs, do the fast work (the build) and then POLL: \`tail -n 40 "<LOG>"\` / \`grep -c SUITE_EXIT "<LOG>"\`.\n` +
+  `NEVER invent, guess or infer an exit code, and never call a suite green because the tail "looks fine" — only the ` +
+  `\`SUITE_EXIT:<code>\` marker decides.`
+
+phase('Mechanical')
+let mech = await agent(
+  `Feature-level mechanical gate for "${FEATURE}", in THIS order:\n` +
+  `1) READINESS PROBE FIRST — run \`node ${ENV_PROBE}\` via Bash and relay its JSON (readiness + checks). ` +
+  `This tells you whether the substrate the project uses (Docker/Postgres/Redis/migrations) is actually up BEFORE you run anything.\n` +
+  `2) Run the FULL validation suite and build for the whole feature (not one task): ` +
+  `${JSON.stringify(VALIDATION) !== '{}' ? `validation commands: ${JSON.stringify(VALIDATION)}` : 'discover TEST/BUILD/SMOKE commands from the repo manifests/CI'}. ` +
+  `Run them via Bash and report the real exit results — do NOT infer green from "tasks all [x]".\n` +
+  `${DETACHED_SUITE}\n` +
+  `3) OUT OF TURN BUDGET BEFORE THE MARKER? HAND THE RUN OFF, DO NOT JUDGE IT (DEC-DEV-0243). If your turn is ending and ` +
+  `the log has NOT yet reached \`SUITE_EXIT:<code>\`, return suite_in_progress:true + suite_pid + suite_log + ` +
+  `suite_observed (what the tail already shows verbatim — e.g. "112 passed, 0 failed so far, 3 packages remaining"), with ` +
+  `passed:false (the suite is NOT proven green) and readiness LEFT ABSENT — a reaper agent will finish the wait and ` +
+  `produce the verdict. Do NOT set readiness:DEGRADED for this: "I ran out of turn" is UNKNOWN-yet, not a degraded gate, ` +
+  `and DEGRADED here makes GO unreachable for the whole feature. Reserve readiness:DEGRADED for a suite that CANNOT be ` +
+  `waited out in principle (the detached pid is dead and the log has NO marker, the log is gone/unreadable, detaching failed) ` +
+  `— say exactly which in readiness_reasons.\n` +
+  `4) ${READINESS_CLASSIFY}`,
   { model: 'sonnet', schema: MECH_SCHEMA, phase: 'Mechanical', label: 'mechanical' },   // MDP: run suite/build + relay + deterministic allowlist classify (standard/mechanical)
 )
-log(`mechanical: ${mech && mech.passed ? 'GREEN' : 'RED'}${mech && mech.failures && mech.failures.length ? ` — ${mech.failures.length} failure(s)` : ''}; readiness=${(mech && mech.readiness) || 'READY'}`)
+
+// ---- SUITE REAPER loop (DEC-DEV-0243) --------------------------------------
+// THIRD live reproduction of the class: the stage above could not outlast `pnpm -r test`, honestly
+// reported DEGRADED "forced to report before EXIT_CODE", and DEGRADED ⇒ MANUAL_VERIFY_REQUIRED made
+// GO unreachable on every project with a suite longer than one turn. So an unfinished suite is now
+// an explicit HAND-OFF, not a verdict: while the stage says suite_in_progress, bounded reaper agents
+// take turns waiting for the SUITE_EXIT marker, and the FIRST one to see it returns the full
+// mechanical verdict (which replaces `mech` wholesale — same schema, same rules).
+// The BOUND and the routing are deterministic (code); only the log-reading is an agent's job.
+let suiteReapRounds = 0
+for (let n = 1; mech && mech.suite_in_progress === true && n <= MAX_SUITE_REAPS; n += 1) {
+  suiteReapRounds = n
+  log(`suite reaper ${n}/${MAX_SUITE_REAPS}: detached suite still running (pid=${mech.suite_pid || 'unknown'}, log=${mech.suite_log || 'unknown'}); observed so far: ${mech.suite_observed || 'n/a'}`)
+  const reaped = await agent(
+    `Suite REAPER (DEC-DEV-0243) for feature "${FEATURE}", round ${n}/${MAX_SUITE_REAPS}. An EARLIER stage of THIS gate started ` +
+    `the full validation suite DETACHED and ran out of turn before it finished — you are here to finish the wait, not to re-run it.\n` +
+    `  • detached pid: ${mech.suite_pid || '(not reported — derive it with `pgrep -af` against the suite command if you can)'}\n` +
+    `  • suite log:    ${mech.suite_log || '(not reported — locate it; without a log you cannot prove anything)'}\n` +
+    `  • observed so far (previous stage, verbatim): ${mech.suite_observed || 'n/a'}\n` +
+    `  • build/suite commands: ${JSON.stringify(VALIDATION) !== '{}' ? JSON.stringify(VALIDATION) : '(discovered from the repo manifests/CI by the earlier stage)'}\n` +
+    `DO THIS: (a) check the process is alive (\`kill -0 <pid>\` / \`ps -p <pid>\`); (b) POLL the log — \`tail -n 60 "<log>"\`, ` +
+    `\`grep -n "SUITE_EXIT:" "<log>"\` — until its FINAL marker \`SUITE_EXIT:<code>\` appears. Do NOT start a second suite run ` +
+    `(a parallel run would race the first and corrupt both).\n` +
+    `THEN return ONE of exactly three outcomes:\n` +
+    `  1. MARKER FOUND → the full mechanical verdict. passed = (SUITE_EXIT:0 AND the build is green) — the exit code comes from ` +
+    `the marker, the failure lines from the log (verbatim, in failures[]). Set suite_in_progress:false. If the build result was ` +
+    `not established earlier, run the build yourself (it is short). Classify readiness by the SAME rule as the main stage: ` +
+    `${READINESS_CLASSIFY}\n` +
+    `  2. STILL RUNNING (no marker, pid ALIVE) and your turn is ending → hand off again exactly as before: suite_in_progress:true ` +
+    `with the SAME suite_pid and suite_log, passed:false, readiness LEFT ABSENT, and an UPDATED suite_observed (the newest tail). ` +
+    `The next reaper continues from there.\n` +
+    `  3. PID DEAD WITHOUT A MARKER (or the log is gone/unreadable) → the suite result is UNPROVABLE: return passed:false, ` +
+    `suite_in_progress:false, readiness:'DEGRADED' and put the EXACT cause in readiness_reasons (pid gone at what tail state, ` +
+    `OOM-killer line, truncated log, missing file…).\n` +
+    `NEVER invent, guess or extrapolate an exit code, and never call the suite green from a healthy-looking tail — a run with ` +
+    `"0 failures so far" can still end RED. Only the \`SUITE_EXIT:<code>\` marker decides, and if it is absent you say so.`,
+    { model: 'sonnet', schema: MECH_SCHEMA, phase: 'Mechanical', label: `mechanical:reap-${n}` },   // MDP: poll a log + relay the marker/failures + the same deterministic allowlist classify (mechanical, no critical analysis)
+  )
+  if (!reaped) {
+    // FAIL-SAFE: a dropped reaper must not erase what the previous stage did establish — keep the
+    // last mechanical state and leave the loop; the unfinished-suite guard below turns it into an
+    // explicit DEGRADED with a reason, never into a silent pass.
+    log(`suite reaper ${n}/${MAX_SUITE_REAPS} dropped (terminal error / empty) — keeping the last mechanical state, no further rounds`)
+    break
+  }
+  mech = reaped
+}
+
+// FAIL-SAFE (DEC-DEV-0243): the suite never reached its EXIT marker within the bounded rounds → the
+// gate did NOT get to judge the suite. That is a DEGRADED gate (advisory, MANUAL_VERIFY), decided
+// HERE in code with a stated reason — not left to whatever the last agent happened to return.
+// ENV_NOT_READY (substrate down) is strictly worse and survives; anything else degrades.
+const suiteUnfinished = !!(mech && mech.suite_in_progress === true)
+const SUITE_REAP_REASON = suiteUnfinished
+  ? `suite did not reach EXIT marker after ${suiteReapRounds} reaper round(s) (DEC-DEV-0243; pid=${(mech && mech.suite_pid) || 'unknown'}, log=${(mech && mech.suite_log) || 'unknown'}) — the suite was NOT judged; observed so far: ${(mech && mech.suite_observed) || 'n/a'}. Re-run the gate (or raise args.maxSuiteReaps) once the suite can finish.`
+  : ''
+const MECH_READINESS = (mech && mech.readiness) === 'ENV_NOT_READY'
+  ? 'ENV_NOT_READY'                                  // substrate down is strictly worse than DEGRADED — it survives the fail-safe
+  : (suiteUnfinished ? 'DEGRADED' : ((mech && mech.readiness) || 'READY'))
+log(`mechanical: ${mech && mech.passed ? 'GREEN' : 'RED'}${mech && mech.failures && mech.failures.length ? ` — ${mech.failures.length} failure(s)` : ''}; readiness=${MECH_READINESS}; suite-reaper rounds=${suiteReapRounds}/${MAX_SUITE_REAPS}${suiteUnfinished ? ' — suite STILL unfinished (no SUITE_EXIT marker) → DEGRADED by fail-safe' : ''}`)
 
 // ---- pre-gate baseline (DEC-DEV-0093, FB-LR-03): the ground-truth snapshot for
 // ORDER-AWARE verify-finding-before-act. Captured BEFORE any remediation so a confirmer
@@ -495,7 +615,7 @@ const escalateConflict = (f, fix) =>
 // the synthesis below.)
 const RANK = { READY: 0, DEGRADED: 1, ENV_NOT_READY: 2 }
 const worstReadiness = (a, b) => (RANK[a] >= RANK[b] ? a : b)
-const remediationReadiness = worstReadiness((mech && mech.readiness) || 'READY', FWD_READINESS || 'READY')
+const remediationReadiness = worstReadiness(MECH_READINESS, FWD_READINESS || 'READY')   // DEC-DEV-0243: MECH_READINESS already folds in the unfinished-suite fail-safe
 const nonReadyRemediation = remediationReadiness !== 'READY'
 
 // bounded remediation of PRESENT findings only; re-verify after each fix (a fix can be partial).
@@ -688,7 +808,7 @@ if (ACCEPT_RATIFIED.length && !conflicts.length) {
 // must NOT synthesise NO-GO. Conservative — readiness never upgrades toward GO.
 const mechPassed = !!(mech && mech.passed)
 const unresolved = remaining
-let readiness = worstReadiness((mech && mech.readiness) || 'READY', FWD_READINESS || 'READY')
+let readiness = worstReadiness(MECH_READINESS, FWD_READINESS || 'READY')   // DEC-DEV-0243: an unfinished suite already degraded MECH_READINESS in code
 if (DEGRADED) readiness = worstReadiness(readiness, 'DEGRADED')   // P5 upstream blocked tasks fold onto the readiness axis (FB-010)
 
 let result
@@ -762,7 +882,9 @@ if (result === 'NO-GO' && (unresolved.length >= DEVIATION_TRIAGE_THRESHOLD || ro
 }
 
 // findings to surface: unresolved confirmed defects + mechanical failures + forwarded implementer CONCERNS/deviations (FB-013 / DEC-DEV-0231 disclosure)
-const readinessReasons = (mech && mech.readiness_reasons) || []
+// DEC-DEV-0243: the unfinished-suite fail-safe reason rides the SAME channel as the probe/allowlist
+// reasons, so it lands in findings AND in the returned readiness_reasons — never a silent degrade.
+const readinessReasons = [...((mech && mech.readiness_reasons) || []), ...(SUITE_REAP_REASON ? [SUITE_REAP_REASON] : [])]
 const findings = [
   ...(readiness !== 'READY'
     ? [`readiness=${readiness} (DEC-DEV-0092): the gate could NOT fully judge — ` +
@@ -820,6 +942,8 @@ return {
   mechanical: mechPassed,
   readiness,                                          // DEC-DEV-0092: READY | DEGRADED | ENV_NOT_READY — orthogonal to result
   readiness_reasons: readinessReasons,
+  suite_reaps: suiteReapRounds,                       // DEC-DEV-0243: how many reaper rounds the detached suite needed (0 = it finished within the launching turn)
+  suite_unfinished: suiteUnfinished,                  // DEC-DEV-0243: true = no SUITE_EXIT marker after the bounded rounds → the suite was NOT judged (forced readiness=DEGRADED)
   validators: results.map((r) => ({ validator: r.key, clean: !!r.clean, findings: (r.findings || []).length })),
   validators_incomplete: incompleteValidators,        // FB-LR-15 (DEC-DEV-0101): lenses that never ran (dropped after bounded re-spawn); non-empty degrades a clean GO → MANUAL_VERIFY
   confirmed_findings: present.length + alreadyResolved.length,   // DEC-DEV-0093: real findings (present + already-resolved); refuted dropped

@@ -260,6 +260,67 @@ test('two-axis readiness contract: MECH_SCHEMA carries readiness + ENV_PROBE wir
   assert(/'READY'[\s\S]*'DEGRADED'[\s\S]*'ENV_NOT_READY'/.test(SRC), 'readiness enum not present');
 });
 
+test('DEC-DEV-0243 suite-reaper: an unfinished suite is HANDED OFF, never converted into a DEGRADED verdict', () => {
+  // Provenance: three live pilot runs (paer28 class / izrbls / jei89c) — `pnpm -r test` outlived the
+  // agent's turn, the agent honestly reported readiness=DEGRADED "forced to report before EXIT_CODE",
+  // and DEGRADED ⇒ MANUAL_VERIFY_REQUIRED made GO unreachable on any project with a long suite.
+  // (a) MECH_SCHEMA carries the OPTIONAL hand-off envelope; `required` stays ['passed'] (absent == old behaviour)
+  const mechSeg = SRC.slice(SRC.indexOf('const MECH_SCHEMA'), SRC.indexOf('const DEFECT_KINDS'));
+  assert(mechSeg.length > 0, 'could not locate the MECH_SCHEMA block');
+  for (const field of ['suite_in_progress', 'suite_pid', 'suite_log', 'suite_observed']) {
+    assert(new RegExp(`${field}:\\s*\\{\\s*type:`).test(mechSeg), `MECH_SCHEMA does not declare ${field}`);
+  }
+  assert(/required:\s*\['passed'\]/.test(mechSeg),
+    'MECH_SCHEMA.required must stay ["passed"] — the suite-reaper fields are OPTIONAL (absent == the old behaviour byte-for-byte)');
+  // (b) the reaper loop is BOUNDED, and the bound is resolved by an integer check — `0` is legal
+  //     ("one turn or nothing"), the meta-feedback #1 / D022 class a falsy `|| 6` would swallow
+  assert(/Number\.isInteger\(A\.maxSuiteReaps\)/.test(SRC),
+    'MAX_SUITE_REAPS must be resolved by an explicit integer check, not truthiness (meta-feedback #1: 0 is a LEGAL value)');
+  assert(!/A\.maxSuiteReaps \|\| \d/.test(SRC),
+    'a falsy `A.maxSuiteReaps || N` default would swallow an explicit maxSuiteReaps:0');
+  assert(/n <= MAX_SUITE_REAPS/.test(SRC), 'the reaper loop is not bounded by MAX_SUITE_REAPS');
+  assert(/mech && mech\.suite_in_progress === true && n <= MAX_SUITE_REAPS/.test(SRC),
+    'the reaper loop must run WHILE the suite is in progress AND rounds remain (strict === true, not truthiness)');
+  // the loop must be able to replace the mechanical verdict → `mech` cannot be a const
+  assert(/let mech = await agent\(/.test(SRC), 'mech must be reassignable — a reaper returns the FINAL mechanical verdict');
+  // (c) MDP: the reaper is a log-poll + relay → pinned to sonnet
+  const reapIdx = SRC.indexOf('label: `mechanical:reap-${n}`');
+  assert(reapIdx !== -1, 'no labelled reaper agent (mechanical:reap-<n>)');
+  const reapSeg = SRC.slice(SRC.indexOf('Suite REAPER (DEC-DEV-0243)'), reapIdx);
+  assert(/model: 'sonnet'/.test(reapSeg), "the suite reaper must be pinned to model 'sonnet' (poll a log + relay, no critical analysis)");
+  // the reaper must classify readiness by the SAME rule as the main stage (shared instruction, not a paraphrase)
+  assert(/READINESS_CLASSIFY/.test(reapSeg), 'the reaper does not reuse the main stage ENV_PROBE/allowlist classification instruction');
+  // (d) FAIL-SAFE: a suite still unfinished after the bounded rounds is DEGRADED in CODE, with a reason
+  assert(/suite did not reach EXIT marker after \$\{suiteReapRounds\} reaper round\(s\)/.test(SRC),
+    'no deterministic "suite did not reach EXIT marker after N reaper rounds" fallback reason');
+  assert(/const suiteUnfinished = !!\(mech && mech\.suite_in_progress === true\)/.test(SRC),
+    'the unfinished-suite condition is not computed deterministically after the loop');
+  assert(/suiteUnfinished \? 'DEGRADED'/.test(SRC), 'an unfinished suite does not force readiness=DEGRADED in code');
+  assert(/\(mech && mech\.readiness\) === 'ENV_NOT_READY'\s*\n\s*\? 'ENV_NOT_READY'/.test(SRC),
+    'the fail-safe must not downgrade a known ENV_NOT_READY to DEGRADED (and it must not spell the check so it shadows the synthesis-branch invariant pin below)');
+  assert(/SUITE_REAP_REASON/.test(SRC) && /readinessReasons = \[/.test(SRC),
+    'the fail-safe reason is not surfaced through readiness_reasons → findings (a silent degrade)');
+  // a dropped reaper must keep the last mechanical state, not erase it
+  assert(/if \(!reaped\)/.test(SRC), 'no fallback branch for a dropped reaper agent');
+  // both readiness computations must read the folded MECH_READINESS, not the raw agent field
+  assert(!/worstReadiness\(\(mech && mech\.readiness\) \|\| 'READY'/.test(SRC),
+    'a readiness computation still reads mech.readiness directly — it would bypass the unfinished-suite fail-safe');
+  assert((SRC.match(/worstReadiness\(MECH_READINESS/g) || []).length === 2,
+    'both the remediation readiness and the verdict readiness must be derived from MECH_READINESS');
+  // (e) the mechanical prompt must teach the detached launch + the marker, and forbid inventing a code
+  assert(/SUITE_EXIT:\$\?/.test(SRC), 'the detached-suite one-liner does not append the SUITE_EXIT:<code> marker');
+  assert(/SUITE_EXIT:<code>/.test(SRC), 'the SUITE_EXIT:<code> marker contract is not stated to the agent');
+  assert(/nohup sh -c/.test(SRC), 'no detached (nohup) launch instruction for the long suite');
+  assert((SRC.match(/NEVER invent, guess/g) || []).length >= 2,
+    'both the mechanical stage and the reaper must forbid inventing/guessing an exit code');
+  assert(/readiness LEFT ABSENT/.test(SRC),
+    'an out-of-turn stage must leave readiness ABSENT (unknown-yet), not report DEGRADED — that is the defect class this closes');
+  // the return envelope discloses the reaper outcome
+  const m = SRC.match(/return\s*\{[\s\S]*\n\}/);
+  assert(m && /suite_reaps:/.test(m[0]) && /suite_unfinished:/.test(m[0]),
+    'return envelope does not carry the suite-reaper outcome (suite_reaps / suite_unfinished)');
+});
+
 test('the escalation PA-write targets the canonical worktree-shared file (FB-LR-23)', () => {
   // G-1: parallel worktrees minted the same PA-027 because each scanned its own worktree-local file.
   assert(/FB-LR-23/.test(SRC), 'FB-LR-23 parallel-worktree guard not referenced');
