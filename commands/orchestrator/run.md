@@ -257,6 +257,7 @@ Workflow({
     concerns: [],                                    // forwarded from P5 (deferred-capability flags)
     degraded: false,                                 // true if upstream tasks were blocked → advisory
     readiness: 'READY',                              // optional pre-flight hint; P6 takes worst-of with its own probe
+    maxSuiteReaps: 6,                                // DEC-DEV-0243 (suite reaper): a suite longer than one agent turn (`pnpm -r test`) is started DETACHED with a `SUITE_EXIT:<code>` marker; this bounds how many reaper agents may take turns waiting for that marker before the gate degrades to readiness=DEGRADED with a stated reason. 0 = no reaping (one turn or nothing). Default 6
     acceptRatified: ["PA-NNN"]                       // DEC-DEV-0242: pending actions the OWNER already ratified ("leave it as is") — a conflict covered by one stops degrading the verdict but is STILL disclosed in findings; each id is verified against the canonical pending-actions Status line (absent == old behaviour)
   }
 })
