@@ -242,6 +242,21 @@ test('DEC-DEV-0242: accept-ratified channel — an owner-ratified conflict leave
   assert(/PA_CANON/.test(statusSeg), 'the status check does not resolve the CANONICAL pending-actions file (FB-LR-23)');
 });
 
+test('DEC-DEV-0244: conflict_ref matched by leading C<n> token, never by strict whole-string equality', () => {
+  // Live failure 2026-08-08 (READY re-run FM-003): the judge ACCEPTED per PA-073 but echoed the full
+  // display label ("C1 [integration-boundary/…]") as conflict_ref; strict === with "C1" dropped the
+  // acceptance and a ready GO degraded to MANUAL_VERIFY_REQUIRED on every re-run.
+  assert(/\^C\\d\+\\b/.test(SRC),
+    'conflict_ref is not anchored on the leading C<n> token (regex ^C\\d+\\b missing)');
+  assert(/x\.id === refTok/.test(SRC),
+    'indexed conflict lookup does not compare against the extracted token');
+  assert(!/x\.id === String\(\(m && m\.conflict_ref\)/.test(SRC),
+    'the old strict whole-string comparison is still present');
+  // the judge prompt must ALSO ask for the bare token (belt and braces with the tolerant match)
+  assert(/bare token/.test(SRC),
+    'ACCEPT_MATCH prompt does not instruct the judge to return conflict_ref as a bare C<n> token');
+});
+
 test('integration-boundary lens covers cross-task seams (orphan export FB-010, /reset)', () => {
   assert(/FB-010/.test(SRC), 'FB-010 orphan-export not referenced');
   assert(/orphan|call-site|seam/i.test(SRC), 'no cross-task seam language in RA-10 lens');

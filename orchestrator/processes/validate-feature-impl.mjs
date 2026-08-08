@@ -765,14 +765,19 @@ if (ACCEPT_RATIFIED.length && !conflicts.length) {
       `conflict names, and the pending-actions entry) before deciding — do not judge from the summaries alone.\n` +
       `ANY doubt = NOT covered (accepted_by: null). An over-broad match would let a LIVE contradiction stop counting against the verdict under a decision the owner ` +
       `never made about it — that is the one failure this step must never produce; a missed match merely costs a MANUAL_VERIFY the owner can re-ratify.\n` +
-      `Return one entry per conflict id: accepted_by = the PA id exactly as given, or null; reason = the concrete evidence for your call (which part of the ` +
+      `Return one entry per conflict id: conflict_ref = the C<n> id EXACTLY as given, as a bare token (e.g. "C2" — NOT the full conflict line); ` +
+      `accepted_by = the PA id exactly as given, or null; reason = the concrete evidence for your call (which part of the ` +
       `decision covers which part of the conflict — or why it does not).`,
       { model: 'opus', schema: ACCEPT_MATCH_SCHEMA, phase: 'Synthesize', label: 'accept-ratified:match' },   // MDP judging: does THIS ratification cover THIS conflict (high R — it changes the verdict math)
     )
     if (!paMatch) log('accept-ratified: matcher returned nothing — FAIL-SAFE: accepting nothing')
     const drop = new Set()
     for (const m of (paMatch && paMatch.matches) || []) {
-      const hit = indexed.find((x) => x.id === String((m && m.conflict_ref) || ''))
+      // DEC-DEV-0244: judges echo the full display label ("C1 [validator/kind] ref: …") despite the
+      // schema asking for the bare id — anchor on the LEADING C<n> token only. Fail-safe holds: a ref
+      // without a leading token (garbage, mid-string mention, empty) matches nothing and accepts nothing.
+      const refTok = (String((m && m.conflict_ref) || '').trim().match(/^C\d+\b/) || [''])[0]
+      const hit = indexed.find((x) => x.id === refTok)
       const by = String((m && m.accepted_by) || '')
       // DETERMINISTIC gate over the judgment: only a CONFIRMED-ratified id may accept, and a
       // conflict is accepted at most once. A judge naming an unverified/unknown PA accepts nothing.
